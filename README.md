@@ -66,6 +66,7 @@ Use **Pin tool** or press `p` on a tool to save it. Open those tools with
 | --- | --- | --- |
 | Check a running job | Select it in Jobs, then use its Details controls | [Workspaces and advice](docs/guides/adaptive-workspaces.md) |
 | Diagnose a failure | Select the exact attempt in Recents or History; open Logs or Investigate | [Log controls](docs/guides/log-view.md) |
+| Rerun one cancelled job | Right-click its row in Recents or History; inspect **Rerun cancelled job**, then review and confirm | [Exact retained rerun](docs/guides/operations-cluster.md#rerun-one-cancelled-job) |
 | Follow an investigation | Open `:ops investigation-workflow`; inspect evidence, review a diagnostic, then inspect its results | [Investigation workflow](docs/guides/scientific-investigation.md) |
 | Connect metrics and outputs | Enter `:projectguide /path/to/project`; validate an exact sample and copy its Bash hooks | [Project connection](docs/guides/project-connection.md) |
 | Compare performance and scientific results | Use Compare, Analytics or a declared investigation manifest | [Scientific investigation](docs/guides/scientific-investigation.md) |

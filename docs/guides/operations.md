@@ -14,8 +14,8 @@ has a terminal form, bounded background inspection, and a readable report.
 An operation that changes a job, starts a service, submits work, or writes
 results also has a separate action review. The four additions from 4.14 remain
 available through their [phase one controls](phase-one.md).
-The catalog also includes `queue-order`, a separate Jobs quality-of-life
-operation. The twenty-six research proposals below retain their original scope.
+The catalog also includes `queue-order` and `rerun-job`, separate job-management
+operations. The twenty-six research proposals below retain their original scope.
 
 ## Open and use an operation
 
@@ -90,6 +90,7 @@ views embedded in Jobs or History Details.
 | --- | --- |
 | Sources | Slurm doctor, cluster workspace, storage readiness |
 | Jobs Main group order handle | Review own pending queue order |
+| Recents or History, one cancelled job's right-click menu | Inspect and review one retained submission's rerun |
 | Analytics | Bottlenecks, statistical comparison, energy |
 | Research Experiment | Acceptance, statistics, energy |
 | Research Arrays | Existing array concurrency, search, packing |
@@ -105,6 +106,9 @@ views embedded in Jobs or History Details.
 A job-ID field starts with the selected job when available. Check the field
 before inspection. A highlighted row is not sufficient evidence for changing
 a job; the adapter also rechecks the scheduler identity and required state.
+Use `:rerun [JOBID]` or `:ops run rerun-job job_id=1234` to open the cancelled-job
+procedure directly. It requires separate **Review action** and **Confirm apply**
+steps. Read [Rerun one cancelled job](operations-cluster.md#rerun-one-cancelled-job).
 
 <a id="all-twenty-six-operation-keys"></a>
 

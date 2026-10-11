@@ -339,7 +339,16 @@ If the terminal intercepts Alt-drag, use the equivalent right-click group menu.
 See [Manual groups](guides/batch-launches.md#create-a-manual-group) for focus, identity, and persistence rules.
 Right-click a selected or marked job, including its group chevron, for **Create Group** (at least two targets), **Ungroup** (grouped targets), and applicable **Add to GROUP NAME** choices.
 Right-clicking a marked row targets applicable marks; an unmarked selected row targets that exact job and retains unrelated marks.
+The menu shows the three most recent eligible **Add to** groups. **More** expands
+the list; **Cancel** remains last. Recency uses the latest member submission
+time, with natural job ID order as the fallback.
 History's job menu also provides **Export logs**.
+For a single cancelled job in Recents or History, **Rerun cancelled job** opens
+background inspection, followed by **Review action** and **Confirm apply**.
+`:rerun [JOBID]` opens the same procedure. It requeues the retained individual
+submission under the same JobID; it does not restart the launch group.
+Read [Rerun one cancelled job](guides/operations-cluster.md#rerun-one-cancelled-job)
+for retention, array-task, dependency, and output requirements.
 In this menu, arrows, Tab, Shift-Tab, page keys, Home, and End select a choice; Enter or Space activates it. The wheel scrolls, and Esc, `q`, or Ctrl-C closes it.
 Manual membership uses natural job-ID order; displayed rows retain each list's active sort, including its default sort.
 Right-click a metric graph to restore its full view and keep the selected job and marks.
@@ -1021,7 +1030,7 @@ Job-changing commands open a review; scripted changes require `--yes`.
 | Panel layout | `density`, `focus`, `maximize`, `layout`, `panel-scroll` | [Workbench](WORKBENCH.md#shape-your-workspace) |
 | Table inspection | `sort`, `sortby`, `sorteditor`, `headers`, `columns`, `facet`, `filters`, `where`, `savedview`, `viewpicker`, `jobgroups`, `jobgroup`, `grouping`, `queue-drag`, `filter`, `days`, `historyrange`, `recents`, `marked`, `freeze`, `jobactions`, `node`, `drill` | [Tables](guides/tables.md) |
 | Job selection and annotations | `mark`, `unmark`, `pin`, `tag`, `untag`, `note`, `compare` | [Reference](reference.md#keys-remappable-in-the-config) |
-| Job changes | `cancel`, `hold`, `release`, `requeue`, `top`, `resubmit`, `chain` | [Reference](reference.md#keys-remappable-in-the-config) |
+| Job changes | `cancel`, `hold`, `release`, `requeue`, `rerun`, `top`, `resubmit`, `chain` | [Reference](reference.md#keys-remappable-in-the-config), [retained rerun](guides/operations-cluster.md#rerun-one-cancelled-job) |
 | Selected job | `jobpanel`, `inspect`, `log`, `investigate`, `advise` | [Live workbench](guides/live-workbench.md#inspect-a-job-inside-jobs) |
 | Log files and presentation | `find`, `wrap`, `bookmark`, `logview`, `logpan`, `loggroup`, `logpreview`, `logalign`, `logdiff`, `logjson`, `logfold`, `logunread` | [Log display](guides/log-view.md) |
 | Complete-file log inspection | `logolder`, `logsearch`, `logsearchmode`, `logresults`, `loggoto`, `logmark`, `logmarks` | [Log search](guides/log-search.md) |

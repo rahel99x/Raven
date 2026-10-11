@@ -1,5 +1,25 @@
 # Changelog
 
+## 6.2.0
+
+- Show the three most recent eligible groups in the job context menu. Use More
+  to expand the remaining choices. Keep Cancel last and reject stale pointer
+  releases and keyboard controls after expansion.
+- Add Rerun cancelled job to individual cancelled-job menus, the Run workbench,
+  and `:rerun [JOBID]`. Inspect the controller-retained submission in the
+  background, then review and confirm an exact `scontrol requeue` request.
+- Preserve Slurm's retained script, arguments, exported environment and job
+  settings under the same JobID. Retrieve a bounded stored-script preview and
+  show current dependencies and reused output paths. Do not run batch launchers.
+- Revalidate ownership, connection, cancelled attempt, restart count, retained
+  settings and available script evidence before dispatch. Accept only individual
+  jobs or explicit array tasks; reject heterogeneous jobs and purged submissions.
+  Record the one-shot action result and request an immediate scheduler refresh.
+- Document script recovery, dependency retention, output append/truncate policy,
+  and the difference between exact retained reruns and approximate resubmission.
+- Correct reservation timezone parsing on Python 3.10 when the scheduler clock
+  uses a numeric offset without a colon.
+
 ## 6.1.0
 
 - Fold the 56 tracked proposal entries into eight owning areas, with generated

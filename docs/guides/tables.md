@@ -319,6 +319,9 @@ only its displayed representative job. Release over a destination group's row
 or chevron to add those exact jobs. Esc, right-click, or an ineligible drop
 cancels the move. If the terminal intercepts Alt-drag, use the selected job's
 right-click menu and **Add to GROUP NAME**.
+The menu shows the three most recent eligible groups first. Select **More** to
+show the remaining destinations, or **Cancel** to close it. Group recency uses
+the latest member submission time, with natural job ID order as the fallback.
 
 1. Mark jobs with the normal controls.
 2. Enter `:marked`.

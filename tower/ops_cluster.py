@@ -48,6 +48,9 @@ SPECIFICATIONS = [
     dict(key="batch-script", title="Retrieve batch script", group="Cluster", proposal="A20",
          summary="Read the scheduler's retained script; optionally review a new local output file.",
          fields=[_field("job_id", "Job ID (blank: selected)"), _field("output", "Save path (blank: preview only)")]),
+    dict(key="rerun-job", title="Rerun cancelled job", group="Cluster", proposal="QoL",
+         summary="Restart one retained cancelled batch job with Slurm's stored launch settings.",
+         fields=[_field("job_id", "Cancelled job or exact array task ID (blank: selected)")]),
     dict(key="allocation-shell", title="Allocation shell or attach", group="Cluster", proposal="A19",
          summary="Open one shell step in a running allocation, or attach to a selected numeric step.",
          fields=[_field("job_id", "Job ID (blank: selected)"),
@@ -395,7 +398,9 @@ def _reservations(params, ctx):
     warnings = []
     try:
         clock = _ops().command(ctx, ["date", "+%Y-%m-%dT%H:%M:%S%z"], timeout=3, limit=256).strip()
-        now = dt.datetime.fromisoformat(clock)
+        # date's %z emits -0700; Python 3.10 fromisoformat requires -07:00.
+        # Parse the exact requested format on every supported Python version.
+        now = dt.datetime.strptime(clock, "%Y-%m-%dT%H:%M:%S%z")
         if now.tzinfo is None:
             raise ValueError("scheduler date has no time zone")
     except (ValueError, RuntimeError, OSError):
@@ -557,6 +562,186 @@ def _batch_script(params, ctx):
     return _ops().report("batch-script", f"Retained batch script for {job_id}", status="review" if plan else "ok", rows=rows, data=data, plan=plan)
 
 
+def _rerun_source(ctx, job_id):
+    """The selected accounting attempt is evidence, never permission to target a newer one."""
+    records = [row for row in ctx.jobs + ctx.finished if str(row.get("id", "")) == job_id]
+    if not records:
+        raise ValueError("Select the cancelled job from the current Recents or History list")
+    keys = ("id", "state", "submit", "start", "end", "user", "account", "cluster")
+    sources = [{key: row.get(key, "") for key in keys} for row in records]
+    if any(source != sources[0] for source in sources[1:]):
+        raise ValueError("The selected job has ambiguous or changed attempt records; refresh the job list")
+    source = sources[0]
+    if not isinstance(source["state"], str) or not re.fullmatch(r"CANCELLED(?:\+| by [0-9]{1,20})?", source["state"], flags=re.ASCII):
+        raise ValueError("Rerun applies to one cancelled job; its current source attempt is no longer cancelled")
+    for key in ("submit", "end"):
+        _rerun_time(source[key], "Selected job " + key)
+    if source["start"] and str(source["start"]).lower() not in _NULL:
+        _rerun_time(source["start"], "Selected job start")
+    return source
+
+
+def _rerun_time(value, label):
+    value = _text(value, label, limit=64)
+    try:
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})?", value, flags=re.ASCII):
+            raise ValueError("not an ISO timestamp")
+        dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(label + " must contain a verifiable scheduler timestamp") from exc
+    return value
+
+
+def _rerun_record(ctx, job_id, source):
+    """Reject every ID form for which native requeue can broaden the request."""
+    if not re.fullmatch(r"[1-9][0-9]{0,19}(?:_[0-9]{1,10})?", job_id, flags=re.ASCII):
+        raise ValueError("Rerun needs one regular job or exact numeric array task, without ranges or heterogeneous components")
+    try:
+        record = _job(ctx, job_id)
+    except (ValueError, RuntimeError, OSError) as exc:
+        _ops().checkpoint(ctx)
+        raise ValueError("Slurm no longer exposes a verifiable retained job. Exact rerun is unavailable; no launch script was rerun: " + _ops().clean(exc, 400)) from exc
+    _owned(ctx, record)
+    if record.get("JobState") != "CANCELLED":
+        raise ValueError("The retained job is no longer fully cancelled; refresh and select its current attempt")
+    batch_flag = record.get("BatchFlag", "")
+    if not re.fullmatch(r"[0-9]{1,10}", batch_flag, flags=re.ASCII) or not 0 < int(batch_flag) <= 4294967295:
+        raise ValueError("Rerun requires a retained batch job, not an interactive allocation")
+    if record.get("Requeue") != "1":
+        raise ValueError("This job or site disables requeue; Tower will not change that policy or reconstruct a submission")
+    for key in ("HetJobId", "HetJobIdSet", "HetJobOffset", "PackJobId", "PackJobIdSet", "PackJobOffset"):
+        if key in record and record[key].lower() not in _NULL:
+            raise ValueError("Heterogeneous jobs cannot be rerun individually: Slurm can restart all components")
+    parent, separator, task = job_id.partition("_")
+    if separator:
+        if record.get("ArrayJobId") != parent or record.get("ArrayTaskId") != task:
+            raise ValueError("Slurm did not return the exact selected array task")
+    elif any(record.get(key, "").lower() not in _NULL for key in ("ArrayJobId", "ArrayTaskId")):
+        raise ValueError("Choose an explicit ARRAY_TASK ID; a bare array ID can restart the whole array")
+    if not re.fullmatch(r"[1-9][0-9]{0,19}", record.get("JobId", ""), flags=re.ASCII):
+        raise ValueError("Slurm returned an invalid allocation ID")
+    for key in ("SubmitTime", "EndTime"):
+        _rerun_time(record.get(key, ""), "Retained job " + key)
+    for selected, retained in (("submit", "SubmitTime"), ("start", "StartTime"), ("end", "EndTime")):
+        left, right = source[selected], record.get(retained, "")
+        if selected == "start" and str(left).lower() in _NULL and right.lower() in _NULL:
+            continue
+        if left != right:
+            raise ValueError("The controller job does not match the selected cancelled attempt; refresh the job list")
+    for key in ("Restarts", "RestartCnt"):
+        if key in record and not re.fullmatch(r"[0-9]{1,10}", record[key], flags=re.ASCII):
+            raise ValueError("Slurm returned an invalid restart counter")
+    if not any(key in record for key in ("Restarts", "RestartCnt")):
+        raise ValueError("A retained restart counter is required to distinguish the selected job attempt")
+    if source["user"] and source["user"] != record["UserId"].split("(", 1)[0]:
+        raise ValueError("The selected job owner does not match its retained launch")
+    if source["account"] and source["account"] != record.get("Account"):
+        raise ValueError("The selected job account does not match its retained launch")
+    if source["cluster"]:
+        cluster = record.get("Cluster", "")
+        if not cluster:
+            config = _ops().command(ctx, ["scontrol", "show", "config"], timeout=5)
+            matches = re.findall(r"^\s*ClusterName\s*=\s*(\S+)\s*$", config, re.M)
+            if len(matches) == 1:
+                cluster = matches[0]
+        if cluster != source["cluster"]:
+            raise ValueError("The selected job belongs to a different or unverified cluster")
+    return record
+
+
+def _rerun_evidence(record):
+    # Keep unknown site/version request fields too. The only exclusions are
+    # display clocks and scheduling observations, not launch configuration.
+    volatile = {"RunTime", "LastSchedEval", "EligibleTime", "AccrueTime", "Priority"}
+    return {key: value for key, value in record.items() if key not in volatile}
+
+
+def _rerun_job(params, ctx):
+    job_id = _job_id(params, ctx)
+    source = _rerun_source(ctx, job_id)
+    record = _rerun_record(ctx, job_id, source)
+    warnings, script_digest, preview = [], "", []
+    try:
+        script = _retained_script(ctx, job_id, "controller")
+        script_digest = hashlib.sha256(script.encode("utf-8")).hexdigest()
+        preview = [_ops().clean(line, 512) for line in script[:8192].splitlines()[:40]]
+    except (ValueError, RuntimeError, OSError) as exc:
+        _ops().checkpoint(ctx)
+        warnings.append("Stored script preview is unavailable: " + _ops().clean(exc, 300)
+                        + ". Requeue uses Slurm's retained launch; Tower will not read the original script path.")
+    # Script retrieval is another RPC. Pin the complete reviewed request after
+    # it, and reject an attempt/configuration change during preparation.
+    current = _rerun_record(ctx, job_id, source)
+    if _rerun_evidence(current) != _rerun_evidence(record):
+        raise ValueError("The retained launch changed during inspection; prepare a new review")
+    payload = dict(job_id=job_id, source=source, identity=_identity(current),
+                   evidence=_rerun_evidence(current), script_sha256=script_digest,
+                   argv=["scontrol", "requeue", job_id])
+    plan = _ops().prepare_plan(ctx, "rerun-job", {"job_id": job_id}, payload)
+    rows = [f"Rerun exactly job {job_id}; owner={current['UserId']}; cancelled={current['EndTime']}",
+            "Command: " + " ".join(payload["argv"]),
+            "Slurm keeps the same job ID and starts a new attempt from its retained batch script, arguments, exported environment and job settings.",
+            "Tower does not execute a batch launcher, resubmit the group, or use your current shell environment.",
+            "Current dependency state: " + current.get("Dependency", "not exposed"),
+            "Dependencies are not rewritten or restored to an earlier graph. Unsatisfied dependencies can keep this attempt pending.",
+            "Work directory: " + current.get("WorkDir", "not exposed"),
+            "Standard output: " + current.get("StdOut", "not exposed"),
+            "Standard error: " + current.get("StdErr", "not exposed"),
+            "Existing output paths are reused. Slurm's open-mode policy can append to or truncate existing logs.",
+            "External inputs, executables and other files are not snapshots; their current contents will be used."]
+    if script_digest:
+        rows.extend(["Retained batch script SHA256: " + script_digest, "Stored script preview (bounded):", *preview])
+    return _ops().report("rerun-job", f"Review rerun of cancelled job {job_id}", status="review", rows=rows,
+                         data={"job_id": job_id, "source": source, "script_sha256": script_digest,
+                               "script_preview": preview, "dependency": current.get("Dependency", ""),
+                               "stdout": current.get("StdOut", ""), "stderr": current.get("StdErr", "")},
+                         warnings=warnings, plan=plan)
+
+
+def _apply_rerun(ctx, payload):
+    job_id = payload["job_id"]
+    source = _rerun_source(ctx, job_id)
+    if source != payload["source"]:
+        raise ValueError("The selected cancelled attempt changed after review")
+    record = _rerun_record(ctx, job_id, source)
+    if _rerun_evidence(record) != payload["evidence"]:
+        raise ValueError("The retained launch settings or attempt changed after review")
+    if payload["script_sha256"]:
+        script = _retained_script(ctx, job_id, "controller")
+        if hashlib.sha256(script.encode("utf-8")).hexdigest() != payload["script_sha256"]:
+            raise ValueError("The retained batch script changed after review")
+        record = _rerun_record(ctx, job_id, source)
+        if _rerun_evidence(record) != payload["evidence"]:
+            raise ValueError("The retained launch changed before dispatch; no rerun was sent")
+    # Rebuild the only allowed mutation argv; never replay arbitrary plan argv.
+    output = _ops().command(ctx, ["scontrol", "requeue", job_id], timeout=8, limit=65536)
+    data = {"job_id": job_id, "accepted": True, "confirmed": False, "rerun_dispatched": True,
+            "output": output, "previous_attempt": source}
+    warnings = []
+    rows = [f"Slurm accepted requeue of {job_id}. The original job ID is retained.", output or "No scheduler message."]
+    try:
+        after = _job(ctx, job_id)
+        _owned(ctx, after)
+        # SubmitTime changes on requeue. A strictly advanced restart counter is
+        # stronger evidence than observing a transient PENDING/RUNNING state.
+        counter = "Restarts" if "Restarts" in record else "RestartCnt"
+        value = after.get(counter, "")
+        confirmed = (after.get("JobId") == record["JobId"]
+                     and after.get("ArrayJobId", "") == record.get("ArrayJobId", "")
+                     and after.get("ArrayTaskId", "") == record.get("ArrayTaskId", "")
+                     and re.fullmatch(r"[0-9]{1,10}", value, flags=re.ASCII) is not None
+                     and int(value) > int(record[counter]))
+        data.update(confirmed=confirmed, observed_state=_state(after), observed_restarts=value)
+        rows.append(f"Readback: state={_state(after)}; restart count={value or 'not exposed'}")
+        if not confirmed:
+            warnings.append("Requeue was accepted, but a new attempt is not yet confirmed. Refresh this job; do not retry automatically.")
+    except (ValueError, RuntimeError, OSError) as exc:
+        warnings.append("Requeue was accepted, but readback is unavailable: " + _ops().clean(exc, 400)
+                        + ". Inspect the job before another attempt; do not retry automatically.")
+    return _ops().report("rerun-job", "Job rerun confirmed" if data["confirmed"] else "Rerun accepted; confirmation needed",
+                         status="ok" if data["confirmed"] else "partial", rows=rows, data=data, warnings=warnings)
+
+
 def _steps(ctx, job_id):
     output = _ops().command(ctx, ["scontrol", "show", "step", "-o", job_id], timeout=5, limit=65536)
     steps = []
@@ -616,7 +801,7 @@ def _allocation_shell(params, ctx):
 
 _RUN = {"storage": _storage, "pending-edit": _pending_edit, "array-throttle": _array_throttle,
         "reservations": _reservations, "licenses": _licenses, "slurm-doctor": _doctor,
-        "batch-script": _batch_script, "allocation-shell": _allocation_shell}
+        "batch-script": _batch_script, "allocation-shell": _allocation_shell, "rerun-job": _rerun_job}
 
 
 def run(feature, params, ctx):
@@ -654,11 +839,13 @@ def _save_script(ctx, payload):
 
 
 def apply(feature, plan, ctx):
-    if feature not in {"pending-edit", "array-throttle", "batch-script", "allocation-shell"}:
+    if feature not in {"pending-edit", "array-throttle", "batch-script", "allocation-shell", "rerun-job"}:
         raise ValueError("This operation is read only")
     payload = _ops().validate_plan(plan, ctx, feature)
     if feature == "batch-script":
         return _save_script(ctx, payload)
+    if feature == "rerun-job":
+        return _apply_rerun(ctx, payload)
     if feature == "pending-edit":
         record = _check_identity(ctx, payload, pending=True)
         if record.get(payload["old_key"]) != payload["old"]:

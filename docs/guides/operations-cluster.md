@@ -148,6 +148,74 @@ The doctor does not read secret configuration files, restart services, or
 change settings. On managed clusters, send the evidence to the administrator
 through your normal support process. Tower does not send it automatically.
 
+## Rerun one cancelled job
+
+Use this action to restart one cancelled job with its retained Slurm submission.
+Slurm restarts the batch script from the beginning under the **same JobID** and
+a new execution attempt. Its retained script, arguments, exported environment,
+and job settings stay with that individual job. Tower does not run the batch
+launcher again.
+
+1. Open Recents in Jobs, or open History.
+2. Select one **CANCELLED** job. Expand a group first if necessary, and clear
+   other marks so that the menu targets that job alone.
+3. Right-click its row and select **Rerun cancelled job**.
+4. Wait for the background inspection of the retained job and batch script.
+5. Select **Review action**. Check the exact job ID, settings, dependencies,
+   and output paths.
+6. Select **Confirm apply** to request `scontrol requeue` for that job.
+
+You can open the same inspection from the command palette:
+
+```text
+:rerun 1234
+:ops run rerun-job job_id=1234
+:ops run rerun-job job_id=1234_7
+```
+
+`:rerun` without an ID uses the exact selected job. These commands prepare a
+review; they do not apply it automatically. After confirmation, normal Slurm
+scheduling and dependency checks determine when the new attempt starts.
+
+The job must belong to you, remain cancelled, have requeue enabled, and still
+have its submission retained by the controller. An array target must identify
+one exact task, such as `1234_7`. Whole-array targets, task ranges,
+heterogeneous allocations, and multiple jobs are not accepted. Tower checks
+the job identity and retained data again before apply. Changed or unavailable
+evidence stops the action and requires a new inspection.
+
+Slurm does not provide an atomic "requeue only this cancelled attempt" command.
+Tower checks again immediately before dispatch and prevents repeated use of a
+review. A separate client can still change the same job between that final
+check and Slurm's command processing. Avoid concurrent rerun actions on the
+same job from other clients. Tower records acceptance separately from readback
+confirmation and does not retry an uncertain result automatically.
+
+The current retained dependencies remain in effect. Slurm may already have
+removed satisfied dependencies; this action cannot reconstruct them. It does
+not restart upstream jobs, downstream jobs, or other jobs in the launch group.
+The same output paths remain in use. The site's append or truncate settings
+therefore apply to existing logs. External source files, executables, inputs,
+and runtime environments are not frozen by requeue and can have changed since
+the previous attempt.
+
+If the controller has purged the submission, Tower reports why an exact rerun
+is unavailable. It does not substitute the current local script or infer lost
+environment values. An accounting record or an archived batch script alone
+does not restore all submission settings.
+
+| Required result | Control |
+| --- | --- |
+| Restart one retained cancelled submission under the same JobID | **Rerun cancelled job**, or `:rerun JOBID` |
+| Prepare a new submission with explicit resource or script changes | `A`, or `:resubmit JOBID ...` |
+| Inspect or save the retained original batch script | `:ops batch-script` |
+
+The existing `resubmit` command creates a **new JobID**. It uses the recorded
+submit line when available, or reconstructs an `sbatch` command from available
+metadata. The current script and submission environment can differ from the
+original. Treat it as an approximate clone and review its caveats and overrides.
+Read the [resubmit reference](../reference.md#keys-remappable-in-the-config).
+
 ## Retrieve a retained batch script — A20
 
 Open `:ops batch-script`. Enter a job ID. Leave **Save path** empty for a preview.
@@ -161,6 +229,8 @@ For a controller-retained job, Tower reads `scontrol write batch_script JOB -`.
 For an accounting-only job, it verifies the exact accounting row and requests
 `sacct --batch-script`. The cluster must retain that data. Older Slurm versions
 and sites without batch-script accounting can report unavailable data.
+An archived script is useful evidence for preparing a new submission. It does
+not make a purged job eligible for the exact rerun procedure above.
 
 The preview includes its source, submit time, SHA-256 digest, and the first 200
 lines. It never executes the script. A save review pins the script digest and

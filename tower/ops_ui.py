@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, is_dataclass, replace
 from functools import lru_cache
 import json
 import shlex
@@ -86,7 +86,7 @@ def save(app):
 
 
 def command_names():
-    return ["ops", "workbench", "projectguide"]
+    return ["ops", "workbench", "projectguide", "rerun"]
 
 
 def _catalog_specs(state):
@@ -206,6 +206,24 @@ def _open(app, feature=""):
             state["values"]["root"] = str(project.get("root") or "")
 
 
+def open_rerun(app, job_id, *, source=None):
+    """Inspect one cancelled attempt, capturing its evidence before enqueueing.
+
+    A context-menu source is the record frozen when the menu opened. Neither
+    a stale table nor a worker queue delay may silently select a newer attempt.
+    This prepares a review only; the normal workbench owns confirmation.
+    """
+    app = getattr(app, "_chart_owner", app)
+    ctx = context(app)
+    if source is not None:
+        matches = [record for record in ctx.finished if str(record.get("id")) == job_id]
+        if len(matches) != 1 or matches[0] != source:
+            raise ValueError("The cancelled job changed; select its current row again.")
+    _open(app, "rerun-job")
+    initialize(app)["values"]["job_id"] = job_id
+    _inspect(app, source_context=ctx)
+
+
 def close(app):
     state = initialize(app)
     if state["running"] and not state["applying"] and state["cancel"] is not None:
@@ -268,12 +286,12 @@ def shutdown(app):
     state["terminal"] = None
 
 
-def _background(app, callback, completion, *, applying=False):
+def _background(app, callback, completion, *, applying=False, source_context=None):
     state = initialize(app)
     if state["running"]:
         raise ValueError("An operation is already running.")
     cancel = threading.Event()
-    ctx = context(app, cancel)
+    ctx = context(app, cancel) if source_context is None else replace(source_context, cancel=cancel)
     generation = state["generation"]
     scope = copy.deepcopy(ctx.scope)
     def done(value):
@@ -322,7 +340,7 @@ def _background(app, callback, completion, *, applying=False):
         app.command_ok = app.research_result.get("status") not in ("error", "unavailable", "blocked", "failed")
 
 
-def _inspect(app):
+def _inspect(app, *, source_context=None):
     state = initialize(app)
     feature, values = state["feature"], O.parameters(state["feature"], state["values"])
     if state["running"]:
@@ -334,7 +352,7 @@ def _inspect(app):
             raise ValueError("The operation returned an invalid result.")
         state["result"] = value
         app.say(O.clean(value.get("summary", "Inspection complete.")))
-    _background(app, lambda ctx: O.run(feature, values, ctx), publish)
+    _background(app, lambda ctx: O.run(feature, values, ctx), publish, source_context=source_context)
 
 
 def _review(app):
@@ -368,6 +386,11 @@ def _apply(app):
         return value
     def publish(value):
         state.update(result=value, view="report", confirm_digest=None, top=0, index=0)
+        if (feature == "rerun-job" and value.get("data", {}).get("rerun_dispatched")
+                and _connection_scope(app) == ctx.scope):
+            sampler = getattr(app, "sampler", None)
+            if sampler is not None:
+                sampler.refresh_all()
         terminal = value.get("data", {}).get("terminal_argv") if isinstance(value, dict) else None
         if terminal:
             if (app.mode == "operations" and not state["quit_requested"] and not state["shutting_down"]
@@ -457,6 +480,12 @@ def run_command(app, args):
     app = getattr(app, "_chart_owner", app)
     state = initialize(app)
     try:
+        if args[0] == "rerun":
+            if len(args) > 2:
+                raise ValueError("Use rerun [JOBID] for one cancelled job.")
+            job_id = args[1] if len(args) == 2 else str(getattr(app, "selected_id", "") or "")
+            open_rerun(app, job_id)
+            return True
         if args[0] == "projectguide":
             if len(args) > 2:
                 raise ValueError("Use projectguide [ROOT].")

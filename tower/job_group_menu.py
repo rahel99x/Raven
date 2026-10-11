@@ -5,19 +5,26 @@ painting and keyboard navigation use its frozen, bounded action list only.
 """
 from __future__ import annotations
 
+from dataclasses import asdict
+import re
+import time
+
 from . import layout as L
 from .research import clean
 
 MODE = "job_group_menu"
 PANE = "modal:job-groups"
+RECENT_GROUPS = 3
+AGGREGATE_GUARD_SECONDS = 0.5
 
 
 def initialize(app):
     state = getattr(app, "job_group_menu_state", None)
     if not isinstance(state, dict):
         state = app.job_group_menu_state = dict(token=0, context=None, items=(),
+                                               prefix=(), destinations=(), suffix=(), expanded=False,
                                                cursor=0, top=0, page=1, hits=(),
-                                               hover=None, pressed=None, paint_token=None)
+                                               hover=None, pressed=None, paint_token=None, aggregate_guard=None)
     return state
 
 
@@ -39,11 +46,42 @@ def close(app):
     state = initialize(app)
     # Release evidence for old snapshots as soon as the modal closes. A menu
     # containing many historical groups must not retain their record objects.
-    state.update(context=None, items=(), hits=(), paint_token=None, hover=None, pressed=None)
+    state.update(context=None, items=(), prefix=(), destinations=(), suffix=(), expanded=False,
+                 hits=(), paint_token=None, hover=None, pressed=None, aggregate_guard=None)
     if active(app):
         app.mode = "main"
     pointer = getattr(app, "interaction_state", {})
     pointer.update(active=False, focused=None, pressed=None, frame_required=True)
+
+
+def _recent_key(group, evidence):
+    """Rank batches by observed submission, never by arrival order or label.
+
+    Frozen evidence already contains checked attempt times. A natural job ID
+    breaks ties and provides a deterministic fallback for session-only records.
+    Do this only when the user opens the menu, never on paint or pointer motion.
+    """
+    from .table_sort import _natural
+    latest = max((token[1] for _, token in evidence.tokens if token[1]), default="")
+    return latest, max((_natural(jid) for jid in group.members), default=()), group.id
+
+
+def _menu_items(prefix, destinations, suffix, *, expanded=False):
+    if expanded or len(destinations) <= RECENT_GROUPS:
+        return (*prefix, *destinations, *suffix)
+    more = dict(label=f"More ({len(destinations) - RECENT_GROUPS} more groups)", action="more")
+    return (*prefix, *destinations[:RECENT_GROUPS], more, *suffix)
+
+
+def _expand(app):
+    state = initialize(app)
+    state.update(token=state["token"] + 1, expanded=True,
+                 items=_menu_items(state["prefix"], state["destinations"], state["suffix"], expanded=True),
+                 hits=(), paint_token=None, hover=None, pressed=None, aggregate_guard=None)
+    # Existing coordinates and F8 actions must not acquire the new meaning of
+    # the former More row. Keep the cursor there to reveal the first older batch.
+    getattr(app, "interaction_state", {}).update(active=False, focused=None, pressed=None,
+                                                  frame_required=True)
 
 
 def open_menu(app, context=None):
@@ -88,15 +126,16 @@ def open_menu(app, context=None):
     required = tuple(dict.fromkeys((*collapsed, *(group.id for group in destinations))))
     evidence = M.target_evidences(app, snap, required, index=index, all_groups=True)
     frozen["ungroup_groups"] = {gid: evidence.get(gid) for gid in collapsed}
-    items = []
+    prefix, destination_items, suffix = [], [], []
     if len(targets) >= 2:
-        items.append(dict(label="Create Group", action="create"))
+        prefix.append(dict(label="Create Group", action="create"))
     if grouped:
-        items.append(dict(label="Ungroup", action="ungroup"))
+        prefix.append(dict(label="Ungroup", action="ungroup"))
     names = {}
     for group in destinations:
         names[group.label] = names.get(group.label, 0) + 1
-    for group in sorted(destinations, key=lambda value: (value.label.casefold(), value.id)):
+    eligible = [group for group in destinations if evidence.get(group.id) is not None]
+    for group in sorted(eligible, key=lambda value: _recent_key(value, evidence[value.id]), reverse=True):
         expected = evidence.get(group.id)
         if expected is None:
             continue
@@ -104,15 +143,28 @@ def open_menu(app, context=None):
         if names[group.label] > 1:
             members = group.members
             label += " (" + members[0] + (".." + members[-1] if len(members) > 1 else "") + ")"
-        items.append(dict(label="Add to " + label, action="add", group_id=group.id,
-                          expected=expected))
+        destination_items.append(dict(label="Add to " + label, action="add", group_id=group.id,
+                                      expected=expected))
     if getattr(app, "tab", "") == "history":
-        items.append(dict(label="Export logs", action="export"))
-    items.append(dict(label="Cancel", action="cancel"))
+        suffix.append(dict(label="Export logs", action="export"))
+    # A folded header stands for a batch, not the individual ID used to paint
+    # it. Exact reruns require an exposed single member and a cancelled record.
+    if len(targets) == 1 and not collapsed and not getattr(app, "replay", None):
+        job_id = targets[0]
+        records = [record for record in snap.get("finished", ()) if record.id == job_id]
+        if (len(records) == 1 and re.fullmatch(r"[0-9]{1,20}(?:_[0-9]{1,10})?", job_id)
+                and re.fullmatch(r"CANCELLED(?:\+| by [0-9]{1,20})?", records[0].state)
+                and not any(record.id == job_id for record in snap.get("jobs", ()))):
+            frozen["rerun_source"] = asdict(records[0])
+            suffix.append(dict(label="Rerun cancelled job", action="rerun"))
+    suffix.append(dict(label="Cancel", action="cancel"))
+    prefix, destination_items, suffix = tuple(prefix), tuple(destination_items), tuple(suffix)
     state = initialize(app)
-    state.update(token=state["token"] + 1, context=frozen, items=tuple(items),
+    state.update(token=state["token"] + 1, context=frozen,
+                 prefix=prefix, destinations=destination_items, suffix=suffix, expanded=False,
+                 items=_menu_items(prefix, destination_items, suffix),
                  tab=getattr(app, "tab", ""), cursor=0, top=0, page=1,
-                 hits=(), paint_token=None, hover=None, pressed=None)
+                 hits=(), paint_token=None, hover=None, pressed=None, aggregate_guard=None)
     # End the old gesture before changing ownership; a late release is inert.
     getattr(app, "job_selection_state", {})["capture"] = None
     from . import chart_interaction, metric_live, pane_drag
@@ -128,16 +180,35 @@ def open_menu(app, context=None):
     return True
 
 
-def _activate(app, index):
+def _activate(app, index, *, pointer=False):
     state = initialize(app)
     if not active(app) or type(index) is not int or not 0 <= index < len(state["items"]):
         return
     item, frozen = state["items"][index], state["context"]
+    if item["action"] == "more":
+        # Some native adapters report a completed click after its press/release
+        # pair. Expansion changes the action at these coordinates even after a
+        # valid repaint. Protect only this short-lived aggregate, not a new
+        # physical press or a deliberate click elsewhere in the menu.
+        previous_hit = next(((row, left, right) for row, left, right, actual in state["hits"]
+                             if actual == index), None) if pointer else None
+        _expand(app)
+        if previous_hit is not None:
+            state["aggregate_guard"] = (time.monotonic() + AGGREGATE_GUARD_SECONDS, *previous_hit)
+        return
     close(app)
     action = item["action"]
     if action == "cancel":
         return
     from . import job_group_actions as A
+    if action == "rerun":
+        if A.validate(app, frozen) is not None and frozen.get("rerun_source"):
+            from .ops_ui import open_rerun
+            try:
+                open_rerun(app, frozen["targets"][0], source=frozen["rerun_source"])
+            except (ValueError, KeyError, OSError, TypeError) as exc:
+                _feedback(app, "Rerun: " + clean(exc))
+        return
     if action == "export":
         if A.validate(app, frozen) is not None:
             from .history_log_export import open_menu as export_menu
@@ -236,7 +307,7 @@ def overlay(views, snap, app, width, height):
         rows.append([(L.cut(" [ " + clean(item["label"], ascii_, limit=1024) + " ]", room, ascii_), style)])
     if len(rows) < available:
         rows.append([(L.cut(" Arrows / wheel choose | Enter select | Esc cancel", room, ascii_), "dim")])
-    rendered = L.box(views.g, rows, width, height, "Job groups")
+    rendered = L.box(views.g, rows, width, height, "Job actions")
     hits = []
     for logical_row, index in logical_hits:
         row_index = logical_row + 1
@@ -276,6 +347,15 @@ def handle_mouse(app, y, x, button="left", shift=False):
         from .job_group_drag import source_at
         return open_menu(app, source_at(app, y, x, include_disclosure=True))
     state = initialize(app)
+    guard = state.get("aggregate_guard")
+    if guard is not None:
+        deadline, row, left, right = guard
+        inside = y == row and left <= x < right
+        if (time.monotonic() >= deadline or button == "press"
+                or button in ("motion", "drag") and not inside):
+            state["aggregate_guard"] = None
+        elif button in ("left", "double") and inside:
+            return True
     if not _fresh(app):
         state.update(hover=None, pressed=None)
         return True
@@ -292,8 +372,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
     elif button == "release":
         pressed, state["pressed"] = state["pressed"], None
         if hit is not None and pressed == (state["paint_token"], hit):
-            _activate(app, hit)
+            _activate(app, hit, pointer=True)
     elif button in ("left", "double") and hit is not None:
         state["cursor"] = hit
-        _activate(app, hit)
+        _activate(app, hit, pointer=True)
     return True

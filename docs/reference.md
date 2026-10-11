@@ -362,6 +362,14 @@ without motion or pulses. One-frame reports are static as well.
 
 ## Keys (remappable in the config)
 
+For one cancelled job, `:rerun [JOBID]` or **Rerun cancelled job** in its
+Recents/History menu inspects the controller-retained submission, then opens
+an action review. Confirmation requeues that individual job under the same
+JobID. The `A` / `:resubmit` controls below instead prepare a new submission
+from available metadata and the current script. They are approximate cloning
+tools. See [Rerun one cancelled job](guides/operations-cluster.md#rerun-one-cancelled-job)
+for the exact rerun requirements and limits.
+
 | keys | action |
 |---|---|
 | `↑` `↓` `j` `k` `PgUp` `PgDn` `Home` `End` `g` `G` | move; `g` instead groups two or more marked jobs in a focused job list. In Logs, move the logical line cursor before selection and extend it after `v` |

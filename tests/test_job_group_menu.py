@@ -307,8 +307,12 @@ def test_many_automatic_groups_are_available_without_rendering_every_option(dash
     assert len(expected.groups) == 300
     assert M.open_menu(app, source(app, store))
     destinations = [item for item in M.initialize(app)["items"] if item["action"] == "add"]
-    assert len(destinations) == 300
+    assert len(destinations) == 3
+    assert len(M.initialize(app)["destinations"]) == 300
     monkeypatch.setattr(store, "snapshot", lambda: pytest.fail("Scrolling copied Store"))
+    monkeypatch.setattr(G.registry(app), "ensure", lambda *_: pytest.fail("Expansion inferred groups"))
+    choose(app, "more")
+    assert sum(item["action"] == "add" for item in M.initialize(app)["items"]) == 300
     paint(app)
     assert len(M.initialize(app)["hits"]) < app.height
     M.handle_key(app, "end")
@@ -358,3 +362,100 @@ def test_close_releases_frozen_record_evidence(dashboard):
     M.close(app)
     assert M.initialize(app)["context"] is None
     assert M.initialize(app)["items"] == ()
+    assert M.initialize(app)["destinations"] == ()
+    assert M.initialize(app)["prefix"] == M.initialize(app)["suffix"] == ()
+
+
+def _five_groups(app, store, count=5):
+    return [group(app, store, (str(jid), str(jid + 1))) for jid in (3, 5, 7, 9, 11)[:count]]
+
+
+@pytest.mark.parametrize("count", range(6))
+def test_compact_menu_shows_three_newest_groups_and_cancel_last(dashboard, count):
+    app, store = dashboard
+    groups = _five_groups(app, store, count)
+    assert M.open_menu(app, source(app, store))
+    state = M.initialize(app)
+    displayed = [item["group_id"] for item in state["items"] if item["action"] == "add"]
+    assert displayed == list(reversed(groups))[:3]
+    assert any(item["action"] == "more" for item in state["items"]) == (count > 3)
+    assert state["items"][-1]["action"] == "cancel"
+    if count > 3:
+        choose(app, "more")
+        assert [item["group_id"] for item in state["items"] if item["action"] == "add"] == list(reversed(groups))
+        assert state["items"][-1]["action"] == "cancel"
+        assert all(item["action"] != "more" for item in state["items"])
+
+
+def test_recency_uses_latest_submission_not_name_creation_or_highest_jobid(dashboard):
+    app, store = dashboard
+    # The low-ID batch was submitted last, despite being grouped first.
+    store.jobs[2].submit = "2026-10-10T10:03:00"
+    groups = _five_groups(app, store)
+    assert M.open_menu(app, source(app, store))
+    state = M.initialize(app)
+    assert [item["group_id"] for item in state["items"] if item["action"] == "add"] == [groups[0], groups[4], groups[3]]
+
+
+def test_unknown_submission_uses_natural_jobid_order(dashboard):
+    app, store = dashboard
+    for record in store.jobs:
+        record.submit = ""
+    groups = _five_groups(app, store)
+    assert M.open_menu(app, source(app, store))
+    assert [item["group_id"] for item in M.initialize(app)["items"] if item["action"] == "add"] == list(reversed(groups))[:3]
+
+
+def test_more_invalidates_old_mouse_and_semantic_actions_and_preserves_targets(dashboard):
+    app, store = dashboard
+    _five_groups(app, store)
+    app.marks = {"1", "2"}
+    assert M.open_menu(app, source(app, store))
+    paint(app)
+    state = M.initialize(app)
+    old_token, frozen = state["token"], state["context"]
+    more_index = action_index(app, "more")
+    old_controls = M.controls(app)
+    hit = next(hit for hit in state["hits"] if hit[-1] == more_index)
+    M.handle_mouse(app, hit[0], hit[1], "press")
+    M.handle_mouse(app, hit[0], hit[1], "release")
+    assert state["expanded"] and state["token"] > old_token
+    assert state["context"] is frozen and frozen["targets"] == ("1", "2")
+    assert state["cursor"] == more_index
+    assert M.controls(app) == ()
+    paint(app)
+    M.handle_mouse(app, hit[0], hit[1], "release")
+    for control in old_controls:
+        M.run_command(app, control.action[1].split())
+    assert app.mode == M.MODE and app.marks == {"1", "2"}
+    assert G.registry(app).ensure(store.snapshot()).for_job("1") is None
+
+
+def test_more_keeps_open_time_evidence_when_jobs_or_marks_change(dashboard):
+    app, store = dashboard
+    groups = _five_groups(app, store)
+    assert M.open_menu(app, source(app, store))
+    app.marks = {"2"}
+    store.jobs[2].submit = "2026-10-10T10:03:00"
+    choose(app, "more")
+    choose(app, "add", groups[0])
+    assert app.mode == "main" and app.marks == {"2"}
+    assert G.registry(app).ensure(store.snapshot()).for_job("1") is None
+    assert "changed" in app.message.lower()
+
+
+def test_reopening_restores_compact_list_and_end_reaches_cancel(dashboard):
+    app, store = dashboard
+    _five_groups(app, store)
+    assert M.open_menu(app, source(app, store))
+    choose(app, "more")
+    choose(app, "cancel")
+    assert M.open_menu(app, source(app, store))
+    assert not M.initialize(app)["expanded"]
+    app.width, app.height = 20, 6
+    M.handle_key(app, "end")
+    paint(app)
+    state = M.initialize(app)
+    assert state["items"][state["hits"][-1][-1]]["action"] == "cancel"
+    M.handle_key(app, "enter")
+    assert app.mode == "main"

@@ -226,7 +226,7 @@ These main-page targets retain their specific right-click controls:
 | Target | Right-click result |
 | --- | --- |
 | Metric plot | Reset that graph to its full view and turn off its Live window. Keep the selected job and marks. |
-| Selected or marked job row | Open its group menu. A marked row uses applicable marks; an unmarked selected row uses that exact job. History adds **Export logs**. |
+| Selected or marked job row | Open its job menu. A marked row uses applicable marks; an unmarked selected row uses that exact job. History adds **Export logs**. One cancelled job in Recents or History adds **Rerun cancelled job**, which opens inspection and a separate action review. |
 | Elsewhere inside the History job list | Open the log-export menu for the exact marked or selected jobs. |
 | An unfinished group move | Cancel the move and retain marks. |
 

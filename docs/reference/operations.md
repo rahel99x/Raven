@@ -29,7 +29,7 @@ See [review and recovery rules](../guides/operations.md#review-background-work-a
 | Pinned | `:workbench pinned` | Show saved operation shortcuts with current selection context. |
 | All | `:workbench all` | Show the complete operation catalog. |
 
-## Operations (56)
+## Operations (57)
 
 Required fields are required by the form. A blank default means an empty input;
 the operation can require further values for a selected action. Choices are
@@ -173,6 +173,16 @@ Move a launch before or after another launch within your own pending queue; revi
 | <code>source_jobs</code> | Moved job IDs (comma separated) | Yes | (blank) | — |
 | <code>target_jobs</code> | Destination job IDs (comma separated) | Yes | (blank) | — |
 | <code>placement</code> | Placement | No | <code>before</code> | <code>before</code>, <code>after</code> |
+
+### Rerun cancelled job
+
+Command: <code>:ops rerun-job</code>. Group: Cluster.
+
+Restart one retained cancelled batch job with Slurm's stored launch settings.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>job_id</code> | Cancelled job or exact array task ID (blank: selected) | No | (blank) | — |
 
 ### Reservation timeline
 

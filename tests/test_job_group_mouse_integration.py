@@ -500,7 +500,7 @@ def test_drop_on_collapsed_destination_retains_hidden_siblings_and_summary(dashb
     assert job_groups.registry(app).is_collapsed(group)
 
 
-def many_group_menu(dashboard):
+def many_group_menu(dashboard, *, expanded=True):
     app, store = dashboard
     for index_ in range(12):
         ids = [str(100 + index_ * 2 + offset) for offset in range(2)]
@@ -513,7 +513,29 @@ def many_group_menu(dashboard):
     mark(app, "4", "5")
     dispatch(app, hits, point(hits, "4"), "right")
     assert app.mode == "job_group_menu"
+    if expanded:
+        from tower import job_group_menu
+        state = job_group_menu.initialize(app)
+        state["cursor"] = next(index for index, item in enumerate(state["items"]) if item["action"] == "more")
+        job_group_menu.handle_key(app, "enter")
     return frame(dashboard, height=15)
+
+
+@pytest.mark.parametrize("route", ["app", "sgr"])
+def test_group_menu_more_expands_through_real_pointer_without_action_or_tab_jump(dashboard, route):
+    app, _ = dashboard
+    _, hits = many_group_menu(dashboard, expanded=False)
+    assert sum(label.startswith("Add to ") for label in labels(app)) == 3
+    location = menu_point(app, "More (")
+    dispatch(app, hits, location, "press", route)
+    dispatch(app, hits, location, "release", route)
+    _, hits = frame(dashboard, height=15)
+    dispatch(app, hits, location, "release", route)
+    assert app.mode == "job_group_menu" and app.tab == "jobs"
+    assert app.marks == {"4", "5"}
+    assert sum(label.startswith("Add to ") for label in labels(app)) == 14
+    assert not any(label.startswith("More (") for label in labels(app))
+    assert index(dashboard).for_job("4") is None
 
 
 @pytest.mark.parametrize("route", ["app", "sgr"])

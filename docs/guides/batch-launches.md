@@ -94,16 +94,29 @@ Right-clicking the active unmarked selected row targets that exact job and keeps
 | **Create Group** | Create a closed manual group when at least two exact jobs are targeted |
 | **Ungroup** | Dissolve targeted closed groups or detach targeted expanded members; available only when a target belongs to a group |
 | **Add to GROUP NAME** | Add the exact targeted jobs to an existing group; a destination that already contains all targets is omitted |
+| **More (N more groups)** | Expand the menu to show the remaining eligible groups |
+| **Rerun cancelled job** | Inspect one exact cancelled job's retained submission, then review and confirm its restart |
 | **Export logs** in History | Open the existing complete-log export procedure for the exact targeted jobs |
 | **Cancel** | Close the menu without changing jobs or membership |
 
 Use this menu when the destination group is not visible in the current viewport.
+The menu first shows the three most recent eligible groups. Recency uses each
+group's latest known job submission time; natural job ID order breaks ties and
+provides the fallback when submission times are unavailable. Select **More**
+to reveal the rest. Reopening the menu restores the compact list. **Cancel** is
+always the last choice, and End selects it even in a small terminal.
 If two destinations have the same label, their displayed ID ranges distinguish the choices.
 Use the arrow keys, Tab, Shift-Tab, Page Up, Page Down, Home, or End to select a choice; press Enter or Space to activate it.
 The mouse wheel scrolls a long menu. Esc, `q`, or Ctrl-C closes it.
 F8 also enables the standard directional button navigation for its visible choices.
 Creating and removing groups follows the same identity, focus, and persistence rules as `g` and `u`.
-The job menu changes Tower's group membership only. The separate queue-order handle described below opens a scheduler-operation review.
+The group choices change Tower's membership only. **Rerun cancelled job** opens
+a separate scheduler-operation review for one job in Recents or History. It
+restarts that job under the same JobID and preserves its retained individual
+submission; it does not launch the group again. Controller retention and
+requeue permission are required. Read [Rerun one cancelled job](operations-cluster.md#rerun-one-cancelled-job)
+for array-task limits, dependency handling, and log-path behavior.
+The separate queue-order handle described below also opens a scheduler-operation review.
 Right-click outside a selected job keeps the existing selection-clearing behavior, subject to History's log-export control and the graph-reset controls.
 
 ## Remove a group or some members

@@ -70,6 +70,7 @@ class FakeBackend(Backend):
     def __init__(self, user: str = "alex", t0: Optional[float] = None, speed: float = 1.0):
         self.user, self.t0, self.speed = user, (time.time() if t0 is None else t0), speed
         self.cancelled: Dict[str, float] = {}
+        self._batch_scripts: Dict[str, str] = {}
         self.held: set = set()
         self.calls: List[List[str]] = []
         self.day = time.strftime("%Y-%m-%d")
@@ -133,9 +134,10 @@ class FakeBackend(Backend):
             start = s["start"]
             if s["id"] in self.cancelled:
                 c = self.cancelled[s["id"]]
-                el = max(0.0, c - start) if start is not None and c > start else 0.0
+                started = start is not None and c >= start
+                el = max(0.0, c - start) if started else 0.0
                 out.append(dict(id=s["id"], name=s["name"], state="CANCELLED by 1000", elapsed=hms(el), cpus=s["cpus"], cpu=hms(el * 0.3), mem=s["mem"], rss="1.0G",
-                                start=self._ts(start) if start is not None else "None", end=self._ts(c), part=s["part"], nodes=s["nodes"], exit="0:0",
+                                start=self._ts(start) if started else "None", end=self._ts(c), part=s["part"], nodes=s["nodes"], exit="0:0",
                                 tres=f"cpu={s['cpus']},mem={s['mem']},node={s['nodes']}" + (f",gres/gpu={s['gn'] * s['nodes']}" if s["gn"] else ""), nl=s.get("node", "None"),
                                 submit=self._ts(s["submit"]), limit=s["limit"]))
             elif start is not None and t >= start + s["dur"]:
@@ -144,6 +146,38 @@ class FakeBackend(Backend):
                                 tres=f"cpu={s['cpus']},mem={s['mem']},node={s['nodes']}" + (f",gres/gpu={s['gn'] * s['nodes']}" if s["gn"] else ""), nl=s.get("node", ""),
                                 submit=self._ts(s["submit"]), limit=s["limit"]))
         return out
+
+    def _requeue(self, ids: Sequence[str]) -> None:
+        """Restart only the requested retained allocations, as the real controller does."""
+        selected = []
+        for jid in dict.fromkeys(ids):
+            spec = next((s for s in self.spec if s["id"] == jid), None)
+            if spec is None:
+                raise CommandError(f"scontrol: error: Invalid job id specified {jid}")
+            if not spec.get("requeue", True):
+                raise CommandError(f"scontrol: requeue is disabled for {jid}")
+            selected.append(spec)
+        if not selected:
+            raise CommandError("scontrol: requeue requires a job id")
+        for spec in selected:
+            self.cancelled.pop(spec["id"], None)
+            spec["start"] = None
+            spec["submit"] = self.now()
+            spec["restarts"] = spec.get("restarts", 0) + 1
+            spec["reason"] = "Dependency" if spec.get("dep") not in (None, "", "(null)") else "Priority"
+
+    def _retained_script(self, jid: str) -> str:
+        spec = next((s for s in self.spec if s["id"] == jid), None)
+        if spec is None:
+            raise CommandError(f"scontrol: Invalid job id specified {jid}")
+        if jid not in self._batch_scripts:
+            import shlex
+            self._batch_scripts[jid] = ("#!/bin/bash\n"
+                f"# Retained demonstration batch script for {jid}\n"
+                f"#SBATCH --job-name={spec['name']}\n"
+                f"#SBATCH --time={spec['limit']}\n"
+                f"printf '%s\\n' {shlex.quote('Demonstration job ' + spec['name'])}\n")
+        return self._batch_scripts[jid]
 
     # ---- the commands ------------------------------------------------------------------------------
     def run(self, cmd: Sequence[str], timeout: float = 8.0) -> Tuple[str, float]:
@@ -241,6 +275,11 @@ class FakeBackend(Backend):
                     return "\n".join(lines) + "\n", 0.3
             raise CommandError("srun: no allocation")
         if name == "scontrol":
+            if cmd[1:2] == ["requeue"]:
+                self._requeue(cmd[2:])
+                return "", 0.02
+            if cmd[1:3] == ["write", "batch_script"] and len(cmd) == 5 and cmd[4] == "-":
+                return self._retained_script(cmd[3]), 0.02
             if cmd[1:3] == ["show", "config"]:
                 return "ClusterName = fake\nJobAcctGatherType = jobacct_gather/linux\nJobAcctGatherFrequency = task=30\n", 0.01
             if "hostnames" in cmd:
@@ -261,12 +300,26 @@ class FakeBackend(Backend):
                         f"GresUsed={used}\n"), 0.02
             if "job" in cmd:
                 jid = cmd[-1]
-                for s, state, elapsed in self._rows():
+                active = {s["id"]: (state, elapsed) for s, state, elapsed in self._rows()}
+                finished = {s["id"]: s for s in self._finished_rows()}
+                for s in self.spec:
                     if s["id"] == jid:
+                        if jid in active:
+                            state, elapsed = active[jid]
+                            end = "Unknown"
+                            start_time = self._ts(s["start"]) if s.get("start") is not None else "Unknown"
+                        else:
+                            record = finished[jid]
+                            state, elapsed, end = record["state"].split()[0], secs(record["elapsed"]), record["end"]
+                            start_time = record["start"]
                         out = os.path.join(os.getcwd(), "logs", f"{s['name'].split('_')[0]}-{jid}.out")
-                        return (f"JobId={jid} JobName={s['name']} UserId={self.user}(1000) GroupId={self.user}(1000) Priority={s['prio']} Account=lab_01 QOS=normal "
+                        parent, separator, task = jid.partition("_")
+                        allocation_id = s.get("allocation_id", parent if separator else jid)
+                        array = f" ArrayJobId={parent} ArrayTaskId={task}" if separator else ""
+                        return (f"JobId={allocation_id}{array} JobName={s['name']} UserId={self.user}(1000) GroupId={self.user}(1000) Priority={s['prio']} Account=lab_01 QOS=normal "
                                 f"JobState={state} Reason={'None' if state == 'RUNNING' else s.get('reason', 'None')} Dependency={s.get('dep', '(null)') or '(null)'} "
-                                f"RunTime={hms(elapsed)} TimeLimit={s['limit']} SubmitTime={self._ts(s['submit'])} StartTime={self._ts(s['start']) if s.get('start') is not None else 'Unknown'} "
+                                f"RunTime={hms(elapsed)} TimeLimit={s['limit']} SubmitTime={self._ts(s['submit'])} StartTime={start_time} "
+                                f"EndTime={end} BatchFlag=1 Requeue={int(bool(s.get('requeue', True)))} Restarts={s.get('restarts', 0)} "
                                 f"Partition={s['part']} NodeList={s.get('node', '(null)') if state == 'RUNNING' else '(null)'} NumNodes={s['nodes']} NumCPUs={s['cpus']} "
                                 f"TRES=cpu={s['cpus']},mem={s['mem']},node={s['nodes']}" + (f",gres/gpu={s['gn'] * s['nodes']}" if s["gn"] else "") +
                                 f" Command=/home/{self.user}/jobs/{s['name'].split('_')[0]}.sbatch WorkDir={os.getcwd()} "
@@ -381,6 +434,12 @@ class FakeBackend(Backend):
             return True, f"sbatch: Job 99999999 to start at {self._ts(self.now() + wait)} using {cmd[cmd.index('-c') + 1] if '-c' in cmd else 1} processors on nodes a01-06 in partition {part}"
         if name == "scontrol":
             verb = cmd[1]
+            if verb == "requeue":
+                try:
+                    self._requeue(ids)
+                except CommandError as exc:
+                    return False, str(exc)
+                return True, ""
             for i in ids:
                 if i not in known:
                     return False, f"scontrol: error: Invalid job id specified {i}"
@@ -388,7 +447,7 @@ class FakeBackend(Backend):
                     self.held.add(i)
                 elif verb == "release":
                     self.held.discard(i)
-                elif verb in ("requeue", "top"):
+                elif verb == "top":
                     pass
                 else:
                     return False, f"scontrol: unknown verb {verb}"

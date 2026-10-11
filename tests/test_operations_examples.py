@@ -97,7 +97,7 @@ def test_every_remaining_proposal_has_unique_reachable_operation_and_fields():
     research = [spec for spec in specs if spec["proposal"].startswith(("S", "P", "A"))]
     assert {spec["proposal"] for spec in research} == expected
     assert len(research) == 26
-    assert [spec["key"] for spec in specs if spec["proposal"] == "QoL"] == ["queue-order"]
+    assert {spec["key"] for spec in specs if spec["proposal"] == "QoL"} == {"queue-order", "rerun-job"}
     assert len({spec["key"] for spec in specs}) == len(specs)
     assert len(specs) >= 27
     for spec in specs:

@@ -319,7 +319,7 @@ def test_roadmap_catalog_contains_every_remaining_proposal_once():
                 {f"A{i:02d}" for i in range(1, 21)}) - {"A03", "A13", "A14", "A16"}
     assert set(proposals) == expected
     assert len(proposals) == len(expected)
-    assert [item["key"] for item in catalog if item["proposal"] == "QoL"] == ["queue-order"]
+    assert {item["key"] for item in catalog if item["proposal"] == "QoL"} == {"queue-order", "rerun-job"}
 
 
 @pytest.mark.parametrize("first", ["pending-edit", "dependency-repair"])

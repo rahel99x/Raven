@@ -181,6 +181,7 @@ COMMANDS = (
     Command('queue-drag', 'Enable reviewed queue ordering by dragging job groups', owner='group_queue_drag'),
     Command('rate', 'Set or reset the scheduler update interval', owner='refresh_rate'),
     Command('recents', 'Configure recently completed jobs', owner='table_tools'),
+    Command('rerun', 'Review an exact retained cancelled job for a new attempt', usage='rerun [JOBID]', job_ids=True, review='required', owner='ops_ui'),
     Command('run', 'Bind, inspect, or clear a project run', arguments=('select', 'passport', 'clear'), example='run select RUN_ID', owner='project_ui'),
     Command('runs', 'Select a project run and execution attempt', owner='project_ui'),
     Command('savedview', 'Save or restore a filtered and sorted job table', arguments=('list', 'save', 'load', 'delete'), example='savedview save gpu-failures', owner='table_ui'),
@@ -211,7 +212,7 @@ PATH_FLAGS = frozenset(['--contract', '--file', '--output', '--passport-dir', '-
 
 TASKS = (
     Task('run', 'Run', 'Prepare, inspect and control an exact execution attempt.',
-         ('pending-edit', 'array-throttle', 'allocation-shell', 'placement', 'batch-script', 'trace-capture', 'runtime-steering', 'io-coordination', 'diagnostic-recipe')),
+         ('pending-edit', 'rerun-job', 'array-throttle', 'allocation-shell', 'placement', 'batch-script', 'trace-capture', 'runtime-steering', 'io-coordination', 'diagnostic-recipe')),
     Task('investigate', 'Investigate', 'Follow a failure or delay to its supporting evidence.',
          ('investigation-workflow', 'trace-inspect', 'trace-snapshot', 'causal-delay', 'collective-audit', 'bottlenecks', 'incidents', 'evidence', 'investigation-timeline', 'recommendation', 'investigation-plan', 'minimize-reproducer')),
     Task('compare', 'Compare', 'Test a performance or scientific hypothesis with a bounded experiment.',
