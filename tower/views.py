@@ -3183,7 +3183,8 @@ class Views:
         app.width = width
         if height is not None:
             app.height = height
-        from . import chart_interaction
+        from . import chart_interaction, terminal_ui
+        terminal_ui.begin_frame(app)
         chart_interaction.begin_frame(app, width, height)
         SB.begin_frame(app, width, height)
         app.completion.update(snap)
@@ -3205,8 +3206,16 @@ class Views:
             if feedback:
                 from .interaction import publish
                 publish(app, [], [], width, height)
+            terminal_ui.finalize_frame(app)
             return [], []
         head = self.header(snap, app, width)
+        terminal_header_hits = []
+        if (terminal_ui.enabled(app) and app.tab not in ("jobs", "history")
+                and not terminal_ui.showing(app) and (height is None or height - len(head) - 1 >= 8)):
+            terminal_row, terminal_controls = terminal_ui.header(app, width, y=len(head))
+            terminal_header_hits = [(y + len(head), kind, value) for y, kind, value in terminal_controls]
+            head.append(terminal_row)
+            terminal_ui.initialize(app).geometry = (app.width, getattr(app, "height", None))
         app.body_origin = len(head)
         from .pane_drag import begin_frame
         begin_frame(app, width, height)
@@ -3229,11 +3238,12 @@ class Views:
         from .history_browser import wrap_render
         body, hits = wrap_render(self, snap, app, width, body_h,
             lambda panel_width, panel_height: render_body(self, snap, app, panel_width, panel_height, actions, default_renderer))
+        terminal_ui.finalize_frame(app)
         chart_interaction.place_since(app, 0, dy=len(head),
             clip=None if height is None else (len(head), 0, max(len(head), height - 1), width))
         SB.place_since(app, 0, dy=len(head),
             clip=None if height is None else (len(head), 0, max(len(head), height - 1), width))
-        hits = [(y + len(head), kind, key) for y, kind, key in hits]
+        hits = [(y + len(head), kind, key) for y, kind, key in hits] + terminal_header_hits
         if height is None:
             return [L.clip_row(r, width) for r in head + body], hits
         rows = [L.clip_row(r, width) for r in head + body]   # every row fits the width, whatever the panel put in it

@@ -251,7 +251,13 @@ def resolve(style: str, theme: str = "default") -> Style:
     plain = theme in ("mono", "reader")
     tokens = _tokens(theme)
     colored = False
+    # Child terminal applications own their explicit SGR colours. A matching
+    # legacy Tower RGB must not accidentally become a semantic theme colour.
+    # Defaults still inherit the pane theme; monochrome/reader remain plain.
+    terminal_colors = "terminal" in style.split("+")
     for token in style.split("+"):
+        if token == "terminal":
+            continue
         if token in FLAGS:
             flags.append(token)
             continue
@@ -304,10 +310,10 @@ def resolve(style: str, theme: str = "default") -> Style:
             try:
                 if theme == "terminal" and background_token and value in ("canvas", "surface", "surface-raised", "surface-sunken"):
                     continue
-                value_rgb = _color(value, theme, tokens)
+                value_rgb = rgb(value) if terminal_colors and value.startswith("#") else _color(value, theme, tokens)
             except ValueError:
                 continue
-            if theme == "cb":
+            if theme == "cb" and not (terminal_colors and value.startswith("#")):
                 value_rgb = _cb_rgb(value_rgb)
         else:
             token = CB_MAP.get(token, token) if theme == "cb" else token

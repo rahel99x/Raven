@@ -56,7 +56,10 @@ SPECIFICATIONS = [
          fields=[_field("job_id", "Job ID (blank: selected)"),
                  _field("mode", "Action", "shell", choices=("shell", "attach")),
                  _field("step_id", "Exact numeric step ID (attach only)"),
-                 _field("shell", "Shell path", "/bin/bash")]),
+                 _field("shell", "Shell path", "/bin/bash"),
+                 _field("node", "Exact allocation node (shell only; blank: scheduler chooses)"),
+                 _field("task", "Exact task rank (attach only; blank: all step output)"),
+                 _field("display", "Terminal display", "embedded", choices=("embedded", "fullscreen"))]),
 ]
 FEATURES = {spec["key"] for spec in SPECIFICATIONS}
 _JOB = re.compile(r"[0-9]{1,20}(?:_[0-9]{1,10})?(?:\+[0-9]{1,6})?\Z")
@@ -765,6 +768,17 @@ def _allocation_shell(params, ctx):
         raise ValueError("The scheduler did not expose the numeric allocation ID required for terminal attachment")
     if mode not in {"shell", "attach"}:
         raise ValueError("Mode must be shell or attach")
+    display = params.get("display", "embedded")
+    if display not in {"embedded", "fullscreen"}:
+        raise ValueError("Terminal display must be embedded or fullscreen")
+    node = _text(params.get("node", ""), "Node", empty=True, limit=253)
+    task = _text(params.get("task", ""), "Task", empty=True, limit=12)
+    if node and (mode != "shell" or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,252}", node)):
+        raise ValueError("Choose one exact allocation node for a shell; node selection is not an sattach task selector")
+    if task and mode != "attach":
+        raise ValueError("Task selection applies only to an existing numeric step attachment")
+    if node:
+        _allocation_node(ctx, record, node)
     warnings = []
     try:
         steps = _steps(ctx, allocation_id)
@@ -781,6 +795,10 @@ def _allocation_shell(params, ctx):
         if step not in steps:
             raise ValueError("Choose a running numeric step from this allocation: " + (", ".join(steps) or "none available"))
         argv = ["sattach", step]
+        if task:
+            task = str(_integer(task, "Task", 0, 999999999))
+            _attachment_task(ctx, step, task)
+            argv = ["sattach", f"--input-filter={task}", f"--output-filter={task}", step]
     elif mode == "shell":
         shell = _text(params.get("shell", "/bin/bash"), "Shell path", limit=4096)
         if not shell.startswith("/") or shell.endswith("/"):
@@ -788,15 +806,40 @@ def _allocation_shell(params, ctx):
         # --overlap prevents waiting behind the batch step; --immediate bounds a
         # resource/launch failure. No unbounded salloc or new allocation is made.
         argv = ["srun", f"--jobid={allocation_id}", "--overlap", "--exact", "--nodes=1", "--ntasks=1", "--cpus-per-task=1", "--immediate=5", "--pty", shell]
+        if node:
+            argv.insert(-2, "--nodelist=" + node)
         step = ""
-    payload = dict(job_id=job_id, allocation_id=allocation_id, identity=_identity(record, running=True), mode=mode, step_id=step, argv=argv)
+    payload = dict(job_id=job_id, allocation_id=allocation_id, identity=_identity(record, running=True), mode=mode, step_id=step, argv=argv,
+                   node=node, task=task, display=display)
     plan = _ops().prepare_plan(ctx, "allocation-shell", params, payload)
-    rows = [f"Running allocation {job_id}; start={record['StartTime']}; owner={record['UserId']}", "Command: " + " ".join(argv), "Running numeric steps: " + (", ".join(steps) or "none"), "Apply suspends Tower's terminal UI. Exit the shell or detach to return."]
+    rows = [f"Running allocation {job_id}; start={record['StartTime']}; owner={record['UserId']}", "Command: " + " ".join(argv), "Running numeric steps: " + (", ".join(steps) or "none"),
+            "Apply opens this session in Tower's Terminal pane." if display == "embedded" else "Apply suspends Tower's terminal UI. Exit the shell or detach to return."]
     if mode == "shell":
         rows.append("This shell shares allocation resources. It does not modify the batch script or create a new allocation.")
     else:
         rows.append("sattach joins the selected step's input/output. Only attach when interactive input is appropriate for that application.")
     return _ops().report("allocation-shell", f"Review {mode} for allocation {job_id}", status="review", rows=rows, data={"steps": steps, **payload}, warnings=warnings, plan=plan)
+
+
+def _allocation_node(ctx, record, node):
+    """Expand one reviewed allocation's hostlist, never the cluster inventory."""
+    nodelist = _text(record.get("NodeList", ""), "Allocation node list", limit=8192)
+    if nodelist.lower() in _NULL or nodelist.startswith("-"):
+        raise ValueError("The allocation node list is unavailable")
+    output = _ops().command(ctx, ["scontrol", "show", "hostnames", nodelist], timeout=5, limit=1 << 18)
+    nodes = output.splitlines()
+    if len(nodes) > 16384 or node not in nodes:
+        raise ValueError("The selected node is not in this allocation")
+
+
+def _attachment_task(ctx, step, task):
+    output = _ops().command(ctx, ["scontrol", "show", "step", "-o", step], timeout=5)
+    records = [r for r in parse_records(output, "StepId") if r.get("StepId") == step]
+    if len(records) != 1 or records[0].get("State", "").upper() != "RUNNING":
+        raise ValueError("The exact attachment step is no longer running")
+    count = records[0].get("Tasks", records[0].get("NumTasks", ""))
+    if not count.isascii() or not count.isdigit() or len(count) > 10 or int(task) >= int(count):
+        raise ValueError("The step does not expose a valid task count for that exact rank")
 
 
 _RUN = {"storage": _storage, "pending-edit": _pending_edit, "array-throttle": _array_throttle,
@@ -860,9 +903,13 @@ def apply(feature, plan, ctx):
             raise ValueError("Array throttle changed after review; prepare again")
     else:
         _ops().local_only(ctx)
-        _check_identity(ctx, payload, running=True)
+        record = _check_identity(ctx, payload, running=True)
         if payload["mode"] == "attach" and payload["step_id"] not in _steps(ctx, payload["allocation_id"]):
             raise ValueError("The reviewed step is no longer running")
+        if payload.get("node"):
+            _allocation_node(ctx, record, payload["node"])
+        if payload.get("task"):
+            _attachment_task(ctx, payload["step_id"], payload["task"])
         return _ops().report(feature, "Terminal handoff ready", rows=[" ".join(payload["argv"])], data={"terminal_argv": payload["argv"], "terminal_identity": payload, "job_id": payload["job_id"], "identity": payload["identity"]})
     output = _ops().command(ctx, payload["argv"], timeout=8)
     data = {"job_id": payload["job_id"], "output": output, "accepted": True, "confirmed": False}
@@ -907,7 +954,11 @@ def revalidate_terminal(ctx, identity):
     """Root calls this in a worker immediately before its terminal handoff."""
     _ops().local_only(ctx)
     _ops().checkpoint(ctx)
-    _check_identity(ctx, identity, running=True)
+    record = _check_identity(ctx, identity, running=True)
     if identity["mode"] == "attach" and identity["step_id"] not in _steps(ctx, identity["allocation_id"]):
         raise ValueError("The reviewed step is no longer running")
+    if identity.get("node"):
+        _allocation_node(ctx, record, identity["node"])
+    if identity.get("task"):
+        _attachment_task(ctx, identity["step_id"], identity["task"])
     return list(identity["argv"])

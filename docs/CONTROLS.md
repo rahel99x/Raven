@@ -1,10 +1,40 @@
 # Tower controls
 
-Press Ctrl-C to exit an interactive session. A configured Ctrl-C binding takes precedence.
+Press Ctrl-C to exit Tower when Tower owns keyboard input. A configured Ctrl-C binding takes precedence.
+When an embedded terminal owns input, Ctrl-C goes to its foreground program.
+Press Ctrl-], then t, to return input to Tower.
 The terminal test and keybinding tester record this key without exiting.
 Press Esc to leave either test.
 
 [README](../README.md) · [Feature guides](QUALITY_OF_LIFE.md) · [Reference](reference.md)
+
+## Embedded terminal
+
+Select **Details** or **Terminal** in Jobs, History, Analytics, Dependencies,
+Logs or Research. The optional engine must be installed. Hover does not assign
+keyboard focus. Use **Tools** for session, workflow and evidence actions.
+If a short screen hides the pane buttons, use **View → Open embedded terminal**
+or `:terminal show`.
+
+| Control | Action |
+| --- | --- |
+| Ctrl-], then t | Return keyboard control to Tower |
+| Ctrl-], then Ctrl-] | Send a literal Ctrl-] to the child |
+| `:terminal show` / `:terminal details` | Select the secondary-pane view |
+| `:terminal new` / `:terminal sessions` | Create or choose a named shell |
+| `:terminal menu` | Open Tools; arrows and Enter select an action |
+| Copy | Enter or leave terminal copy mode |
+| v, then arrows, then y in copy mode | Select and copy retained lines |
+| Mouse drag in copy mode | Select terminal text without sending a child drag |
+| /, then n in copy mode | Search and move to the next result |
+| Home / End in copy mode | Move to the first or last retained line |
+| Esc in a terminal dialog or copy mode | Close that mode; do not exit the shell |
+| `:terminal close` | Terminate the selected owned session; Details only hides it |
+
+Normal shell `y`, `q`, `g`, `:`, arrows and Escape go to the child. Terminal copy
+uses the existing Copy/Yank destination setting. Read the
+[terminal guide](guides/terminal-fusion.md) and
+[workflow guide](guides/terminal-workflows.md) for all commands and limits.
 
 This guide lists launch methods, default keys, mouse actions, and command families.
 Use `?` inside Tower for contextual help.

@@ -63,6 +63,23 @@ _ESCAPE_PREFIXES = frozenset(sequence[:end] for sequence in (*_ESCAPE_KEYS, _PAS
 _ESCAPE_SECONDS = .03
 _POINTER_ESCAPE_SECONDS = .2
 _RECENT_POINTER_SECONDS = .5
+_TERMINAL_PASTE_LIMIT = 1024 * 1024
+_CONTROL_STRING_LIMIT = 16384
+
+
+class InputEvent(tuple):
+    """An input frame bound to the focus owner when its first byte arrived.
+
+    Keep the historical two-item interface for trace tools and compatibility
+    controllers. ``origin=None`` is an explicit Tower owner, not permission to
+    send a queued frame to whichever shell happens to be focused later.
+    """
+
+    def __new__(cls, values, *, origin=None, geometry=None):
+        result = super().__new__(cls, values)
+        result.origin = origin
+        result.geometry = geometry
+        return result
 
 
 def _terminal_keys(curses):
@@ -127,6 +144,16 @@ class _InputReader:
         self.mouse_time = None
         self.escape_grace = _ESCAPE_SECONDS
         self.timed_out_mouse = False
+        self.input_owner = None
+        self.geometry_owner = None
+        self.frame_origin = None
+        self.frame_geometry = None
+        self.frame_active = False
+        self.control_string = ""
+        self.control_discard = False
+        self.control_escape = False
+        self.paste_overflow = False
+        self.paste_bytes = 0
 
     def _value(self, curses):
         if not self.raw:
@@ -177,7 +204,7 @@ class _InputReader:
 
     @property
     def pending(self):
-        return bool(self.escape or self.pasting or self.utf8.getstate()[0])
+        return bool(self.escape or self.pasting or self.control_string or self.control_discard or self.utf8.getstate()[0])
 
     def _mouse_result(self, report):
         if report is not None:
@@ -186,10 +213,27 @@ class _InputReader:
         return "mouse", report
 
     def read(self, curses):
+        if not self.frame_active:
+            self.frame_origin = self.input_owner() if callable(self.input_owner) else None
+            self.frame_geometry = self.geometry_owner() if callable(self.geometry_owner) else None
+            self.frame_active = True
+        result = self._read(curses)
+        if result is not None:
+            framed = InputEvent(result, origin=self.frame_origin, geometry=self.frame_geometry)
+            # Quarantined/partial controls return an inert tuple. Keep their
+            # original owner until the complete sequence has been consumed.
+            if not self.pending and not self.queue:
+                self.frame_active = False
+            return framed
+        if not self.pending and not self.queue:
+            self.frame_active = False
+        return None
+
+    def _read(self, curses):
         if self.queue:
             return self.queue.popleft()
-        deadline = time.monotonic() + INPUT_BATCH_SECONDS if self.escape or self.pasting or self.discard_mouse or self.discard_csi else None
-        for _ in range(256):
+        deadline = time.monotonic() + INPUT_BATCH_SECONDS if self.pending or self.discard_mouse or self.discard_csi else None
+        for _ in range(4096 if self.pasting else 256):
             try:
                 value = self._value(curses)
             except curses.error:
@@ -224,6 +268,7 @@ class _InputReader:
                 self.after_escape = self.recovered_escape = False
                 self.discard_mouse = self.discard_csi = False
                 self.timed_out_mouse = False
+                self.control_string, self.control_discard, self.control_escape = "", False, False
                 self.utf8.reset()
                 self.raw_values.clear()
                 self.queue.clear()
@@ -232,6 +277,23 @@ class _InputReader:
                 # A signal can interrupt any byte position, including paste
                 # or a UTF-8 coordinate. Preserve the prefix across resize.
                 return "resize", None
+            if self.control_string or self.control_discard:
+                # OSC/DCS/APC/PM are one opaque frame, including printable
+                # payloads. No payload character may become a Tower shortcut.
+                char = value if isinstance(value, str) else ""
+                complete = char == "\x07" and self.control_string.startswith("\x1b]") or self.control_escape and char == "\\"
+                if not self.control_discard:
+                    self.control_string += char
+                    if len(self.control_string) > _CONTROL_STRING_LIMIT:
+                        self.control_discard = True
+                self.control_escape = char == "\x1b"
+                if complete:
+                    sequence, discarded = self.control_string, self.control_discard
+                    self.control_string, self.control_discard, self.control_escape = "", False, False
+                    return ("terminal-raw", sequence) if self.frame_origin is not None and not discarded else (None, None)
+                if deadline is not None and time.monotonic() >= deadline:
+                    return None
+                continue
             if isinstance(value, int) and not self.pasting:
                 # Ncurses can resume decoding between fragments. A complete
                 # native key/mouse event resolves an older partial raw prefix
@@ -288,14 +350,25 @@ class _InputReader:
                 char = value if isinstance(value, str) else ""
                 self.end += char
                 while self.end and not _PASTE_END.startswith(self.end):
-                    if len(self.text) < 4097:
-                        self.text.append(self.end[0])
+                    char = self.end[0]
+                    if self.frame_origin is not None:
+                        self.paste_bytes += len(char.encode("utf-8", "surrogateescape"))
+                        if self.paste_bytes <= _TERMINAL_PASTE_LIMIT:
+                            self.text.append(char)
+                        else:
+                            self.paste_overflow = True
+                            self.text.clear()
+                    elif len(self.text) < 4097:
+                        self.text.append(char)
                     self.end = self.end[1:]
                 if self.end == _PASTE_END:
                     self.pasting, self.end = False, ""
                     if not self.raw:
                         self.window.keypad(True)
                     text, self.text = "".join(self.text), []
+                    if self.paste_overflow:
+                        self.paste_overflow = False
+                        return "terminal-overflow", self.paste_bytes
                     return "paste", text
             elif self.escape:
                 char = value if isinstance(value, str) else ""
@@ -306,6 +379,10 @@ class _InputReader:
                     self.escape, self.escape_time = char, time.monotonic()
                     self.recovered_escape = False
                     self.timed_out_mouse = False
+                elif (candidate in ("\x1b]", "\x1bP", "\x1b_", "\x1b^", "\x1bX")
+                      and candidate not in self.escape_prefixes and candidate not in self.escape_keys):
+                    self.escape, self.control_string = "", candidate
+                    self.control_escape, self.control_discard = False, False
                 elif candidate.startswith("\x1b[M"):
                     self.recovered_escape = False
                     # Legacy X10 reports encode three raw characters. A
@@ -339,6 +416,7 @@ class _InputReader:
                 elif candidate == _PASTE_START:
                     self.escape, self.pasting = "", True
                     self.text, self.end = [], ""
+                    self.paste_bytes, self.paste_overflow = 0, False
                     if not self.raw:
                         self.window.keypad(False)
                 elif candidate in self.escape_keys:
@@ -357,6 +435,9 @@ class _InputReader:
                     # Unknown terminal control sequences are indivisible;
                     # replaying their bytes can activate unrelated shortcuts.
                     self.escape = ""
+                    if self.frame_origin is not None:
+                        self.recovered_escape = False
+                        return "terminal-raw", candidate
                     if self.recovered_escape:
                         # Escape followed by literal '[' and an ordinary key
                         # has no mouse framing. Preserve both user inputs.
@@ -366,7 +447,7 @@ class _InputReader:
                     return None, None
                 elif _SS3_COMPLETE.fullmatch(candidate):
                     self.escape = ""
-                    return None, None
+                    return ("terminal-raw", candidate) if self.frame_origin is not None else (None, None)
                 elif len(candidate) <= 64 and (_CSI_PREFIX.fullmatch(candidate) or _SS3_PREFIX.fullmatch(candidate)):
                     self.escape = candidate
                     if char.isdigit():
@@ -384,6 +465,8 @@ class _InputReader:
                     return None, None
                 else:
                     self.escape = ""
+                    if self.frame_origin is not None:
+                        return "terminal-raw", candidate
                     self.queue.extend((key_name(ch, curses), None) for ch in candidate[1:])
                     return "esc", None
             else:
@@ -402,6 +485,10 @@ class _InputReader:
                     except curses.error:
                         return None, None
                 else:
+                    if name is None and self.frame_origin is not None and isinstance(value, str):
+                        if value == "\x00":
+                            return "ctrl-space", None
+                        return "terminal-raw", value
                     return name, None
             if deadline is not None and time.monotonic() >= deadline:
                 return None
@@ -610,6 +697,8 @@ def key_name(ch, curses) -> Optional[str]:
              9: "tab", 10: "enter", 13: "enter", 27: "esc", 32: "space", 127: "backspace", 8: "backspace"}
     if ch in table:
         return table[ch]
+    if ch in (28, 29, 30, 31):
+        return {28: "ctrl-\\", 29: "ctrl-]", 30: "ctrl-^", 31: "ctrl-_"}[ch]
     if ch in (1, 2, 5, 7, 11, 16, 21, 23, 25, 26):
         return {1: "ctrl-a", 2: "ctrl-b", 5: "ctrl-e", 7: "ctrl-g", 11: "ctrl-k",
                 16: "ctrl-p", 21: "ctrl-u", 23: "ctrl-w", 25: "ctrl-y", 26: "ctrl-z"}[ch]
@@ -647,6 +736,35 @@ def _read_input(stdscr, curses):
     return reader.read(curses)
 
 
+def _bind_input(stdscr, app):
+    """Attach live ownership without changing the public reader test API."""
+    reader = _INPUT_READERS.get(id(stdscr))
+    if reader is None or reader.window is not stdscr:
+        reader = _INPUT_READERS[id(stdscr)] = _InputReader(stdscr)
+    from .terminal_ui import input_identity
+    reader.input_owner = lambda: input_identity(app)
+    reader.geometry_owner = lambda: _terminal_geometry(app)
+    return reader
+
+
+def _terminal_geometry(app):
+    state = getattr(app, "terminal_state", None)
+    rect = getattr(state, "body_rect", None)
+    if rect is None:
+        return None
+    return (getattr(app, "width", None), getattr(app, "height", None), rect)
+
+
+def _terminal_pointer(app, event):
+    if event[0] != "mouse" or event[1] is None:
+        return False
+    from .pointer_routing import active
+    if active(app) and not getattr(getattr(app, "terminal_state", None), "capture", None):
+        return False
+    from .terminal_ui import owns_mouse
+    return owns_mouse(app, event[1][2], event[1][1])
+
+
 def _protect_pointer_escape(app):
     """Allow a short report-prefix grace while a pointer gesture owns input."""
     from .pointer_routing import active
@@ -661,6 +779,7 @@ def _navigation_context(app):
     page = getattr(app, "log_tools_state", {}).get("page") or {}
     toolbar = getattr(app, "toolbar_state", {}) or {}
     panels = getattr(app, "job_panel_state", {}) or {}
+    from .terminal_ui import input_identity
     return (app.mode, app.tab, analysis.get("modal"), analysis.get("chart_job"), analysis.get("metric"),
             table.get("modal"), table.get("tab"), table.get("node"), table.get("action_job"),
             page.get("path"), page.get("start"), page.get("end"), page.get("snapshot", {}).get("ident"),
@@ -669,7 +788,7 @@ def _navigation_context(app):
             getattr(app, "log_job", None), getattr(logs, "path", None),
             getattr(logs, "browser", None),
             toolbar.get("menu"), toolbar.get("focus"), toolbar.get("cursor"), toolbar.get("panel"),
-            panels.get("mode"), panels.get("focus"))
+            panels.get("mode"), panels.get("focus"), input_identity(app))
 
 
 def _motion_report(buttons, curses):
@@ -695,6 +814,12 @@ def _finish_unheld_pointer(app, mouse, curses):
 
 def _batchable_input(app, event, curses):
     name, mouse = event
+    # Child applications own the meaning of every drag sample. Tower's graph
+    # endpoint coalescing must never change an application's mouse protocol.
+    if _terminal_pointer(app, event):
+        return False
+    if isinstance(event, InputEvent) and event.origin is not None:
+        return name != "mouse"
     # Passive movement has no document action, including over a modal. Keeping
     # it outside the navigation whitelist avoids one modal render per report.
     if name == "mouse" and mouse is not None and _motion_report(mouse[4], curses):
@@ -742,6 +867,28 @@ def _apply_input(app, event, hits, curses):
     name, mouse = event
     if name is None or name == "resize":
         return
+    from . import terminal_ui
+    identity = terminal_ui.input_identity(app)
+    if name != "mouse":
+        origin = event.origin if isinstance(event, InputEvent) else identity
+        if origin is not None:
+            # Input queued for a hidden/replaced session must never be sent to
+            # its replacement, nor reinterpreted as Tower navigation.
+            if identity != origin:
+                return
+            if name == "terminal-overflow":
+                app.fail(f"Paste exceeds {_TERMINAL_PASTE_LIMIT // 1024} KiB; no paste bytes were sent.")
+            elif name == "terminal-raw":
+                terminal_ui.handle_event(app, {"type": "raw", "data": mouse})
+            elif name == "paste":
+                terminal_ui.handle_event(app, {"type": "paste", "text": mouse})
+            else:
+                terminal_ui.handle_key(app, name)
+            return
+        if identity is not None and isinstance(event, InputEvent):
+            # An earlier Tower event cannot become a command in a newly
+            # focused shell simply because painting happened in between.
+            return
     if name == "paste":
         from .scrolling import note_input
         note_input(app, "paste")
@@ -768,6 +915,15 @@ def _apply_input(app, event, hits, curses):
         return
     if mouse is None:
         return
+    if isinstance(event, InputEvent) and event.origin != identity:
+        # A delayed terminal release/press cannot activate a graph or row after
+        # a session switch. Conversely, a queued Tower report cannot leak into
+        # a newly focused full-screen child application.
+        return
+    if isinstance(event, InputEvent) and event.geometry is not None and event.geometry != _terminal_geometry(app):
+        # Resize or divider movement changes coordinate meaning, not keyboard
+        # destination. Drop only obsolete pointer frames; retain shell keys.
+        return
     if not getattr(app, "cfg", {}).get("mouse", True) and app.mode != "terminal_probe":
         return
     _, mx, my, _, bstate = mouse
@@ -788,6 +944,20 @@ def _apply_input(app, event, hits, curses):
               "drag" if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0) and bstate & getattr(curses, "BUTTON1_PRESSED", 0) else
               "motion" if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0) else
               "press" if bstate & curses.BUTTON1_PRESSED else "motion")
+    terminal_button = button
+    if bstate & getattr(curses, "BUTTON2_RELEASED", 0):
+        terminal_button = "middle-release"
+    elif bstate & getattr(curses, "BUTTON3_RELEASED", 0):
+        terminal_button = "right-release"
+    elif bstate & (getattr(curses, "BUTTON2_PRESSED", 0) | getattr(curses, "BUTTON2_CLICKED", 0)):
+        terminal_button = "drag-middle" if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0) else "middle"
+    elif bstate & getattr(curses, "BUTTON3_PRESSED", 0) and bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0):
+        terminal_button = "drag-right"
+    terminal_modifiers = {"shift": shift, "alt": alt}
+    if bstate & getattr(curses, "BUTTON_CTRL", 0):
+        terminal_modifiers["ctrl"] = True
+    if terminal_ui.handle_mouse(app, my, mx, button=terminal_button, **terminal_modifiers):
+        return
     from .scrolling import note_input, handle_wheel
     note_input(app, "wheel" if button.startswith("wheel-") else button)
     if button in ("press", "left"):
@@ -1043,6 +1213,10 @@ class _InputEffects:
         name, mouse = event
         if name is None or name == "mouse" and mouse is None:
             return
+        if (isinstance(event, InputEvent) and event.origin is not None and name != "mouse") or _terminal_pointer(app, event):
+            # PTY readiness paints only the published terminal rectangle.
+            # Keystrokes and child mouse traffic do not recompute job graphs.
+            return
         state = mouse[4] if name == "mouse" and mouse is not None else 0
         hover = name == "mouse" and _motion_report(state, curses)
         chart = getattr(app, "chart_interaction_state", {}) or {}
@@ -1236,7 +1410,7 @@ def _drain_prepaint_motion(app, stdscr, curses, hits, pending_input=None):
         if event is None:
             break
         mouse = event[1] if event[0] == "mouse" else None
-        if (mouse is None or not _motion_report(mouse[4], curses)
+        if (mouse is None or _terminal_pointer(app, event) or not _motion_report(mouse[4], curses)
                 or mouse[4] & deliberate or getattr(mouse, "held", None) is True):
             pending_input = event
             break
@@ -1376,6 +1550,8 @@ class _FrameCache:
         rows = decorate(app, self.rows)
         from .job_progress import animate_rows
         rows = animate_rows(app, rows)
+        from .terminal_ui import feedback as terminal_feedback
+        rows = terminal_feedback(app, rows)
         from .job_group_drag import feedback as group_drag_feedback
         rows = group_drag_feedback(app, rows)
         from .group_queue_drag import feedback as queue_drag_feedback
@@ -1470,7 +1646,10 @@ def run_curses(app, views, sampler, store, actions, cfg):
         from . import startup
         from .ops_ui import defer_quit as defer_operation_quit
         startup.begin(app)
+        from . import terminal_ui
+        _bind_input(stdscr, app)
         while not app.quit or defer_operation_quit(app):
+            terminal_ui.tick(app)
             if painted_theme != app.theme:
                 painted_theme = app.theme
                 # The whole screen is invalidated before pairs are reseeded.
@@ -1504,7 +1683,10 @@ def run_curses(app, views, sampler, store, actions, cfg):
                 continue
             rows, overlays, bar = _timed_ui(app, "feedback", cache.feedback, app, views)
             hits, snap = cache.hits, cache.snapshot
-            stdscr.timeout(cache.wait_ms())
+            # A PTY is independent of the Slurm polling interval. A short,
+            # bounded readiness check keeps interactive echo responsive while
+            # preserving the cached underlying graph/document.
+            stdscr.timeout(min(cache.wait_ms(), 16) if terminal_ui.showing(app) else cache.wait_ms())
             reader = _INPUT_READERS.get(id(stdscr))
             if reader:
                 reader.protect_escape = _protect_pointer_escape(app)
@@ -1517,7 +1699,13 @@ def run_curses(app, views, sampler, store, actions, cfg):
             rung = started
             stdscr.noutrefresh()
             _timed_ui(app, "terminal_flush", curses.doupdate)
-            event = pending_input if pending_input is not None else _timed_ui(app, "input_wait", _read_input, stdscr, curses)
+            try:
+                event = pending_input if pending_input is not None else _timed_ui(app, "input_wait", _read_input, stdscr, curses)
+            except KeyboardInterrupt:
+                if terminal_ui.focused(app):
+                    terminal_ui.handle_key(app, "ctrl-c")
+                    continue
+                raise
             pending_input = None
             if event is None:
                 continue

@@ -1,5 +1,26 @@
 # Changelog
 
+## 6.3.0
+
+- Add optional Details/Terminal panes to Jobs, History, Analytics, Dependencies,
+  Logs and Research. Share named sessions while preserving each page's Details
+  state. Provide explicit focus, copy mode, scrollback, search and Tools controls.
+- Run real controlling PTYs in an isolated broker with a maintained pyte adapter,
+  bounded queues, fair parsing, Unicode cells and normal/alternate buffers.
+  Keep terminal I/O independent of Slurm polling and collection worker mode.
+- Bind keys, paste and mouse gestures to their original session and focus
+  generation. Contain fragmented terminal protocols and preserve child colors.
+  Fix focus after narrow resizes, report end scrolling and hidden-session notices.
+- Add explicit SSH, tmux and container sessions, reviewed exact-allocation
+  attachment, shell-aware recipe previews and one-shot broadcast insertion.
+- Add optional private shell hooks, command blocks, project/artifact handoffs,
+  failure cards, evidence bookmarks, comparisons and reviewed exports.
+- Add bounded output recording and inert timed playback with pause, seek and
+  speed controls. Add private read-only snapshots and local capability checks.
+- Document installation, controls, compatibility boundaries and the delivery
+  scope of all 100 terminal design entries. Retain an offline standard-library
+  core; install the optional engine with `scripts/setup.py --terminal`.
+
 ## 6.2.2
 
 - Open the existing job context menu from expanded and collapsed group headers

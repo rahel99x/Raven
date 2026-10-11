@@ -378,11 +378,13 @@ def _apply(app):
     if plan["digest"] in state["used"]:
         raise ValueError("This plan was already attempted; inspect current state before retrying.")
     feature = state["feature"]
+    terminal_page = getattr(app, "tab", None)
     def apply_once(worker_ctx):
         value = O.apply(feature, plan, worker_ctx)
         if isinstance(value, dict) and feature == "allocation-shell" and value.get("data", {}).get("terminal_identity"):
             from .ops_cluster import revalidate_terminal
             value["data"]["terminal_argv"] = revalidate_terminal(worker_ctx, value["data"]["terminal_identity"])
+            value["data"]["terminal_checked_at"] = time.monotonic()
         return value
     def publish(value):
         state.update(result=value, view="report", confirm_digest=None, top=0, index=0)
@@ -393,11 +395,27 @@ def _apply(app):
                 sampler.refresh_all()
         terminal = value.get("data", {}).get("terminal_argv") if isinstance(value, dict) else None
         if terminal:
+            data = value["data"]
+            checked_at = data.get("terminal_checked_at", time.monotonic())
             if (app.mode == "operations" and not state["quit_requested"] and not state["shutting_down"]
-                    and _connection_scope(app) == ctx.scope):
-                state["terminal"] = {"argv": terminal, "at": time.monotonic(), "scope": ctx.scope}
+                    and getattr(app, "tab", None) == terminal_page
+                    and _connection_scope(app) == ctx.scope and time.monotonic() - checked_at <= 2):
+                identity = data.get("terminal_identity") or {}
+                if identity.get("display", "fullscreen") == "embedded":
+                    from . import terminal_ui
+                    from .terminal_workflows import reviewed_spec
+                    spec = reviewed_spec(terminal, identity)
+                    spec.metadata["launch_deadline"] = checked_at + 2
+                    sid = terminal_ui.open_session(app, **spec.arguments())
+                    if sid is not None:
+                        data["terminal_session"] = sid
+                        close(app)
+                    else:
+                        value.setdefault("warnings", []).append("Embedded terminal could not be opened. Inspect and review again before retrying or choosing fullscreen.")
+                else:
+                    state["terminal"] = {"argv": terminal, "at": checked_at, "scope": ctx.scope}
             else:
-                value.setdefault("warnings", []).append("Terminal handoff was skipped because the view or connection changed.")
+                value.setdefault("warnings", []).append("Terminal handoff was skipped because its check expired or the view or connection changed.")
         app.say(O.clean(value.get("summary", "Reviewed operation completed.")))
     # Queue acceptance precedes the one-use claim; a busy worker has no effect.
     _background(app, apply_once, publish, applying=True)

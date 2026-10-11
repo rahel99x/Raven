@@ -2,6 +2,13 @@
 
 For Bash launchers, use the [automated Research reporting guide](guides/research-automation.md). `tower report` creates these standard files and links them to actual Slurm job attempts. The copyable Python reporter remains available for projects without a Tower installation.
 
+When a launcher runs in Tower's optional embedded terminal, it can also publish
+explicit command, submission, project and artifact observations through the
+[private terminal bridge](guides/terminal-fusion.md#connect-shell-activity-to-research).
+These observations supplement the files below. They do not replace the run
+manifest or authorize scheduler actions. Use the exact `sbatch --parsable` result
+and declared paths; Tower validates them before an explicit handoff.
+
 Follow this convention when building a project you want to inspect with Tower.
 It works with the current terminal application and does not require your
 application to import Tower. Keep your existing source and build tools; add the

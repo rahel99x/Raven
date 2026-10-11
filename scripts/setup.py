@@ -102,6 +102,15 @@ def install_dev(python):
     run([python, "-m", "pip", "install", "--disable-pip-version-check", "-e", f"{ROOT}[dev]"], timeout=600)
 
 
+def install_terminal(python):
+    print("Installing the optional embedded terminal engine...", flush=True)
+    probe = subprocess.run([str(python), "-m", "pip", "--version"], capture_output=True, check=False)
+    if probe.returncode:
+        run([python, "-m", "ensurepip", "--upgrade"])
+    run([python, "-m", "pip", "install", "--disable-pip-version-check", "-e", f"{ROOT}[terminal]"], timeout=600)
+    run([python, "-c", "from tower.terminal_emulator import TerminalEngine; e = TerminalEngine(4, 20); e.feed(b'Tower terminal ready'); assert e.snapshot()['lines']"], capture=True)
+
+
 def publish_report(source, destination):
     """Never replace a pre-existing file, including a user-selected report."""
     destination = destination.expanduser().absolute()
@@ -161,6 +170,7 @@ def parser():
     ap.add_argument("--venv", type=Path, default=ROOT / ".venv", help="isolated Python environment to create or reuse")
     ap.add_argument("--report", type=Path, default=ROOT / ".tower" / "demo.txt", help="save a demo ASCII report; existing files are preserved")
     ap.add_argument("--dev", action="store_true", help="also install editable package, pytest and build tools (requires pip index access)")
+    ap.add_argument("--terminal", action="store_true", help="install and validate the optional embedded terminal engine (requires pip index access)")
     ap.add_argument("--test", action="store_true", help="also run the complete test suite; use --dev to install test dependencies")
     return ap
 
@@ -177,6 +187,8 @@ def main(argv=None):
         python = prepare_venv(args.venv)
         if args.dev:
             install_dev(python)
+        if args.terminal:
+            install_terminal(python)
         validate(python, mode, args.host, args.report, profile)
         if args.test:
             print("Running tests...", flush=True)

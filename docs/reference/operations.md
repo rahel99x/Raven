@@ -117,6 +117,9 @@ Open one shell step in a running allocation, or attach to a selected numeric ste
 | <code>mode</code> | Action | No | <code>shell</code> | <code>shell</code>, <code>attach</code> |
 | <code>step_id</code> | Exact numeric step ID (attach only) | No | (blank) | — |
 | <code>shell</code> | Shell path | No | <code>/bin/bash</code> | — |
+| <code>node</code> | Exact allocation node (shell only; blank: scheduler chooses) | No | (blank) | — |
+| <code>task</code> | Exact task rank (attach only; blank: all step output) | No | (blank) | — |
+| <code>display</code> | Terminal display | No | <code>embedded</code> | <code>embedded</code>, <code>fullscreen</code> |
 
 ### Array concurrency
 

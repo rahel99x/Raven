@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slurm-tower"
-version = "6.2.2"
+version = "6.3.0"
 description = "A terminal Slurm research workbench with live job tracing, evidence and reviewed diagnostics"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,6 +28,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "build>=1,<2", "jsonschema>=4.18,<5"]
+terminal = ["pyte>=0.8.2,<0.9", "wcwidth>=0.2.13,<1"]
 
 [project.urls]
 Homepage = "https://github.com/rahel99x/Slurm-Tower"

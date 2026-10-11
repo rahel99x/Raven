@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Install development dependencies
-        run: python -m pip install -e '.[dev]'
+      - name: Install development and optional terminal dependencies
+        run: python -m pip install -e '.[dev,terminal]'
       - name: Run regression suite
         run: python -m pytest -q
       - name: Check generated operation reference
@@ -44,6 +44,13 @@ jobs:
         run: |
           wheel=(dist/*.whl)
           python scripts/qualify_flagship.py --wheel "${wheel[0]}" --output /tmp/tower-qualification.json
+      - name: Verify the optional terminal engine from the installed wheel
+        shell: bash
+        run: |
+          wheel=(dist/*.whl)
+          /tmp/tower-wheel-venv/bin/python -m pip install "${wheel[0]}[terminal]"
+          cd /tmp
+          /tmp/tower-wheel-venv/bin/tower terminal selftest --json
       - name: Record and verify release contents and checksums
         run: |
           python scripts/release_inventory.py create --output dist/release-inventory.json --spdx dist/slurm-tower.spdx.json --checksums dist/SHA256SUMS --source-commit "$GITHUB_SHA" dist/*.whl dist/*.tar.gz

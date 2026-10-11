@@ -11,6 +11,7 @@
     tower --record session.jsonl.gz / --replay session.jsonl.gz --speed 10
     tower run cancel 123 --yes   # one palette command, no screen
     tower report --help         # job-bound Research reporting from Bash
+    tower terminal --help       # embedded terminal hooks, replay and diagnostics
     tower --eval 'n_running'     # an expression over the snapshot
     tower --wait-for 'n_pending == 0' --timeout 3600   # block until it holds (exit 0) or time out (exit 2)
 
@@ -49,6 +50,8 @@ class Session:
         self.backend, self.files, self.api = backend, files, api
 
     def close(self):
+        from .terminal_ui import shutdown as shutdown_terminal
+        shutdown_terminal(self.app)
         from .trace_ui import cancel as cancel_trace
         cancel_trace(self.app, clear=True)
         from .history_log_export import cancel as cancel_log_export
@@ -536,6 +539,12 @@ def gpu_check(args, cfg):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "terminal":
+        if argv[1:2] == ["selftest"]:
+            from .terminal_diagnostics import cli as terminal_selftest
+            return terminal_selftest(argv[2:])
+        from .terminal_fusion import cli as terminal_main
+        return terminal_main(argv[1:])
     if argv and argv[0] == "trace":
         from .trace_recorder import main as trace_main
         return trace_main(argv[1:])

@@ -639,6 +639,9 @@ class App:
 
     def _handle(self, key: str) -> None:
         """``key`` is a name: a-z A-Z 0-9 punctuation, or up down pgup pgdn home end tab btab enter esc space backspace."""
+        from .terminal_ui import handle_key as terminal_key
+        if terminal_key(self, key):
+            return
         from .column_resize import handle_key as column_resize_key
         from .group_queue_drag import handle_key as queue_drag_key
         if column_resize_key(self, key) or queue_drag_key(self, key):
@@ -1857,6 +1860,9 @@ class App:
         from .pointer_routing import PointerEvent, begin_gesture, route_capture
         pointer_event = PointerEvent(y, x, button, shift, alt)
         if not pointer_event.valid:
+            return
+        from .terminal_ui import handle_mouse as terminal_mouse
+        if terminal_mouse(self, y, x, button=button, shift=shift, alt=alt):
             return
         from .interaction import initialize as pointer_state, _current as current_graph, _scope as pointer_scope
         pointer = pointer_state(self)

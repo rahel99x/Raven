@@ -7,6 +7,14 @@
 The [generated operation reference](reference/operations.md) lists each current
 operation key, input field, default, and allowed choice.
 
+For the optional embedded terminal, run
+`python3 scripts/setup.py --mode demo --terminal`, then
+`./scripts/tower terminal selftest`. This reuses `.venv` and does not change the
+selected Slurm profile. Open **Terminal** beside **Details** in a supported page.
+Use **Ctrl-]**, then **t**, to return input to Tower. The
+[terminal guide](guides/terminal-fusion.md) covers offline wheels, sessions,
+copying, shell hooks, recordings and compatibility checks.
+
 For the task-oriented workbench, use `:workbench run`, `:workbench investigate`,
 `:workbench compare`, `:workbench results`, or `:workbench connect`.
 `:workbench all` opens the complete operations catalog. Use

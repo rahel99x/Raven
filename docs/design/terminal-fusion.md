@@ -2,9 +2,11 @@
 
 [README](../../README.md) · [Workspaces](../guides/adaptive-workspaces.md) · [Allocation operations](../guides/operations-cluster.md) · [Selection](../guides/pane-navigation.md)
 
-**Status: design proposal. The embedded terminal and controls in this document are not implemented.**
-The existing allocation-shell operation still uses a reviewed full-screen terminal handoff.
-This proposal defines the architecture, capability catalog, implementation order, and acceptance checks for an embedded replacement.
+**Status: implemented in 6.3.0 with the explicit scope recorded in the
+[delivery matrix](../reference/terminal-fusion.md).**
+Use the [terminal guide](../guides/terminal-fusion.md) for current installation
+and controls. This document retains the original design catalog and acceptance
+criteria; a proposed variant is not a promise of universal application support.
 
 ## Intended experience
 
@@ -25,8 +27,8 @@ Jobs  History  Analytics  Dependencies  Logs  Research
  Terminal focused | local host | bash | Ctrl-] then t: Tower
 ```
 
-The drawing illustrates proposed controls. It is not a screenshot.
-The keyboard prefix is a candidate binding that must pass the compatibility tests.
+The drawing illustrates the pane arrangement. It is not a screenshot.
+The implemented escape prefix is Ctrl-], then t.
 
 Start with one lazily created local session shared across pages.
 Keep the Details/Terminal preference per page.
@@ -117,7 +119,9 @@ Select and pin an actively maintained, embeddable implementation after the feasi
 
 ## Capability catalog
 
-The following 100 entries are proposed mechanisms, not completed features.
+The following 100 entries are the original design mechanisms. See the
+[delivery matrix](../reference/terminal-fusion.md) for their implemented form,
+deliberate variants, limits and validation sources.
 Stages mean: **A** = local terminal foundation; **B** = interaction and compatibility; **C** = HPC and workflow integration; **D** = advanced optional capabilities.
 
 ### Pane and session controls

@@ -13,9 +13,12 @@ standard library. Unicode and ASCII modes are available.
 [Capability ownership](docs/reference/capabilities.md) ·
 [Release history](CHANGELOG.md)
 
-The [CLI fusion design proposal](docs/design/terminal-fusion.md) describes a
-planned Details/Terminal pane, 100 proposed capabilities, and its validation gates.
-The embedded terminal is not implemented yet.
+The optional **Details | Terminal** pane keeps an interactive shell beside jobs,
+graphs, logs and research. It includes named sessions, explicit SSH and allocation
+connections, command evidence, and read-only recording playback. See the
+[terminal guide](docs/guides/terminal-fusion.md) for installation, controls and
+compatibility limits, and the [delivery matrix](docs/reference/terminal-fusion.md)
+for the scope of the 100 design entries.
 
 ## Start with a safe demonstration
 
@@ -58,6 +61,18 @@ The alias helper backs up `.bashrc` and preserves unrelated settings. See the
 [runbook](docs/runbook.md) for SSH, offline installation, upgrades and recovery,
 and the [Fedora guide](docs/DESKTOP.md) for desktop configuration.
 
+To enable the embedded terminal after a pull:
+
+```bash
+python3 scripts/setup.py --mode demo --terminal
+./scripts/tower terminal selftest
+```
+
+This installs the optional terminal dependencies into `.venv` and validates
+simulated data. It does not change your Slurm profile or shell alias. Start Tower
+normally, then select **Terminal** in a supported secondary pane. Press
+**Ctrl-]**, then **t**, to return keyboard control to Tower.
+
 ## Choose a task
 
 Open **File → Research and cluster operations**, or enter `:workbench`.
@@ -75,6 +90,7 @@ Use **Pin tool** or press `p` on a tool to save it. Open those tools with
 | Connect metrics and outputs | Enter `:projectguide /path/to/project`; validate an exact sample and copy its Bash hooks | [Project connection](docs/guides/project-connection.md) |
 | Compare performance and scientific results | Use Compare, Analytics or a declared investigation manifest | [Scientific investigation](docs/guides/scientific-investigation.md) |
 | Inspect recorded stacks | Select Trace in job Details; attach a prepared recording or inspect supported capture options | [Stack tracing](docs/guides/stack-tracing.md) |
+| Work in a shell beside the data | Select Terminal, then use Tools for sessions, copy mode, diagnostics and evidence | [Embedded terminal](docs/guides/terminal-fusion.md) |
 | Prepare a change | Inspect the operation, review its exact scope, then confirm Apply | [Operation catalog](docs/guides/operations.md) |
 
 Mouse and keyboard controls use the same selected job context. Tables support

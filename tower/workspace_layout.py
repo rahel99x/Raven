@@ -655,6 +655,15 @@ def transform_body(app, body, hits, width: int, height: int, *, ascii_: bool = F
     rendered, output_hits = {}, []
     g = L.Glyphs(ascii_)
     for panel, rect in rects.items():
+        from . import terminal_ui
+        if panel == "details" and terminal_ui.showing(app):
+            origin_x, origin_y = _content_origin(app, width, height)
+            rendered[panel], terminal_hits = terminal_ui.render(app, rect.width, rect.height,
+                x=origin_x + rect.x, y=origin_y + rect.y)
+            output_hits.extend((y + rect.y, kind,
+                {**value, "left": value["left"] + rect.x, "right": value["right"] + rect.x})
+                for y, kind, value in terminal_hits)
+            continue
         source, source_hits = groups[panel]["rows"], groups[panel]["hits"]
         key = _key(app, panel)
         padding = 1 if (state.density == "comfortable" and rect.width >= 8 and rect.height >= 5
@@ -841,6 +850,20 @@ def transform_body(app, body, hits, width: int, height: int, *, ascii_: bool = F
             add_hit(rect.y + 1 + padding + y, kind, value)
         for y, kind, value in mapped_hits:
             add_hit(rect.y + 1 + padding + len(sticky) + y, kind, value)
+    from . import terminal_ui
+    if terminal_ui.enabled(app) and not terminal_ui.showing(app) and "details" in rendered:
+        rect = rects["details"]
+        origin_x, origin_y = _content_origin(app, width, height)
+        offset = 4 if rect.width >= 28 else 0
+        host, host_hits = terminal_ui.header(app, max(0, rect.width - offset),
+            x=origin_x + rect.x + offset, y=origin_y + rect.y)
+        previous = rendered["details"][0]
+        rendered["details"][0] = terminal_ui._slice_row(previous, 0, offset) + host
+        initialize_terminal = terminal_ui.initialize(app)
+        initialize_terminal.geometry = (getattr(app, "width", None), getattr(app, "height", None))
+        output_hits.extend((y + rect.y, kind,
+            {**value, "left": value["left"] + rect.x + offset, "right": value["right"] + rect.x + offset})
+            for y, kind, value in host_hits)
     for y in range(height):
         spans = []
         for panel, rect in rects.items():
@@ -880,6 +903,16 @@ def transform_body(app, body, hits, width: int, height: int, *, ascii_: bool = F
 
 def render_body(views, snap, app, width: int, height: Optional[int], actions,
                 default_renderer: Callable[[int, Optional[int]], tuple]):
+    from . import terminal_ui
+    if terminal_ui.enabled(app) and getattr(app, "tab", "") not in ("jobs", "history"):
+        return terminal_ui.wrap_workspace(app, width, height,
+            lambda w, h: _render_body(views, snap, app, w, h, actions, default_renderer),
+            ascii_=getattr(views.g, "ascii", False))
+    return _render_body(views, snap, app, width, height, actions, default_renderer)
+
+
+def _render_body(views, snap, app, width: int, height: Optional[int], actions,
+                 default_renderer: Callable[[int, Optional[int]], tuple]):
     """Render callback ``(width, height)`` with bounded independent panel scroll."""
     if width <= 0 or (height is not None and height <= 0):
         return [], []
@@ -932,7 +965,10 @@ def render_body(views, snap, app, width: int, height: Optional[int], actions,
         scroll_records = scrollbars.take_since(app, scroll_mark)
         queue = partition(body, hits, getattr(app, "tab", "jobs"), chart_records=records, scroll_records=scroll_records)["main"]
         groups = {"main": queue, "details": {"rows": [], "hits": []}}
-        if detail_rect:
+        from . import terminal_ui
+        if detail_rect and terminal_ui.showing(app):
+            groups["details"] = {"rows": [[("Terminal", "")]], "hits": []}
+        elif detail_rect:
             from .job_panels import render as render_details
             job = app.job_record(getattr(app, "selected_id", None), snap)
             chart_mark = chart_interaction.mark(app)

@@ -32,6 +32,8 @@ DEFAULTS: Dict[str, Any] = {
     "worker_mode": "multi",              # single: one background worker; multi: governed concurrent workers; UI stays separate
     "polling_multiplier": 1,             # polling slider position 1..50: 5s..500ms; source floors and backoff still apply
     "workspace": {"density": "comfortable", "split": 45},
+    "terminal": {"shell": "", "login": False, "history_lines": 2000,
+                 "max_sessions": 8, "paste_limit_bytes": 1048576, "paste_preview": True},
     "intervals": {                       # base seconds for other sources; native polls use polling_multiplier
         "jobs": 2.0, "starts": 10.0, "live": 10.0, "gpu": 5.0, "nodes": 15.0, "partitions": 60.0, "finished": 60.0,
         "share": 120.0, "account": 30.0, "details": 20.0, "weather": 120.0, "budget": 600.0, "trace": 60.0, "fin_details": 5.0,
@@ -121,6 +123,14 @@ theme = "default"               # default | dark | light | darcula | modnokai | 
 [workspace]
 density = "comfortable"         # comfortable | compact | focused; :density changes this live
 split = 45                      # percentage reserved for the main panel on wide terminals
+
+[terminal]                      # optional embedded CLI; install with scripts/setup.py --terminal
+shell = ""                      # empty: $SHELL, then /bin/bash; sessions open only on request
+login = false                   # interactive shell; true also reads login startup files
+history_lines = 2000            # retained parsed terminal lines; bounded independently of job logs
+max_sessions = 8                # named terminal sessions, maximum 8
+paste_limit_bytes = 1048576      # reject oversized paste before delivery; never truncate a command
+paste_preview = true            # review multiline terminal paste before delivery
 
 [logs]                          # O opens the selected job's grouped log-file browser
 manifest_file = ""              # optional logs.json index; relative to --workdir or the job's WorkDir
