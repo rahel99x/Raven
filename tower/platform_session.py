@@ -13,6 +13,7 @@ import time
 
 from . import evidence as E, site_policy as P
 from .shared_collection import SharedQueryCache
+from .read_acquisition import for_cache
 from .slurm import CommandError, FakeBackend
 
 
@@ -42,6 +43,7 @@ class GovernedBackend:
         self.inner = backend
         self.policy = P.validate(policy)
         self.cache = cache
+        self.acquisition = for_cache(cache)
         self.scope = {"connection": E.digest(scope), "generation": "native-slurm-cli/v1", "user": str(scope.get("user") or os.getuid()),
                       "cluster": str(scope.get("cluster") or "configured-default")}
         self.interval = self.policy["limits"]["min_interval"] if interval is None else E.finite(interval, "collection interval", .001)
@@ -78,7 +80,7 @@ class GovernedBackend:
                 # command outcomes. Routine GPU/non-Slurm sampling does not
                 # invalidate unrelated in-flight scheduler reads.
                 if fresh or os.path.basename(cmd[0]) in {"sbatch", "scancel", "salloc", "scontrol"}:
-                    self.cache.invalidate(self.scope)
+                    self.acquisition.invalidate(self.scope)
         E.finite(timeout, "scheduler timeout", .001)
         limits = self.policy["limits"]
         duration = min(timeout + 1., limits["max_duration"])
@@ -87,7 +89,7 @@ class GovernedBackend:
         request = {"source": "slurm-cli", "operation": operation, "interval": max(self.interval, .5), "duration": duration,
                    "max_bytes": min(limits["max_bytes"], 4 << 20), "max_records": limits["max_records"],
                    "allocation": None, "intrusive": False}
-        query = {"request": request, "parameters": {"argv": list(cmd), "timeout": timeout}}
+        query = {"request": request, "parameters": {"argv": list(cmd), "timeout": timeout, "output_limit": limit}}
         def load(stop):
             # Reuse native bounded local/SSH command handling. This runs on the
             # existing sampler/operation worker, never in an extra executor.
@@ -99,7 +101,7 @@ class GovernedBackend:
             # cache admission still checks their total serialized byte size.
             return {"stdout_chunks": [raw[i:i + 32768] for i in range(0, len(raw), 32768)]}
         try:
-            result = self.cache.query(self.scope, query, load, self.policy, self.capabilities,
+            result = self.acquisition.query(self.scope, query, load, self.policy, self.capabilities,
                                       read_only=True, cancel=cancel, fresh=fresh)
         except (ValueError, TimeoutError, OSError) as exc:
             raise CommandError("Governed collection: " + str(exc)) from exc
@@ -123,10 +125,10 @@ class GovernedBackend:
         try:
             return self.inner.call(cmd, timeout)
         finally:
-            self.cache.invalidate(self.scope)
+            self.acquisition.invalidate(self.scope)
 
     def invalidate(self):
-        self.cache.invalidate(self.scope)
+        self.acquisition.invalidate(self.scope)
 
 
 def wrap_backend(backend, cfg, scope, state_dir):

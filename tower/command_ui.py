@@ -11,7 +11,9 @@ import re
 import shlex
 import textwrap
 import time
+from types import MappingProxyType
 
+from . import command_registry as registry
 from .layout import box, clip_row, cut, vlen
 from .research import RESEARCH_VIEWS, clean
 
@@ -19,73 +21,15 @@ MAX_INPUT = 4096
 MAX_HISTORY = 50
 MAX_RESULTS = 100
 MAX_UNDO = 100
-DESCRIPTIONS = {
-    "cancel": "Cancel the selected, marked, or explicit jobs (review required)",
-    "hold": "Hold pending jobs after reviewing targets", "release": "Release held jobs after review",
-    "requeue": "Requeue jobs after reviewing targets", "top": "Prioritize your pending jobs",
-    "filter": "Filter the current table or log file browser", "sort": "Choose a table's sort key",
-    "sortby": "Combine column sorts; set ascending, descending, or off independently",
-    "days": "Set the accounting and analytics window", "tab": "Open a main page",
-    "view": "Choose the current page's workspace", "export": "Export a table or report",
-    "copy": "Copy selected raw log lines or the entire file", "log": "Open a job's logs",
-    "find": "Search log content with a regular expression", "theme": "Choose terminal colors and contrast",
-    "help": "Search keyboard and page help", "commands": "Search and execute commands",
-    "refresh": "Refresh scheduler and project sources", "resubmit": "Clone and review a job submission",
-    "metrics": "Attach an experiment metric stream", "metric": "Record a metric sample",
-    "passport": "Capture, inspect, or compare reproducibility records", "prepare": "Validate a batch script offline",
-    "submit": "Review and submit a prepared batch script", "investigate": "Inspect a job's failure evidence",
-    "artifacts": "Attach an output contract", "validate": "Validate declared project outputs",
-    "back": "Return to the previous location and selection", "workspaces": "Search the Research workspaces",
-    "workspace": "Open a Research workspace by name", "predict": "Compare historical resource requirements",
-    "forecast": "Inspect scheduler start estimates", "blockers": "Investigate why a job is waiting",
-    "tradeoffs": "Compare explicit resource candidates", "choose": "Prepare a resource candidate",
-    "scaling": "Plan, run, or analyze scaling experiments", "workflow": "Inspect or execute a dependency workflow",
-    "array": "Inspect array tasks and prepare failed-task retries", "wrap": "Toggle wrapped log lines",
-    "bookmark": "Bookmark a log line", "tag": "Tag selected jobs", "untag": "Remove a job tag",
-    "note": "Annotate a job", "pin": "Keep selected jobs at the top", "compare": "Compare selected jobs",
-    "advise": "Inspect evidence-based resource advice", "replay": "Navigate a recorded session",
-    "profile": "Switch a cluster configuration profile", "quit": "Exit Tower",
-    "density": "Choose comfortable, compact, or focused information density",
-    "focus": "Move focus between independently scrollable workspace panels",
-    "maximize": "Enlarge the focused panel", "layout": "Save, load, or resize a workspace layout",
-    "panel-scroll": "Scroll the focused panel", "columns": "Choose visible job-table columns",
-    "facet": "Filter jobs by state, partition, tag, name, or identity",
-    "savedview": "Save or restore a filtered and sorted job table",
-    "jobgroups": "Show or hide detected and manual job groups", "jobgroup": "Group selected jobs, detach members, or open and close a group", "advisor-job": "Select a published running job in Advisor", "activity": "Inspect notifications and background work",
-    "notifications": "Inspect retained activity notices", "task": "Inspect or cancel background work",
-    "project": "Discover a standard project and its run inventory", "runs": "Select a project run and execution attempt",
-    "run": "Bind, inspect, or clear a project run", "outputs": "Browse declared output artifacts",
-    "artifact": "Preview a declared artifact", "logview": "Choose original, split, or structured JSON log presentation",
-    "logpan": "Scroll horizontally through wide log lines", "loggroup": "Fold a group in the log-file browser",
-    "logpreview": "Preview a selected log before opening it", "dashboard": "Pin, reorder, hide, or color metrics",
-    "inspect": "Open the unified job inspector", "chart": "Inspect exact chart samples and timestamps",
-    "timeline": "Browse observed job and application events", "diff": "Compare jobs or reproducibility passports",
-    "preflight": "Edit and validate a batch script's effective resources",
-    "orchestrate": "Review and execute a workflow or scaling plan",
-    "execution": "Inspect execution receipts, recovery, and observed results",
-    "jump": "Search cached jobs, runs, log files, views, workspaces, commands and locations",
-    "forward": "Return to a location after Back", "location": "Save, open, or delete an exact destination",
-    "settings": "Preview and save terminal, sampler and clipboard preferences",
-    "keybindings": "Edit, test and reset main-page keybindings",
-    "explain": "Explain a column's meaning, units, formula and source freshness",
-    "peek": "Read and copy the selected record's complete value",
-    "metricdisplay": "Set a metric's display label, declared unit and precision",
-}
-ID_COMMANDS = {"cancel", "hold", "release", "requeue", "top", "log", "resubmit", "investigate", "predict", "forecast", "blockers", "compare", "tag", "untag", "note", "pin", "inspect", "diff"}
-PATH_COMMANDS = {"metrics", "metric", "artifacts", "validate", "prepare", "submit", "passport", "scaling", "workflow", "tradeoffs", "predict", "forecast", "blockers", "choose", "array", "export", "project", "artifact", "preflight", "execution", "orchestrate"}
-PATH_FLAGS = {"--file", "--script", "--workdir", "--passport-dir", "--contract", "--root", "--output"}
-ARGUMENTS = {"density": ("comfortable", "compact", "focused"), "focus": ("main", "details", "next"),
-             "maximize": ("on", "off"), "layout": ("list", "save", "load", "delete", "split"),
-             "panel-scroll": ("up", "down", "page-up", "page-down", "home", "end"),
-             "columns": ("show", "hide", "reset", "jobs", "history"),
-             "savedview": ("list", "save", "load", "delete"), "jobgroups": ("on", "off"),
-             "jobgroup": ("create", "ungroup", "reset", "open", "close", "toggle"),
-             "activity": ("show", "clear"), "notifications": ("show", "clear"), "task": ("show", "cancel"),
-             "run": ("select", "passport", "clear"), "logview": ("plain", "split", "json"),
-             "logpreview": ("on", "off"), "dashboard": ("list", "reset", "search", "pin", "unpin", "hide", "show", "expand", "collapse", "move", "color"),
-             "timeline": ("events", "seek"), "orchestrate": ("workflow", "scaling"),
-             "execution": ("resume", "retry", "recover", "collect")}
-ARGUMENTS.update({"settings": ("reset",), "keybindings": ("reset",), "location": ("list", "save", "open", "delete")})
+
+# Compatibility views for integrations that imported the original metadata.
+# All values originate in the same immutable command descriptors.
+DESCRIPTIONS = MappingProxyType({item.name: item.description for item in registry.COMMANDS})
+ID_COMMANDS = frozenset(item.name for item in registry.COMMANDS if item.job_ids)
+PATH_COMMANDS = frozenset(item.name for item in registry.COMMANDS if item.paths)
+PATH_FLAGS = registry.PATH_FLAGS
+ARGUMENTS = MappingProxyType({item.name: item.arguments for item in registry.COMMANDS if item.arguments})
+EXAMPLES = MappingProxyType({item.name: item.example for item in registry.COMMANDS if item.example})
 
 
 def initialize(app):
@@ -138,7 +82,7 @@ def parse_command_line(line):
     first = str(line).strip().split(None, 1)
     if not first:
         return []
-    if first[0] in ("eval", "find", "filter", "note"):
+    if registry.command(first[0]).raw_tail:
         return [first[0]] + (first[1].split() if len(first) == 2 else [])
     return shlex.split(line)
 
@@ -235,18 +179,6 @@ def _undo(app, redo=False):
         _set_input(app, text, cursor, record=False)
 
 
-EXAMPLES = {
-    "sortby": "sortby jobs id asc", "tab": "tab history", "days": "days 7",
-    "theme": "theme reader", "density": "density compact", "log": "log JOBID",
-    "find": "find ERROR", "filter": "filter training", "location": "location save failure",
-    "jump": "jump JOBID", "settings": "settings", "explain": "explain ce", "peek": "peek name",
-    "columns": "columns show rss", "savedview": "savedview save gpu-failures",
-    "project": "project '/path with spaces/project'", "run": "run select RUN_ID",
-    "keybindings": "keybindings", "forward": "forward", "copy": "copy all",
-    "chart": "chart preset 30m; chart axis fixed 0 100; chart range 1 20; chart events",
-    "metricdisplay": "metricdisplay METRIC label 'Friendly label' | unit DECLARED_UNIT | precision 3 | reset",
-}
-
 
 def validation(app, text=None):
     """Report parse and known argument errors without I/O or side effects."""
@@ -260,11 +192,16 @@ def validation(app, text=None):
     except ValueError as exc:
         return "error", str(exc) + "; close the quote before you run the command"
     command, words = args[0], args[1:]
-    example = EXAMPLES.get(command, "")
+    descriptor = registry.command(command, app)
+    example = descriptor.example
     if command not in app.commands():
         return "warning", "Unknown command; select a completion or edit its name"
-    choices = {"theme": ("default", "mono", "high", "cb", "reader", "dark", "light", "terminal"),
-               "density": ("comfortable", "compact", "focused"), "tab": tuple(app.cursor)}
+    if descriptor.owner == "plugin":
+        return "", descriptor.usage or "Enter runs this plugin command"
+    choices = {name: registry.argument_choices(name, app) for name in ("theme", "density", "tab")}
+    if command == "theme" and words:
+        from .palette import canonical_theme
+        words = [canonical_theme(words[0])] + words[1:]
     if command in choices and (len(words) != 1 or words[0] not in choices[command]):
         return "warning", "Choose " + " | ".join(choices[command]) + "; example: " + example
     if command == "days" and words:
@@ -418,10 +355,14 @@ def _sort_argument_values(app, previous):
 
 def _argument_values(app, previous, prefix):
     command = previous[0] if previous else ""
+    if registry.command(command, app).owner == "plugin":
+        return []
     if command == "sortby":
         return _sort_argument_values(app, previous)
-    if command in ARGUMENTS and len(previous) == 1:
-        choices = [(value, "command option") for value in ARGUMENTS[command]]
+    if command == "ops":
+        return registry.operation_arguments(previous)
+    if registry.command(command, app).arguments and len(previous) == 1:
+        choices = [(value, "command option") for value in registry.argument_choices(command, app)]
         if command == "execution":
             choices += [(value, "execution receipt") for value in _path_candidates(app, prefix)]
         return choices
@@ -487,7 +428,7 @@ def _argument_values(app, previous, prefix):
         from .views import ANALYTICS_VIEWS, NODES_VIEWS
         return ANALYTICS_VIEWS if app.tab == "analytics" else NODES_VIEWS if app.tab == "nodes" else []
     if command == "theme":
-        return [(value, "terminal theme") for value in ("default", "dark", "light", "mono", "high", "cb", "reader")]
+        return [(value, "terminal theme") for value in registry.argument_choices(command, app)]
     if command == "sort":
         from .views import SORTS
         return [(value, "sort key") for value in SORTS.get(app.tab, [])]
@@ -519,7 +460,7 @@ def _argument_values(app, previous, prefix):
 def suggestions(app):
     state = _sync_input(app)
     previous, query, start, end = _active_token(app.palette_edit, state["cursor"])
-    values = _argument_values(app, previous, query) if previous else [(name, DESCRIPTIONS.get(name, "Tower command")) for name in dict.fromkeys(app.commands())]
+    values = _argument_values(app, previous, query) if previous else [(name, registry.command(name, app).description) for name in dict.fromkeys(app.commands())]
     matches = []
     if not app.palette_edit:
         for index, value in enumerate(reversed(state["history"][-8:])):
@@ -548,7 +489,8 @@ def complete(app):
         candidate = os.path.expanduser(candidate)
     value = candidate if row["kind"] == "command" else shlex.quote(candidate)
     after = app.palette_edit[row["end"]:]
-    suffix = "" if row["value"].endswith("/") else " "
+    # Operation fields need a value in the same token (manifest=PATH).
+    suffix = "" if row["value"].endswith(("/", "=")) else " "
     if after.startswith(" "):
         suffix = ""
     text = app.palette_edit[:row["start"]] + value + suffix + after
@@ -746,7 +688,7 @@ def _help_entries(app):
             contextual.append(("Sorting", "JOBID", "Sort numeric IDs and array task numbers naturally, including 9 before 10 and _2 before _10"))
         if page == "jobs":
             contextual.append(("Sorting", ":sortby recent COLUMN asc|desc|off", "The Recents table keeps its own column priorities, independently of active jobs"))
-    return contextual + common
+    return contextual + registry.help_entries(app) + common
 
 
 WORKSPACE_HELP = {"experiment": "Attach metrics with :metrics FILE; inspect progress and events",

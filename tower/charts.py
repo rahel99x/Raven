@@ -314,9 +314,24 @@ def _time_points(values: Sequence[Optional[float]], sample_times: Sequence[float
         cadence = deltas[(len(deltas) - 1) // 2] if deltas else 0.0
     gap_limit = min(sys.float_info.max, cadence * 2.5)
     t0, t1 = times
+    # Clipping below already guarantees native timestamps are inside [t0,t1].
+    # For a finite positive span the ordinary division is exactly _fraction's
+    # arithmetic, without its repeated endpoint/clamp/overflow checks. Keep
+    # the original path for extension numerics and overflowing signed ranges.
+    span = None
+    if (type(width) is int and type(t0) in (int, float) and type(t1) in (int, float)
+            and t1 > t0 and all(type(point[0]) in (int, float) for point in samples)):
+        try:
+            candidate = t1 - t0
+            if math.isfinite(candidate):
+                span = candidate
+        except OverflowError:
+            pass
+    last_column = width - 1
     buckets: dict[int, _TimeBucket] = {}
     for timestamp, value, bridge in _iter_time_samples(samples, times, gap_limit):
-        x = min(width - 1, max(0, round(_fraction(timestamp, t0, t1) * (width - 1)))) if t1 > t0 else width - 1
+        x = (round(((timestamp - t0) / span) * last_column) if span is not None else
+             min(last_column, max(0, round(_fraction(timestamp, t0, t1) * last_column))) if t1 > t0 else last_column)
         bucket = buckets.get(x)
         if bucket is None:
             bucket = buckets[x] = _TimeBucket(envelope, details is not None)
@@ -569,7 +584,8 @@ def vbar_chart(g: Glyphs, values: Sequence[Optional[float]], width: int, height:
                indent: str = "   ", axis_w: int = 7, sample_times: Optional[Sequence[float]] = None,
                sample_interval: Optional[float] = None, elapsed: bool = False, envelope: bool = True,
                axis_formatter: Optional[Callable[[float], str]] = None,
-               metadata: Optional[dict] = None, fitted: bool = False, time_units: bool = False) -> List[Row]:
+               metadata: Optional[dict] = None, fitted: bool = False, time_units: bool = False,
+               _time_cache=None) -> List[Row]:
     """A vertical bar (area) chart ``height`` rows tall with eight sub-levels per row, a y axis on the left and a
     time axis below.  ``values`` are resampled to the chart width; None leaves a gap."""
     axis_w = max(1, axis_w)
@@ -588,7 +604,8 @@ def vbar_chart(g: Glyphs, values: Sequence[Optional[float]], width: int, height:
             for x, value, _ in envelope_points(values, chart_w):
                 lows[x] = value if lows[x] is None else min(lows[x], value) if value is not None else None
     else:
-        points, times = _time_points(values, sample_times, chart_w, times, sample_interval, envelope)
+        prepare = _time_cache or _time_points
+        points, times = prepare(values, sample_times, chart_w, times, sample_interval, envelope)
         vals = [None] * chart_w
         for x, value, _ in points:
             vals[x] = value if vals[x] is None else max(vals[x], value) if value is not None else None
@@ -689,7 +706,8 @@ def braille_chart(g: Glyphs, values: Sequence[Optional[float]], width: int, heig
                   sample_interval: Optional[float] = None, elapsed: bool = False, envelope: bool = True,
                   axis_formatter: Optional[Callable[[float], str]] = None,
                   metadata: Optional[dict] = None, fitted: bool = False, time_units: bool = False,
-                  curve_style: str = "fine", trend: bool = True, bands: bool = True) -> List[Row]:
+                  curve_style: str = "fine", trend: bool = True, bands: bool = True,
+                  _time_cache=None) -> List[Row]:
     """Connected telemetry with a fine 2 x 4 Braille raster per Unicode cell.
 
     Eight subcell positions retain small bends and steep transitions while
@@ -717,7 +735,8 @@ def braille_chart(g: Glyphs, values: Sequence[Optional[float]], width: int, heig
         points = envelope_points(values, chart_w * raster_x, details) if envelope else [
             (x, value, True) for x, value in enumerate(resample(values, chart_w * raster_x))]
     else:
-        points, times = _time_points(values, sample_times, chart_w * raster_x, times, sample_interval, envelope, details)
+        prepare = _time_cache or _time_points
+        points, times = prepare(values, sample_times, chart_w * raster_x, times, sample_interval, envelope, details)
     _plot_metadata(metadata, width, chart_w, height, indent, axis_w, title, lo, hi,
                    times, sample_times is not None, any(v is not None for _, v, _ in points),
                    (raster_x, raster_y))

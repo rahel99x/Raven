@@ -21,6 +21,7 @@ import urllib.parse
 
 from . import evidence as E, site_policy as P
 from .shared_collection import SharedQueryCache
+from .read_acquisition import for_cache
 
 SCHEMA = "tower.prometheus-query/v1"
 
@@ -263,9 +264,16 @@ def collect(value, *, cancel=None):
     if manifest.get("cache_directory"):
         # Principal fingerprint is used only in the private cache key; it is
         # never copied into a receipt, support report or exception.
-        scope = {"connection": E.digest({"endpoint": manifest["endpoint"], "principal": hashlib.sha256((credential or "anonymous").encode()).hexdigest()}), "generation": E.digest({k: v for k, v in manifest.items() if k not in {"cache_directory", "auth"}})}
+        principal = "anonymous" if credential is None else "bearer:" + credential
+        scope = {"connection": E.digest({"endpoint": manifest["endpoint"], "principal": hashlib.sha256(principal.encode()).hexdigest()}),
+                 "generation": E.digest({"source": manifest["id"], "transport": "prometheus-http-api/v1",
+                                         "ca_file": manifest.get("ca_file"), "allow_http": manifest.get("allow_http", False)})}
+        # Query windows and allocation identity belong to the read contract,
+        # not the source generation. Otherwise each moving window resets the
+        # source floor and permits unbounded polling of the same endpoint.
         cache = SharedQueryCache(manifest["cache_directory"])
-        result = cache.query(scope, {"request": request, "parameters": {"query": manifest["query"], "start": manifest["start"], "end": manifest["end"], "step": manifest["step"]}},
+        acquisition = for_cache(cache)
+        result = acquisition.query(scope, {"request": request, "parameters": {"query": manifest["query"], "start": manifest["start"], "end": manifest["end"], "step": manifest["step"]}},
                              loader, manifest["policy"], source_caps, read_only=True, cancel=stop)
         return normalize(result["value"], manifest)
     return normalize(loader(stop), manifest)

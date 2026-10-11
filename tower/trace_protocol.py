@@ -176,6 +176,8 @@ class TraceReader:
             raise ValueError("Trace manifest must declare its coverage")
         _bounded_data(coverage)
         text(coverage.get("scope"), "coverage scope", 8192)
+        if "complete" in coverage and coverage["complete"] is not None and type(coverage["complete"]) is not bool:
+            raise ValueError("Trace coverage completeness must be true, false or null")
         warnings_field = manifest.get("warnings", [])
         if not isinstance(warnings_field, list) or len(warnings_field) > 32 or any(not isinstance(w, str) for w in warnings_field):
             raise ValueError("Invalid trace warnings")
@@ -279,7 +281,10 @@ class TraceReader:
             warnings.append(f"View retains the latest {self.retain} events; raw journal remains on disk")
         warnings.extend(str(item) for item in manifest.get("warnings", [])[:16] if isinstance(item, str))
         coverage = manifest.get("coverage", {})
-        complete = state == "CLOSED" and caught_up and self.end_seen and not self.invalid and not loss and not self.source_loss and coverage.get("mode") != "snapshot"
+        declared_complete = coverage.get("complete", True) is True
+        if not declared_complete:
+            warnings.append("Producer declares incomplete or unknown coverage within its instrumented scope")
+        complete = state == "CLOSED" and caught_up and self.end_seen and not self.invalid and not loss and not self.source_loss and coverage.get("mode") != "snapshot" and declared_complete
         status = "INVALID" if self.invalid else "COMPLETE" if complete else "LIVE" if state == "OPEN" and caught_up else "PARTIAL"
         stacks = [{"thread": key, "frames": list(value[-128:])} for key, value in sorted(self.stack_map.items())]
         rows = [f"Trace {identity['job_id']} / attempt {identity['attempt']} · {status}",

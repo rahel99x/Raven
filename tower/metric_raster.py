@@ -13,6 +13,8 @@ MAX_ENTRIES = 64
 MAX_SERIES_POINTS = 64000
 MAX_POINTS = 512000
 MAX_CELLS = 65536
+MAX_PREPARED_ENTRIES = 32
+MAX_PREPARED_POINTS = 512000
 _UNCACHEABLE = object()
 
 
@@ -61,6 +63,7 @@ class MetricRasterCache:
     def __init__(self):
         self.entries = OrderedDict()
         self.points = self.cells = 0
+        self.time_points = TimePointCache()
 
     def render(self, glyphs, values, width, height, *, filled=False, theme="", compact_rows=False, **options):
         painter = charts.vbar_chart if filled else charts.braille_chart
@@ -77,7 +80,13 @@ class MetricRasterCache:
         if entry is not None:
             self.entries.move_to_end(key)
             return [list(row) for row in entry["rows"]], copy.deepcopy(entry["metadata"])
-        rows = painter(glyphs, values, width, height, metadata=metadata, **options)
+        # Callable colors/formatters correctly bypass complete raster reuse,
+        # but cannot change measured time buckets. Reuse that bounded numeric
+        # preparation independently of presentation. The painter supplies its
+        # actual fitted-axis width, so resizing and zoom remain exact.
+        time_cache = self.time_points.bind(values, options.get("sample_times"), data)
+        rows = painter(glyphs, values, width, height, metadata=metadata,
+                       _time_cache=time_cache, **options)
         if compact_rows:
             rows = [coalesce_row(row) for row in rows]
         if not cacheable:
@@ -94,3 +103,50 @@ class MetricRasterCache:
                 self.points -= old["points"]
                 self.cells -= old["cells"]
         return rows, metadata
+
+
+class TimePointCache:
+    """Exact time-bucket reuse; no downsampling or source-identity guesses.
+
+    Source keys are detached representations, never object IDs. In-place edits
+    invalidate them. Entries contain immutable vertices and detail tuples; each
+    painter receives fresh containers. Only the UI-owned raster cache uses this
+    object, just like its existing complete-raster cache.
+    """
+    def __init__(self):
+        self.entries = OrderedDict()
+        self.points = 0
+
+    def bind(self, values, sample_times, frozen_values=_UNCACHEABLE):
+        if sample_times is None or frozen_values is _UNCACHEABLE:
+            return None
+        frozen_times = _freeze(sample_times)
+        if frozen_times is _UNCACHEABLE:
+            return None
+        source = frozen_values, frozen_times
+        source_points = len(values) + len(sample_times)
+
+        def prepare(values, sample_times, width, times, interval, envelope=False, details=None):
+            settings = _freeze((width, times, interval, envelope, details is not None))
+            if settings is _UNCACHEABLE:
+                return charts._time_points(values, sample_times, width, times, interval, envelope, details)
+            key = source, settings
+            cached = self.entries.get(key)
+            if cached is not None:
+                self.entries.move_to_end(key)
+                if details is not None:
+                    details.update((x, dict(value)) for x, value in cached[2])
+                return list(cached[0]), copy.copy(cached[1])
+            points, resolved = charts._time_points(values, sample_times, width, times, interval, envelope, details)
+            # Count retained numeric fields as well as source-key elements;
+            # small sources with wide output cannot escape the same budget.
+            cost = source_points + len(points) * 4 + (len(details) * 8 if details is not None else 0)
+            if cost <= MAX_PREPARED_POINTS:
+                self.entries[key] = (tuple(points), copy.copy(resolved),
+                                     tuple((x, tuple(value.items())) for x, value in details.items()) if details is not None else (), cost)
+                self.points += cost
+                while len(self.entries) > MAX_PREPARED_ENTRIES or self.points > MAX_PREPARED_POINTS:
+                    _, old = self.entries.popitem(last=False)
+                    self.points -= old[3]
+            return points, resolved
+        return prepare

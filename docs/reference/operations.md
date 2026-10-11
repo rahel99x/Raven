@@ -29,7 +29,7 @@ See [review and recovery rules](../guides/operations.md#review-background-work-a
 | Pinned | `:workbench pinned` | Show saved operation shortcuts with current selection context. |
 | All | `:workbench all` | Show the complete operation catalog. |
 
-## Operations (55)
+## Operations (56)
 
 Required fields are required by the form. A blank default means an empty input;
 the operation can require further values for a selected action. Choices are
@@ -241,6 +241,19 @@ Rank declared information actions within explicit time, resource and scientific-
 | Field | Label | Required | Default | Choices |
 | --- | --- | --- | --- | --- |
 | <code>manifest</code> | Investigation manifest | Yes | (blank) | — |
+
+### Staged job investigation
+
+Command: <code>:ops investigation-workflow</code>. Group: Investigation.
+
+Join evidence, findings, missing information, diagnostic planning, reviewed execution and updated measurements.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>manifest</code> | Workflow manifest | Yes | (blank) | — |
+| <code>action</code> | Stage | No | <code>inspect</code> | <code>inspect</code>, <code>review-diagnostic</code>, <code>status</code> |
+| <code>diagnostic_id</code> | Diagnostic ID (review or status) | No | (blank) | — |
+| <code>destination</code> | Diagnostic workspace (new for review) | No | (blank) | — |
 
 ### Minimize reproducer
 

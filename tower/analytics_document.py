@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from . import layout as L, scrollbars as S
+from .pane_document import PaneDocument, DocumentTransform
 
 
 def initialize(app):
@@ -29,7 +30,7 @@ def _context(app):
 
 
 def begin_render(app):
-    # A shallow inline App proxy shares state dictionaries with its parent.
+    # An embedded pane reads published services from its owning application.
     # Its outer Details viewport owns this document, so do not alter the
     # native Analytics workspace's frame or offset from the proxy renderer.
     # A palette or modal is drawn over the current document. Retain its last
@@ -76,14 +77,17 @@ def finish(app, rows, sticky, painted, page, width, chart_mark, glyphs):
     count = max(0, len(rows) - sticky)
     frame = state["frame"]
     frame["count"] = count
-    from . import chart_interaction
-    chart_interaction.place_since(app, chart_mark, dy=-painted,
-                                 clip=(sticky, 0, sticky + page, width))
     visible = rows[sticky + painted:sticky + painted + page]
     first = painted + 1 if count and page else 0
     last = min(count, painted + page) if page else 0
     note = f" Series rows {first}-{last}/{count} {glyphs.dot} PgUp/PgDn or wheel; :series-scroll home/end"
     output = rows[:sticky] + visible + [L.clip_row([(note, "dim")], width)]
+    # The standalone and embedded document paths use the same geometry
+    # contract. Hidden cards contribute source rows without publishing any
+    # interactive targets outside the visible metric viewport.
+    document = PaneDocument.capture(app, rows, chart_mark=chart_mark).transform(
+        output, DocumentTransform(-painted, (sticky, 0, sticky + page, width)))
+    output, _ = document.publish(app)
     header = sticky - 1 if sticky else len(output) - 1
     if page > 0 and width >= 6:
         # The jump controls share the pane heading; no table column is added.

@@ -5,6 +5,8 @@ from dataclasses import dataclass, replace
 from .interaction import Rect
 from . import layout as L, scrolling
 
+from .pointer_routing import capture_handler
+
 MAX_PANES = 128
 MAX_MANUAL = 128
 
@@ -311,6 +313,7 @@ def handle_key(app, key):
     return False
 
 
+@capture_handler("scrollbars")
 def handle_mouse(app, y, x, button='left', shift=False, *, rail_only=False):
     if any(not isinstance(value, int) or isinstance(value, bool) for value in (y, x)):
         return False

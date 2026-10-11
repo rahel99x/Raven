@@ -19,6 +19,15 @@ Live metric windows use display deadlines while source sampling retains its own 
 Hover, smooth scrolling, drag selection, menus, and live job updates remain available.
 The display changes do not increase Slurm sampling rates.
 
+Tower 6.1 shares revisioned metric publications across source consumers, copies
+only visible cached job rows, and defers hidden telemetry heatmaps. An additional
+bounded cache reuses exact time buckets when chart presentation changes. The
+Advisor working set can retain more small sources under the same byte budget.
+Pane geometry and pointer capture ownership use shared contracts. Read the
+[consolidation guide](consolidation.md) and the
+[6.1 measurements](consolidation-validation.md) for the implemented scope,
+regression checks, and remaining latency limits.
+
 ## Manual group identity checks in 4.12.0
 
 Job marks retain their submission and cluster identity. This prevents a refreshed or reused job ID from moving a manual group to another execution.

@@ -817,3 +817,54 @@ def test_history_long_details_scrolls_use_history_viewport_and_sticky_buttons(pu
     J.run_command(app, ["jobpanel", "research", "artifacts"])
     dashboard.render(180, 50)
     assert app.layout_state.scroll["history:details"] == position
+
+
+@pytest.mark.parametrize("mode,view", [("research", "experiment"), ("research", "arrays"),
+                                      ("analytics", "job"), ("analytics", "advisor")])
+def test_embedded_documents_use_context_services_without_copying_app_or_views(published_workspaces, monkeypatch, mode, view):
+    dashboard, app = published_workspaces, published_workspaces.app
+    from tower.pane_context import PaneContext
+
+    def forbidden_copy(self):
+        raise AssertionError("embedded renderer copied the whole owner")
+
+    monkeypatch.setattr(App, "__copy__", forbidden_copy, raising=False)
+    monkeypatch.setattr(Views, "__copy__", forbidden_copy, raising=False)
+    J.run_command(app, ["jobpanel", mode, view])
+    dashboard.render(180, 48)
+    proxy = J.initialize(app)["view_states"][mode + ":" + view]["proxy"]
+    assert isinstance(proxy, PaneContext)
+    assert proxy.store is app.store and proxy.views_ref is dashboard.views
+    assert proxy.pane_identity == "jobs:details:" + mode + ":" + view
+    assert proxy.cursor is not app.cursor and proxy.analysis_state is not app.analysis_state
+
+
+@pytest.mark.parametrize("change", ["start", "generation"])
+def test_same_job_requeue_discards_old_details_windows_preferences_and_actions(dashboard, change):
+    app, store = dashboard.app, dashboard.store
+    J.run_command(app, ["jobpanel", "analytics", "job"])
+    dashboard.render(180, 48)
+    state = J.initialize(app)
+    old_analysis = state["view_states"]["analytics:job"]["analysis"]
+    old_analysis["metric_filter"] = "old-execution-only"
+    state["document_headers"][("obsolete", 1)] = 999
+    state["document_windows"][("obsolete", 1)] = (100, 200)
+    if change == "start":
+        store.jobs[0].start = "2026-10-11T01:00:00"
+    else:
+        store._job_attempts["900"] = store.job_attempt("900") + 1
+    dashboard.render(180, 48)
+    assert state["view_states"]["analytics:job"]["analysis"] is not old_analysis
+    assert state["view_states"]["analytics:job"]["analysis"].get("metric_filter") != "old-execution-only"
+    assert ("obsolete", 1) not in state["document_headers"]
+    assert ("obsolete", 1) not in state["document_windows"]
+
+
+def test_attempt_change_rejects_painted_details_button_before_next_frame(dashboard):
+    app, store = dashboard.app, dashboard.store
+    _, _, hits = dashboard.render(180, 48)
+    y, (_, left, _) = button(hits, "logs")
+    store._job_attempts["900"] = store.job_attempt("900") + 1
+    assert J.contains(app, y, left)
+    assert J.handle_mouse(app, y, left)
+    assert J.initialize(app)["mode"] == "inspector"

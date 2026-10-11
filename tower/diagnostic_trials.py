@@ -233,7 +233,11 @@ def archive_bytes(repository, commit, *, cancel=None, timeout=15, limit=4 << 20)
                         key.data.extend(data)
                         if len(chunks)+len(error) > limit:
                             raise ValueError("Git snapshot exceeds the 4 MiB per-revision budget")
-        process.wait(timeout=max(.01, timeout-(time.monotonic()-started)))
+        reason = wait_for_exit(process, started + timeout, cancel)
+        if reason == "cancelled":
+            raise ValueError("Git snapshot inspection cancelled")
+        if reason == "timeout":
+            raise ValueError("Git snapshot exceeded its time budget")
         if process.returncode:
             raise ValueError("Git snapshot failed: " + error.decode("utf-8", "replace")[:1024])
         # Git archive's pax global comment carries the exact commit identity.
@@ -366,6 +370,8 @@ def _execute(argv, directory, limits, timeout, cancel=None):
     try:
         if cancel is not None and cancel.is_set():
             return {"returncode": None, "state": "cancelled", "seconds": 0.0, "output": ""}
+        if timeout <= 0:
+            return {"returncode": None, "state": "timeout", "seconds": 0.0, "output": ""}
         process = subprocess.Popen([sys.executable, "-I", "-S", str(Path(__file__).resolve()), "--child", json.dumps({**limits, "driver_pid": os.getpid()}), *argv],
                                    cwd=directory, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT, start_new_session=True)
@@ -392,10 +398,7 @@ def _execute(argv, directory, limits, timeout, cancel=None):
                 if reason:
                     break
         if reason is None:
-            try:
-                process.wait(timeout=max(.001, timeout-(time.monotonic()-started)))
-            except subprocess.TimeoutExpired:
-                reason = "timeout"
+            reason = wait_for_exit(process, started + timeout, cancel)
         return {"returncode": process.returncode if reason is None else None,
                 "state": reason or "finished", "seconds": time.monotonic()-started,
                 "output": data[:limits["output_bytes"]].decode("utf-8", "replace")}
@@ -409,6 +412,120 @@ def _execute(argv, directory, limits, timeout, cancel=None):
                 pass
             process.wait(timeout=5)
             process.stdout.close()
+
+
+def wait_for_exit(process, deadline, cancel=None, interval=.025):
+    """Keep cancellation live after a child closes all captured output pipes.
+
+    Pipe EOF is not process completion. Waiting for the entire remaining
+    deadline in that state previously left cancellation unobserved for up to
+    a full trial or command budget. The helper is shared by reviewed commands,
+    Git snapshots and diagnostic children, without creating polling threads.
+    """
+    while True:
+        if cancel is not None and cancel.is_set():
+            return "cancelled"
+        if process.poll() is not None:
+            return None
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return "timeout"
+        try:
+            process.wait(timeout=min(interval, remaining))
+        except subprocess.TimeoutExpired:
+            continue
+
+
+class TrialBudget:
+    """Monotonic admission shared by every diagnostic trial algorithm."""
+
+    def __init__(self, limits, cancel=None):
+        self.limits = dict(limits)
+        self.cancel = cancel
+        self.started = time.monotonic()
+        self.attempts = 0
+
+    def remaining(self):
+        return max(0.0, self.limits["total_seconds"] - (time.monotonic() - self.started))
+
+    def stopped(self):
+        if self.cancel is not None and self.cancel.is_set():
+            return "cancelled"
+        if self.remaining() <= 0:
+            return "timeout"
+        return None
+
+    def available(self):
+        return self.attempts < self.limits["max_trials"] and self.stopped() is None
+
+
+class TrialLifecycle:
+    """Serial preparation, bounded execution, measurement and durable receipt.
+
+    Algorithms supply preparation and measurement callbacks. They do not own
+    admission, sequence assignment, deadline checks or publication ordering.
+    The code stays in this standalone module so reviewed Slurm workspaces
+    continue to execute with Python ``-I -S`` and no Tower installation.
+    """
+
+    def __init__(self, root, limits, verify, cancel=None):
+        self.root = Path(root)
+        self.budget = TrialBudget(limits, cancel)
+        self.verify = verify
+        self.trials = []
+        self._failed = False
+        self._lock = threading.Lock()
+        (self.root/"trials").mkdir(mode=0o700)
+
+    def perform(self, prepare, execute, measure):
+        """Return a committed result, or None if no trial can be admitted.
+
+        ``prepare(directory, sequence)`` returns an intent and execution data.
+        ``execute(data, timeout)`` returns an observed process outcome.
+        ``measure(directory, sequence, outcome)`` returns the receipt payload.
+        A failed publication blocks this lifecycle; a retry needs a new review.
+        """
+        with self._lock:
+            if self._failed:
+                raise ValueError("Trial lifecycle was interrupted; inspect receipts before a new review")
+            if not self.budget.available():
+                return None
+            try:
+                self.verify()
+                if not self.budget.available():
+                    return None
+                sequence = self.budget.attempts
+                self.budget.attempts += 1
+                directory = self.root/"trials"/f"{sequence:04d}"
+                directory.mkdir(mode=0o700)
+                intent, prepared = prepare(directory, sequence)
+                _atomic(directory/"intent.json", intent)
+                # Staging or fsync can exhaust a budget or receive a cancel.
+                # Record that outcome without starting an unbudgeted child.
+                reason = self.budget.stopped()
+                if reason is None:
+                    outcome = execute(prepared, min(self.budget.limits["trial_seconds"], self.budget.remaining()))
+                else:
+                    outcome = {"returncode": None, "state": reason, "seconds": 0.0, "output": ""}
+                result = measure(directory, sequence, outcome)
+                _atomic(directory/"result.json.receipt", result)
+                self.trials.append(result)
+                self.verify()
+                return result
+            except BaseException:
+                self._failed = True
+                raise
+
+
+def repeated_trials(callback, repeats):
+    """Do not run more repetitions after an unavailable/infrastructure result."""
+    answers = []
+    for _ in range(repeats):
+        answer = callback()
+        answers.append(answer)
+        if answer is None:
+            break
+    return answers
 
 
 def minimize(items, test):
@@ -470,75 +587,76 @@ def run(recipe, workspace, *, cancel=None):
     # Refuse a second invocation, even after a crash with no final receipt.
     _atomic(root/"run.claim.json", {"schema": "tower.diagnostic-claim/v1", "recipe_sha256": _hash(recipe),
                                     "created": time.time(), "pid": os.getpid(), "job_id": os.environ.get("SLURM_JOB_ID")})
-    started = time.monotonic()
-    limits, trials, cached = recipe["limits"], [], {}
-    (root/"trials").mkdir(mode=0o700)
+    limits, cached = recipe["limits"], {}
+    lifecycle = TrialLifecycle(root, limits, verify_sources, cancel)
+    started, trials = lifecycle.budget.started, lifecycle.trials
 
     def trial(arguments, candidate=None, revision=None):
-        if len(trials) >= limits["max_trials"] or time.monotonic()-started >= limits["total_seconds"] or cancel is not None and cancel.is_set():
+        def prepare(directory, sequence):
+            checkout = None
+            if revision is not None:
+                archive_data = _read(root/"revisions"/(revision["id"]+".tar"), 4 << 20)
+                expected = execution["revisions"][revision["id"]]
+                if hashlib.sha256(archive_data).hexdigest() != expected["sha256"] or expected["commit"] != revision["commit"]:
+                    raise ValueError("Staged Git snapshot changed")
+                checkout = directory/"checkout"
+                extract_snapshot(archive_data, checkout)
+            if candidate is not None:
+                (directory/"input.txt").write_bytes(candidate)
+            argv = []
+            for item in recipe["command"] + arguments:
+                if item == "{input}":
+                    argv.append(str(directory/"input.txt"))
+                elif item == "{result}":
+                    argv.append(str(directory/"result.json"))
+                elif item.startswith("{file:") and item.endswith("}"):
+                    argv.append(str(sources/item[6:-1]))
+                elif item.startswith("{repo:") and item.endswith("}") and checkout is not None:
+                    argv.append(str(checkout/item[6:-1]))
+                else:
+                    argv.append(item)
+            argv[0] = executable["path"]
+            intent = {"sequence": sequence, "arguments": argv, "input_sha256": hashlib.sha256(candidate).hexdigest() if candidate is not None else None}
+            return intent, (argv, checkout or directory)
+
+        def execute(prepared, timeout):
+            argv, directory = prepared
+            return _execute(argv, directory, limits, timeout, cancel)
+
+        def measure(directory, sequence, result):
+            output = result.pop("output")
+            (directory/"output.log").write_text(output, encoding="utf-8")
+            matched = result["state"] == "finished" and result["returncode"] == recipe["oracle"]["exit_code"] and recipe["oracle"]["contains"] in output
+            result.update(sequence=sequence, oracle_matched=matched,
+                          output_sha256=hashlib.sha256(output.encode()).hexdigest())
+            if revision is not None:
+                measurement, science, error = None, False, None
+                try:
+                    observed = _json(_read(directory/"result.json", limits["output_bytes"]))
+                    if not isinstance(observed, dict) or observed.get("scientific_valid") is not True:
+                        raise ValueError("Missing or failed application scientific check")
+                    value = result["seconds"] if recipe["repository"]["metric"] == "wall_seconds" else observed.get("seconds")
+                    measurement = _number(value, 0, 1e9)
+                    science = matched
+                except (ValueError, OSError, TypeError) as exc:
+                    error = str(exc)[:512]
+                result.update(revision=revision["id"], commit=revision["commit"],
+                              measurement={"value": measurement, "scientific_valid": science, "error": error})
+            return result
+
+        result = lifecycle.perform(prepare, execute, measure)
+        # Signals/launch failures are infrastructure/unsupported outcomes,
+        # not evidence against a failure or a new scientific observation.
+        if result is None or result["state"] != "finished" or result["returncode"] is None or result["returncode"] < 0:
             return None
-        verify_sources()
-        if time.monotonic()-started >= limits["total_seconds"]:
-            return None
-        sequence = len(trials)
-        directory = root/"trials"/f"{sequence:04d}"
-        directory.mkdir(mode=0o700)
-        checkout = None
-        if revision is not None:
-            archive_data = _read(root/"revisions"/(revision["id"]+".tar"), 4 << 20)
-            expected = execution["revisions"][revision["id"]]
-            if hashlib.sha256(archive_data).hexdigest() != expected["sha256"] or expected["commit"] != revision["commit"]:
-                raise ValueError("Staged Git snapshot changed")
-            checkout = directory/"checkout"
-            extract_snapshot(archive_data, checkout)
-        if candidate is not None:
-            (directory/"input.txt").write_bytes(candidate)
-        argv = []
-        for item in recipe["command"] + arguments:
-            if item == "{input}":
-                argv.append(str(directory/"input.txt"))
-            elif item == "{result}":
-                argv.append(str(directory/"result.json"))
-            elif item.startswith("{file:") and item.endswith("}"):
-                argv.append(str(sources/item[6:-1]))
-            elif item.startswith("{repo:") and item.endswith("}") and checkout is not None:
-                argv.append(str(checkout/item[6:-1]))
-            else:
-                argv.append(item)
-        argv[0] = executable["path"]
-        intent = {"sequence": sequence, "arguments": argv, "input_sha256": hashlib.sha256(candidate).hexdigest() if candidate is not None else None}
-        _atomic(directory/"intent.json", intent)
-        result = _execute(argv, checkout or directory, limits, min(limits["trial_seconds"], limits["total_seconds"]-(time.monotonic()-started)), cancel)
-        output = result.pop("output")
-        (directory/"output.log").write_text(output, encoding="utf-8")
-        matched = result["state"] == "finished" and result["returncode"] == recipe["oracle"]["exit_code"] and recipe["oracle"]["contains"] in output
-        result.update(sequence=sequence, oracle_matched=matched,
-                      output_sha256=hashlib.sha256(output.encode()).hexdigest())
-        if revision is not None:
-            measurement, science, error = None, False, None
-            try:
-                observed = _json(_read(directory/"result.json", limits["output_bytes"]))
-                if not isinstance(observed, dict) or observed.get("scientific_valid") is not True:
-                    raise ValueError("Missing or failed application scientific check")
-                value = result["seconds"] if recipe["repository"]["metric"] == "wall_seconds" else observed.get("seconds")
-                measurement = _number(value, 0, 1e9)
-                science = matched
-            except (ValueError, OSError, TypeError) as exc:
-                error = str(exc)[:512]
-            result.update(revision=revision["id"], commit=revision["commit"],
-                          measurement={"value": measurement, "scientific_valid": science, "error": error})
-        _atomic(directory/"result.json.receipt", result)
-        trials.append(result)
-        verify_sources()
-        # Signals/launch failures are infrastructure/unsupported outcomes, not evidence against a failure.
-        return matched if result["state"] == "finished" and result["returncode"] is not None and result["returncode"] >= 0 else None
+        return result["oracle_matched"]
 
     try:
         if recipe["kind"] == "campaign":
             cases = []
             state = "completed"
             for case in recipe["cases"]:
-                answers = [trial(case["arguments"]) for _ in range(limits["repeats"])]
+                answers = repeated_trials(lambda: trial(case["arguments"]), limits["repeats"])
                 case_state = "inconclusive" if None in answers or len(set(answers)) > 1 else "matched" if all(answers) else "not-matched"
                 cases.append({"id": case["id"], "state": case_state})
                 if None in answers:
@@ -555,7 +673,7 @@ def run(recipe, workspace, *, cancel=None):
                 key = hashlib.sha256(data).hexdigest()
                 if key in cached:
                     return cached[key]
-                answers = [trial([], data) for _ in range(limits["repeats"])]
+                answers = repeated_trials(lambda: trial([], data), limits["repeats"])
                 answer = None if None in answers or len(set(answers)) > 1 else all(answers)
                 cached[key] = answer
                 return answer

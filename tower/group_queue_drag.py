@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from . import layout as L
 
+from .pointer_routing import capture_handler
+
 
 def initialize(app):
     state = getattr(app, "group_queue_drag_state", None)
@@ -136,6 +138,7 @@ def _geometry(frame):
                  for row in spans if row["scope"] == "jobs")
 
 
+@capture_handler("group_queue_drag")
 def handle_mouse(app, y, x, button="left", shift=False, alt=False):
     state = initialize(app)
     capture = state["capture"]

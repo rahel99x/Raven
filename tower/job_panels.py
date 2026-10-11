@@ -14,6 +14,8 @@ from .log_catalog import LogCatalog
 from .logs import LogSession
 from .research import ResearchHub, clean
 from . import scrollbars
+from .pane_context import PaneContext, job_identity
+from .pane_document import PaneDocument, DocumentTransform, source_window
 
 TABS = (("inspector", "Inspector"), ("logs", "Logs"),
         ("investigate", "Investigate"), ("research", "Research"),
@@ -261,7 +263,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
             and 0 <= y < getattr(app, "height", 100000)):
         return False
     state = initialize(app)
-    current = getattr(app, "job_panel_context", context(app)) == context(app)
+    current_context = context(app)
+    current = getattr(app, "job_panel_context", current_context) == current_context
     for row, kind, value in getattr(app, "last_hits", []):
         if not current or row != y or kind not in ("job_panel_tab", "job_panel_view", "job_panel_file", "job_panel_action"):
             continue
@@ -314,20 +317,24 @@ def handle_mouse(app, y, x, button="left", shift=False):
 
 def context(app):
     state = getattr(app, "job_panel_state", {})
+    selected = getattr(app, "selected_id", None)
+    attempt = getattr(getattr(app, "store", None), "job_attempt", None)
     return (getattr(app, "tab", ""), getattr(app, "mode", "main"),
             getattr(app, "width", None), getattr(app, "height", None),
-            getattr(app, "selected_id", None), state.get("mode"),
-            state.get("research_view"), state.get("analytics_view"))
+            selected, state.get("mode"),
+            state.get("research_view"), state.get("analytics_view"),
+            attempt(str(selected)) if selected is not None and callable(attempt) else None)
 
 
 def contains(app, y, x):
     published = getattr(app, "job_panel_context", None)
     if published is not None:
-        current = context(app)
         # Geometry still blocks table hits during selection changes and routes
         # modal wheel input through the controller. Only controls require an
         # exact mode/job/view match; page and terminal-size changes hide bounds.
-        if (published[0], published[2:4]) != (current[0], current[2:4]):
+        current_geometry = (getattr(app, "tab", ""),
+                            (getattr(app, "width", None), getattr(app, "height", None)))
+        if (published[0], published[2:4]) != current_geometry:
             return False
     rect = getattr(app, "job_panel_rect", None)
     return bool(getattr(app, "tab", "") in DETAIL_TABS and rect and
@@ -402,7 +409,7 @@ def _buttons(g, state, width):
 def _inspector(views, snap, app, job, width, state):
     """Reuse the unified inspector without changing its modal selection."""
     from .analysis_ui import SECTIONS, _inspector_rows
-    proxy = copy.copy(app)
+    proxy = PaneContext(app, identity=scroll_key(app) + ":inspector")
     proxy.chart_interaction_state = getattr(app, "chart_interaction_state", None)
     proxy.analysis_state = dict(job=job.id, evidence_job=job.id)
     proxy.log_job, proxy.logs = job.id, SimpleNamespace(entries=list(state.get("entries", [])))
@@ -619,8 +626,7 @@ def _scoped_app(app, job, state):
     retained = state["view_states"].setdefault(key, {})
     if "analysis" not in retained:
         retained["analysis"] = _analysis_settings(app)
-    proxy = copy.copy(app)
-    proxy._chart_owner = app
+    proxy = PaneContext(app, identity=scroll_key(app) + ":" + key)
     proxy.tab, proxy.mode = state["mode"], "main"
     proxy.selected_id = proxy.research_job_id = proxy.analytics_job = job.id
     proxy.research_view, proxy.analytics_view = state["research_view"], state["analytics_view"]
@@ -647,7 +653,6 @@ def _scoped_app(app, job, state):
                                          + sorted(getattr(app, "marks", []))))[:6]
     # Explicit inline actions may create a modal, but merely rendering must not
     # persist a copied App or change another workspace's table geometry.
-    proxy.save = lambda: None
     retained["proxy"] = proxy
     return proxy, retained
 
@@ -659,44 +664,39 @@ def _research(views, snap, app, job, width, height, state, header_rows):
     document_key = (_view_key(state), width)
     window = state["document_windows"].get(document_key)
     previous = state["document_maps"].get(document_key)
-    if previous:
-        from .workspace_layout import initialize as layout_state
-        from .scrolling import published_position
-        logical_top = layout_state(app).scroll.get(scroll_key(app), 0)
-        top = published_position(app, "workspace:" + scroll_key(app), logical_top) + previous["sticky"]
-        raw = [index for index, position in previous["mapping"].items()
-               if top - 16 <= position <= top + (height or 24) + 16]
-        if raw:
-            # A newly populated project can outgrow its earlier empty
-            # placeholder. Include source rows beyond that short old map
-            # instead of leaving new visible charts blank until another draw.
-            last = max(previous["mapping"])
-            missing = top + (height or 24) + 16 - previous["mapping"][last]
-            if missing > 0:
-                raw.append(last + missing)
-            window = (max(0, min(raw) - previous["header"] - 16),
-                      max(0, max(raw) - previous["header"] + 16))
-    proxy.research_document_window = window or (0, max(32, (height or 24) + 32))
+    from .workspace_layout import initialize as layout_state
+    from .scrolling import published_position
+    logical_top = layout_state(app).scroll.get(scroll_key(app), 0)
+    painted = published_position(app, "workspace:" + scroll_key(app), logical_top)
+    proxy.research_document_window = source_window(
+        previous, window, top=painted, height=height or 24,
+        header=previous["header"] if previous else header_rows + 1,
+        overscan=16, seed_full=True)
     from . import chart_interaction
     chart_mark = chart_interaction.mark(app)
     scroll_mark = scrollbars.mark(app)
     rows, hits = research_render(views, snap, proxy, width, MAX_ROWS)
     nav_rows = getattr(proxy, "research_nav_rows", 1)
-    chart_interaction.place_since(app, chart_mark, dy=1 - nav_rows, clip=(1, 0, MAX_ROWS, width))
-    scrollbars.place_since(app, scroll_mark, dy=1 - nav_rows, clip=(1, 0, MAX_ROWS, width))
     retained.update(cursor=proxy.cursor.get("research", 0), array_open=proxy.research_array_open,
                     array_order=getattr(proxy, "research_array_order", ()),
                     task_offset=proxy.research_task_offset)
     state["document_headers"][( _view_key(state), width)] = header_rows + 1
-    content = [[(clean(f" Job {job.id} / {job.name}", views.g.ascii), "cyan+bold")]] + rows[nav_rows:MAX_ROWS + nav_rows]
-    # Small task-page controls overlap ordinary cohort selection rows. Route
-    # those exact bounded targets before the full-row fallback in Details.
-    ordered_hits = [hit for hit in hits if hit[1] == "control"] + [hit for hit in hits if hit[1] != "control"]
-    actions = [(y - nav_rows + 1, "job_panel_action", ((kind, value),
-                value.get("left", 0) if kind == "control" and isinstance(value, dict) else 0,
-                value.get("right", width) if kind == "control" and isinstance(value, dict) else width))
-               for y, kind, value in ordered_hits if nav_rows <= y < nav_rows + MAX_ROWS]
-    return content[:MAX_ROWS], actions
+    heading = [[(clean(f" Job {job.id} / {job.name}", views.g.ascii), "cyan+bold")]]
+    document = PaneDocument.capture(app, rows, hits, chart_mark=chart_mark,
+                                    scroll_mark=scroll_mark).body(
+        nav_rows, prefix=heading, width=width, limit=MAX_ROWS)
+    content, hits = document.publish(app)
+    # Small task-page controls take precedence over full-row cohort targets.
+    ordered = [hit for hit in hits if hit[1] == "control"] + [hit for hit in hits if hit[1] != "control"]
+    return content, _document_actions(ordered, width)
+
+
+def _document_actions(hits, width):
+    """Preserve bounded native controls while routing through Details."""
+    return [(y, "job_panel_action", ((kind, value),
+             value.get("left", 0) if kind == "control" and isinstance(value, dict) else 0,
+             value.get("right", width) if kind == "control" and isinstance(value, dict) else width))
+            for y, kind, value in hits]
 
 
 def _analytics(views, snap, app, job, width, height, state, header_rows=0):
@@ -712,36 +712,15 @@ def _analytics(views, snap, app, job, width, height, state, header_rows=0):
         previous = state["document_maps"].get(document_key)
         from .workspace_layout import initialize as layout_state
         logical_top = layout_state(app).scroll.get(scroll_key(app), 0)
-        # A new pane width has no exact wrapped-row map yet. At a retained
-        # lower offset, a top-only seed would publish a blank viewport until
-        # the next frame. Compose the bounded source once to establish that
-        # map, then resume visible-band rasterization immediately.
-        seed_full = not previous and logical_top > 0
-        if previous:
-            from .scrolling import published_position
-            top = published_position(app, "workspace:" + scroll_key(app), logical_top) + previous["sticky"]
-            raw = [index for index, position in previous["mapping"].items()
-                   if top - 3 <= position < top + max(1, height) + 3]
-            if raw:
-                # An empty/short source can grow between publications. The
-                # previous map ends before the current viewport, so its last
-                # row cannot cap newly appeared graph bands. Extend the
-                # source estimate through that unused visible space; each
-                # source row occupies at least one rendered row.
-                last = max(previous["mapping"])
-                missing = top + max(1, height) + 3 - previous["mapping"][last]
-                if missing > 0:
-                    raw.append(last + missing)
-                window = (max(0, min(raw) - header - 3),
-                          max(0, max(raw) - header + 4))
-            elif logical_top > 0:
-                seed_full = True
-        proxy.analytics_series_window = None if seed_full else window or (0, max(1, height) + 6)
+        from .scrolling import published_position
+        painted = published_position(app, "workspace:" + scroll_key(app), logical_top)
+        proxy.analytics_series_window = source_window(
+            previous, window, top=painted, height=height, header=header,
+            overscan=3, seed_full=True)
         state["document_headers"][document_key] = header
-    scoped_views = copy.copy(views)
     # A finished job without session samples must never fall back to a running
     # job's chart. The ordinary Analytics workspace keeps its own cycling list.
-    scoped_views.analytics_jobs = lambda current, target: [job.id]
+    proxy.pane_job_ids = (job.id,)
     if state["analytics_view"] == "advisor" and height is not None:
         proxy.analytics_virtual_advisor = True
         proxy.analytics_retained = retained
@@ -754,45 +733,33 @@ def _analytics(views, snap, app, job, width, height, state, header_rows=0):
         # The native table and the vertical cards need the same aggregation.
         # Building the clipped table before replacing it doubled the work over
         # the entire accounting history on every scrolling frame.
-        scoped_views.analytics_advisor = lambda current, target, target_width, avail, days: _analytics_cards(
+        proxy.pane_advisor_renderer = lambda current, target, target_width, avail, days: _analytics_cards(
             views, current, target, None, width=target_width)
     from . import chart_interaction
     chart_mark = chart_interaction.mark(app)
     scroll_mark = scrollbars.mark(app)
-    rows, hits = scoped_views.analytics_tab(snap, proxy, width, MAX_ROWS)
+    rows, hits = views.analytics_tab(snap, proxy, width, MAX_ROWS)
     nav_rows = getattr(proxy, "analytics_nav_rows", 1)
+    document = PaneDocument.capture(app, rows, hits, chart_mark=chart_mark, scroll_mark=scroll_mark)
     if width < 120 and state["analytics_view"] == "compare":
-        original = rows
-        rows = rows[:nav_rows + 1] + _analytics_cards(views, snap, proxy, rows[nav_rows + 1:])
-        # Replacing the compact comparison table with readable cards changes
-        # the source rows below it. Keep pointer coordinates on those rows.
+        replaced = rows[:nav_rows + 1] + _analytics_cards(views, snap, proxy, rows[nav_rows + 1:])
         cutoff = nav_rows + 3 + len(proxy.compare_ids[:6])
-        delta = len(rows) - len(original)
-        records = chart_interaction.take_since(app, chart_mark)
-        chart_interaction.put_records(app, chart_interaction.map_records(
-            records, lambda y: y + delta if y >= cutoff else None))
-        records = scrollbars.take_since(app, scroll_mark)
-        scrollbars.put_records(app, scrollbars.map_records(
-            records, row_map=lambda y: y + delta if y >= cutoff else None))
-    chart_interaction.place_since(app, chart_mark, dy=1 - nav_rows, clip=(1, 0, MAX_ROWS, width))
-    scrollbars.place_since(app, scroll_mark, dy=1 - nav_rows, clip=(1, 0, MAX_ROWS, width))
+        delta = len(replaced) - len(rows)
+        document = document.transform(replaced, DocumentTransform(
+            row_map=lambda y: y + delta if y >= cutoff else y if y <= nav_rows else None))
     scope = "selected job" if state["analytics_view"] == "job" else "selected job + comparison set" if state["analytics_view"] == "compare" else "accounting window"
-    content = [[(clean(f" Job {job.id} / {job.name} / {scope}", views.g.ascii), "cyan+bold")]] + rows[nav_rows:]
-    actions = [(y - nav_rows + 1, "job_panel_action", ((kind, value),
-                value.get("left", 0) if kind == "control" and isinstance(value, dict) else 0,
-                value.get("right", width) if kind == "control" and isinstance(value, dict) else width))
-               for y, kind, value in hits if y >= nav_rows]
-    return content[:MAX_ROWS], actions
+    heading = [[(clean(f" Job {job.id} / {job.name} / {scope}", views.g.ascii), "cyan+bold")]]
+    document = document.body(nav_rows, prefix=heading, width=width, limit=MAX_ROWS)
+    content, hits = document.publish(app)
+    return content, _document_actions(hits, width)
 
 
 def _analytics_cards(views, snap, proxy, body, *, width=120):
     """Keep every requested/measured value when a wide table cannot fit."""
     from . import advisor, clock
     from .model import human, hms, secs, stamp
-    from .views import _native_series
-    series_reader = (proxy.store.series_view if getattr(proxy, "interactive", False)
-                     else proxy.store.series_of)
-    series_for = lambda jid: _native_series(series_reader(jid))
+    from .views import normalized_series
+    series_for = lambda jid: normalized_series(proxy, jid)
     row = lambda value, style="": [(clean(value, views.g.ascii), style)]
     if proxy.analytics_view == "advisor":
         now = clock.now()
@@ -1046,12 +1013,14 @@ def render(views, snap, app, job, width, height=None):
     state = initialize(app)
     state.pop("virtual_document", None)
     rows, hits = _buttons(views.g, state, max(0, width))
-    if state["job"] != getattr(job, "id", None):
-        state.update(job=getattr(job, "id", None), file_id=None, entries=[])
+    identity = job_identity(app, job)
+    if state["job"] != getattr(job, "id", None) or state.get("execution") != identity:
+        state.update(job=getattr(job, "id", None), execution=identity, file_id=None, entries=[])
         state["scrolls"].clear()
         state["view_states"].clear()
         state["document_windows"].clear()
         state["document_maps"].clear()
+        state["document_headers"].clear()
         from .workspace_layout import initialize as layout_state
         layout_state(app).scroll[scroll_key(app)] = 0
         if state["session"]:

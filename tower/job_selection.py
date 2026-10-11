@@ -1,6 +1,8 @@
 """Mouse range selection of exact job IDs for existing marked-job actions."""
 from __future__ import annotations
 
+from .pointer_routing import capture_handler
+
 MAX_SELECTION = 50000
 ROW_KINDS = {"jobs": {"job", "recent"}, "history": {"fin"},
              "group": {"group"}, "deps": {"dep"}, "analytics": {"advisor_job"}}
@@ -527,6 +529,7 @@ def _range(app, capture, identifier):
     app.say(f"{len(app.marks)} jobs marked; drag to adjust, release to finish")
 
 
+@capture_handler("job_selection")
 def handle_mouse(app, y, x, button="left", shift=False):
     state = initialize(app)
     capture = state["capture"]

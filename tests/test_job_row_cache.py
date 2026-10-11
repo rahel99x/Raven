@@ -216,3 +216,117 @@ def test_group_projection_and_progress_animations_remain_outside_row_cache(case)
     reopened = views.job_rows(snap, app)
     assert len(reopened) == 2
     assert all(row["_progress_animation"] == "clock" and row["progress"] for row in reopened)
+
+
+def test_shared_rows_are_immutable_and_do_not_allocate_full_mutable_copies(case):
+    app, views, snap, progress, rows = case
+    key, first = C.lookup(views, snap, app, None, progress, table_sort.chain(app, "jobs"), shared=True)
+    second = C.lookup(views, snap, app, None, progress, table_sort.chain(app, "jobs"), shared=True)[1]
+    assert first is second and first[0]["job"] is snap["jobs"][0]
+    with pytest.raises(TypeError):
+        first[0]["info"] = "bad cached display"
+    with pytest.raises(TypeError):
+        first[0]["_styles"]["flags"] = "bad cached style"
+    visible = C.copy_visible(first[:1])
+    visible[0]["_mark"] = "selected"
+    visible[0]["_styles"]["flags"] = "yellow"
+    assert "_mark" not in first[0]
+    assert first[0]["_styles"].get("flags") != "yellow"
+    assert lookup(case)[1][0]["_styles"].get("flags") != "yellow"
+
+
+def test_internal_table_copies_only_visible_rows_and_does_not_fetch_sources(case, monkeypatch):
+    import builtins
+    app, views, snap, progress, rows = case
+    snap["jobs"] = [replace(snap["jobs"][0], id=str(index), name=f"job-{index}") for index in range(1000)]
+    app.job_panel_state["mode"] = "off"
+    app.table_state["groups"] = False
+    views.compose(snap, app, 160, 48)
+    views.compose(snap, app, 160, 48)
+    cached_before = app.job_rows_cache_state
+    counts = []
+    original = C._copy_rows
+    def copy_rows(rows):
+        counts.append(len(rows))
+        return original(rows)
+    def forbid(*args, **kwargs):
+        pytest.fail("Cached table rendering must use the supplied publication")
+    monkeypatch.setattr(C, "_copy_rows", copy_rows)
+    monkeypatch.setattr(app.store, "snapshot", forbid)
+    monkeypatch.setattr(app.store, "render_snapshot", forbid)
+    monkeypatch.setattr(builtins, "open", forbid)
+    rendered, hits = views.compose(snap, app, 160, 48)
+    visible = [hit for hit in hits if hit[1] == "job"]
+    assert visible and len(app.visible_ids) == 1000
+    assert app.job_rows_cache_state is cached_before
+    assert counts and max(counts) <= 48
+    assert sum(counts) == len(visible)
+    cached_rows = app.job_rows_cache_state[2]
+    assert all("_mark" not in row for row in cached_rows)
+
+
+@pytest.mark.parametrize("kind", ["instance", "class", "subclass"])
+@pytest.mark.parametrize("surface", ["compose", "jobs_tab"])
+def test_internal_table_preserves_legacy_row_builder_overrides(case, monkeypatch, kind, surface):
+    app, views, snap, progress, rows = case
+    native = Views.job_rows
+    calls = []
+    def legacy(self, snap, app, actions=None):
+        calls.append(actions)
+        result = native(self, snap, app, actions)
+        result[0]["info"] = "legacy row customization"
+        return result
+    if kind == "instance":
+        monkeypatch.setattr(views, "job_rows", lambda snap, app, actions=None: legacy(views, snap, app, actions))
+    elif kind == "class":
+        monkeypatch.setattr(Views, "job_rows", legacy)
+    else:
+        class LegacyViews(Views):
+            job_rows = legacy
+        views = LegacyViews(views.g, views.cfg)
+        app.views_ref = views
+    app.job_panel_state["mode"] = "off"
+    actions = Actions(None, app.store)
+    if surface == "compose":
+        rendered, hits = views.compose(snap, app, 320, 48, actions=actions)
+    else:
+        rendered, hits = views.jobs_tab(snap, app, actions, 320, 48)
+    assert calls == [actions]
+    assert app.visible_ids == ["41"]
+    assert any(hit[1] == "job" and hit[2] == "41" for hit in hits)
+    assert "legacy row customization" in L.to_text(rendered, 320)
+
+
+@pytest.mark.parametrize("change", ["correct", "replace", "append", "remove", "filter", "sort", "group"])
+def test_shared_native_rows_match_mutable_api_after_changes(case, change):
+    app, views, snap, progress, rows = case
+    first = snap["jobs"][0]
+    first.id = "41_0"
+    snap["jobs"].append(replace(first, id="41_1", name="other"))
+    views.job_rows(snap, app, shared=True)
+    if change == "correct":
+        first.name, first.cpus = "corrected", 8
+    elif change == "replace":
+        snap["jobs"][0] = replace(first, cpus=32)
+    elif change == "append":
+        snap["jobs"].append(replace(first, id="41_2", cpus=64))
+    elif change == "remove":
+        snap["jobs"].pop(0)
+    elif change == "filter":
+        app.filter = "other"
+    elif change == "sort":
+        table_sort.set_sort(app, "jobs", "id", "desc")
+    else:
+        app.table_state["groups"] = True
+        expanded = views.job_rows(snap, app, shared=True)
+        group = expanded[0]["_group"].group
+        job_groups.fold(app, group.id, True)
+    shared = views.job_rows(snap, app, shared=True)
+    expected = views.job_rows(snap, app)
+    assert shared == expected
+    for row in shared:
+        assert row["job"] is next(job for job in snap["jobs"] if job.id == row["id"])
+    if change == "group":
+        job_groups.fold(app, group.id, False)
+        assert views.job_rows(snap, app, shared=True) == views.job_rows(snap, app)
+        assert len(views.job_rows(snap, app, shared=True)) == 2

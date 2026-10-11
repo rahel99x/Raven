@@ -62,8 +62,15 @@ def prepare(destination):
                   "baseline": "baseline", "minimum_change": .5, "versions": [
                       {"id": name, "scientific_valid": True, "samples": [{"id": str(i), "value": value} for i, value in enumerate(samples)]}
                       for name, samples in [("baseline", [10, 10.1, 9.9, 10.2]), ("slower", [15, 15.2, 15.1, 15.4]), ("recovered", [8, 8.2, 7.9, 8.1])]]}
+    workflow = {"schema": "tower.investigation-workflow/v1",
+                "identity": {"cluster": "synthetic", "job_id": "0", "attempt": "offline-demo"},
+                "sources": [{"id": "pilot", "operation": "regression-investigation", "path": "regression.json"}],
+                "planner": "planner.json",
+                "diagnostics": [{"id": "accuracy-audit", "operation": "diagnostic-campaign", "manifest": "campaign.json",
+                                 "metrics": [{"name": "answer", "reference": 1, "absolute": 0, "relative": 0}]}]}
     for name, value in (("minimize.json", reproducer), ("campaign.json", numerical), ("planner.json", planner),
-                        ("recommendation.json", recommendation), ("lineage.json", lineage), ("regression.json", regression)):
+                        ("recommendation.json", recommendation), ("lineage.json", lineage), ("regression.json", regression),
+                        ("workflow.json", workflow)):
         (destination/name).write_text(json.dumps(value, indent=2)+"\n", encoding="utf-8")
     return destination
 

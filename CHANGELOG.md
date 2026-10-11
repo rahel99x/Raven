@@ -1,5 +1,34 @@
 # Changelog
 
+## 6.1.0
+
+- Fold the 56 tracked proposal entries into eight owning areas, with generated
+  capability references and explicit links to shared operations and qualification gates.
+- Use one registry for command metadata, static toolbar controls, task workspaces,
+  completion and command help. Preserve aliases and contextual execution handlers.
+- Share pane context and document geometry across Jobs/History Details, Research
+  and Analytics. Keep each pane's zoom separate from metric collection identity.
+- Unify capture ownership across pointer controls; preserve press/release ordering,
+  cancellation, stale-release guards, live updates and modal interception.
+- Publish immutable metric revisions with correction tracking and bounded retention.
+  Reuse prepared source data, copy only visible cached table rows, and avoid hidden
+  heatmap work. Reuse exact chart time buckets across presentation changes.
+- Coalesce governed scheduler and cached Prometheus reads through one acquisition
+  interface using existing workers. Retain invalidated source reservations until
+  collectors drain; preserve fresh action validation and subscriber cancellation.
+- Add a staged investigation workflow over existing evidence, analysis, diagnostic
+  planning and reviewed trial execution. Reuse bounded derived results with exact
+  source, attempt, algorithm and parameter identities.
+- Share committed-prefix trace acquisition across causal and collective analyses.
+  Treat explicit incomplete coverage and absent matching registrations as missing
+  evidence; guard against newly registered streams before publication.
+- Share trial admission, staging, execution, measurement and receipts. Revalidate
+  captured action plans before dispatch. Fix cancellation after closed output pipes
+  and prevent child launches after preparation exhausts the trial budget.
+- Preserve existing project schemas, commands, scientific algorithms, trial drivers,
+  ASCII/Unicode layouts and source limits. Real cluster and hardware qualification
+  remains site-specific; no universal lossless tracing claim is added.
+
 ## 6.0.0
 
 - Add Run, Investigate, Compare, Results and Connect workspaces, searchable and

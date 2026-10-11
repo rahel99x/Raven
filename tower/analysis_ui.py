@@ -200,8 +200,15 @@ def memory_series(app, jid):
 
 
 def _resource_series(app, jid):
+    from .views import prepared_series
+    return prepared_series(app, jid, ("resource-columns/v1", MAX_POINTS),
+                           lambda records: _resource_columns(records[-MAX_POINTS:]),
+                           memory_only=True)
+
+
+def _resource_columns(records):
     values = {"CPU per core (%)": [], "Memory (GB)": [], "GPU utilization (%)": []}
-    for sample in memory_series(app, jid):
+    for sample in records:
         if not isinstance(sample, dict) or not _finite(sample.get("t")):
             continue
         t = sample["t"]

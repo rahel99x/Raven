@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from itertools import islice
 
+from .pointer_routing import capture_handler
+
 MAX_ROWS = 4096
 
 
@@ -276,6 +278,7 @@ def _target(app, source):
     return dict(source, expected=evidence)
 
 
+@capture_handler("job_group_drag")
 def handle_mouse(app, y, x, button="left", shift=False, alt=False):
     state = initialize(app)
     capture = state["capture"]

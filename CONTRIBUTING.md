@@ -33,6 +33,13 @@ After changing a form or task descriptor, run
 `python3 scripts/generate_operation_reference.py`. Use its `--check` option in
 validation; do not maintain a second handwritten list of input defaults.
 
+Use `tower.command_registry` for built-in command metadata and static toolbar
+actions. Keep contextual validation in the appropriate command handler. Use
+`tower.capabilities` to assign proposals to their primary owner, then run
+`python3 scripts/generate_capability_reference.py --check`. Read the
+[consolidation guide](docs/guides/consolidation.md) before adding a second
+collection, pane, investigation, or action lifecycle.
+
 Never include SSH keys, credentials, personal config, real job logs, or private
 cluster information in an issue, fixture, or terminal capture. Report security issues
 through the process in [SECURITY.md](SECURITY.md).
@@ -63,6 +70,13 @@ Native history deques publish immutable tuples by mutation revision. Standard
 append, overwrite, deletion and reorder operations invalidate that revision.
 External history containers retain a full-value fallback. Do not substitute
 length/last-point comparisons: they miss corrected historical measurements.
+
+Native metric records use owned publications with nested correction tracking.
+Use the shared preparation helpers across a page and its Details view. Preserve
+memory-only Inspector reads and explicit report readers. Unsupported mutable
+extensions must retain the uncached path without running reducer or copy hooks
+during rendering. Include a test with more source identities than one viewport
+normally displays; byte and entry limits must remain effective together.
 
 ## Qualify an integration
 

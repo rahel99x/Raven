@@ -6,11 +6,13 @@ from collections import OrderedDict
 import pickle
 
 from . import charts
+from .series_cache_limits import (
+    MAX_SERIES_CACHE_ENTRIES as MAX_ENTRIES,
+    MAX_SERIES_CACHE_BYTES as MAX_TOTAL_BYTES,
+)
 
-MAX_ENTRIES = 8
 MAX_RECORDS = 64000
 MAX_SIGNATURE_BYTES = 4 << 20
-MAX_TOTAL_BYTES = 12 << 20
 
 
 class _Uncacheable(Exception):
@@ -102,6 +104,29 @@ class NativeSeriesCache:
         self.bytes = 0
 
     def remember(self, key, samples, build):
+        from .series_publication import PublishedSeries
+        if type(samples) is PublishedSeries:
+            # A Store-owned publication already captured nested corrections;
+            # comparing its retained identity is constant-time and exact.
+            token = samples.token
+            entry = self.entries.get(key)
+            if entry is not None and entry[0] is token:
+                self.entries.move_to_end(key)
+                return entry[1]
+            prepared = build(samples.records)
+            if entry is not None:
+                old = self.entries.pop(key)
+                self.bytes -= len(old[0]) if isinstance(old[0], bytes) else old[2]
+            # Bound managed preparations by observation count as well as the
+            # same byte budget. Unusually large sources take the uncached path.
+            cost = samples.byte_size
+            if len(samples) <= MAX_RECORDS and cost <= MAX_TOTAL_BYTES:
+                self.entries[key] = token, prepared, cost
+                self.bytes += cost
+                while len(self.entries) > MAX_ENTRIES or self.bytes > MAX_TOTAL_BYTES:
+                    _, old = self.entries.popitem(last=False)
+                    self.bytes -= len(old[0]) if isinstance(old[0], bytes) else old[2]
+            return prepared
         token = signature(samples)
         entry = self.entries.get(key)
         if token is not None and entry is not None and entry[0] == token:
@@ -118,13 +143,14 @@ class NativeSeriesCache:
         token = signature(snapshot) if token is not None else None
         prepared = build(snapshot)
         if entry is not None:
-            self.bytes -= len(self.entries.pop(key)[0])
+            old = self.entries.pop(key)
+            self.bytes -= len(old[0]) if isinstance(old[0], bytes) else old[2]
         if token is not None:
             self.entries[key] = token, prepared
             self.bytes += len(token)
             while len(self.entries) > MAX_ENTRIES or self.bytes > MAX_TOTAL_BYTES:
                 _, old = self.entries.popitem(last=False)
-                self.bytes -= len(old[0])
+                self.bytes -= len(old[0]) if isinstance(old[0], bytes) else old[2]
         return prepared
 
 

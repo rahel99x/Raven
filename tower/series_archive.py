@@ -179,7 +179,16 @@ class SeriesArchive:
             merged = [sample for sample in old if _sample_key(sample) not in seen] + mem
             merged.sort(key=_time)
             retained = merged[-self.store.series_keep:] if self.store.series_keep > 0 else []
-            self.store.series[jid] = deque(retained, maxlen=self.store.series_keep)
+            from .series_publication import SeriesDeque, managed_record
+            source = SeriesDeque(maxlen=self.store.series_keep, lock=self.store.lock)
+            previous = self.store.series[jid]
+            external = {id(sample) for sample in mem if not managed_record(sample) or sample._revision.series is not previous}
+            for sample in retained:
+                if id(sample) in external:
+                    source.append(sample)
+                else:
+                    source.append_owned(sample)
+            self.store.series[jid] = source
             self.store._series_loaded.add(jid)
             if status.get("status") == "limited":
                 self.limited.add(jid)
@@ -187,22 +196,26 @@ class SeriesArchive:
                 self.limited.discard(jid)
             self._status(jid, status)
 
-    def read(self, jid, *, background=False):
+    def read(self, jid, *, background=False, publication=False):
+        def published():
+            from .series_publication import SeriesDeque
+            source = self.store.series[jid]
+            return source.publication() if publication and type(source) is SeriesDeque else list(source)
         with self.store.lock:
             if jid in self.store._series_loaded and (background or jid not in self.limited):
-                return list(self.store.series[jid])
+                return published()
             path, identity = self.store._series_path(jid), self._identity(jid)
             if path is None:
                 self.store._series_loaded.add(jid)
-                return list(self.store.series[jid])
-            memory = list(self.store.series[jid])
+                return published()
+            memory = published()
         if background:
             self._schedule(jid, identity)
             return memory
         old, status = read_tail(path, self.store.series_keep)
         self._merge(jid, identity, old, status)
         with self.store.lock:
-            return list(self.store.series[jid])
+            return published()
 
     def jobs(self, *, background=False):
         if not background:
@@ -257,7 +270,7 @@ class SeriesArchive:
                 # A corrupt saved record or disappearing directory cannot leave
                 # the sole archive worker permanently marked as running.
                 with self.store.lock:
-                    if epoch == self.epoch:
+                    if epoch == self.epoch and (key is _INDEX or self._identity(key) == identity):
                         self._status(key, dict(status="error", message="Could not restore saved metrics: " + str(exc)[:256]))
                         if key is _INDEX:
                             self.index_at = time.monotonic()

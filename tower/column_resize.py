@@ -11,6 +11,8 @@ from itertools import islice
 
 from .table_sort import valid_header
 
+from .pointer_routing import capture_handler
+
 MAX_HEADERS = 160
 RECENT_ALIASES = {"id": "id", "name": "name", "part": "part", "st": "state",
                   "where": "nodes", "cpus": "cpus", "gpu": "gpus", "time": "elapsed",
@@ -185,6 +187,7 @@ def _save(app):
         callback()
 
 
+@capture_handler("column_resize")
 def handle_mouse(app, y, x, button="left", shift=False):
     if type(y) is not int or type(x) is not int:
         return False

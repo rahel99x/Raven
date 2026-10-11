@@ -649,13 +649,8 @@ def _read_input(stdscr, curses):
 
 def _protect_pointer_escape(app):
     """Allow a short report-prefix grace while a pointer gesture owns input."""
-    states = (("chart_interaction_state", "capture"), ("metric_live_state", "capture"),
-              ("column_resize_state", "capture"), ("group_queue_drag_state", "capture"),
-              ("job_group_drag_state", "capture"),
-              ("job_selection_state", "capture"), ("text_selection_state", "capture"),
-              ("scrollbar_state", "capture"), ("pane_drag_state", "capture"),
-              ("history_browser_state", "drag"), ("toolbar_state", "dragging"))
-    return any((getattr(app, name, None) or {}).get(key) for name, key in states)
+    from .pointer_routing import active
+    return active(app)
 
 
 def _navigation_context(app):
@@ -694,37 +689,8 @@ def _finish_unheld_pointer(app, mouse, curses):
     """
     if getattr(mouse, "held", None) is not False or not _motion_report(mouse[4], curses):
         return
-    for name in ("column_resize", "group_queue_drag"):
-        if (getattr(app, name + "_state", {}) or {}).get("capture"):
-            from importlib import import_module
-            import_module("tower." + name).cancel(app)
-    move = getattr(app, "job_group_drag_state", {}) or {}
-    if move.get("capture") or move.get("pending"):
-        from .job_group_drag import cancel as cancel_group_drag
-        cancel_group_drag(app)
-    selection = getattr(app, "job_selection_state", {}) or {}
-    text = getattr(app, "text_selection_state", {}) or {}
-    if selection.get("capture") or text.get("capture"):
-        from .scrollbars import commit_selection_gesture
-        commit_selection_gesture(app)
-    if (getattr(app, "chart_interaction_state", {}) or {}).get("capture"):
-        from .chart_interaction import cancel
-        cancel(app)
-    if (getattr(app, "metric_live_state", {}) or {}).get("capture"):
-        from .metric_live import cancel
-        cancel(app)
-    if (getattr(app, "pane_drag_state", {}) or {}).get("capture"):
-        from .pane_drag import cancel
-        cancel(app)
-    if (getattr(app, "scrollbar_state", {}) or {}).get("capture"):
-        from .scrollbars import cancel
-        cancel(app)
-    if (getattr(app, "history_browser_state", {}) or {}).get("drag"):
-        from .history_browser import handle_key
-        handle_key(app, "esc")
-    toolbar = getattr(app, "toolbar_state", {}) or {}
-    if toolbar.get("dragging") or toolbar.get("pressed"):
-        toolbar.update(dragging=False, pressed=False, drag_width=None)
+    from .pointer_routing import cancel_capture
+    cancel_capture(app, reason="unheld")
 
 
 def _batchable_input(app, event, curses):

@@ -11,6 +11,7 @@ runs outside rendering. Moving the mouse does not execute a scientific program.
 
 | Operation | Manifest schema | Result |
 | --- | --- | --- |
+| `:ops investigation-workflow` | `tower.investigation-workflow/v1` | One staged report from evidence and existing analyzers through reviewed diagnostics to measured findings |
 | `:ops recommendation` | `tower.recommendation-review/v1` | Applicable hypothesis, supported/refuted experiment, stale, expired or inconclusive evidence |
 | `:ops investigation-plan` | `tower.investigation-plan/v1` | Ordered information actions within declared budgets |
 | `:ops scientific-impact` | `tower.scientific-lineage/v1` | Affected claims, missing lineage and proposed revalidation actions |
@@ -31,6 +32,90 @@ driver. Cancel a Slurm allocation through its reviewed Jobs action.
 The [schemas](../schemas/) are named `investigation-*.schema.json`. Runtime
 validation also checks source identity, unique IDs, finite values, graph cycles,
 budget relationships, and placeholder bindings that JSON Schema cannot express.
+
+## A staged investigation
+
+Open **Investigate → Staged job investigation**, or enter
+`:ops investigation-workflow`. Use one workflow manifest to connect existing
+scientific tools. The scrollable report shows evidence, findings, missing
+information, suggested diagnostics, execution state, and updated findings.
+Inspection runs in an operation worker. It does not collect data during paint
+or execute commands from capability files.
+
+1. Set **Workflow manifest**, leave **Stage** at `inspect`, and select **Inspect**.
+2. Read the findings and excluded actions. Missing files and unknown findings do
+   not satisfy the planner's prerequisites. The workflow computes available
+   evidence from this inspection; it replaces the planner's `known_evidence` list.
+3. Choose an admitted **Diagnostic ID**, enter a new **Diagnostic workspace**,
+   and set **Stage** to `review-diagnostic`. Select **Inspect**. Read the nested
+   campaign, minimizer, or regression review and its actual resource limits.
+4. Select **Confirm apply** to run that reviewed diagnostic. The existing
+   operation receipt and source revalidation mechanisms still apply.
+5. Set **Stage** to `status` and select **Inspect**. Use the same diagnostic ID
+   and workspace. This reads the retained outcome; it does not repeat execution.
+
+The manifest declares `identity` with `cluster`, exact numeric Slurm `job_id`
+(including a task or step suffix when needed), and producer `attempt`.
+When a job is selected, also supply `scheduler` with its exact `submit`, `start`
+and `user` strings. Tower refuses a mismatched cluster, ambiguous selection,
+changed scheduler anchor, or recommendation for another attempt. A producer's
+attempt label and measurement coverage remain declarations, not independent
+proof of source authenticity.
+
+`sources` contains up to 16 entries with unique `id`, an analysis `operation`,
+and `path`. Supported analyses are `recommendation`, `scientific-impact`,
+`numerical-stability`, `regression-investigation`, `causal-delay`, and
+`collective-audit`. `planner` is the path to
+an existing investigation-plan manifest. `diagnostics` links a planner action
+ID to `operation` and `manifest` for an existing `diagnostic-campaign`,
+`minimize-reproducer`, or `regression-sweep`. Paths are relative to the workflow
+manifest and read through the current connection. Combined workflow sources
+are limited to 8 MiB. The
+[workflow schema](../schemas/investigation-workflow.schema.json) describes the
+fields. All original standalone analysis forms remain available.
+
+An optional `intent` object contains `manifest` and `capabilities` paths. The
+existing diagnostic compiler supplies an additional collection proposal. Its
+capability-file commands remain inspection-only. Execution requires a separately
+linked, reviewed diagnostic recipe. Planner costs are predictions; the nested
+execution review displays its actual enforced limits.
+
+A campaign link can declare `metrics` using the numerical-stability policies
+(`name`, `reference`, `absolute`, `relative`). On **status**, Tower reads each
+trial's real `result.json` and uses its top-level metric names. It maps repetitions
+to the declared campaign cases and runs the existing numerical analyzer. Missing
+files, unexecuted trials, and failed execution oracles remain missing measurements.
+They cannot produce a passing check. No conversion command or external program
+is required for this step. Other diagnostic kinds display their own retained
+outcomes; process completion does not by itself prove a scientific claim.
+
+Pure analyses share a bounded result cache. Cache keys include connection,
+source identity, complete input revision, algorithm version, and settings.
+Results are retained as immutable JSON bytes; views receive isolated values.
+Equivalent in-flight analyses are joined. Different attempts and revisions do
+not share results. Recommendation expiry is evaluated on every inspection.
+Changed evidence invalidates publication and reviewed execution. Each explicit
+inspection still reads and verifies its sources; this cache never authorizes an
+action from an old observation.
+
+For causal or collective sources, `path` names a registered trace project or a
+single trace manifest. Both analyses share one bounded acquisition when they use
+the same path. The existing journal reader verifies exact job, attempt, cluster,
+process identity, sequence and checksum chains. Pure analysis results are cached
+by the checked prefix. Later append-only records may extend an open recording;
+they do not rewrite its already checked prefix. Prefix corrections, changed
+coverage/loss declarations, and a changed registered stream set require a new
+inspection. Open, truncated, invalid, missing-rank, or unsupported evidence remains
+unknown and cannot satisfy planner prerequisites. Cross-node timestamp order does
+not establish causality. A closed journal with no omitted records proves only its
+declared instrumented scope. Trace acquisition currently requires Tower on the
+target host, as in the existing standalone trace tools.
+
+The offline generator also writes `workflow.json`. Its identity is explicitly
+synthetic. Adapt that identity and scheduler anchor to actual evidence before
+opening it from a selected live job. The generated `accuracy-audit` link runs
+the same numerical demonstration described below and reads its trial outputs
+directly on **status**.
 
 ## Recommendation validity
 

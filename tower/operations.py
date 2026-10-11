@@ -175,7 +175,12 @@ def _process(argv, timeout, limit, cancel=None):
                         if sum(map(len, buffers.values())) + len(chunk) > limit:
                             raise CommandError("Command output exceeded the inspection limit.")
                         buffers[key.data].extend(chunk)
-        process.wait(timeout=max(.01, deadline - time.monotonic()))
+        from .diagnostic_trials import wait_for_exit
+        reason = wait_for_exit(process, deadline, cancel)
+        if reason == "cancelled":
+            raise CommandError("Operation cancelled; command outcome can require reconciliation.")
+        if reason == "timeout":
+            raise CommandError("Command timed out; inspect current state before retrying an action.")
         out = buffers["out"].decode("utf-8", "replace")
         if process.returncode:
             error = buffers["err"].decode("utf-8", "replace") or out
@@ -376,46 +381,6 @@ def run(feature, params, ctx):
 
 
 def apply(feature, plan, ctx):
-    validate_plan(plan, ctx, feature)
+    from .action_lifecycle import execute
     callback = getattr(_registry()[feature][0], "apply", None)
-    if callback is None:
-        raise ValueError("This operation is read-only.")
-    receipt = None
-    if ctx.state_dir:
-        from .services_io import private_directory
-        directory = private_directory(Path(ctx.state_dir) / "operations-receipts")
-        receipt = directory / (plan["digest"] + ".result.json")
-        try:
-            atomic_json(directory / (plan["digest"] + ".intent.json"), {
-                "schema": "tower.operation-receipt/v1", "state": "started",
-                "feature": feature, "scope": ctx.scope, "plan_digest": plan["digest"],
-                "started": time.time(), "result_path": str(receipt)})
-        except FileExistsError as exc:
-            raise ValueError("This plan was already attempted. Read its receipt and inspect current state before retrying.") from exc
-    try:
-        value = callback(feature, copy.deepcopy(plan), ctx)
-        if not isinstance(value, dict) or value.get("schema") != REPORT_SCHEMA or value.get("feature") != feature:
-            raise ValueError("The adapter did not return a valid action receipt; inspect current state.")
-        canonical(value)
-    except Exception as exc:
-        if receipt is not None:
-            try:
-                atomic_json(receipt, {"schema": "tower.operation-receipt/v1", "state": "error",
-                    "feature": feature, "scope": ctx.scope, "plan_digest": plan["digest"],
-                    "finished": time.time(), "error": clean(exc),
-                    "reconciliation": "The action may have partially completed. Inspect current state before a new review."})
-            except (OSError, ValueError):
-                pass  # The durable intent still identifies the unresolved attempt.
-        raise
-    if receipt is not None:
-        try:
-            atomic_json(receipt, {"schema": "tower.operation-receipt/v1", "state": "finished",
-                "feature": feature, "scope": ctx.scope, "plan_digest": plan["digest"],
-                "finished": time.time(), "result": value})
-            value["receipt_path"] = str(receipt)
-        except (OSError, ValueError) as exc:
-            value.setdefault("warnings", []).append("Action result could not be saved: " + clean(exc)
-                + ". Its durable intent remains; copy this report before closing.")
-    else:
-        value.setdefault("warnings", []).append("State storage is disabled; copy this action report before closing.")
-    return value
+    return execute(feature, plan, ctx, callback)

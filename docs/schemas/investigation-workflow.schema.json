@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slurm-tower.dev/schemas/investigation-workflow.schema.json",
+  "title": "Staged job investigation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "identity", "sources", "planner", "diagnostics"],
+  "properties": {
+    "schema": {"const": "tower.investigation-workflow/v1"},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["cluster", "job_id", "attempt"],
+      "properties": {
+        "cluster": {"$ref": "#/$defs/id"},
+        "job_id": {"type": "string", "maxLength": 512, "pattern": "^[0-9]+(?:_[0-9]+)?(?:\\+[0-9]+)?(?:\\.[A-Za-z0-9_-]+)?$"},
+        "attempt": {"$ref": "#/$defs/id"}
+      }
+    },
+    "scheduler": {
+      "type": "object", "additionalProperties": false,
+      "required": ["submit", "start", "user"],
+      "properties": {"submit": {"$ref": "#/$defs/id"}, "start": {"$ref": "#/$defs/id"}, "user": {"$ref": "#/$defs/id"}}
+    },
+    "sources": {
+      "type": "array", "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "operation", "path"],
+        "properties": {
+          "id": {"$ref": "#/$defs/name"},
+          "operation": {"enum": ["recommendation", "scientific-impact", "numerical-stability", "regression-investigation", "causal-delay", "collective-audit"]},
+          "path": {"$ref": "#/$defs/path"}
+        }
+      }
+    },
+    "planner": {"$ref": "#/$defs/path"},
+    "diagnostics": {
+      "type": "array", "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "operation", "manifest"],
+        "properties": {
+          "id": {"$ref": "#/$defs/name"},
+          "operation": {"enum": ["diagnostic-campaign", "minimize-reproducer", "regression-sweep"]},
+          "manifest": {"$ref": "#/$defs/path"},
+          "metrics": {
+            "type": "array", "minItems": 1, "maxItems": 128,
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["name", "reference", "absolute", "relative"],
+              "properties": {
+                "name": {"$ref": "#/$defs/name"}, "reference": {"type": "number"},
+                "absolute": {"type": "number", "minimum": 0}, "relative": {"type": "number", "minimum": 0}
+              }
+            }
+          }
+        },
+        "allOf": [{"if": {"required": ["metrics"]}, "then": {"properties": {"operation": {"const": "diagnostic-campaign"}}}}]
+      }
+    },
+    "intent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["manifest", "capabilities"],
+      "properties": {"manifest": {"$ref": "#/$defs/path"}, "capabilities": {"$ref": "#/$defs/path"}}
+    }
+  },
+  "$defs": {
+    "name": {"type": "string", "minLength": 1, "maxLength": 256},
+    "id": {"type": "string", "minLength": 1, "maxLength": 512},
+    "path": {"type": "string", "minLength": 1, "maxLength": 4096}
+  }
+}

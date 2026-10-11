@@ -34,6 +34,13 @@ _READERS = {
 }
 
 SPECIFICATIONS = [
+    {"key": "investigation-workflow", "title": "Staged job investigation", "group": "Investigation", "proposal": "Consolidation",
+     "summary": "Join evidence, findings, missing information, diagnostic planning, reviewed execution and updated measurements.",
+     "fields": [_field("manifest", "Workflow manifest", required=True),
+                _field("action", "Stage", "inspect", choices=["inspect", "review-diagnostic", "status"]),
+                _field("diagnostic_id", "Diagnostic ID (review or status)"),
+                _field("destination", "Diagnostic workspace (new for review)")]},
+] + [
     {"key": key, "title": title, "group": "Investigation", "proposal": "Flagship",
      "summary": summary, "fields": [_field("manifest", "Investigation manifest", required=True)]}
     for key, (title, summary, _) in _READERS.items()
@@ -111,6 +118,7 @@ def _status(feature, params, ctx):
     state = str(result.get("state", "unknown")) if result else "running" if running else "interrupted" if process else "starting-or-unknown"
     return {"workspace": str(root), "recipe_sha256": trials._hash(recipe), "mode": recipe["mode"],
             "state": state, "running": running, "process": process, "result": result,
+            "workflow_binding": receipt.get("workflow_binding"),
             "cancel_requested": (root/"cancel.intent.json").exists(),
             "sources": [receipt_source, recipe_source, *([process_source] if process_source else [])]}
 
@@ -228,8 +236,12 @@ def _rows(feature, data):
 
 
 def run(feature, params, ctx):
+    if feature == "investigation-workflow":
+        from .investigation_workflow import run as workflow
+        return workflow(params, ctx)
     if feature in _READERS:
-        data = _READERS[feature][2](_load(params, ctx))
+        from .investigation_workflow import analyze
+        data = analyze(feature, _load(params, ctx), ctx)
         O.checkpoint(ctx)
         warning = data.get("state") in {"failed", "unknown", "inconclusive", "expired", "stale", "refuted", "inapplicable"} or bool(data.get("unresolved_claims"))
         return O.report(feature, _READERS[feature][0], status="warning" if warning else "ok", rows=_rows(feature, data), data=data)
@@ -277,6 +289,9 @@ def run(feature, params, ctx):
 
 
 def apply(feature, plan, ctx):
+    if feature == "investigation-workflow":
+        from .investigation_workflow import apply as workflow
+        return workflow(plan, ctx)
     if feature not in {"diagnostic-campaign", "minimize-reproducer", "regression-sweep"}:
         raise ValueError("This investigation is read-only")
     O.local_only(ctx)
@@ -320,7 +335,8 @@ def apply(feature, plan, ctx):
                                           ("execution.json", O.canonical(payload["execution"])+b"\n", False),
                                           ("diagnostic.sbatch", payload["script"].encode(), True), *archives],
                           copies=[(item["record"], item["target"]) for item in payload["copies"]],
-                          receipt={"schema": "tower.diagnostic-workspace/v1", "plan_digest": plan["digest"], "scope": ctx.scope},
+                          receipt={"schema": "tower.diagnostic-workspace/v1", "plan_digest": plan["digest"], "scope": ctx.scope,
+                                   **({"workflow_binding": plan["workflow_binding"]} if "workflow_binding" in plan else {})},
                           cancel=ctx.cancel)
     O.atomic_json(root/"launch.intent.json", {"schema": "tower.diagnostic-launch/v1", "state": "started", "plan_digest": plan["digest"], "scope": ctx.scope, "created": time.time()})
     if recipe["mode"] == "local-diagnostic":

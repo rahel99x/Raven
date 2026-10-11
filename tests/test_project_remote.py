@@ -34,6 +34,25 @@ class IsolatedSSH:
         return result.stdout, 0
 
 
+def test_bundled_model_publications_work_without_installed_tower(tmp_path):
+    """Model imports and lazy history dependencies must travel with the helper."""
+    bootstrap = project_remote._BOOTSTRAP.partition("from tower import projects")[0]
+    script = bootstrap + '''
+from tower.model import Store
+store = Store(persist=False)
+store.record("71", {"k": "live", "t": 1.0, "cpu": .5})
+first = store.series_publication("71", memory_only=True)
+same = first is store.series_publication("71", memory_only=True)
+store.series["71"][0]["cpu"] = .75
+second = store.series_publication("71", memory_only=True)
+print(json.dumps({"reused": same, "original": first[0]["cpu"], "corrected": second[0]["cpu"]}))
+'''
+    result = subprocess.run(["python3", "-I", "-S", "-c", script, "{}", *project_remote._payload()],
+                            cwd=tmp_path, text=True, capture_output=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"reused": True, "original": .5, "corrected": .75}
+
+
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value))

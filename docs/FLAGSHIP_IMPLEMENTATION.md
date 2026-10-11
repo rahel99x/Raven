@@ -10,6 +10,14 @@ mechanism covers only the stated subset. **External gate** means it requires
 real site, user or research evidence that cannot be produced by an offline test.
 An implementation does not establish production certification or novelty.
 
+The [6.1 consolidation](guides/consolidation.md) assigns these overlapping
+requirements to [eight owning areas](reference/capabilities.md) and shares
+publication, collection, presentation, investigation, trial, and action
+mechanisms. Each of the 56 original entries has one primary owner; related
+entries remain references to overlap. This changes implementation ownership,
+not the scientific, site, or external-adoption gate claims below. Consolidation
+does not turn a supported subset into the unrestricted original proposal.
+
 ## Open the relevant task
 
 Use `:workbench run|investigate|compare|results|connect|all`, or the task controls
@@ -27,14 +35,14 @@ capture paths; it does not silently attach an arbitrary debugger.
 | --- | --- | --- |
 | 01 Task workspaces | Shared task descriptors filter the searchable operation catalog; durable pinned tools have keyboard/mouse controls and reopen with current job context. | **External gate:** newcomer task study; no measured usability improvement claimed. |
 | 02 Context/navigation | Back/Forward and scoped saved locations remain available. Cached breadcrumbs show known cluster, matched project/run attempt and declared source; changed scheduler attempts suppress stale bindings. | Session back stacks remain transient; narrow screens omit optional context before hiding the current page/job. |
-| 03 Command model | Task descriptors and operation specifications drive task controls and forms; existing commands remain available. | **Partial:** legacy keyboard/menu definitions are not all generated from one registry. |
+| 03 Command model | Shared command descriptors supply command names, usage, palette search/completion, toolbar action metadata, task controls and generated command help; installed operation specifications supply forms and field choices. | **Partial:** contextual input handlers, raw-key dispatch and specialist controls remain module-owned with their own validation; trusted plugins keep their separate dispatch contract. |
 | 04 Project guide | `:projectguide ROOT` / `project-guide` checks declaration coverage and one exact sample's metrics, summary, output contents and bounded logs through confined local/SSH readers; executable Bash hooks and reviewed descriptor initialization. | Sample coverage is bounded and source-specific; native Research analyses still establish scientific applicability. |
 | 05 Investigation timeline | `investigation-timeline` verifies the selected attempt and joins supported scheduler events, bounded logs and registered trace evidence; explicit timeline manifests remain supported. | Original text, source order and unknown clock domains remain distinct; no automatic universal log parser or cross-clock causal order. |
 | 06 Semantic inspection | Evidence records retain units, source and coverage; existing raw/trend/range chart distinctions; `scientific-field` provides bounded field queries. | Full arbitrary-volume scientific visualization remains outside the terminal core. |
 | 07 Accessibility | Existing keyboard traversal, ASCII, reader mode, reduced motion, focus, resizable panes and selection remain available. | **External gate:** real emulator, multiplexer, font and assistive-technology qualification. |
-| 08 Gesture state | Shared typed high-priority capture routing and fresh-gesture reset in native/direct paths; regressions cover stale releases into the toolbar. | **Partial:** retain established per-control state machines; no risky replacement of the byte decoder. |
-| 09 Immutable publication | Render snapshots reuse revisioned immutable CPU/GPU history tuples. Corrections to interior samples invalidate publication. | **Partial:** unrelated full document composition and other Store fields are not universally incremental. |
-| 10 Virtual documents | Existing visible-row/plot rendering, bounded indexed selection and source caches remain in use. | More pane-level invalidation is a future measured optimization; no unbounded document promise. |
+| 08 Gesture state | One pointer lease owns motion/release across eleven control families in native and direct dispatch, with shared cancellation and fresh-gesture reset. Pane-scoped zoom retains the shared exact metric acquisition identity. | **Partial:** geometry, attempt checks, previews, rollback and validation remain in the existing per-control state machines; terminal byte decoding retains its established protocol. |
+| 09 Immutable publication | Store-owned revisioned immutable metric publications and CPU/GPU histories feed shared native-series, resource-column, comparison and Advisor preparations. Supported nested corrections invalidate source revisions; publication and preparation retention have bounded shared limits. | **Partial:** unmanaged extension writes retain exact content checking or uncached fallback; other Store fields and full document composition are not universally incremental. |
+| 10 Virtual documents | Explicit pane contexts replace whole-App copies. Research and Analytics Details and native Job Series share document transforms for rows, controls, charts and scrollbars, with bounded visible-band rendering and first-publication, growth, resize and attempt-change handling. | Bounded documents may recompose to establish valid geometry after a first publication or scrolled resize. Other panes retain specialized renderers; no unbounded or universally incremental document promise. |
 | 11 Work admission | Nested cluster readers use the shared scheduler and cooperative child gathering; settings use one coalesced background writer. | Adapter/service processes retain their explicit resource contracts; not every external tool obeys Python worker counts. |
 | 12 Latency budgets | Existing bounded UI timings, p95/p99, sustained-input and changing-UI harnesses; new snapshot comparison and qualification controls. | **External gate:** release-target performance on actual terminals and SSH; targets are not results. |
 | 13 State/reconnect | Atomic versioned/checksummed UI state, last-good recovery, older-state compatibility, future-schema preservation and final background-save drain. | Filesystem/node failure can still lose uncommitted state; external transports have separate replay contracts. |

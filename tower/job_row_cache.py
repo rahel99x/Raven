@@ -8,6 +8,8 @@ Arbitrary action/plugin callbacks keep their original uncached behavior.
 from __future__ import annotations
 
 from dataclasses import fields
+from collections.abc import Mapping
+from types import MappingProxyType
 from operator import attrgetter
 
 from . import clock
@@ -32,14 +34,34 @@ def _copy_rows(rows):
     for row in rows:
         value = dict(row)
         for key in ("_styles", "_sort"):
-            if isinstance(value.get(key), dict):
+            if isinstance(value.get(key), Mapping):
                 value[key] = dict(value[key])
         result.append(value)
     return result
 
 
-def lookup(views, snap, app, actions, progress_sources, cascade):
-    """Return (complete input key, copied cached rows or None).
+def _freeze_rows(rows):
+    """Own immutable native row maps once, while retaining checked job refs."""
+    result = []
+    for row in rows:
+        value = dict(row)
+        for key in ("_styles", "_sort"):
+            if isinstance(value.get(key), Mapping):
+                value[key] = MappingProxyType(dict(value[key]))
+        result.append(MappingProxyType(value))
+    return tuple(result)
+
+
+def copy_visible(rows):
+    """Only visible native rows need mutable marks and presentation styles."""
+    return _copy_rows(rows)
+
+
+def lookup(views, snap, app, actions, progress_sources, cascade, *, shared=False):
+    """Return (complete input key, independent cached rows or None).
+
+    Native table consumers may opt into immutable shared rows and copy only
+    their visible slice. External consumers retain independent mutable maps.
 
     ``progress_sources`` is the already validated output of
     ``job_progress.published`` for this pass. No report, scheduler or file is
@@ -94,11 +116,11 @@ def lookup(views, snap, app, actions, progress_sources, cascade):
            getattr(views.g, "pin", "^"), tuple(views.th.get(name) for name in _THRESHOLDS))
     cached = getattr(_owner(app), "job_rows_cache_state", None)
     if cached is not None and cached[0] is views and cached[1] == key:
-        return key, _copy_rows(cached[2])
+        return key, cached[2] if shared else _copy_rows(cached[2])
     return key, None
 
 
 def remember(views, app, key, rows):
     """Keep one prepared pass; never store collapsed/group-decorated rows."""
     owner = _owner(app)
-    owner.job_rows_cache_state = None if key is None else (views, key, _copy_rows(rows))
+    owner.job_rows_cache_state = None if key is None else (views, key, _freeze_rows(rows))

@@ -15,6 +15,8 @@ from typing import Any, Deque, Dict, List, Optional, Sequence
 from . import clock
 from .series_archive import SeriesArchive
 from .history_snapshots import HistoryDeque, immutable_histories
+from .series_publication import SeriesDeque
+from .series_cache_limits import MAX_SERIES_CACHE_ENTRIES, MAX_SERIES_CACHE_BYTES
 from . import ui_state
 
 
@@ -490,8 +492,10 @@ class Store:
         self.events: Deque[dict] = collections.deque(maxlen=max_events)
         self.hist_cpu: Dict[str, Deque[float]] = collections.defaultdict(HistoryDeque)
         self.hist_gpu: Dict[str, Deque[float]] = collections.defaultdict(HistoryDeque)
-        self.series: Dict[str, Deque[dict]] = collections.defaultdict(lambda: collections.deque(maxlen=series_keep))
+        self.series: Dict[str, Deque[dict]] = collections.defaultdict(lambda: SeriesDeque(maxlen=series_keep, lock=self.lock))
         self.series_keep = series_keep
+        self._series_scope = object()
+        self._publications = collections.OrderedDict()
         self._series_loaded: set = set()
         self.gpu_mean: Dict[str, List[float]] = collections.defaultdict(lambda: [0.0, 0])
         self.prev_cpu: Dict[str, tuple] = {}
@@ -858,8 +862,11 @@ class Store:
     def record(self, jid: str, sample: dict, *, _persist: bool = True):
         """Append a captured sample; defer IO when inside a larger publication."""
         with self.lock:
-            self.series[jid].append(sample)
-            self._queue_persistence(self._series_path(jid), sample)
+            series = self.series[jid]
+            captured = series.append_owned(sample) if type(series) is SeriesDeque else None
+            if type(series) is not SeriesDeque:
+                series.append(sample)
+            self._queue_persistence(self._series_path(jid), captured if captured is not None else sample)
         if _persist:
             self.flush_persistence(_series_only=True)
         return sample
@@ -875,6 +882,30 @@ class Store:
     def series_view(self, jid: str) -> List[dict]:
         """Read published samples immediately; request saved history off-thread."""
         return self._series_archive.read(jid, background=True)
+
+    def series_publication(self, jid: str, *, background=True, memory_only=False):
+        """Reuse an owned source revision across chart and advisor consumers."""
+        from .series_publication import PublishedSeries
+        if memory_only:
+            with self.lock:
+                source = self.series.get(jid, ())
+                publication = source.publication() if type(source) is SeriesDeque else list(source)
+        else:
+            publication = self._series_archive.read(jid, background=background, publication=True)
+        if type(publication) is PublishedSeries:
+            with self.lock:
+                source = self.series.get(jid)
+                if type(source) is SeriesDeque and source._source is publication:
+                    previous = self._publications.pop(jid, None)
+                    if previous and previous[0] is not source:
+                        previous[0].release_publication()
+                    self._publications[jid] = source, publication.byte_size
+                    size = sum(entry[1] for entry in self._publications.values())
+                    while len(self._publications) > MAX_SERIES_CACHE_ENTRIES or size > MAX_SERIES_CACHE_BYTES:
+                        _, (expired, cost) = self._publications.popitem(last=False)
+                        size -= cost
+                        expired.release_publication()
+        return publication
 
     def series_status(self, jid: str) -> dict:
         """Explain whether saved history is loading, missing, limited or ready."""

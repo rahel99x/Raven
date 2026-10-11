@@ -9,7 +9,7 @@ import os
 import re
 from typing import Dict, List, Optional, Sequence
 
-from . import clipboard, export, workbench
+from . import clipboard, export, workbench, command_registry
 from .logs import LogSession
 from .actions import Actions
 from .model import Job, Store, secs
@@ -1443,53 +1443,19 @@ class App:
             self.fail("A background command is still running; retry report when it finishes")
 
     # ---- the command palette -----------------------------------------------------------------------
-    COMMANDS = ["cancel", "hold", "release", "requeue", "top", "filter", "sort", "days", "tab", "view", "export", "copy", "gpu", "bell", "source",
-                "theme", "refresh", "mark", "unmark", "log", "find", "profile", "eval", "advise", "compare", "tag", "untag", "pin", "note", "chain", "resubmit", "replay", "wrap",
-                "bookmark", "help", "quit", "metric", "metrics", "passport", "validate", "artifacts", "prepare", "submit", "investigate", "array",
-                "predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow", "choose"]
+    COMMANDS = list(command_registry.CORE_NAMES)
 
     def commands(self) -> List[str]:
-        return list(dict.fromkeys(self.COMMANDS + workbench.command_names() + (sorted(self.plugins.commands) if self.plugins else [])))
+        return command_registry.command_names(self, core=self.COMMANDS)
 
     def palette_hint(self) -> str:
         word = self.palette_edit.split(" ")[0]
         cmds = self.commands()
         if not self.palette_edit:
             return "commands: " + " ".join(cmds) + "   (Tab completes, Enter runs, Esc closes)"
+        if word in cmds and " " in self.palette_edit:
+            return command_registry.usage(word, self)
         matches = [c for c in cmds if c.startswith(word)]
-        hints = {"cancel": "cancel [ids | marked | all]", "hold": "hold [ids | marked]", "release": "release [ids | marked]", "requeue": "requeue [ids | marked]",
-                 "top": "top [ids | marked]", "filter": "filter <text>", "sort": "sort <" + "|".join(SORTS.get(self.tab, ["name"])) + ">", "days": "days <" + "|".join(f"{d:g}" for d in self.days_options) + ">",
-                 "tab": "tab <" + "|".join(t for t, _ in TABS) + ">", "view": "view <job|history|timeline|advisor|compare>", "export": "export <text|csv|json|report>", "copy": "copy [all|a b] (log lines or screen rows, 1-based)",
-                 "replay": "replay <pause|play|back|fwd|slower|faster|speed N|seek HH:MM|+60|50%>", "wrap": "wrap  (Log tab: wrap or cut long lines)", "bookmark": "bookmark  (Log tab: mark the current line; ' jumps)",
-                 "gpu": "gpu <on|off>", "bell": "bell <on|off>", "source": "source <name> <on|off>", "theme": "theme <default|mono|high>", "mark": "mark <ids | all>", "unmark": "unmark [ids]",
-                 "log": "log <id>", "find": "find <text>  (regular expression; N / P next / previous match)", "refresh": "refresh", "help": "help", "quit": "quit",
-                 "profile": "profile <" + "|".join(self.cfg.profiles()) + ">  (restarts on that cluster)" if self.cfg.profiles() else "profile: none configured ([profiles.<name>] in the config)",
-                 "eval": "eval <expression>  e.g. [j.id for j in running if j.cpu < 0.3]",
-                 "advise": "advise [id | name]  (what the job should ask for: --mem --cpus-per-task --time)", "compare": "compare [ids | marked | clear]  (the Analytics compare view)",
-                 "tag": "tag [ids] <tags...>  (on the marked or selected jobs; filter #tag finds them)", "untag": "untag [ids] <tags...>", "pin": "pin [ids]  (toggle: pinned jobs stay on top)",
-                 "note": "note [id] <text>  (a note shown with the job; empty clears)", "chain": "chain <cancel|hold|release> [id]  (the job and everything downstream)",
-                 "resubmit": "resubmit [id] [--mem 12G] [--time 03:00:00] [-c 4] [--gres gpu:a100:2] [-p gpu] [--dependency=] [--script PATH] [--advised]  (clone the job; sbatch --test-only previews it)"}
-        if self.plugins:
-            hints.update({k: v[1] for k, v in self.plugins.commands.items()})
-        hints.update({"metrics": "metrics FILE (attach a JSONL experiment stream)",
-                      "workers": "workers [single|multi|toggle|status] (background collection; the UI remains separate)",
-                      "metric": "metric FILE --value NAME=NUMBER [--step N] [--completed N --total N]",
-                      "artifacts": "artifacts CONTRACT ROOT (attach a declared output contract)",
-                      "validate": "validate CONTRACT ROOT (validate declared outputs)",
-                      "passport": "passport capture SCRIPT --workdir DIR | show FILE | compare LEFT RIGHT",
-                      "prepare": "prepare SCRIPT --workdir DIR [sbatch flags] (offline preflight)",
-                      "submit": "submit [SCRIPT --workdir DIR --passport-dir DIR] (confirmation required)",
-                      "investigate": "investigate JOBID (scheduler, log and output evidence)",
-                      "array": "array retry ARRAYID SCRIPT --workdir DIR [--indices RANGE] [--limit N]"})
-        hints.update({"predict": "predict [JOBID] [--file FILE] (resource intervals for comparable runs)",
-                      "forecast": "forecast [JOBID] [--file FILE] (scheduler point and calibrated interval)",
-                      "blockers": "blockers [JOBID] [--file FILE] (scheduler reasons and evidence)",
-                      "tradeoffs": "tradeoffs FILE (compare explicit resource candidates)",
-                      "choose": "choose INDEX SCRIPT --workdir DIR (prepare a tradeoff candidate)",
-                      "scaling": "scaling analyze FILE | plan RECIPE [--workdir DIR]",
-                      "workflow": "workflow analyze FILE | plan RECIPE [--workdir DIR]"})
-        if word in hints and " " in self.palette_edit:
-            return hints[word]
         return " ".join(matches) if matches else "unknown command"
 
     def palette_complete(self, text: str) -> str:
@@ -1521,7 +1487,7 @@ class App:
         full = [c for c in cmds if c.startswith(cmd)]
         if cmd not in cmds and len(full) == 1:
             cmd = full[0]
-        if cmd not in ("eval", "find", "filter", "note"):
+        if not command_registry.command(cmd).raw_tail:
             try:
                 args = shlex.split(line.strip())[1:]
             except ValueError as exc:

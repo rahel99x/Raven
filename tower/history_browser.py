@@ -14,6 +14,8 @@ from .log_text import display_text
 from .model import stamp
 from . import scrollbars
 
+from .pointer_routing import capture_handler
+
 TABS = ("analytics", "deps", "log", "research")
 DOCKS = ("auto", "right", "bottom", "left", "top")
 _STYLES = {"RUNNING": "green", "COMPLETING": "cyan", "PENDING": "yellow",
@@ -561,6 +563,7 @@ def header_control_contains(app, y, x):
                for hy, kind, value in frame["hits"])
 
 
+@capture_handler("history_browser")
 def handle_mouse(app, y, x, button="left", shift=False):
     if any(type(value) is not int for value in (y, x)):
         return False

@@ -14,6 +14,8 @@ import time
 from . import charts, layout as L, selector_glyphs as G
 from .interaction import Rect
 
+from .pointer_routing import capture_handler
+
 MAX_PLOTS = 96
 MAX_ZOOMS = 128
 MAX_UNDO = 16
@@ -42,6 +44,7 @@ class Plot:
     viewport: Rect | None = None
     axes: Rect | None = None
     context: tuple | None = None
+    pane: str | None = None
 
 
 def initialize(app):
@@ -52,6 +55,50 @@ def initialize(app):
                  "revision": 0, "frame_context": None, "ascii": False, "cancelled_release": False}
         app.chart_interaction_state = state
     return state
+
+
+@dataclass(frozen=True)
+class ZoomIdentity:
+    """View-local display state without altering the shared source identity."""
+    source: tuple
+    pane: str
+
+
+def _display_scope(app):
+    explicit = getattr(app, "pane_identity", None)
+    if isinstance(explicit, str) and explicit:
+        return explicit
+    mode, tab = getattr(app, "mode", "main"), getattr(app, "tab", "")
+    if mode == "analysis":
+        return "analysis:" + str(_state(app, "analysis_state").get("modal", ""))
+    if tab in ("jobs", "history"):
+        panel = _state(app, "job_panel_state")
+        view = panel.get("mode", "inspector")
+        if view in ("analytics", "research"):
+            view += ":" + str(panel.get(view + "_view", "job" if view == "analytics" else "experiment"))
+        return tab + ":details:" + view
+    if tab == "research":
+        return "research:" + str(getattr(app, "research_view", "experiment"))
+    # Keep the existing primary Analytics key format for source consumers.
+    return None
+
+
+def _zoom_identity(identity, pane):
+    return ZoomIdentity(identity, pane) if pane is not None else identity
+
+
+def clear_source_zoom(app, identity, canonical):
+    """A Live toggle clears boxes only in this presentation of the source."""
+    state = initialize(app)
+    pane = _display_scope(app)
+    removed = [key for key in state["zoom"]
+               if (key.pane if isinstance(key, ZoomIdentity) else None) == pane
+               and canonical(key.source if isinstance(key, ZoomIdentity) else key) == identity]
+    for key in removed:
+        state["zoom"].pop(key, None)
+    if removed:
+        state["revision"] += 1
+    return bool(removed)
 
 
 def _translate(rect, dy=0, dx=0):
@@ -206,7 +253,7 @@ def _inspector_range(app, identity):
 
 def _cropped(app, identity, scale):
     """Only an existing display crop makes empty geometry a reset target."""
-    value = initialize(app)["zoom"].get(identity)
+    value = initialize(app)["zoom"].get(_zoom_identity(identity, _display_scope(app)))
     if value is not None and value.get("scale") == scale:
         return True
     if captured_bounds(app, identity, scale=scale) is not None:
@@ -252,7 +299,7 @@ def record(app, identity, metadata, *, row=0, column=0, scale="linear", layer=0)
     axes = _translate(axes, row, column)
     plot = Plot(identity, rect, rect, x_bounds, y_bounds, scale, layer,
                 kind="metric-empty" if empty else "metric", axes=axes,
-                context=_capture_context(app, identity))
+                context=_capture_context(app, identity), pane=_display_scope(app))
     state["pending"].append(plot)
     return plot
 
@@ -483,7 +530,8 @@ def _same_plot(current, original):
             current.visible == original.visible and current.scale == original.scale and
             current.x_bounds == original.x_bounds and current.y_bounds == original.y_bounds and
             (current.kind == original.kind or {current.kind, original.kind} <= {"metric", "metric-empty"}) and
-            current.viewport == original.viewport and current.axes == original.axes and current.context == original.context)
+            current.viewport == original.viewport and current.axes == original.axes and current.context == original.context
+            and current.pane == original.pane)
 
 
 def capture_bounds(plot):
@@ -546,11 +594,16 @@ def _apply(app, plot, target):
     stop_for_zoom(app, plot.key)
     state = initialize(app)
     zooms = state["zoom"]
-    old = zooms.get(plot.key)
+    # Legacy/headless callers construct Plot directly without published pane
+    # metadata. Bind those to the caller's presentation; published plots keep
+    # their original scope even when the root App receives the pointer event.
+    pane = plot.pane if plot.context is not None or plot.pane is not None else _display_scope(app)
+    identity = _zoom_identity(plot.key, pane)
+    old = zooms.get(identity)
     undo = list(old.get("undo", ())) if old else []
     undo.append({"x": old["x"], "y": old["y"], "fit_y": old.get("fit_y", False)} if old else None)
-    zooms[plot.key] = {**target, "scale": plot.scale, "undo": undo[-MAX_UNDO:]}
-    zooms.move_to_end(plot.key)
+    zooms[identity] = {**target, "scale": plot.scale, "undo": undo[-MAX_UNDO:]}
+    zooms.move_to_end(identity)
     while len(zooms) > MAX_ZOOMS:
         zooms.popitem(last=False)
     state["last_key"] = plot.key
@@ -559,6 +612,7 @@ def _apply(app, plot, target):
          "; u undoes, 0 resets while over this graph")
 
 
+@capture_handler("chart_interaction")
 def handle_mouse(app, y, x, button="left", shift=False):
     state = initialize(app)
     previous = state["capture"]
@@ -665,7 +719,7 @@ def bounds(app, identity, *, scale=None):
     """Get source-specific coordinates without consulting source data."""
     state = initialize(app)
     identity = _key(identity)
-    zoom = state["zoom"].get(identity) if identity else None
+    zoom = state["zoom"].get(_zoom_identity(identity, _display_scope(app))) if identity else None
     if zoom is None or scale is not None and zoom["scale"] != scale:
         return None
     return {"x": zoom["x"], "y": zoom["y"]}
@@ -676,6 +730,7 @@ def captured_bounds(app, identity, *, scale=None):
     capture = initialize(app)["capture"]
     identity = _key(identity)
     if (not capture or identity is None or _blocked(app) or capture["plot"].key != identity or
+            capture["plot"].pane != _display_scope(app) or
             scale is not None and capture["plot"].scale != scale or
             capture["context"] != _capture_context(app, identity)):
         return None
@@ -690,13 +745,14 @@ def autofit(app, identity, *, scale=None):
     ``bounds`` retains its historical X/Y mapping for explicit box zoom callers.
     """
     identity = _key(identity)
-    value = initialize(app)["zoom"].get(identity) if identity else None
+    value = initialize(app)["zoom"].get(_zoom_identity(identity, _display_scope(app))) if identity else None
     return bool(value and value.get("fit_y") and (scale is None or value["scale"] == scale))
 
 
 def undo(app, identity=None):
     state = initialize(app)
     identity = _key(identity) if identity is not None else state["hovered"] or state["last_key"]
+    identity = _zoom_identity(identity, _display_scope(app))
     value = state["zoom"].get(identity)
     if not value:
         return False
@@ -714,6 +770,7 @@ def undo(app, identity=None):
 def reset(app, identity=None):
     state = initialize(app)
     identity = _key(identity) if identity is not None else state["hovered"] or state["last_key"]
+    identity = _zoom_identity(identity, _display_scope(app))
     if identity not in state["zoom"]:
         return False
     state["zoom"].pop(identity, None)

@@ -13,6 +13,8 @@ from typing import Callable
 
 from . import layout as L
 
+from .pointer_routing import capture_handler
+
 MAX_DIVIDERS = 24
 MAX_BUTTON_HITS = 4096
 BUFFER = 1
@@ -217,6 +219,7 @@ def _bounded_button(app, y, x):
     return False
 
 
+@capture_handler("pane_drag")
 def handle_mouse(app, y, x, button="left", shift=False):
     if any(type(value) is not int for value in (y, x)):
         return False

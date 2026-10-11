@@ -13,8 +13,8 @@ python3 scripts/release_inventory.py create \
   --output dist/release-inventory.json \
   --spdx dist/slurm-tower.spdx.json \
   --checksums dist/SHA256SUMS \
-  dist/slurm_tower-6.0.0-py3-none-any.whl \
-  dist/slurm_tower-6.0.0.tar.gz
+  dist/slurm_tower-6.1.0-py3-none-any.whl \
+  dist/slurm_tower-6.1.0.tar.gz
 ```
 
 Use the exact filenames for the release. Do not include old versions with a
@@ -46,8 +46,8 @@ Validate the files again before you publish them:
 
 ```bash
 python3 scripts/release_inventory.py verify dist/release-inventory.json \
-  dist/slurm_tower-6.0.0-py3-none-any.whl \
-  dist/slurm_tower-6.0.0.tar.gz
+  dist/slurm_tower-6.1.0-py3-none-any.whl \
+  dist/slurm_tower-6.1.0.tar.gz
 ```
 
 Verification recomputes both the archive hashes and the member inventory. It

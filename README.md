@@ -10,6 +10,7 @@ standard library. Unicode and ASCII modes are available.
 [Install and operate](docs/runbook.md) · [Controls](docs/CONTROLS.md) ·
 [Operation fields](docs/reference/operations.md) ·
 [Project integration](docs/PROJECT_STANDARD.md) · [Implementation scope](docs/FLAGSHIP_IMPLEMENTATION.md) ·
+[Capability ownership](docs/reference/capabilities.md) ·
 [Release history](CHANGELOG.md)
 
 ## Start with a safe demonstration
@@ -65,6 +66,7 @@ Use **Pin tool** or press `p` on a tool to save it. Open those tools with
 | --- | --- | --- |
 | Check a running job | Select it in Jobs, then use its Details controls | [Workspaces and advice](docs/guides/adaptive-workspaces.md) |
 | Diagnose a failure | Select the exact attempt in Recents or History; open Logs or Investigate | [Log controls](docs/guides/log-view.md) |
+| Follow an investigation | Open `:ops investigation-workflow`; inspect evidence, review a diagnostic, then inspect its results | [Investigation workflow](docs/guides/scientific-investigation.md) |
 | Connect metrics and outputs | Enter `:projectguide /path/to/project`; validate an exact sample and copy its Bash hooks | [Project connection](docs/guides/project-connection.md) |
 | Compare performance and scientific results | Use Compare, Analytics or a declared investigation manifest | [Scientific investigation](docs/guides/scientific-investigation.md) |
 | Inspect recorded stacks | Select Trace in job Details; attach a prepared recording or inspect supported capture options | [Stack tracing](docs/guides/stack-tracing.md) |
@@ -119,8 +121,12 @@ tower --ui-trace /tmp/tower-ui-trace.json
 python3 scripts/qualify_flagship.py --output /tmp/tower-qualification.json
 ```
 
-The [6.0 validation record](docs/guides/flagship-validation.md) reports regression,
-interaction, packaging and performance results. The
+The [6.1 consolidation guide](docs/guides/consolidation.md) describes the shared
+components, compatibility rules, and measured validation. The
+[6.1 validation record](docs/guides/consolidation-validation.md) records the
+regression and performance checks. The
+[6.0 validation record](docs/guides/flagship-validation.md) retains the preceding
+release's regression, interaction, packaging and performance results. The
 [qualification guide](docs/QUALIFICATION.md) separates passed offline checks
 from untested site, device and user-evaluation requirements. See
 [GPU diagnosis](docs/guides/gpu-detection.md),

@@ -14,6 +14,8 @@ from math import ceil
 from . import clipboard, layout as L
 from .interaction import Rect
 
+from .pointer_routing import capture_handler
+
 MAX_LINES = 20000
 MAX_BYTES = 8 << 20
 MAX_PANES = 128
@@ -338,6 +340,7 @@ def _start(app, state, pane, y, explicit=False):
         pointer.update(active=False, focused=None)
 
 
+@capture_handler("text_selection")
 def handle_mouse(app, y, x, button="left", shift=False):
     if any(type(value) is not int for value in (y, x)):
         return False

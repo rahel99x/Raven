@@ -163,6 +163,12 @@ class SharedQueryCache:
         admission = P.admit(policy.value if isinstance(policy, P.SitePolicy) else policy, query["request"], observed)
         if not admission["allowed"]:
             raise ValueError("Collection refused: " + "; ".join(admission["reasons"]))
+        return self._query_admitted(scope, query, loader, admission, cancel=cancel, fresh=fresh)
+
+    def _query_admitted(self, scope, query, loader, admission, *, cancel=None, fresh=False):
+        """Internal broker path: reuse its validated, detached read admission."""
+        if os.getpid() != self._owner[0]:
+            raise ValueError("Create a new shared cache client after forking")
         request = admission["request"]
         if request["max_bytes"] > self.max_bytes:
             raise ValueError("Request exceeds shared cache byte capacity")
@@ -188,7 +194,7 @@ class SharedQueryCache:
                                 connection.execute("DELETE FROM cache WHERE key=?", (row[0],))
                         connection.execute("DELETE FROM cache WHERE owner IS NULL AND expires<=?", (now,))
                         connection.execute("DELETE FROM throttle WHERE expires<=?", (now,))
-                        row = connection.execute("SELECT owner,value,started,expires FROM cache WHERE key=?", (key,)).fetchone()
+                        row = connection.execute("SELECT owner,value,started,expires,size FROM cache WHERE key=?", (key,)).fetchone()
                         if row and row[0] is None and fresh and row[2] < begin:
                             # Reviewed actions must validate observations made
                             # after this request. Preserve source throttling
@@ -198,7 +204,7 @@ class SharedQueryCache:
                         if row and row[0] is None and row[3] > now:
                             value = E.loads(row[1])
                             connection.execute("COMMIT")
-                            return {"value": value, "cached": True, "age": max(0., now - row[2]), "scope_digest": scope_key}
+                            return {"value": value, "cached": True, "age": max(0., now - row[2]), "scope_digest": scope_key, "bytes": row[4]}
                         if row is None:
                             last = connection.execute("SELECT expires FROM throttle WHERE key=?", (throttle,)).fetchone()
                             if last is not None and now < last[0]:
@@ -240,11 +246,11 @@ class SharedQueryCache:
             if stop.is_set() or now >= deadline:
                 raise ValueError("Shared collector cancelled or exceeded its deadline")
             with self._connection() as connection:
-                changed = connection.execute("UPDATE cache SET owner=NULL,pid=NULL,process_start=NULL,value=?,size=?,reserved=?,expires=? WHERE key=? AND owner=?",
+                changed = connection.execute("UPDATE cache SET owner=NULL,pid=NULL,process_start=NULL,value=?,size=?,reserved=?,expires=? WHERE key=? AND owner=? AND expires>0",
                                              (raw.decode(), len(raw), len(raw), now + request["interval"], key, token)).rowcount
                 if changed != 1:
                     raise ValueError("Shared collection lease was invalidated before publication")
-            return {"value": copy.deepcopy(value), "cached": False, "age": 0., "scope_digest": scope_key}
+            return {"value": copy.deepcopy(value), "cached": False, "age": 0., "scope_digest": scope_key, "bytes": len(raw)}
         except BaseException:
             with self._connection() as connection:
                 connection.execute("DELETE FROM cache WHERE key=? AND owner=?", (key, token))
@@ -252,4 +258,15 @@ class SharedQueryCache:
 
     def invalidate(self, scope):
         with self._connection() as connection:
-            connection.execute("DELETE FROM cache WHERE scope=?", (E.digest(scope),))
+            identity = E.digest(scope)
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                connection.execute("DELETE FROM cache WHERE scope=? AND owner IS NULL", (identity,))
+                # Keep live owners and their reservations until they drain.
+                # Deleting them permits an overlapping replacement collector
+                # after the interval floor, and loses inflight byte accounting.
+                connection.execute("UPDATE cache SET expires=0 WHERE scope=? AND owner IS NOT NULL", (identity,))
+                connection.execute("COMMIT")
+            except BaseException:
+                connection.execute("ROLLBACK")
+                raise

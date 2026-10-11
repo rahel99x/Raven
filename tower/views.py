@@ -9,6 +9,7 @@ import math
 import sys
 from collections import OrderedDict
 from bisect import bisect_left, bisect_right
+from contextlib import nullcontext
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import clock
@@ -33,7 +34,52 @@ LOG_SUCCESS = re.compile(r"\b(?:done|complete(?:d)?|success(?:ful)?)\b", re.IGNO
 def _series_of(app, jid):
     """Interactive frames use published memory while old samples restore."""
     reader = getattr(app.store, "series_view", None) if getattr(app, "interactive", False) else None
-    return reader(jid) if callable(reader) else app.store.series_of(jid)
+    if not callable(reader):
+        reader = getattr(app.store, "series_of", None)
+    return reader(jid) if callable(reader) else list(getattr(app.store, "series", {}).get(jid, ()))
+
+
+def _series_publication(app, jid, *, memory_only=False):
+    if memory_only:
+        reader = getattr(app.store, "series_publication", None)
+        if callable(reader):
+            return reader(jid, memory_only=True)
+        with getattr(app.store, "lock", nullcontext()):
+            return list(getattr(app.store, "series", {}).get(jid, ()))
+    if not getattr(app, "interactive", False):
+        # Headless reports and source adapters retain their explicit reader
+        # contract (including report cutoffs and synchronous full restoration).
+        return _series_of(app, jid)
+    reader = getattr(app.store, "series_publication", None)
+    return reader(jid, background=True) if callable(reader) else _series_of(app, jid)
+
+
+def prepared_series(app, jid, key, build, *, memory_only=False):
+    """Share source-derived values across full views and their Details panes.
+
+    Presentation state never enters this cache. The source publication owns
+    its records; foreign mutable sources retain exact content validation.
+    """
+    from .native_series_cache import NativeSeriesCache
+    if getattr(app, "store", None) is None:
+        return build(())
+    owner = getattr(app, "_chart_owner", app)
+    views = getattr(owner, "views_ref", None)
+    cache = getattr(views, "_native_sources", None)
+    if cache is None:
+        cache = getattr(owner, "_series_preparations", None)
+        if cache is None:
+            cache = owner._series_preparations = NativeSeriesCache()
+    store = app.store
+    attempt = store.job_attempt(jid) if callable(getattr(store, "job_attempt", None)) else None
+    scope = (getattr(store, "_series_scope", id(store)),
+             getattr(getattr(app, "research", None), "generation", None))
+    return cache.remember(("derived-series", scope, jid, attempt, key),
+                          _series_publication(app, jid, memory_only=memory_only), build)
+
+
+def normalized_series(app, jid):
+    return prepared_series(app, jid, "normalized/v1", _native_series)
 
 
 def _series_jobs(app):
@@ -1057,7 +1103,7 @@ class Views:
                 out.append((str(text), st))
         return out
 
-    def job_rows(self, snap: dict, app, actions=None) -> List[dict]:
+    def job_rows(self, snap: dict, app, actions=None, *, shared=False) -> List[dict]:
         from .table_ui import matches
         from .table_sort import chain, sort_rows
         live, gpu = snap["live"], snap["gpu"]
@@ -1065,7 +1111,7 @@ class Views:
         from .job_progress import published, observation
         progress_sources = published(app, snap)
         from .job_row_cache import lookup, remember
-        cache_key, cached_rows = lookup(self, snap, app, actions, progress_sources, cascade)
+        cache_key, cached_rows = lookup(self, snap, app, actions, progress_sources, cascade, shared=shared)
         if cached_rows is not None:
             from .table_ui import group_rows
             return group_rows(app, cached_rows, snap)
@@ -1236,7 +1282,7 @@ class Views:
         old = (j.elapsed_s or 0) > 60 * self.th["warn_after_minutes"]
         same = any(f.name == j.name for f in snap["finished"])
         if lv and (old or same):
-            adv = advisor.advise_running(j, lv, _native_series(_series_of(app, j.id)), snap["finished"])
+            adv = advisor.advise_running(j, lv, normalized_series(app, j.id), snap["finished"])
             text = adv.summary(g_.dot)
             if text:
                 rows.append([("   advice ", "magenta"), (cut(text, width - 12, g_.ascii), "")])
@@ -1351,7 +1397,7 @@ class Views:
         from .table_sort import header_hits
         job_columns = columns(app, "jobs", JOB_COLS)
         self.cfg_tags = snap.get("tags", {})
-        rows_d = self.job_rows(snap, app, actions) if prepared_rows is None else prepared_rows
+        rows_d = _table_job_rows(self, snap, app, actions) if prepared_rows is None else prepared_rows
         app.visible_ids = [r["id"] for r in rows_d]
         from . import recent_history
         from .grouping_toolbar import controls as grouping_controls
@@ -1440,7 +1486,8 @@ class Views:
         if show_queue and n and not native:
             vis = min(n, vis + max(0, budget - used()))
         top = app.scroll_to("jobs", min(cur, max(0, n - 1)), max(1, vis), n)
-        shown = rows_d[top:top + vis]
+        from .job_row_cache import copy_visible
+        shown = copy_visible(rows_d[top:top + vis])
         app.job_progress_visible = [row["id"] for row in shown]
         app.job_progress_animation = {row["id"]: row.get("_progress_animation", "") for row in shown[:256]}
         marks = {i for i, r in enumerate(shown) if r["id"] in app.marks}
@@ -2593,6 +2640,9 @@ class Views:
     # ---- analytics tab ----------------------------------------------------------------------------
     def analytics_jobs(self, snap: dict, app) -> List[str]:
         """Jobs the series view can show: running first, then every job with a recorded series."""
+        pane_ids = getattr(app, "pane_job_ids", None)
+        if pane_ids is not None:
+            return list(pane_ids)
         ids = [j.id for j in snap["jobs"] if not j.pending]
         seen = set(ids)
         for i in _series_jobs(app):
@@ -2663,7 +2713,8 @@ class Views:
             elif view == "history":
                 body = self.analytics_history(snap, app, body_width, body_avail, days)
             elif view == "advisor":
-                body = self.analytics_advisor(snap, app, body_width, body_avail, days)
+                render_advice = getattr(app, "pane_advisor_renderer", None) or self.analytics_advisor
+                body = render_advice(snap, app, body_width, body_avail, days)
             elif view == "compare":
                 body = self.analytics_compare(snap, app, body_width, body_avail)
             else:
@@ -2781,7 +2832,7 @@ class Views:
                     self.group_controls(app, out, app.analytics_group_hits, [j], len(out) - 1, "analytics:advisor", width)
                     continue
                 lv = snap["live"].get(j.id)
-                adv = advisor.advise_running(j, lv, _native_series(_series_of(app, j.id)), by_name.get(j.name, ()))
+                adv = advisor.advise_running(j, lv, normalized_series(app, j.id), by_name.get(j.name, ()))
                 text = adv.summary(g.dot) or "nothing to change yet"
                 out.append([(f"  {marker}{j.id} ", row_style), (pad(cut(j.name, 20, g.ascii), 20), "bold"), (" " + cut(text, width - 36, g.ascii), "")])
                 if meta is not None and meta.header:
@@ -2802,7 +2853,7 @@ class Views:
         rows = []
         series = {}
         for i in ids[:6]:
-            s = _native_series(_series_of(app, i))
+            s = normalized_series(app, i)
             series[i] = s
             live = [x for x in s if x.get("k") == "live"]
             gpu = [x for x in s if x.get("k") == "gpu"]
@@ -2880,12 +2931,12 @@ class Views:
         attempt = "|".join(str(getattr(record, name, None) or "") for name in ("submit", "start")) if record else None
         req = job.mem_bytes if job else (fin.req_mem if fin else 0)
         intervals = self.cfg["intervals"]
-        samples = _series_of(app, jid)
+        samples = _series_publication(app, jid)
         native = self._native_sources.remember(
-            ("native", jid, attempt, req, g.ascii, intervals["live"], intervals["gpu"]), samples,
+            ("native", getattr(app.store, "_series_scope", id(app.store)), jid, attempt, req, g.ascii, intervals["live"], intervals["gpu"]), samples,
             lambda owned: _prepare_native_metrics(owned, req, g.ascii, intervals, owned=True))
         trace_samples = snap.get("trace", {}).get(jid, [])
-        trace = self._native_sources.remember(("trace", jid, attempt), trace_samples,
+        trace = self._native_sources.remember(("trace", getattr(app.store, "_series_scope", id(app.store)), jid, attempt), trace_samples,
                                              lambda owned: _prepare_trace_metrics(owned, owned=True))
         series_notice = _series_notice(app, jid)
         live_count, gpu_count, span = native["live_count"], native["gpu_count"], native["span"]
@@ -2916,25 +2967,14 @@ class Views:
         native_document = analytics_document.eligible(app, avail)
         source_head = len(head)
         n = len(charts_)
+        telemetry = []
+        heatmap_start = len(head)
         if not g.ascii and width >= 120 and (avail is None or avail >= 28):
             telemetry = [(title, values) for title, values, hi, unit, _, _, _, _ in charts_ if unit == "%" and len(values) >= 2][:4]
             if telemetry:
-                heatmap_key = (width, g.ascii, g.spark, tuple(telemetry))
-                heatmaps = native["heatmaps"]
-                heatmap = heatmaps.get(heatmap_key)
-                if heatmap is None:
-                    heatmap = charts.heatmap(g, [values.materialize() if isinstance(values, _MetricValues) else values
-                                                for _, values in telemetry], width,
-                                            labels=[title.split(" · ")[0] for title, _ in telemetry], hi=100, unit="%",
-                                            title="telemetry heatmap · each row's observations, oldest to newest")
-                    from .metric_raster import coalesce_row
-                    heatmap = [coalesce_row(row) for row in heatmap]
-                    heatmaps[heatmap_key] = heatmap
-                    while len(heatmaps) > 4:
-                        heatmaps.popitem(last=False)
-                else:
-                    heatmaps.move_to_end(heatmap_key)
-                head += [list(row) for row in heatmap]
+                # Reserve exact title/data/legend geometry. Materialize the
+                # summary only after both pane types publish their viewport.
+                head += [[] for _ in range(len(telemetry) + 2)]
         columns = 2 if not g.ascii and width >= 140 and n >= 2 and (native_document or avail is None or avail >= 20) else 1
         plot_rows = max(1, (n + columns - 1) // columns)
         filled = not native_document and not g.ascii and (avail is None or avail - len(head) >= plot_rows * 10)
@@ -2971,6 +3011,28 @@ class Views:
             sticky = min(source_head, max(0, avail - 2))
             count = len(head) - sticky + sum(band_heights)
             painted, page = analytics_document.prepare(app, jid, attempt, width, avail, sticky, count)
+        heatmap_end = heatmap_start + len(telemetry) + 2
+        heatmap_visible = (not inline_window or
+                           inline_window[0] < heatmap_end and inline_window[1] > heatmap_start)
+        if native_document:
+            heatmap_visible = sticky + painted < heatmap_end and sticky + painted + page > heatmap_start
+        if telemetry and heatmap_visible:
+            heatmap_key = (width, g.ascii, g.spark, tuple(telemetry))
+            heatmaps = native["heatmaps"]
+            heatmap = heatmaps.get(heatmap_key)
+            if heatmap is None:
+                heatmap = charts.heatmap(g, [values.materialize() if isinstance(values, _MetricValues) else values
+                                            for _, values in telemetry], width,
+                                        labels=[title.split(" · ")[0] for title, _ in telemetry], hi=100, unit="%",
+                                        title="telemetry heatmap · each row's observations, oldest to newest")
+                from .metric_raster import coalesce_row
+                heatmap = [coalesce_row(row) for row in heatmap]
+                heatmaps[heatmap_key] = heatmap
+                while len(heatmaps) > 4:
+                    heatmaps.popitem(last=False)
+            else:
+                heatmaps.move_to_end(heatmap_key)
+            out[heatmap_start:heatmap_end] = [list(row) for row in heatmap]
         for offset in range(0, n, columns):
             if not native_document and avail is not None and len(out) >= avail:
                 break
@@ -3153,7 +3215,7 @@ class Views:
         def jobs_renderer(panel_width, panel_height):
             nonlocal prepared_jobs
             if prepared_jobs is None:
-                prepared_jobs = self.job_rows(snap, app, actions)
+                prepared_jobs = _table_job_rows(self, snap, app, actions)
             return self.jobs_tab(snap, app, actions, panel_width, panel_height, prepared_rows=prepared_jobs)
         def default_renderer(panel_width, panel_height):
             fn = {"jobs": lambda: jobs_renderer(panel_width, panel_height), "history": lambda: self.history_tab(snap, app, panel_width, panel_height),
@@ -3417,6 +3479,18 @@ class Views:
             app.scroll = min(app.scroll, max(0, len(lines) - 2))
             return box(g, lines[:1] + lines[1 + app.scroll:], width, height, "details (Esc closes, up/down scroll)")
         return None
+
+
+# Keep the original identity even when an embedding overrides Views.job_rows.
+_NATIVE_JOB_ROWS = Views.job_rows
+
+
+def _table_job_rows(views, snap, app, actions):
+    """Share native maps while preserving the public override signature."""
+    builder = views.job_rows
+    if getattr(builder, "__func__", None) is _NATIVE_JOB_ROWS:
+        return builder(snap, app, actions, shared=True)
+    return builder(snap, app, actions)
 
 
 def step_lines_of(views, steps, width):

@@ -15,6 +15,8 @@ import time
 from . import clock, layout as L
 from .interaction import Rect
 
+from .pointer_routing import capture_handler
+
 MIN_DELTA = 1.0
 MAX_DELTA = 30.0
 MAX_METRICS = 128
@@ -479,15 +481,9 @@ def set_enabled(app, identity, value):
     state = initialize(app)
     entry = state["entries"][identity]
     if value:
-        from .chart_interaction import initialize as chart_state
+        from .chart_interaction import clear_source_zoom
 
-        chart = chart_state(app)
-        # A new Live window supersedes all boxes for this metric/area source.
-        removed = [key for key in chart["zoom"] if canonical(key) == identity]
-        for key in removed:
-            chart["zoom"].pop(key, None)
-        if removed:
-            chart["revision"] += 1
+        clear_source_zoom(app, identity, canonical)
     if entry["enabled"] != value:
         entry["enabled"] = value
         state["revision"] += 1
@@ -1033,6 +1029,7 @@ def _focus_graph(app, token, kind):
             browser["focused"] = False
 
 
+@capture_handler("metric_live")
 def handle_mouse(app, y, x, button="left", shift=False):
     state = initialize(app)
     previous = state["capture"]

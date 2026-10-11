@@ -17,7 +17,7 @@ import zlib
 from .remote import RemoteFiles
 
 _MODULES = ("projects", "artifacts", "remote", "slurm", "model", "clock", "history_snapshots", "ui_state",
-            "series_archive", "predict", "planning_io", "log_catalog", "provenance", "array_manifest",
+            "series_archive", "series_publication", "series_cache_limits", "predict", "planning_io", "log_catalog", "provenance", "array_manifest",
             "artifact_pages", "log_presentation")
 _OPERATIONS = {"discover_project", "discover_job", "select_run", "read_bound_json",
                "read_bound_passport", "read_bound_artifacts", "read_bound_tail",
