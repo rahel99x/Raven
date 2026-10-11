@@ -61,7 +61,8 @@ release's generic `--yes` flag is not a replacement for that review.
 | Wheel or scrollbar | Scroll the visible operation pane |
 | `v`, then movement keys | Select a range of report or review lines |
 | Shift-click | Extend a line selection |
-| `y`, **Copy report**, or `:ops copy` | Copy selected lines, or the complete structured result when no lines are selected |
+| `y` | Copy the clicked or keyboard-selected line, a selected range, or the complete structured result when no lines are selected |
+| `Y`, **Copy report**, or `:ops copy` | Copy the complete structured result |
 | Right-click | Clear the report line selection |
 | `r`, **Refresh**, or `:ops inspect` | Repeat inspection of the current inputs |
 | **Edit inputs**, or `:ops form` | Return to the form without applying its plan |

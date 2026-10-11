@@ -15,6 +15,7 @@ def initialize(app):
     app.job_selection_state.setdefault("deselected", {})
     app.job_selection_state.setdefault("lines_deselected", False)
     app.job_selection_state.setdefault("mark_tokens", {})
+    app.job_selection_state.setdefault("mark_scopes", {})
     app.job_selection_state.setdefault("published_tokens", {})
     app.job_selection_state.setdefault("anchors", {})
     app.job_selection_state.setdefault("discard_release", False)
@@ -27,6 +28,10 @@ def selected(app, tab, identifier):
 
 
 def resume(app, tab=None):
+    # An explicit native-row gesture owns subsequent copies. Do not leave a
+    # prior rendered range (or its invalidation guard) in front of it.
+    from .text_selection import clear as clear_text
+    clear_text(app)
     initialize(app)["deselected"][tab or getattr(app, "tab", "")] = False
 
 
@@ -40,6 +45,8 @@ def lines_cleared(app):
 
 def resume_lines(app):
     """A deliberate line gesture restores its cursor without selecting a job."""
+    from .text_selection import clear as clear_text
+    clear_text(app)
     initialize(app)["lines_deselected"] = False
 
 
@@ -73,6 +80,7 @@ def clear(app):
     state["capture"] = None
     state["anchors"].clear()
     state["mark_tokens"].clear()
+    state["mark_scopes"].clear()
     state["deselected"].update(dict.fromkeys(JOB_SCOPES, True))
     app.marks.clear()
     app.selected_id = None
@@ -169,6 +177,10 @@ def publish(app, rows, hits, width, height, snap=None):
         bound = state["mark_tokens"]
         state["mark_tokens"] = {identifier: bound.get(identifier, tokens.get(identifier))
                                 for identifier in marks if identifier in bound or identifier in tokens}
+        scopes = state["mark_scopes"]
+        scope = _mark_scope(app, state)
+        state["mark_scopes"] = {identifier: scopes.get(identifier, scope)
+                                for identifier in marks if identifier in scopes or identifier in tokens}
     app.history_jobs_rect = None
     if getattr(app, "tab", "") != "history" or height is None:
         return
@@ -350,13 +362,28 @@ def _context_result(app, scope, ids, chosen):
     return {"scope": scope, "ids": ids, "selected": chosen, "tokens": tokens}
 
 
+def _mark_scope(app, state):
+    """Remember where a mark was made without reading records on pointer input."""
+    capture = state.get("capture")
+    if capture:
+        return capture.get("scope", getattr(app, "tab", ""))
+    tab = getattr(app, "tab", "")
+    if getattr(app, "history_browser_state", {}).get("focused"):
+        return "history:" + tab
+    return "analytics:advisor" if tab == "analytics" else tab
+
+
 def _bind_marks(app, identifiers):
     state = initialize(app)
     state["mark_tokens"] = {identifier: value for identifier, value in state["mark_tokens"].items()
                             if identifier in app.marks}
+    state["mark_scopes"] = {identifier: value for identifier, value in state["mark_scopes"].items()
+                            if identifier in app.marks}
+    scope = _mark_scope(app, state)
     for identifier in identifiers:
         if identifier in app.marks:
             state["mark_tokens"][identifier] = state["published_tokens"].get(identifier)
+            state["mark_scopes"][identifier] = scope
 
 
 def _range_scope(app, identifier, browser, ids):
@@ -447,6 +474,7 @@ def handle_key(app, key):
         if key == "esc":
             app.marks = set(capture["base"])
             state["mark_tokens"] = dict(capture.get("base_tokens", {}))
+            state["mark_scopes"] = dict(capture.get("base_scopes", {}))
             scope = capture.get("scope")
             if scope is not None:
                 previous_anchor = capture.get("previous_anchor")
@@ -608,6 +636,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
                         "selection_base": anchor["base"],
                         "base": set(app.marks), "extend": bool(shift), "moved": False,
                         "base_tokens": dict(state["mark_tokens"]),
+                        "base_scopes": dict(state["mark_scopes"]),
                         "browser": browser, "endpoint": identifier,
                         "view": getattr(app, "analytics_view", None) if app.tab == "analytics" else None,
                         "point": (y, x), "size": (getattr(app, "width", None), getattr(app, "height", None))}

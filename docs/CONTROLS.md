@@ -696,6 +696,9 @@ Drag through ordinary rendered text to select lines in one pane.
 Use `v` to start explicit text selection, then arrows, page keys, Home, or End to extend it.
 Shift-click extends the range. `V` selects the currently painted pane.
 Press `y` or use Edit → Copy to copy the selected text.
+For a native job selection, `y` copies only the selected or marked jobs in the focused list.
+The copy uses tab-separated record fields. Use `v` first to copy the rendered table text instead.
+Selections do not include neighboring panes, and a lost selection never becomes a whole-screen copy.
 Esc or right-click clears it.
 Job dragging retains its exact-ID marking behavior unless explicit rendered selection starts with `v`.
 Raw Logs and source-page dialogs retain their original-byte selection controls.
@@ -707,14 +710,15 @@ See [Pane navigation](guides/pane-navigation.md) for procedures, source scope, a
 
 | Key or command | Function |
 | --- | --- |
-| `v`, `V`, `y` outside raw Logs | Select rendered lines, select the painted pane, and copy displayed text |
+| `v`, `V`, `y` outside raw Logs | Select rendered lines, select the painted pane, and copy the selected text or native rows |
+| `Y` outside raw Logs | Copy the focused painted pane; Operations and Telemetry copy their complete report |
 | `E` | Export the current page as text |
 | `C` | Export the current table as CSV |
 | `J` | Export selected or marked jobs and their recorded series as JSON |
 | `:export text\|csv\|json\|report` | Export a page, table, jobs, or complete dashboard |
 | `:copy` | Copy the current selection |
 | `:copy FIRST LAST` | Copy a range of loaded log lines or screen rows; indices start at one |
-| `:copy all` | Copy the entire log source, or the screen outside Logs |
+| `:copy all` | Copy the entire log source, or the focused painted pane outside Logs |
 | `:activity` | Inspect retained notices and background tasks |
 | `:task cancel` | Request cancellation of supported background tasks |
 

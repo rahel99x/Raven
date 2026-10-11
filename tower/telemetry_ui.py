@@ -11,7 +11,7 @@ def initialize(app):
     if not isinstance(getattr(app, "telemetry_state", None), dict):
         app.telemetry_state = {"inspector": telemetry.Inspector(), "generation": 0,
             "job_id": "", "scope": None, "attempt": {}, "report": None, "lines": [],
-            "running": False, "error": "", "cursor": 0, "anchor": None,
+            "running": False, "error": "", "cursor": 0, "anchor": None, "row_selected": False,
             "top": 0, "page": 1, "focus": "lines", "button": 0,
             "hits": [], "control_hits": [], "line_hits": [], "render_generation": None,
             "return_mode": "main", "wrapped": None}
@@ -131,7 +131,7 @@ def open_inspector(app, job_id=None, refresh=False):
     generation = state["generation"]
     expected = _attempt(_job(app, job_id))
     state.update(job_id=job_id, attempt=expected, scope=scope, running=False, report=None,
-                 lines=[], error="", cursor=0, anchor=None, top=0, focus="lines", button=0,
+                 lines=[], error="", cursor=0, anchor=None, row_selected=False, top=0, focus="lines", button=0,
                  hits=[], control_hits=[], line_hits=[], wrapped=None, render_generation=None)
     app.mode = "telemetry"
     evidence = _known_evidence(app, job_id, expected)
@@ -195,7 +195,7 @@ def run_command(app, args):
         app.fail("Use telemetry [JOBID|refresh|copy|close].")
     elif len(args) == 2 and args[1] in ("copy", "close"):
         if app.mode == "telemetry":
-            _copy(app) if args[1] == "copy" else _close(app)
+            _copy(app, all_report=True) if args[1] == "copy" else _close(app)
     elif len(args) == 2 and args[1] == "refresh":
         open_inspector(app, refresh=True)
     else:
@@ -210,16 +210,17 @@ def _close(app):
     app.mode = state["return_mode"]
 
 
-def _copy(app):
+def _copy(app, *, all_report=False):
     from . import clipboard
     state = initialize(app)
     if not state["lines"]:
         app.fail("No telemetry evidence is available to copy yet.")
         return
-    if state["anchor"] is None:
+    if all_report or state["anchor"] is None and not state.get("row_selected"):
         lines = state["lines"]
     else:
-        first, last = sorted((state["anchor"], state["cursor"]))
+        anchor = state["cursor"] if state["anchor"] is None else state["anchor"]
+        first, last = sorted((anchor, state["cursor"]))
         lines = state["lines"][first:last + 1]
     app.say(clipboard.copy("\n".join(lines) + "\n", app.state_dir, **clipboard.options(app)))
 
@@ -228,7 +229,7 @@ def _activate(app, index):
     if index == 0:
         open_inspector(app, initialize(app)["job_id"], refresh=True)
     elif index == 1:
-        _copy(app)
+        _copy(app, all_report=True)
     else:
         _close(app)
 
@@ -245,6 +246,8 @@ def handle_key(app, key):
         _activate(app, 0)
     elif key == "y":
         _copy(app)
+    elif key == "Y":
+        _copy(app, all_report=True)
     elif key in ("tab", "btab"):
         state["focus"] = "buttons" if state["focus"] == "lines" else "lines"
     elif key in ("left", "right"):
@@ -264,6 +267,7 @@ def handle_key(app, key):
         delta = {"up": -1, "down": 1, "pgup": -state["page"], "pgdn": state["page"]}
         state["cursor"] = (0 if key == "home" else last if key == "end" else
                            max(0, min(last, state["cursor"] + delta[key])))
+        state["row_selected"] = bool(state["lines"])
     return True
 
 
@@ -273,6 +277,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
     state = initialize(app)
     if button == "right":
         state["anchor"] = None
+        state["row_selected"] = False
         return True
     if state["render_generation"] != state["generation"]:
         return True
@@ -293,6 +298,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
             return True
     for hy, left, right, index in state["line_hits"]:
         if y == hy and left <= x < right:
+            from .text_selection import clear
+            clear(app)
             pointer = getattr(app, "interaction_state", None)
             if isinstance(pointer, dict):
                 pointer.update(active=False, focused=None)
@@ -301,6 +308,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             elif not shift:
                 state["anchor"] = None
             state["cursor"], state["focus"] = index, "lines"
+            state["row_selected"] = True
             return True
     # Every press/motion/release is consumed while the modal is visible.
     return True
@@ -377,7 +385,7 @@ def overlay(views, snap, app, width, height):
             style = "sel" if index == state["cursor"] or selected and selected[0] <= index <= selected[1] else "text"
             logical_hits.append((len(rows), index))
             rows.append([(text, style)])
-    rows.append([("Arrows/pages scroll | v select | y copy | Tab buttons", "dim")])
+    rows.append([("Arrows/pages scroll | v select | y copy | Y full report | Tab buttons", "dim")])
     rendered = L.box(views.g, rows, width, height, title)
     state["control_hits"] = place_hits(control_hits, rendered[1:-1])
     for y, _, value in state["control_hits"]:

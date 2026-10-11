@@ -92,8 +92,15 @@ def dispatch(app, hits, position, button, route="app", *, shift=False, alt=False
         code += 8 if alt else 0
         ending = "m" if button == "release" else "M"
         reader = screen._InputReader(InputWindow(f"\x1b[<{code};{x + 1};{y + 1}{ending}"))
-        event = reader.read(curses)
-        assert event[0] == "mouse"
+        # The decoder can yield mid-packet when the process is preempted.
+        # Resume its bounded read just as the UI loop does; a loaded test
+        # machine must not turn that intentional yield into a false failure.
+        event = None
+        for _ in range(32):
+            event = reader.read(curses)
+            if event is not None and event[0] is not None:
+                break
+        assert event is not None and event[0] == "mouse"
         assert not reader.queue
     screen._apply_input(app, event, hits, curses)
 

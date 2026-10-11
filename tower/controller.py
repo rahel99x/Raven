@@ -1145,6 +1145,9 @@ class App:
         tab = self.tab
         if tab in ("jobs", "history", "group", "deps"):
             resume(self)
+        elif tab == "sources":
+            from .job_selection import resume_lines
+            resume_lines(self)
         n = len(self.history_jobs()) if tab == "history" else {"jobs": len(self.visible_ids) + len(self.recent_ids),
              "sources": len(self.ordered_source_ids()), "group": len(getattr(self, "group_ids", [])), "deps": len(self.dep_ids)}.get(tab, 0)
         from .table_tools import page_size
@@ -1159,6 +1162,8 @@ class App:
 
     def enter_tab(self, name: str):
         """Switch tabs; entering Analytics from Jobs or History carries the job under the cursor along."""
+        from .text_selection import clear as clear_text
+        clear_text(self)
         from .navigation_ui import record
         record(self, name)
         if name == "analytics" and self.tab == "jobs" and self.selected_id:
@@ -1225,12 +1230,18 @@ class App:
 
     def selection_text(self) -> str:
         if self.sel_anchor is None:
-            return export.selection_text(self.last_rows, 0, len(self.last_rows) - 1) if self.last_rows else ""
+            return ""
         return export.selection_text(self.last_rows, self.sel_anchor, self.sel_end)
 
     def yank(self):
         from .text_selection import copy_selection
         if copy_selection(self):
+            return
+        from .job_copy import copy_selection as copy_jobs
+        if copy_jobs(self):
+            return
+        from .row_copy import copy_selection as copy_row
+        if copy_row(self):
             return
         if self.tab == "log" and not self.logs.browser:
             expected = self.log_selection_expected or self.logs.selection_active
@@ -1261,7 +1272,7 @@ class App:
         else:
             text = self.selection_text()
         if not text:
-            self.fail("nothing to copy")
+            self.fail("Select a row or text lines before copying; Y copies the focused pane")
             return
         cb = self.cfg["clipboard"]
         msg = clipboard.copy(text, self.state_dir, **clipboard.options(self))
@@ -1273,12 +1284,10 @@ class App:
             self.log_selection_expected = False
 
     def copy_visible_pane(self):
-        from .text_selection import copy_visible_pane, clear
+        from .text_selection import copy_visible_pane
         if copy_visible_pane(self):
             return
-        clear(self)
-        self.sel_anchor = None
-        self.yank()
+        self.fail("No current pane is available to copy; wait for the display to refresh")
 
     def copy_all_log(self):
         path = self.resolve_log_path()
@@ -1604,6 +1613,8 @@ class App:
                     self.log_selection_expected = self.logs.begin_selection(buf, int(args[0]) - 1)
                     self.logs.selection_end = self.logs.cursor = int(args[1]) - 1
                 else:
+                    from .text_selection import clear as clear_text
+                    clear_text(self)
                     self.sel_anchor, self.sel_end = int(args[0]) - 1, int(args[1]) - 1
                 self.yank()
             elif not args:
@@ -2053,7 +2064,9 @@ class App:
                 self.log_selection_expected = self.logs.selection_active
                 return
         if shift:
-            self.extend_selection(y)
+            from .text_selection import extend_row_range
+            if not extend_row_range(self, y, x):
+                self.fail("The selected pane changed; select rows in the current display before copying")
             return
         self.click_row = y
         for (ty, x0, x1, key) in self.tab_hits:
@@ -2102,6 +2115,8 @@ class App:
                 elif kind == "source":
                     names = self.ordered_source_ids()
                     if key in names:
+                        from .job_selection import resume_lines
+                        resume_lines(self)
                         self.cursor["sources"] = names.index(key)
                 elif kind == "group":
                     ids = getattr(self, "group_ids", [])

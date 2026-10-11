@@ -51,6 +51,13 @@ These settings do not increase scheduler polling.
 Job marks identify scheduler jobs. Rendered line selections identify displayed text.
 Use job marks when you want to organize a job list.
 
+Press `y` to copy the selected job or marked jobs in the focused list.
+The copy contains one tab-separated record per job: JOBID, NAME, STATE, PARTITION, ELAPSED, CPUS, GPUS, and INFO.
+It includes marked rows outside the viewport, in list order, and excludes other panes.
+A closed group identifies its representative job; hidden members are not selected automatically.
+Tower checks job identity before copying. If that identity changed, select the current rows again.
+Use `v` when you need the rendered table text instead of record fields.
+
 1. Click a row in the required job list to focus that pane.
 2. Mark at least two jobs with `Space`, plain click-drag, or click followed by Shift-click on the other end of the range.
 3. Press `g`.
@@ -98,6 +105,7 @@ Use source exports when you need content beyond the rendered view.
 **Expected result:** Tower copies the selected rendered lines to the current copy destination.
 Selected text remains pinned while new metric values arrive.
 A source or view-context change invalidates the selection.
+After invalidation, `y` asks you to select again. It does not copy another row or the entire screen.
 
 | Control | Function |
 | --- | --- |
@@ -108,6 +116,7 @@ A source or view-context change invalidates the selection.
 | Shift-click | Extend the current selection to the clicked line. |
 | `V` | Select the currently painted pane. |
 | `y` or Edit → Copy | Copy the complete selected rendered range. |
+| `Y` | Copy the focused painted pane, including when a smaller range is selected. |
 | Esc / right-click | Clear the rendered selection. |
 
 Job-row range selection marks exact job IDs. Alt-dragging a selected row or marked selection moves those exact jobs to an existing group.

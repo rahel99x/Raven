@@ -69,7 +69,7 @@ def initialize(app):
     if not isinstance(state, dict):
         state = {"panes": (), "rows": {}, "visible": {}, "cache": OrderedDict(), "cache_bytes": 0, "selection": None,
                  "capture": None, "cursor": None, "explicit": False, "token": None,
-                 "frame_required": False, "discard_release": False}
+                 "frame_required": False, "discard_release": False, "invalidated": False}
         app.text_selection_state = state
     return state
 
@@ -95,7 +95,7 @@ def clear(app):
     state = initialize(app)
     if state["capture"]:
         state["discard_release"] = True
-    state.update(selection=None, capture=None, explicit=False, cursor=None)
+    state.update(selection=None, capture=None, explicit=False, cursor=None, invalidated=False)
 
 
 def active(app):
@@ -230,6 +230,9 @@ def publish(app, rows, width, height, *, overlays=()):
                      and pane.context == selection["context"]), None)
     if selection and matching is None:
         clear(app)
+        # Keep the copy intent after a repaint removes its source. Losing a
+        # range must never turn y into a different row, pane or file copy.
+        state["invalidated"] = True
         selection = None
     if state["capture"] and (matching is None or state["capture"]["geometry"] != matching.rect):
         state["capture"] = None
@@ -331,13 +334,37 @@ def _start(app, state, pane, y, explicit=False):
     state["cache"].clear()
     state["cache_bytes"] = 0
     state.update(selection={"key": pane.key, "context": pane.context, "anchor": index, "end": index},
-                 cursor=(pane.key, index), explicit=bool(explicit))
+                 cursor=(pane.key, index), explicit=bool(explicit), invalidated=False)
     _remember(state, pane)
     # Existing screen-wide ranges must not overwrite a pane-local range.
     app.sel_anchor = None
     pointer = getattr(app, "interaction_state", None)
     if isinstance(pointer, dict):
         pointer.update(active=False, focused=None)
+
+
+def extend_row_range(app, y, x):
+    """Start a native row's Shift range inside its published document pane.
+
+    Job and source-log ranges are routed to their owners before this fallback.
+    Screen row numbers alone cannot isolate a native resource or file catalog
+    from another column at the same height.
+    """
+    state = _current(app)
+    if state is None:
+        return False
+    pane = _pane_at(state, y, x)
+    if pane is None:
+        return False
+    cursor = getattr(app, "cursor_row", None)
+    anchor = cursor() if callable(cursor) else getattr(app, "click_row", None)
+    if not isinstance(anchor, int) or not pane.rect.top <= anchor < pane.rect.bottom:
+        anchor = y
+    _start(app, state, pane, anchor, explicit=True)
+    state["selection"]["end"] = pane.top + y - pane.rect.top
+    state["cursor"] = pane.key, state["selection"]["end"]
+    _remember(state, pane)
+    return True
 
 
 @capture_handler("text_selection")
@@ -371,6 +398,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
                      and p.context == capture["context"] and p.rect == capture["geometry"]), None)
         if pane is None:
             clear(app)
+            state["invalidated"] = True
             return True
         index = pane.top + max(0, min(pane.page - 1, y - pane.rect.top))
         if state["selection"]["end"] != index:
@@ -452,18 +480,35 @@ def _focused(app, state):
 
 
 def handle_key(app, key):
-    state = _current(app)
-    if state is None or getattr(app, "mode", "main") in EDIT_MODES:
+    if getattr(app, "mode", "main") in EDIT_MODES:
         return False
     if getattr(app, "toolbar_state", {}).get("menu") is not None or getattr(app, "toolbar_state", {}).get("panel"):
         return False
-    action = getattr(app, "keymap", {}).get(key, key)
-    if not state["selection"] and action not in ("visual", "visual_all") and key not in ("v", "V"):
+    action = getattr(app, "keymap", {}).get(key, {"v": "visual", "V": "visual_all",
+                                                "y": "yank", "Y": "copy_all"}.get(key, key))
+    pending = initialize(app)
+    if action == "yank":
+        if copy_selection(app):
+            return True
+    if pending.get("invalidated") and (key == "esc" or action == "clear"):
+        clear(app)
+        app.say("Text selection cleared.")
+        return True
+    state = _current(app)
+    if state is None:
+        return False
+    if action == "copy_all" and state["selection"]:
+        if getattr(app, "mode", "main") in ("operations", "telemetry"):
+            # These owners expose a complete report beyond the viewport.
+            return False
+        # Y is an explicit whole-pane operation, even during visual mode.
+        return copy_visible_pane(app)
+    if not state["selection"] and action not in ("visual", "visual_all"):
         return False
     pane = _focused(app, state)
     if pane is None:
         return False
-    if action in ("visual", "visual_all") or key in ("v", "V"):
+    if action in ("visual", "visual_all"):
         # Exact original log bytes remain available through their established
         # visual mode; an unrelated rendered overlay can still be selected.
         if getattr(app, "tab", "") == "log" and getattr(app, "mode", "main") == "main" and not getattr(getattr(app, "logs", None), "browser", True):
@@ -478,12 +523,10 @@ def handle_key(app, key):
             if pane.rect.top <= candidate < pane.rect.bottom:
                 row = candidate
         _start(app, state, pane, row, explicit=True)
-        if action == "visual_all" or key == "V":
+        if action == "visual_all":
             state["selection"].update(anchor=pane.top, end=pane.top + pane.page - 1)
         app.say("Select rendered lines with arrows or drag; y copies; right-click or Esc clears.")
         return True
-    if action in ("yank", "copy_all") or key == "y":
-        return copy_selection(app)
     if key == "esc" or action == "clear":
         clear(app)
         app.say("Text selection cleared.")
@@ -534,6 +577,9 @@ def selection_text(app):
 
 def copy_selection(app):
     """Return True when this module owns the copy, including guarded failures."""
+    if initialize(app).get("invalidated"):
+        app.fail("The selected text source changed. Select the lines again; no copy was sent.")
+        return True
     if not selected(app):
         return False
     text = selection_text(app)

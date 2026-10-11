@@ -47,8 +47,9 @@ exact job. With no selected job, it shows cluster capabilities. Use
 In the inspector, arrows, Page Up, Page Down, Home, and End scroll the report.
 Tab changes focus between the report and buttons; Left/Right chooses a button
 and Enter activates it. `r` refreshes, `v` starts a line selection, and `y`
-copies the selected lines or the full report. Right-click clears the selection.
-**Copy** copies the report. Esc or **Close** returns without changing pages.
+copies the clicked or keyboard-selected line, the selected range, or the full report when no lines are selected.
+Right-click clears the selection. `Y` or **Copy** copies the complete report.
+Esc or **Close** returns without changing pages.
 `:telemetry copy` and `:telemetry close` perform the same actions.
 For a machine-readable report, use `tower --run 'telemetry JOBID'`.
 

@@ -58,7 +58,7 @@ def initialize(app):
             "top": 0, "page": 1, "result": None, "generation": 0, "running": False,
             "applying": False, "cancel": None, "return_mode": "main", "control_hits": [],
             "render_generation": None, "editing": None, "edit": "", "edit_cursor": 0,
-            "focus": "content", "button": 0, "wrapped": None, "anchor": None,
+            "focus": "content", "button": 0, "wrapped": None, "anchor": None, "row_selected": False,
             "line_hits": [], "used": {}, "terminal": None, "callback": None,
             "confirm_digest": None, "error": "", "last_scope": None,
             "review_document": None, "review_truncated": False,
@@ -179,7 +179,7 @@ def context(app, cancel=None):
 
 
 def _reset(state, view):
-    state.update(view=view, top=0, index=0, anchor=None, wrapped=None, confirm_digest=None,
+    state.update(view=view, top=0, index=0, anchor=None, row_selected=False, wrapped=None, confirm_digest=None,
                  control_hits=[], render_generation=None, editing=None, focus="content", button=0,
                  review_document=None, review_truncated=False)
     state["generation"] += 1
@@ -439,12 +439,13 @@ def _field(app, key):
         state.update(editing=key, edit=state["values"].get(key, ""), edit_cursor=len(state["values"].get(key, "")))
 
 
-def _copy(app):
+def _copy(app, *, all_report=False):
     from . import clipboard
     state = initialize(app)
     lines = _lines(state)
-    if state["anchor"] is not None:
-        lo, hi = sorted((state["anchor"], state["index"]))
+    if not all_report and (state["anchor"] is not None or state.get("row_selected")):
+        anchor = state["index"] if state["anchor"] is None else state["anchor"]
+        lo, hi = sorted((anchor, state["index"]))
         text = "\n".join(lines[lo:hi + 1]) + "\n"
     else:
         text = json.dumps(state["result"] or {"operations": O.catalog()}, indent=2, ensure_ascii=True, allow_nan=False) + "\n"
@@ -537,7 +538,7 @@ def run_command(app, args):
                 raise ValueError("Choose an operation before editing its inputs.")
             _reset(state, "form")
         elif args[1] == "copy" and len(args) == 2:
-            _copy(app)
+            _copy(app, all_report=True)
         elif args[1] == "cancel" and len(args) == 2:
             if state["applying"]:
                 raise ValueError("An action is running. Its result must be collected before another action.")
@@ -674,6 +675,8 @@ def handle_key(app, key):
         state["anchor"] = state["index"] if state["anchor"] is None else None
     elif key == "y":
         _copy(app)
+    elif key == "Y":
+        _copy(app, all_report=True)
     elif key == "r" and state["feature"]:
         run_command(app, ["ops", "inspect"])
     elif key in ("up", "down", "pgup", "pgdn", "home", "end"):
@@ -684,6 +687,7 @@ def handle_key(app, key):
         delta = {"up": -1, "down": 1, "pgup": -state["page"], "pgdn": state["page"]}
         state["index"] = (0 if key == "home" else max(0, count - 1) if key == "end" else max(0, min(count - 1, state["index"] + delta[key])))
         state["focus"] = "content"
+        state["row_selected"] = state["view"] in ("report", "review") and count > 0
     return True
 
 
@@ -693,6 +697,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
     state = initialize(app)
     if button == "right":
         state["anchor"] = None
+        state["row_selected"] = False
         return True
     if state["render_generation"] != state["generation"]:
         return True
@@ -711,11 +716,14 @@ def handle_mouse(app, y, x, button="left", shift=False):
             return True
     for hy, left, right, index in state["line_hits"]:
         if y == hy and left <= x < right:
+            from .text_selection import clear
+            clear(app)
             if shift and state["anchor"] is None:
                 state["anchor"] = state["index"]
             elif not shift:
                 state["anchor"] = None
             state["index"], state["focus"] = index, "content"
+            state["row_selected"] = state["view"] in ("report", "review")
             return True
     return True
 
@@ -870,7 +878,7 @@ def overlay(views, snap, app, width, height):
         else:
             line_rows.append((row, index))
     hint = ("Left/Right/Home/End move caret | Paste inserts | Enter saves | Esc discards"
-            if state["editing"] is not None else "Arrows scroll | Enter selects | Tab actions | p pin/unpin | v select | y copy")
+            if state["editing"] is not None else "Arrows scroll | Enter selects | Tab actions | p pin/unpin | v select | y copy | Y full report")
     rows += [[(hint, "dim")]]
     rendered = L.box(views.g, rows, width, height, spec["title"] if spec else "Tower workbench / Research and cluster operations")
     state["control_hits"] = place_hits(hits, rendered[1:-1])

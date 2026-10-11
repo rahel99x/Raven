@@ -1,5 +1,17 @@
 # Changelog
 
+## 6.2.1
+
+- Make `y` copy the selected job or marked jobs from the focused list. Include
+  offscreen marked rows and validate their job identities before copying.
+  Keep neighboring panes and unselected jobs out of the clipboard.
+- Remove the implicit whole-screen copy fallback. Preserve invalidated text
+  selection intent across repaints and require a fresh selection when its source changes.
+- Copy native resource rows and single selected Operations or Telemetry lines
+  without copying the whole page or report. Preserve exact raw-log copying.
+- Keep `Y` and explicit complete-copy commands independent of a smaller selected
+  range. Respect configured copy key bindings and pane boundaries.
+
 ## 6.2.0
 
 - Show the three most recent eligible groups in the job context menu. Use More
