@@ -331,8 +331,9 @@ def test_selection_copy_and_exports(tmp_path):
     rows, hits = views.compose(store.snapshot(), app, W, H, actions)
     app.last_hits = hits
     y0 = [h for h in hits if h[1] == "job"][0][0]
-    app.click(y0, 3, hits)                                             # left click: the first job row becomes the anchor
-    app.click(y0 + 2, 3, hits, shift=True)                            # Shift-click extends text; right-click clears job selection
+    app.click(y0, 3, hits)                                             # ordinary clicks select jobs
+    app.handle("v")                                                  # explicit text mode owns Shift-click instead of job marking
+    app.click(y0 + 2, 3, hits, shift=True)
     assert (app.sel_anchor, app.sel_end) == (y0, y0 + 2)
     rows, _ = views.compose(store.snapshot(), app, W, H, actions)
     assert all(s == "sel" for _, s in rows[y0][:-1]) and all(s == "sel" for _, s in rows[y0 + 2][:-1]) and not any(s == "sel" for _, s in rows[y0 + 3])

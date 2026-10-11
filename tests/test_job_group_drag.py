@@ -39,6 +39,10 @@ def point(app, identifier, scope=None):
     pytest.fail(f"No published job {identifier} in {scope}")
 
 
+def move(app, y, x, button="left", shift=False, alt=True):
+    return D.handle_mouse(app, y, x, button, shift=shift, alt=alt)
+
+
 def mark(app, *identifiers):
     app.marks = set(identifiers)
     S._bind_marks(app, identifiers)
@@ -47,10 +51,10 @@ def mark(app, *identifiers):
 def test_dragging_marked_jobs_adds_exact_members_in_natural_order(screen):
     app, store, _, gid = screen
     mark(app, "1", "3", "10")
-    assert D.handle_mouse(app, *point(app, "1"), "press")
-    assert D.handle_mouse(app, *point(app, "7"), "drag")
+    assert move(app, *point(app, "1"), "press")
+    assert move(app, *point(app, "7"), "drag")
     assert G.registry(app).index.groups[gid].members == ("7", "9")
-    assert D.handle_mouse(app, *point(app, "7"), "release")
+    assert move(app, *point(app, "7"), "release")
     group = G.registry(app).ensure(store.snapshot()).groups[gid]
     assert group.members == ("1", "3", "7", "9", "10")
     assert not app.marks and not D.active(app)
@@ -60,25 +64,26 @@ def test_initial_automatic_cursor_does_not_replace_range_selection(screen):
     app, _, _, _ = screen
     first = app.visible_ids[0]
     assert app.cursor["jobs"] == 0
-    assert not D.handle_mouse(app, *point(app, first), "press")
-    assert D.pending(app) and not D.active(app)
-    assert not D.handle_mouse(app, *point(app, "3"), "drag")
-    assert not D.handle_mouse(app, *point(app, "3"), "release")
+    assert not move(app, *point(app, first), "press", alt=False)
+    assert not D.pending(app) and not D.active(app)
+    assert not move(app, *point(app, "3"), "drag")
+    assert not move(app, *point(app, "3"), "release")
     assert D.initialize(app)["armed"] is None
 
 
-def test_stationary_click_arms_single_move_without_unrelated_marks(screen):
+def test_plain_click_never_arms_move_but_alt_moves_one_without_unrelated_marks(screen):
     app, store, _, gid = screen
     mark(app, "2", "4")
     source = point(app, "1")
-    assert not D.handle_mouse(app, *source, "press")
+    assert not move(app, *source, "press", alt=False)
     assert S.handle_mouse(app, *source, "press")
-    assert not D.handle_mouse(app, *source, "release")
+    assert not move(app, *source, "release")
     assert S.handle_mouse(app, *source, "release")
-    assert D.handle_mouse(app, *source, "press")
+    assert not D.active(app) and D.initialize(app)["armed"] is None
+    assert move(app, *source, "press")
     assert D.initialize(app)["capture"]["source"]["targets"] == ("1",)
-    D.handle_mouse(app, *point(app, "7"), "drag")
-    D.handle_mouse(app, *point(app, "7"), "release")
+    move(app, *point(app, "7"), "drag")
+    move(app, *point(app, "7"), "release")
     assert G.registry(app).ensure(store.snapshot()).groups[gid].members == ("1", "7", "9")
     assert app.marks == {"2", "4"}
 
@@ -86,7 +91,7 @@ def test_stationary_click_arms_single_move_without_unrelated_marks(screen):
 def test_shift_press_retains_range_even_when_marked(screen):
     app, _, _, _ = screen
     mark(app, "1", "3")
-    assert not D.handle_mouse(app, *point(app, "1"), "press", shift=True)
+    assert not move(app, *point(app, "1"), "press", shift=True)
     assert not D.active(app)
     assert S.handle_mouse(app, *point(app, "1"), "press", shift=True)
     assert S.handle_mouse(app, *point(app, "4"), "drag", shift=True)
@@ -97,11 +102,11 @@ def test_shift_press_retains_range_even_when_marked(screen):
 def test_interrupting_buttons_cancel_without_mutation_or_mark_loss(screen, button):
     app, store, _, gid = screen
     mark(app, "1", "3")
-    D.handle_mouse(app, *point(app, "1"), "press")
-    D.handle_mouse(app, *point(app, "7"), "drag")
-    assert D.handle_mouse(app, 0, 0, button)
+    move(app, *point(app, "1"), "press")
+    move(app, *point(app, "7"), "drag")
+    assert move(app, 0, 0, button)
     assert not D.active(app) and app.marks == {"1", "3"}
-    assert D.handle_mouse(app, *point(app, "7"), "release")
+    assert move(app, *point(app, "7"), "release")
     assert G.registry(app).ensure(store.snapshot()).groups[gid].members == ("7", "9")
 
 
@@ -110,7 +115,7 @@ def test_changed_context_cancels_before_a_late_drop(screen, change):
     app, store, _, gid = screen
     mark(app, "1", "3")
     source, target = point(app, "1"), point(app, "7")
-    D.handle_mouse(app, *source, "press")
+    move(app, *source, "press")
     if change == "resize":
         app.width -= 1
     elif change == "tab":
@@ -123,7 +128,7 @@ def test_changed_context_cancels_before_a_late_drop(screen, change):
         app.mode = "help"
     else:
         app.manual_job_groups_revision += 1
-    assert D.handle_mouse(app, *target, "release")
+    assert move(app, *target, "release")
     assert not D.active(app) and app.marks == {"1", "3"}
     assert G.registry(app).ensure(store.snapshot()).groups[gid].members == ("7", "9")
 
@@ -132,13 +137,13 @@ def test_hover_and_drag_do_not_snapshot_infer_or_resolve_sources(screen, monkeyp
     app, store, _, _ = screen
     mark(app, "1", "3")
     source, target = point(app, "1"), point(app, "7")
-    D.handle_mouse(app, *source, "press")
+    move(app, *source, "press")
     monkeypatch.setattr(store, "snapshot", lambda: pytest.fail("pointer copied Store"))
     monkeypatch.setattr(G.Registry, "ensure", lambda *_: pytest.fail("pointer inferred groups"))
     monkeypatch.setattr(app, "job_record", lambda *_: pytest.fail("pointer resolved a job"))
     for _ in range(100):
-        assert D.handle_mouse(app, *target, "drag")
-        assert D.handle_mouse(app, *source, "motion")
+        assert move(app, *target, "drag")
+        assert move(app, *source, "motion")
     assert D.handle_key(app, "esc")
     assert app.marks == {"1", "3"}
 
@@ -147,12 +152,12 @@ def test_hover_and_drag_do_not_snapshot_infer_or_resolve_sources(screen, monkeyp
 def test_reused_id_without_repaint_is_rejected_at_release(screen, which):
     app, store, _, gid = screen
     mark(app, "1", "3")
-    D.handle_mouse(app, *point(app, "1"), "press")
+    move(app, *point(app, "1"), "press")
     target = point(app, "7")
-    D.handle_mouse(app, *target, "drag")
+    move(app, *target, "drag")
     changed = "1" if which == "source" else "7"
     next(record for record in store.jobs if record.id == changed).submit = "2026-02-01T00:00:00"
-    D.handle_mouse(app, *target, "release")
+    move(app, *target, "release")
     assert app.marks == {"1", "3"}
     state = app.table_state["manual_groups"]
     assert {member[0] for member in state["groups"][0]["members"]} == {"7", "9"}
@@ -161,13 +166,13 @@ def test_reused_id_without_repaint_is_rejected_at_release(screen, which):
 def test_repaint_attempt_change_cancels_and_eats_orphan_release(screen):
     app, store, views, _ = screen
     mark(app, "1", "3")
-    D.handle_mouse(app, *point(app, "1"), "press")
+    move(app, *point(app, "1"), "press")
     target = point(app, "7")
-    D.handle_mouse(app, *target, "drag")
+    move(app, *target, "drag")
     store.jobs[0].submit = "2026-02-01T00:00:00"
     views.compose(store.snapshot(), app, app.width, app.height)
     assert not D.active(app)
-    assert D.handle_mouse(app, *target, "release")
+    assert move(app, *target, "release")
     assert app.marks == {"1", "3"}
 
 
@@ -176,9 +181,9 @@ def test_feedback_is_theme_roles_only_and_does_not_change_copy_rows(screen):
     mark(app, "1", "3")
     rows = app.frame_rows
     original = [list(row) for row in rows]
-    D.handle_mouse(app, *point(app, "1"), "press")
+    move(app, *point(app, "1"), "press")
     target = point(app, "7")
-    D.handle_mouse(app, *target, "drag")
+    move(app, *target, "drag")
     output = D.feedback(app, rows)
     assert rows == original and output is not rows
     assert "2 jobs ->" in row_text(output[-1])
@@ -211,9 +216,9 @@ def test_all_history_browser_docks_publish_exact_rows_and_drop_groups(screen, ta
     target = point(app, "9", "history:" + tab)
     mark(app, "11", "12")
     assert D.source_at(app, *source)["scope"] == "history:" + tab
-    assert D.handle_mouse(app, *source, "press")
-    assert D.handle_mouse(app, *target, "drag")
-    assert D.handle_mouse(app, *target, "release")
+    assert move(app, *source, "press")
+    assert move(app, *target, "drag")
+    assert move(app, *target, "release")
     assert G.registry(app).ensure(store.snapshot()).groups[gid].members == ("7", "9", "11", "12")
 
 
@@ -221,8 +226,8 @@ def test_stationary_marked_row_click_retains_details_selection(screen):
     app, _, _, _ = screen
     mark(app, "3", "4")
     source = point(app, "3")
-    assert D.handle_mouse(app, *source, "press")
-    assert D.handle_mouse(app, *source, "release")
+    assert move(app, *source, "press")
+    assert move(app, *source, "release")
     assert app.selected_id == "3" and app.marks == {"3", "4"}
     assert app.visible_ids[app.cursor["jobs"]] == "3"
     assert not D.active(app) and not S.active(app)
@@ -231,29 +236,29 @@ def test_stationary_marked_row_click_retains_details_selection(screen):
 def test_repainting_target_under_stationary_pointer_cannot_choose_a_new_group(screen):
     app, store, views, gid = screen
     mark(app, "1", "3")
-    D.handle_mouse(app, *point(app, "1"), "press")
+    move(app, *point(app, "1"), "press")
     target = point(app, "7")
-    D.handle_mouse(app, *target, "drag")
+    move(app, *target, "drag")
     # Insert a new row that shifts the target below the unchanged pointer.
     store.jobs.insert(0, Job("0", "new", "cpu", "RUNNING", submit="2026-03-01T00:00:00"))
     views.compose(store.snapshot(), app, app.width, app.height)
     assert not D.active(app)
-    assert D.handle_mouse(app, *target, "release")
+    assert move(app, *target, "release")
     assert G.registry(app).ensure(store.snapshot()).groups[gid].members == ("7", "9")
 
 
 def test_drop_on_plain_row_does_not_create_an_implicit_group(screen):
     app, _, _, _ = screen
     mark(app, "1", "3")
-    D.handle_mouse(app, *point(app, "1"), "press")
+    move(app, *point(app, "1"), "press")
     target = point(app, "4")
-    D.handle_mouse(app, *target, "drag")
-    D.handle_mouse(app, *target, "release")
+    move(app, *target, "drag")
+    move(app, *target, "release")
     assert len(app.table_state["manual_groups"]["groups"]) == 1
     assert app.marks == {"1", "3"}
 
 
-def test_browser_single_click_arms_even_when_it_switches_advisor_to_job_series(screen):
+def test_browser_alt_move_works_after_click_switches_advisor_to_job_series(screen):
     app, store, views, gid = screen
     app.tab, app.analytics_view = "analytics", "advisor"
     views.compose(store.snapshot(), app, app.width, app.height)
@@ -266,14 +271,14 @@ def test_browser_single_click_arms_even_when_it_switches_advisor_to_job_series(s
     views.compose(store.snapshot(), app, app.width, app.height)
     source = point(app, "12", "history:analytics")
     target = point(app, "9", "history:analytics")
-    app.click(*source, app.last_hits, button="press")
+    app.click(*source, app.last_hits, button="press", alt=True)
     assert D.active(app)
     app.click(*target, app.last_hits, button="drag")
     app.click(*target, app.last_hits, button="release")
     assert G.registry(app).ensure(store.snapshot()).groups[gid].members == ("7", "9", "12")
 
 
-def test_browser_arming_does_not_follow_a_reused_id_after_view_change(screen):
+def test_plain_browser_click_after_view_change_never_starts_move(screen):
     app, store, views, _ = screen
     app.tab, app.analytics_view = "analytics", "advisor"
     views.compose(store.snapshot(), app, app.width, app.height)

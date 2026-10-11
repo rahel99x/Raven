@@ -411,9 +411,9 @@ Analysis graphs retain their right-click reset control.
 Select a cleared sample or event again before a row action.
 Use `:historylogs [clipboard|directory|cancel]` for History export commands.
 See [Export History logs](guides/log-view.md#export-logs-for-history-jobs) for full-source copying, expected missing-file alerts, folder creation, and receipts.
-Drag from an unselected row through visible job rows to mark a range in the current table order.
-Shift-drag always selects a range and adds it to existing marks.
-Dragging a marked row, or a row previously clicked and released, starts a group move instead.
+Plain drag through visible job rows marks a range in the current table order, including from selected or marked rows.
+Shift-drag retains earlier marks. Click then Shift-click marks the inclusive range in either direction.
+Alt-dragging a selected or marked row starts an explicit group membership move.
 Esc during capture restores the earlier marks.
 Release completes the marked range; supported bulk actions use their existing confirmation.
 Drag the top-right slider to change the fetching interval.
@@ -469,10 +469,10 @@ Removed members stay outside automatic grouping for that execution attempt.
 Press `U` to clear marks without changing groups.
 Grouping keys do not act on stale job marks while an editor, menu, graph, log text, or another pane owns input.
 In particular, graph `u` still undoes zoom without clearing retained job marks. `U` explicitly clears job marks.
-Click and release a job, then drag it onto an existing group's closed summary, expanded member, or chevron to add it.
+Click and release a job, then Alt-drag it onto an existing group's closed summary, expanded member, or chevron to add it.
 Pressing a chevron directly retains its fold action and does not start a move; right-clicking a selected row's chevron opens its job menu.
-Drag a marked row to add the applicable marked jobs. Automatic cursor selection alone does not arm a single-job move.
-Starting on an unselected row retains range selection. Shift-drag always selects a range.
+Alt-drag a marked row to add the applicable marked jobs.
+Plain drag always selects a range. Shift-drag retains earlier marks.
 A closed source summary contributes only its real representative, not hidden members.
 Esc, right-click, an invalid drop, or a changed source/view cancels the move without changing membership.
 The job menu exposes **Create Group** for two or more targets, **Ungroup** for grouped targets, and **Add to GROUP NAME** when the destination would gain a member.

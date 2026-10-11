@@ -26,7 +26,7 @@ import uuid
 
 from .remote import LocalFiles
 
-MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale")
+MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale", "ops_queue_order")
 PLAN_SCHEMA = "tower.operation-plan/v1"
 REPORT_SCHEMA = "tower.operation/v1"
 MAX_DOCUMENT = 4 << 20

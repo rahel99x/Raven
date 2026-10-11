@@ -91,7 +91,9 @@ def test_screen_drag_selection_marks_exact_ids_and_preserves_shift_base(dashboar
     dashboard.mouse(*dashboard.point(anchor), MOUSE.BUTTON1_PRESSED, shift=shift)
     assert job_selection.active(app)
     assert app.selected_id == anchor
-    assert app.marks == {"retained-hidden-job"}
+    # Shift-click now completes a range immediately, including a one-row range
+    # when there is no prior anchor; ordinary presses still preserve marks.
+    assert app.marks == {"retained-hidden-job"} | ({anchor} if shift else set())
     dashboard.draw()
     dashboard.mouse(*dashboard.point(target), motion_bits, shift=shift)
     expected = set(ids[:3]) | ({"retained-hidden-job"} if shift else set())

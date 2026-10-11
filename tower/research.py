@@ -107,6 +107,39 @@ class ResearchHub:
             self.planning_source = None
             self.planning_choices = None
 
+    def rebind_sources(self, *, passport_changed=False, **values):
+        """Refresh one attempt's declarations while retaining unrelated views.
+
+        The publication generation still invalidates every in-flight reader.
+        Completed unaffected snapshots move to that generation, so adding a
+        workflow report does not trigger another metric parse or evidence read.
+        """
+        with self.lock:
+            changed = {key for key, value in values.items() if self.settings.get(key) != value}
+            if "workdir" in changed:
+                self.configure(**values)
+                return
+            affected = set()
+            for key, views in {"metrics_file": {"experiment"}, "contract": {"artifacts", "evidence"},
+                               "passport": {"passport"}, "submit_file": {"submit"}}.items():
+                if key in changed:
+                    affected.update(views)
+            if passport_changed:
+                affected.add("passport")
+            if changed & {"planning_file", "planning_files", "planning_overrides"}:
+                affected.update(name for name, _ in PLANNING_VIEWS)
+            if changed - {"metrics_file", "contract", "passport", "submit_file", "planning_file", "planning_files", "planning_overrides"}:
+                self.configure(**values)
+                return
+            cached = [(key, entry) for key, entry in self.cache.items() if key[1] not in affected]
+            sampling = self.metric_sampling if "experiment" not in affected else {}
+            source, choices = self.planning_source, self.planning_choices
+            self.configure(**values)
+            self.cache.update(((self.generation, key[1], key[2]), entry) for key, entry in cached)
+            self.metric_sampling = {(*identity[:-1], self.generation): rate for identity, rate in sampling.items()}
+            if not affected.intersection(name for name, _ in PLANNING_VIEWS):
+                self.planning_source, self.planning_choices = source, choices
+
     def set_polling_multiplier(self, value):
         from .refresh_rate import validate_multiplier
         value = validate_multiplier(value)
@@ -282,7 +315,7 @@ class ResearchHub:
             path = self._path(settings.get("metrics_file"), context)
             if not path:
                 return self._demo_metrics() if self.demo else {"status": "empty", "summary": "Attach a metrics stream with :metrics PATH or --metrics-file PATH."}
-            if self.reader is None:
+            if self.reader is None or self.reader.files is not self.files:
                 from .metrics import MetricReader
                 self.reader = MetricReader(self.files)
             return (self.reader.read_confined(path, context["binding"]) if context.get("binding")
@@ -295,7 +328,7 @@ class ResearchHub:
             path = settings.get("contract", "")
             if not path:
                 return {"status": "empty", "summary": "Attach a JSON output contract with :artifacts CONTRACT ROOT."}
-            if self.files.remote:
+            if self.files.remote and not context.get("binding"):
                 return {"status": "incomplete", "summary": "Output validation needs a local checkout on the job's cluster. Run Tower on the CARC login node."}
             if context.get("binding"):
                 from .projects import read_bound_artifacts
@@ -305,11 +338,11 @@ class ResearchHub:
             from .provenance import load
             path = settings.get("passport", "")
             if path:
-                if self.files.remote:
+                if self.files.remote and not context.get("binding"):
                     return {"status": "incomplete", "summary": "Passport inspection requires running Tower on the cluster."}
                 if context.get("binding"):
                     from .projects import read_bound_passport
-                    passport = read_bound_passport(context["binding"], path)
+                    passport = read_bound_passport(context["binding"], path, files=self.files)
                 else:
                     passport = load(os.path.expanduser(path))
                 return {"status": "ok", "passport": passport, "differences": self.passport_diff}
@@ -321,7 +354,7 @@ class ResearchHub:
                     return {"status": "empty", "summary": "This run declares no submission report; prepare a batch script explicitly to submit a new job."}
                 from .projects import read_bound_json
                 from .submission import SCHEMA, _digest
-                plan = read_bound_json(context["binding"], path, key="submit")
+                plan = read_bound_json(context["binding"], path, key="submit", files=self.files)
                 if (not isinstance(plan, dict) or plan.get("schema") != SCHEMA or type(plan.get("valid")) is not bool
                         or not isinstance(plan.get("resources"), dict) or not isinstance(plan.get("issues"), list)
                         or plan.get("plan_id") != _digest(plan)):
@@ -410,7 +443,7 @@ class ResearchHub:
                 bound_log = bool(binding and entry.get("source") == "project")
                 if bound_log:
                     from .projects import read_bound_tail
-                    data, size, before = read_bound_tail(binding, entry, limit)
+                    data, size, before = read_bound_tail(binding, entry, limit, files=self.files)
                 elif hasattr(self.files, "snapshot_stat"):
                     try:
                         before = self.files.snapshot_stat(path)
@@ -466,7 +499,7 @@ class ResearchHub:
         overrides = dict(settings.get("planning_overrides", {}).get(view, {}))
         path = settings.get("planning_files", {}).get(view) or settings.get("planning_file", "")
         if path:
-            if self.files.remote:
+            if self.files.remote and not context.get("binding"):
                 return {"status": "incomplete", "summary": "Local planning files require running Tower on the cluster."}
             max_bytes = 1048576
             if view == "scaling":
@@ -480,7 +513,7 @@ class ResearchHub:
                 if context.get("binding"):
                     from .projects import read_bound_json
                     key = view if settings.get("planning_files", {}).get(view) else "planning"
-                    source = read_bound_json(context["binding"], path, key=key, max_bytes=max_bytes)
+                    source = read_bound_json(context["binding"], path, key=key, max_bytes=max_bytes, files=self.files)
                 else:
                     source = load_json(path, max_bytes=max_bytes)
                 with self.lock:
@@ -507,6 +540,12 @@ class ResearchHub:
         elif self.demo and view in ("predict", "tradeoffs", "scaling", "workflow"):
             source = demo_source(job)
         observations = self.forecasts.observations() if self.forecasts else ()
+        if view == "predict" and context.get("binding") and isinstance(source, dict) and "query" not in source:
+            scientific = context["binding"].get("scientific_query")
+            if isinstance(scientific, dict) and scientific:
+                # Scientific cohort identity comes from the producer's run,
+                # not a scheduler display name such as "batch.sh".
+                source = dict(source, query=dict(record(job), **scientific))
         if selected_file_id is not None:
             overrides["job_id"] = selected_file_id
         result = analyze(view, source, snap=snap, job=job, observations=observations, overrides=overrides)

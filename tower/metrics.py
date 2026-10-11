@@ -131,6 +131,7 @@ class MetricReader:
         self.max_bytes, self.max_points, self.max_streams = max_bytes, max_points, max_streams
         self.max_line_bytes, self.max_metrics = MAX_LINE_BYTES, MAX_METRICS
         self._streams = OrderedDict()
+        self._owners = {}
         self._lock = threading.RLock()
 
     @staticmethod
@@ -242,7 +243,8 @@ class MetricReader:
             if stream is None:
                 stream = self._streams[path] = _Stream()
                 if len(self._streams) > self.max_streams:
-                    self._streams.popitem(last=False)
+                    evicted, _ = self._streams.popitem(last=False)
+                    self._owners.pop(evicted, None)
             self._streams.move_to_end(path)
             return self._read_stream(path, stream)
 
@@ -257,12 +259,36 @@ class MetricReader:
         if not isinstance(path, str) or not path:
             raise ValueError("metric path must be a nonempty text path")
         with self._lock:
+            owner = tuple(binding.get(key) for key in ("project_root", "run_id", "job_id", "attempt", "remote_identity"))
+            launch = binding.get("launch", {})
+            if isinstance(launch, dict):
+                owner += tuple(launch.get(key) for key in ("cluster", "restart_count", "submission_token"))
+            if self._owners.get(path) != owner:
+                self._streams.pop(path, None)
+            self._owners[path] = owner
             stream = self._streams.get(path)
             if stream is None:
                 stream = self._streams[path] = _Stream()
                 if len(self._streams) > self.max_streams:
-                    self._streams.popitem(last=False)
+                    evicted, _ = self._streams.popitem(last=False)
+                    self._owners.pop(evicted, None)
             self._streams.move_to_end(path)
+            if getattr(self.files, "remote", False):
+                import base64
+                from .project_remote import request
+                try:
+                    value = request(self.files, "read_bound_metric_chunk", binding, path,
+                                    stream.offset, list(stream.ident) if stream.ident else None, self.max_bytes)
+                    data = base64.b64decode(value["data"], validate=True)
+                    start = value["offset"]
+                    def read_bytes(offset, length):
+                        if offset < start or offset + length > start + len(data):
+                            raise OSError("SSH metric read window no longer matches this stream")
+                        return data[offset - start:offset - start + length]
+                    return self._read_bytes(path, stream, value["size"], tuple(value["ident"]), read_bytes)
+                except OSError as exc:
+                    self._error(stream, f"cannot read metrics: {exc}")
+                    return self._snapshot(path, stream, "missing" if isinstance(exc, FileNotFoundError) else "error")
             with bound_run_root(binding) as (_, root_fd, current):
                 relative = bound_relative(binding, path, current, key="metrics")
                 return self._read_stream(path, stream, root_fd=root_fd, relative=relative)

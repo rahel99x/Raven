@@ -129,7 +129,9 @@ def test_snapshot_attempt_change_cancels_capture_even_when_ids_are_unchanged(das
     next(record for record in store.jobs if record.id == identifier).submit = "2026-01-02T00:00:00"
     views.compose(store.snapshot(), app, app.width, app.height)
     assert not S.active(app)
-    assert not S.handle_mouse(app, y + 1, 8, "release")
+    # The invalidated gesture owns its late release so another control cannot
+    # interpret it as the completion of an unrelated operation.
+    assert S.handle_mouse(app, y + 1, 8, "release")
     assert not app.marks
 
 

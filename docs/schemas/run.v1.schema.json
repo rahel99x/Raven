@@ -158,6 +158,20 @@
           "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\*?\\[\\]\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
           "description": "Exact run-relative native source for the workflow Research view; takes precedence over paths.planning."
         },
+        "array_manifest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\*?\\[\\]\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
+          "description": "Exact run-relative tower.array-manifest/v1 input map. Its parent and cluster must match this run."
+        },
+        "contract": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\*?\\[\\]\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
+          "description": "Exact run-relative output contract. Overrides the project-level .tower/contracts/outputs.v1.json for this attempt only."
+        },
         "submit": {
           "type": "string",
           "minLength": 1,

@@ -164,7 +164,7 @@ See [Toolbar menus](live-workbench.md#use-the-terminal-toolbar) for every menu c
 
 ## Mark several jobs by dragging
 
-1. Hold Shift and press the left mouse button on a visible job row.
+1. Press the left mouse button on a visible job row. Hold Shift if you need to retain earlier marks.
 2. Keep the button pressed and move through the required rows.
 3. Release the button to complete the marked range.
 4. Press `c` when you need to review cancellation of the marked jobs.
@@ -174,9 +174,9 @@ See [Toolbar menus](live-workbench.md#use-the-terminal-toolbar) for every menu c
 Sorting and filtering define that order.
 A simple click continues to select one row without starting a range.
 Shift-drag adds the range to existing marks, including when the starting row is selected or marked.
-Without Shift, starting on an unselected row marks a range; starting on a marked row moves its applicable selection to an existing group.
-To move one unmarked job, click and release its row first, then drag it to a group.
-Automatic cursor selection alone does not arm a single-job move.
+Plain drag always marks a range, including from selected or marked rows.
+You can also click one row and Shift-click another to mark the inclusive range in either direction. The anchor stays in that pane.
+Hold Alt while dragging selected jobs to add them to a group.
 Press Esc before release to cancel capture and restore the previous marks.
 Runtime header changes do not add a job beneath a stationary pointer.
 Resizing the terminal stops the drag and keeps its marked job IDs.
@@ -195,8 +195,8 @@ See [Export History logs](log-view.md#export-logs-for-history-jobs) for clipboar
 
 ## Drag jobs into a group
 
-Click and release a job row, then drag it onto an existing group's closed summary or an expanded member.
-For several jobs, mark them first, then start the drag on one of the marked rows.
+Click and release a job row, then **Alt-drag** it onto an existing group's closed summary or an expanded member.
+For several jobs, mark them first, then Alt-drag one of the marked rows. Plain drag retains range selection.
 The destination highlight and footer identify the move while the button is held.
 Release over the group to apply the membership change.
 Drop targets can be in another visible job pane on the same page.

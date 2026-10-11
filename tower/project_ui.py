@@ -25,7 +25,7 @@ def initialize(app):
                 "preview_sort": None, "preview_column": 0, "preview_collapsed": [], "preview_format": None}
     defaults.update(registered_root="", binding_origin="", auto_generation=0, auto_pending=False,
                     auto_last=0.0, auto_target=None, auto_roots=(), auto_suppressed=None,
-                    auto_status="idle", auto_summary="")
+                    auto_status="idle", auto_summary="", auto_backend=None, auto_attempt=None)
     for key, value in defaults.items():
         state.setdefault(key, value)
     return state
@@ -64,6 +64,8 @@ def status_row(app, width, ascii_=False):
         sources += len(binding.get("planning_files", {}))
         text = (f" {'Auto-linked' if state.get('binding_origin') == 'automatic' else 'Run'} {binding['run_id']}"
                 f" | job {binding.get('job_id') or 'not submitted'} | {sources} declared reports | {len(state.get('logs', []))} logs")
+        if _array_receipt(binding):
+            text += " | array launch receipt; task states in Arrays"
         style = "cyan"
     elif state.get("auto_status") in ("ambiguous", "incomplete", "changed", "error", "unavailable"):
         text, style = " Reports: " + state.get("auto_summary", ""), "yellow"
@@ -74,6 +76,11 @@ def status_row(app, width, ascii_=False):
 
 def log_entries(app):
     return list(initialize(app).get("logs", []))
+
+
+def _array_receipt(value):
+    launch = value.get("launch", value.get("inventory", {}).get("metadata", {}).get("tower_launch", {}))
+    return isinstance(launch, dict) and launch.get("array_submission_receipt") is True
 
 
 def resolve_log_entry(app):
@@ -136,6 +143,8 @@ def clear_binding(app, *, suppress_auto=False):
         state["auto_suppressed"] = _target_job(app)
     state["auto_generation"] += 1
     state["auto_pending"] = False
+    from .array_manifest_ui import detach_automatic
+    detach_automatic(app)
     backup = state.pop("binding_backup", None)
     if backup is not None and app.research is not None:
         original = dict(backup.get("settings_extra", {}), **backup["settings"])
@@ -176,6 +185,8 @@ def _hub(app):
 def _task(app, title, worker, complete, failed=None):
     state = initialize(app)
     hub = _hub(app)
+    files = hub.files
+    backend = _backend_token(hub)
     cancel_automatic(app)
     if state["busy"]:
         app.fail("A project read is already running; wait for its result")
@@ -187,6 +198,9 @@ def _task(app, title, worker, complete, failed=None):
         if token != state["generation"]:
             return
         state["busy"] = False
+        if getattr(app, "research", None) is not hub or hub.files is not files or _backend_token(hub) != backend:
+            state["summary"] = title + ": connection changed; select the project again"
+            return
         if isinstance(value, Exception):
             if failed is not None:
                 failed()
@@ -224,6 +238,7 @@ def cancel_automatic(app):
 def _refresh_runs(app, root):
     state = initialize(app)
     hub = _hub(app)
+    files = hub.files
     state["registered_root"] = os.path.abspath(os.path.expanduser(root))
     state["auto_generation"] += 1
     state["auto_last"] = 0.0
@@ -241,7 +256,7 @@ def _refresh_runs(app, root):
         state["run_cursor"] = next((index for index, run in enumerate(state["runs"]) if run["run_id"] == wanted), 0)
         app.say(value["summary"])
 
-    return _task(app, "Read project inventories", lambda: projects.discover_project(root, files=hub.files), complete)
+    return _task(app, "Read project inventories", lambda: projects.discover_project(root, files=files), complete)
 
 
 def _apply_run(app, value, *, automatic=False, refresh=False):
@@ -254,7 +269,7 @@ def _apply_run(app, value, *, automatic=False, refresh=False):
                           ("project_root", "run_id", "job_id", "attempt", "metrics_file", "contract", "run_root", "passport",
                            "planning_file", "planning_files", "submit_file", "log_manifest", "stdout", "stderr"))
                       or state.get("logs", []) != value["logs"])
-    identity_changed = any(previous.get(key) != binding.get(key) for key in ("project_root", "run_id", "job_id", "attempt"))
+    identity_changed = any(previous.get(key) != binding.get(key) for key in ("project_root", "run_id", "job_id", "attempt", "launch", "remote_identity"))
     new_log_paths = {entry["path"] for entry in value["logs"]}
     previous_log_paths = {entry["path"] for entry in state.get("logs", [])}
     current_path = current_entry.get("path") if current_entry else None
@@ -276,8 +291,9 @@ def _apply_run(app, value, *, automatic=False, refresh=False):
         state["binding_backup"] = {"settings": copy.deepcopy(keep),
                                    "settings_extra": copy.deepcopy({key: value for key, value in hub.settings.items() if key not in keep}),
                                    "log_manifest": app.cfg["logs"].get("manifest_file", ""), "passport_record": hub.passport, "passport_diff": hub.passport_diff}
+    shown_state = "array launch receipt; task states in Arrays" if _array_receipt(binding) else binding["state"]
     state.update(binding=binding, logs=value["logs"], run_warnings=value["warnings"], restore_run_id=binding["run_id"],
-                 summary=f"{'Linked' if automatic else 'Selected'} {binding['run_id']} / attempt {binding.get('attempt', '?')} / {binding['state']}")
+                 summary=f"{'Linked' if automatic else 'Selected'} {binding['run_id']} / attempt {binding.get('attempt', '?')} / {shown_state}")
     if source_changed or not refresh:
         state.update(tree=None, preview=None)
     if not refresh:
@@ -287,8 +303,14 @@ def _apply_run(app, value, *, automatic=False, refresh=False):
     settings = {"metrics_file": binding["metrics_file"], "contract": binding["contract"], "workdir": binding["run_root"], "passport": binding["passport"],
                 "planning_file": binding.get("planning_file", ""), "planning_files": copy.deepcopy(binding.get("planning_files", {})),
                 "submit_file": binding.get("submit_file", ""), "planning_overrides": {}}
-    if any(hub.settings.get(key) != value for key, value in settings.items()) or hub.passport != value.get("passport_record"):
-        hub.configure(**settings)
+    passport_changed = hub.passport != value.get("passport_record")
+    if identity_changed or any(hub.settings.get(key) != value for key, value in settings.items()) or passport_changed:
+        if refresh and not identity_changed and hasattr(hub, "rebind_sources"):
+            hub.rebind_sources(passport_changed=passport_changed, **settings)
+        else:
+            hub.configure(**settings)
+    from .array_manifest_ui import apply_automatic
+    apply_automatic(app, value)
     # A prior run's in-memory passport must never appear under the new identity.
     app.research.passport = value.get("passport_record")
     app.research.passport_diff = None
@@ -321,7 +343,8 @@ def _select(app, run_id):
         raise ValueError("Choose a project first with :project PATH")
     root = state["root"]
     hub = _hub(app)
-    return _task(app, "Bind run " + clean(run_id), lambda: projects.select_run(root, run_id, files=hub.files), lambda value: _apply_run(app, value))
+    files = hub.files
+    return _task(app, "Bind run " + clean(run_id), lambda: projects.select_run(root, run_id, files=files), lambda value: _apply_run(app, value))
 
 
 def _target_job(app):
@@ -330,6 +353,22 @@ def _target_job(app):
     if getattr(app, "tab", "") in ("log", "logs") and getattr(app, "log_job", None):
         return app.log_job
     return getattr(app, "research_job_id", None) or getattr(app, "selected_id", None)
+
+
+def _attempt_token(job, details):
+    """Scheduler identity only; transient state/utilization never resets a view."""
+    restart = details.get("Restarts", details.get("RestartCnt"))
+    restart = str(restart) if restart is not None else ""
+    return (getattr(job, "cluster", "") or details.get("Cluster", ""),
+            details.get("SubmitTime") or getattr(job, "submit", ""),
+            details.get("StartTime") or getattr(job, "start", ""), restart)
+
+
+def _backend_token(hub):
+    if hub is None:
+        return None
+    from .project_remote import identity, supported
+    return (id(hub), identity(hub.files) if supported(hub.files) else id(hub.files))
 
 
 def tick(app, snap=None, *, force=False):
@@ -341,6 +380,11 @@ def tick(app, snap=None, *, force=False):
     automatic binding for that job until selection changes.
     """
     state = initialize(app)
+    existing_hub = getattr(app, "research", None)
+    current_backend = _backend_token(existing_hub)
+    if state.get("auto_backend") is not None and current_backend != state["auto_backend"]:
+        clear_binding(app)
+        state.update(auto_backend=current_backend, auto_pending=False, auto_last=0.0)
     target = _target_job(app)
     binding = state.get("binding")
     if binding and target != binding.get("job_id"):
@@ -364,22 +408,38 @@ def tick(app, snap=None, *, force=False):
                     for job in records if job.id == target), None)
         details = snap.get("details", {}).get(target, {}) if target else {}
     workdir = details.get("WorkDir") or getattr(job, "workdir", "")
+    attempt_token = _attempt_token(job, details)
+    old_attempt = state.get("auto_attempt")
+    # A new nonempty observation can disambiguate an old selection. Unknown
+    # fields becoming known count as a refresh but do not imply another run.
+    if old_attempt is not None and any(old and new and old != new for old, new in zip(old_attempt, attempt_token)):
+        if binding:
+            clear_binding(app)
+            binding = None
+        state.update(auto_generation=state["auto_generation"] + 1, auto_pending=False, auto_last=0.0)
     registered = state.get("registered_root") or (state.get("root") if state.get("binding_origin") == "manual" else "")
     roots = tuple(projects.job_project_roots(workdir, registered))
     if binding and state.get("binding_origin") == "manual":
         roots = (binding["project_root"],)
-    intent = (target, roots)
-    if intent != (state["auto_target"], state["auto_roots"]):
+    intent = (target, roots, attempt_token)
+    if intent != (state["auto_target"], state["auto_roots"], state.get("auto_attempt")):
         state["auto_generation"] += 1
-        state.update(auto_target=target, auto_roots=roots, auto_pending=False, auto_last=0.0)
+        state.update(auto_target=target, auto_roots=roots, auto_attempt=attempt_token, auto_pending=False, auto_last=0.0)
     if not roots or state["busy"] or state["auto_pending"]:
         return False
     hub = _hub(app)
-    if bool(getattr(hub.files, "remote", False)) or type(hub.files) is not projects.LocalFiles:
+    from .project_remote import supported as remote_supported
+    if type(hub.files) is not projects.LocalFiles and not remote_supported(hub.files):
         state.update(auto_status="unavailable", auto_summary="Automatic project binding requires Tower on the machine that owns the project files")
         return False
+    backend = _backend_token(hub)
+    if state.get("auto_backend") is not None and state["auto_backend"] != backend:
+        clear_binding(app)
+        binding = None
+        state.update(auto_generation=state["auto_generation"] + 1, auto_pending=False, auto_last=0.0)
+    state["auto_backend"] = backend
     from .refresh_rate import file_interval
-    interval = file_interval(getattr(hub, "interval", 5.0), getattr(hub, "polling_multiplier", 1), remote=False)
+    interval = file_interval(getattr(hub, "interval", 5.0), getattr(hub, "polling_multiplier", 1), remote=bool(hub.files.remote))
     now = time.monotonic()
     if not force and state["auto_last"] and now - state["auto_last"] < interval:
         return False
@@ -391,19 +451,22 @@ def tick(app, snap=None, *, force=False):
     chosen = copy.deepcopy(binding) if binding else None
     manual = bool(chosen and state.get("binding_origin") == "manual")
     files = hub.files
+    cluster = getattr(job, "cluster", "") or details.get("Cluster", "")
+    restart_text = attempt_token[3]
+    restart_count = int(restart_text) if restart_text.isascii() and restart_text.isdigit() and len(restart_text) <= 9 else None
 
     def worker():
         if manual:
             found = projects.discover_project(chosen["project_root"], files=files)
             selected = projects.select_run(chosen["project_root"], chosen["run_id"], files=files)
-            if selected["binding"].get("job_id") != chosen.get("job_id"):
+            if any(selected["binding"].get(key) != chosen.get(key) for key in ("job_id", "run_id", "attempt", "experiment_id")):
                 return {"status": "changed", "summary": "Selected run changed job identity; its old sources were detached", "selected": None, "projects": [found]}
             # Preserve an explicitly chosen passport when multiple records exist.
             if chosen.get("passport") and not selected["binding"].get("passport"):
                 try:
                     if chosen.get("passport_explicit"):
                         selected["binding"]["passport_explicit"] = True
-                    passport = projects.read_bound_passport(selected["binding"], chosen["passport"])
+                    passport = projects.read_bound_passport(selected["binding"], chosen["passport"], files=files)
                     selected["binding"]["passport"] = chosen["passport"]
                     selected["passport_record"] = passport
                 except (OSError, ValueError):
@@ -412,11 +475,20 @@ def tick(app, snap=None, *, force=False):
         if target is None:
             found = projects.discover_project(roots[0], files=files)
             return {"status": "ready", "summary": found["summary"], "selected": None, "projects": [found]}
-        return projects.discover_job(list(roots), target, files=files)
+        return projects.discover_job(list(roots), target, files=files, cluster=cluster, restart_count=restart_count)
 
     def complete(value):
-        if token != state["auto_generation"] or project_token != state["generation"] or _target_job(app) != target:
+        if (token != state["auto_generation"] or project_token != state["generation"] or _target_job(app) != target
+                or getattr(app, "research", None) is not hub or hub.files is not files):
             return
+        if _backend_token(hub) != backend:
+            state.update(auto_pending=False, auto_last=0.0)
+            return
+        if snap is None:
+            current_job, current_details = app.store.record_context(target)
+            if _attempt_token(current_job, current_details) != attempt_token:
+                state.update(auto_pending=False, auto_last=0.0)
+                return
         state["auto_pending"] = False
         state["auto_last"] = time.monotonic()
         if isinstance(value, Exception):
@@ -852,7 +924,8 @@ def overlay(views, snap, app, width, height):
         setter = lambda value: state.update(run_top=value)
         for index, run in enumerate(items[top:top + page], top):
             marker = (">" if g.ascii else "›") if index == cursor else " "
-            text = f" {marker} {run['run_id']}  [{run['state']}]  attempt {run['attempt']}  job {run.get('job_id') or 'unrecorded'}"
+            shown_state = "ARRAY RECEIPT" if _array_receipt(run) else run["state"]
+            text = f" {marker} {run['run_id']}  [{shown_state}]  attempt {run['attempt']}  job {run.get('job_id') or 'unrecorded'}"
             button_hits.append((len(lines), "control", {"id": "project-run:" + run["run_id"], "label": run["run_id"],
                                 "left": 0, "right": min(max(0, width - 8), L.vlen(clean(text, g.ascii))),
                                 "action": ("command", "run select " + shlex.quote(run["run_id"])), "group": "project_runs"}))

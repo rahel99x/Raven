@@ -1,5 +1,7 @@
 # Portable Tower project template
 
+For Bash launchers, use the [automated Research reporting guide](https://github.com/rahel99x/Slurm-Tower/blob/main/docs/guides/research-automation.md). `tower report` creates these standard files and links them to actual Slurm job attempts. The copyable Python reporter remains available for projects without a Tower installation.
+
 Copy this directory into a new project. The application writes portable JSON;
 it does not need Tower installed. Tower attaches exact job-bound reports through
 bounded runtime discovery or explicit selection. The complete convention and schemas
@@ -81,8 +83,9 @@ publish the actual `job_id` and use a scheduler WorkDir at this project root or
 beneath its standard `runs/<run_id>` directory. Tower discovers bounded direct
 inventories and attaches only an unambiguous exact selected-job match.
 `:project /absolute/project` registers a root, and `:run select RUN_ID` selects
-an attempt explicitly. Local runs without job IDs and duplicate requeued IDs
-need explicit selection. No arbitrary filesystem search or newest-run guess is used.
+an attempt explicitly. Local runs without job IDs need explicit selection.
+Known scheduler restart evidence can identify a requeued attempt; otherwise
+select that attempt explicitly. No arbitrary filesystem search or newest-run guess is used.
 The config also supports explicit metrics, output checks, and a planning aggregate.
 The config also binds the native `logs.json` index, so application logs can be
 opened independently of the scheduler's launch stdout/stderr.
@@ -107,7 +110,7 @@ Missing reports stay missing until actually produced. An exact per-view
 declaration overrides the shared planning source. Runtime polling follows
 appends and atomic replacements without changing the current tab.
 
-## Report sources for all twelve Research views
+## Report sources for Research views
 
 Use the [complete per-view source table](https://github.com/rahel99x/Slurm-Tower/blob/main/docs/PROJECT_STANDARD.md#files-for-every-research-view)
 when adapting another application. These are the producer locations:
@@ -126,6 +129,12 @@ when adapting another application. These are the producer locations:
 | `tradeoffs` | `runs/<run_id>/reports/tradeoffs.json` | Explicit comparable configurations and measured histories |
 | `scaling` | `runs/<run_id>/reports/scaling.json` | Controlled repeats or an actual native scaling recipe |
 | `workflow` | `runs/<run_id>/reports/workflow.json` | Real dependency recipe and timing evidence when known |
+| `operations` | Explicit `.tower/definitions/operations/`, `reports/operations/`, or per-run operation manifests | Declared policies, measurements, and campaign inputs for the selected operation; use its reviewed Operations controls |
+
+Operations uses its own manifest contracts. It has no generic
+`publish_research(..., "operations", ...)` source. See the
+[operation-specific file conventions](https://github.com/rahel99x/Slurm-Tower/blob/main/docs/PROJECT_STANDARD.md#research-operation-contracts)
+before preparing a reviewed action.
 
 Use the dependency-free publisher for actual native source objects:
 

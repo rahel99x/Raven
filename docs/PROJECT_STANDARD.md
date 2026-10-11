@@ -1,5 +1,7 @@
 # Tower project reporting standard, version 1
 
+For Bash launchers, use the [automated Research reporting guide](guides/research-automation.md). `tower report` creates these standard files and links them to actual Slurm job attempts. The copyable Python reporter remains available for projects without a Tower installation.
+
 Follow this convention when building a project you want to inspect with Tower.
 It works with the current terminal application and does not require your
 application to import Tower. Keep your existing source and build tools; add the
@@ -163,9 +165,11 @@ The actual `job_id` links that attempt to its selected scheduler job. Job names,
 file modification times, and the newest run directory do not establish identity.
 The next section describes bounded runtime attachment. Explicit
 `:project /absolute/project` and `:run select RUN_ID` remain available for
-local runs and manual selection. Run discovery locally on the Slurm host,
-including CARC or a native Fedora desktop. SSH file backends cannot verify
-confined project discovery.
+local runs and manual selection. Discovery works locally on the Slurm host,
+including CARC or a native Fedora desktop, and through Tower's standard SSH
+reader. The selected SSH host needs Python 3.10 or later; paths refer to that
+host. Custom file adapters must support confined reads. See
+[automatic reads and SSH](guides/research-automation.md#automatic-reads-and-ssh).
 
 The existing explicit configuration workflow also works. Tower supports
 `{job_id}` substitution in configured metric and log-index paths; it does not

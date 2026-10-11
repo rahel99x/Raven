@@ -257,7 +257,7 @@ Use `:artifact column NAME_OR_NUMBER` for column focus by command.
 
 ### Mark a job range with the mouse
 
-1. Hold Shift and press the left mouse button on a visible job row.
+1. Press the left mouse button on a visible job row. Hold Shift if you need to retain earlier marks.
 2. Keep the button pressed and drag through the required rows.
 3. Release the button to complete the marked range.
 4. Press `c` to open cancellation review when cancellation is the required action.
@@ -265,9 +265,9 @@ Use `:artifact column NAME_OR_NUMBER` for column focus by command.
 
 **Expected result:** The marked range follows the table's current visible order.
 Hold Shift during the drag to retain existing marks and add the new range.
-Starting a plain drag on an unselected row also selects a range.
-Dragging an already marked row moves its applicable marks to an existing group instead.
-For one job, click and release its row, then drag it onto a group.
+Plain drag selects a range even when the starting row is already selected or marked.
+Click one row, then Shift-click another for an inclusive range in either direction.
+Hold Alt during a drag to add the selected job or applicable marked jobs to an existing group.
 See [Add jobs to a group](batch-launches.md#add-jobs-to-a-group) for destination controls.
 Press Esc before release to cancel capture and restore the earlier marks.
 A simple click retains ordinary row selection.

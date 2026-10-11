@@ -40,6 +40,10 @@ def read_page(root, specification, *, files=None, offset=0, row=0, columns=None,
     pages retain byte continuations for oversized lines. All opens remain
     anchored to the declared root, including the final identity recheck.
     """
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "read_artifact_page", root, specification, offset=offset, row=row,
+                       columns=columns, sort=sort, collapsed=collapsed)
     projects._local(files)
     _contract({"version": 1, "outputs": [specification]})
     if type(offset) is not int or offset < 0 or type(row) is not int or row < 0:

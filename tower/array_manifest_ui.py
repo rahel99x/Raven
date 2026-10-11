@@ -20,8 +20,43 @@ def initialize(app):
         app.array_manifest_state = {"manifest": None, "path": "", "stamp": None, "notice": "",
             "busy": False, "generation": 0, "last": 0.0, "view": "list", "cursor": 0, "top": 0,
             "detail_scroll": 0, "query": "", "matches": (), "edit": "", "control_hits": [],
-            "hub": None, "submission_times": (), "detail_cache": None}
+            "hub": None, "submission_times": (), "detail_cache": None, "origin": "", "auto_suppressed": None}
     return app.array_manifest_state
+
+
+def detach_automatic(app):
+    """Drop only a run-owned mapping; manually attached scientific maps win."""
+    state = initialize(app)
+    if state.get("origin") == "automatic":
+        state.update(manifest=None, path="", stamp=None, notice="", generation=state["generation"] + 1,
+                     busy=False, matches=(), cursor=0, top=0, control_hits=[], detail_cache=None, origin="")
+
+
+def apply_automatic(app, selected):
+    """Publish a prevalidated map with its run, without file reads or navigation."""
+    app = _owner(app)
+    state = initialize(app)
+    binding = selected.get("binding", {})
+    identity = (binding.get("project_root"), binding.get("run_id"), binding.get("job_id"), binding.get("attempt"))
+    if state.get("origin") == "manual" or state.get("auto_suppressed") == identity:
+        return
+    document = selected.get("array_manifest_document")
+    if not document:
+        detach_automatic(app)
+        return
+    # Parsing was done on the project worker. The immutable object is handed
+    # over directly; a 10,000-index map must never be rebuilt on each UI tick.
+    manifest = selected.get("array_manifest_record")
+    if manifest is None:
+        return
+    previous = state.get("manifest")
+    path = binding.get("array_manifest", "")
+    changed = not previous or previous.revision != manifest.revision or state.get("path") != path
+    if changed:
+        state.update(manifest=manifest, path=path, stamp=None, notice="Automatically linked to this run",
+                     generation=state["generation"] + 1, busy=False, cursor=0, top=0, query="",
+                     matches=manifest.entries, last=time.monotonic(), detail_scroll=0,
+                     hub=getattr(app, "research", None), submission_times=(), detail_cache=None, origin="automatic")
 
 
 def command_names():
@@ -69,7 +104,7 @@ def _attach(app, path):
         manifest, stamp, submissions = value
         state.update(manifest=manifest, path=path, stamp=stamp, notice="", cursor=0, top=0,
                      query="", matches=manifest.entries, last=time.monotonic(), detail_scroll=0,
-                     hub=hub, submission_times=submissions, detail_cache=None)
+                     hub=hub, submission_times=submissions, detail_cache=None, origin="manual")
         app.say(f"Array {manifest.array_id}: {len(manifest.entries)} scientific identities; revision {manifest.revision[:12]}")
 
     def worker():
@@ -103,6 +138,10 @@ def tick(app):
     hub = getattr(app, "research", None)
     manifest = state["manifest"]
     if not manifest or not hub:
+        return
+    if state.get("origin") == "automatic":
+        # The project reader follows the declaration and validates the exact
+        # attempt together with the report; a separate stat races that binding.
         return
     if state["hub"] is not hub:
         state["notice"] = "Connection changed; reload the array input map before using its labels"
@@ -206,8 +245,10 @@ def run_command(app, args):
             state["edit"] = state["path"]
             _open(app, "path")
         elif args == ["clear"]:
+            binding = (getattr(app, "project_state", {}) or {}).get("binding") or {}
+            state["auto_suppressed"] = tuple(binding.get(key) for key in ("project_root", "run_id", "job_id", "attempt"))
             state.update(manifest=None, path="", stamp=None, notice="", generation=state["generation"] + 1,
-                         busy=False, matches=(), cursor=0, top=0, control_hits=[], detail_cache=None)
+                         busy=False, matches=(), cursor=0, top=0, control_hits=[], detail_cache=None, origin="")
             if app.mode == "arraymap":
                 app.mode = "main"
             app.say("Array input map detached")

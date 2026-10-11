@@ -10,7 +10,7 @@ You can also create a manual group from selected jobs or remove members from an 
 ## Create a manual group
 
 1. Click a job row in the required list to focus that pane.
-2. Mark at least two jobs with `Space`. In a list that supports mouse ranges, Shift-drag through the required rows and release the button.
+2. Mark at least two jobs with `Space`, plain click-drag, or click followed by Shift-click on the other end of the range. Shift-click works in either direction. Hold Shift during a drag to retain earlier marks.
 3. Check the marked job IDs.
 4. Press `g`, or enter `:jobgroup create`.
 
@@ -50,15 +50,15 @@ If a grouping key ends an unfinished job-row drag, its delayed mouse release can
 Use an existing group's closed summary or any of its visible expanded members as the destination.
 
 1. Click a job to select it, or mark several jobs with `Space` or a range selection.
-2. Press the left button on that selected row or on one of the marked rows. Avoid its fold chevron.
+2. Hold **Alt**, then press the left button on that selected row or on one of the marked rows. Avoid its fold chevron and queue-order handle.
 3. Drag to a row in the destination group.
 4. Release the button on that group row.
 
 **Expected result:** Tower adds the exact source jobs to the destination group.
 A drag from a marked row uses the applicable marks in its focused list; Jobs can include marks from both Main and Recents.
 A drag from an unmarked row that you previously clicked and released moves that one job.
-An automatically selected row does not start a move until you click and release it first.
-Starting on another unmarked row retains range selection. Hold Shift to select a range even when starting on a selected or marked row.
+Plain click-drag always selects a range, including when its first row is selected or marked.
+Alt-drag explicitly requests a membership move. Shift takes precedence over Alt and keeps range selection.
 A closed source summary contributes only its real representative. Expand it and mark its members to move those members together.
 The destination can be closed or expanded.
 Tower highlights an eligible destination and displays a move hint while you drag.
@@ -103,7 +103,7 @@ Use the arrow keys, Tab, Shift-Tab, Page Up, Page Down, Home, or End to select a
 The mouse wheel scrolls a long menu. Esc, `q`, or Ctrl-C closes it.
 F8 also enables the standard directional button navigation for its visible choices.
 Creating and removing groups follows the same identity, focus, and persistence rules as `g` and `u`.
-Group operations organize Tower's display; they do not submit, cancel, or modify Slurm jobs.
+The job menu changes Tower's group membership only. The separate queue-order handle described below opens a scheduler-operation review.
 Right-click outside a selected job keeps the existing selection-clearing behavior, subject to History's log-export control and the graph-reset controls.
 
 ## Remove a group or some members
@@ -370,3 +370,62 @@ The grouping layer reads supplied snapshots. It does not run Slurm commands or r
 | `manual_job_groups.reset(app)` | Clear all saved and session manual memberships and exclusions while preserving the grouping display setting |
 | `job_groups.status_counts(records)` | Count distinct observed records in disjoint state categories |
 | `job_groups.summary_segments(records, ...)` | Return themed status text without changing job identity or marks |
+
+## Use the Main grouping controls
+
+The four buttons above Jobs Main use the same group preferences as the other
+job lists. Narrow panes wrap the controls without covering the table headings.
+
+| Button | Result |
+| --- | --- |
+| **Auto Group** | Enable inferred launch groups and close the inferred groups currently found. Preserve manual membership and explicit exclusions. |
+| **Undo Auto** | Restore the inference setting and fold changes owned by the preceding Auto Group action. Preserve later disclosure clicks and manual membership edits. |
+| **Ungroup All** | Clear saved groups, folds, and exclusions, and disable automatic inference. Jobs remain individual until you group them manually or use Auto Group again. |
+| **Expand All** | Open the shared job groups without changing their membership. |
+
+The matching commands are `:grouping auto`, `:grouping undo`, `:grouping clear`,
+and `:grouping expand`. After Ungroup All, `:grouping restore` restores its
+session snapshot if no newer membership change would be overwritten.
+These controls affect the shared group presentation; they do not change Slurm.
+
+## Review a group's queue order
+
+Use the **↕** handle beside a Main group header. ASCII mode uses `:`.
+The fold chevron remains a separate control.
+
+1. Press the left button on the order handle without Alt or Shift.
+2. Drag upward to place the source before another group, or downward to place it after that group.
+3. Release on the destination group's visible row.
+4. Wait for the background queue inspection. Read the exact proposed order and excluded jobs.
+5. Select **Review action**, then **Confirm apply** only if the displayed order is correct.
+
+For an expanded source group, the visible members dim and only its header
+label follows the pointer. A closed group uses the same header preview.
+Esc, right-click, or an invalid drop cancels the gesture. A changed row order,
+layout, execution attempt, or destination invalidates it. Hover and dragging
+use the published frame and do not query the scheduler.
+
+Tower uses Slurm's native `scontrol top` command. The site must enable
+`SchedulerParameters=enable_user_top`. Source and destination need pending
+jobs owned by your account in the same partition, Slurm account, and QOS.
+Running, completed, and archived members stay unchanged. Held jobs,
+heterogeneous identifiers, compressed array ranges, and ambiguous scope are
+rejected. Exact array task IDs are supported.
+
+The review includes all eligible pending peers in that scheduling scope,
+including peers outside the two displayed groups. It preserves their relative
+order and shows the complete resulting order. Inspection is bounded to 512
+jobs in the scope. Unrelated jobs in other scopes do not consume that bound.
+Before applying, Tower rechecks identities, restart counts, priorities,
+configuration, and scope. A changed plan requires a fresh review.
+
+This operation changes your eligible jobs' scheduler priority order. It does
+not alter another user's job records. Slurm can adjust nice values as part of
+its native operation. Dependencies, resources, reservations, and site policy
+still determine actual start times. Tower cannot reserve the scheduler between
+its final check and Slurm's command execution; the review states this limit.
+The displayed table still follows its current sort; drag order does not
+silently replace that sort.
+
+See [Queue-order operation](operations.md#additional-operation-own-pending-queue-order)
+for the command form and detailed restrictions.

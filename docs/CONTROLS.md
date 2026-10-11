@@ -49,9 +49,13 @@ Key bindings in configuration can replace the defaults below.
 | One frame | `tower --once --tab history` | Print a page and exit |
 | Updating text screen | `tower --watch` | Refresh an ANSI screen; Ctrl-C exits |
 | Scripted command | `tower run COMMAND ARGUMENTS` | Execute one palette command |
+| Bash Research reporting | `tower report COMMAND ARGUMENTS` | Publish job-linked reports; explicit `submit` launches a tracked Slurm job |
 
 Run `type tower` to identify which shell command will run.
 Use the [runbook](runbook.md#use-one-tower-shell-command) to install or inspect the managed alias.
+Use [Research reporting from Bash](guides/research-automation.md) for `init`,
+`submit`, `start`, `exec`, `finish`, `metric`, `research`, `log`, `passport`,
+`artifact`, and `aggregate`. These are command-line subcommands, not palette commands.
 
 ### Background worker mode
 
@@ -314,10 +318,13 @@ See [Navigation](guides/navigation.md#feature-35) for multiline input and quotin
 
 Marked jobs are the target of supported group actions.
 When no jobs are marked, the selected job is the target.
-Drag from an unselected job row through visible rows to mark a range in the current table order.
-Hold Shift to select a range from any job row and add it to existing marks.
-Click and release one job, then drag that row onto an existing group to add it. Drag a marked row to add the applicable marked jobs.
-Automatic cursor selection alone does not arm a single-job move.
+Click one job, then Shift-click another to mark the inclusive range in either direction.
+Repeated Shift-clicks adjust the range from the original anchor and preserve unrelated marks.
+Press, drag, and release through job rows to mark a range in the current table order.
+This works from unselected, selected, and already marked rows.
+Hold Shift during a range drag to retain earlier marks.
+Hold Alt when pressing a job row to drag that job into an existing group. Alt-drag a marked row to add the applicable marked jobs.
+Plain dragging always selects rows; it does not start a membership move.
 The destination can be a closed summary, an expanded member, or that group's chevron. A closed source summary contributes only its representative job.
 Pressing a chevron directly retains its fold action and does not start a move.
 Release outside an eligible group, press Esc, or right-click to cancel a group move.
@@ -327,7 +334,8 @@ Press `g` to group the marked jobs in the focused list.
 On Jobs, this includes marked rows from both Main and Recents. Other workspaces use the focused list only.
 Open the group, mark specific members, and press `u` to detach those members.
 Select its closed summary and press `u` to dissolve the group.
-These controls change Tower's display organization only.
+The membership keys and Alt-drag change Tower's display organization only.
+If the terminal intercepts Alt-drag, use the equivalent right-click group menu.
 See [Manual groups](guides/batch-launches.md#create-a-manual-group) for focus, identity, and persistence rules.
 Right-click a selected or marked job, including its group chevron, for **Create Group** (at least two targets), **Ungroup** (grouped targets), and applicable **Add to GROUP NAME** choices.
 Right-clicking a marked row targets applicable marks; an unmarked selected row targets that exact job and retains unrelated marks.
@@ -353,16 +361,45 @@ Use `:inspect section Overview\|Resources\|Steps\|Files\|Evidence` to select a s
 The inspector's section buttons also accept mouse clicks.
 
 Click column headings for cascading sorts.
+Drag a heading's thin separator to resize that column. Right-click the separator to restore automatic width.
+Press Esc during the resize to restore the previous width. A completed drag saves once.
+The separator buffer stays outside adjacent heading text; the last fitted column can use an edge handle.
+Jobs Main and Recents share widths and column order. Their sorts and filters remain independent.
 Use `:sortby [TABLE] COLUMN [asc|desc|off]` for the equivalent command.
 Use `:sortby [TABLE] clear` to remove every rule in that table.
 See [Tables](guides/tables.md) for sort editing, column controls, filters, marks, and drill-down.
-The six-cell Progress column precedes JOBID and supports `:sortby jobs progress asc\|desc\|off`.
+The fixed six-cell Progress column precedes JOBID and supports `:sortby jobs progress asc\|desc\|off`.
 The marking and fold gutter remains separate to its left.
 The field contains one narrow symbol, a space, and four fractional block cells.
 `▸` identifies a published application completion fraction; an animated clock identifies time-limit usage.
 Pending jobs show an animated narrow hourglass and `wait`.
 ASCII uses static `p`, `t`, and `w` symbols.
 See [Job progress](guides/adaptive-workspaces.md#read-the-six-cell-progress-column) for exact source fields and unknown states.
+Recents leaves live-only progress and measurement slots empty. The completion cue travels through Main's left gutter.
+
+### Jobs Main grouping and queue controls
+
+| Control | Function |
+| --- | --- |
+| **Auto Group**, `:grouping auto` | Enable automatic detection and close its groups; keep manual groups and exclusions |
+| **Undo Auto**, `:grouping undo` | Undo the last Auto Group change without replacing later manual changes |
+| **Ungroup All**, `:grouping clear` | Remove manual groups and disable automatic grouping; keep all jobs |
+| **Expand All**, `:grouping expand` | Open all groups without changing membership |
+| `:grouping restore` | Restore the last Ungroup All change if later grouping edits would not be overwritten |
+| Drag a group header's `↕` (`:` in ASCII) onto another Main group | Request placement before an earlier group or after a later group; release opens inspection and review |
+| Esc or right-click during a queue-order drag | Cancel without changing scheduler order |
+| `:ops queue-order` | Open the queue-order form without a mouse |
+
+The four grouping buttons change shared display organization only. Their undo records last for the current session.
+The queue-order handle is separate from the fold chevron and Alt-drag membership control.
+Only its header follows the pointer; expanded members are dimmed during the drag.
+After dropping, inspect **Review action**, then select **Confirm apply** to request a scheduler change.
+Both groups need pending jobs owned by the connected user in the same partition, account, and QOS.
+The site must enable Slurm's `enable_user_top` capability. Running and completed members are excluded.
+A held or priority-one job in either selected group blocks the request.
+The review checks up to 512 exact pending jobs, including affected peers owned by that same user.
+It does not change another user's jobs, resources, or dependencies. Actual starts still depend on scheduler policy and available resources.
+A changed queue invalidates the review. See [Queue-order procedure](guides/tables.md#review-a-groups-queue-order).
 
 ### Jobs Details buttons
 
@@ -430,7 +467,8 @@ See [Job history panels](guides/adaptive-workspaces.md#keep-job-history-beside-t
 
 | Control | Function |
 | --- | --- |
-| Shift-press, drag, and release through History rows | Mark exact jobs in the current table order |
+| Press, drag, and release through History rows | Mark exact jobs in the current table order, including from selected rows |
+| Click one History row, then Shift-click another | Mark the inclusive range in either direction; retain unrelated marks |
 | Right-click a selected or marked History row, then **Export logs** | Open the clipboard, directory, and Cancel menu for the targeted jobs |
 | Right-click elsewhere inside the History job list | Open the existing export menu directly for marked or selected jobs |
 | `:historylogs` | Open that export menu without a mouse |
@@ -462,7 +500,7 @@ Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, an
 | `:headers [TABLE]` | Open keyboard header controls |
 | `:columns [TABLE]` | Open column order, width, and visibility controls |
 | `:columns [TABLE] order KEYS` | Set column order |
-| `:columns [TABLE] width KEY WIDTH` | Set a width from two to one hundred twenty characters, or `auto` |
+| `:columns [TABLE] width KEY WIDTH` | Set a width from two to one hundred twenty terminal cells, or `auto`; Progress stays at six |
 | `:columns [TABLE] show\|hide KEYS` | Change optional column visibility |
 | `:columns [TABLE] reset` | Restore default column preferences |
 | `:where [TABLE] CONDITION...` | Apply numeric resource conditions |
@@ -473,7 +511,8 @@ Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, an
 | `:historyrange START END` | Select inclusive local calendar dates |
 | `:recents 5\|10\|25\|auto` | Select the initial Recents preview size |
 | `:recents expand\|collapse` | Change the Recents presentation |
-| `:jobgroups [on\|off]` | Toggle or select automatic launch grouping |
+| `:jobgroups [on\|off]` | Toggle shared group visibility; explicit `on` also enables automatic detection |
+| `:grouping auto\|undo\|clear\|expand\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
 | `:jobgroup toggle\|open\|close GROUP_ID` | Fold or expand one known launch group |
 | `:jobgroup create` | Group at least two marked real jobs in the focused list |
 | `:jobgroup ungroup` | Dissolve targeted closed groups or detach targeted expanded members |
@@ -504,7 +543,7 @@ With a grouped job selected and ordinary page focus, Left closes its group and R
 Closed groups retain one real representative ID.
 Manual groups use the same chevrons and state summaries.
 `g` creates one from at least two marked jobs; `u` removes the selected group or its selected expanded members.
-Drag a selected row or marked selection onto a group row to add those exact jobs.
+Alt-drag a job row or marked selection onto a group row to add those exact jobs.
 Right-click the selected row for equivalent group creation, removal, and destination choices.
 Manual membership uses natural job-ID order. Displayed rows retain each list's active sort, including its default sort.
 Use `U` when you only want to clear marks.
@@ -535,6 +574,11 @@ Hover feedback and F8 navigation use the same checkbox control.
 Required identity and state columns remain visible.
 Adjust their widths or order when you need more space.
 Enter closes the overlay.
+You can also drag the thin table-header separator or its adjacent gap to preview a width.
+Right-click that separator to reset its width. Esc cancels an unfinished drag.
+Page, modal, terminal-size, and incompatible layout changes also cancel the preview.
+`:columns recent` opens the Jobs editor because Queue and Recents share their column layout.
+Explicit Recents column commands use the equivalent Jobs field. Use History for completed-only columns.
 
 In the filter builder, Enter edits a field.
 An empty field removes its condition.
@@ -961,7 +1005,7 @@ Job-changing commands open a review; scripted changes require `--yes`.
 | Main navigation | `tab`, `view`, `workspace`, `workspaces`, `back`, `forward`, `jump`, `location` | [Navigation](guides/navigation.md) |
 | Settings and field inspection | `settings`, `keybindings`, `explain`, `peek` | [Navigation](guides/navigation.md) |
 | Panel layout | `density`, `focus`, `maximize`, `layout`, `panel-scroll` | [Workbench](WORKBENCH.md#shape-your-workspace) |
-| Table inspection | `sort`, `sortby`, `sorteditor`, `headers`, `columns`, `facet`, `filters`, `where`, `savedview`, `viewpicker`, `jobgroups`, `filter`, `days`, `historyrange`, `recents`, `marked`, `freeze`, `jobactions`, `node`, `drill` | [Tables](guides/tables.md) |
+| Table inspection | `sort`, `sortby`, `sorteditor`, `headers`, `columns`, `facet`, `filters`, `where`, `savedview`, `viewpicker`, `jobgroups`, `jobgroup`, `grouping`, `queue-drag`, `filter`, `days`, `historyrange`, `recents`, `marked`, `freeze`, `jobactions`, `node`, `drill` | [Tables](guides/tables.md) |
 | Job selection and annotations | `mark`, `unmark`, `pin`, `tag`, `untag`, `note`, `compare` | [Reference](reference.md#keys-remappable-in-the-config) |
 | Job changes | `cancel`, `hold`, `release`, `requeue`, `top`, `resubmit`, `chain` | [Reference](reference.md#keys-remappable-in-the-config) |
 | Selected job | `jobpanel`, `inspect`, `log`, `investigate`, `advise` | [Live workbench](guides/live-workbench.md#inspect-a-job-inside-jobs) |

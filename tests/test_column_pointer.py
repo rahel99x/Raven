@@ -65,8 +65,9 @@ def test_all_table_column_checkboxes_toggle_using_stable_keys(dashboard, table):
     y, _, value = available[-1]
     key = value["column"][1]
     app.click(y, value["left"], app.last_hits)
-    assert key in app.table_state["hidden"][table]
-    assert not set(app.table_state["hidden"][table]) & table_ui.REQUIRED
+    shared = "jobs" if table == "recent" else table
+    assert key in app.table_state["hidden"][shared]
+    assert not set(app.table_state["hidden"][shared]) & table_ui.REQUIRED
 
 
 @pytest.mark.parametrize("key", ["id", "name", "st"])

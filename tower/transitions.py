@@ -5,6 +5,64 @@ from collections import OrderedDict
 import time
 
 
+def paint_completion_trails(rows, hits, moves, *, main, width, body_top,
+                            comfortable=False, ascii_=False):
+    """Paint departures in Main's reserved left margin, never over controls.
+
+    The fold button and mark occupy the first two compact table cells. The
+    following gap is safe for feedback; comfortable layouts have an additional
+    outer padding cell. Read only this short prefix and at most nine trail cells.
+    The pristine rows and hit map remain usable for copying and pointer input.
+    """
+    if main is None or not moves or width <= 0 or main.width <= 0 or main.height <= 0:
+        return rows
+    from . import layout as L
+    from .pane_drag import _replace
+
+    padding = int(comfortable and main.width >= 8 and main.height >= 7)
+    x = main.x if padding else main.x + 2
+    top = max(body_top, main.y + 1 + padding)
+    bottom = min(len(rows), main.y + main.height - padding)
+    if not max(0, main.x) <= x < min(width, main.x + main.width) or top >= bottom:
+        return rows
+    destinations, blocked = {}, set()
+    for y, kind, value in hits:
+        if not top <= y < bottom:
+            continue
+        if kind == "recent":
+            destinations[value] = y
+        elif kind == "sort_header":
+            # Header feedback must never cover a label or resize grip.
+            blocked.add(y)
+        elif kind == "control" and isinstance(value, dict):
+            left, right = value.get("left"), value.get("right")
+            if isinstance(left, int) and isinstance(right, int) and left <= x < right:
+                blocked.add(y)
+    output = rows
+    for item in moves[-3:]:
+        destination = destinations.get(item["job"])
+        if destination is None:
+            continue
+        source = item.get("source")
+        source = max(top, min(destination, source if source is not None else top))
+        progress = 1 - (1 - item["progress"]) ** 3
+        position = round(source + (destination - source) * progress)
+        for trail in range(3):
+            y = position - trail
+            if not top <= y < bottom or y in blocked:
+                continue
+            prefix = L.row_text(L.clip_row(rows[y], x + 1))
+            # Skip occupied cells, short rows and any half of a wide glyph.
+            if L.vlen(prefix) != x + 1 or not prefix.endswith(" "):
+                continue
+            if output is rows:
+                output = list(rows)
+            glyph = ("v" if ascii_ else "◆") if trail == 0 else (":" if ascii_ else "│")
+            output[y] = _replace(output[y], x, glyph, "cyan+bold" if trail == 0 else "dim",
+                                 width, fitted=True)
+    return output
+
+
 class CompletionFeedback:
     MOVE_SECONDS = 1.6
     FLASH_SECONDS = 1.4

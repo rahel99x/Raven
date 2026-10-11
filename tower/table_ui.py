@@ -18,7 +18,7 @@ REQUIRED = {"id", "name", "st", "state"}
 
 
 def initialize(app):
-    app.table_state = {"hidden": {}, "order": {}, "widths": {}, "filters": {}, "facets": {}, "views": {}, "sorts": {}, "cursor": 0, "tab": "jobs", "groups": True, "collapsed": [], "control_hits": []}
+    app.table_state = {"hidden": {}, "order": {}, "widths": {}, "filters": {}, "facets": {}, "views": {}, "sorts": {}, "cursor": 0, "tab": "jobs", "groups": True, "auto_groups": True, "collapsed": [], "control_hits": []}
 
 
 def restore(app, data):
@@ -61,6 +61,8 @@ def restore(app, data):
                 continue
     if "groups" in data:
         app.table_state["groups"] = data.get("groups") is True
+    if isinstance(data.get("auto_groups"), bool):
+        app.table_state["auto_groups"] = data["auto_groups"]
     from .job_groups import valid_group_id
     app.table_state["collapsed"] = [value for value in data.get("collapsed", [])[:256] if valid_group_id(value)] if isinstance(data.get("collapsed"), list) else []
     from .manual_job_groups import validate_state
@@ -69,6 +71,9 @@ def restore(app, data):
 
 def save(app):
     result = {key: copy.deepcopy(app.table_state[key]) for key in ("hidden", "order", "widths", "filters", "facets", "views", "sorts", "groups", "collapsed")}
+    result["auto_groups"] = app.table_state.get("auto_groups", True) is True
+    from .column_resize import committed_widths
+    committed_widths(app, result["widths"])
     result["column_layout_version"] = COLUMN_LAYOUT_VERSION
     from .manual_job_groups import validate_state
     result["manual_groups"] = validate_state(app.table_state.get("manual_groups"))
@@ -204,7 +209,8 @@ def facets_fingerprint(app, tab):
 def fingerprint(app, tab):
     """Selection cache identity includes both filters and explicit sort state."""
     from .table_tools import extra_fingerprint
-    return facets_fingerprint(app, tab), sort_fingerprint(app, tab), extra_fingerprint(app, tab)
+    return (facets_fingerprint(app, tab), sort_fingerprint(app, tab), extra_fingerprint(app, tab),
+            getattr(app, "table_state", {}).get("auto_groups", True) is True)
 
 
 def matches(app, tab, record, snap):
@@ -335,6 +341,8 @@ def run_command(app, args):
             app.fail("Usage: jobgroups [on|off]")
         else:
             app.table_state["groups"] = not app.table_state["groups"] if not values else values == ["on"]
+            if values == ["on"]:
+                app.table_state["auto_groups"] = True
             app.say("Launch grouping " + ("on; Left/Right closes or opens the selected group" if app.table_state["groups"] else "off"))
         return True
     tab = values.pop(0) if values and values[0] in TABLE_KEYS else app.tab
@@ -343,6 +351,25 @@ def run_command(app, args):
         return True
     state = app.table_state
     if command == "columns":
+        if tab == "recent":
+            # Embedded Recents deliberately shares Queue geometry. Do not
+            # accept settings that would save successfully but never appear.
+            from .column_resize import RECENT_ALIASES
+            inverse = {value: key for key, value in RECENT_ALIASES.items()}
+            available_jobs = {column.key for column in definitions("jobs")}
+            requested = ([values[1]] if len(values) == 3 and values[0] == "width" else
+                         [part for value in values[1:] for part in value.split(",")]
+                         if values and values[0] in ("order", "show", "hide") else [])
+            translated = [inverse.get(key, key) for key in requested]
+            if any(key not in available_jobs for key in translated):
+                app.fail("Recents shares Queue columns; configure History for completed-only columns")
+                return True
+            if requested:
+                values = (["width", translated[0], values[2]] if values[0] == "width" else
+                          [values[0], ",".join(translated)])
+            tab = "jobs"
+            if not values:
+                app.say("Recents shares the Queue column layout")
         available = {column.key for column in definitions(tab)}
         if not values:
             state["tab"], state["cursor"], app.mode = tab, 0, "columns"

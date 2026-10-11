@@ -106,8 +106,9 @@ def test_visible_jobs_headers_have_exact_nonoverlapping_bounds(dashboard, ascii_
     assert all(0 <= left < right <= width for _, (_, _, left, right) in headers)
     assert all(right <= other_left for (_, (_, _, _, right)), (_, (_, _, other_left, _))
                in zip(headers, headers[1:]))
-    assert all(y == 1 for y, _ in headers)
-    assert L.vlen(L.row_text(rows[1])) <= width
+    first_job_row = next(y for y, kind, _ in hits if kind == "job")
+    assert all(y == first_job_row - 1 for y, _ in headers)
+    assert L.vlen(L.row_text(rows[first_job_row - 1])) <= width
     assert all(L.vlen(L.row_text(rows[y])) <= width for y, kind, _ in hits if kind == "job")
     if width == 340:
         assert {payload[1] for _, payload in headers} == {column.key for column in JOB_COLS}

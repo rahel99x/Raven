@@ -14,6 +14,7 @@ import math
 import os
 import re
 import stat
+import hashlib
 from contextlib import contextmanager
 
 from .artifacts import _contract, _json, _open_local, _signature, validate_contract
@@ -29,7 +30,7 @@ MAX_TREE_NODES = 2048
 _IDENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 _STATES = set("CREATED SUBMITTED PENDING RUNNING COMPLETING COMPLETED FAILED CANCELLED TIMEOUT OUT_OF_MEMORY NODE_FAIL PREEMPTED BOOT_FAIL DEADLINE REQUEUED REQUEUE_FED REQUEUE_HOLD RESIZING REVOKED SIGNALING SPECIAL_EXIT STAGE_OUT STOPPED SUSPENDED UNKNOWN INTERRUPTED".split())
 _FIELDS = set("schema project_id run_id experiment_id attempt name state job_id start end submit paths provenance parameters results metadata description resources input_size".split())
-_PATHS = set("metrics summary outputs logs passports stdout stderr log_index planning predict forecast blockers tradeoffs scaling workflow submit".split())
+_PATHS = set("metrics summary outputs logs passports stdout stderr log_index planning predict forecast blockers tradeoffs scaling workflow submit array_manifest contract".split())
 PLANNING_PATHS = ("predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow")
 
 
@@ -84,6 +85,14 @@ def validate_inventory(value):
     for key in ("results", "metadata"):
         if key in value and not isinstance(value[key], dict):
             raise ValueError(f"{key} must be a JSON object")
+    launch = value.get("metadata", {}).get("tower_launch")
+    if launch is not None:
+        if not isinstance(launch, dict):
+            raise ValueError("metadata.tower_launch must be an object")
+        if "cluster" in launch:
+            _text(launch["cluster"], "launch cluster", empty=True)
+        if "restart_count" in launch and (type(launch["restart_count"]) is not int or not 0 <= launch["restart_count"] <= 2147483646):
+            raise ValueError("launch restart_count must be a bounded nonnegative integer")
     if "parameters" in value:
         from .predict import _parameters
         _parameters(value["parameters"])
@@ -185,8 +194,21 @@ def _read(root_fd, path, limit, *, truncate=False):
         os.close(parent)
 
 
-def _inventory(root_fd, directory, budget=None):
-    data, size = _read(root_fd, "runs/" + directory + "/run.json", MAX_INVENTORY_BYTES)
+def _inventory(root_fd, directory, budget=None, *, run_fd=None):
+    if run_fd is None:
+        pinned = _directory(root_fd, "runs/" + directory)
+        try:
+            return _inventory(root_fd, directory, budget, run_fd=pinned)
+        finally:
+            os.close(pinned)
+    data, size = _read(run_fd, "run.json", MAX_INVENTORY_BYTES)
+    verify_fd = _directory(root_fd, "runs/" + directory)
+    try:
+        before, named = os.fstat(run_fd), os.fstat(verify_fd)
+        if (before.st_dev, before.st_ino) != (named.st_dev, named.st_ino):
+            raise ValueError("attempt directory changed during inspection; refresh to retry")
+    finally:
+        os.close(verify_fd)
     if budget is not None:
         budget[0] += len(data)
     value = validate_inventory(_json(data))
@@ -197,6 +219,9 @@ def _inventory(root_fd, directory, budget=None):
 
 def discover_project(path, *, files=None):
     """Inspect at most 256 direct attempts, never project descendants."""
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "discover_project", path)
     _local(files)
     root, root_fd = _root(path)
     result = {"status": "ready", "root": root, "runs": [], "warnings": [], "limited": False, "bytes_read": 0, "entries_seen": 0}
@@ -266,10 +291,73 @@ def job_project_roots(workdir, registered=""):
     return roots[:2]
 
 
-def discover_job(roots, job_id, *, files=None):
+def _indexed_project(path, job_id, cluster):
+    """Read the producer's exact job index without scanning large run trees."""
+    if not re.fullmatch(r"[0-9]+(?:_[0-9]+)?(?:\+[0-9]+)?", job_id):
+        return None
+    root, root_fd = _root(path)
+    try:
+        names = []
+        if cluster:
+            names.append(hashlib.sha256(cluster.encode("utf-8")).hexdigest()[:12] + "-" + job_id)
+        names.append(job_id)
+        for name in names:
+            try:
+                data, _ = _read(root_fd, ".tower/jobs/" + name + ".json", MAX_INVENTORY_BYTES)
+            except FileNotFoundError:
+                continue
+            document = _json(data)
+            if isinstance(document, dict) and document.get("schema") == "tower.job-index-ambiguous/v1":
+                raise ValueError("job ID is ambiguous across project clusters; select its cluster or exact run")
+            if (not isinstance(document, dict) or set(document) != {"schema", "job_id", "cluster", "run_ids"}
+                    or document.get("schema") != "tower.job-index/v1" or document.get("job_id") != job_id):
+                raise ValueError("job index does not declare this exact scheduler identity")
+            declared_cluster = _text(document["cluster"], "index cluster", empty=True)
+            if cluster and declared_cluster and cluster != declared_cluster:
+                raise ValueError("job index belongs to another cluster")
+            run_ids = document["run_ids"]
+            if (not isinstance(run_ids, list) or not 1 <= len(run_ids) <= 128
+                    or any(not isinstance(value, str) or not _IDENT.fullmatch(value) for value in run_ids)
+                    or len(set(run_ids)) != len(run_ids)):
+                raise ValueError("job index requires one to 128 distinct exact run IDs")
+            runs, budget = [], [len(data)]
+            for run_id in run_ids:
+                try:
+                    run = _inventory(root_fd, run_id, budget)
+                except FileNotFoundError as exc:
+                    raise ValueError("indexed attempt is not available; waiting for its publisher") from exc
+                launch = run["inventory"].get("metadata", {}).get("tower_launch", {})
+                launch_cluster = launch.get("cluster", "") if isinstance(launch, dict) else ""
+                if run.get("job_id") != job_id or launch_cluster and declared_cluster != launch_cluster:
+                    raise ValueError("job index run identity changed; waiting for its publisher")
+                runs.append(run)
+            # Catch a replaced index while inspecting its attempt declarations.
+            latest, _ = _read(root_fd, ".tower/jobs/" + name + ".json", MAX_INVENTORY_BYTES)
+            if latest != data:
+                raise ValueError("job index changed during inspection; retry after its publisher")
+            return {"status": "ready", "root": root, "runs": runs, "warnings": [], "limited": False,
+                    "bytes_read": budget[0], "entries_seen": len(runs), "indexed": True,
+                    "summary": f"{len(runs)} exact indexed attempts for job {job_id}"}
+        return None
+    finally:
+        os.close(root_fd)
+
+
+def _attempt_identity(inventory):
+    launch = inventory.get("metadata", {}).get("tower_launch") or {}
+    return (tuple(inventory.get(key) for key in ("job_id", "run_id", "experiment_id", "attempt", "project_id")),
+            tuple(launch.get(key) for key in ("cluster", "restart_count", "submission_token")))
+
+
+def discover_job(roots, job_id, *, files=None, cluster="", restart_count=None):
     """Bind a single exact scheduler identity, refusing partial/ambiguous scans."""
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "discover_job", roots, job_id, cluster=cluster, restart_count=restart_count)
     _local(files)
     _text(job_id, "job_id")
+    if restart_count is not None and (type(restart_count) is not int or not 0 <= restart_count <= 2147483646):
+        raise ValueError("restart count must be a bounded scheduler observation")
     if not isinstance(roots, (list, tuple)) or len(roots) > 2:
         raise ValueError("automatic discovery permits at most two explicit roots")
     projects_found, matches, warnings = [], [], []
@@ -277,7 +365,9 @@ def discover_job(roots, job_id, *, files=None):
     seen = set()
     for root in roots:
         try:
-            found = discover_project(root, files=files)
+            found = _indexed_project(root, job_id, cluster)
+            if found is None:
+                found = discover_project(root, files=files)
         except FileNotFoundError:
             continue
         except (OSError, ValueError) as exc:
@@ -290,7 +380,13 @@ def discover_job(roots, job_id, *, files=None):
         projects_found.append(found)
         incomplete = incomplete or found["limited"] or bool(found["warnings"])
         warnings.extend(found["warnings"][:32])
-        matches.extend((found["root"], run["run_id"]) for run in found["runs"] if run.get("job_id") == job_id)
+        for run in found["runs"]:
+            launch = run["inventory"].get("metadata", {}).get("tower_launch", {})
+            declared_cluster = launch.get("cluster", "") if isinstance(launch, dict) else ""
+            declared_restart = launch.get("restart_count") if isinstance(launch, dict) else None
+            if (run.get("job_id") == job_id and not (cluster and declared_cluster and cluster != declared_cluster)
+                    and not (restart_count is not None and declared_restart is not None and declared_restart != restart_count)):
+                matches.append((found["root"], run["run_id"], _attempt_identity(run["inventory"])))
     result = {"status": "missing", "selected": None, "projects": projects_found, "warnings": warnings[:64],
               "summary": f"No run inventory declares exact job_id {job_id}"}
     if incomplete:
@@ -298,8 +394,13 @@ def discover_job(roots, job_id, *, files=None):
     elif len(matches) > 1:
         result.update(status="ambiguous", summary=f"{len(matches)} inventories declare job_id {job_id}; choose the actual attempt with :runs")
     elif len(matches) == 1:
-        selected = select_run(*matches[0], files=files)
-        if selected["binding"].get("job_id") != job_id:
+        selected = select_run(*matches[0][:2], files=files)
+        launch = selected["binding"].get("launch")
+        selected_cluster = launch.get("cluster", "") if isinstance(launch, dict) else ""
+        selected_restart = launch.get("restart_count") if isinstance(launch, dict) else None
+        if (_attempt_identity(selected["run"]["inventory"]) != matches[0][2]
+                or selected["binding"].get("job_id") != job_id or cluster and selected_cluster and selected_cluster != cluster
+                or restart_count is not None and selected_restart is not None and selected_restart != restart_count):
             result.update(status="changed", summary="Run identity changed during discovery; waiting for the next refresh")
         else:
             result.update(status="ready", selected=selected, summary=f"Linked job {job_id} to run {matches[0][1]}")
@@ -311,6 +412,8 @@ def bound_run_root(binding):
     """Pin and revalidate one exact run before a report read, including parents."""
     if not isinstance(binding, dict):
         raise ValueError("an exact run binding is required")
+    if binding.get("remote_identity"):
+        raise ValueError("remote run reads require their original SSH file adapter")
     root, project_fd = _root(binding.get("project_root"))
     run_fd = None
     try:
@@ -320,10 +423,19 @@ def bound_run_root(binding):
         expected = os.path.join(root, "runs", run_id)
         if binding.get("run_root") != expected:
             raise ValueError("bound run root is outside its project")
-        current = _inventory(project_fd, run_id)["inventory"]
+        run_fd = _directory(project_fd, "runs/" + run_id)
+        current = _inventory(project_fd, run_id, run_fd=run_fd)["inventory"]
         if current.get("job_id") != binding.get("job_id"):
             raise ValueError("run job identity changed; waiting for automatic rebinding")
-        run_fd = _directory(project_fd, "runs/" + run_id)
+        if any(key in binding and current.get(key) != binding.get(key) for key in ("run_id", "experiment_id", "attempt", "project_id")):
+            raise ValueError("run attempt identity changed; waiting for automatic rebinding")
+        launch = current.get("metadata", {}).get("tower_launch", {})
+        prior = binding.get("launch", {})
+        for field in ("cluster", "restart_count", "submission_token"):
+            expected = prior.get(field) if isinstance(prior, dict) else None
+            observed = launch.get(field) if isinstance(launch, dict) else None
+            if expected != observed:
+                raise ValueError("run launch identity changed; waiting for automatic rebinding")
         yield project_fd, run_fd, current
     finally:
         if run_fd is not None:
@@ -342,11 +454,38 @@ def bound_relative(binding, path, current, *, key=None):
     return relative
 
 
-def read_bound_json(binding, path, *, key=None, max_bytes=1048576):
+def _project_planning(project_fd, binding):
+    """Resolve one declared shared history report, without guessing locations."""
+    data, _ = _read(project_fd, ".tower/project.json", MAX_INVENTORY_BYTES)
+    descriptor = _json(data)
+    if not isinstance(descriptor, dict) or descriptor.get("schema") != "tower.project/v1":
+        raise ValueError("shared planning requires a tower.project/v1 descriptor")
+    if binding.get("project_id") and descriptor.get("project_id") != binding["project_id"]:
+        raise ValueError("shared planning descriptor belongs to another project")
+    paths = descriptor.get("paths", {})
+    if not isinstance(paths, dict):
+        raise ValueError("project descriptor paths must be an object")
+    path = paths.get("planning")
+    if path is None:
+        return None
+    relative_path(path)
+    return path
+
+
+def read_bound_json(binding, path, *, key=None, max_bytes=1048576, files=None):
     """Read stable JSON through an exact run descriptor, never its replaced path."""
-    with bound_run_root(binding) as (_, run_fd, current):
-        relative = bound_relative(binding, path, current, key=key)
-        data, _ = _read(run_fd, relative, max_bytes)
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "read_bound_json", binding, path, key=key, max_bytes=max_bytes)
+    with bound_run_root(binding) as (project_fd, run_fd, current):
+        if key == "planning" and binding.get("planning_scope") == "project":
+            relative = _project_planning(project_fd, binding)
+            if not relative or os.path.join(binding["project_root"], relative) != path:
+                raise ValueError("shared planning declaration changed; waiting for automatic rebinding")
+            data, _ = _read(project_fd, relative, max_bytes)
+        else:
+            relative = bound_relative(binding, path, current, key=key)
+            data, _ = _read(run_fd, relative, max_bytes)
         value = _json(data)
         from .planning_io import _bounded
         _bounded(value, 32)
@@ -355,7 +494,42 @@ def read_bound_json(binding, path, *, key=None, max_bytes=1048576):
         return value
 
 
-def read_bound_passport(binding, path):
+def read_bound_metric_chunk(binding, path, offset, ident, max_bytes):
+    """One SSH round trip supplies an identity-checked incremental byte window."""
+    import base64
+    if type(offset) is not int or offset < 0 or type(max_bytes) is not int or not 1 <= max_bytes <= 64 * 1024 * 1024:
+        raise ValueError("invalid bounded metric read window")
+    with bound_run_root(binding) as (_, run_fd, current):
+        relative = bound_relative(binding, path, current, key="metrics")
+        fd, parent, name = _open_local(run_fd, relative)
+        try:
+            before = os.fstat(fd)
+            identity = [before.st_dev, before.st_ino]
+            effective = 0 if identity != ident or before.st_size < offset else offset
+            start = max(effective, before.st_size - max_bytes)
+            if start > effective and max_bytes > 1:
+                start = max(0, start - 1)
+            length = min(max_bytes, before.st_size - start)
+            data = os.pread(fd, length, start)
+            named = os.stat(name, dir_fd=parent, follow_symlinks=False)
+            # Appending does not invalidate a fully observed prefix. Truncation,
+            # replacement, or an in-place rewrite does, and is retried next tick.
+            after = os.fstat(fd)
+            if ((after.st_dev, after.st_ino) != (named.st_dev, named.st_ino)
+                    or after.st_size < before.st_size or len(data) != length
+                    or after.st_size == before.st_size and _signature(after) != _signature(before)):
+                raise ValueError("metric stream changed during its bounded read")
+            return {"size": before.st_size, "ident": identity, "offset": start,
+                    "data": base64.b64encode(data).decode("ascii")}
+        finally:
+            os.close(fd)
+            os.close(parent)
+
+
+def read_bound_passport(binding, path, *, files=None):
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "read_bound_passport", binding, path)
     with bound_run_root(binding) as (_, run_fd, current):
         relative = bound_relative(binding, path, current)
         directory = current.get("paths", {}).get("passports", "")
@@ -371,14 +545,28 @@ def read_bound_passport(binding, path):
 
 
 def read_bound_artifacts(binding, *, files=None):
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "read_bound_artifacts", binding)
     _local(files)
-    with bound_run_root(binding) as (project_fd, run_fd, _):
-        data, _ = _read(project_fd, ".tower/contracts/outputs.v1.json", 262144)
+    with bound_run_root(binding) as (project_fd, run_fd, current):
+        declared = current.get("paths", {}).get("contract")
+        if declared:
+            relative = bound_relative(binding, binding.get("contract", ""), current, key="contract")
+            data, _ = _read(run_fd, relative, 262144)
+        else:
+            expected = os.path.join(binding["project_root"], ".tower/contracts/outputs.v1.json")
+            if binding.get("contract") != expected:
+                raise ValueError("output contract declaration changed; waiting for automatic rebinding")
+            data, _ = _read(project_fd, ".tower/contracts/outputs.v1.json", 262144)
         return validate_contract(_json(data), binding["run_root"], files=files, root_fd=run_fd)
 
 
-def read_bound_tail(binding, entry, max_bytes):
+def read_bound_tail(binding, entry, max_bytes, *, files=None):
     """Read one currently declared log through pinned, no-symlink parents."""
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "read_bound_tail", binding, entry, max_bytes)
     if type(max_bytes) is not int or not 0 <= max_bytes <= 1048576:
         raise ValueError("project evidence log read is bounded to one MiB")
     with bound_run_root(binding) as (_, run_fd, current):
@@ -441,32 +629,57 @@ def _declared_path(root_fd, root, value, *, directory=False):
 
 def select_run(path, run_id, *, files=None):
     """Revalidate one explicit attempt and return its exact binding and sources."""
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "select_run", path, run_id)
     _local(files)
     if not isinstance(run_id, str) or not _IDENT.fullmatch(run_id):
         raise ValueError("run ID must be a safe ASCII identifier")
     root, root_fd = _root(path)
     run_fd = None
     try:
-        run = _inventory(root_fd, run_id)
+        run_fd = _directory(root_fd, "runs/" + run_id)
+        run = _inventory(root_fd, run_id, run_fd=run_fd)
         inventory = run["inventory"]
         run_root = os.path.join(root, "runs", run_id)
-        run_fd = _directory(root_fd, "runs/" + run_id)
-        binding = {"project_root": root, "run_root": run_root, **{key: inventory.get(key) for key in ("run_id", "experiment_id", "attempt", "state", "job_id")},
+        binding = {"project_root": root, "run_root": run_root, **{key: inventory.get(key) for key in ("project_id", "run_id", "experiment_id", "attempt", "state", "job_id")},
                    "metrics_file": "", "log_manifest": "", "stdout": "", "stderr": "", "contract": "", "passport": "",
-                   "planning_file": "", "planning_files": {}, "submit_file": ""}
+                   "planning_file": "", "planning_files": {}, "submit_file": "", "array_manifest": "",
+                   "launch": inventory.get("metadata", {}).get("tower_launch", {}), "planning_scope": "run"}
+        scientific = dict(inventory.get("resources", {}))
+        scientific["name"] = inventory.get("name") or inventory["experiment_id"]
+        scientific.update({key: inventory[key] for key in ("parameters", "input_size") if key in inventory})
+        if inventory.get("provenance", {}).get("script_sha256"):
+            scientific["script_sha256"] = inventory["provenance"]["script_sha256"]
+        binding["scientific_query"] = scientific
         result = {"status": "ready", "run": run, "binding": binding, "logs": [], "warnings": []}
         paths = inventory.get("paths", {})
+        planning_missing = "planning" not in paths
         for key, target in (("metrics", "metrics_file"), ("log_index", "log_manifest"), ("stdout", "stdout"), ("stderr", "stderr"),
-                            ("planning", "planning_file"), ("submit", "submit_file")):
+                            ("planning", "planning_file"), ("submit", "submit_file"), ("array_manifest", "array_manifest")):
             if key not in paths:
                 continue
             try:
                 absolute, state = _declared_path(run_fd, run_root, paths[key])
                 binding[target] = absolute
+                if key == "planning":
+                    planning_missing = state != "ready"
                 if state != "ready":
                     result["warnings"].append(f"{key}: {state}")
             except (OSError, ValueError) as exc:
                 result["warnings"].append(f"{key}: binding refused ({exc})")
+        if planning_missing:
+            try:
+                shared = _project_planning(root_fd, binding)
+                if shared:
+                    absolute, state = _declared_path(root_fd, root, shared)
+                    binding.update(planning_file=absolute, planning_scope="project")
+                    if state != "ready":
+                        result["warnings"].append("shared planning: not created yet")
+            except FileNotFoundError:
+                pass
+            except (OSError, ValueError) as exc:
+                result["warnings"].append(f"shared planning: binding refused ({exc})")
         for key in PLANNING_PATHS:
             if key not in paths:
                 continue
@@ -477,6 +690,22 @@ def select_run(path, run_id, *, files=None):
                     result["warnings"].append(f"{key}: {state}")
             except (OSError, ValueError) as exc:
                 result["warnings"].append(f"{key}: binding refused ({exc})")
+        if binding["array_manifest"]:
+            try:
+                from .array_manifest import parse, MAX_BYTES
+                data, _ = _read(run_fd, paths["array_manifest"], MAX_BYTES)
+                manifest = parse(data)
+                job_id = binding.get("job_id") or ""
+                launch = binding.get("launch")
+                cluster = launch.get("cluster", "") if isinstance(launch, dict) else ""
+                if not (job_id == manifest.array_id or re.fullmatch(re.escape(manifest.array_id) + r"_[0-9]+", job_id)):
+                    raise ValueError("array manifest parent does not match this exact job")
+                if cluster and manifest.cluster != cluster:
+                    raise ValueError("array manifest cluster does not match this launch")
+                result["array_manifest_document"] = manifest.document()
+                result["array_manifest_record"] = manifest
+            except (OSError, ValueError) as exc:
+                result["warnings"].append(f"array_manifest: {exc}")
         for key, role in (("stdout", "stdout"), ("stderr", "stderr")):
             if binding[key]:
                 result["logs"].append({"id": "project." + key, "path": binding[key], "label": key, "group": "Run streams", "role": role, "source": "project", "run_id": run_id, "job_id": binding["job_id"]})
@@ -513,9 +742,11 @@ def select_run(path, run_id, *, files=None):
                 result["warnings"].append(f"log_index: {exc}")
                 binding["log_manifest"] = ""
         try:
-            data, _ = _read(root_fd, ".tower/contracts/outputs.v1.json", 262144)
+            contract_path = paths.get("contract") or ".tower/contracts/outputs.v1.json"
+            contract_fd, contract_root = (run_fd, run_root) if paths.get("contract") else (root_fd, root)
+            data, _ = _read(contract_fd, contract_path, 262144)
             _contract(_json(data))
-            binding["contract"] = os.path.join(root, ".tower/contracts/outputs.v1.json")
+            binding["contract"] = os.path.join(contract_root, contract_path)
         except FileNotFoundError:
             result["warnings"].append("No standard output contract; attach one explicitly with :artifacts CONTRACT RUN_ROOT")
         except (OSError, ValueError) as exc:
@@ -534,7 +765,12 @@ def select_run(path, run_id, *, files=None):
                             names.append(entry.name)
                 if len(names) == 1:
                     passport_path = passport_dir + "/" + names[0]
-                    passport = read_passport(run_root, passport_path, job_id=binding["job_id"])
+                    data, _ = _read(run_fd, passport_path, 1048576)
+                    passport = _json(data)
+                    from .provenance import validate
+                    validate(passport)
+                    if binding.get("job_id") is not None and passport.get("job_id") not in (None, binding["job_id"]):
+                        raise ValueError("passport job identity does not match the selected run")
                     binding["passport"] = os.path.join(run_root, passport_path)
                     result["passport_record"] = passport
                 elif len(names) > 1:
@@ -554,6 +790,9 @@ def select_run(path, run_id, *, files=None):
 
 
 def read_passport(root, path, *, job_id=None, files=None):
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "read_passport", root, path, job_id=job_id)
     _local(files)
     _, fd = _root(root)
     try:
@@ -578,6 +817,9 @@ def _output_status(output):
 
 def artifact_tree(contract_path, root, *, files=None):
     """Validate declared outputs and publish a bounded navigable virtual tree."""
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "artifact_tree", contract_path, root)
     _local(files)
     from .artifacts import load_contract
     contract = load_contract(contract_path)
@@ -604,6 +846,9 @@ def artifact_tree(contract_path, root, *, files=None):
 
 def preview_artifact(root, specification, *, files=None):
     """Read a stable 64 KiB prefix of one exact declared regular output."""
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "preview_artifact", root, specification)
     _local(files)
     _contract({"version": 1, "outputs": [specification]})
     root, fd = _root(root)
@@ -646,3 +891,9 @@ def preview_artifact(root, specification, *, files=None):
     result["lines"] = lines[:MAX_PREVIEW_LINES]
     result.setdefault("summary", f"{len(data)} of {size} source bytes; prefix preview" if result["truncated"] else f"{size} source bytes")
     return result
+
+
+def read_artifact_page(root, specification, **options):
+    """Allowlisted SSH bridge to the same bounded native artifact pager."""
+    from .artifact_pages import read_page
+    return read_page(root, specification, **options)

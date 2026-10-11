@@ -7,6 +7,8 @@ has a terminal form, bounded background inspection, and a readable report.
 An operation that changes a job, starts a service, submits work, or writes
 results also has a separate action review. The four additions from 4.14 remain
 available through their [phase one controls](phase-one.md).
+The catalog also includes `queue-order`, a separate Jobs quality-of-life
+operation. The twenty-six research proposals below retain their original scope.
 
 ## Open and use an operation
 
@@ -80,6 +82,7 @@ views embedded in Jobs or History Details.
 | View | Related operations |
 | --- | --- |
 | Sources | Slurm doctor, cluster workspace, storage readiness |
+| Jobs Main group order handle | Review own pending queue order |
 | Analytics | Bottlenecks, statistical comparison, energy |
 | Research Experiment | Acceptance, statistics, energy |
 | Research Arrays | Existing array concurrency, search, packing |
@@ -96,7 +99,9 @@ A job-ID field starts with the selected job when available. Check the field
 before inspection. A highlighted row is not sufficient evidence for changing
 a job; the adapter also rechecks the scheduler identity and required state.
 
-## All twenty-six operation keys
+<a id="all-twenty-six-operation-keys"></a>
+
+## The twenty-six research operation keys
 
 The scope below describes the implemented adapters. A supplied manifest or
 export is required where shown. An operation name does not imply automatic
@@ -130,6 +135,69 @@ support for every scheduler, application, profiler, or workflow format.
 | S05 | `clusters` | Concurrent, isolated multi-cluster snapshot with exact attempt identity | [Scale](operations-scale.md#concurrent-cluster-workspace) |
 | A17 | `incidents` | Correlate exact job nodes and time with permitted event evidence | [Scale](operations-scale.md#historical-incident-correlation) |
 | A18 | `energy` | Account for all declared attempts per accepted unit, with explicit attribution and coverage | [Scale](operations-scale.md#energy-per-useful-result) |
+
+## Additional operation: own pending queue order
+
+In **Jobs → Main**, drag a group's `↕` handle (ASCII: `:`) onto another group.
+An upward drop requests a position before that group. A downward drop requests
+a position after it. The drag moves the group header preview; expanded members
+are dimmed. Releasing the mouse prepares a report. It does not change Slurm.
+Use **Review action**, then **Confirm apply** to request the displayed order.
+
+The same operation is available through `:ops queue-order`. Its fields are:
+
+| Field | Required value |
+| --- | --- |
+| `source_jobs` | Comma-separated exact IDs for the jobs to move; for example, `120,121` |
+| `target_jobs` | Comma-separated exact IDs for the destination group; for example, `100,101` |
+| `placement` | `before` (default) or `after` |
+
+```text
+:ops run queue-order source_jobs=120,121 target_jobs=100,101 placement=before
+```
+
+Tower reads both sets of jobs, then discovers the current pending queue for
+their owner, partition, account, and QOS. The report lists every affected job's
+old and proposed position, including other jobs in that scheduling scope.
+Members of the moved group retain their relative priority order. Unrelated
+jobs in the same scope retain their relative order. Other users and other
+scheduling scopes are excluded.
+
+The operation uses the native `scontrol top` command with one ordered,
+comma-separated ID list. It requires the site's
+`SchedulerParameters=enable_user_top` setting. Tower does not change that
+setting or substitute direct priority edits. Slurm adjusts nice values to
+express the preference. Resources, dependencies, reservations, and site policy
+still determine eligibility and start order; **the requested order is not a
+start-time guarantee**. Dependencies remain unchanged.
+
+These limits apply:
+
+- Both sets must contain a pending job with a priority greater than one.
+  Held jobs keep their hold state. Running jobs are not moved.
+- Pending source and destination members must have the same owner, single
+  partition, account, and QOS. Cross-scope moves are rejected.
+- A review accepts at most 512 exact jobs in the affected scheduling scope.
+  Scheduler output also has a 1 MiB read limit. Oversized evidence is rejected,
+  not silently truncated. Jobs in other scheduling scopes do not consume the
+  pending-queue record limit.
+- Exact numeric array task IDs are supported. Compressed array ranges and
+  heterogeneous job IDs are rejected. No array is silently expanded into
+  additional action targets.
+- A group drag omits archived or departed members that are no longer in the
+  current queue and reports their count. A missing current job or a changed
+  submission identity requires a new inspection.
+- Apply rechecks the site setting, connection, owners, submissions, states,
+  priorities, nice values, dependencies, and affected peer membership. A
+  changed review is rejected. A job can still start or arrive between that
+  final check and Slurm's controller action; the controller owns that decision.
+
+The operation uses the shared background worker and the common one-use review
+and receipt rules below. Pointer motion makes no scheduler calls. A timeout or
+lost response requires a fresh inspection; Tower does not retry an uncertain
+queue mutation automatically.
+
+Upstream reference: [SchedMD `scontrol top` documentation](https://github.com/SchedMD/slurm/blob/master/doc/man/man1/scontrol.1).
 
 ## Review, background work, and recovery rules
 

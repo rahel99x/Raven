@@ -1,8 +1,8 @@
 """Attempt-safe job moves over the last painted list, without pointer I/O.
 
-An ordinary first press remains a range selection. A completed row click arms
-one job for moving; a marked row moves its applicable marks immediately. Only
-a deliberate release over a published group commits the presentation change.
+Plain row gestures always select, including rows that are already marked.
+Alt-press explicitly starts a membership move; only a deliberate release over
+a published group commits it. Group-header grips have their own queue owner.
 """
 from __future__ import annotations
 
@@ -239,7 +239,8 @@ def active(app):
 
 
 def pending(app):
-    return initialize(app)["pending"] is not None
+    state = initialize(app)
+    return state["pending"] is not None or state["discard_release"]
 
 
 def cancel(app):
@@ -275,7 +276,7 @@ def _target(app, source):
     return dict(source, expected=evidence)
 
 
-def handle_mouse(app, y, x, button="left", shift=False):
+def handle_mouse(app, y, x, button="left", shift=False, alt=False):
     state = initialize(app)
     capture = state["capture"]
     if any(type(value) is not int for value in (y, x)):
@@ -310,8 +311,6 @@ def handle_mouse(app, y, x, button="left", shift=False):
                     if source is not None:
                         select_mouse(app, y, x, "press")
                         select_mouse(app, y, x, "release")
-                        state["armed"] = (source["scope"], source["pointed"],
-                                          source["tokens"].get(source["pointed"]))
             return True
         cancel(app)
         # A wheel or new press during a move ends it without activating the
@@ -323,38 +322,17 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if button == "right":
         state.update(pending=None, armed=None)
         return False
-    pending = state["pending"]
-    if pending and button in ("motion", "drag", "release"):
-        source = source_at(app, y, x)
-        if (y, x) != pending["point"]:
-            pending["moved"] = True
-        if button == "release":
-            state["pending"] = None
-            if (not pending["moved"] and source is not None and source["pointed"] == pending["id"]
-                    and source["scope"] == pending["scope"]
-                    and source["tokens"].get(pending["id"]) == pending["token"]):
-                state["armed"] = (source["scope"], source["pointed"], pending["token"])
-            elif (not pending["moved"] and pending["scope"].startswith("history:")
-                    and getattr(app, "mode", "main") == "main"
-                    and pending["scope"] == "history:" + getattr(app, "tab", "")
-                    and getattr(app, "selected_id", None) == pending["id"]):
-                # Selecting an Analytics browser row can switch Advisor to
-                # Job Series before this click's release is reported. Keep
-                # only its original identity; a subsequent press still needs
-                # a fresh painted row, matching token and current selection.
-                state["armed"] = (pending["scope"], pending["id"], pending["token"])
-        return False
-    if button not in ("press", "left"):
+    if button != "press" or not alt or shift:
+        state.update(pending=None, armed=None)
         return False
     source = source_at(app, y, x)
-    if source is None or shift:
+    if source is None:
         state.update(pending=None, armed=None)
         return False
     jid, scope = source["pointed"], source["scope"]
     token = source["tokens"].get(jid)
     marked = jid in getattr(app, "marks", ())
-    armed = state["armed"] == (scope, jid, token) and source["selected"] == jid
-    if button == "press" and token is not None and (marked or armed):
+    if token is not None:
         from .job_group_actions import freeze
         targets = tuple(identifier for identifier in source["ids"] if identifier in app.marks) if marked else (jid,)
         frozen = freeze(app, source, job_ids=targets)
@@ -364,10 +342,6 @@ def handle_mouse(app, y, x, button="left", shift=False):
                               "point": (y, x), "moved": False, "target": None}, pending=None, armed=None)
         getattr(app, "job_selection_state", {})["capture"] = None
         return True
-    state["pending"] = {"id": jid, "scope": scope, "token": token, "point": (y, x), "moved": False}
-    if button == "left":
-        state["armed"] = (scope, jid, token)
-        state["pending"] = None
     return False
 
 

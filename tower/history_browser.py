@@ -608,7 +608,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if button in ("wheelup", "wheeldown", "wheel_up", "wheel_down", "wheel-up", "wheel-down"):
         _scroll(app, "up" if "up" in button else "down", lines=3)
         return True
-    if button == "press" and selection_mouse(app, y, x, button=button, shift=shift):
+    if button in ("press", "left") and selection_mouse(app, y, x, button=button, shift=shift):
         return True
     if button in ("right", "left", "press") and shift or button == "right":
         return True

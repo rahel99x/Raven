@@ -638,6 +638,10 @@ class App:
 
     def _handle(self, key: str) -> None:
         """``key`` is a name: a-z A-Z 0-9 punctuation, or up down pgup pgdn home end tab btab enter esc space backspace."""
+        from .column_resize import handle_key as column_resize_key
+        from .group_queue_drag import handle_key as queue_drag_key
+        if column_resize_key(self, key) or queue_drag_key(self, key):
+            return
         from .job_group_drag import handle_key as group_drag_key
         if group_drag_key(self, key):
             return
@@ -1864,7 +1868,7 @@ class App:
         self.command_ok = False
         return f"no finished run of '{what}' in the window and no such running job"
 
-    def click(self, y: int, x: int, hits: Sequence, button: str = "left", shift: bool = False) -> None:
+    def click(self, y: int, x: int, hits: Sequence, button: str = "left", shift: bool = False, alt: bool = False) -> None:
         """Select/group rows, reset graphs, route exports, and clear selections.
 
         Shift-click extends text selection; other right-clicks clear selections.
@@ -1911,6 +1915,9 @@ class App:
             # The new owner can claim the press before lower-priority handlers
             # run; their old markers must not steal its eventual release.
             for name, marker in (("scrollbar_state", "discard_release"),
+                                 ("column_resize_state", "discard_release"),
+                                 ("group_queue_drag_state", "discard_release"),
+                                 ("job_selection_state", "discard_release"),
                                  ("pane_drag_state", "discard_release"),
                                  ("history_browser_state", "discard_release"),
                                  ("text_selection_state", "discard_release"),
@@ -1942,9 +1949,17 @@ class App:
             return
         from .history_log_export import active as export_active, handle_mouse as export_mouse
         from .scrollbars import handle_mouse as scrollbar_mouse
+        from .column_resize import active as column_active, handle_mouse as column_mouse
+        from .group_queue_drag import active as queue_active, handle_mouse as queue_mouse
+        if ((column_active(self) or getattr(self, "column_resize_state", {}).get("discard_release") and not fresh_activation)
+                and column_mouse(self, y, x, button=button, shift=shift)):
+            return
+        if ((queue_active(self) or getattr(self, "group_queue_drag_state", {}).get("discard_release") and not fresh_activation)
+                and queue_mouse(self, y, x, button=button, shift=shift, alt=alt)):
+            return
         from .job_group_drag import active as group_drag_active, pending as group_drag_pending, handle_mouse as group_drag_mouse
         if ((group_drag_active(self) or group_drag_pending(self) and not fresh_activation)
-                and group_drag_mouse(self, y, x, button=button, shift=shift)):
+                and group_drag_mouse(self, y, x, button=button, shift=shift, alt=alt)):
             return
         from .job_group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
         if group_menu_active(self):
@@ -1965,6 +1980,8 @@ class App:
             if toolbar_reset(self, y, x):
                 return
             if live_mouse(self, y, x, button=button, shift=shift):
+                return
+            if column_mouse(self, y, x, button=button, shift=shift):
                 return
             if group_menu_mouse(self, y, x, button=button, shift=shift):
                 return
@@ -1997,10 +2014,14 @@ class App:
             # Global controls validate their own published tokens above.
             # Content controls and native row fallbacks require this frame.
             return
+        if column_mouse(self, y, x, button=button, shift=shift):
+            return
+        if queue_mouse(self, y, x, button=button, shift=shift, alt=alt):
+            return
         from .job_selection import pointer_focus as job_pointer_focus
         if fresh_activation:
             job_pointer_focus(self, y, x)
-            if group_drag_mouse(self, y, x, button=button, shift=shift):
+            if group_drag_mouse(self, y, x, button=button, shift=shift, alt=alt):
                 return
         from .text_selection import handle_mouse as text_mouse
         if getattr(self, "text_selection_state", {}).get("explicit") and text_mouse(self, y, x, button=button, shift=shift):

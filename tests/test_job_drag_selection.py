@@ -99,6 +99,64 @@ def test_shift_drag_extends_marks_and_drag_back_shrinks_only_new_range(dashboard
     assert app.marks == {"2", "3", "10"}
 
 
+@pytest.mark.parametrize("first,last", [("2", "6"), ("6", "2")])
+def test_synthesized_clicks_set_and_extend_the_same_anchor(dashboard, first, last):
+    app, _, _ = dashboard
+    assert send(app, first, "left")
+    assert send(app, last, "left", shift=True)
+    assert app.marks == {"2", "3", "4", "5", "6"}
+    assert not drag.active(app)
+
+
+def test_repeated_shift_click_shrinks_range_and_preserves_original_marks(dashboard):
+    app, _, _ = dashboard
+    app.marks = {"10"}
+    send(app, "2", "left")
+    send(app, "6", "left", shift=True)
+    assert app.marks == {"2", "3", "4", "5", "6", "10"}
+    send(app, "3", "left", shift=True)
+    assert app.marks == {"2", "3", "10"}
+
+
+def test_reordered_range_requires_a_new_shift_anchor(dashboard):
+    app, _, _ = dashboard
+    send(app, "2", "left")
+    app.visible_ids.reverse()
+    send(app, "6", "left", shift=True)
+    assert app.marks == {"6"}
+
+
+def test_shift_click_never_resurrects_marks_replaced_by_plain_drag(dashboard):
+    app, _, _ = dashboard
+    app.marks = {"10"}
+    send(app, "2", "press")
+    send(app, "6", "release")
+    send(app, "3", "left", shift=True)
+    assert app.marks == {"2", "3"}
+
+
+def test_shift_click_respects_intervening_explicit_mark_changes(dashboard):
+    app, _, _ = dashboard
+    app.marks = {"10"}
+    send(app, "2", "left")
+    send(app, "6", "left", shift=True)
+    app.marks.discard("10")
+    app.marks.add("9")
+    send(app, "3", "left", shift=True)
+    assert app.marks == {"2", "3", "9"}
+
+
+def test_repeated_motion_on_one_endpoint_does_not_rebind_or_report_marks(dashboard, monkeypatch):
+    app, _, _ = dashboard
+    send(app, "2", "press")
+    send(app, "6", "drag")
+    monkeypatch.setattr(drag, "_bind_marks", lambda *_: pytest.fail("Unchanged range was rebound"))
+    monkeypatch.setattr(app, "say", lambda *_: pytest.fail("Unchanged range was reported again"))
+    for _ in range(50):
+        send(app, "6", "motion")
+    assert app.marks == {"2", "3", "4", "5", "6"}
+
+
 def test_escape_during_drag_restores_original_marks(dashboard):
     app, _, _ = dashboard
     app.marks = {"10"}

@@ -379,6 +379,8 @@ class Registry:
         self.collapsed = set(value for value in collapsed if valid_group_id(value))
         self.index = Index(MappingProxyType({}), MappingProxyType({}))
         self._automatic_index = self.index
+        self._empty_index = self.index
+        self.auto_enabled = True
         self._source_revision = 0
         self.selection_revision = 0
         self.selection_snapshot = None
@@ -408,7 +410,8 @@ class Registry:
             self._selection_inputs = identity_inputs
             self.selection_revision += 1
         self.selection_snapshot = snap
-        self.index = self.manual.apply(automatic, records, snap, self._source_revision)
+        self.index = self.manual.apply(automatic if self.auto_enabled else self._empty_index,
+                                       records, snap, self._source_revision)
         return self.index
 
     def _ensure_automatic(self, snap, records):
@@ -692,6 +695,7 @@ def registry(app):
     else:
         value.collapsed = {item for item in state.get("collapsed", ()) if valid_group_id(item)}
     value.manual.configure(state.get("manual_groups"))
+    value.auto_enabled = state.get("auto_groups", True) is not False
     return value
 
 
@@ -728,6 +732,14 @@ def fold(app, group_id, collapsed=None):
     value = registry(app)
     changed = value.fold(group_id, collapsed)
     if changed:
+        # An explicit disclosure click takes ownership of this fold. Undo
+        # Auto must not later erase a newer user decision about that group.
+        undo = getattr(app, "grouping_auto_undo", None)
+        if isinstance(undo, dict):
+            group = value.index.groups[group_id]
+            undo.get("added", set()).discard(group_id)
+            if group.kind == "array":
+                undo.get("added", set()).discard(group.label.split()[-1])
         app.table_state["collapsed"] = sorted(value.collapsed)
         if value.is_collapsed(value.index.groups[group_id]):
             _reanchor(app, group_id)

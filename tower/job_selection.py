@@ -14,6 +14,8 @@ def initialize(app):
     app.job_selection_state.setdefault("lines_deselected", False)
     app.job_selection_state.setdefault("mark_tokens", {})
     app.job_selection_state.setdefault("published_tokens", {})
+    app.job_selection_state.setdefault("anchors", {})
+    app.job_selection_state.setdefault("discard_release", False)
     return app.job_selection_state
 
 
@@ -67,6 +69,7 @@ def clear_lines(app):
 def clear(app):
     state = initialize(app)
     state["capture"] = None
+    state["anchors"].clear()
     state["mark_tokens"].clear()
     state["deselected"].update(dict.fromkeys(JOB_SCOPES, True))
     app.marks.clear()
@@ -158,6 +161,7 @@ def publish(app, rows, hits, width, height, snap=None):
         if capture and any(previous.get(identifier) != tokens.get(identifier)
                            for identifier in capture["ids"]):
             state["capture"] = None
+            state["discard_release"] = True
         state["published_tokens"] = tokens
         marks = getattr(app, "marks", ())
         bound = state["mark_tokens"]
@@ -353,6 +357,19 @@ def _bind_marks(app, identifiers):
             state["mark_tokens"][identifier] = state["published_tokens"].get(identifier)
 
 
+def _range_scope(app, identifier, browser, ids):
+    """Shift-click anchors belong to one list; an explicit drag may cross it."""
+    tab = getattr(app, "tab", "")
+    if browser:
+        return "history:" + tab, ids
+    if tab == "jobs":
+        recent = getattr(app, "recent_ids", ())
+        if identifier in recent:
+            return "recent", tuple(recent[:MAX_SELECTION])
+        return "jobs", tuple(getattr(app, "visible_ids", ())[:MAX_SELECTION])
+    return ("analytics:advisor" if tab == "analytics" else tab), ids
+
+
 def _hit(app, y, x):
     if any(type(value) is not int for value in (y, x)):
         return None
@@ -380,6 +397,12 @@ def _hit(app, y, x):
         prefix = "advisor-job:"
         return (value["id"][len(prefix):] if value and
                 str(value.get("id", "")).startswith(prefix) else None)
+    # Native rows span the whole pane; their overlaid disclosure/grip buttons
+    # keep ownership, including synthesized clicks with no preceding press.
+    if any(row == y and kind == "control" and isinstance(value, dict)
+           and value.get("left", -1) <= x < value.get("right", -1)
+           for row, kind, value in getattr(app, "last_hits", ())):
+        return None
     kinds = ROW_KINDS.get(getattr(app, "tab", ""), set())
     return next((identifier for row, kind, identifier in getattr(app, "last_hits", [])
                  if row == y and kind in kinds and isinstance(identifier, str)), None)
@@ -410,6 +433,7 @@ def tick(app):
     state = initialize(app)
     if state["capture"] and not _valid(app, state["capture"]):
         state["capture"] = None
+        state["discard_release"] = True
 
 
 def handle_key(app, key):
@@ -417,9 +441,17 @@ def handle_key(app, key):
     capture = state["capture"]
     if capture:
         state["capture"] = None
+        state["discard_release"] = True
         if key == "esc":
             app.marks = set(capture["base"])
             state["mark_tokens"] = dict(capture.get("base_tokens", {}))
+            scope = capture.get("scope")
+            if scope is not None:
+                previous_anchor = capture.get("previous_anchor")
+                if previous_anchor is None:
+                    state["anchors"].pop(scope, None)
+                else:
+                    state["anchors"][scope] = previous_anchor
             app.say("Drag selection cancelled")
             return True
     if key == "space":
@@ -464,11 +496,20 @@ def handle_key(app, key):
 
 
 def _range(app, capture, identifier):
-    ids = capture["ids"]
-    if identifier not in ids:
+    ids = capture.get("range_ids", capture["ids"])
+    indices = capture.get("indices")
+    if identifier not in (ids if indices is None else indices):
         return
-    first, last = sorted((ids.index(capture["anchor"]), ids.index(identifier)))
-    app.marks = (set(capture["base"]) if capture["extend"] else set()) | set(ids[first:last + 1])
+    if capture["moved"] and capture["endpoint"] == identifier:
+        return
+    first, last = sorted((ids.index(capture["anchor"]), ids.index(identifier))) if indices is None else sorted(
+        (indices[capture["anchor"]], indices[identifier]))
+    base = capture.get("selection_base", capture["base"])
+    app.marks = (set(base) if capture["extend"] else set()) | set(ids[first:last + 1])
+    anchor_state = capture.get("anchor_state")
+    if anchor_state is not None:
+        anchor_state["base"] = set(base) if capture["extend"] else set()
+        anchor_state["last_range"] = ids[first:last + 1]
     _bind_marks(app, ids[first:last + 1])
     capture["moved"] = True
     resume(app)
@@ -479,7 +520,7 @@ def _range(app, capture, identifier):
     if app.tab == "analytics":
         app.analytics_job = identifier
     else:
-        app.cursor[app.tab] = ids.index(identifier)
+        app.cursor[app.tab] = capture["ids"].index(identifier)
     # The exact published order was validated above. Rebuilding accounting or
     # taking a Store snapshot for each pointer report adds no selection safety.
     app.selected_id = identifier
@@ -492,9 +533,15 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if any(type(value) is not int for value in (y, x)):
         state["capture"] = None
         return bool(capture)
+    if button in ("press", "left"):
+        state["discard_release"] = False
+    elif button == "release" and capture is None and state["discard_release"]:
+        state["discard_release"] = False
+        return True
     if capture:
         if not _valid(app, capture):
             state["capture"] = None
+            state["discard_release"] = button != "release"
             return button in ("release", "motion", "drag")
         if button in ("motion", "drag", "release"):
             identifier = _browser_hit(app, y, x) if capture.get("browser") else _hit(app, y, x)
@@ -520,10 +567,10 @@ def handle_mouse(app, y, x, button="left", shift=False):
             state["capture"] = None
         else:
             return False
-    direct_advisor = button == "left" and advisor_pointer(app, y, x)
-    if (button != "press" and not direct_advisor or getattr(app, "mode", "main") != "main"
+    if (button not in ("press", "left") or getattr(app, "mode", "main") != "main"
             or getattr(app, "toolbar_state", {}).get("menu") is not None
             or getattr(app, "toolbar_state", {}).get("panel")
+            or getattr(app, "sel_anchor", None) is not None
             or getattr(app, "text_selection_state", {}).get("explicit")):
         return False
     identifier = _browser_hit(app, y, x)
@@ -534,10 +581,28 @@ def handle_mouse(app, y, x, button="left", shift=False):
     ids = _browser_order(app) if browser else _order(app)
     if identifier not in ids:
         return False
-    if direct_advisor:
-        _select_advisor(app, identifier)
-        return True
-    state["capture"] = {"tab": app.tab, "anchor": identifier, "ids": ids,
+    scope, range_ids = _range_scope(app, identifier, browser, ids)
+    old_anchor = state["anchors"].get(scope)
+    anchor = old_anchor if (shift and old_anchor and old_anchor["ids"] == range_ids
+                            and old_anchor["id"] in range_ids
+                            and old_anchor["token"] == state["published_tokens"].get(old_anchor["id"])) else None
+    if anchor is None:
+        anchor = {"id": identifier, "ids": range_ids,
+                  "token": state["published_tokens"].get(identifier), "base": set(app.marks), "last_range": ()}
+    else:
+        # Preserve explicit marks made between Shift-clicks, but never restore
+        # marks cleared by another action or an ordinary replacement drag.
+        base = (set(app.marks) - set(anchor.get("last_range", ()))) | (anchor["base"] & app.marks)
+        anchor = dict(anchor, base=base)
+    state["anchors"][scope] = anchor
+    # Retain the established drag across Main and Recents. Shift-click has no
+    # physical path between panes, so its anchor and range remain pane-local.
+    drag_ids = ids if not shift else range_ids
+    state["capture"] = {"tab": app.tab, "anchor": anchor["id"], "ids": ids,
+                        "anchor_state": anchor, "previous_anchor": old_anchor,
+                        "scope": scope, "range_ids": drag_ids,
+                        "indices": {jid: index for index, jid in enumerate(drag_ids)},
+                        "selection_base": anchor["base"],
                         "base": set(app.marks), "extend": bool(shift), "moved": False,
                         "base_tokens": dict(state["mark_tokens"]),
                         "browser": browser, "endpoint": identifier,
@@ -559,4 +624,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
     else:
         app.cursor[app.tab] = ids.index(identifier)
     app.selected_id = identifier
+    if shift:
+        _range(app, state["capture"], identifier)
+    if button == "left":
+        state["capture"] = None
     return True

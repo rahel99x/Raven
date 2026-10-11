@@ -10,6 +10,7 @@
     tower --host login.example.edu   # remote mode: every command over ssh
     tower --record session.jsonl.gz / --replay session.jsonl.gz --speed 10
     tower run cancel 123 --yes   # one palette command, no screen
+    tower report --help         # job-bound Research reporting from Bash
     tower --eval 'n_running'     # an expression over the snapshot
     tower --wait-for 'n_pending == 0' --timeout 3600   # block until it holds (exit 0) or time out (exit 2)
 
@@ -524,6 +525,10 @@ def gpu_check(args, cfg):
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "report":
+        from .research_reporting import main as reporting_main
+        return reporting_main(argv[1:])
     args = parse(argv)
     if args.ui_trace and not sys.stdout.isatty():
         print("tower: --ui-trace requires an interactive terminal", file=sys.stderr)

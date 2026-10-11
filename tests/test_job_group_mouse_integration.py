@@ -72,10 +72,10 @@ def index(dashboard):
     return job_groups.registry(app).ensure(store.snapshot())
 
 
-def dispatch(app, hits, position, button, route="app", *, shift=False):
+def dispatch(app, hits, position, button, route="app", *, shift=False, alt=False):
     y, x = position
     if route == "app":
-        app.click(y, x, hits, button=button, shift=shift)
+        app.click(y, x, hits, button=button, shift=shift, alt=alt)
         return
     if route == "native":
         flag = {"press": curses.BUTTON1_PRESSED,
@@ -84,10 +84,12 @@ def dispatch(app, hits, position, button, route="app", *, shift=False):
                 "motion": curses.REPORT_MOUSE_POSITION,
                 "right": curses.BUTTON3_PRESSED}[button]
         flag |= curses.BUTTON_SHIFT if shift else 0
+        flag |= curses.BUTTON_ALT if alt else 0
         event = ("mouse", (0, x, y, 0, flag))
     else:
         code = {"press": 0, "release": 0, "drag": 32, "motion": 35, "right": 2}[button]
         code += 4 if shift else 0
+        code += 8 if alt else 0
         ending = "m" if button == "release" else "M"
         reader = screen._InputReader(InputWindow(f"\x1b[<{code};{x + 1};{y + 1}{ending}"))
         event = reader.read(curses)
@@ -96,10 +98,10 @@ def dispatch(app, hits, position, button, route="app", *, shift=False):
     screen._apply_input(app, event, hits, curses)
 
 
-def gesture(app, hits, source, target, route="app"):
-    dispatch(app, hits, source, "press", route)
-    dispatch(app, hits, target, "drag", route)
-    dispatch(app, hits, target, "release", route)
+def gesture(app, hits, source, target, route="app", *, alt=True):
+    dispatch(app, hits, source, "press", route, alt=alt)
+    dispatch(app, hits, target, "drag", route, alt=alt)
+    dispatch(app, hits, target, "release", route, alt=alt)
 
 
 def labels(app):
@@ -175,7 +177,7 @@ def test_right_click_unselected_row_keeps_universal_clear_behavior(dashboard, ro
 
 
 @pytest.mark.parametrize("route", ["app", "native", "sgr"])
-def test_single_row_can_be_clicked_then_dragged_without_marking_siblings(dashboard, route):
+def test_single_row_can_be_clicked_then_alt_dragged_without_marking_siblings(dashboard, route):
     app, _ = dashboard
     _, hits = frame(dashboard)
     source = point(hits, "4")
@@ -209,7 +211,7 @@ def test_drag_rejects_changes_to_source_destination_or_view(dashboard, reason):
     app, store = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press")
+    dispatch(app, hits, point(hits, "4"), "press", alt=True)
     dispatch(app, hits, point(hits, "1"), "drag")
     assert job_group_drag.active(app)
     if reason == "resize":
@@ -241,7 +243,7 @@ def test_drag_pointer_hot_path_has_no_snapshot_inference_or_command_dispatch(das
     app, store = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", route)
+    dispatch(app, hits, point(hits, "4"), "press", route, alt=True)
     assert job_group_drag.active(app)
     with monkeypatch.context() as guard:
         guard.setattr(store, "snapshot", lambda: pytest.fail("Drag motion copied scheduler state"))
@@ -262,7 +264,7 @@ def test_proven_unheld_sgr_report_cancels_drop_after_missing_release(dashboard):
     app, _ = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", "sgr")
+    dispatch(app, hits, point(hits, "4"), "press", "sgr", alt=True)
     dispatch(app, hits, point(hits, "1"), "drag", "sgr")
     assert job_group_drag.active(app)
     dispatch(app, hits, point(hits, "1"), "motion", "sgr")
@@ -279,7 +281,7 @@ def test_native_curses_motion_without_held_metadata_keeps_drag_compatibility(das
     app, _ = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", "native")
+    dispatch(app, hits, point(hits, "4"), "press", "native", alt=True)
     dispatch(app, hits, point(hits, "1"), "motion", "native")
     assert job_group_drag.active(app)
     dispatch(app, hits, point(hits, "1"), "release", "native")
@@ -430,7 +432,7 @@ def test_dragging_marked_jobs_across_live_graph_cannot_capture_or_zoom_chart(das
     plot = next(plot for plot in app.chart_interaction_state["plots"] if plot.key[0] == "resource-series")
     graph_point = (plot.visible.top + 1, plot.visible.left + 3)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", route)
+    dispatch(app, hits, point(hits, "4"), "press", route, alt=True)
     assert job_group_drag.active(app)
     for _ in range(25):
         dispatch(app, hits, graph_point, "drag", route)
@@ -553,3 +555,125 @@ def test_group_menu_cached_hover_does_not_accumulate_scrollbars_or_recompose(das
     assert len(app.scrollbar_state["staged"]) <= staged + 1
     assert len([pane for pane in app.scrollbar_state["panes"] if pane.key == "modal:job-groups"]) == 1
     assert app.mode == "job_group_menu" and app.marks == {"4", "5"}
+
+
+def selection_list(dashboard, scope):
+    """Use the same published spans as pointer ownership, in painted order."""
+    from tower import job_group_drag
+    app, store = dashboard
+    if scope.startswith("history:"):
+        app.tab = scope.split(":", 1)[1]
+        history_browser._view(app).update(dock="left", ratio=40)
+    elif scope == "analytics:advisor":
+        app.tab, app.analytics_view = "analytics", "advisor"
+    else:
+        app.tab = "jobs" if scope == "recent" else scope
+    if scope == "deps":
+        for index_, job in enumerate(store.jobs[3:7], 1):
+            job.dependency = "afterok:" + str(index_)
+    _, hits = frame(dashboard, height=90)
+    source_frame = job_group_drag.initialize(app)["frame"]
+    positions = {}
+    for row, records in source_frame["rows"].items():
+        for record in records:
+            if record["scope"] != scope:
+                continue
+            for column in range(record["rect"][1], record["rect"][3]):
+                source = job_group_drag.source_at(app, row, column)
+                if source is not None and source["scope"] == scope:
+                    positions.setdefault(record["pointed"], (row, column))
+                    break
+    all_ids = source_frame["scopes"][scope]
+    if scope == "jobs":
+        all_ids = tuple(app.visible_ids)
+    elif scope == "recent":
+        all_ids = tuple(app.recent_ids)
+    ids = [jid for jid in all_ids if jid in positions]
+    assert len(ids) >= 3
+    return hits, positions, ids, all_ids
+
+
+@pytest.mark.parametrize("scope", ["jobs", "recent", "history", "group", "deps", "analytics:advisor",
+                                    *["history:" + tab for tab in history_browser.TABS]])
+@pytest.mark.parametrize("route", ["app", "native", "sgr"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_click_then_shift_click_selects_inclusive_range_in_each_list(dashboard, scope, route, reverse):
+    app, _ = dashboard
+    hits, positions, ids, order = selection_list(dashboard, scope)
+    first, last = (ids[2], ids[0]) if reverse else (ids[0], ids[2])
+    dispatch(app, hits, positions[first], "press", route)
+    dispatch(app, hits, positions[first], "release", route)
+    # Repaint may update Details, but a stable source range retains its anchor.
+    hits, positions, _, order = selection_list(dashboard, scope)
+    dispatch(app, hits, positions[last], "press", route, shift=True)
+    dispatch(app, hits, positions[last], "release", route, shift=True)
+    low, high = sorted((order.index(first), order.index(last)))
+    assert app.marks == set(order[low:high + 1])
+    assert app.mode == "main"
+
+
+@pytest.mark.parametrize("scope", ["jobs", "recent", "history", "group", "deps", "analytics:advisor",
+                                    *["history:" + tab for tab in history_browser.TABS]])
+@pytest.mark.parametrize("route", ["app", "native", "sgr"])
+@pytest.mark.parametrize("marked", [False, True])
+def test_plain_drag_from_selected_or_marked_row_always_selects_range(dashboard, scope, route, marked):
+    app, _ = dashboard
+    hits, positions, ids, order = selection_list(dashboard, scope)
+    first, last = ids[0], ids[2]
+    if marked:
+        mark(app, first, ids[-1])
+    dispatch(app, hits, positions[first], "press", route)
+    dispatch(app, hits, positions[first], "release", route)
+    hits, positions, _, order = selection_list(dashboard, scope)
+    before = app.table_state["manual_groups"]
+    gesture(app, hits, positions[first], positions[last], route, alt=False)
+    low, high = sorted((order.index(first), order.index(last)))
+    assert app.marks == set(order[low:high + 1])
+    assert app.table_state["manual_groups"] == before
+    assert app.mode == "main"
+
+
+def test_shift_anchor_never_spans_jobs_and_recent_panes(dashboard):
+    app, _ = dashboard
+    hits, positions, ids, _ = selection_list(dashboard, "jobs")
+    dispatch(app, hits, positions[ids[0]], "press")
+    dispatch(app, hits, positions[ids[0]], "release")
+    hits, positions, ids, _ = selection_list(dashboard, "recent")
+    dispatch(app, hits, positions[ids[2]], "press", shift=True)
+    dispatch(app, hits, positions[ids[2]], "release", shift=True)
+    assert app.marks == {ids[2]}
+
+
+def test_shift_anchor_rejects_reused_job_attempt(dashboard):
+    app, store = dashboard
+    hits, positions, _, _ = selection_list(dashboard, "jobs")
+    dispatch(app, hits, positions["4"], "press")
+    dispatch(app, hits, positions["4"], "release")
+    store.jobs[3].submit = "2026-10-10T18:00:00"
+    hits, positions, _, _ = selection_list(dashboard, "jobs")
+    dispatch(app, hits, positions["6"], "press", shift=True)
+    dispatch(app, hits, positions["6"], "release", shift=True)
+    assert app.marks == {"6"}
+
+
+def test_clearing_selection_forgets_shift_anchor(dashboard):
+    app, _ = dashboard
+    hits, positions, _, _ = selection_list(dashboard, "jobs")
+    dispatch(app, hits, positions["4"], "press")
+    dispatch(app, hits, positions["4"], "release")
+    job_selection.clear(app)
+    hits, positions, _, _ = selection_list(dashboard, "jobs")
+    dispatch(app, hits, positions["6"], "press", shift=True)
+    dispatch(app, hits, positions["6"], "release", shift=True)
+    assert app.marks == {"6"}
+
+
+def test_alt_shift_drag_keeps_range_selection_priority(dashboard):
+    app, _ = dashboard
+    hits, positions, _, _ = selection_list(dashboard, "jobs")
+    mark(app, "4")
+    dispatch(app, hits, positions["4"], "press", "sgr", shift=True, alt=True)
+    dispatch(app, hits, positions["6"], "drag", "sgr", shift=True, alt=True)
+    dispatch(app, hits, positions["6"], "release", "sgr", shift=True, alt=True)
+    assert app.marks == {"4", "5", "6"}
+    assert index(dashboard).for_job("4") is None

@@ -427,8 +427,10 @@ polling and avoids enabling GPU job steps or scheduling probes automatically.
 paths through SSH; these paths belong to that host. A local passport is still a
 local capture, and its optional `host` field labels metadata rather than
 performing remote collection. Submission plans require local files on the
-cluster where they will be submitted. Remote output adapters that cannot prove
-regular-file type and confinement cannot certify a contract; the dashboard asks
-you to run validation on the cluster's login node. No feature turns an SSH
+cluster where they will be submitted. The standard SSH reader now supports
+confined project discovery, declared output checks, and artifact browsing through
+an isolated Python helper on that host. See [Bash Research automation](guides/research-automation.md#automatic-reads-and-ssh).
+Other remote adapters must prove regular-file type and confinement before they
+can certify a contract. No feature turns an SSH
 connection into permission to recursively inspect files or execute application
 code outside a reviewed submission.

@@ -15,7 +15,7 @@ It also provides an ASCII display mode and plain-text reports.
 | Runtime packages | Core: Python standard library only; optional adapters have separate requirements |
 | Live data | Slurm commands available to your cluster account |
 | Demonstration | Simulated scheduler; no cluster account required |
-| Release | Tower 4.15.1 |
+| Release | Tower 4.16.0 |
 | License | [MIT](LICENSE) |
 
 [Installation and operation](docs/runbook.md) ·
@@ -33,7 +33,18 @@ It also provides an ASCII display mode and plain-text reports.
 [Implementation roadmap](docs/ROADMAP.md) ·
 [All 50 improvements](docs/QUALITY_OF_LIFE.md) ·
 [Complete reference](docs/reference.md) ·
-[Project reporting standard](docs/PROJECT_STANDARD.md)
+[Project reporting standard](docs/PROJECT_STANDARD.md) ·
+[Bash Research automation](docs/guides/research-automation.md)
+
+## Changes in Tower 4.16.0
+
+- Drag a table heading separator to resize its column. Right-click the separator to reset it. Jobs and Recents share column positions and widths; Progress retains its six-cell width.
+- Click one job, then Shift-click another to mark the inclusive range in either direction. Plain dragging selects a range even when its first row is already selected. Use **Alt-drag** to add selected jobs to a group, or use the job menu.
+- Use **Auto Group**, **Undo Auto**, **Ungroup All**, and **Expand All** above Jobs Main. Automatic grouping preserves manual membership. The completion trail now stays on Main's left edge.
+- Drag a group's **↕** handle before or after another group to review a change to your pending-job order. Apply uses Slurm's native `scontrol top` where the site enables it. Dependencies, resources, reservations, and site policy still determine start times.
+- Use `tower report` from Bash to record actual submissions, array tasks, retries, metrics, outputs, and Research sources. Runtime discovery links each report to its job attempt. Local and supported SSH readers refresh declared sources without restarting Tower.
+
+Read the [validation report](docs/guides/qol-416-validation.md), [table controls](docs/guides/tables.md), [group and queue controls](docs/guides/batch-launches.md), and the [complete Bash reporting guide](docs/guides/research-automation.md). The reporting helper records supplied scientific evidence; it does not invent missing measurements or apply workflow operations automatically.
 
 ## Changes in Tower 4.15.1
 
@@ -85,7 +96,7 @@ render measurements, and hardware validation limits.
 
 ## Changes in Tower 4.13.0
 
-- Drag a selected job, or a marked selection, onto an existing group to add those exact jobs. Shift-drag retains range selection. A cancelled or stale drag does not change membership.
+- Group membership supports drag and drop. In the current release, hold **Alt** while dragging a selected job or marked selection onto an existing group. Plain drag selects a range. A cancelled or stale drag does not change membership.
 - Right-click a selected or marked job for **Create Group**, **Ungroup**, and applicable **Add to** choices. History also provides **Export logs** through this menu.
 - Manual membership uses natural job-ID order, independent of insertion order. With JOBID sorted ascending, adding `7–9`, then `4–6`, to a group containing `1–3` displays `1–9`. Each list retains its active sorting, including default sorts.
 - Adding to an automatically detected group creates a manual group with its existing label and known members. Existing manual destinations retain their identity and saved members. See [Add jobs to a group](docs/guides/batch-launches.md#add-jobs-to-a-group).
@@ -510,9 +521,9 @@ ASCII uses `p`, `t`, and `w`. Time usage does not report completed work.
 Projects can publish `progress.completed` and `progress.total` in their linked `metrics.jsonl`.
 See [Job progress](docs/guides/adaptive-workspaces.md#read-the-six-cell-progress-column) for display states, alternate numeric keys, and sorting.
 
-To mark several jobs, Shift-drag the mouse through their visible rows to add a range to existing marks.
-Starting a plain drag on an unselected row also marks a range.
-Click and release one job, then drag that row onto a group to add it; drag a marked row to add the applicable marked jobs.
+To mark several jobs, click one row, then Shift-click the other end of the range.
+Plain click-drag also marks a range, including when it starts on a selected or marked row. Hold Shift during a drag to keep earlier marks.
+To add jobs to a group, hold Alt and drag the selected row or a marked row onto that group. The right-click job menu provides the same membership action.
 Press Esc during a drag to restore the earlier marks.
 Press `c` after the drag to review cancellation of the marked jobs.
 Check every job ID before you confirm the action.
@@ -742,7 +753,8 @@ See [Documentation style](docs/DOCUMENTATION_STYLE.md) for terminology and proce
 | Inspect rank bottlenecks, clusters, incidents, and energy | [Scale diagnostics](docs/guides/operations-scale.md) |
 | Diagnose missing GPU measurements | [GPU detection checks](docs/guides/gpu-detection.md) |
 | Use the original terminal workbench | [Workbench guide](docs/WORKBENCH.md) |
-| Instrument projects and define reports | [Project reporting standard](docs/PROJECT_STANDARD.md) |
+| Instrument projects and define reports | [Project reporting standard](docs/PROJECT_STANDARD.md) ·
+[Bash Research automation](docs/guides/research-automation.md) |
 | Prepare research and output contracts | [Research workflows](docs/RESEARCH.md) |
 | Analyse predictions, scaling, and dependencies | [Planning workflows](docs/WAVE_TWO.md) |
 | Adapt the source or add tests | [Contribution guide](CONTRIBUTING.md) |

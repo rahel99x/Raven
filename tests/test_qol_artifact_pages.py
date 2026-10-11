@@ -134,7 +134,7 @@ def test_mutation_during_page_read_discards_snapshot(tmp_path, monkeypatch):
 
 def test_remote_adapter_never_falls_back_to_local_artifact(tmp_path):
     (tmp_path / "output.txt").write_text("private sentinel")
-    with pytest.raises(ValueError, match="locally on CARC"):
+    with pytest.raises(ValueError, match="unsupported SSH project reader"):
         read(tmp_path, files=SimpleNamespace(remote=True))
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.16.0
+
+- Add captured mouse column resizing with cancel/reset controls, shared Jobs and Recents geometry, and clipped headings that retain correct hit targets. Keep completion trails on the left of Main.
+- Add inclusive Shift-click job ranges and allow plain drag selection from selected rows. Reserve Alt-drag for group membership and preserve native and raw-terminal mouse isolation.
+- Add automatic-group, undo, clear, and expand controls. Preserve manual memberships and fold ownership. A dedicated group handle prepares reviewed, same-owner pending-job ordering through supported Slurm `scontrol top`.
+- Add Bash Research reporting for actual submissions, dependencies, arrays, retries, lifecycle, metrics, artifacts, and declared native sources. Discover attempt-bound sources locally and through supported SSH readers during runtime.
+- Guard stale gestures, scheduler identity changes, ambiguous submissions, concurrent report publication, and fast job startup. Add focused and sequential interaction regressions.
+
 ## 4.15.1
 
 - Restore NVIDIA GPU measurements on mixed-graphics desktops by resolving

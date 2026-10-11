@@ -613,12 +613,45 @@ def test_bare_app_uses_remote_log_backend_and_never_probes_another_machine(tmp_p
     app.store.details["7"] = {"WorkDir": str(tmp_path / "remote-project")}
     app.selected_id, app.tab = "7", "jobs"
     monkeypatch.setattr(projects, "discover_project", lambda *a, **kw: pytest.fail("automatic discovery probed a local directory"))
-    monkeypatch.setattr(projects, "discover_job", lambda *a, **kw: pytest.fail("automatic discovery scanned a remote directory"))
+    calls = []
+    def remote_discovery(*args, **kwargs):
+        calls.append((threading.get_ident(), kwargs["files"]))
+        return {"status": "missing", "selected": None, "projects": [], "warnings": [], "summary": "No report"}
+    monkeypatch.setattr(projects, "discover_job", remote_discovery)
     try:
-        assert not project_ui.tick(app)
+        assert project_ui.tick(app)
         assert app.research.files is files
-        assert app.project_state["auto_status"] == "unavailable"
-        assert app.research.future is None and app.research.pending is None
+        app.research.pending[0].result(timeout=5)
+        app.research.poll_task()
+        assert calls and all(thread != threading.get_ident() and backend is files for thread, backend in calls)
+        assert app.project_state["auto_status"] == "missing"
         assert project_ui.selected_binding(app) is None
     finally:
         app.research.close()
+
+
+@pytest.mark.parametrize("field,before,after", [("Restarts", "0", "1"), ("Cluster", "first", "other"),
+                                                ("SubmitTime", "2026-01-01T00:00:00", "2026-02-01T00:00:00")])
+def test_pending_read_rejects_same_job_id_with_new_scheduler_attempt_without_waiting_for_tick(app, tmp_path, field, before, after):
+    make_run(tmp_path)
+    attach_workdir(app, tmp_path)
+    app.store.details["7"][field] = before
+    assert project_ui.tick(app)
+    worker, callback = app.research.pending
+    app.research.pending = None
+    value = worker()
+    app.store.details["7"][field] = after
+    callback(value)
+    assert project_ui.selected_binding(app) is None
+    assert not app.project_state["auto_pending"]
+
+
+def test_manual_project_read_cannot_publish_after_connection_adapter_changes(app, tmp_path):
+    make_run(tmp_path)
+    assert project_ui.run_command(app, ["project", str(tmp_path)])
+    original = app.research.files
+    app.research.files = LocalFiles()
+    app.research.finish()
+    assert app.project_state["root"] == ""
+    assert "connection changed" in app.project_state["summary"]
+    assert original is not app.research.files

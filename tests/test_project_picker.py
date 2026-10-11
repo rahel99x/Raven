@@ -216,9 +216,9 @@ def test_read_detects_parent_directory_replacement(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("reader", [type("Remote", (), {"remote": True})(), type("Custom", (), {"remote": False})()])
 def test_project_reads_never_fall_back_from_other_backend(tmp_path, reader):
-    with pytest.raises(ValueError, match="locally on CARC"):
+    with pytest.raises(ValueError, match="locally on CARC|unsupported SSH project reader"):
         projects.discover_project(str(tmp_path), files=reader)
-    with pytest.raises(ValueError, match="locally on CARC"):
+    with pytest.raises(ValueError, match="locally on CARC|unsupported SSH project reader"):
         projects.artifact_tree("anything", str(tmp_path), files=reader)
 
 

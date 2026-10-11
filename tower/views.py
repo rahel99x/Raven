@@ -1354,13 +1354,21 @@ class Views:
         rows_d = self.job_rows(snap, app, actions) if prepared_rows is None else prepared_rows
         app.visible_ids = [r["id"] for r in rows_d]
         from . import recent_history
+        from .grouping_toolbar import controls as grouping_controls
+        grouping_rows, grouping_hits = grouping_controls(app, self.g, width) if height is not None else ([], [])
         native = bool(height is not None and getattr(app, "job_panel_defer_content", False))
         if native:
             height = max(0, getattr(app, "workspace_main_usable_height", height))
-            queue_capacity, recent_capacity = recent_history.allocate(app, height, len(rows_d))
+        if height is not None:
+            grouping_rows = grouping_rows[:max(0, height - 3)]
+            grouping_hits = [hit for hit in grouping_hits if hit[0] < len(grouping_rows)]
+        queue_base = len(grouping_rows)
+        app.jobs_toolbar_height = queue_base
+        if native:
+            queue_capacity, recent_capacity = recent_history.allocate(app, height, len(rows_d), reserved=queue_base)
         fin = app.recent_jobs(snap)
         if native and not fin:
-            queue_capacity, recent_capacity = recent_history.allocate(app, height, len(rows_d), recent_count=0)
+            queue_capacity, recent_capacity = recent_history.allocate(app, height, len(rows_d), reserved=queue_base, recent_count=0)
         app.recent_ids = [f.id for f in fin]
         app.jobs_selection_options = app.jobs_options()
         n = len(rows_d)
@@ -1412,7 +1420,7 @@ class Views:
         if native:
             events, transit = [], []
         def used():
-            return ((2 + vis if n else 3) if show_queue else 0) + (len(det) + 1 if det else 0) + \
+            return queue_base + ((2 + vis if n else 3) if show_queue else 0) + (len(det) + 1 if det else 0) + \
                    (fin_vis + 2 if fin_vis else 0) + (len(events) + 1 if events else 0) + len(transit)
         while not native and used() > budget:
             if transit:
@@ -1442,13 +1450,14 @@ class Views:
         trows, _ = table(job_columns, shown, max(1, width - 1), self.g.ascii, droppable=JOB_DROP, cursor=None if recent_focus or not selection_active else cur - top, marks=marks, mark_char=self.g.mark,
                          header_cells=cells)
         title = f"jobs {top + 1}-{min(n, top + vis)} of {n}" if n > vis else "jobs"
-        out = [_scroll_rule(self.g, width, title)] + trows if show_queue else []
-        hits = header_hits("jobs", cells, 1) + [(2 + i, "job", r["id"]) for i, r in enumerate(shown)] if show_queue else []
+        out = list(grouping_rows) + ([_scroll_rule(self.g, width, title)] + trows if show_queue else [])
+        hits = list(grouping_hits) + (header_hits("jobs", cells, queue_base + 1) +
+            [(queue_base + 2 + i, "job", r["id"]) for i, r in enumerate(shown)] if show_queue else [])
         if show_queue:
-            self.group_controls(app, out, hits, [r["job"] for r in shown], 2, "jobs", width, first_visible=True)
-            _table_scrollbar(app, "jobs", width, 2, max(1, vis), n, top)
+            self.group_controls(app, out, hits, [r["job"] for r in shown], queue_base + 2, "jobs", width, first_visible=True)
+            _table_scrollbar(app, "jobs", width, queue_base + 2, max(1, vis), n, top, header=queue_base)
             if native:
-                while len(out) < queue_capacity + 2:
+                while len(out) < queue_capacity + 2 + queue_base:
                     out.append([("", "")])
         if show_queue and not rows_d:
             out.append([("   no jobs match the filter; Esc clears it" if app.filter else "   Your queue is clear. New jobs appear here automatically.", "dim")])
@@ -1463,8 +1472,9 @@ class Views:
             recent_shown = fin[fin_top:fin_top + fin_vis]
             base = len(out)
             recent_cells = []
-            recent_rows = self.finished_rows(recent_shown, max(1, width - 1), "recent", recent_cur - fin_top if recent_focus and selection_active else None,
-                                             app=app, header_cells=recent_cells, sort_tab="recent")
+            recent_rows = self.aligned_recent_rows(recent_shown, max(1, width - 1), cells,
+                recent_cur - fin_top if recent_focus and selection_active else None,
+                app=app, header_cells=recent_cells)
             recent_rows[0] = _scroll_rule(self.g, width, "recent")
             hits += header_hits("recent", recent_cells, base + 1) + [(base + 2 + i, "recent", f.id) for i, f in enumerate(recent_shown)]
             out += recent_rows
@@ -1475,7 +1485,7 @@ class Views:
         if native:
             recent_history.publish(app, fin, recent_capacity, n)
             if not rows_d and not fin:
-                out = [rule(self.g, width, "jobs"), [("   no jobs match the filter; Esc clears it" if app.filter else
+                out = list(grouping_rows) + [rule(self.g, width, "jobs"), [("   no jobs match the filter; Esc clears it" if app.filter else
                     "   Your queue is clear. New jobs appear here automatically.", "dim")]]
         # Inline Details owns the supporting pane. The inspector and
         # investigation include the selected job's own evidence instead.
@@ -1538,6 +1548,48 @@ class Views:
         rows, _ = table(cols, data, width, self.g.ascii, indent="   ", droppable=drop, cursor=cursor,
                         header_cells=header_cells)
         return [rule(self.g, width, title)] + rows
+
+    def aligned_recent_rows(self, fin, width, job_cells, cursor=None, *, app, header_cells=None):
+        """Keep Recents under the exact Queue columns, including its gutter.
+
+        Completed records have no live progress, instantaneous utilization,
+        or remaining time. Those slots stay empty rather than implying zero.
+        Headings retain independent recent sorting while widths are shared.
+        """
+        from .column_resize import RECENT_ALIASES
+        from .table_ui import columns
+        definitions = {column.key: column for column in self.FIN_COLS}
+        definitions.update({column.key: column for column in columns(app, "recent", self.FIN_COLS)})
+        original = {column.key: column for column in JOB_COLS}
+        fitted = []
+        for key, left, right in job_cells:
+            alias = RECENT_ALIASES.get(key, "_blank_" + key)
+            source = definitions.get(alias)
+            title = source.title if source else ""
+            if key == "st" and source and right - left < 5:
+                title = source.title.replace("STATE", "ST", 1)
+            fitted.append(Column(alias, title, right - left, right - left,
+                                 original[key].align if key in original else "<"))
+        data = [self.finished_dict(record, app=app, context="recent") for record in fin]
+        if (not any(column.key == "tags" for column in fitted)
+                and "tags" not in app.table_state.get("hidden", {}).get("jobs", ())):
+            # A shared narrow Queue layout can drop TAGS. Keep the current
+            # accounting badges visible in NAME, as the History table does,
+            # without changing fitted widths or reviving explicitly hidden tags.
+            from .research import clean
+            data = [dict(row, name="[" + clean(row["tags"], self.g.ascii) + "] " + row["name"])
+                    if row.get("tags") else row for row in data]
+        state_width = next((column.hi for column in fitted if column.key == "state"), 99)
+        if state_width < 5:
+            abbreviations = {"COMPLETED": "CD", "FAILED": "F", "CANCELLED": "CA", "TIMEOUT": "TO",
+                             "OUT_OF_MEMORY": "OOM", "NODE_FAIL": "NF", "PREEMPTED": "PR",
+                             "BOOT_FAIL": "BF", "DEADLINE": "DL", "accounting...": "AC"}
+            data = [dict(row, state=abbreviations.get(str(row.get("state", "")).partition(" ")[0],
+                                                     row.get("state", ""))) for row in data]
+        marks = {index for index, record in enumerate(fin) if record.id in app.marks}
+        rows, _ = table(fitted, data, width, self.g.ascii, cursor=cursor, marks=marks,
+                        mark_char=self.g.mark, header_cells=header_cells)
+        return [rule(self.g, width, "recent")] + rows
 
     def finished_dict(self, f: Finished, *, app=None, context="history") -> dict:
         row = self._finished_dict(f)
@@ -3084,6 +3136,10 @@ class Views:
             begin_frame(app, width, height)
             app.tab_hits, app.last_rows, app.last_hits = [], [], []
             app.frame_rows = []
+            from .column_resize import publish as publish_columns
+            publish_columns(app, [], [], width, height, ascii_=self.g.ascii)
+            from .group_queue_drag import cancel as cancel_queue_drag
+            cancel_queue_drag(app)
             if feedback:
                 from .interaction import publish
                 publish(app, [], [], width, height)
@@ -3133,8 +3189,9 @@ class Views:
                 y, value = divider
                 left, right = value["left"], value["right"]
                 padding = 1 if getattr(app.layout_state, "density", "compact") == "comfortable" and main.width >= 8 and main.height >= 7 else 0
-                origin = main.y + 1 + padding
-                extent = max(1, getattr(app, "workspace_main_usable_height", main.height - 1) - 1)
+                toolbar_height = getattr(app, "jobs_toolbar_height", 0)
+                origin = main.y + 1 + padding + toolbar_height
+                extent = max(1, getattr(app, "workspace_main_usable_height", main.height - 1) - 1 - toolbar_height)
                 original_ratio, original_manual = recent_state.ratio, recent_state.manual_split
                 def resize_recent(percentage):
                     recent_history.resize(app, 100 - percentage)
@@ -3147,6 +3204,8 @@ class Views:
                 recent_state.rect = Rect(left, y + 2, max(0, right - left), max(0, main.y + main.height - padding - y - 2))
             else:
                 recent_state.rect = None
+        from .column_resize import publish as publish_columns
+        publish_columns(app, rows, hits, width, height, ascii_=self.g.ascii)
         app.last_rows = [list(row) for row in rows]         # pristine content; copy excludes feedback glyphs
         if app.sel_anchor is not None:
             a, b = sorted((app.sel_anchor, min(app.sel_end, len(rows) - 1)))
@@ -3160,23 +3219,14 @@ class Views:
         publish_selection(app, rows, hits, width, height, snap=snap)
         from .job_group_drag import publish as publish_group_drag
         publish_group_drag(app, snap, rows, hits, width, height)
+        from .group_queue_drag import publish as publish_queue_drag
+        publish_queue_drag(app, rows, hits, width, height, ascii_=self.g.ascii)
         if app.tab == "jobs" and app.animations_enabled and width >= 4:
-            for item in app.completion.moving()[-3:]:
-                destination = next((y for y, kind, jid in hits if kind == "recent" and jid == item["job"]), None)
-                if destination is None:
-                    continue
-                source = item.get("source")
-                source = max(len(head), min(destination, source if source is not None else len(head) + 2))
-                progress = 1 - (1 - item["progress"]) ** 3
-                position = round(source + (destination - source) * progress)
-                for trail in range(3):
-                    y = position - trail
-                    if not len(head) <= y < len(rows):
-                        continue
-                    row = L.clip_row(rows[y], width - 1)
-                    glyph = ("v" if self.g.ascii else "◆") if trail == 0 else (":" if self.g.ascii else "│")
-                    style = "cyan+bold" if trail == 0 else "fg:#475569"
-                    rows[y] = row + [(" " * max(0, width - 1 - vlen(L.row_text(row))), ""), (glyph, style)]
+            from .transitions import paint_completion_trails
+            rows = paint_completion_trails(rows, hits, app.completion.moving(),
+                main=getattr(app, "workspace_main_rect", None), width=width, body_top=len(head),
+                comfortable=getattr(app.layout_state, "density", "compact") == "comfortable",
+                ascii_=self.g.ascii)
         app.completion.remember(hits)
         app.tab_hits = [hit for hit in app.tab_hits if hit[0] < height - 1 and hit[1] < hit[2]]
         output = rows + [L.clip_row(self.footer(app, width), width)]
@@ -3189,9 +3239,11 @@ class Views:
         chart_interaction.publish(app, width, height)
         SB.publish(app, width, height)
         from .metric_live import descriptors as live_descriptors
-        publish(app, output, hits, width, height, extra_controls=live_descriptors(app) + SB.descriptors(app))
+        from .column_resize import descriptors as column_descriptors
+        publish(app, output, hits, width, height, extra_controls=live_descriptors(app) + SB.descriptors(app) + tuple(column_descriptors(app)))
         from .job_group_drag import feedback as group_drag_feedback
-        return group_drag_feedback(app, decorate(app, output)), hits
+        from .group_queue_drag import feedback as queue_drag_feedback
+        return queue_drag_feedback(app, group_drag_feedback(app, decorate(app, output))), hits
 
     def step_lines(self, steps: Sequence[Step], width: int) -> List[Row]:
         """A small table of a job's steps (sstat for a running job, sacct -j for a finished one)."""
@@ -3233,9 +3285,10 @@ class Views:
         if feedback:
             from .interaction import publish, decorate_overlays
             from .metric_live import descriptors as live_descriptors
+            from .column_resize import descriptors as column_descriptors
             publish(app, getattr(app, "frame_rows", getattr(app, "last_rows", [])),
                     getattr(app, "last_hits", []), width, height, overlays=rows or (),
-                    extra_controls=live_descriptors(app) + SB.descriptors(app))
+                    extra_controls=live_descriptors(app) + SB.descriptors(app) + tuple(column_descriptors(app)))
             scroll_feedback = SB.feedback(app, ascii_=self.g.ascii)
             decorated = decorate_overlays(app, rows) if rows is not None else []
             return scroll_feedback + decorated if scroll_feedback or rows is not None else None

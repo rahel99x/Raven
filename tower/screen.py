@@ -650,6 +650,7 @@ def _read_input(stdscr, curses):
 def _protect_pointer_escape(app):
     """Allow a short report-prefix grace while a pointer gesture owns input."""
     states = (("chart_interaction_state", "capture"), ("metric_live_state", "capture"),
+              ("column_resize_state", "capture"), ("group_queue_drag_state", "capture"),
               ("job_group_drag_state", "capture"),
               ("job_selection_state", "capture"), ("text_selection_state", "capture"),
               ("scrollbar_state", "capture"), ("pane_drag_state", "capture"),
@@ -693,6 +694,10 @@ def _finish_unheld_pointer(app, mouse, curses):
     """
     if getattr(mouse, "held", None) is not False or not _motion_report(mouse[4], curses):
         return
+    for name in ("column_resize", "group_queue_drag"):
+        if (getattr(app, name + "_state", {}) or {}).get("capture"):
+            from importlib import import_module
+            import_module("tower." + name).cancel(app)
     move = getattr(app, "job_group_drag_state", {}) or {}
     if move.get("capture") or move.get("pending"):
         from .job_group_drag import cancel as cancel_group_drag
@@ -802,6 +807,12 @@ def _apply_input(app, event, hits, curses):
     _, mx, my, _, bstate = mouse
     _finish_unheld_pointer(app, mouse, curses)
     shift = bool(bstate & getattr(curses, "BUTTON_SHIFT", 0))
+    alt = bool(bstate & getattr(curses, "BUTTON_ALT", 0))
+    def click(*args, **kwargs):
+        # Preserve the legacy adapter API when no modifier was reported.
+        if alt:
+            kwargs["alt"] = True
+        return app.click(*args, **kwargs)
     from .toolbar import handle_mouse as toolbar_mouse
     button = ("wheel-up" if bstate & getattr(curses, "BUTTON4_PRESSED", 0) else
               "wheel-down" if bstate & getattr(curses, "BUTTON5_PRESSED", 0) else
@@ -822,13 +833,21 @@ def _apply_input(app, event, hits, curses):
     if app.mode in INSPECTION_MODES:
         # Inspection dialogs own motion, release and wheel events as well as
         # clicks. Do not run underlying pane/browser pre-dispatch handlers.
-        app.click(my, mx, hits, button=button, shift=shift)
+        click(my, mx, hits, button=button, shift=shift)
         return
     from .history_log_export import active as export_active, handle_mouse as export_mouse
     from .scrollbars import handle_mouse as scrollbar_mouse
+    from .column_resize import active as column_active, handle_mouse as column_mouse
+    from .group_queue_drag import active as queue_active, handle_mouse as queue_mouse
+    if ((column_active(app) or getattr(app, "column_resize_state", {}).get("discard_release") and button not in ("press", "left"))
+            and column_mouse(app, my, mx, button=button, shift=shift)):
+        return
+    if ((queue_active(app) or getattr(app, "group_queue_drag_state", {}).get("discard_release") and button not in ("press", "left"))
+            and queue_mouse(app, my, mx, button=button, shift=shift, alt=alt)):
+        return
     from .job_group_drag import active as group_drag_active, pending as group_drag_pending, handle_mouse as group_drag_mouse
     if ((group_drag_active(app) or group_drag_pending(app) and button not in ("press", "left"))
-            and group_drag_mouse(app, my, mx, button=button, shift=shift)):
+            and group_drag_mouse(app, my, mx, button=button, shift=shift, alt=alt)):
         return
     from .job_group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
     if group_menu_active(app):
@@ -847,6 +866,8 @@ def _apply_input(app, event, hits, curses):
         if toolbar_reset(app, my, mx):
             return
         if live_mouse(app, my, mx, button=button, shift=shift):
+            return
+        if column_mouse(app, my, mx, button=button, shift=shift):
             return
         if group_menu_mouse(app, my, mx, button=button, shift=shift):
             return
@@ -897,14 +918,14 @@ def _apply_input(app, event, hits, curses):
             return
     if button in ("motion", "drag", "release"):
         from .job_selection import active as selection_active
-        if (selection_active(app) or group_drag_pending(app) or getattr(app, "pane_drag_state", {}).get("capture") or
+        if (selection_active(app) or group_drag_pending(app) or column_active(app) or queue_active(app) or getattr(app, "pane_drag_state", {}).get("capture") or
                 getattr(app, "history_browser_state", {}).get("drag") or
                 getattr(app, "chart_interaction_state", {}).get("capture") or
                 getattr(app, "text_selection_state", {}).get("capture") or
                 getattr(app, "metric_live_state", {}).get("capture")):
-            app.click(my, mx, hits, button=button, shift=shift)
+            click(my, mx, hits, button=button, shift=shift)
         elif app.mode == "terminal_probe":
-            app.click(my, mx, hits, button=button, shift=shift)
+            click(my, mx, hits, button=button, shift=shift)
         return
     if button in ("wheel-up", "wheel-down"):
         from .history_browser import handle_mouse as history_mouse
@@ -926,22 +947,22 @@ def _apply_input(app, event, hits, curses):
                 app.last_hits = hits
                 panel_mouse(app, my, mx, button=button, shift=shift)
             else:
-                app.click(my, mx, hits, button=button, shift=shift)
+                click(my, mx, hits, button=button, shift=shift)
             return
     if app.mode == "terminal_probe":
-        app.click(my, mx, hits, button=button, shift=shift)
+        click(my, mx, hits, button=button, shift=shift)
         return
     if button.startswith("wheel-") and scrollbar_mouse(app, my, mx, button=button, shift=shift):
         return
     if button.startswith("wheel-") and handle_wheel(app, my, mx, -1 if button == "wheel-up" else 1):
         return
     if bstate & (getattr(curses, "BUTTON3_CLICKED", 0) | getattr(curses, "BUTTON3_PRESSED", 0)):
-        app.click(my, mx, hits, button="right")
+        click(my, mx, hits, button="right")
     elif bstate & (curses.BUTTON1_CLICKED | curses.BUTTON1_PRESSED | curses.BUTTON1_DOUBLE_CLICKED):
         origin = app.tab
         from .job_panels import contains as in_job_panel
         double_target = None
-        if (bstate & curses.BUTTON1_DOUBLE_CLICKED and not shift and app.mode == "main"
+        if (bstate & curses.BUTTON1_DOUBLE_CLICKED and not shift and not alt and app.mode == "main"
                 and type(mx) is int and type(my) is int
                 and 0 <= mx < getattr(app, "width", 100000)
                 and 0 <= my < getattr(app, "height", 100000)
@@ -967,7 +988,7 @@ def _apply_input(app, event, hits, curses):
         # Actual applications distinguish a held press from a completed click.
         # Small compatibility controllers without drag state retain left-click.
         pressed = button == "press" and hasattr(app, "job_selection_state")
-        app.click(my, mx, hits, button="press" if pressed else "left", shift=shift)
+        click(my, mx, hits, button="press" if pressed else "left", shift=shift)
         selected_target = (double_target is not None and
                            (origin == "log" or getattr(app, "selected_id", None) == double_target[1]))
         if bstate & curses.BUTTON1_DOUBLE_CLICKED and selected_target and app.tab == origin and app.mode == "main":
@@ -1062,7 +1083,8 @@ class _InputEffects:
         chart = getattr(app, "chart_interaction_state", {}) or {}
         live = getattr(app, "metric_live_state", {}) or {}
         if ((chart.get("capture") or live.get("capture") or getattr(app, "text_selection_state", {}).get("capture")
-             or getattr(app, "job_group_drag_state", {}).get("capture")) and hover):
+             or getattr(app, "job_group_drag_state", {}).get("capture")
+             or getattr(app, "group_queue_drag_state", {}).get("capture")) and hover):
             # Pointer feedback uses the published raster. Live slider motion
             # redraws its control immediately; its curve keeps a 10 Hz limit.
             return
@@ -1071,6 +1093,7 @@ class _InputEffects:
         # Some terminal drivers omit the held-button bit on position reports.
         # A captured gesture must still rebuild its slider or selected rows.
         capture = (toolbar.get("dragging") or selection.get("capture") or
+                   getattr(app, "column_resize_state", {}).get("capture") or
                    getattr(app, "scrollbar_state", {}).get("capture") or
                    getattr(app, "pane_drag_state", {}).get("capture") or
                    getattr(app, "history_browser_state", {}).get("drag"))
@@ -1327,8 +1350,9 @@ class _FrameCache:
         scrollbars.publish(app, width, height, overlays=welcome + overlays)
         from .text_selection import publish as publish_text
         publish_text(app, self.rows, width, height, overlays=welcome + overlays)
+        from .column_resize import descriptors as column_descriptors
         _timed_ui(app, "publish_controls", publish, app, self.rows, hits, width, height, overlays=welcome + overlays,
-                  extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app))
+                  extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app) + tuple(column_descriptors(app)))
         self.snapshot, self.geometry = snap, (width, height)
         self.toolbar_token = _toolbar_feedback_token(app)
         self.group_menu_token = _group_menu_feedback_token(app)
@@ -1361,9 +1385,10 @@ class _FrameCache:
             self.content = job_group_menu.overlay(views, self.snapshot, app, width, height) or []
             from . import scrollbars, metric_live
             scrollbars.publish(app, width, height, overlays=self.welcome + self.content + self.toolbar)
+            from .column_resize import descriptors as column_descriptors
             publish(app, self.rows, self.hits, width, height,
                     overlays=self.welcome + self.content + self.toolbar,
-                    extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app))
+                    extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app) + tuple(column_descriptors(app)))
             self.group_menu_token = _group_menu_feedback_token(app)
         token = _toolbar_feedback_token(app)
         if token != self.toolbar_token:
@@ -1378,15 +1403,18 @@ class _FrameCache:
             scrollbars.publish(app, width, height, overlays=self.welcome + self.content + self.toolbar)
             from .text_selection import publish as publish_text
             publish_text(app, self.rows, width, height, overlays=self.welcome + self.content + self.toolbar)
+            from .column_resize import descriptors as column_descriptors
             publish(app, self.rows, self.hits, width, height,
                     overlays=self.welcome + self.content + self.toolbar,
-                    extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app))
+                    extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app) + tuple(column_descriptors(app)))
             self.toolbar_token = _toolbar_feedback_token(app)
         rows = decorate(app, self.rows)
         from .job_progress import animate_rows
         rows = animate_rows(app, rows)
         from .job_group_drag import feedback as group_drag_feedback
         rows = group_drag_feedback(app, rows)
+        from .group_queue_drag import feedback as queue_drag_feedback
+        rows = queue_drag_feedback(app, rows)
         overlays = self.welcome + decorate_overlays(app, self.content + self.toolbar)
         from .chart_interaction import feedback as chart_feedback
         overlays += chart_feedback(app, ascii_=bool(getattr(getattr(views, "g", None), "ascii", False)),

@@ -147,7 +147,7 @@ def table(cols: Sequence[Column], rows: Sequence[dict], width: int, ascii_: bool
                 header_cells.append((column.key, x, right))
             x += w[column.key] + gap
     sep = " " * gap
-    out: List[Row] = [[(indent, ""), (sep.join(pad(c.title, w[c.key], c.align) for c in kept), header_style)]]
+    out: List[Row] = [[(indent, ""), (sep.join(pad(cut(c.title, w[c.key], ascii_), w[c.key], c.align) for c in kept), header_style)]]
     for i, r in enumerate(rows):
         segs: Row = [(indent, "")]
         for n, c in enumerate(kept):

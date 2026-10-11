@@ -77,6 +77,23 @@ JOBID uses numeric ordering, including array tasks. Thus, `9` comes before
 Press `a` to restore automatic width for the selected column. Press `r` to
 reset order, widths, and visibility. Identity and state columns cannot be hidden.
 
+You can also resize a column directly in its table:
+
+1. Point at the thin separator to the right of its heading.
+2. Press the left mouse button. Drag left or right to change the width.
+3. Release the button to save the width.
+
+The separator has a buffer in the space between headings. A column that reaches
+the pane edge has a one-cell resize handle at that edge. Click the heading text
+to sort. Right-click its separator to restore automatic width. Press Esc during
+a drag to restore the previous width. The six-cell Progress column has a fixed
+width and has no resize handle.
+
+The preview stays inside the current pane. Tower saves once on release. A page,
+dialog, terminal-size, or incompatible layout change cancels an unfinished
+resize. Moving the pointer over another pane during a captured drag does not
+activate that pane's controls.
+
 Use commands for exact settings:
 
 ~~~text
@@ -92,6 +109,22 @@ A width must be from 2 through 120 terminal cells. Keys omitted from an `order`
 command follow the specified keys in their original order. Tower can clip or
 omit optional columns when the terminal is too narrow. It measures wide
 characters in terminal cells.
+
+Jobs Main and Recents share column order, widths, visibility, and the marking
+gutter. A name width change in either section updates both. Recents keeps its
+own sort and filters. It uses final accounting values in the matching columns;
+live progress, instantaneous utilization, and remaining-time slots stay empty.
+Short state columns use accounting codes such as `CD`, `F`, `CA`, and `TO`.
+If TAGS does not fit, Recents puts its tag badge before the name. Explicitly
+hiding TAGS also hides that badge.
+History has its own layout and retains all completed-job columns.
+
+`:columns recent` opens the shared Jobs column editor. Explicit Recents column
+commands also change this shared layout. Field names map to the matching Jobs
+field, for example `elapsed` to `time`, `state` to `st`, and `gpus` to `gpu`.
+Use `:columns history` for completed-only fields such as `rss`, `start`, or `end`.
+Tower rejects those fields in a Recents layout command instead of saving an
+unused preference.
 
 <a id="feature-04"></a>
 
@@ -269,6 +302,24 @@ viewport-based paging.
 
 ## 11. Review marked jobs
 
+Click one job, then Shift-click another job to mark the inclusive range in the
+current list order. Both directions work. Repeated Shift-clicks adjust the range
+from the original anchor and retain unrelated marks. A changed list order,
+membership, or anchor job attempt invalidates an old anchor instead of selecting
+a different range.
+
+Press, drag, and release through job rows to mark a range. This works from an
+unselected, selected, or already marked row. Hold Shift during this gesture to
+retain earlier marks. A plain range drag replaces the earlier range. Hidden
+members of closed groups are not selected automatically.
+
+Hold Alt when you start a drag to move a job into an existing group. Dragging
+a marked row moves the applicable marked jobs. A closed source group contributes
+only its displayed representative job. Release over a destination group's row
+or chevron to add those exact jobs. Esc, right-click, or an ineligible drop
+cancels the move. If the terminal intercepts Alt-drag, use the selected job's
+right-click menu and **Add to GROUP NAME**.
+
 1. Mark jobs with the normal controls.
 2. Enter `:marked`.
 3. Review the exact IDs and their visibility.
@@ -283,6 +334,50 @@ one mark. Press `c` to clear only the displayed subset.
 
 These controls change marks. Scheduler actions retain applicability checks and
 confirmations.
+
+### Group controls in Jobs Main
+
+The four buttons above the Jobs table operate on Tower's shared groups:
+
+| Button | Effect |
+|---|---|
+| **Auto Group** | Enable automatic detection and close detected automatic groups. Keep manual groups and their exclusions. |
+| **Undo Auto** | Undo the last Auto Group change in this session. Keep later manual membership changes. |
+| **Ungroup All** | Remove manual groups and disable automatic grouping. Retain the jobs. |
+| **Expand All** | Open all closed groups without changing their membership. |
+
+Use `:grouping auto`, `:grouping undo`, `:grouping clear`, or `:grouping expand`
+for the same actions. `:grouping restore` restores the last Ungroup All change
+if no newer grouping change would be overwritten. Undo records are local to
+the current Tower session. These controls do not change scheduler order.
+
+### Review a group's queue order
+
+1. In Jobs Main, press a group's `↕` handle beside its chevron (`:` in ASCII).
+2. Drag to another group. Moving up requests placement before it; moving down
+   requests placement after it. The footer identifies the destination.
+3. Release to inspect the proposed order in a background task.
+4. Open **Review action**. Check the exact affected job IDs and positions.
+5. Select **Confirm apply** to send the reviewed preference to Slurm.
+
+Only the group header follows the pointer. Visible members of an expanded group
+are dimmed during the drag. Both expanded and closed groups use the same
+procedure. Press Esc or right-click to cancel. A page, job, membership, or layout
+change invalidates the captured gesture. Dropping is not confirmation.
+
+Slurm must enable `SchedulerParameters=enable_user_top`. Both groups must have
+pending jobs owned by the connected scheduler user in the same partition,
+account, and QOS. Running and completed members are excluded. A held or
+priority-one job in either selected group blocks the request. Compressed
+array ranges and heterogeneous IDs are not supported. The review is limited to
+512 exact pending jobs in that scheduling scope. It includes affected peer jobs
+owned by that same user, and retains their relative order.
+
+Tower uses Slurm's native `scontrol top` operation. It does not change another
+user's jobs or rewrite dependencies. Resources, dependencies, reservations, and
+site policy still determine actual start order. If the queue changes after the
+review, prepare a new review. Use `:ops queue-order` for the equivalent form
+without a mouse.
 
 <a id="feature-12"></a>
 
@@ -373,6 +468,11 @@ These methods are for extensions and tests. They use the existing event loop.
 | `table_sort.sort_rows(app, table, rows, value=None)` | Sort the full source before viewport slicing. |
 | `table_sort.history_value(record, key, snap=None)` | Read unrounded accounting values. |
 | `table_sort.header_hits(table, cells, y)` / `valid_header(payload)` | Construct or validate header click geometry. |
+| `column_resize.publish(app, rows, hits, width, height, ascii_=False)` | Derive bounded resize grips from final table geometry and paint their separators. |
+| `column_resize.handle_mouse(app, y, x, button="left", shift=False)` / `handle_key(app, key)` | Capture a resize, preview terminal-cell widths, and commit or cancel it. |
+| `column_resize.descriptors(app)` | Publish resize grips for common hover and directional focus. |
+| `column_resize.committed_widths(app, copied_widths)` / `cancel(app)` | Exclude unfinished widths from unrelated saves; restore a cancelled preview. |
+| `grouping_toolbar.controls(app, glyphs, width)` / `execute(app, action, snap=None)` | Render the four shared grouping controls; apply their local presentation changes. |
 | `table_tools.initialize(app)` / `restore(app, data)` / `save(app)` | Create, validate, and serialize tool preferences. Session freezes are excluded. |
 | `table_tools.command_names()` / `run_command(app, args)` | List and run the commands in this guide. |
 | `table_tools.handle_key(app, key)` / `handle_mouse(app, y, x, button="left", shift=False)` | Handle modal lists and chips. |

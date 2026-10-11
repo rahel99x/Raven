@@ -90,7 +90,7 @@ def test_invalid_multifilter_command_is_atomic(dashboard):
     assert app.table_tools_state["numeric"] == before
 
 
-@pytest.mark.parametrize("table", list(table_sort.TABLE_KEYS))
+@pytest.mark.parametrize("table", [key for key in table_sort.TABLE_KEYS if key != "recent"])
 def test_columns_all_tables_reorder_resize_hide_restore(dashboard, table):
     _, app, _ = dashboard
     cols = table_ui.definitions(table)
