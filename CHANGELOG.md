@@ -1,5 +1,19 @@
 # Changelog
 
+## 6.2.2
+
+- Open the existing job context menu from expanded and collapsed group headers
+  across job lists and history browsers. Show the group name and target count.
+- Include matching offscreen and collapsed members while preserving filters,
+  other-pane membership, existing marks and disclosure state. Revalidate source
+  group and job identities before applying an action. Keep individual-job reruns
+  out of group-header menus.
+- Keep right-clickable header cells available beside divider buffers in narrow
+  layouts and right-docked history browsers.
+- Publish the CLI fusion design: a proposed Details/Terminal pane, 100 mechanisms,
+  architecture, staged delivery and validation gates. The embedded terminal is
+  not implemented in this release.
+
 ## 6.2.1
 
 - Make `y` copy the selected job or marked jobs from the focused list. Include

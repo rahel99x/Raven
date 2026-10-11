@@ -85,14 +85,25 @@ The terminal must report press, movement, and release events; use the menu below
 
 ## Use the job menu
 
-Right-click a selected row or one of the marked rows to open its job menu. This also works on that row's group chevron.
+Right-click a selected row or one of the marked rows to open its job menu.
 Right-clicking a marked row targets the applicable marks in that list.
 Right-clicking the active unmarked selected row targets that exact job and keeps unrelated marks.
+
+You can also right-click an expanded or collapsed group header without selecting it first.
+Its menu shows the group name and the number of targeted jobs.
+The targets include matching members outside the viewport and members hidden by collapse.
+The pane's filters still apply. Jobs that appear only in another pane are excluded.
+Opening or cancelling the menu preserves existing marks and the group's expanded/collapsed state.
+
+An expanded table can share its header row with its first job.
+Right-click that row's chevron to target the group explicitly.
+Right-click marked data cells on that expanded row to retain the existing multi-selection menu.
+A collapsed header always targets its matching group members.
 
 | Choice | Result |
 | --- | --- |
 | **Create Group** | Create a closed manual group when at least two exact jobs are targeted |
-| **Ungroup** | Dissolve targeted closed groups or detach targeted expanded members; available only when a target belongs to a group |
+| **Ungroup** | From a group-header menu, detach the listed members only; from a member-selection menu, retain the existing closed-group or expanded-member behavior |
 | **Add to GROUP NAME** | Add the exact targeted jobs to an existing group; a destination that already contains all targets is omitted |
 | **More (N more groups)** | Expand the menu to show the remaining eligible groups |
 | **Rerun cancelled job** | Inspect one exact cancelled job's retained submission, then review and confirm its restart |
@@ -326,8 +337,11 @@ Closing a scheduler list group can move a hidden selected member to the represen
 A data page already opened for an exact job can retain that job while its browser group is closed.
 Check the displayed job ID before acting.
 
-Grouping does not select all hidden members for cancellation, export, comparison, or another bulk action.
-Open the group and mark the actual jobs that you need.
+Collapsing a group does not mark its hidden members for cancellation, export, comparison, or another bulk action.
+Open the group and mark the actual jobs that you need, or explicitly open its group-header menu.
+The header menu targets the matching members shown by its count, including collapsed and offscreen members.
+In History, **Export logs** uses those exact targets. A group-header menu never offers an individual-job rerun.
+Header-menu **Ungroup** detaches only the targeted members; filtered and other-pane members remain grouped.
 Mouse range selection follows visible real rows and does not add hidden children.
 The membership-removal command is explicit: `u` on a closed summary dissolves its whole group.
 This rule does not change the target rules for cancellation or other scheduler actions.

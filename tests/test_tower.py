@@ -326,27 +326,46 @@ def make_rich_app(tmp_path, rounds=4):
 
 
 def test_selection_copy_and_exports(tmp_path):
+    from tower import text_selection
+
     backend, store, sampler, actions, views, app = make_rich_app(tmp_path)
     W, H = 150, 44
-    rows, hits = views.compose(store.snapshot(), app, W, H, actions)
-    app.last_hits = hits
-    y0 = [h for h in hits if h[1] == "job"][0][0]
+    cache = screen._FrameCache()
+    cache.rebuild(app, views, store, actions, W, H)                    # publish the same pane ownership as the real UI
+    hits = cache.hits
+    y0 = next(y for y, kind, _ in hits if kind == "job")
     app.click(y0, 3, hits)                                             # ordinary clicks select jobs
+    cache.rebuild(app, views, store, actions, W, H)                    # refresh Details and the selection context
+    hits = cache.hits
+    pane = next(pane for pane in text_selection.initialize(app)["panes"] if pane.key == "jobs")
+    assert pane.rect.top == y0 and pane.rect.bottom > y0 + 3
+    # ASCII test rows let us independently slice terminal columns. The copied
+    # bytes must contain exactly these four Main rows, excluding adjacent Details.
+    expected = "".join(L.row_text(cache.rows[y])[pane.rect.left:pane.rect.right].rstrip() + "\n"
+                       for y in range(y0, y0 + 4))
+    assert "rb1-allrank" in "\n".join(L.row_text(cache.rows[y])[pane.rect.right:] for y in range(y0, y0 + 4))
     app.handle("v")                                                  # explicit text mode owns Shift-click instead of job marking
     app.click(y0 + 2, 3, hits, shift=True)
-    assert (app.sel_anchor, app.sel_end) == (y0, y0 + 2)
-    rows, _ = views.compose(store.snapshot(), app, W, H, actions)
-    assert all(s == "sel" for _, s in rows[y0][:-1]) and all(s == "sel" for _, s in rows[y0 + 2][:-1]) and not any(s == "sel" for _, s in rows[y0 + 3])
-    assert rows[y0][-1] == ("*", "fg:#fb923c+bold") and L.vlen(L.row_text(rows[y0])) == W
+    selection = text_selection.initialize(app)["selection"]
+    assert selection["key"] == "jobs" and (selection["anchor"], selection["end"]) == (0, 2)
+    assert app.sel_anchor is None                                    # a pane range must not become a screen-wide range
+    feedback = text_selection.feedback(app, ascii_=True)
+    assert [y for y, _, _ in feedback] == list(range(y0, y0 + 3))
+    assert all(x == pane.rect.left and L.vlen(L.row_text(row)) <= pane.rect.right - x
+               and row[-1] == (">", "warning+bold+bg:surface-raised") for _, x, row in feedback)
     app.handle("down")                                                 # arrows extend the selection
-    assert app.sel_end == y0 + 3
+    assert text_selection.initialize(app)["selection"]["end"] == 3
     app.handle("y")
     text = (tmp_path / "state" / "clipboard.txt").read_text()
-    assert text.count("\n") == 4 and "12480001" in text and "12477369" in text and app.sel_anchor is None and app.message.startswith("copied 4 lines")
+    assert text == expected and "rb1-allrank" not in text
+    assert text.count("\n") == 4 and "12480001" in text and "12477369" in text and app.message.startswith("copied 4 lines")
+    assert text_selection.initialize(app)["selection"] is None and app.sel_anchor is None
     app.handle("v"); app.handle("V")
-    assert (app.sel_anchor, app.sel_end) == (0, len(app.last_rows) - 1)
+    selection = text_selection.initialize(app)["selection"]
+    assert selection["key"] == "jobs"
+    assert (selection["anchor"], selection["end"]) == (pane.top, pane.top + pane.page - 1)
     app.handle("esc")
-    assert app.sel_anchor is None
+    assert text_selection.initialize(app)["selection"] is None and app.sel_anchor is None
     app.handle("E"); path_t = app.message.split()[-1]
     app.handle("C"); path_c = app.message.split()[-1]
     app.handle("space"); app.handle("J"); path_j = app.message.split()[-1]

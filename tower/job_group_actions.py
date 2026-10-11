@@ -34,9 +34,12 @@ def freeze(app, context, job_ids=None):
         return None
     tokens = context.get("tokens", {})
     scope = context.get("scope", "")
-    return {"scope": scope, "ids": ids, "selected": context.get("selected"),
+    frozen = {"scope": scope, "ids": context.get("pane_ids", ids), "selected": context.get("selected"),
             "targets": targets, "tokens": {jid: tokens.get(jid) for jid in targets},
             "origin": _origin(app, scope)}
+    if context.get("source_group") is not None:
+        frozen["source_group"] = context["source_group"]
+    return frozen
 
 
 def validate(app, context):
@@ -54,6 +57,12 @@ def validate(app, context):
     if not ids or any(published.get(jid) is None or observed.get(jid) != published[jid] for jid in ids):
         app.say("Selected jobs changed; select the current rows again before grouping")
         return None
+    expected = context.get("source_group")
+    if expected is not None:
+        from .job_groups import registry
+        if registry(app).ensure(snap).groups.get(expected.id) != expected:
+            app.say("The selected group changed; select its current header again")
+            return None
     return snap
 
 
@@ -79,7 +88,8 @@ def execute(app, context, action, group_id=None, expected=None):
             group = index.for_job(jid)
             if group is None:
                 continue
-            if app.table_state.get("groups") and registry.is_collapsed(group):
+            if (not context.get("source_group") and app.table_state.get("groups")
+                    and registry.is_collapsed(group)):
                 groups.append(group.id)
             else:
                 members.append(jid)

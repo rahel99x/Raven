@@ -13,6 +13,10 @@ standard library. Unicode and ASCII modes are available.
 [Capability ownership](docs/reference/capabilities.md) ·
 [Release history](CHANGELOG.md)
 
+The [CLI fusion design proposal](docs/design/terminal-fusion.md) describes a
+planned Details/Terminal pane, 100 proposed capabilities, and its validation gates.
+The embedded terminal is not implemented yet.
+
 ## Start with a safe demonstration
 
 Use Python 3.10 or later with curses and venv support:

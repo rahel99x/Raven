@@ -85,7 +85,7 @@ def _expand(app):
 
 
 def open_menu(app, context=None):
-    """Open for the pointed marked row, or the pointed active single row.
+    """Open for a projected group header, marked row, or active single row.
 
     An unmarked active row is an exact single-job context even when another
     list retains marks. Unrelated marks must never broaden its actions.
@@ -94,7 +94,10 @@ def open_menu(app, context=None):
         return False
     pointed = context.get("pointed")
     marks = getattr(app, "marks", ())
-    if pointed in marks:
+    source_group = context.get("source_group")
+    if source_group is not None:
+        targets = context.get("ids", ())
+    elif pointed in marks:
         targets = tuple(jid for jid in context.get("ids", ()) if jid in marks)
     elif pointed and pointed == context.get("selected"):
         targets = (pointed,)
@@ -121,7 +124,8 @@ def open_menu(app, context=None):
         group = index.for_job(jid)
         if group is not None:
             grouped = True
-            if getattr(app, "table_state", {}).get("groups") and registry.is_collapsed(group):
+            if (source_group is None and getattr(app, "table_state", {}).get("groups")
+                    and registry.is_collapsed(group)):
                 collapsed[group.id] = group
     required = tuple(dict.fromkeys((*collapsed, *(group.id for group in destinations))))
     evidence = M.target_evidences(app, snap, required, index=index, all_groups=True)
@@ -149,7 +153,7 @@ def open_menu(app, context=None):
         suffix.append(dict(label="Export logs", action="export"))
     # A folded header stands for a batch, not the individual ID used to paint
     # it. Exact reruns require an exposed single member and a cancelled record.
-    if len(targets) == 1 and not collapsed and not getattr(app, "replay", None):
+    if len(targets) == 1 and source_group is None and not collapsed and not getattr(app, "replay", None):
         job_id = targets[0]
         records = [record for record in snap.get("finished", ()) if record.id == job_id]
         if (len(records) == 1 and re.fullmatch(r"[0-9]{1,20}(?:_[0-9]{1,10})?", job_id)
@@ -282,7 +286,9 @@ def overlay(views, snap, app, width, height):
     ascii_ = views.g.ascii
     room, available = max(1, min(88, width - 8)), max(1, height - 4)
     targets = state["context"]["targets"]
-    prefix = [[(L.cut(f" {len(targets)} selected job" + ("s" if len(targets) != 1 else "") + ": " +
+    source_group = state["context"].get("source_group")
+    heading = (" in " + clean(source_group.label, ascii_, limit=256)) if source_group else ""
+    prefix = [[(L.cut(f" {len(targets)} selected job" + ("s" if len(targets) != 1 else "") + heading + ": " +
                      ", ".join(targets[:8]) + (", ..." if len(targets) > 8 else ""), room, ascii_), "accent+bold")]]
     if available < 2:
         prefix = []
@@ -344,8 +350,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if not active(app):
         if button != "right" or getattr(app, "mode", "main") != "main":
             return False
-        from .job_group_drag import source_at
-        return open_menu(app, source_at(app, y, x, include_disclosure=True))
+        from .job_group_drag import menu_source_at
+        return open_menu(app, menu_source_at(app, y, x))
     state = initialize(app)
     guard = state.get("aggregate_guard")
     if guard is not None:

@@ -701,6 +701,9 @@ The copy uses tab-separated record fields. Use `v` first to copy the rendered ta
 Selections do not include neighboring panes, and a lost selection never becomes a whole-screen copy.
 Esc or right-click clears it.
 Job dragging retains its exact-ID marking behavior unless explicit rendered selection starts with `v`.
+Right-click a group header or its chevron to open the group menu in either expanded or collapsed state.
+The menu lists the group name and target count, includes offscreen matching members, and respects the pane's filters.
+On an expanded first-job row, marked data cells retain the marked-job menu; the chevron selects the group context explicitly.
 Raw Logs and source-page dialogs retain their original-byte selection controls.
 The rendered cache is limited to 20,000 lines and 8 MiB.
 Missing displayed coverage causes a stated failure; no partial range is copied.

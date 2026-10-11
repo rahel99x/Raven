@@ -109,7 +109,7 @@ def publish(app, snap, rows, hits, width, height):
         cancel(app)
         return
     tab = app.tab
-    scopes, by_y, exclusions, disclosures = {}, {}, {}, {}
+    scopes, by_y, exclusions, disclosures, headers, buffers = {}, {}, {}, {}, {}, {}
     native_ids = job_selection._order(app)
     if native_ids:
         scope = "analytics:advisor" if tab == "analytics" else tab
@@ -157,8 +157,18 @@ def publish(app, snap, rows, hits, width, height):
         group_id = meta.group.id if meta is not None else None
         if group_id:
             visible_groups.add(group_id)
+            # Share one bounded list per projected group. This includes its
+            # offscreen/collapsed members, but never jobs removed by the pane's
+            # filter or jobs that belong only to another pane (e.g. Recents).
+            key = scope, group_id
+            if key not in headers:
+                headers[key] = {"group": meta.group,
+                                "members": tuple(job_groups._value(record, "id") for record in
+                                                 islice(meta.records, manual_job_groups.MAX_IDENTITIES + 1))}
         by_y.setdefault(y, []).append({"scope": scope, "pointed": identifier,
-                                       "rect": rectangle, "group_id": group_id})
+                                       "rect": rectangle, "group_id": group_id,
+                                       "header": bool(meta and meta.header),
+                                       "collapsed": bool(meta and meta.collapsed)})
         row_count += 1
         if row_count >= MAX_ROWS:
             break
@@ -172,18 +182,35 @@ def publish(app, snap, rows, hits, width, height):
         from .pane_drag import BUFFER
         top, bottom = divider.y, divider.y + divider.height
         left, right = divider.x, divider.x + divider.width
+        for y in range(max(0, top), min(height - 1, bottom)):
+            if y in by_y:
+                exclusions.setdefault(y, []).append((left, right))
         if divider.axis == "vertical":
             left, right = left - BUFFER, right + BUFFER
         else:
             top, bottom = top - BUFFER, bottom + BUFFER
         for y in range(max(0, top), min(height - 1, bottom)):
             if y in by_y:
-                exclusions.setdefault(y, []).append((left, right))
+                buffers.setdefault(y, []).append((left, right))
     index = getattr(getattr(app, "job_groups", None), "index", None)
     evidence = (manual_job_groups.target_evidences(app, snap, visible_groups, index=index, all_groups=True)
                 if visible_groups and index is not None else {})
-    frame = {"rows": by_y, "scopes": scopes, "excluded": exclusions,
+    # Existing destination evidence already freezes hidden members. A group
+    # with an excluded ambiguous record may lack destination evidence yet
+    # still have a usable source subset. Cache missing tokens once per frame;
+    # neither right-click hit tests nor hover query scheduler state.
+    missing = {jid for (_, gid), header in headers.items() if gid not in evidence
+               for jid in header["members"]}
+    if missing:
+        cache = state.get("header_token_cache")
+        if cache is None:
+            cache = state["header_token_cache"] = manual_job_groups.SelectionTokenCache()
+        header_tokens = cache.update(snap, missing, registry=getattr(app, "job_groups", None))
+    else:
+        header_tokens = {}
+    frame = {"rows": by_y, "scopes": scopes, "excluded": exclusions, "buffers": buffers,
              "disclosures": disclosures,
+             "headers": headers, "header_tokens": header_tokens,
              "evidence": evidence, "signature": _signature(app)}
     state["frame"] = frame
     capture = state["capture"]
@@ -208,12 +235,14 @@ def _current(app):
     return frame if frame and not _blocked(app) and frame["signature"] == _signature(app) else None
 
 
-def source_at(app, y, x, *, include_disclosure=False):
+def source_at(app, y, x, *, include_disclosure=False, include_buffer=False):
     """Return the exact pointed source regardless of old keyboard pane focus."""
     if any(type(value) is not int for value in (y, x)):
         return None
     frame = _current(app)
     if frame is None or any(left <= x < right for left, right in frame["excluded"].get(y, ())):
+        return None
+    if not include_buffer and any(left <= x < right for left, right in frame["buffers"].get(y, ())):
         return None
     if not include_disclosure and any(left <= x < right for left, right in frame["disclosures"].get(y, ())):
         return None
@@ -234,6 +263,34 @@ def source_at(app, y, x, *, include_disclosure=False):
             index = min(max(0, getattr(app, "cursor", {}).get(app.tab, 0)), len(ids) - 1)
             chosen = ids[index]
     return dict(row, ids=ids, selected=chosen, tokens=_Tokens(app, ids))
+
+
+def menu_source_at(app, y, x):
+    """Resolve a group header explicitly, without changing marks or folds.
+
+    Expanded tables share their first member's data row with the disclosure.
+    Marked data cells retain member selection semantics; the disclosure always
+    targets its projected group. Collapsed rows always represent the group.
+    """
+    # A right-click does not resize. Visible data/header cells beside a
+    # divider remain usable; the divider itself and other controls stay inert.
+    source = source_at(app, y, x, include_disclosure=True, include_buffer=True)
+    if source is None or not source.get("group_id"):
+        return source
+    frame = _current(app)
+    disclosure = any(left <= x < right for left, right in frame["disclosures"].get(y, ()))
+    if not (source["header"] or disclosure):
+        return source
+    if (not source["collapsed"] and not disclosure
+            and source["pointed"] in getattr(app, "marks", ())):
+        return source
+    header = frame["headers"].get((source["scope"], source["group_id"]))
+    if header is None:
+        return source
+    evidence = frame["evidence"].get(source["group_id"])
+    tokens = dict(evidence.tokens) if evidence is not None else frame["header_tokens"]
+    return dict(source, ids=header["members"], pane_ids=source["ids"], selected=source["pointed"],
+                tokens=tokens, source_group=header["group"])
 
 
 def active(app):
