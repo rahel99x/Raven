@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/site-capabilities.schema.json",
+  "title": "site capabilities",
+  "description": "Native compilation checks unique adapter IDs, known conflict IDs and executable recipe applicability; this schema does not authorize or execute argv.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.site-capabilities/v1"
+    },
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "not": {
+        "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+      }
+    },
+    "runtime": {
+      "$ref": "runtime-common.schema.json#/$defs/fingerprint"
+    },
+    "adapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "runtime-common.schema.json#/$defs/identifier"
+          },
+          "provides": {
+            "type": "array",
+            "items": {
+              "$ref": "runtime-common.schema.json#/$defs/identifier"
+            },
+            "minItems": 0,
+            "maxItems": 64,
+            "uniqueItems": true
+          },
+          "requires": {
+            "$ref": "runtime-common.schema.json#/$defs/fingerprint"
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "$ref": "runtime-common.schema.json#/$defs/identifier"
+            },
+            "minItems": 0,
+            "maxItems": 16,
+            "uniqueItems": true
+          },
+          "cost": {
+            "$ref": "runtime-common.schema.json#/$defs/cost"
+          },
+          "permitted": {
+            "type": "boolean"
+          },
+          "argv": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "not": {
+                "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+              }
+            },
+            "minItems": 1,
+            "maxItems": 64
+          }
+        },
+        "required": [
+          "id",
+          "provides",
+          "requires",
+          "conflicts",
+          "cost",
+          "permitted",
+          "argv"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 16
+    }
+  },
+  "required": [
+    "schema",
+    "identity",
+    "runtime",
+    "adapters"
+  ],
+  "additionalProperties": false
+}

@@ -133,8 +133,9 @@ def test_live_fixture_requires_at_least_one_eligible_control(benchmark):
         benchmark.configure_live(SimpleNamespace(selected_id="7"), metric, 5)
 
 
-def test_fixture_seeds_the_actual_sorted_job_and_renders_its_4000_point_history(benchmark):
-    from tower import chart_interaction as C, layout as L
+@pytest.mark.parametrize("interactive", [False, True])
+def test_fixture_seeds_the_actual_sorted_job_and_renders_its_4000_point_history(benchmark, interactive):
+    from tower import chart_interaction as C, layout as L, metric_live
     from tower.config import Config
     from tower.controller import App
     from tower.model import Job, Store
@@ -144,7 +145,7 @@ def test_fixture_seeds_the_actual_sorted_job_and_renders_its_4000_point_history(
     jobs = [Job("10", "first-source", "cpu", "RUNNING", submit="s", start="r"),
             Job("20", "displayed-source", "cpu", "RUNNING", submit="s", start="r")]
     store.apply_jobs(jobs)
-    app = App(store, None, None, cfg, "test", interactive=False)
+    app = App(store, None, None, cfg, "test", interactive=interactive)
     app.selected_id = "10"
     app.cursor["jobs"] = 1
     views = Views(L.Glyphs(False), cfg)
@@ -162,6 +163,10 @@ def test_fixture_seeds_the_actual_sorted_job_and_renders_its_4000_point_history(
         assert len(store.series[selected.id]) == 8000
         assert not store.series.get("10")
         assert "4000 cpu samples, 4000 gpu samples" in L.to_text(rows, 320)
+        # Real curses uses the virtualized interactive document. A previous
+        # empty source must not suppress the first published chart bands or
+        # require an extra refresh before Live controls exist.
+        assert benchmark.configure_live(app, metric_live, 1)
     finally:
         if app.research:
             app.research.close()
@@ -214,3 +219,32 @@ def test_toolbar_control_requires_switch_and_unknown_control_is_rejected(benchma
         with pytest.raises(SystemExit) as error:
             benchmark.main(["--source-root", str(source), "--output", str(tmp_path / "result.json"), *options])
         assert error.value.code == 2 and not calls
+
+
+@pytest.mark.parametrize("previous", [None, '{"button": [0, 10, 20]}'])
+@pytest.mark.parametrize("fail_write", [False, True])
+def test_toolbar_metadata_marker_is_complete_before_visible(benchmark, tmp_path, monkeypatch, previous, fail_write):
+    import json
+    marker = tmp_path / "pointer.control.json"
+    if previous is not None:
+        marker.write_text(previous)
+    original = Path.write_text
+    observations = []
+    def interrupted_write(path, text, *args, **kwargs):
+        original(path, text[:1], *args, **kwargs)
+        observations.append(marker.read_text() if marker.exists() else None)
+        assert observations[-1] == previous
+        if fail_write:
+            raise OSError("Interrupted control publication")
+        return original(path, text, *args, **kwargs)
+    monkeypatch.setattr(Path, "write_text", interrupted_write)
+    value = {"button": [0, 50, 60]}
+    if fail_write:
+        with pytest.raises(OSError, match="Interrupted control"):
+            benchmark.publish_marker(marker, value)
+        assert (marker.read_text() if marker.exists() else None) == previous
+    else:
+        benchmark.publish_marker(marker, value)
+        assert json.loads(marker.read_text()) == value
+    assert observations == [previous]
+    assert not marker.with_name(marker.name + ".tmp").exists()

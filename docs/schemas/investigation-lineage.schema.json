@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Scientific lineage",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "tower.scientific-lineage/v1"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Node",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "kind": {
+            "enum": [
+              "artifact",
+              "attempt",
+              "claim",
+              "policy",
+              "validation"
+            ]
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "maxItems": 256,
+            "minItems": 0
+          },
+          "complete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "dependencies",
+          "complete"
+        ]
+      },
+      "maxItems": 10000,
+      "minItems": 0
+    },
+    "changed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "maxItems": 10000,
+      "minItems": 0
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Revalidation action",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "covers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "maxItems": 256,
+            "minItems": 1
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "maxItems": 256,
+            "minItems": 0
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 0.000001,
+            "maximum": 1000000000000
+          },
+          "method": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "id",
+          "covers",
+          "requires",
+          "cost",
+          "method"
+        ]
+      },
+      "maxItems": 2048,
+      "minItems": 0
+    }
+  },
+  "required": [
+    "schema",
+    "nodes",
+    "changed",
+    "actions"
+  ]
+}

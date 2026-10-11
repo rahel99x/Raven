@@ -26,7 +26,7 @@ import uuid
 
 from .remote import LocalFiles
 
-MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale", "ops_queue_order")
+MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale", "ops_queue_order", "ops_workspace", "ops_investigation", "ops_platform", "ops_runtime", "ops_trace")
 PLAN_SCHEMA = "tower.operation-plan/v1"
 REPORT_SCHEMA = "tower.operation/v1"
 MAX_DOCUMENT = 4 << 20
@@ -45,6 +45,7 @@ class Context:
     cancel: object = None
     state_dir: str = ""
     replay: bool = False
+    ui_state_status: dict = field(default_factory=dict)
 
 
 def cancelled(ctx):
@@ -198,8 +199,13 @@ def _backend_command(backend, argv, timeout, limit, cancel, depth=0):
     from .slurm import Backend
     from .remote import SshBackend
     from .record import RecordingBackend
+    from .platform_session import GovernedBackend
     if depth > 8:
         raise ValueError("The connection wrapper depth exceeds its bound.")
+    if type(backend) is GovernedBackend:
+        # Explicit inspections and action validation require a new bounded,
+        # cancellable observation, not the sampler's cached queue snapshot.
+        return backend.command(argv, timeout, limit, cancel)
     if type(backend) is RecordingBackend:
         started = time.time()
         try:

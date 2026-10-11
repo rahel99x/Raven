@@ -11,7 +11,7 @@ INSPECTION_MODES = {"telemetry": "telemetry_ui", "shell_checks": "shell_checks_u
 FEATURES = ("startup", "job_group_menu", "job_group_drag", "group_queue_drag", "grouping_toolbar", "history_log_export", "refresh_rate", "worker_ui", "toolbar", "scrollbars", "pane_drag", "metric_live", "chart_interaction", "history_browser", "job_selection", "interaction", "scrolling", "recent_history", "job_panels", "analytics_document", "workspace_layout", "navigation_ui", "command_ui", "navigation_tools",
             "table_ui", "table_tools", "activity_ui", "session_tools", "project_ui",
             "log_workbench", "log_tools", "analysis_ui", "execution_ui", "job_progress",
-            "telemetry_ui", "shell_checks_ui", "array_manifest_ui", "gpu_provider_ui", "ops_ui")
+            "telemetry_ui", "shell_checks_ui", "array_manifest_ui", "gpu_provider_ui", "ops_ui", "trace_ui")
 
 
 @lru_cache(maxsize=1)
@@ -26,6 +26,8 @@ def initialize(app):
 
 def tick(app):
     """Publish and request bounded feature work from the existing UI loop."""
+    from .ui_persistence import tick as tick_preferences
+    tick_preferences(app)
     for feature in modules():
         callback = getattr(feature, "tick", None)
         if callback:

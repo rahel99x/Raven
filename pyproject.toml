@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slurm-tower"
-version = "4.16.1"
-description = "A vivid terminal Slurm dashboard with block graphics, resource analytics, and live logs"
+version = "6.0.0"
+description = "A terminal Slurm research workbench with live job tracing, evidence and reviewed diagnostics"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -27,7 +27,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "build>=1,<2"]
+dev = ["pytest>=8,<10", "build>=1,<2", "jsonschema>=4.18,<5"]
 
 [project.urls]
 Homepage = "https://github.com/rahel99x/Slurm-Tower"

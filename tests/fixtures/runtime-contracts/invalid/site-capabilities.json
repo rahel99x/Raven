@@ -1,0 +1,54 @@
+{
+  "schema": "tower.site-capabilities/v1",
+  "identity": "example-site-not-live-certified",
+  "runtime": {
+    "mpi": "openmpi-5",
+    "gpu": "cuda"
+  },
+  "adapters": [
+    {
+      "id": "caliper-mpi",
+      "provides": [
+        "mpi-duration"
+      ],
+      "requires": {
+        "mpi": "openmpi-5"
+      },
+      "conflicts": [],
+      "cost": {
+        "cpu_fraction": 0.1,
+        "memory_bytes": 67108864,
+        "disk_bytes": 134217728,
+        "seconds": 20
+      },
+      "permitted": "yes",
+      "argv": [
+        "env",
+        "CALI_CONFIG=runtime-report,profile.mpi",
+        "./application"
+      ]
+    },
+    {
+      "id": "caliper-gpu",
+      "provides": [
+        "gpu-activity"
+      ],
+      "requires": {
+        "gpu": "cuda"
+      },
+      "conflicts": [],
+      "cost": {
+        "cpu_fraction": 0.1,
+        "memory_bytes": 67108864,
+        "disk_bytes": 134217728,
+        "seconds": 20
+      },
+      "permitted": true,
+      "argv": [
+        "env",
+        "CALI_CONFIG=cuda-activity-profile",
+        "./application"
+      ]
+    }
+  ]
+}

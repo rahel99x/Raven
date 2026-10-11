@@ -13,6 +13,8 @@ DEFAULTS: Dict[str, Any] = {
     "user": "",                          # empty: $USER
     "account": "",                       # empty: the first account of sshare -U
     "state_namespace": "",               # optional isolated state namespace, further separated by connection identity
+    "site_policy": "",                   # optional local collection-policy JSON; explicit invalid policies fail visibly
+    "collection_cache_dir": "",          # optional private host-local shared scheduler cache; never a shared cluster filesystem
     "ascii": False,                      # solid Unicode blocks; auto-fallback for limited terminal encodings
     "color": True,
     "mouse": True,                       # clicks and wheel input; keyboard controls always remain available
@@ -82,6 +84,8 @@ TEMPLATE = '''# tower configuration (TOML).  Every key is optional; these are th
 # user = ""                     # empty: $USER
 # account = ""                  # empty: the first account of sshare -U
 state_namespace = ""            # optional state isolation; use desktop for a local computer
+site_policy = ""                # optional local tower.site-policy/v1 JSON path
+collection_cache_dir = ""       # optional private host-local scheduler cache directory
 show_all_partitions = false      # empty partition list: also show idle CPU-only partitions
 ascii = false                   # solid Unicode blocks (use --ascii for a plain-character fallback)
 color = true

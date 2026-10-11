@@ -825,6 +825,11 @@ def _apply_input(app, event, hits, curses):
     from .scrolling import note_input, handle_wheel
     note_input(app, "wheel" if button.startswith("wheel-") else button)
     if button in ("press", "left"):
+        from .pointer_routing import begin_gesture
+        if (type(mx) is int and type(my) is int and
+                0 <= mx < getattr(app, "width", 100000) and
+                0 <= my < getattr(app, "height", 100000)):
+            begin_gesture(app)
         from .scrollbars import commit_selection_gesture
         commit_selection_gesture(app)
     from .startup import handle_mouse as startup_mouse
@@ -838,16 +843,10 @@ def _apply_input(app, event, hits, curses):
     from .history_log_export import active as export_active, handle_mouse as export_mouse
     from .scrollbars import handle_mouse as scrollbar_mouse
     from .column_resize import active as column_active, handle_mouse as column_mouse
-    from .group_queue_drag import active as queue_active, handle_mouse as queue_mouse
-    if ((column_active(app) or getattr(app, "column_resize_state", {}).get("discard_release") and button not in ("press", "left"))
-            and column_mouse(app, my, mx, button=button, shift=shift)):
-        return
-    if ((queue_active(app) or getattr(app, "group_queue_drag_state", {}).get("discard_release") and button not in ("press", "left"))
-            and queue_mouse(app, my, mx, button=button, shift=shift, alt=alt)):
-        return
-    from .job_group_drag import active as group_drag_active, pending as group_drag_pending, handle_mouse as group_drag_mouse
-    if ((group_drag_active(app) or group_drag_pending(app) and button not in ("press", "left"))
-            and group_drag_mouse(app, my, mx, button=button, shift=shift, alt=alt)):
+    from .group_queue_drag import active as queue_active
+    from .job_group_drag import pending as group_drag_pending
+    from .pointer_routing import PointerEvent, route_capture
+    if route_capture(app, PointerEvent(my, mx, button, shift, alt)):
         return
     from .job_group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
     if group_menu_active(app):
@@ -1324,7 +1323,7 @@ class _FrameCache:
         from . import scrollbars
         from .interaction import publish
         _timed_ui(app, "maintenance", app.tick)
-        snap = _timed_ui(app, "snapshot", store.snapshot)
+        snap = _timed_ui(app, "snapshot", getattr(store, "render_snapshot", store.snapshot))
         app.width = width
         begin_frame(app)
         options = {"feedback": False} if getattr(views, "feedback_options", False) else {}

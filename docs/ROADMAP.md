@@ -9,6 +9,13 @@ tables state the implementation boundary; an adapter does not imply universal
 application, site, hardware, or workflow-engine support. The original phase
 groups remain below as a navigation aid.
 
+Release 6.0 extends this foundation with scoped recording, scientific
+investigation, cooperative runtime controls, task workspaces and evidence
+integration. The [flagship ledger](FLAGSHIP_IMPLEMENTATION.md) tracks the newer
+forty investments, five research hypotheses and ten advanced proposals. Read the
+[6.0 validation record](guides/flagship-validation.md) for measured results and
+remaining qualification.
+
 Open **File → Research and cluster operations**, or enter `:ops catalog`.
 Read the [complete operation guide](guides/operations.md) for controls, every
 feature key, project contracts, and action review. Read the
@@ -92,13 +99,16 @@ Implemented in 4.15 through the [scale diagnostics](guides/operations-scale.md):
 | A17 | Historical infrastructure-incident correlation | Permission-aware node events; an overlap is evidence, not proof of cause |
 | A18 | Energy per useful result | Distinguish job, node, and device attribution; include failed attempts in campaign totals |
 
-## Separate 5.0 proposal: on-demand stack tracing
+## Stack tracing: delivered scope in 6.0
 
-The live stack tracer remains a separate design proposal. Neither 4.14 nor 4.15
-adds a Trace button or attaches a debugger. The planned direction is an explicit per-job
-Details action backed by runtime-specific, node-local collection. It must bind
-results to a job attempt, node, process ID, and process start time; report
-permission and runtime limits; and keep collection outside the UI thread.
+The earlier 5.0 proposal is implemented through the Trace control in Jobs and
+History Details. Supported paths include prepared CPython events, explicit
+native instrumentation, scoped PMPI collectives and reviewed local Python
+snapshots. Results bind to the execution identity and state their coverage.
+Incremental collection runs outside the UI thread. An unprepared arbitrary
+program cannot supply complete retrospective history; GPU-device stacks and
+universal lossless tracing are not implied. Read the
+[stack tracing guide](guides/stack-tracing.md) before selecting a capture path.
 
 ## Compatibility and validation gates
 

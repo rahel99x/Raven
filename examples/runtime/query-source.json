@@ -1,0 +1,11 @@
+{
+  "schema": "tower.query-source/v1",
+  "identity": "job123:attempt1:rank-phase-duration",
+  "coverage": {"complete": false, "reason": "Rank 3 did not publish a phase observation."},
+  "rows": [
+    {"ref": "trace-chunk-0:event0", "values": {"duration_s": 2.5}},
+    {"ref": "trace-chunk-0:event1", "values": {"duration_s": 3.1}},
+    {"ref": "trace-chunk-1:event0", "values": {"duration_s": 2.9}},
+    {"ref": "trace-chunk-1:event1", "values": {"duration_s": null}}
+  ]
+}

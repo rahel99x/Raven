@@ -1,0 +1,21 @@
+{
+  "schema": "tower.runtime-control/v1",
+  "attempts": [
+    "job123:attempt1"
+  ],
+  "commands": {
+    "learning-rate": {
+      "safe_point": "epoch",
+      "parameters": {
+        "value": {
+          "type": "boolean",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "io": {
+    "capacity": 1,
+    "max_lease_seconds": 60
+  }
+}

@@ -23,6 +23,10 @@ jobs:
         run: python -m pip install -e '.[dev]'
       - name: Run regression suite
         run: python -m pytest -q
+      - name: Check generated operation reference
+        run: python scripts/generate_operation_reference.py --check
+      - name: Validate reporting schemas and published examples
+        run: python scripts/validate_operation_schemas.py
       - name: Exercise offline setup
         run: python scripts/setup.py --mode demo --venv /tmp/tower-offline-venv --report /tmp/tower-demo.txt
       - name: Build source and wheel distributions
@@ -35,6 +39,15 @@ jobs:
           cd /tmp
           /tmp/tower-wheel-venv/bin/tower --doctor --fake
           /tmp/tower-wheel-venv/bin/tower --fake --no-state --no-plugins --report /tmp/tower-wheel.txt
+      - name: Qualify local CLI, documentation and terminal boundaries
+        shell: bash
+        run: |
+          wheel=(dist/*.whl)
+          python scripts/qualify_flagship.py --wheel "${wheel[0]}" --output /tmp/tower-qualification.json
+      - name: Record and verify release contents and checksums
+        run: |
+          python scripts/release_inventory.py create --output dist/release-inventory.json --spdx dist/slurm-tower.spdx.json --checksums dist/SHA256SUMS --source-commit "$GITHUB_SHA" dist/*.whl dist/*.tar.gz
+          python scripts/release_inventory.py verify dist/release-inventory.json dist/*.whl dist/*.tar.gz
       - uses: actions/upload-artifact@v4
         if: matrix.python == '3.12'
         with:
@@ -42,3 +55,4 @@ jobs:
           path: |
             dist/*
             /tmp/tower-demo.txt
+            /tmp/tower-qualification.json

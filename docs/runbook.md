@@ -4,6 +4,25 @@
 [Desktop setup](DESKTOP.md) · [Tower 4.0 guides](QUALITY_OF_LIFE.md) ·
 [Complete reference](reference.md)
 
+The [generated operation reference](reference/operations.md) lists each current
+operation key, input field, default, and allowed choice.
+
+For the task-oriented workbench, use `:workbench run`, `:workbench investigate`,
+`:workbench compare`, `:workbench results`, or `:workbench connect`.
+`:workbench all` opens the complete operations catalog. Use
+`:projectguide /path/to/project` to inspect reporting readiness before editing
+a launcher. Opening a task does not submit a job or execute an adapter.
+The [project connection guide](guides/project-connection.md) explains exact sample
+selection, content checks and generated Bash hooks. Use **Pinned** or
+`:workbench pinned` to return to your saved operation shortcuts.
+
+Read the [implementation ledger](FLAGSHIP_IMPLEMENTATION.md) for exact advanced
+feature scope. Prepared [stack tracing](guides/stack-tracing.md),
+[scientific investigations](guides/scientific-investigation.md), and
+[runtime research controls](guides/runtime-research.md) each have a separate
+input contract. For deployments, follow [administration](ADMINISTRATION.md),
+[qualification](QUALIFICATION.md), and the [support policy](SUPPORT_POLICY.md).
+
 Run Tower on your CARC login node or in a terminal with working local Slurm tools.
 Use the [desktop guide](DESKTOP.md) for Slurm installed directly on Fedora.
 Setup is noninteractive and

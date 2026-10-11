@@ -1,0 +1,1 @@
+{"displayTimeUnit":"ms","traceEvents":[{"dur":20,"name":"solve","ph":"X","pid":100,"tid":1,"ts":10},{"cat":"MPI","id2":{"global":"42"},"name":"message","ph":"s","pid":100,"tid":1,"ts":15},{"cat":"MPI","id2":{"global":"42"},"name":"message","ph":"f","pid":200,"tid":1,"ts":16}]}

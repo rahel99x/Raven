@@ -865,7 +865,7 @@ class Views:
             rows.append([(" sources: " + "; ".join(f"{h.name}: {cut(h.error, 60, self.g.ascii)}" for h in bad[:3]), "red")])
         from .navigation_ui import breadcrumb
         from .table_ui import chips
-        trail = breadcrumb(app, width, self.g.ascii)
+        trail = breadcrumb(app, width, self.g.ascii, snap=snap)
         if trail:
             rows.append(trail)
         if app.tab in ("jobs", "history", "research", "log"):
@@ -2630,7 +2630,7 @@ class Views:
             # standalone controls without rebuilding invisible buttons for
             # every live graph frame in an inline document.
             from . import ops_ui
-            controls, control_hits = ops_ui.contextual_controls(g, width, ("bottlenecks", "statistics", "energy"))
+            controls, control_hits = ops_ui.contextual_controls(g, width, ("bottlenecks", "statistics", "energy", "regression-investigation", "numerical-stability", "execution-simulation"))
             hits += [(y + len(out), kind, data) for y, kind, data in control_hits]
             out += controls
         app.analytics_nav_rows = len(out)

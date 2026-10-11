@@ -21,6 +21,17 @@ from tower.layout import Glyphs
 from tower.model import Job, Store
 from tower.views import Views
 
+def publish_marker(path, text):
+    # A visible marker must already contain its complete payload. The parent
+    # can observe path creation between open("w") and the first write.
+    path = Path(path)
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        temporary.write_text(text)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
 result = {"events": []}
 def main(window):
     curses.raw()
@@ -155,7 +166,7 @@ WIDE_CHILD = CHILD.replace('result = {"events": []}', 'result = {"events": [], "
     '''plots = app.chart_interaction_state.get("plots", [])
     center = next(((p.visible.left + p.visible.right) // 2, (p.visible.top + p.visible.bottom) // 2)
                   for p in plots if p.visible.right - p.visible.left > 5 and p.visible.bottom - p.visible.top > 2)
-    Path(os.environ["TOWER_PTY_READY"]).write_text(json.dumps({"center": center, "raw": reader.raw}))''').replace(
+    publish_marker(os.environ["TOWER_PTY_READY"], json.dumps({"center": center, "raw": reader.raw}))''').replace(
     'Path(os.environ["TOWER_PTY_WARMUP"]).touch()',
     '''result["pointers"].append(list(event[1]))
             Path(os.environ["TOWER_PTY_WARMUP"]).touch()''').replace(
@@ -251,11 +262,11 @@ def test_wide_utf8_and_raw_mouse_reports_preserve_live_graph_gestures(tmp_path, 
 
 KEY_CHILD = CHILD.replace('result = {"events": []}', 'result = {"events": [], "payloads": []}').replace(
     'Path(os.environ["TOWER_PTY_READY"]).touch()',
-    'Path(os.environ["TOWER_PTY_READY"]).write_text(json.dumps(list(screen._terminal_keys(curses).items())))').replace(
+    'publish_marker(os.environ["TOWER_PTY_READY"], json.dumps(list(screen._terminal_keys(curses).items())))').replace(
     'result["events"].append(event[0])',
     '''result["events"].append(event[0])
         result["payloads"].append(event[1])
-        Path(os.environ["TOWER_PTY_WARMUP"]).write_text(str(len(result["events"])))
+        publish_marker(os.environ["TOWER_PTY_WARMUP"], str(len(result["events"])))
         if event[0] == "resize":
             Path(os.environ["TOWER_PTY_PREFIX"]).touch()''').replace(
     'screen._apply_input(app, event, cache.hits, curses)',
@@ -315,11 +326,8 @@ def test_raw_input_preserves_actual_terminal_keys_unicode_paste_and_resize(tmp_p
         expected.extend(list(text) + ["paste"])
         for delay, suffix, name in ((.12, b"A", "up"), (.3, b"P", "f1")):
             while time.monotonic() < deadline and process.poll() is None:
-                try:
-                    if warmup.exists() and int(warmup.read_text()) >= len(expected):
-                        break
-                except ValueError:
-                    pass
+                if warmup.exists() and int(warmup.read_text()) >= len(expected):
+                    break
                 read_output()
             assert warmup.exists() and int(warmup.read_text()) >= len(expected)
             prefix.unlink(missing_ok=True)
@@ -333,11 +341,8 @@ def test_raw_input_preserves_actual_terminal_keys_unicode_paste_and_resize(tmp_p
         # Wait for the final split key before using the acknowledgement path
         # for SIGWINCH, so an old prefix cannot stand in for resize evidence.
         while time.monotonic() < deadline and process.poll() is None:
-            try:
-                if int(warmup.read_text()) >= len(expected):
-                    break
-            except ValueError:
-                pass
+            if int(warmup.read_text()) >= len(expected):
+                break
             read_output()
         assert int(warmup.read_text()) >= len(expected)
         prefix.unlink(missing_ok=True)
@@ -371,9 +376,9 @@ def test_raw_input_preserves_actual_terminal_keys_unicode_paste_and_resize(tmp_p
 
 SLOW_CHILD = CHILD.replace(
     'Path(os.environ["TOWER_PTY_PREFIX"]).touch()',
-    'Path(os.environ["TOWER_PTY_PREFIX"]).write_text(str(len(result["events"])))').replace(
+    'publish_marker(os.environ["TOWER_PTY_PREFIX"], str(len(result["events"])))').replace(
     'Path(os.environ["TOWER_PTY_WARMUP"]).touch()',
-    'Path(os.environ["TOWER_PTY_WARMUP"]).write_text(str(sum(name == "mouse" for name in result["events"])))')
+    'publish_marker(os.environ["TOWER_PTY_WARMUP"], str(sum(name == "mouse" for name in result["events"])))')
 
 
 @pytest.mark.skipif(os.name != "posix", reason="A POSIX pseudo-terminal is required")
@@ -402,11 +407,8 @@ def test_every_utf8_mouse_byte_boundary_remains_framed_after_300ms(tmp_path, ter
     def await_file(path, minimum=None):
         while process.poll() is None and time.monotonic() < deadline:
             if path.exists():
-                try:
-                    if minimum is None or int(path.read_text()) >= minimum:
-                        return
-                except ValueError:
-                    pass
+                if minimum is None or int(path.read_text()) >= minimum:
+                    return
             if select.select([master], [], [], .005)[0]:
                 try:
                     output.extend(os.read(master, 65536))
@@ -449,3 +451,36 @@ def test_every_utf8_mouse_byte_boundary_remains_framed_after_300ms(tmp_path, ter
             process.terminate()
             process.wait(timeout=2)
         os.close(master)
+
+
+@pytest.mark.parametrize("previous", [None, '{"count": 1}'])
+@pytest.mark.parametrize("fail_write", [False, True])
+def test_child_marker_publication_never_exposes_partial_contents(tmp_path, monkeypatch, previous, fail_write):
+    """Pause inside the actual child helper's write, not a timing-based retry."""
+    import ast
+    definition = next(node for node in ast.parse(CHILD).body
+                      if isinstance(node, ast.FunctionDef) and node.name == "publish_marker")
+    namespace = {"os": os, "Path": Path}
+    exec(compile(ast.Module(body=[definition], type_ignores=[]), "<child marker>", "exec"), namespace)
+    marker = tmp_path / "ready"
+    if previous is not None:
+        marker.write_text(previous)
+    original = Path.write_text
+    observed = []
+    def interrupted_write(path, text, *args, **kwargs):
+        original(path, text[:1], *args, **kwargs)
+        observed.append(marker.read_text() if marker.exists() else None)
+        assert observed[-1] == previous
+        if fail_write:
+            raise OSError("Interrupted marker write")
+        return original(path, text, *args, **kwargs)
+    monkeypatch.setattr(Path, "write_text", interrupted_write)
+    if fail_write:
+        with pytest.raises(OSError, match="Interrupted marker"):
+            namespace["publish_marker"](marker, '{"count": 2}')
+        assert (marker.read_text() if marker.exists() else None) == previous
+    else:
+        namespace["publish_marker"](marker, '{"count": 2}')
+        assert json.loads(marker.read_text()) == {"count": 2}
+    assert observed == [previous]
+    assert not marker.with_name("ready.tmp").exists()

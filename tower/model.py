@@ -14,6 +14,8 @@ from typing import Any, Deque, Dict, List, Optional, Sequence
 
 from . import clock
 from .series_archive import SeriesArchive
+from .history_snapshots import HistoryDeque, immutable_histories
+from . import ui_state
 
 
 # ------------------------------------------------------------------------------------------------ parsing helpers
@@ -486,8 +488,8 @@ class Store:
         self.details: Dict[str, dict] = {}
         self.health: Dict[str, Health] = {}
         self.events: Deque[dict] = collections.deque(maxlen=max_events)
-        self.hist_cpu: Dict[str, Deque[float]] = collections.defaultdict(lambda: collections.deque(maxlen=600))
-        self.hist_gpu: Dict[str, Deque[float]] = collections.defaultdict(lambda: collections.deque(maxlen=600))
+        self.hist_cpu: Dict[str, Deque[float]] = collections.defaultdict(HistoryDeque)
+        self.hist_gpu: Dict[str, Deque[float]] = collections.defaultdict(HistoryDeque)
         self.series: Dict[str, Deque[dict]] = collections.defaultdict(lambda: collections.deque(maxlen=series_keep))
         self.series_keep = series_keep
         self._series_loaded: set = set()
@@ -501,6 +503,8 @@ class Store:
         self.alerts = None                                 # the AlertEngine (set by the cli)
         self.state_dir = state_dir
         self.persist = persist and bool(state_dir)
+        self._ui_io_lock = threading.Lock()
+        self.ui_state_status = {"state": "unread", "message": ""}
         self._series_archive = SeriesArchive(self)
         # Publication order is captured under Store.lock. The IO lock and queue
         # lock never acquire Store.lock, so slow storage cannot block readers.
@@ -948,7 +952,11 @@ class Store:
                     record = next((job for job in self.group if job.id == jid), None)
             return record, dict(self.details.get(jid, {})) if jid else {}
 
-    def snapshot(self) -> dict:
+    def render_snapshot(self) -> dict:
+        """Reuse immutable native scalar histories; other snapshot rules remain."""
+        return self.snapshot(_immutable_history=True)
+
+    def snapshot(self, *, _immutable_history=False) -> dict:
         with self.lock:
             return dict(jobs=list(self.jobs), live=dict(self.live), gpu=dict(self.gpu), nodes=dict(self.nodes), partitions=list(self.partitions),
                         gpu_inventory=dict(self.gpu_inventory), finished=list(self.finished), share=list(self.share), account=dict(self.account),
@@ -958,24 +966,21 @@ class Store:
                         group=list(self.group), weather=list(self.weather), pending_ahead=dict(self.pending_ahead), budget=dict(self.budget),
                         nodemap=dict(self.nodemap), steps=dict(self.steps), fin_steps=dict(self.fin_steps), trace=dict(self.trace),
                         tags={k: dict(v) for k, v in self.tags.items()},
-                        hist_cpu={k: list(v) for k, v in self.hist_cpu.items()}, hist_gpu={k: list(v) for k, v in self.hist_gpu.items()},
+                        hist_cpu=immutable_histories(self.hist_cpu) if _immutable_history else {k: list(v) for k, v in self.hist_cpu.items()},
+                        hist_gpu=immutable_histories(self.hist_gpu) if _immutable_history else {k: list(v) for k, v in self.hist_gpu.items()},
                         gpu_mean={k: (v[0] / v[1] if v[1] else None) for k, v in self.gpu_mean.items()}, t_jobs=self.t_jobs, error=self.error)
 
     # ---- ui state persistence ----------------------------------------------------------------------
     def load_ui(self) -> dict:
         if not self.persist:
             return {}
-        try:
-            with open(os.path.join(self.state_dir, "ui.json")) as f:
-                return json.load(f)
-        except (OSError, ValueError):
-            return {}
+        with self._ui_io_lock:
+            value, self.ui_state_status = ui_state.read(os.path.join(self.state_dir, "ui.json"))
+            return value
 
     def save_ui(self, data: dict):
         if not self.persist:
             return
-        try:
-            with open(os.path.join(self.state_dir, "ui.json"), "w") as f:
-                json.dump(data, f)
-        except OSError:
-            pass
+        with self._ui_io_lock:
+            self.ui_state_status = ui_state.write(os.path.join(self.state_dir, "ui.json"), data)
+            return self.ui_state_status["state"] == "ready"

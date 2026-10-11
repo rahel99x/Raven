@@ -5,8 +5,12 @@ recursive-include docs/examples *.sbatch *.txt
 include examples/array-manifest.json
 include examples/scale-*.json
 recursive-include examples/operations-science *.py *.json *.lock *.txt *.md
+recursive-include examples/platform *.py *.json *.md
+recursive-include examples/runtime *.py *.json *.md
+recursive-include examples/scientific-investigation *.py *.json *.md
 recursive-include scripts *.py *.sh tower
 recursive-include tests *.py
+recursive-include tests/fixtures *.json *.md
 recursive-include examples/research *.py *.json *.sbatch
 recursive-include examples/planning *.py *.json *.sbatch
 recursive-include examples/project-template *.py *.json *.sbatch *.md .gitignore .gitkeep LICENSE

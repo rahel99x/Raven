@@ -1,0 +1,10 @@
+{
+  "source": "slurm-cli",
+  "operation": "queue",
+  "interval": 1,
+  "duration": 5,
+  "max_bytes": 1048576,
+  "max_records": 20000,
+  "allocation": null,
+  "intrusive": false
+}

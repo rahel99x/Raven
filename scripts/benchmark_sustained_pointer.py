@@ -32,6 +32,16 @@ def quantiles(values):
             "max_ms": ordered[-1]}
 
 
+def publish_marker(path, value):
+    """Publish complete child metadata before its existence signals readiness."""
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        temporary.write_text(json.dumps(value))
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def configure_live(app, metric_live, delta):
     """Configure eligible current controls; retired entries can remain retained."""
     enabled_deltas = []
@@ -174,7 +184,7 @@ def worker(args):
             hit = next((hit for hit in getattr(app_ref, "toolbar_state", {}).get("hits", ())
                         if len(hit) >= 5 and hit[3] == "workers"), None)
             if hit is not None:
-                args.report.with_suffix(".control.json").write_text(json.dumps({"button": hit[:3]}))
+                publish_marker(args.report.with_suffix(".control.json"), {"button": hit[:3]})
                 control_written = True
     import signal
     import traceback
@@ -329,6 +339,7 @@ def worker(args):
     measured(curses, "doupdate", "terminal_flush")
     exit_code = 0
     error_type = None
+    error_frames = []
     try:
         arguments = ["--fake", "--no-state", "--config", str(args.config)]
         if args.workers is not None:
@@ -336,7 +347,10 @@ def worker(args):
         result = main(arguments)
         exit_code = result or 0
     except BaseException as error:
+        import traceback
         exit_code, error_type = 1, type(error).__name__
+        error_frames = [{"file": Path(frame.filename).name, "line": frame.lineno, "function": frame.name}
+                        for frame in traceback.extract_tb(error.__traceback__)[-20:]]
         raise
     finally:
         gc.callbacks.remove(gc_timing)
@@ -345,6 +359,7 @@ def worker(args):
             producer.join(1)
         report = {"exit_code": exit_code, "events": events, "inputs": inputs, "decoded": decoded,
                   "error_type": error_type,
+                  "error_frames": error_frames,
                   "counts": dict(counts), "cpu_total_ms": dict(totals), "tab": getattr(app_ref, "tab", None),
                   "source_hash": source_digest.hexdigest(),
                   "live_delta": (args.delta if args.delta is not None else metric_live.MAX_DELTA) if args.live else None,

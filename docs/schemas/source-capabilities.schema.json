@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/source-capabilities.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.capabilities/v1"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "maxItems": 256,
+      "uniqueItems": true
+    },
+    "min_interval": {
+      "type": "number",
+      "minimum": 0.001
+    },
+    "status": {
+      "enum": [
+        "available",
+        "unsupported",
+        "inaccessible",
+        "unknown"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "schema_versions": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "source",
+    "version",
+    "operations",
+    "min_interval",
+    "status"
+  ],
+  "additionalProperties": false
+}

@@ -49,6 +49,8 @@ class Session:
         self.backend, self.files, self.api = backend, files, api
 
     def close(self):
+        from .trace_ui import cancel as cancel_trace
+        cancel_trace(self.app, clear=True)
         from .history_log_export import cancel as cancel_log_export
         cancel_log_export(self.app, close=True)
         from .execution_ui import close
@@ -58,6 +60,8 @@ class Session:
         from .ops_ui import shutdown as shutdown_operations
         shutdown_operations(self.app)
         self.app.save()
+        from .ui_persistence import close as close_preferences
+        close_preferences(self.app)
         if getattr(self.app, "research", None):
             self.app.research.close()
         if self.app.logs.catalog:
@@ -123,7 +127,8 @@ def forecast_scope(backend, cfg: Config, user: str):
     import hashlib
     import socket
     from .record import RecordingBackend
-    while isinstance(backend, RecordingBackend):
+    from .platform_session import GovernedBackend
+    while isinstance(backend, (RecordingBackend, GovernedBackend)):
         backend = backend.inner
     try:
         uid = os.getuid()
@@ -182,9 +187,12 @@ def build(args, cfg: Config) -> Session:
     if args.fake and not user:
         user = "alex"
     backend, files, replay, user = make_backend(args, cfg, user)
+    sdir = None if (args.no_state or args.fake or args.replay) else scoped_state_dir(backend, cfg, user)
+    if not (args.fake or args.replay):
+        from .platform_session import wrap_backend
+        backend = wrap_backend(backend, cfg, forecast_scope(backend, cfg, user), sdir)
     slurm = Slurm(backend, user, timeout=cfg["timeouts"]["command"], gpu_timeout=cfg["timeouts"]["gpu"], action_timeout=cfg["timeouts"]["action"],
                   gpu_provider=cfg.get("gpu_provider", "auto"))
-    sdir = None if (args.no_state or args.fake or args.replay) else scoped_state_dir(backend, cfg, user)
     store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]))
     if args.interval:
         cfg.set("intervals.jobs", args.interval)
@@ -216,6 +224,8 @@ def build(args, cfg: Config) -> Session:
     app = App(store, sampler, actions, cfg, user, ascii_=ascii_, interactive=not (args.once or args.json or args.csv or args.watch or args.run or args.eval or args.wait_for or args.report))
     from .worker_ui import bind
     bind(app, governor)
+    from .ui_persistence import bind as bind_preferences
+    bind_preferences(app, governor)
     from .gpu_provider_ui import bind as bind_gpu_provider
     bind_gpu_provider(app)
     app.plugins, app.files, app.views_ref = api, files, views
@@ -526,6 +536,12 @@ def gpu_check(args, cfg):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "trace":
+        from .trace_recorder import main as trace_main
+        return trace_main(argv[1:])
+    if argv and argv[0] == "runtime":
+        from .runtime_control import main as runtime_main
+        return runtime_main(argv[1:])
     if argv and argv[0] == "report":
         from .research_reporting import main as reporting_main
         return reporting_main(argv[1:])

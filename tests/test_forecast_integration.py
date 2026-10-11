@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from tower import cli, clock
+from tower import cli, clock, ui_persistence
 from tower.config import Config
 from tower.forecast import ForecastTracker
 from tower.model import Job, Store
@@ -61,17 +61,24 @@ def dashboard_builder(tmp_path, monkeypatch):
 
 
 def ui(session):
+    ui_persistence.flush(session.app)
     return session.store.load_ui()
 
 
 def save_ui(session, value):
+    ui_persistence.flush(session.app)
     session.store.save_ui(value)
+
+
+def publish_ui(session):
+    session.app.save()
+    ui_persistence.flush(session.app)
 
 
 def test_scoped_outcomes_roundtrip_without_backend_queries(dashboard_builder):
     initial = dashboard_builder()
     collect_outcome(initial.app.research.forecasts)
-    initial.app.save()
+    publish_ui(initial)
     stored = ui(initial)
     assert "forecast_observations" not in stored
     state = stored["forecast_state"]
@@ -89,7 +96,7 @@ def test_scoped_outcomes_roundtrip_without_backend_queries(dashboard_builder):
 def test_other_saved_connection_scope_never_restores(dashboard_builder, changed):
     initial = dashboard_builder()
     collect_outcome(initial.app.research.forecasts)
-    initial.app.save()
+    publish_ui(initial)
     stored = ui(initial)
     stored["forecast_state"]["scope"][changed] = "different" if changed != "uid" else 4321
     save_ui(initial, stored)
@@ -102,7 +109,7 @@ def test_boolean_uid_is_not_integer_scope_match(dashboard_builder, monkeypatch):
     monkeypatch.setattr(cli.os, "getuid", lambda: 0)
     initial = dashboard_builder()
     collect_outcome(initial.app.research.forecasts)
-    initial.app.save()
+    publish_ui(initial)
     stored = ui(initial)
     stored["forecast_state"]["scope"]["uid"] = False
     save_ui(initial, stored)
@@ -112,7 +119,7 @@ def test_boolean_uid_is_not_integer_scope_match(dashboard_builder, monkeypatch):
 def test_local_hostname_and_monitoring_user_change_scope(dashboard_builder, monkeypatch):
     initial = dashboard_builder(user="alice")
     collect_outcome(initial.app.research.forecasts)
-    initial.app.save()
+    publish_ui(initial)
     restored = dashboard_builder(user="bob")
     assert restored.app.research.forecasts.observations() == []
     assert restored.app.forecast_scope["user"] == "bob"
@@ -123,7 +130,7 @@ def test_local_hostname_and_monitoring_user_change_scope(dashboard_builder, monk
 def test_profiles_with_same_connection_do_not_share_calibration(dashboard_builder):
     initial = dashboard_builder(profile="discovery")
     collect_outcome(initial.app.research.forecasts)
-    initial.app.save()
+    publish_ui(initial)
     restored = dashboard_builder(profile="endeavour")
     assert restored.app.research.forecasts.observations() == []
     assert restored.app.forecast_scope["profile"] == "endeavour"
@@ -132,7 +139,7 @@ def test_profiles_with_same_connection_do_not_share_calibration(dashboard_builde
 def test_remote_host_login_and_options_define_separate_scopes(dashboard_builder):
     initial = dashboard_builder(host="login.example", ssh_user="alice", ssh_opts=["-p", "2222"])
     collect_outcome(initial.app.research.forecasts)
-    initial.app.save()
+    publish_ui(initial)
     stored = ui(initial)["forecast_state"]
     assert stored["scope"]["backend"] == "ssh"
     assert stored["scope"]["host"] == "login.example"
@@ -148,7 +155,7 @@ def test_remote_host_login_and_options_define_separate_scopes(dashboard_builder)
 def test_recording_preserves_actual_backend_scope(dashboard_builder):
     plain = dashboard_builder(host="login.example", ssh_user="alice")
     collect_outcome(plain.app.research.forecasts)
-    plain.app.save()
+    publish_ui(plain)
     recording = dashboard_builder(host="login.example", ssh_user="alice", recorded=True)
     assert recording.app.forecast_scope == plain.app.forecast_scope
     assert recording.app.research.forecasts.observations() == plain.app.research.forecasts.observations()

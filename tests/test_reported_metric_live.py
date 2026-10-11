@@ -72,7 +72,8 @@ def sampling_tool_rows(hits):
     operations = [(y, value) for y, kind, value in hits
                   if kind == "control" and value.get("group") == "operation-tools"]
     assert {value["action"] for _, value in operations} == {
-        ("command", "ops acceptance"), ("command", "ops statistics"), ("command", "ops energy")}
+        ("command", "ops acceptance"), ("command", "ops statistics"), ("command", "ops energy"),
+        ("command", "ops numerical-stability"), ("command", "ops diagnostic-campaign"), ("command", "ops scientific-field")}
     return len({y for y, _ in controls + operations})
 
 

@@ -17,7 +17,7 @@ from . import scrollbars
 
 TABS = (("inspector", "Inspector"), ("logs", "Logs"),
         ("investigate", "Investigate"), ("research", "Research"),
-        ("analytics", "Analytics"), ("quick", "Quick Advisor"), ("off", "Off"))
+        ("analytics", "Analytics"), ("quick", "Quick Advisor"), ("trace", "Trace"), ("off", "Off"))
 MODES = tuple(name for name, _ in TABS)
 DETAIL_TABS = ("jobs", "history")
 MAX_ROWS = 2048
@@ -175,7 +175,7 @@ def run_command(app, args):
     else:
         callback = getattr(app, "fail", None)
         if callable(callback):
-            callback("jobpanel [inspector|logs|investigate|research [VIEW]|analytics [VIEW]|quick|off|focus]")
+            callback("jobpanel [inspector|logs|investigate|research [VIEW]|analytics [VIEW]|quick|trace|off|focus]")
     return True
 
 
@@ -667,6 +667,13 @@ def _research(views, snap, app, job, width, height, state, header_rows):
         raw = [index for index, position in previous["mapping"].items()
                if top - 16 <= position <= top + (height or 24) + 16]
         if raw:
+            # A newly populated project can outgrow its earlier empty
+            # placeholder. Include source rows beyond that short old map
+            # instead of leaving new visible charts blank until another draw.
+            last = max(previous["mapping"])
+            missing = top + (height or 24) + 16 - previous["mapping"][last]
+            if missing > 0:
+                raw.append(last + missing)
             window = (max(0, min(raw) - previous["header"] - 16),
                       max(0, max(raw) - previous["header"] + 16))
     proxy.research_document_window = window or (0, max(32, (height or 24) + 32))
@@ -716,6 +723,15 @@ def _analytics(views, snap, app, job, width, height, state, header_rows=0):
             raw = [index for index, position in previous["mapping"].items()
                    if top - 3 <= position < top + max(1, height) + 3]
             if raw:
+                # An empty/short source can grow between publications. The
+                # previous map ends before the current viewport, so its last
+                # row cannot cap newly appeared graph bands. Extend the
+                # source estimate through that unused visible space; each
+                # source row occupies at least one rendered row.
+                last = max(previous["mapping"])
+                missing = top + max(1, height) + 3 - previous["mapping"][last]
+                if missing > 0:
+                    raw.append(last + missing)
                 window = (max(0, min(raw) - header - 3),
                           max(0, max(raw) - header + 4))
             elif logical_top > 0:
@@ -929,6 +945,12 @@ def _content_action(app, target):
     if not isinstance(target, (tuple, list)) or len(target) != 2:
         return False
     kind, value = target
+    if kind == "trace_command":
+        if (not isinstance(value, dict) or value.get("job") != state.get("job")
+                or value.get("job") != getattr(app, "selected_id", None) or state["mode"] != "trace"):
+            return False
+        app.run_command(value["command"])
+        return True
     if kind in ("quick_refresh", "quick_cancel"):
         if value != getattr(app, "selected_id", None) or state["mode"] != "quick":
             return False
@@ -1058,6 +1080,10 @@ def render(views, snap, app, job, width, height=None):
         hits.extend((y + len(rows), kind, value) for y, kind, value in content_hits)
     elif state["mode"] == "quick":
         content, content_hits = _quick(views, app, job, width)
+        hits.extend((y + len(rows), kind, value) for y, kind, value in content_hits)
+    elif state["mode"] == "trace":
+        from .trace_ui import panel
+        content, content_hits = panel(views, app, job, width)
         hits.extend((y + len(rows), kind, value) for y, kind, value in content_hits)
     else:
         content, content_hits = _inspector(views, snap, app, job, width, state)

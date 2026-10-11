@@ -1,0 +1,16 @@
+{
+  "schema": "tower.capabilities/v1",
+  "source": "slurm-cli",
+  "version": "tower-native-read-subset/v1",
+  "operations": [
+    "queue",
+    "accounting",
+    "nodes",
+    "statistics",
+    "configuration",
+    "job-detail"
+  ],
+  "min_interval": 0.5,
+  "status": "available",
+  "reason": "Read-command adapter interface; controller connectivity and permissions remain request results."
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "tower.summary-query/v1",
+  "fields": [
+    "duration_s"
+  ],
+  "operations": [
+    "median"
+  ]
+}

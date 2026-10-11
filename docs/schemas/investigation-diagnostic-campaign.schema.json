@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Diagnostic campaign",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "tower.diagnostic-campaign/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"
+    },
+    "mode": {
+      "enum": [
+        "local-diagnostic",
+        "slurm"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "campaign",
+        "minimize",
+        "regression"
+      ]
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 4096
+      },
+      "maxItems": 128,
+      "minItems": 1
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Pinned source",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "sha256"
+        ]
+      },
+      "maxItems": 32,
+      "minItems": 0
+    },
+    "limits": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Execution limits",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_trials": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "trial_seconds": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 120
+        },
+        "total_seconds": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 3600
+        },
+        "cpus": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "memory_mb": {
+          "type": "integer",
+          "minimum": 32,
+          "maximum": 65536
+        },
+        "output_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 1048576
+        },
+        "repeats": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        }
+      },
+      "required": [
+        "max_trials",
+        "trial_seconds",
+        "total_seconds",
+        "cpus",
+        "memory_mb",
+        "output_bytes",
+        "repeats"
+      ]
+    },
+    "oracle": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Exact failure oracle",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exit_code": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "contains": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      },
+      "required": [
+        "exit_code",
+        "contains"
+      ]
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Case",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"
+          },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "maxItems": 128,
+            "minItems": 0
+          }
+        },
+        "required": [
+          "id",
+          "arguments"
+        ]
+      },
+      "maxItems": 256,
+      "minItems": 1
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "commits", "baseline", "minimum_change", "metric", "confidence"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "commits": {
+          "type": "array", "minItems": 2, "maxItems": 8,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["id", "commit"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"},
+              "commit": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"}
+            }
+          }
+        },
+        "baseline": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"},
+        "minimum_change": {"type": "number", "minimum": 0, "maximum": 1000000000},
+        "confidence": {"type": "number", "minimum": 0.8, "maximum": 0.95},
+        "metric": {"enum": ["wall_seconds", "result_seconds"]}
+      }
+    },
+    "input": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"
+    },
+    "partition": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"
+    },
+    "account": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "mode",
+    "kind",
+    "command",
+    "files",
+    "limits",
+    "oracle"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "campaign"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "cases"
+        ],
+        "not": {
+          "required": [
+            "input"
+          ]
+        }
+      },
+      "else": {
+        "if": {"properties": {"kind": {"const": "minimize"}}},
+        "then": {
+        "required": [
+          "input"
+        ],
+        "not": {
+          "required": [
+            "cases"
+          ]
+        }
+        },
+        "else": {
+          "required": ["repository"],
+          "properties": {"limits": {"properties": {"repeats": {"minimum": 3}}}},
+          "not": {"anyOf": [{"required": ["cases"]}, {"required": ["input"]}]}
+        }
+      }
+    }
+  ]
+}

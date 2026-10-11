@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/query-source.schema.json",
+  "title": "query source",
+  "description": "Native validation checks unique raw references and selected column values using the paired query; it preserves missingness and validates finite aggregate results.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.query-source/v1"
+    },
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "not": {
+        "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "not": {
+            "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+          }
+        }
+      },
+      "required": [
+        "complete",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "not": {
+              "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+            }
+          },
+          "values": {
+            "type": "object",
+            "maxProperties": 64,
+            "additionalProperties": true,
+            "description": "Native query validation requires each selected field to be null/missing or a finite number in [-1e100,1e100]. Unselected columns are retained without interpretation."
+          }
+        },
+        "required": [
+          "ref",
+          "values"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 50000
+    }
+  },
+  "required": [
+    "schema",
+    "identity",
+    "coverage",
+    "rows"
+  ],
+  "additionalProperties": false
+}

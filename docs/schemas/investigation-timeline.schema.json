@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://slurm-tower.local/schemas/investigation-timeline.schema.json",
+  "title": "Tower investigation timeline",
+  "type": "object",
+  "required": ["schema", "events"],
+  "properties": {
+    "schema": {"const": "tower.timeline/v1"},
+    "cluster": {"type": "string", "minLength": 1, "maxLength": 512},
+    "events": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "clock", "kind", "message", "job_id", "attempt", "timestamp"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 512},
+          "source": {"type": "string", "minLength": 1, "maxLength": 512},
+          "cluster": {"type": "string", "minLength": 1, "maxLength": 512},
+          "clock": {"type": "string", "minLength": 1, "maxLength": 512},
+          "kind": {"type": "string", "minLength": 1, "maxLength": 512},
+          "message": {"type": "string", "minLength": 1, "maxLength": 4096},
+          "job_id": {"type": "string", "minLength": 1, "maxLength": 512},
+          "attempt": {"type": "string", "minLength": 1, "maxLength": 512},
+          "timestamp": {"type": ["number", "null"], "minimum": 0, "maximum": 253402300799},
+          "uncertainty_s": {"type": "number", "minimum": 0, "maximum": 253402300799},
+          "ordinal": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+          "timestamp_text": {"type": "string", "maxLength": 128}
+        },
+        "allOf": [{"if": {"properties": {"timestamp": {"type": "null"}}}, "then": {"required": ["ordinal"]}}]
+      }
+    }
+  }
+}

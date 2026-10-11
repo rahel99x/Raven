@@ -76,7 +76,7 @@ def test_standalone_analytics_retains_tools_inline_does_not_build_discarded_cont
     try:
         _, hits = views.analytics_tab(store.snapshot(), app, width, 60)
         assert {data["action"][1] for _, kind, data in hits if kind == "control" and data.get("group") == "operation-tools"} == {
-            "ops bottlenecks", "ops statistics", "ops energy"}
+            "ops bottlenecks", "ops statistics", "ops energy", "ops regression-investigation", "ops numerical-stability", "ops execution-simulation"}
         def discarded_controls(*args, **kwargs):
             raise AssertionError("Inline Analytics rebuilt discarded operation buttons")
         monkeypatch.setattr(ops_ui, "contextual_controls", discarded_controls)

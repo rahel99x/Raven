@@ -1,0 +1,10 @@
+{
+  "schema": "tower.runtime-request/v1",
+  "mailbox": "/tmp/tower-runtime-demo",
+  "attempt": "job123:attempt1",
+  "request_id": "learning-rate-change-1",
+  "command": "learning-rate",
+  "parameters": {"value": 0.025},
+  "expected_epoch": 0,
+  "ttl": 60
+}

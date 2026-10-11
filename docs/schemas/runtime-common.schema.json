@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/runtime-common.schema.json",
+  "title": "runtime common",
+  "description": "Shared structural limits. Native readers additionally enforce Python printable Unicode, finite JSON, duplicate-key refusal, total input budgets and relational checks.",
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "not": {
+        "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+      },
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@/+\\-]{0,127}$"
+    },
+    "fingerprint": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "$ref": "runtime-common.schema.json#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256,
+        "not": {
+          "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "cpu_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1024
+        },
+        "memory_bytes": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1152921504606847000
+        },
+        "disk_bytes": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1152921504606847000
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 604800
+        }
+      },
+      "required": [
+        "cpu_fraction",
+        "memory_bytes",
+        "disk_bytes",
+        "seconds"
+      ],
+      "additionalProperties": false
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "not": {
+        "pattern": "\\u0000"
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "properties": {
+        "rates": {
+          "type": "object",
+          "maxProperties": 256,
+          "propertyNames": {
+            "$ref": "runtime-common.schema.json#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1e+100
+          }
+        },
+        "placement": {
+          "type": "object",
+          "maxProperties": 4096,
+          "propertyNames": {
+            "$ref": "runtime-common.schema.json#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "runtime-common.schema.json#/$defs/identifier"
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "parameter": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "number",
+                "integer"
+              ]
+            },
+            "minimum": {
+              "type": "number",
+              "minimum": -1e+100,
+              "maximum": 1e+100
+            },
+            "maximum": {
+              "type": "number",
+              "minimum": -1e+100,
+              "maximum": 1e+100
+            }
+          },
+          "required": [
+            "type",
+            "minimum",
+            "maximum"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "enum"
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "$ref": "runtime-common.schema.json#/$defs/identifier"
+              },
+              "minItems": 1,
+              "maxItems": 64,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "type",
+            "choices"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "boolean"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

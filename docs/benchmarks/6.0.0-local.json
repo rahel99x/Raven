@@ -1,0 +1,328 @@
+{
+  "schema": "tower.local-release-benchmark/v1",
+  "release": "6.0.0",
+  "date_utc": "2026-10-11",
+  "scope": "Linux shared cloud host; synthetic published job/metric fixtures and real local PTY. No terminal emulator, SSH, Slurm controller or physical GPU measurement.",
+  "pointer": [
+    {
+      "rate_hz": 50,
+      "seconds": 4.0,
+      "points": 1000,
+      "jobs": 6,
+      "live_delta": 1.0,
+      "initial_workers": "single",
+      "switch_workers": true,
+      "switch_control": "toolbar",
+      "sent_reports": 200,
+      "dispatched_reports": 195,
+      "input_latency": {
+        "calls": 195,
+        "p50_ms": 0.2273159916512668,
+        "p95_ms": 12.821710028219968,
+        "p99_ms": 18.77081795828417,
+        "max_ms": 19.669504021294415
+      },
+      "decoded_report_latency": {
+        "calls": 200,
+        "p50_ms": 0.17292553093284369,
+        "p95_ms": 15.41717496002093,
+        "p99_ms": 35.358278022613376,
+        "max_ms": 40.41828901972622
+      },
+      "oldest_batch_latency": {
+        "calls": 195,
+        "p50_ms": 0.2273159916512668,
+        "p95_ms": 13.649875996634364,
+        "p99_ms": 38.60351996263489,
+        "max_ms": 40.50768801243976
+      },
+      "painted_pointer_age": {
+        "calls": 203,
+        "p50_ms": 1.273109985049814,
+        "p95_ms": 20.149664022028446,
+        "p99_ms": 29.785382037516683,
+        "max_ms": 46.67289403732866
+      },
+      "visible_plots": 6,
+      "unexpected_tabs": [],
+      "exit_code": 0
+    },
+    {
+      "rate_hz": 250,
+      "seconds": 4.0,
+      "points": 1000,
+      "jobs": 6,
+      "live_delta": 1.0,
+      "initial_workers": "single",
+      "switch_workers": true,
+      "switch_control": "toolbar",
+      "sent_reports": 1000,
+      "dispatched_reports": 855,
+      "input_latency": {
+        "calls": 855,
+        "p50_ms": 0.15303597319871187,
+        "p95_ms": 0.9299690136685967,
+        "p99_ms": 2.8144079842604697,
+        "max_ms": 26.026392995845526
+      },
+      "decoded_report_latency": {
+        "calls": 1000,
+        "p50_ms": 0.11558851110748947,
+        "p95_ms": 14.631655998528004,
+        "p99_ms": 36.837711988482624,
+        "max_ms": 54.035353008657694
+      },
+      "oldest_batch_latency": {
+        "calls": 855,
+        "p50_ms": 0.15323300613090396,
+        "p95_ms": 1.7320120241492987,
+        "p99_ms": 20.666066033300012,
+        "max_ms": 54.70687401248142
+      },
+      "painted_pointer_age": {
+        "calls": 855,
+        "p50_ms": 1.0770499939098954,
+        "p95_ms": 2.9400140047073364,
+        "p99_ms": 5.497951002325863,
+        "max_ms": 45.392449013888836
+      },
+      "visible_plots": 6,
+      "unexpected_tabs": [],
+      "exit_code": 0
+    },
+    {
+      "rate_hz": 1000,
+      "seconds": 4.0,
+      "points": 1000,
+      "jobs": 6,
+      "live_delta": 1.0,
+      "initial_workers": "single",
+      "switch_workers": true,
+      "switch_control": "toolbar",
+      "sent_reports": 4000,
+      "dispatched_reports": 3054,
+      "input_latency": {
+        "calls": 3054,
+        "p50_ms": 0.18131500110030174,
+        "p95_ms": 0.8118700352497399,
+        "p99_ms": 0.9665709803812206,
+        "max_ms": 1.730019983369857
+      },
+      "decoded_report_latency": {
+        "calls": 4000,
+        "p50_ms": 0.2851344761438668,
+        "p95_ms": 15.584139968268573,
+        "p99_ms": 38.91592402942479,
+        "max_ms": 61.89751595957205
+      },
+      "oldest_batch_latency": {
+        "calls": 3054,
+        "p50_ms": 0.19603449618443847,
+        "p95_ms": 1.2271010200493038,
+        "p99_ms": 14.66826198156923,
+        "max_ms": 65.05823897896335
+      },
+      "painted_pointer_age": {
+        "calls": 3024,
+        "p50_ms": 1.000948977889493,
+        "p95_ms": 1.8683510133996606,
+        "p99_ms": 2.8178520151413977,
+        "max_ms": 47.49414703110233
+      },
+      "visible_plots": 6,
+      "unexpected_tabs": [],
+      "exit_code": 0
+    }
+  ],
+  "changing_ui": {
+    "baseline": {
+      "scope": "100 frames per case; 1000 jobs, 3000 history jobs, 4000 retained points; 320x52 Unicode; excludes transport. Current is an integration measurement before the final virtual document startup fix, not a final release certification.",
+      "cases": [
+        {
+          "case": "static",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.5824685106053948,
+            "p95": 72.9572480195202,
+            "p99": 163.671599002555,
+            "max": 175.6272180355154
+          }
+        },
+        {
+          "case": "live30",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.7632230010349303,
+            "p95": 56.87579099321738,
+            "p99": 124.48635802138597,
+            "max": 128.9627900114283
+          }
+        },
+        {
+          "case": "live1",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.655115484027192,
+            "p95": 48.063951020594686,
+            "p99": 113.54102299083024,
+            "max": 113.71471802704036
+          }
+        },
+        {
+          "case": "switch",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.7732814885675907,
+            "p95": 99.23473198432475,
+            "p99": 156.60406200913712,
+            "max": 249.5521770324558
+          }
+        },
+        {
+          "case": "resize",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.592234504641965,
+            "p95": 61.14016298670322,
+            "p99": 128.52489098440856,
+            "max": 134.96890699025244
+          }
+        }
+      ],
+      "commit": "fd1c68304e3adbf5c11d715bb9851d0d2b187510"
+    },
+    "current": {
+      "scope": "100 frames per case; 1000 jobs, 3000 history jobs, 4000 retained points; 320x52 Unicode; excludes transport. Current is an integration measurement before the final virtual document startup fix, not a final release certification.",
+      "cases": [
+        {
+          "case": "static",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.8078875145874918,
+            "p95": 60.56181498570368,
+            "p99": 189.43874700926244,
+            "max": 192.09748698631302
+          }
+        },
+        {
+          "case": "live30",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.8147524970117956,
+            "p95": 62.97371903201565,
+            "p99": 117.87692096550018,
+            "max": 135.65058098174632
+          }
+        },
+        {
+          "case": "live1",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 2.17775150667876,
+            "p95": 55.86674000369385,
+            "p99": 115.31854997156188,
+            "max": 136.54629600932822
+          }
+        },
+        {
+          "case": "switch",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 2.056278521195054,
+            "p95": 69.44608502089977,
+            "p99": 156.90618194639683,
+            "max": 245.81335799302906
+          }
+        },
+        {
+          "case": "resize",
+          "glyphs": "unicode",
+          "frame_ms": {
+            "median": 1.8507874920032918,
+            "p95": 60.24947698460892,
+            "p99": 132.66180496430025,
+            "max": 188.96423903061077
+          }
+        }
+      ]
+    }
+  },
+  "trace": {
+    "workload": "200 Python calls each with15000 arithmeticiterations; CPython3.12; wholeprocesswall;3repetitions; sharedtesthost",
+    "baseline_median_s": 0.21111348597332835,
+    "recording_median_s": 0.4153318149619736,
+    "rows": [
+      {
+        "mode": "baseline",
+        "wall_s": 0.21228584798518568
+      },
+      {
+        "mode": "recording",
+        "wall_s": 0.4153318149619736,
+        "events": 4163,
+        "bytes": 2275167,
+        "work_slices_ms": [
+          15.07881301222369,
+          15.080705983564258,
+          15.099796990398318,
+          15.059533005114645,
+          15.067457978148013,
+          15.063876984640956,
+          15.308962028939277,
+          15.070254972670227,
+          15.071098983753473,
+          15.08074498269707,
+          6.450487009715289
+        ],
+        "caught_up_median_ms": 0.22537398035638034
+      },
+      {
+        "mode": "baseline",
+        "wall_s": 0.1949429219821468
+      },
+      {
+        "mode": "recording",
+        "wall_s": 0.40202760900137946,
+        "events": 4163,
+        "bytes": 2275167,
+        "work_slices_ms": [
+          16.703897039406,
+          15.076805022545159,
+          15.107590006664395,
+          15.085357008501887,
+          15.156297013163567,
+          15.078947995789349,
+          15.083424979820848,
+          15.067668980918825,
+          15.062385005876422,
+          12.277384987100959
+        ],
+        "caught_up_median_ms": 0.1927470148075372
+      },
+      {
+        "mode": "baseline",
+        "wall_s": 0.21111348597332835
+      },
+      {
+        "mode": "recording",
+        "wall_s": 0.457154484000057,
+        "events": 4163,
+        "bytes": 2275167,
+        "work_slices_ms": [
+          18.32010195357725,
+          15.09970601182431,
+          15.060712001286447,
+          15.053355949930847,
+          15.0575140141882,
+          15.064678038470447,
+          15.074683004058897,
+          15.177978959400207,
+          15.105017984751612,
+          15.064236999023706,
+          12.816555972676724
+        ],
+        "caught_up_median_ms": 0.20708900410681963
+      }
+    ]
+  }
+}

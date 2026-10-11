@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/prometheus-query.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.prometheus-query/v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "endpoint": {
+      "type": "string",
+      "pattern": "^https?://",
+      "maxLength": 4096
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192
+    },
+    "identity": {
+      "type": "object",
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "job_id": {
+          "type": "string",
+          "pattern": "^[0-9]+(?:_[0-9]+)?(?:\\+[0-9]+)?(?:\\.[A-Za-z0-9_-]+)?$"
+        },
+        "attempt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "node": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "process_start": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "thread": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "task": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "cluster",
+        "job_id",
+        "attempt"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "pid": [
+          "node",
+          "process_start"
+        ]
+      }
+    },
+    "labels": {
+      "type": "object",
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "attempt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "cluster",
+        "job_id",
+        "attempt"
+      ],
+      "additionalProperties": false
+    },
+    "metric": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "unit": {
+          "enum": [
+            "B",
+            "B/s",
+            "GiB",
+            "Hz",
+            "J",
+            "KiB",
+            "MiB",
+            "W",
+            "count",
+            "count/s",
+            "ms",
+            "ns",
+            "percent",
+            "ratio",
+            "s",
+            "unknown",
+            "us"
+          ]
+        },
+        "semantics": {
+          "enum": [
+            "gauge",
+            "counter",
+            "rate"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "unit",
+        "semantics"
+      ],
+      "additionalProperties": false
+    },
+    "start": {
+      "type": "number",
+      "minimum": 0
+    },
+    "end": {
+      "type": "number",
+      "minimum": 0
+    },
+    "step": {
+      "type": "number",
+      "minimum": 0.001
+    },
+    "timeout": {
+      "type": "number",
+      "minimum": 0.05,
+      "maximum": 60
+    },
+    "max_bytes": {
+      "type": "integer",
+      "minimum": 128,
+      "maximum": 4194304
+    },
+    "auth": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "bearer_env",
+                "bearer_file"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "kind",
+            "source"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "allow_http": {
+      "type": "boolean"
+    },
+    "ca_file": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "tower.site-policy/v1"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "min_interval": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 86400
+            },
+            "max_duration": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 86400
+            },
+            "max_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 67108864
+            },
+            "max_records": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "max_inflight": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            }
+          },
+          "required": [
+            "min_interval",
+            "max_duration",
+            "max_bytes",
+            "max_records",
+            "max_inflight"
+          ],
+          "additionalProperties": false
+        },
+        "allocation_required": {
+          "type": "boolean"
+        },
+        "allow_intrusive": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema",
+        "id",
+        "revision",
+        "sources",
+        "operations",
+        "limits",
+        "allocation_required",
+        "allow_intrusive"
+      ],
+      "additionalProperties": false
+    },
+    "cache_directory": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "interval": {
+      "type": "number",
+      "minimum": 0.001
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "endpoint",
+    "query",
+    "identity",
+    "labels",
+    "metric",
+    "start",
+    "end",
+    "step",
+    "timeout",
+    "max_bytes",
+    "auth"
+  ],
+  "additionalProperties": false,
+  "description": "Explicit Prometheus query_range JSON. Runtime additionally enforces exact label/attempt matching, URL restrictions, HTTPS for bearer credentials, private credential files, range/point budgets, and source policy."
+}

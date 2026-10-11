@@ -8,6 +8,10 @@ Python package dependencies beyond Tower and Python 3.10 or later.
 The reporting commands run only when your script calls them. Reading Research
 never submits a job or executes a project file.
 
+For guided setup inside Tower, use `:projectguide /path/to/project`. The
+[project connection guide](project-connection.md) explains how to validate one
+real sample and copy a quoted Bash hook without executing it from the interface.
+
 ## A complete minimal project
 
 Keep the source and the batch script in a project directory. Use an absolute

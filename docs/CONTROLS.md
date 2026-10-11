@@ -933,14 +933,27 @@ See [Artifacts](guides/artifacts.md) for size limits, source identity, and decla
 
 ### Research and cluster operations
 
-Release 4.15 adds forms for the twenty-six operations in the
-[operation catalog](guides/operations.md#all-twenty-six-operation-keys).
+The [generated operation reference](reference/operations.md) lists all current
+forms, fields, defaults and choices. The earlier twenty-six research operations
+retain their [feature guides](guides/operations.md#all-twenty-six-operation-keys).
 Open **File → Research and cluster operations**, or use a related Sources,
 Analytics, or Research button. Embedded Research views expose the same controls.
+Use `:workbench run|investigate|compare|results|connect` to select a task, or
+`:workbench all` to open the complete catalog.
+
+Pin frequently used tools with **Pin tool [p]** or `p`. Open **Pinned** or
+`:workbench pinned` to see these tools. A star marks a pinned tool in the catalog.
+Pins survive restart when preference storage is enabled. They store tool names
+only. Opening a pinned tool uses the current job and project, with a fresh form.
+Search also works within Pinned. While you edit a field or search text, `p`
+inserts text. Pin changes are disabled during inspection and action review.
 
 | Control | Function |
 | --- | --- |
 | `:ops`, `:ops catalog` | Open the complete catalog |
+| **Pinned**, `:workbench pinned` | Show saved tool shortcuts |
+| `p`, **Pin tool / Unpin tool** | Toggle the selected catalog tool or open form/report tool |
+| `:ops pin FEATURE`, `:ops unpin FEATURE` | Add / remove one tool shortcut without changing its inputs |
 | `:ops FEATURE`, `:ops open FEATURE` | Open a feature's editable form |
 | `:ops run FEATURE field=value` | Inspect explicit inputs; quote values that contain spaces |
 | Click or Enter on a field | Edit text or cycle fixed choices |

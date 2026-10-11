@@ -1,7 +1,6 @@
 """Independent bounded readers for concurrent cluster workspaces."""
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, replace
 from datetime import datetime, timedelta
 import hashlib
@@ -9,6 +8,7 @@ import json
 import re
 
 from .scale_common import document, items, number, text
+from .worker_scheduler import collection_lane
 
 MAX_CLUSTERS = 8
 
@@ -118,17 +118,35 @@ def collect(ctx, sources, *, user="", history_hours=24):
     if not 1 <= len(sources) <= MAX_CLUSTERS:
         raise ValueError("Cluster count must be between 1 and 8")
     results = []
-    workers = 1 if ctx.cfg.get("worker_mode") == "single" else min(4, len(sources))
-    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="tower-cluster") as pool:
-        futures = {pool.submit(collect_one, ctx, source, explicit_user or source.get("user") or user, hours): source for source in sources}
-        for future in as_completed(futures):
+    mode = "single" if ctx.cfg.get("worker_mode") == "single" else "multi"
+    with collection_lane(workers=min(4, len(sources)), mode=mode) as (scheduler, pool):
+        budget = scheduler.status()
+        window = min(4, len(sources), budget["lanes"]["source"]["limit"])
+        workers = 1 if budget["mode"] == "single" else window
+        remaining, futures = iter(sources), {}
+        exhausted = False
+        while futures or not exhausted:
             checkpoint(ctx)
-            source = futures[future]
-            try:
-                results.append(future.result())
-            except Exception as exc:
+            # Four pending descendants fit the scheduler's bounded child
+            # reservation even if unrelated accepted roots fill its queue.
+            while not exhausted and len(futures) < window:
+                source = next(remaining, None)
+                if source is None:
+                    exhausted = True
+                    break
+                future = pool.submit(collect_one, ctx, source, explicit_user or source.get("user") or user, hours)
+                futures[future] = source
+            if not futures:
+                break
+            done, _ = scheduler.gather_children(futures, timeout=.1)
+            for future in done:
                 checkpoint(ctx)
-                results.append(dict(source=source, jobs=[], errors=[str(exc)[:400]], status="unavailable"))
+                source = futures.pop(future)
+                try:
+                    results.append(future.result())
+                except Exception as exc:
+                    checkpoint(ctx)
+                    results.append(dict(source=source, jobs=[], errors=[str(exc)[:400]], status="unavailable"))
     results.sort(key=lambda result: result["source"]["name"])
     jobs, rows, warnings, summaries = [], [], [], []
     result_bytes, omitted = 0, 0

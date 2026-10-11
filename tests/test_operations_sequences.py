@@ -314,7 +314,7 @@ def test_acceptance_pass_does_not_authorize_changed_measurements_for_reuse(opera
 
 def test_roadmap_catalog_contains_every_remaining_proposal_once():
     catalog = operations.catalog()
-    proposals = [item["proposal"] for item in catalog if item["proposal"] != "QoL"]
+    proposals = [item["proposal"] for item in catalog if item["proposal"].startswith(("S", "P", "A"))]
     expected = ({f"S{i:02d}" for i in range(1, 6)} | {f"P{i:02d}" for i in range(1, 6)} |
                 {f"A{i:02d}" for i in range(1, 21)}) - {"A03", "A13", "A14", "A16"}
     assert set(proposals) == expected

@@ -121,6 +121,47 @@ later; the analysis readers exclude unsupported states from completed fits.
 
 ## Structural and native validation
 
+### Runtime research contracts
+
+The [runtime research guide](../guides/runtime-research.md) and
+[runtime examples](../../examples/runtime) use these additional contracts:
+
+| Schema | Document |
+| --- | --- |
+| [runtime-control.schema.json](runtime-control.schema.json) | Exact attempts, safe-point commands, parameter types and I/O limits |
+| [runtime-request.schema.json](runtime-request.schema.json) | A reviewed command, parameter epoch and expiration |
+| [io-request.schema.json](io-request.schema.json) | Either mailbox inspection or a complete bounded permit request |
+| [execution-model.schema.json](execution-model.schema.json) | Fixed-workload resource DAG, calibrated domain and observations |
+| [diagnostic-intent.schema.json](diagnostic-intent.schema.json) | Required observations, explicit approximations and resource budget |
+| [site-capabilities.schema.json](site-capabilities.schema.json) | Declared runtime fingerprints, adapters, conflicts and costs |
+| [query-source.schema.json](query-source.schema.json) | Source rows, raw references and coverage |
+| [summary-query.schema.json](summary-query.schema.json) | Selected fields and count/sum/min/max operations |
+| [scientific-field.schema.json](scientific-field.schema.json) | Bounded row-major 1D/2D/3D fields with units and gaps |
+
+[Shared runtime definitions](runtime-common.schema.json) keep identifier,
+parameter, cost and scenario contracts consistent. Native readers also check
+resource references and cycles, unique record identities, matching runtime
+fingerprints, ordered numeric limits, selected numeric query columns, field
+shape products and mailbox/application state. These relational requirements
+cannot all be expressed by a structural JSON Schema. Unknown unselected query
+columns are retained without reinterpretation.
+Native integer fields also require integer JSON tokens; a schema validator can
+accept an integral floating-point value such as `1.0` that the native reader
+rejects for such a field.
+
+Direct runtime APIs have bounded collection sizes. Operation input files also
+have a 4 MiB byte limit and the shared JSON depth/value budgets; a theoretically
+maximum-size array can exceed the file reader's combined budget. Schema
+acceptance does not authorize an action or establish model/scientific validity.
+
+The [invalid fixture corpus](../../tests/fixtures/runtime-contracts/invalid)
+contains malformed runtime documents. Conformance tests require both schema
+and native rejection. Additional tests demonstrate structurally valid documents
+that fail native relational checks. Audit published valid examples with
+`python3 scripts/validate_operation_schemas.py` in a development environment.
+
+### Apply both validation layers
+
 A schema validator checks types, keys, and local ranges. The native readers
 also check semantics and bounded I/O. Both apply to portable projects:
 

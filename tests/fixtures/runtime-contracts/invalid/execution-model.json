@@ -1,0 +1,78 @@
+{
+  "schema": "tower.execution-model/v1",
+  "workload": "demo-fixed-input-and-iterations-v1",
+  "resources": {
+    "node0": {
+      "kind": "cpu",
+      "rate": 10
+    },
+    "node1": {
+      "kind": "cpu",
+      "rate": 10
+    },
+    "fabric": {
+      "kind": "network",
+      "rate": 5,
+      "latency": 1
+    }
+  },
+  "placement": {
+    "rank0": "node0",
+    "rank1": "node1"
+  },
+  "routes": {
+    "node0->node1": "fabric",
+    "node1->node0": "fabric"
+  },
+  "domain": {
+    "minimum_rate_ratio": 0.5,
+    "maximum_rate_ratio": 2,
+    "fixed_workload": true
+  },
+  "events": [
+    {
+      "id": "compute0",
+      "kind": "cpu",
+      "rank": "rank0",
+      "work": 100,
+      "depends": [],
+      "resource": "node0"
+    },
+    {
+      "id": "compute1",
+      "kind": "cpu",
+      "rank": "rank1",
+      "work": 100,
+      "depends": []
+    },
+    {
+      "id": "exchange",
+      "kind": "network",
+      "source": "rank0",
+      "destination": "rank1",
+      "work": 10,
+      "depends": [
+        "compute0",
+        "compute1"
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "id": "baseline-calibration",
+      "role": "calibration",
+      "scenario": {},
+      "actual_seconds": 13.2
+    },
+    {
+      "id": "held-out-network-test",
+      "role": "validation",
+      "scenario": {
+        "rates": {
+          "fabric": 10
+        }
+      },
+      "actual_seconds": 12.3
+    }
+  ]
+}

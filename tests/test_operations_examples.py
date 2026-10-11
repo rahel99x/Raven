@@ -94,11 +94,12 @@ def test_every_remaining_proposal_has_unique_reachable_operation_and_fields():
     expected = {"P01", "P02", "P03", "P04", "P05", "S01", "S02", "S03", "S04", "S05",
                 "A01", "A02", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12",
                 "A15", "A17", "A18", "A19", "A20"}
-    research = [spec for spec in specs if spec["proposal"] != "QoL"]
+    research = [spec for spec in specs if spec["proposal"].startswith(("S", "P", "A"))]
     assert {spec["proposal"] for spec in research} == expected
     assert len(research) == 26
     assert [spec["key"] for spec in specs if spec["proposal"] == "QoL"] == ["queue-order"]
-    assert len({spec["key"] for spec in specs}) == len(specs) == 27
+    assert len({spec["key"] for spec in specs}) == len(specs)
+    assert len(specs) >= 27
     for spec in specs:
         assert O.specification(spec["key"]) == spec
         assert all(field["key"] and field["label"] for field in spec["fields"])

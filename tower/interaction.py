@@ -964,9 +964,10 @@ def handle_key(app, key):
     if state["routing"]:
         return False
     if (getattr(app, "mode", "main") == "operations"
-            and _state(app, "ops_state").get("editing") is not None):
-        # A field entered through the shared button graph owns its caret keys.
-        # Returning focus to the graph here would turn Home/Enter into actions.
+            and (_state(app, "ops_state").get("editing") is not None
+                 or _state(app, "ops_state").get("catalog_search"))):
+        # Fields and catalog search own their text keys. Returning focus to
+        # the graph here would turn Home/Enter or typed shortcuts into actions.
         state["active"] = False
         state["pending_focus"] = None
         return False
@@ -1011,6 +1012,9 @@ def handle_key(app, key):
             target = ordered[index]
     elif key in ("enter", "space"):
         return _activate(app, current, keyboard=True)
+    elif key == "p" and getattr(app, "mode", "main") == "operations":
+        from .ops_ui import pin_focused
+        return pin_focused(app, current)
     else:
         # Typing a content shortcut exits graph mode and reaches its existing
         # handler. No hidden keymap or chart/log selection mode is replaced.

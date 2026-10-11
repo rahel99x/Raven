@@ -1,0 +1,1 @@
+{"attributes":{"sum#time.duration":{"unit":"sec"}},"globals":{"slurm.job_id":"123_4"},"records":[{"mpi.rank":0,"path":"main/solve","sum#time.duration":0.125}]}

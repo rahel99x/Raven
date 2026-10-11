@@ -24,6 +24,8 @@ from .services_io import bounded_command, private_directory, read_json_file, wri
 
 SCHEMA = "tower.supervisor/v1"
 _CHILDREN = {}
+_CHILDREN_LOCK = threading.Lock()
+_EXIT_REAP_SECONDS = .5
 
 
 def configuration(*, user=None, cluster="", interval=5, max_records=1000):
@@ -74,16 +76,50 @@ def _read_optional(path):
         return {}
 
 
+def _reap_children():
+    """Collect exited direct children even if a new owner replaced their file."""
+    with _CHILDREN_LOCK:
+        children = tuple(_CHILDREN.items())
+    for pid, child in children:
+        if child.poll() is not None:
+            with _CHILDREN_LOCK:
+                if _CHILDREN.get(pid) is child:
+                    _CHILDREN.pop(pid, None)
+
+
+def _remember_child(child):
+    with _CHILDREN_LOCK:
+        _CHILDREN[child.pid] = child
+
+
+def _reap_stopped(owner):
+    """A released service lock can precede process exit; wait only on our child.
+
+    No signal is sent. A slow exit remains retained for later reconciliation,
+    and persistent services that still own their lock never reach this path.
+    """
+    pid = owner.get("pid")
+    with _CHILDREN_LOCK:
+        child = _CHILDREN.get(pid)
+    if child is None:
+        return
+    try:
+        child.wait(timeout=_EXIT_REAP_SECONDS)
+    except subprocess.TimeoutExpired:
+        return
+    with _CHILDREN_LOCK:
+        if _CHILDREN.get(pid) is child:
+            _CHILDREN.pop(pid, None)
+
+
 def status(directory):
+    _reap_children()
     directory = Path(directory).expanduser().absolute()
     if not directory.exists():
         return {"schema": SCHEMA, "state": "absent", "running": False}
     private_directory(directory)
     snapshot = _read_optional(directory / "snapshot.json")
     owner = _read_optional(directory / "owner.json")
-    child = _CHILDREN.get(owner.get("pid"))
-    if child is not None and child.poll() is not None:
-        _CHILDREN.pop(owner["pid"], None)
     occupied = False
     try:
         fd = _lock(directory)
@@ -233,7 +269,7 @@ def start(directory, config, *, timeout=5):
         process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                    stderr=subprocess.DEVNULL, start_new_session=True, close_fds=True,
                                    pass_fds=(lock_fd,))
-        _CHILDREN[process.pid] = process
+        _remember_child(process)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             view = status(directory)
@@ -254,6 +290,7 @@ def stop(directory, *, expected_token=None):
     directory = private_directory(directory)
     view = status(directory)
     if not view["running"]:
+        _reap_stopped(view.get("owner", {}))
         return view
     token = view["owner"]["token"]
     if expected_token is not None and token != expected_token:

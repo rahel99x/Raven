@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Numerical stability",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "tower.numerical-stability/v1"
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Metric policy",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "reference": {
+            "type": "number",
+            "minimum": -1e+100,
+            "maximum": 1e+100
+          },
+          "absolute": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1e+100
+          },
+          "relative": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1e+100
+          }
+        },
+        "required": [
+          "name",
+          "reference",
+          "absolute",
+          "relative"
+        ]
+      },
+      "maxItems": 128,
+      "minItems": 1
+    },
+    "runs": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Measured run",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "configuration": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "minimum": -1e+100,
+              "maximum": 1e+100
+            }
+          }
+        },
+        "required": [
+          "id",
+          "configuration",
+          "metrics"
+        ]
+      },
+      "maxItems": 10000,
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema",
+    "metrics",
+    "runs"
+  ]
+}

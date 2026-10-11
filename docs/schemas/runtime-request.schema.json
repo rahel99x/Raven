@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/runtime-request.schema.json",
+  "title": "runtime request",
+  "description": "The current private mailbox configuration must declare the command and exact parameter names/types/ranges; epoch, TTL, attempt and mailbox identity are revalidated before submission.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.runtime-request/v1"
+    },
+    "mailbox": {
+      "$ref": "runtime-common.schema.json#/$defs/path"
+    },
+    "attempt": {
+      "$ref": "runtime-common.schema.json#/$defs/identifier"
+    },
+    "request_id": {
+      "$ref": "runtime-common.schema.json#/$defs/identifier"
+    },
+    "command": {
+      "$ref": "runtime-common.schema.json#/$defs/identifier"
+    },
+    "parameters": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "$ref": "runtime-common.schema.json#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number",
+            "minimum": -1e+100,
+            "maximum": 1e+100
+          },
+          {
+            "$ref": "runtime-common.schema.json#/$defs/identifier"
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      }
+    },
+    "expected_epoch": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740992
+    },
+    "ttl": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 3600
+    }
+  },
+  "required": [
+    "schema",
+    "mailbox",
+    "attempt",
+    "request_id",
+    "command",
+    "parameters",
+    "expected_epoch",
+    "ttl"
+  ],
+  "additionalProperties": false
+}

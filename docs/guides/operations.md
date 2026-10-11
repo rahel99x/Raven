@@ -2,6 +2,13 @@
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Rollout status](../ROADMAP.md) · [Validation](operations-validation.md)
 
+For the current catalog, read the [generated controls and fields](../reference/operations.md).
+The task workbench uses `:workbench run|investigate|compare|results|connect|all`.
+Prepared tracing, scientific investigations, site integration and cooperative
+runtime controls have their exact boundaries in the
+[implementation ledger](../FLAGSHIP_IMPLEMENTATION.md). This guide preserves
+the original research-operation contracts and shared review controls.
+
 Tower 4.15 adds twenty-six operations from the research review. Each operation
 has a terminal form, bounded background inspection, and a readable report.
 An operation that changes a job, starts a service, submits work, or writes

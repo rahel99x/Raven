@@ -1,0 +1,10 @@
+{
+  "schema": "tower.io-request/v1",
+  "mailbox": "/tmp/tower-runtime-demo",
+  "attempt": "job123:attempt1",
+  "request_id": "checkpoint-100",
+  "participants": ["rank0", "rank1"],
+  "lease_seconds": 30,
+  "wait_seconds": 10,
+  "fallback": "proceed"
+}

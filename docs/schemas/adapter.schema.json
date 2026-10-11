@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/adapter.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.adapter/v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "protocol": {
+      "const": "tower.adapter-protocol/v1"
+    },
+    "argv": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "maxLength": 4096
+      }
+    },
+    "environment": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 4096
+      }
+    },
+    "methods": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "describe",
+          "validate",
+          "run"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/",
+            "maxLength": 4096
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 120
+        },
+        "frame_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "total_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "stderr_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        }
+      },
+      "required": [
+        "timeout",
+        "frame_bytes",
+        "total_bytes",
+        "stderr_bytes"
+      ],
+      "additionalProperties": false
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      },
+      "maxItems": 32
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "version",
+    "protocol",
+    "argv",
+    "environment",
+    "methods",
+    "assets",
+    "limits"
+  ],
+  "additionalProperties": false,
+  "description": "Pinned installed executable protocol; dependency/process isolation is not a security sandbox. Runtime checks asset hashes and filesystem identity before execution."
+}

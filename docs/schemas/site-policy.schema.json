@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/site-policy.schema.json",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.site-policy/v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "revision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "min_interval": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 86400
+        },
+        "max_duration": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 86400
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "max_records": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "max_inflight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      },
+      "required": [
+        "min_interval",
+        "max_duration",
+        "max_bytes",
+        "max_records",
+        "max_inflight"
+      ],
+      "additionalProperties": false
+    },
+    "allocation_required": {
+      "type": "boolean"
+    },
+    "allow_intrusive": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "revision",
+    "sources",
+    "operations",
+    "limits",
+    "allocation_required",
+    "allow_intrusive"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Investigation planner",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "tower.investigation-plan/v1"
+    },
+    "budget": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Budget",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "resource_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "trials": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        }
+      },
+      "required": [
+        "seconds",
+        "resource_seconds",
+        "trials"
+      ]
+    },
+    "known_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "maxItems": 4096,
+      "minItems": 0
+    },
+    "risk_limit": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "committed": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Committed",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "resource_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000
+          }
+        },
+        "required": [
+          "id",
+          "seconds",
+          "resource_seconds"
+        ]
+      },
+      "maxItems": 256,
+      "minItems": 0
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Action",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "kind": {
+            "enum": [
+              "configuration",
+              "repeat",
+              "trace",
+              "scientific-validation",
+              "placement",
+              "numerical-audit"
+            ]
+          },
+          "seconds": {
+            "type": "number",
+            "minimum": 0.001,
+            "maximum": 1000000000
+          },
+          "resource_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "queue_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000
+          },
+          "decision_gain": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "success_probability": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "scientific_risk": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "maxItems": 256,
+            "minItems": 0
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "seconds",
+          "resource_seconds",
+          "queue_seconds",
+          "decision_gain",
+          "success_probability",
+          "scientific_risk",
+          "requires",
+          "model"
+        ]
+      },
+      "maxItems": 2048,
+      "minItems": 0
+    }
+  },
+  "required": [
+    "schema",
+    "budget",
+    "known_evidence",
+    "actions"
+  ]
+}

@@ -13,6 +13,33 @@ from dataclasses import dataclass
 import threading
 import time
 
+_CURRENT = threading.local()
+
+
+def current_scheduler():
+    """Scheduler governing this executing task, never another session/thread."""
+    return getattr(_CURRENT, "scheduler", None)
+
+
+@contextmanager
+def collection_lane(*, workers=4, mode="multi"):
+    """Borrow the session source budget or own a bounded headless scheduler.
+
+Native adapters must use gather_children rather than an uncooperative wait
+inside a worker. Closing cancels pending children and collects accepted results.
+    """
+    scheduler = current_scheduler()
+    owned = scheduler is None
+    if owned:
+        scheduler = WorkerScheduler(workers=workers, mode=mode, lanes=("source",))
+    lane = scheduler.lane("source")
+    try:
+        yield scheduler, lane
+    finally:
+        lane.shutdown(wait=True, cancel_futures=True)
+        if owned:
+            scheduler.shutdown(wait=True, cancel_futures=True)
+
 
 class WorkerQueueFull(RuntimeError):
     """A request was rejected before acceptance; an accepted task is never lost."""
@@ -84,6 +111,8 @@ class _OwnerQueue:
 
 
 class WorkerScheduler:
+    current = staticmethod(current_scheduler)
+
     def __init__(self, workers=4, mode="multi", *, max_queue=512, lanes=None):
         if type(workers) is not int or not 1 <= workers <= 32:
             raise ValueError("workers must be an integer from 1 to 32")
@@ -247,6 +276,8 @@ class WorkerScheduler:
     def _execute(self, task):
         stack = list(self._stack())
         self._local.stack = stack + [task]
+        previous_scheduler = current_scheduler()
+        _CURRENT.scheduler = self
         thread = threading.current_thread()
         old_name = thread.name
         thread.name = "tower-" + dict(source="src", gpu="gpu", research="research", notification="notify")[task.lane]
@@ -261,6 +292,7 @@ class WorkerScheduler:
             # Future callbacks execute in this task context. Children registered
             # by a callback join its drain tree before the parent retires.
             self._local.stack = stack
+            _CURRENT.scheduler = previous_scheduler
             thread.name = old_name
             with self._lock:
                 close = self._retire(task)

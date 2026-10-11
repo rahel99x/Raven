@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/scientific-field.schema.json",
+  "title": "scientific field",
+  "description": "Native validation requires product(shape) <= 262144, len(values) == product(shape) and len(axes) == len(shape). These cross-field constraints require native validation.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.scientific-field/v1"
+    },
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "not": {
+        "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+      }
+    },
+    "units": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "not": {
+        "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+      }
+    },
+    "shape": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 262144
+      },
+      "minItems": 1,
+      "maxItems": 3
+    },
+    "axes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "not": {
+          "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+        }
+      },
+      "minItems": 1,
+      "maxItems": 3
+    },
+    "values": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "number",
+            "minimum": -1e+100,
+            "maximum": 1e+100
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 262144
+    }
+  },
+  "required": [
+    "schema",
+    "identity",
+    "shape",
+    "values",
+    "units"
+  ],
+  "additionalProperties": false
+}

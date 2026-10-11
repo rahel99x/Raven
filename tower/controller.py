@@ -135,11 +135,12 @@ class App:
 
     def save(self):
         from .pane_drag import committed
+        from .ui_persistence import save
         forecast_state = None
         if self.store.persist and self.forecast_scope is not None and self.research and self.research.forecasts:
             forecast_state = dict(version=1, scope=dict(self.forecast_scope), observations=self.research.forecasts.observations())
         with committed(self):
-            self.store.save_ui(dict(tab=self.tab, log_lines=self.log_lines, gpu=self.gpu, bell=self.bell, sort=self.sort, theme=self.theme, analytics_view=self.analytics_view,
+            save(self, dict(tab=self.tab, log_lines=self.log_lines, gpu=self.gpu, bell=self.bell, sort=self.sort, theme=self.theme, analytics_view=self.analytics_view,
                                     nodes_view=self.nodes_view, research_view=self.research_view, bookmarks=self.logs.bookmarks, log_wrap=self.logs.wrap,
                                     forecast_state=forecast_state, workbench=workbench.save(self), reverse=self.reverse))
 
@@ -1876,7 +1877,9 @@ class App:
         # A pointer report must never replace the frame's published hit map.
         # In particular, a late event can retain rows from a previous tab or
         # an inline Research view after the selected job has changed.
-        if any(type(value) is not int for value in (y, x)):
+        from .pointer_routing import PointerEvent, begin_gesture, route_capture
+        pointer_event = PointerEvent(y, x, button, shift, alt)
+        if not pointer_event.valid:
             return
         from .interaction import initialize as pointer_state, _current as current_graph, _scope as pointer_scope
         pointer = pointer_state(self)
@@ -1914,18 +1917,7 @@ class App:
             # A new gesture supersedes every earlier owner's cancelled release.
             # The new owner can claim the press before lower-priority handlers
             # run; their old markers must not steal its eventual release.
-            for name, marker in (("scrollbar_state", "discard_release"),
-                                 ("column_resize_state", "discard_release"),
-                                 ("group_queue_drag_state", "discard_release"),
-                                 ("job_selection_state", "discard_release"),
-                                 ("pane_drag_state", "discard_release"),
-                                 ("history_browser_state", "discard_release"),
-                                 ("text_selection_state", "discard_release"),
-                                 ("chart_interaction_state", "cancelled_release"),
-                                 ("metric_live_state", "cancelled_release")):
-                state = getattr(self, name, None)
-                if isinstance(state, dict):
-                    state[marker] = False
+            begin_gesture(self)
         if button in ("press", "left"):
             from .scrollbars import commit_selection_gesture
             commit_selection_gesture(self)
@@ -1950,16 +1942,9 @@ class App:
         from .history_log_export import active as export_active, handle_mouse as export_mouse
         from .scrollbars import handle_mouse as scrollbar_mouse
         from .column_resize import active as column_active, handle_mouse as column_mouse
-        from .group_queue_drag import active as queue_active, handle_mouse as queue_mouse
-        if ((column_active(self) or getattr(self, "column_resize_state", {}).get("discard_release") and not fresh_activation)
-                and column_mouse(self, y, x, button=button, shift=shift)):
-            return
-        if ((queue_active(self) or getattr(self, "group_queue_drag_state", {}).get("discard_release") and not fresh_activation)
-                and queue_mouse(self, y, x, button=button, shift=shift, alt=alt)):
-            return
-        from .job_group_drag import active as group_drag_active, pending as group_drag_pending, handle_mouse as group_drag_mouse
-        if ((group_drag_active(self) or group_drag_pending(self) and not fresh_activation)
-                and group_drag_mouse(self, y, x, button=button, shift=shift, alt=alt)):
+        from .group_queue_drag import handle_mouse as queue_mouse
+        from .job_group_drag import pending as group_drag_pending, handle_mouse as group_drag_mouse
+        if route_capture(self, pointer_event):
             return
         from .job_group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
         if group_menu_active(self):

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/diagnostic-intent.schema.json",
+  "title": "diagnostic intent",
+  "description": "Approximation keys must name required observations. Runtime fingerprints, admission costs and compatibility are checked against the selected site document.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.diagnostic-intent/v1"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "not": {
+        "pattern": "[\\u0000-\\u001F\\u007F-\\u009F]"
+      }
+    },
+    "required": {
+      "type": "array",
+      "items": {
+        "$ref": "runtime-common.schema.json#/$defs/identifier"
+      },
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true
+    },
+    "budget": {
+      "$ref": "runtime-common.schema.json#/$defs/cost"
+    },
+    "runtime": {
+      "$ref": "runtime-common.schema.json#/$defs/fingerprint"
+    },
+    "approximations": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": {
+        "$ref": "runtime-common.schema.json#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "runtime-common.schema.json#/$defs/identifier"
+        },
+        "minItems": 0,
+        "maxItems": 16,
+        "uniqueItems": true
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "question",
+    "required",
+    "budget"
+  ],
+  "additionalProperties": false
+}

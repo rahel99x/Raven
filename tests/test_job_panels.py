@@ -88,7 +88,11 @@ def test_clicked_tab_arrow_cycle_keeps_job_and_esc_returns_to_rows(dashboard):
     assert J.handle_key(app, "down")
     assert J.initialize(app)["mode"] == "quick"
     assert J.handle_key(app, "down")
+    assert J.initialize(app)["mode"] == "trace"
+    assert J.handle_key(app, "down")
     assert J.initialize(app)["mode"] == "off"
+    assert J.handle_key(app, "left")
+    assert J.initialize(app)["mode"] == "trace"
     assert J.handle_key(app, "left")
     assert J.initialize(app)["mode"] == "quick"
     assert J.handle_key(app, "left")
@@ -517,6 +521,29 @@ def test_inline_metrics_virtualize_all_sixty_four_cards_and_jump_to_last(publish
     assert "metric_63" in text and "metric_63" in rendered
     assert len(rendered) < 30
     assert app.layout_state.sizes["jobs:details"][0] > 500
+
+
+def test_inline_project_metrics_fill_old_empty_viewport_on_first_publication(published_workspaces, monkeypatch):
+    from tower import analysis_ui, chart_interaction
+    dashboard, app = published_workspaces, published_workspaces.app
+    app.interactive = True
+    dashboard.reports["experiment"]["series"] = {}
+    J.run_command(app, ["jobpanel", "research", "experiment"])
+    dashboard.render(320, 160)
+    assert not chart_interaction.initialize(app)["plots"]
+    dashboard.reports["experiment"]["series"] = {
+        f"metric_{index:02}": [{"t": 1, "value": index}, {"t": 2, "value": index + 1}]
+        for index in range(64)}
+    rendered = []
+    original = analysis_ui.chart_rows
+    def chart(*args, **kwargs):
+        rendered.append(args[5])
+        return original(*args, **kwargs)
+    monkeypatch.setattr(analysis_ui, "chart_rows", chart)
+    dashboard.render(320, 160)
+    assert chart_interaction.initialize(app)["plots"]
+    assert "metric_09" in rendered, "New cards must fill the previously empty lower part of a tall viewport"
+    assert 0 < len(rendered) < 30, "A growing source should fill its viewport without rasterizing all cards"
 
 
 def test_inline_evidence_click_opens_cited_log_for_exact_job(published_workspaces):

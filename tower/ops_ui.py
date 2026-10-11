@@ -16,6 +16,7 @@ from .control_rows import buttons, place_hits
 MAX_LINES = 8192
 MAX_FIELD = 8192
 MAX_PASTE = 4096
+MAX_PINS = 128
 
 
 @lru_cache(maxsize=1)
@@ -61,12 +62,97 @@ def initialize(app):
             "line_hits": [], "used": {}, "terminal": None, "callback": None,
             "confirm_digest": None, "error": "", "last_scope": None,
             "review_document": None, "review_truncated": False,
-            "quit_requested": False, "shutting_down": False}
+            "quit_requested": False, "shutting_down": False,
+            "catalog_task": "", "catalog_query": "", "catalog_search": False, "pinned": []}
     return owner.ops_state
 
 
+def _valid_pins(value):
+    if not isinstance(value, (list, tuple)):
+        return []
+    known = _presentation_specs()
+    return list(dict.fromkeys(key for key in value[:MAX_PINS]
+                             if isinstance(key, str) and key in known))
+
+
+def restore(app, data):
+    initialize(app)["pinned"] = _valid_pins(data.get("pinned")) if isinstance(data, dict) else []
+
+
+def save(app):
+    # Keep tool identities only. A favorite must not retain a job, credentials,
+    # an input path, or a previously reviewed action across sessions.
+    return {"pinned": _valid_pins(initialize(app).get("pinned"))}
+
+
 def command_names():
-    return ["ops"]
+    return ["ops", "workbench", "projectguide"]
+
+
+def _catalog_specs(state):
+    from .flagship_commands import operation_keys
+    allowed = operation_keys(state.get("catalog_task", ""))
+    pinned = set(state.get("pinned", ())) if state.get("catalog_task") == "pinned" else None
+    query = state.get("catalog_query", "").casefold()
+    return [spec for spec in _presentation_specs().values()
+            if (not allowed or spec["key"] in allowed)
+            and (pinned is None or spec["key"] in pinned)
+            and query in " ".join((spec["key"], spec["title"], spec["summary"], spec["group"])).casefold()]
+
+
+def _selected_tool(state):
+    if state["view"] == "catalog":
+        specs = _catalog_specs(state)
+        return specs[min(max(0, state["index"]), len(specs) - 1)]["key"] if specs else ""
+    return state.get("feature", "")
+
+
+def _pin(app, feature, enabled=None):
+    state = initialize(app)
+    if state["running"] or state["view"] == "review" or state["editing"] is not None or state.get("catalog_search"):
+        raise ValueError("Finish this edit, search, or operation before changing pinned tools.")
+    if feature not in _presentation_specs():
+        raise ValueError("Select a tool to pin, or specify its operation key.")
+    pins = _valid_pins(state.get("pinned"))
+    enabled = feature not in pins if enabled is None else enabled
+    if (feature in pins) == enabled:
+        return
+    selected = _selected_tool(state)
+    if enabled:
+        if len(pins) >= MAX_PINS:
+            raise ValueError("The pinned tool limit is reached. Unpin a tool first.")
+        pins.append(feature)
+    else:
+        pins.remove(feature)
+    state["pinned"] = pins
+    if state["view"] == "catalog":
+        keys = [spec["key"] for spec in _catalog_specs(state)]
+        state["index"] = keys.index(selected) if selected in keys else min(state["index"], max(0, len(keys) - 1))
+        state["top"] = min(state["top"], max(0, len(keys) - state["page"]))
+    state.update(control_hits=[], render_generation=None)
+    state["generation"] += 1
+    # App.save uses the coalescing background writer in an interactive session.
+    # Only an explicit activation calls it; painting and hover never save.
+    app.save()
+    app.say(("Pinned " if enabled else "Unpinned ") + _presentation_specs()[feature]["title"] + ".")
+
+
+def pin_focused(app, control):
+    """The validated F8 graph owns this shortcut's exact visible tool identity."""
+    state = initialize(app)
+    prefix = "ops-item:ops open "
+    feature = control.id[len(prefix):] if control.id.startswith(prefix) else _selected_tool(state)
+    if state["view"] == "catalog" and control.id.startswith(prefix):
+        keys = [spec["key"] for spec in _catalog_specs(state)]
+        if feature in keys:
+            # A following key can arrive before the graph's next publication.
+            # Keep ordinary catalog navigation on the same semantic row.
+            state.update(index=keys.index(feature), focus="content")
+    try:
+        _pin(app, feature)
+    except (ValueError, OSError) as exc:
+        app.fail("Operations: " + O.clean(exc))
+    return True
 
 
 def _connection_scope(app):
@@ -88,7 +174,8 @@ def context(app, cancel=None):
     return O.Context(slurm=slurm, files=getattr(app, "files", None) or getattr(app.research, "files", None) or O.LocalFiles(),
         cfg=copy.deepcopy(getattr(app.cfg, "data", app.cfg)), jobs=jobs, finished=finished,
         selected=str(getattr(app, "selected_id", "") or ""), scope=scope, cancel=cancel,
-        state_dir=str(getattr(app, "state_dir", "") or ""), replay=bool(getattr(app, "replay", None)))
+        state_dir=str(getattr(app, "state_dir", "") or ""), replay=bool(getattr(app, "replay", None)),
+        ui_state_status=copy.deepcopy(getattr(app.store, "ui_state_status", {})))
 
 
 def _reset(state, view):
@@ -108,11 +195,15 @@ def _open(app, feature=""):
     app.mode = "operations"
     _reset(state, "form" if feature else "catalog")
     state.update(feature=feature, result=None, error="")
+    state.update(catalog_search=False)
     if spec:
         state["values"] = {field["key"]: str(field.get("default", "")) for field in spec.get("fields", ())}
         if "job_id" in state["values"] and not state["values"]["job_id"]:
             selected = getattr(app, "research_job_id", None) if getattr(app, "tab", None) == "research" else None
             state["values"]["job_id"] = str(selected or getattr(app, "selected_id", "") or "")
+        project = getattr(app, "project_state", {})
+        if "root" in state["values"] and not state["values"]["root"]:
+            state["values"]["root"] = str(project.get("root") or "")
 
 
 def close(app):
@@ -361,15 +452,37 @@ def paste(app, text):
 
 
 def run_command(app, args):
-    if not args or args[0] != "ops":
+    if not args or args[0] not in command_names():
         return False
     app = getattr(app, "_chart_owner", app)
     state = initialize(app)
     try:
+        if args[0] == "projectguide":
+            if len(args) > 2:
+                raise ValueError("Use projectguide [ROOT].")
+            _open(app, "project-guide")
+            if len(args) == 2:
+                state["values"]["root"] = args[1]
+            return True
+        if args[0] == "workbench":
+            args = ["ops", "workspace", args[1] if len(args) == 2 else "all"] if len(args) <= 2 else ["ops", "invalid"]
         if len(args) == 1 or args[1] == "catalog":
             _open(app)
+            state.update(catalog_task="", catalog_query="")
+        elif args[1] == "workspace" and len(args) == 3:
+            from .flagship_commands import task
+            if args[2] not in ("all", "pinned") and task(args[2]) is None:
+                raise ValueError("Choose workbench [run|investigate|compare|results|connect|pinned|all].")
+            _open(app)
+            state.update(catalog_task="" if args[2] == "all" else args[2], catalog_query="")
+        elif args[1:] == ["find"]:
+            if state["view"] != "catalog" or app.mode != "operations":
+                _open(app)
+            state["catalog_search"] = True
         elif args[1] == "open" and len(args) == 3:
             _open(app, args[2])
+        elif args[1] in ("pin", "unpin") and len(args) == 3:
+            _pin(app, args[2], enabled=args[1] == "pin")
         elif args[1] == "run" and len(args) >= 3:
             _open(app, args[2])
             for value in args[3:]:
@@ -415,17 +528,23 @@ def run_command(app, args):
 def _controls(state):
     if state["running"]:
         return [("cancel", "Cancel inspection", "cancel")] if not state["applying"] else []
+    feature = _selected_tool(state)
+    verb = "unpin" if feature in state.get("pinned", ()) else "pin"
+    pin = [("pin", verb.title() + " tool [p]", verb + " " + feature)] if feature else []
     if state["view"] == "catalog":
-        return [("close", "Esc Close", "close")]
+        from .flagship_commands import TASKS
+        return [(item.key, item.title, "workspace " + item.key) for item in TASKS] + [
+            ("pinned", f"Pinned ({len(state.get('pinned', ()))})", "workspace pinned"),
+            ("all", "All tools", "catalog"), ("search", "Search /", "find")] + pin + [("close", "Close", "close")]
     if state["view"] == "form":
-        return [("inspect", "Inspect / prepare", "inspect"), ("catalog", "All tools", "catalog"), ("close", "Close", "close")]
+        return [("inspect", "Inspect / prepare", "inspect")] + pin + [("catalog", "All tools", "catalog"), ("close", "Close", "close")]
     if state["view"] == "review":
         confirm = [] if state["review_truncated"] else [("apply", "Confirm apply", "apply")]
         return confirm + [("form", "Edit inputs", "form"), ("copy", "Copy full review", "copy"), ("close", "Close", "close")]
     out = [("form", "Edit inputs", "form"), ("inspect", "Refresh", "inspect"), ("copy", "Copy report", "copy")]
     if (state["result"] or {}).get("plan"):
         out.insert(0, ("review", "Review action", "review"))
-    return out + [("catalog", "All tools", "catalog"), ("close", "Close", "close")]
+    return out + pin + [("catalog", "All tools", "catalog"), ("close", "Close", "close")]
 
 
 def _review_lines(state):
@@ -458,6 +577,21 @@ def handle_key(app, key):
     if app.mode != "operations":
         return False
     state = initialize(app)
+    if state.get("catalog_search"):
+        if key in ("esc", "enter"):
+            state["catalog_search"] = False
+        elif key in ("backspace", "delete"):
+            state["catalog_query"] = state.get("catalog_query", "")[:-1]
+        elif isinstance(key, str) and len(key) == 1 and key.isprintable() and len(state.get("catalog_query", "")) < 256:
+            state["catalog_query"] = state.get("catalog_query", "") + key
+        elif key == "space" and len(state.get("catalog_query", "")) < 256:
+            state["catalog_query"] = state.get("catalog_query", "") + " "
+        state.update(index=0, top=0, control_hits=[], render_generation=None)
+        state["generation"] += 1
+        return True
+    if state["view"] == "catalog" and key == "/":
+        state["catalog_search"] = True
+        return True
     if state["editing"] is not None:
         if key == "esc":
             state["editing"] = None
@@ -481,7 +615,12 @@ def handle_key(app, key):
                 state["edit"] = state["edit"][:pos] + text + state["edit"][pos:]
                 state["edit_cursor"] += 1
         return True
-    if key in ("esc", "q"):
+    if key == "p":
+        try:
+            _pin(app, _selected_tool(state))
+        except (ValueError, OSError) as exc:
+            app.fail("Operations: " + O.clean(exc))
+    elif key in ("esc", "q"):
         close(app)
     elif key == ":":
         return False
@@ -493,9 +632,9 @@ def handle_key(app, key):
     elif key in ("enter", "space"):
         if state["focus"] == "buttons" and _controls(state):
             action = _controls(state)[state["button"] % len(_controls(state))][2]
-            run_command(app, ["ops", action])
+            run_command(app, shlex.split("ops " + action))
         elif state["view"] == "catalog":
-            specs = O.catalog()
+            specs = _catalog_specs(state)
             if specs:
                 run_command(app, ["ops", "open", specs[state["index"] % len(specs)]["key"]])
         elif state["view"] == "form":
@@ -512,7 +651,7 @@ def handle_key(app, key):
         from . import scrollbars, scrolling
         scrolling.note_input(app, "key")
         scrollbars.resume(app, "modal:operations")
-        count = len(O.catalog()) if state["view"] == "catalog" else len(O.specification(state["feature"]).get("fields", [])) if state["view"] == "form" else len(_lines(state))
+        count = len(_catalog_specs(state)) if state["view"] == "catalog" else len(O.specification(state["feature"]).get("fields", [])) if state["view"] == "form" else len(_lines(state))
         delta = {"up": -1, "down": 1, "pgup": -state["page"], "pgdn": state["page"]}
         state["index"] = (0 if key == "home" else max(0, count - 1) if key == "end" else max(0, min(count - 1, state["index"] + delta[key])))
         state["focus"] = "content"
@@ -614,6 +753,17 @@ def overlay(views, snap, app, width, height):
     chosen = controls[state["button"] % len(controls)][0] if controls and state["focus"] == "buttons" else None
     rows, hits = buttons(views.g, inner, [(key, label, ("command", "ops " + action)) for key, label, action in controls],
                          selected=chosen, group="operations", prefix="ops:")
+    if state["view"] == "catalog":
+        from .flagship_commands import task
+        category = task(state.get("catalog_task", ""))
+        if category:
+            rows.append([(category.description, "dim")])
+        elif state.get("catalog_task") == "pinned":
+            rows.append([("Pinned tools / Your saved shortcuts; inputs use the current job and project.", "dim")])
+        project = getattr(app, "project_state", {}).get("root") or "no project"
+        context = f"{getattr(app, 'host_label', '') or 'local'} / {project} / job {getattr(app, 'selected_id', '') or 'none'}"
+        rows.append([(L.cut(clean(context, views.g.ascii), inner, views.g.ascii), "muted")])
+        rows.append([("Search: " + state.get("catalog_query", "") + ("_" if state.get("catalog_search") else "  (/ to edit)"), "accent")])
     if state["running"]:
         rows += [[("Applying the reviewed action; collecting its result..." if state["applying"] else "Inspecting in the background...", "accent")]]
     if state["error"]:
@@ -624,9 +774,12 @@ def overlay(views, snap, app, width, height):
         rows += [[(clean(spec["summary"], views.g.ascii), "dim")]]
     entries, edit_rows = [], {}
     if state["view"] == "catalog":
-        for index, item in enumerate(_presentation_specs().values()):
-            label = f"{item.get('proposal', '')}  {item['title']}  / {item['group']}"
+        for index, item in enumerate(_catalog_specs(state)):
+            marker = ("*" if views.g.ascii else "★") if item["key"] in state.get("pinned", ()) else " "
+            label = f"{marker} {item.get('proposal', '')}  {item['title']}  / {item['group']}"
             entries.append((index, label, "ops open " + item["key"]))
+        if not entries:
+            entries = [(0, "No matching tools. Clear Search, or open All tools and press p to pin a tool.", "")]
     elif state["view"] == "form":
         for index, item in enumerate(spec.get("fields", ())):
             key = item["key"]
@@ -688,9 +841,9 @@ def overlay(views, snap, app, width, height):
         else:
             line_rows.append((row, index))
     hint = ("Left/Right/Home/End move caret | Paste inserts | Enter saves | Esc discards"
-            if state["editing"] is not None else "Arrows scroll | Enter selects | Tab actions | v select | y copy")
+            if state["editing"] is not None else "Arrows scroll | Enter selects | Tab actions | p pin/unpin | v select | y copy")
     rows += [[(hint, "dim")]]
-    rendered = L.box(views.g, rows, width, height, spec["title"] if spec else "Research and cluster operations")
+    rendered = L.box(views.g, rows, width, height, spec["title"] if spec else "Tower workbench / Research and cluster operations")
     state["control_hits"] = place_hits(hits, rendered[1:-1])
     for row, index in line_rows:
         if row + 1 < len(rendered) - 1:
@@ -706,16 +859,16 @@ def overlay(views, snap, app, width, height):
 
 
 CONTEXT_TOOLS = {
-    "experiment": ("acceptance", "statistics", "energy"),
-    "arrays": ("array-throttle", "search", "packing"),
-    "evidence": ("bottlenecks", "placement", "incidents"),
-    "artifacts": ("storage", "staging", "reuse"),
-    "passport": ("environment",),
+    "experiment": ("acceptance", "statistics", "energy", "numerical-stability", "diagnostic-campaign", "scientific-field"),
+    "arrays": ("array-throttle", "search", "packing", "diagnostic-recipe"),
+    "evidence": ("bottlenecks", "placement", "incidents", "evidence", "investigation-timeline", "investigation-plan", "recommendation"),
+    "artifacts": ("storage", "staging", "reuse", "scientific-impact", "research-portable", "information-query"),
+    "passport": ("environment", "project-guide", "site-policy", "site-telemetry", "adapter"),
     "submit": ("pending-edit", "batch-script", "heterogeneous"),
-    "workflow": ("dependency-repair", "workflow-engine", "checkpoint", "supervisor", "dask"),
-    "forecast": ("reservations", "licenses"),
+    "workflow": ("dependency-repair", "workflow-engine", "checkpoint", "supervisor", "dask", "runtime-steering", "io-coordination"),
+    "forecast": ("reservations", "licenses", "execution-simulation"),
     "blockers": ("slurm-doctor", "pending-edit", "licenses"),
-    "scaling": ("bottlenecks", "placement", "dask"),
+    "scaling": ("bottlenecks", "placement", "dask", "regression-investigation", "regression-sweep", "minimize-reproducer", "collective-audit", "causal-delay"),
 }
 
 

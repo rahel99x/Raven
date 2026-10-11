@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/io-request.schema.json",
+  "title": "io request",
+  "description": "Inspection accepts exactly schema/mailbox/attempt. Permit creation requires every additional field. The configured maximum lease can be stricter than 3600 seconds; admission and collective coordination remain runtime checks.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.io-request/v1"
+    },
+    "mailbox": {
+      "$ref": "runtime-common.schema.json#/$defs/path"
+    },
+    "attempt": {
+      "$ref": "runtime-common.schema.json#/$defs/identifier"
+    },
+    "request_id": {
+      "$ref": "runtime-common.schema.json#/$defs/identifier"
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "$ref": "runtime-common.schema.json#/$defs/identifier"
+      },
+      "minItems": 1,
+      "maxItems": 4096,
+      "uniqueItems": true
+    },
+    "lease_seconds": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 3600
+    },
+    "wait_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 3600
+    },
+    "fallback": {
+      "enum": [
+        "skip",
+        "proceed"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "mailbox",
+    "attempt"
+  ],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "maxProperties": 3
+    },
+    {
+      "required": [
+        "request_id",
+        "participants",
+        "lease_seconds",
+        "wait_seconds",
+        "fallback"
+      ]
+    }
+  ]
+}

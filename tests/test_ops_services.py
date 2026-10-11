@@ -169,6 +169,127 @@ def test_supervisor_real_process_start_reconnect_stop_restart(tmp_path, monkeypa
     finally:
         supervisor.stop(directory)
         wait_until(lambda: not supervisor.status(directory)["running"])
+        supervisor.stop(directory)
+
+
+def test_supervisor_reaps_owned_child_after_lock_release_before_process_exit(tmp_path, monkeypatch):
+    directory = tmp_path / "monitor"
+    released, exit_gate = tmp_path / "released", tmp_path / "exit"
+    code = """
+import sys,time
+from pathlib import Path
+from tower import supervisor
+supervisor.serve(sys.argv[1], supervisor.configuration(), runner=lambda *a,**kw:'', max_polls=1)
+Path(sys.argv[2]).touch()
+deadline=time.monotonic()+5
+while not Path(sys.argv[3]).exists() and time.monotonic()<deadline:
+    time.sleep(.005)
+"""
+    child = subprocess.Popen([sys.executable, "-c", code, str(directory), str(released), str(exit_gate)],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    supervisor._CHILDREN[child.pid] = child
+    original_wait = child.wait
+    waits = []
+    def wait(*args, **kwargs):
+        waits.append(kwargs.get("timeout"))
+        exit_gate.touch()  # Exit only when reconciliation actually waits.
+        return original_wait(*args, **kwargs)
+    monkeypatch.setattr(child, "wait", wait)
+    try:
+        wait_until(released.exists)
+        assert child.poll() is None
+        assert not supervisor.status(directory)["running"]
+        assert child.pid in supervisor._CHILDREN and not waits
+        assert supervisor.stop(directory)["state"] == "stopped"
+        assert waits == [supervisor._EXIT_REAP_SECONDS]
+        assert child.returncode == 0 and child.pid not in supervisor._CHILDREN
+    finally:
+        exit_gate.touch()
+        original_wait(timeout=6)
+        supervisor._CHILDREN.pop(child.pid, None)
+
+
+def test_supervisor_slow_owned_exit_is_bounded_and_later_collected(monkeypatch, tmp_path):
+    waits, signals = [], []
+    child = SimpleNamespace(returncode=None, pid=87654)
+    child.poll = lambda: child.returncode
+    def wait(timeout):
+        waits.append(timeout)
+        raise subprocess.TimeoutExpired("supervisor", timeout)
+    child.wait = wait
+    monkeypatch.setattr(supervisor, "_CHILDREN", {child.pid: child})
+    monkeypatch.setattr(os, "kill", lambda *args: signals.append(args))
+    directory = services_io.private_directory(tmp_path / "monitor")
+    services_io.write_json_file(directory / "owner.json", {"pid": child.pid, "token": "old", "start_ticks": "0"})
+    assert not supervisor.stop(directory)["running"]
+    assert waits == [supervisor._EXIT_REAP_SECONDS] and not signals
+    assert child.pid in supervisor._CHILDREN
+    # Even an overwritten owner record cannot hide a completed direct child.
+    services_io.write_json_file(directory / "owner.json", {"pid": 87655, "token": "replacement", "start_ticks": "1"})
+    child.returncode = 0
+    supervisor.status(directory)
+    assert not supervisor._CHILDREN and not signals
+
+
+def test_supervisor_stop_does_not_wait_on_live_or_unowned_service(monkeypatch, tmp_path):
+    directory = services_io.private_directory(tmp_path / "monitor")
+    child = SimpleNamespace(pid=87654, poll=lambda: None,
+                            wait=lambda **kwargs: pytest.fail("waited on a live persistent service"))
+    monkeypatch.setattr(supervisor, "_CHILDREN", {child.pid: child})
+    monkeypatch.setattr(supervisor, "status", lambda *args: {
+        "running": True, "owner": {"pid": child.pid, "token": "live"}})
+    assert supervisor.stop(directory)["state"] == "stop requested"
+    assert supervisor._CHILDREN[child.pid] is child
+    assert services_io.read_json_file(directory / "stop.json")["token"] == "live"
+    monkeypatch.setattr(supervisor, "status", lambda *args: {
+        "running": False, "state": "stopped", "owner": {"pid": child.pid + 1, "token": "unowned"}})
+    assert not supervisor.stop(directory)["running"]
+    assert supervisor._CHILDREN[child.pid] is child
+
+
+@pytest.mark.parametrize("reaper", ["poll", "wait"])
+def test_supervisor_reaper_cannot_remove_concurrent_pid_replacement(monkeypatch, reaper):
+    from concurrent.futures import ThreadPoolExecutor
+    checking, release_check, registering = threading.Event(), threading.Event(), threading.Event()
+    old = SimpleNamespace(pid=87654)
+    replacement = SimpleNamespace(pid=old.pid)
+    def released_lock(*args, **kwargs):
+        assert supervisor._CHILDREN_LOCK.acquire(blocking=False), "poll/wait held the registry lock"
+        supervisor._CHILDREN_LOCK.release()
+        return 0
+    old.poll = old.wait = released_lock
+    class Registry(dict):
+        calls = 0
+        def get(self, key, default=None):
+            self.calls += 1
+            # Wait mode first gets the handle, then checks it after waiting.
+            if self.calls == (2 if reaper == "wait" else 1):
+                checking.set()
+                assert release_check.wait(2)
+            return super().get(key, default)
+    registry = Registry({old.pid: old})
+    monkeypatch.setattr(supervisor, "_CHILDREN", registry)
+    def install():
+        registering.set()
+        supervisor._remember_child(replacement)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        collecting = pool.submit(supervisor._reap_children if reaper == "poll" else
+                                 lambda: supervisor._reap_stopped({"pid": old.pid}))
+        try:
+            assert checking.wait(1)
+            installing = pool.submit(install)
+            assert registering.wait(1)
+            # The compare and remove must form one critical section. A launch
+            # cannot install its recycled PID between these two operations.
+            acquired = supervisor._CHILDREN_LOCK.acquire(blocking=False)
+            if acquired:
+                supervisor._CHILDREN_LOCK.release()
+            assert not acquired
+        finally:
+            release_check.set()
+        collecting.result(timeout=2)
+        installing.result(timeout=2)
+    assert registry[old.pid] is replacement
 
 
 def test_bounded_command_output_timeout_and_cancel():
@@ -582,3 +703,4 @@ def test_supervisor_sigterm_cancels_slow_collector(tmp_path, monkeypatch):
         assert services_io.read_json_file(directory / "snapshot.json")["state"] == "stopped"
     finally:
         supervisor.stop(directory)
+    assert pid not in supervisor._CHILDREN

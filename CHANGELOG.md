@@ -1,5 +1,38 @@
 # Changelog
 
+## 6.0.0
+
+- Add Run, Investigate, Compare, Results and Connect workspaces, searchable and
+  pinned tools, a project connection guide with sample validation and Bash hooks,
+  generated operation reference, and contextual controls.
+- Add Jobs and History Trace details with exact-attempt discovery, incremental
+  journal following, bounded Python monitoring, native process/thread instrumentation,
+  supported automatic PMPI collectives, and reviewed nonblocking Python snapshots.
+  Record coverage, sequence gaps, storage exhaustion and uncommitted crash tails.
+- Join scheduler transitions, bounded log tails and registered trace evidence into
+  an automatic investigation timeline. Preserve clock domains and unknown times.
+- Add causal delay and collective analysis, recommendation validity, investigation
+  planning, scientific lineage impact, numerical stability, diagnostic campaigns,
+  input minimization and measured regression sweeps over immutable Git snapshots.
+- Add calibrated execution scenarios with held-out acceptance and model withdrawal,
+  declared scientific-field queries,
+  evidence-preserving summaries, cooperative live steering and I/O coordination.
+  Include optional MPI and PyTorch application integration examples.
+- Add evidence receipts, site policies, governed shared scheduler reads, a bounded
+  adapter protocol, exact-job Prometheus queries, supported Perfetto/Caliper/OTLP
+  JSON and Workflow Run RO-Crate conversion, and reviewed private support bundles.
+- Fix stale pointer release ownership, keyboard activation of task controls,
+  changed-job trace publication, isolated SSH reader dependencies, and operation
+  cancellation/freshness through governed backends. Reap owned supervisor exits
+  without stopping active persistent services. Preserve existing controls.
+- Cache immutable scalar histories and unchanged trace documents; use short
+  trace-reader batches, shared nested worker admission, and coalesced
+  asynchronous preference writes with atomic recovery.
+- Add offline CLI/PTY/wheel qualification, release checksums and contents inventory,
+  SPDX metadata, and versioned schema/example checks.
+  Document supported scopes and untested deployment gates. This release does not
+  claim universal lossless tracing or production qualification on every cluster.
+
 ## 4.16.1
 
 - Add Collapse All beside Expand All in Jobs Main, with the matching `:grouping collapse` command. Preserve membership, manual exclusions, and explicit fold ownership when Undo Auto is used.
@@ -71,4 +104,113 @@ interface and optional-adapter architecture.
 See the [phase one guide](docs/guides/phase-one.md) for controls, data contracts,
 and limits. The [roadmap](docs/ROADMAP.md) tracks the remaining proposals.
 
-For earlier releases, see the [README release notes](README.md#changes-in-tower-4130).
+Earlier release notes continue below.
+
+## 4.13.0
+
+- Group membership supports drag and drop. In the current release, hold **Alt** while dragging a selected job or marked selection onto an existing group. Plain drag selects a range. A cancelled or stale drag does not change membership.
+- Right-click a selected or marked job for **Create Group**, **Ungroup**, and applicable **Add to** choices. History also provides **Export logs** through this menu.
+- Manual membership uses natural job-ID order, independent of insertion order. With JOBID sorted ascending, adding `7–9`, then `4–6`, to a group containing `1–3` displays `1–9`. Each list retains its active sorting, including default sorts.
+- Adding to an automatically detected group creates a manual group with its existing label and known members. Existing manual destinations retain their identity and saved members. See [Add jobs to a group](docs/guides/batch-launches.md#add-jobs-to-a-group).
+
+
+## 4.12.0
+
+- Mark at least two jobs in a focused job list and press `g` to create a closed manual group. It uses the existing chevrons and state-count summary.
+- Press `u` on a closed group to dissolve it. In an open group, `u` removes only the marked members, or the selected member when no jobs are marked. Press `U` to clear marks without changing groups.
+- Manual membership and removals apply across job listings. Saved choices identify the execution attempt so that a reused job number does not inherit an earlier grouping.
+- Menus, text selections, graphs, and graph/slider drags retain their input controls. See [Manual groups](docs/guides/batch-launches.md#create-a-manual-group) for selection and persistence rules.
+
+
+## 4.11.0
+
+- Running metric graphs use a short adaptive display delay. The visible edge advances through measurements already received, which reduces the new-segment jump at each source update.
+- Full-history and Live views follow the delayed display time, including the full-screen chart while it follows its running source. Duration controls and source polling remain independent. Graph labels identify the display lag and any wait for more data.
+- Completed jobs, comparison plots, and explicit zoom selections retain their existing time bounds. Missing measurements remain gaps. See [Buffered graph playback](docs/guides/charts.md#read-buffered-running-graphs).
+- Line plots add a labeled local polynomial trend when enough continuous data is available. Dense oscillations use thin observed low/high borders and a faint interior. Original values, spikes, and missing intervals remain distinct. See [Trend and range layers](docs/guides/charts.md#read-the-trend-and-range-layers).
+- Expanded job groups show a right-pointing chevron on their first visible row. Click it to close the group, then click the down-pointing chevron on its summary to reopen it. Existing batch counts and shared fold preferences remain available.
+
+
+## 4.10.0
+
+- Metric polling controls show both the requested **Set** interval and shared effective **Poll** interval. A faster shared request no longer makes a changed slider appear unchanged.
+- Launch grouping uses available queue and accounting evidence for old and new jobs. Closed groups show state counts while retaining exact member identities. See [Automatic launch groups](docs/guides/batch-launches.md).
+- History Details provides the same Inspector, Logs, Investigate, Research, Analytics, Quick Advisor, and Off modes as Jobs. Reports remain attached to the selected historical job.
+- Grouping and Details use published snapshots and the existing background readers. Mouse movement does not fetch job evidence or activate another page.
+
+
+## 4.9.0
+
+- One byte decoder handles mouse reports, keyboard controls, Unicode, paste, and resize. Extended mouse coordinates cannot become keyboard shortcuts through partial ncurses decoding.
+- Native CPU/GPU series and traces reuse bounded prepared data. Indexed Live windows retain continuous curves, sample gaps, and corrections to older measurements.
+- Rendering reuses fitted text, measured widths, and theme styles. A bounded pointer check before paint prevents an old crosshair position from appearing after a rebuild.
+- Queue observers release the UI data lock before conversion and callback work. Each observer retains an isolated job snapshot.
+- The toolbar switches live between Single and Multi background workers. Single keeps one background worker and a separate UI thread. Accepted work and results survive mode changes. See [worker controls](docs/guides/background-workers.md).
+- Use the [sustained-input benchmark](docs/guides/ui-performance.md#measure-sustained-terminal-input) to measure queued input, paint intervals, and display work together.
+
+
+## 4.8.3
+
+- Delayed mouse reports remain pointer input even when their first Escape byte arrives separately. Active drags allow a short prefix grace period.
+- Metric archive reads and sampler file writes run outside the shared data lock. Interactive views use published samples while saved history loads in the background.
+- Jobs Details renders the visible metric bands. Off-screen graphs retain their place in the scrollable document without repeating raster work.
+- Pointer feedback validates visible Live controls. Background maintenance still checks all retained sampling requests.
+- Completed background Research commands preserve the current page, selection, and source when the user leaves their workflow.
+- Use `tower --ui-trace ui-trace.json` to record bounded UI timings and page transitions. Quit normally to save the report. See [the timing guide](docs/guides/ui-performance.md#record-a-desktop-latency-report).
+
+
+## 4.8.2
+
+- The decoder recognizes legacy X10, SGR, and urxvt mouse reports. Version 4.8.3 also covers a delay immediately after the initial Escape byte.
+- Clicks use the current published job, source, and pane. Stale row positions and changed hit payloads cannot open another job or page.
+- Graph crosshairs repaint changed cells. Unchanged native curves reuse bounded raster caches while axes, source age, and live controls continue to update.
+- Drag owners cancel stale captures after context changes. A new gesture retains its own release after an earlier gesture was cancelled.
+- Passive movement does not activate buttons, rebuild the page, or read measurement sources.
+
+See [the input audit](docs/guides/input-audit.md) for reproduced faults, regression coverage, and recovery checks.
+See [display performance](docs/guides/ui-performance.md) for reproducible measurements.
+
+
+## 4.8.1
+
+- Each running metric has two adjacent sliders: a display window from 30 seconds to one second, and a polling interval from five seconds to 500 milliseconds. Both scales use logarithmic steps.
+- The top-right polling slider also spans five seconds to 500 milliseconds. Each native polling position changes the requested interval; requests cannot exceed two polls per second.
+- Right-click either metric slider to restore its default: 30 seconds for the window, or five seconds for its polling request. The other control and graph selection stay unchanged.
+- Sampling requests apply to the exact job and source. Shared probes use the fastest global or per-metric request, without multiplying the requests. Source limits and retry backoff remain active.
+- The graph footer shows the effective sampling interval. Published application metrics and CSV traces remain limited by how often the job writes them.
+
+See [chart controls](docs/guides/charts.md#follow-a-running-metric) for mouse, keyboard, commands, and sampling limits.
+
+
+## 4.7.1
+
+- The supplied desktop profile enables GPU sampling for detected running GPU allocations. Use `:gpu on` if an earlier session saved the toggle as off.
+- GPU detection reads allocation TRES when the per-node queue field omits a `--gpus` request.
+- Analytics finds GPU traces without opening Inspector first and shows sampling errors before the first sample.
+- Unknown NVIDIA counters remain gaps. Trace paths preserve spaces, and missing trace files clear stale readings.
+- Use `tower --gpu-check` to inspect current jobs. Add `--gpu-check-output DIRECTORY` to save allocation, command, trace, and cache evidence.
+
+See [GPU detection checks](docs/guides/gpu-detection.md) for Fedora instructions and report interpretation.
+
+
+## 4.7.0
+
+- Scroll panes with a draggable right-edge scrollbar and header arrows. Advisor, History, Timeline, and comparison documents expose their complete published content.
+- Curves use continuous two-by-four Braille strokes. The crosshair follows the latest reported cell immediately and preserves curve and annotation cells.
+- Select rendered lines by dragging, or use `v`, navigation keys, and `y`. Raw log copying retains its original source bytes.
+- Switch **Copy** to **Yank** in the top toolbar to send text to a running local Vim or Neovim.
+
+See [pane navigation](docs/guides/pane-navigation.md) for controls, copy limits, editor discovery, and fallback results.
+See [charts](docs/guides/charts.md) for curve rendering, pointer feedback, and measurement limits.
+
+
+## 4.6.2
+
+- Graph drags retain their painted axes while new samples arrive. The capture margin extends three terminal cells beyond the axis labels and ticks.
+- Thin selectors use themed Braille positions and 80 ms visual easing. Mouse events still resolve to whole terminal cells.
+- Right-click clears job and line selections on the main pages. It preserves the open log source and does not activate another control.
+
+Graph right-click still resets that graph. History-list right-click still opens the log-export menu.
+Log Tools right-click clears only its local selection and keeps its dialog open.
+Help, Details, and analysis dialogs clear local text or row selections and retain job marks.
+See [graph interaction](docs/guides/charts.md#point-at-a-metric-graph) and [selection clearing](docs/guides/pointer-navigation.md#clear-selections-with-right-click) for controls and limits.

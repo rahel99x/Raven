@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Performance investigation",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "tower.performance-investigation/v1"
+    },
+    "unit": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "design": {
+      "enum": [
+        "paired",
+        "independent"
+      ]
+    },
+    "baseline": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "minimum_change": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1e+100
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.8,
+      "maximum": 0.95
+    },
+    "versions": {
+      "type": "array",
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "Version",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "scientific_valid": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "title": "Sample",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1e+100
+                }
+              },
+              "required": [
+                "id",
+                "value"
+              ]
+            },
+            "maxItems": 10000,
+            "minItems": 1
+          }
+        },
+        "required": [
+          "id",
+          "scientific_valid",
+          "samples"
+        ]
+      },
+      "maxItems": 32,
+      "minItems": 2
+    }
+  },
+  "required": [
+    "schema",
+    "unit",
+    "design",
+    "baseline",
+    "minimum_change",
+    "versions"
+  ]
+}

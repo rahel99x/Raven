@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/runtime-control.schema.json",
+  "title": "runtime control",
+  "description": "Native validation additionally enforces minimum <= maximum; mailbox ownership, machine/boot identity and filesystem policy are runtime checks.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "tower.runtime-control/v1"
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "$ref": "runtime-common.schema.json#/$defs/identifier"
+      },
+      "minItems": 1,
+      "maxItems": 1024,
+      "uniqueItems": true
+    },
+    "commands": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "$ref": "runtime-common.schema.json#/$defs/identifier"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "safe_point": {
+            "$ref": "runtime-common.schema.json#/$defs/identifier"
+          },
+          "parameters": {
+            "type": "object",
+            "maxProperties": 32,
+            "propertyNames": {
+              "$ref": "runtime-common.schema.json#/$defs/identifier"
+            },
+            "additionalProperties": {
+              "$ref": "runtime-common.schema.json#/$defs/parameter"
+            }
+          }
+        },
+        "required": [
+          "safe_point",
+          "parameters"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "io": {
+      "type": "object",
+      "properties": {
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "max_lease_seconds": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 3600
+        }
+      },
+      "required": [
+        "capacity",
+        "max_lease_seconds"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "attempts",
+    "commands",
+    "io"
+  ],
+  "additionalProperties": false
+}

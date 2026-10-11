@@ -1,0 +1,295 @@
+# Scientific investigation
+
+[Operations](operations.md) · [Project reporting standard](../PROJECT_STANDARD.md)
+
+These operations connect explicit evidence, scientific checks and diagnostic
+experiments. Open **File → Research and cluster operations** and select the
+**Investigation** group. Each `:ops NAME` command opens the same form. Inspection
+runs outside rendering. Moving the mouse does not execute a scientific program.
+
+## Controls and contracts
+
+| Operation | Manifest schema | Result |
+| --- | --- | --- |
+| `:ops recommendation` | `tower.recommendation-review/v1` | Applicable hypothesis, supported/refuted experiment, stale, expired or inconclusive evidence |
+| `:ops investigation-plan` | `tower.investigation-plan/v1` | Ordered information actions within declared budgets |
+| `:ops scientific-impact` | `tower.scientific-lineage/v1` | Affected claims, missing lineage and proposed revalidation actions |
+| `:ops numerical-stability` | `tower.numerical-stability/v1` | Measured ranges, variation and tolerance violations by configuration |
+| `:ops regression-investigation` | `tower.performance-investigation/v1` | Ordered version comparisons with noise and scientific validity checks |
+| `:ops regression-sweep` | `tower.diagnostic-campaign/v1`, kind `regression` | Real repeated measurements of reviewed immutable Git snapshots |
+| `:ops diagnostic-campaign` | `tower.diagnostic-campaign/v1`, kind `campaign` | Reviewed configuration trials and persistent measurement files |
+| `:ops minimize-reproducer` | `tower.diagnostic-campaign/v1`, kind `minimize` | A reduced input that retains the declared failure signature |
+
+The five analysis operations are read-only. Enter **Manifest** and select
+**Inspect**. The three execution operations also require a new **Destination** directory. Select
+**Action: launch**, inspect the exact resource/source review, then select
+**Confirm apply**. An inspection does not submit or run a program.
+For an existing workspace, select **Action: status**. A new recipe path is not
+required for status. Select **Action: cancel** to review cancellation of a local
+driver. Cancel a Slurm allocation through its reviewed Jobs action.
+
+The [schemas](../schemas/) are named `investigation-*.schema.json`. Runtime
+validation also checks source identity, unique IDs, finite values, graph cycles,
+budget relationships, and placeholder bindings that JSON Schema cannot express.
+
+## Recommendation validity
+
+A contract names its exact `cluster`, `job_id` and `attempt`. Optional code,
+input and environment SHA256 fields pin more context. Each evidence record
+contains `id`, `data`, `sha256` and a boolean `complete` flag. Its digest is
+SHA256 over sorted, compact, ASCII JSON with nonfinite numbers forbidden.
+
+Precondition sources must be pinned in the contract. Queries contain `source`,
+a list of object keys in `path`, an `op` (`eq`, `lt`, `le`, `gt`, or `ge`) and
+`value`. Queries do not evaluate code. Missing or incomplete evidence cannot
+pass a query. A changed digest or attempt invalidates the old review. A contract
+outside its `created`/`expires` window is expired.
+
+An optional outcome binds `contract_sha256`, `experiment_id`, the experiment's
+exact identity and measured evidence. The experiment may have a different job
+ID; declared cluster/build/input/environment context must agree. Every
+acceptance predicate must pass before the state becomes `supported`. This is
+support for the declared workload and checks, not proof of universal correctness
+or a causal explanation. Producers remain responsible for honest coverage and
+independent experimental units; a checksum is not an authenticity signature.
+
+## Choose what to measure next
+
+Actions can be configuration trials, repeats, traces, scientific validation,
+placement checks or numerical audits. Each action declares costs, predicted
+queue time, decision gain, success probability, scientific risk, prerequisites
+and model provenance. The planner sorts by:
+
+```text
+decision_gain × success_probability × (1 − scientific_risk)
+----------------------------------------------------------
+              seconds + queue_seconds
+```
+
+Committed intents consume the budget even when their outcome is uncertain.
+Missing prerequisites, excess risk and insufficient remaining time/resource
+budgets exclude an action. This is a deterministic greedy proposal using the
+supplied model. It is not a Bayesian model, calibrated probability estimate,
+global optimum or queue-time guarantee. The planner does not execute actions.
+
+## Scientific impact and revalidation
+
+Declare a DAG of artifacts, attempts, claims, policies and validations. Each node
+has explicit dependencies and a `complete` coverage flag. Mark changed roots.
+Tower follows reverse edges, retains parent links explaining impact, and
+propagates uncertainty from missing dependencies or incomplete coverage.
+
+Revalidation actions declare their covered nodes, required inputs, cost and
+method. The planner prefers low-cost coverage while ordering prerequisites.
+It does not plan reuse through uncertain lineage. `unresolved_claims` identifies
+what the available actions cannot justify. Proposed checks do not become passed
+checks merely because the graph planner selected them. Approximate scientific
+equivalence is not assumed transitive.
+
+## Numerical measurements and performance regressions
+
+Numerical policies declare a reference and absolute/relative tolerances. A run
+has a unique ID, configuration and actual metrics. For each metric, Tower checks:
+
+```text
+abs(value − reference) <= max(absolute, relative × abs(reference))
+```
+
+The report gives observed minimum, maximum, mean, standard deviation, maximum
+absolute error, violating runs and missing runs. A single observation has no
+estimated standard deviation. `observed-pass` describes only the supplied
+observations. Tower does not inject numerical perturbations into a running job.
+Prepared campaign commands may invoke user-installed numerical tools or builds.
+
+Regression manifests name independent experimental units, a paired/independent
+design, ordered versions, a baseline and an absolute practical-change margin.
+Tower uses Student t intervals with a Bonferroni adjustment across comparisons.
+Missing scientific validity, insufficient samples, zero observed variance, or
+intervals crossing the decision boundary remain inconclusive. A later recovery
+is shown as nonmonotonic evidence; the system does not assume binary-search
+monotonicity or identify a causal source commit from timing alone.
+
+## Run bounded diagnostics
+
+A recipe chooses `local-diagnostic` or `slurm` explicitly. Local mode executes
+on the host running Tower. Use it for a permitted workstation or allocated
+interactive session, not expensive login-node experiments. Slurm mode prepares
+one node and one task with explicit CPU, memory and time limits, then uses
+Tower's existing native submission and passport path. It does not attach to or
+change an existing production job.
+
+Local launch starts a detached Linux driver and returns promptly. It does not
+occupy Single mode's only background worker for the lifetime of the experiment.
+The driver continues if Tower closes; use its workspace with **Action: status**
+after reconnecting. A launch acknowledgment does not mean the experiment passed.
+
+The command is an argv array beginning with an absolute executable. Named
+source files require SHA256 hashes. The following placeholders occupy a whole
+argument; shell expansion is not performed:
+
+| Placeholder | Meaning |
+| --- | --- |
+| `{file:NAME}` | The private staged copy of a declared file |
+| `{input}` | The current minimization candidate |
+| `{result}` | A private per-trial JSON output path chosen by the application |
+| `{repo:RELATIVE_PATH}` | A file in the current immutable regression snapshot |
+
+Campaign cases append their explicit argument lists to the base command. The
+driver copies declared source files into a private workspace and verifies them
+and the executable before trials and after execution. It uses a separate child
+helper to set CPU-time, address-space, per-file-size and affinity limits without
+`preexec_fn` in the multithreaded UI. Output capture and wall time are bounded;
+timeouts and cancellation terminate the child's process group. On Linux, the
+supervisor also uses a parent-death signal to clean its process group if the
+driver crashes. A program that deliberately detaches into a different session
+falls outside this process-group cleanup guarantee; use site containment for
+untrusted or independently daemonizing programs.
+
+The limits are 256 trials, 120 seconds per trial, one hour total, 1–8 CPUs,
+32–65536 MiB address space, 1 MiB captured output per trial, and 1–10 repeated
+oracle checks. Source data is limited to 32 MiB total. Shared libraries and
+undeclared external inputs are not captured. These are trusted user programs;
+a subprocess and resource limits are not a security sandbox or a total scratch
+quota. Initial execution supports one-node CPU recipes. Arbitrary MPI topology
+or GPU diagnostic admission is not implied.
+
+The workspace and explicit Python/executable paths must be available on the
+compute node. The staged driver is standard-library-only and runs with `-I -S`;
+it does not need the Tower package installed on that node. The application may
+still require its own packages, libraries, modules or site configuration.
+
+## Minimize a reproducer
+
+The initial reducer removes whole input lines. Its oracle requires both an
+exact exit code and a nonempty output signature. This prevents an unrelated
+nonzero exit from being counted as the intended failure. Repeated trials must
+agree. A timeout, signal, budget exhaustion or inconsistent repetition stops
+the reduction without a false minimality claim. Different ordinary exit codes
+or absent signatures are nonmatches under the user's declared oracle.
+
+The original failure is tested first. Each accepted candidate retains that
+tested property. Empty input is tested too. The result may be 1-minimal under
+line deletion, or the smallest confirmed candidate found before the budget
+ended. It is not promised to be globally smallest or independent of scheduler,
+input and runtime conditions. The user must supply an oracle that distinguishes
+their target failure and input validity correctly.
+
+## Measure an actual Git regression
+
+Use `:ops regression-sweep` with kind `regression`. A `repository` object
+declares `path`, 2–8 `commits` containing unique `id` and full immutable `commit`
+hashes, the first revision's ID as `baseline`, `minimum_change` in seconds,
+`confidence` from 0.8 to 0.95, and `metric` as `result_seconds` or `wall_seconds`.
+Set at least three `repeats`. The command must use `{result}` and can address
+tracked source through `{repo:measure.py}` or another relative source path.
+
+Tower reads `git archive` snapshots and pins their exact bytes. It does not
+switch branches, alter the index, create Git worktrees or replace dirty files.
+Snapshots are limited to 4 MiB and 10000 entries per revision. Full commit hashes
+are required; branches, tags, trees, symlinks, special files and path traversal
+are refused. Submodule contents, Git LFS objects, ignored files and external
+dependencies are not fetched automatically. The recipe must provide the
+dependencies needed to run each snapshot.
+
+Each measured trial starts from a fresh extracted snapshot. The revision order
+alternates between repetitions to reduce fixed ordering bias. The application
+must write this result to `{result}` and satisfy the recipe's exact output/exit
+oracle:
+
+```json
+{"seconds": 0.125, "scientific_valid": true}
+```
+
+`result_seconds` uses that application measurement. `wall_seconds` uses the
+observed process time, including interpreter/launcher startup. Neither skips
+the required `scientific_valid` check. A false, absent or invalid check leaves
+that version incomparable. The application defines the scientific criterion;
+Tower does not infer it from an exit code.
+
+The completed report uses 2000 deterministic bootstrap resamples of independent
+median differences, with a Bonferroni family adjustment. It reports intervals,
+the first observed regression and later recovery. Fewer than three valid samples,
+zero variance, missing outputs, exhausted budgets and noisy intervals cannot
+establish a regression. Bootstrap coverage itself remains approximate, especially
+with small samples and correlated host noise. A measured difference is not proof
+that a specific source edit caused it. The sweep does not assume monotonic
+performance or silently perform a binary search through unreviewed commits.
+
+The archived driver and commit snapshots also work inside the reviewed Slurm
+allocation. Only the initial inspection needs Git; compute execution reads the
+staged snapshots. Retained trial intents, application measurements and outcomes
+allow the user to inspect partial or cancelled sweeps.
+
+## Receipts, interruption and recovery
+
+`launch.intent.json` is written before local execution or submission. Slurm
+returns `submission.result.json`; acceptance means submission, not completion.
+The driver exclusively creates `run.claim.json` before any trial. Each trial
+writes an intent and an outcome receipt in `trials/NNNN/`, alongside bounded
+`output.log` and any application `result.json`. Final reduction/campaign state
+is written to workspace `result.json`. Interrupted drivers retain the claim and
+may write `error.json`.
+
+`driver.process.json` records PID, process start ticks, boot identity and recipe
+digest. Status checks that identity on the current host. A reviewed local
+cancellation uses a Linux pidfd, rechecks identity, records `cancel.intent.json`,
+and requests graceful termination. It does not signal a reused PID. The driver
+stops the current trial and publishes partial outcomes. **Action: status** must
+confirm that it stopped; cancellation acknowledgment alone is not completion.
+Missing pidfd support causes a clear refusal. A remote compute-node driver is
+cancelled through Slurm, not by signaling a coincident local PID.
+
+Tower refuses to reuse that workspace or repeat an uncertain submission. Read
+the existing receipts and scheduler state before preparing an explicitly new
+campaign. A requeued driver also refuses to replay the same claim. This avoids
+duplicate experiments but does not provide automatic crash resumption.
+
+## Offline demonstration
+
+Create a new example directory; no work is executed by this step:
+
+```sh
+python3 examples/scientific-investigation/prepare_demo.py /tmp/tower-science-demo
+```
+
+Open `:ops minimize-reproducer`. Use `/tmp/tower-science-demo/minimize.json`, a
+new destination such as `/tmp/tower-minimum`, and **Action: launch**. Review and
+apply. `minimal-input.txt` should contain only `needle`.
+Select **Action: status** until the driver reports `reduced` before reading it.
+
+Open `:ops diagnostic-campaign`. Use `campaign.json` and a different new
+destination such as `/tmp/tower-numerical`. Review and apply. The program computes
+an actual order-sensitive sum and a compensated sum. Wait for **Action: status**
+to report `completed`, then convert measured outputs:
+
+```sh
+python3 examples/scientific-investigation/collect_numerical.py \
+  /tmp/tower-numerical > /tmp/tower-science-demo/numerical.json
+```
+
+Inspect that file with `:ops numerical-stability`. The naive sum fails the
+declared answer check; the compensated sum passes for these observations.
+The other generated files are clearly labeled synthetic analysis examples.
+
+To create a separate real-execution regression example:
+
+```sh
+python3 examples/scientific-investigation/prepare_regression_demo.py \
+  /tmp/tower-regression-demo
+```
+
+This creates a new synthetic Git repository only in that directory. Open
+`:ops regression-sweep`, use its `sweep.json`, choose a new workspace, review and
+apply. The program measures a deliberate delay with a scientific sum check.
+The report should identify the slower middle revision and subsequent recovery;
+heavy host noise can correctly leave a comparison inconclusive.
+
+## Validation boundary
+
+Tests execute real bounded child processes and the standalone staged driver.
+They check exact failure signatures, empty candidates, repeated-oracle
+disagreement, budgets, timeouts, output floods, signals, changed source files,
+stale reviews, independent scientific evidence, missing lineage, deep graphs,
+nonmonotonic regressions and uncertain scheduler receipts. Slurm submission
+tests use a fixture transport. Actual scheduler policy, compute-node visibility,
+resource enforcement and scientific-tool compatibility require site validation.

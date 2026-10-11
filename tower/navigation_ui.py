@@ -9,7 +9,7 @@ from __future__ import annotations
 import copy
 import os
 
-from .layout import box, clip_row, cut
+from .layout import box, clip_row, cut, vlen
 from .research import RESEARCH_VIEWS, clean
 
 MAX_BACK = 32
@@ -256,19 +256,119 @@ def forward(app):
     return True
 
 
-def breadcrumb(app, width, ascii_=False):
+def _breadcrumb_record(state, snap, jid):
+    """Reuse a checked row slot across native shallow snapshot copies.
+
+    Queue and history publications invalidate the slot. The row is still read
+    from this frame and checked by ID, so an in-place record correction or a
+    shifted/replaced row cannot return an obsolete object. Foreign snapshots
+    without publication tokens retain the conservative identity-based path.
+    """
+    if not jid or not isinstance(snap, dict):
+        return None
+    sources = (snap.get("jobs"), snap.get("finished"), snap.get("departed_jobs"))
+    cached = state.get("breadcrumb_record")
+    token = ((snap["t_jobs"], snap["history_revision"], *(len(source) if source is not None else 0 for source in sources))
+             if "t_jobs" in snap and "history_revision" in snap else None)
+    same = cached and cached[0] == jid and (token == cached[2] if token is not None else
+                                            all(left is right for left, right in zip(cached[1], sources)))
+    if same:
+        source_index, slot = cached[3]
+        if source_index is None and token is None:
+            return None
+        if source_index is not None:
+            source = sources[source_index]
+            record = source.get(slot) if isinstance(source, dict) else source[slot] if slot < len(source) else None
+            if getattr(record, "id", None) == jid:
+                return record
+    record, location = None, (None, None)
+    for source_index, source in enumerate(sources):
+        if source is None:
+            continue
+        entries = source.items() if isinstance(source, dict) else enumerate(source)
+        for slot, job in entries:
+            if getattr(job, "id", None) == jid:
+                record, location = job, (source_index, slot)
+                break
+        if record is not None:
+            break
+    state["breadcrumb_record"] = (jid, sources if token is None else (), token, location)
+    return record
+
+
+def _breadcrumb_binding(project, binding, record, snap, jid, cluster):
+    """Use the same cached attempt guard as project rebinding, before its tick."""
+    if not isinstance(binding, dict) or binding.get("job_id") != jid:
+        return False
+    launch = binding.get("launch")
+    if not isinstance(launch, dict):
+        return False
+    if cluster and launch.get("cluster") and cluster != launch["cluster"]:
+        return False
+    if not jid:
+        return True  # An explicitly selected local run has no scheduler claim.
+    prior = project.get("auto_attempt")
+    if record is None or project.get("auto_target") != jid or not isinstance(prior, (tuple, list)) or len(prior) != 4 or not prior[1]:
+        return False
+    from .project_ui import _attempt_token
+    detail_map = snap.get("details") if isinstance(snap, dict) else None
+    details = detail_map.get(jid, {}) if isinstance(detail_map, dict) else {}
+    details = dict(details) if isinstance(details, dict) else {}
+    # Fresh queue/accounting identity must not be masked by old scontrol data.
+    for field, attribute in (("SubmitTime", "submit"), ("StartTime", "start")):
+        value = getattr(record, attribute, "")
+        if value:
+            details[field] = value
+    current = _attempt_token(record, details)
+    if current[1] != prior[1] or any(old and new and old != new for old, new in zip(prior, current)):
+        return False
+    restart = current[3]
+    if restart and (not restart.isdecimal() or binding.get("attempt") != int(restart) + 1):
+        return False
+    return True
+
+
+def breadcrumb(app, width, ascii_=False, *, snap=None):
     """A concise, clipped path; source labels never inject terminal controls."""
     state = initialize(app)
     parts = []
+    jid = (app.log_job if app.tab == "log" else app.research_job_id if app.tab == "research" else app.selected_id) if app.tab in {"jobs", "history", "analytics", "research", "log"} else None
+    record = _breadcrumb_record(state, snap, jid)
+    slurm = getattr(getattr(app, "actions", None), "slurm", None)
+    cluster = getattr(record, "cluster", "") or getattr(slurm, "cluster_name", "") or app.cfg.get("cluster_name", "") or app.cfg.get("site.cluster_id", "")
+    if cluster:
+        parts.append("cluster " + clean(cluster, ascii_, limit=64))
+    project = getattr(app, "project_state", {})
+    binding = project.get("binding") if isinstance(project, dict) else None
+    bound = (jid or app.tab == "research") and _breadcrumb_binding(project, binding, record, snap, jid, cluster)
+    if bound:
+        root = binding.get("project_root")
+        root = root if isinstance(root, str) else ""
+        parts.append("project " + clean(os.path.basename(root) or binding.get("project_id", ""), ascii_, limit=40))
+        parts.append("run " + clean(binding.get("run_id", ""), ascii_, limit=64) + "/a" + clean(str(binding.get("attempt", "?")), ascii_, limit=12))
+    elif record is not None:
+        submit, start = getattr(record, "submit", ""), getattr(record, "start", "")
+        if submit and str(submit).lower() not in {"unknown", "none", "n/a", "0"}:
+            attempt = str(submit) + ("/" + str(start) if start and str(start).lower() not in {"unknown", "none", "n/a", "0"} else "")
+            parts.append("attempt " + clean(attempt, ascii_, limit=64))
+    context_count = len(parts)
     previous = next((saved for saved in reversed(state["stack"]) if saved["tab"] != app.tab), None)
     if previous:
         parts.append(TAB_NAMES.get(previous["tab"], previous["tab"]))
     parts.append(TAB_NAMES.get(app.tab, app.tab))
-    jid = app.log_job if app.tab == "log" else app.research_job_id if app.tab == "research" else app.selected_id
     if jid and app.tab in ("log", "research", "analytics", "history", "jobs"):
         parts.append("job " + clean(jid, ascii_, limit=128))
     if app.tab == "research":
         parts.append(dict(RESEARCH_VIEWS).get(app.research_view, app.research_view))
+        if bound:
+            planning = binding.get("planning_files")
+            planning = planning if isinstance(planning, dict) else {}
+            if app.research_view in ("predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow"):
+                source = planning.get(app.research_view) or binding.get("planning_file")
+            else:
+                source = binding.get({"experiment": "metrics_file", "artifacts": "contract", "passport": "passport", "submit": "submit_file", "arrays": "array_manifest"}.get(app.research_view, ""))
+            if isinstance(source, str) and source:
+                parts.append("source " + clean(os.path.basename(source), ascii_, limit=64))
     elif app.tab == "analytics":
         parts.append(app.analytics_view.replace("_", " "))
     elif app.tab == "log":
@@ -278,6 +378,9 @@ def breadcrumb(app, width, ascii_=False):
             entry = app.logs.entry or {}
             parts.append(clean(entry.get("label") or os.path.basename(app.logs.path), ascii_, limit=256))
     sep = " > " if ascii_ else " › "
+    while context_count and vlen(sep.join(parts)) > max(0, width - (10 if state["stack"] else 2)):
+        del parts[context_count - 1]
+        context_count -= 1
     return clip_row([(" " + sep.join(parts), "dim"), ("   :back", "cyan") if state["stack"] else ("", "")], max(0, width))
 
 

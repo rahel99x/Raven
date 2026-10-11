@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/collection-request.schema.json",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "interval": {
+      "type": "number",
+      "minimum": 0.001
+    },
+    "duration": {
+      "type": "number",
+      "minimum": 0.001
+    },
+    "max_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_records": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "allocation": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "cluster": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "job_id": {
+              "type": "string",
+              "pattern": "^[0-9]+(?:_[0-9]+)?(?:\\+[0-9]+)?(?:\\.[A-Za-z0-9_-]+)?$"
+            },
+            "attempt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "node": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "process_start": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "pid": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            "rank": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            "thread": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            },
+            "task": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            }
+          },
+          "required": [
+            "cluster",
+            "job_id",
+            "attempt"
+          ],
+          "additionalProperties": false,
+          "dependentRequired": {
+            "pid": [
+              "node",
+              "process_start"
+            ]
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "intrusive": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "source",
+    "operation",
+    "interval",
+    "duration",
+    "max_bytes",
+    "max_records",
+    "allocation",
+    "intrusive"
+  ],
+  "additionalProperties": false
+}
