@@ -373,7 +373,7 @@ The grouping layer reads supplied snapshots. It does not run Slurm commands or r
 
 ## Use the Main grouping controls
 
-The four buttons above Jobs Main use the same group preferences as the other
+The five buttons above Jobs Main use the same group preferences as the other
 job lists. Narrow panes wrap the controls without covering the table headings.
 
 | Button | Result |
@@ -382,11 +382,14 @@ job lists. Narrow panes wrap the controls without covering the table headings.
 | **Undo Auto** | Restore the inference setting and fold changes owned by the preceding Auto Group action. Preserve later disclosure clicks and manual membership edits. |
 | **Ungroup All** | Clear saved groups, folds, and exclusions, and disable automatic inference. Jobs remain individual until you group them manually or use Auto Group again. |
 | **Expand All** | Open the shared job groups without changing their membership. |
+| **Collapse All** | Close the shared job groups without changing their membership. |
 
 The matching commands are `:grouping auto`, `:grouping undo`, `:grouping clear`,
-and `:grouping expand`. After Ungroup All, `:grouping restore` restores its
+`:grouping expand`, and `:grouping collapse`. After Ungroup All, `:grouping restore` restores its
 session snapshot if no newer membership change would be overwritten.
 These controls affect the shared group presentation; they do not change Slurm.
+Collapse All uses the existing 256-group fold limit. If the known group count
+exceeds that limit, it reports the limit and leaves all folds unchanged.
 
 ## Review a group's queue order
 

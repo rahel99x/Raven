@@ -385,12 +385,13 @@ Recents leaves live-only progress and measurement slots empty. The completion cu
 | **Undo Auto**, `:grouping undo` | Undo the last Auto Group change without replacing later manual changes |
 | **Ungroup All**, `:grouping clear` | Remove manual groups and disable automatic grouping; keep all jobs |
 | **Expand All**, `:grouping expand` | Open all groups without changing membership |
+| **Collapse All**, `:grouping collapse` | Close groups without changing membership |
 | `:grouping restore` | Restore the last Ungroup All change if later grouping edits would not be overwritten |
 | Drag a group header's `↕` (`:` in ASCII) onto another Main group | Request placement before an earlier group or after a later group; release opens inspection and review |
 | Esc or right-click during a queue-order drag | Cancel without changing scheduler order |
 | `:ops queue-order` | Open the queue-order form without a mouse |
 
-The four grouping buttons change shared display organization only. Their undo records last for the current session.
+The five grouping buttons change shared display organization only. Their undo records last for the current session.
 The queue-order handle is separate from the fold chevron and Alt-drag membership control.
 Only its header follows the pointer; expanded members are dimmed during the drag.
 After dropping, inspect **Review action**, then select **Confirm apply** to request a scheduler change.
@@ -512,7 +513,7 @@ Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, an
 | `:recents 5\|10\|25\|auto` | Select the initial Recents preview size |
 | `:recents expand\|collapse` | Change the Recents presentation |
 | `:jobgroups [on\|off]` | Toggle shared group visibility; explicit `on` also enables automatic detection |
-| `:grouping auto\|undo\|clear\|expand\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
+| `:grouping auto\|undo\|clear\|expand\|collapse\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
 | `:jobgroup toggle\|open\|close GROUP_ID` | Fold or expand one known launch group |
 | `:jobgroup create` | Group at least two marked real jobs in the focused list |
 | `:jobgroup ungroup` | Dissolve targeted closed groups or detach targeted expanded members |

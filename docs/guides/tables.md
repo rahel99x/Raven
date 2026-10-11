@@ -337,7 +337,7 @@ confirmations.
 
 ### Group controls in Jobs Main
 
-The four buttons above the Jobs table operate on Tower's shared groups:
+The five buttons above the Jobs table operate on Tower's shared groups:
 
 | Button | Effect |
 |---|---|
@@ -345,8 +345,9 @@ The four buttons above the Jobs table operate on Tower's shared groups:
 | **Undo Auto** | Undo the last Auto Group change in this session. Keep later manual membership changes. |
 | **Ungroup All** | Remove manual groups and disable automatic grouping. Retain the jobs. |
 | **Expand All** | Open all closed groups without changing their membership. |
+| **Collapse All** | Close the known groups without changing their membership. |
 
-Use `:grouping auto`, `:grouping undo`, `:grouping clear`, or `:grouping expand`
+Use `:grouping auto`, `:grouping undo`, `:grouping clear`, `:grouping expand`, or `:grouping collapse`
 for the same actions. `:grouping restore` restores the last Ungroup All change
 if no newer grouping change would be overwritten. Undo records are local to
 the current Tower session. These controls do not change scheduler order.
@@ -472,7 +473,7 @@ These methods are for extensions and tests. They use the existing event loop.
 | `column_resize.handle_mouse(app, y, x, button="left", shift=False)` / `handle_key(app, key)` | Capture a resize, preview terminal-cell widths, and commit or cancel it. |
 | `column_resize.descriptors(app)` | Publish resize grips for common hover and directional focus. |
 | `column_resize.committed_widths(app, copied_widths)` / `cancel(app)` | Exclude unfinished widths from unrelated saves; restore a cancelled preview. |
-| `grouping_toolbar.controls(app, glyphs, width)` / `execute(app, action, snap=None)` | Render the four shared grouping controls; apply their local presentation changes. |
+| `grouping_toolbar.controls(app, glyphs, width)` / `execute(app, action, snap=None)` | Render the five shared grouping controls; apply their local presentation changes. |
 | `table_tools.initialize(app)` / `restore(app, data)` / `save(app)` | Create, validate, and serialize tool preferences. Session freezes are excluded. |
 | `table_tools.command_names()` / `run_command(app, args)` | List and run the commands in this guide. |
 | `table_tools.handle_key(app, key)` / `handle_mouse(app, y, x, button="left", shift=False)` | Handle modal lists and chips. |

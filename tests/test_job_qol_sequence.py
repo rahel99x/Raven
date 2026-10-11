@@ -66,6 +66,10 @@ def test_dynamic_grouping_selection_resize_graph_and_stale_queue_sequence(dashbo
     click_control("grouping:auto")
     click_control("grouping:expand")
     assert not app.table_state["collapsed"]
+    click_control("grouping:collapse")
+    assert all(Groups.registry(app).is_collapsed(group) for group in index().groups.values())
+    click_control("grouping:expand")
+    assert not app.table_state["collapsed"]
     before_clear = deepcopy(app.table_state["manual_groups"])
     click_control("grouping:clear")
     assert not index().groups and not app.table_state["auto_groups"]

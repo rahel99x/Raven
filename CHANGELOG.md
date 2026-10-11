@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.16.1
+
+- Add Collapse All beside Expand All in Jobs Main, with the matching `:grouping collapse` command. Preserve membership, manual exclusions, and explicit fold ownership when Undo Auto is used.
+- Keep the grouping controls fitted to narrow panes and retain the existing bounded fold storage.
+
 ## 4.16.0
 
 - Add captured mouse column resizing with cancel/reset controls, shared Jobs and Recents geometry, and clipped headings that retain correct hit targets. Keep completion trails on the left of Main.

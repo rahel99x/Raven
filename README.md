@@ -15,7 +15,7 @@ It also provides an ASCII display mode and plain-text reports.
 | Runtime packages | Core: Python standard library only; optional adapters have separate requirements |
 | Live data | Slurm commands available to your cluster account |
 | Demonstration | Simulated scheduler; no cluster account required |
-| Release | Tower 4.16.0 |
+| Release | Tower 4.16.1 |
 | License | [MIT](LICENSE) |
 
 [Installation and operation](docs/runbook.md) ·
@@ -36,11 +36,15 @@ It also provides an ASCII display mode and plain-text reports.
 [Project reporting standard](docs/PROJECT_STANDARD.md) ·
 [Bash Research automation](docs/guides/research-automation.md)
 
+## Changes in Tower 4.16.1
+
+Use **Collapse All** beside **Expand All** in Jobs Main, or enter `:grouping collapse`, to close shared job groups while keeping their membership.
+
 ## Changes in Tower 4.16.0
 
 - Drag a table heading separator to resize its column. Right-click the separator to reset it. Jobs and Recents share column positions and widths; Progress retains its six-cell width.
 - Click one job, then Shift-click another to mark the inclusive range in either direction. Plain dragging selects a range even when its first row is already selected. Use **Alt-drag** to add selected jobs to a group, or use the job menu.
-- Use **Auto Group**, **Undo Auto**, **Ungroup All**, and **Expand All** above Jobs Main. Automatic grouping preserves manual membership. The completion trail now stays on Main's left edge.
+- Use **Auto Group**, **Undo Auto**, **Ungroup All**, **Expand All**, and **Collapse All** above Jobs Main. Automatic grouping preserves manual membership. The completion trail now stays on Main's left edge.
 - Drag a group's **↕** handle before or after another group to review a change to your pending-job order. Apply uses Slurm's native `scontrol top` where the site enables it. Dependencies, resources, reservations, and site policy still determine start times.
 - Use `tower report` from Bash to record actual submissions, array tasks, retries, metrics, outputs, and Research sources. Runtime discovery links each report to its job attempt. Local and supported SSH readers refresh declared sources without restarting Tower.
 

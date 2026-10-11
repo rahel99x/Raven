@@ -117,6 +117,44 @@ def test_expand_does_not_turn_grouping_on_or_clear_manual_groups():
     assert not app.table_state["collapsed"]
 
 
+def test_collapse_preserves_membership_exclusions_and_owns_auto_folds():
+    app, snap = fixture()
+    made = M.create(app, snap, ["100", "101"])
+    M.detach(app, snap, ["102"])
+    T.execute(app, "auto", snap)
+    before = G.registry(app).ensure(snap).groups.copy()
+    assert T.execute(app, "collapse", snap).changed
+    assert all(G.registry(app).is_collapsed(group) for group in before.values())
+    assert not T.execute(app, "collapse", snap).changed
+    T.execute(app, "undo", snap)
+    registry = G.registry(app)
+    assert registry.ensure(snap).groups == before
+    assert all(registry.is_collapsed(group) for group in before.values())
+    assert registry.index.for_job("102") is None
+    assert registry.index.groups[made.group_id].members == ("100", "101")
+    T.execute(app, "expand", snap)
+    assert not G.registry(app).collapsed
+
+
+def test_collapse_is_atomic_at_fold_limit_and_never_enables_inference(monkeypatch):
+    app, snap = fixture()
+    M.create(app, snap, ["100", "101"])
+    M.create(app, snap, ["102", "103"])
+    app.table_state.update(groups=False, auto_groups=False)
+    assert not T.execute(app, "collapse", {"jobs": []}).changed
+    monkeypatch.setattr(G, "MAX_COLLAPSED", 1)
+    assert not T.execute(app, "collapse", snap).changed
+    assert not app.table_state["collapsed"]
+    assert not app.table_state["groups"] and not app.table_state["auto_groups"]
+    monkeypatch.setattr(G, "MAX_COLLAPSED", 2)
+    app.table_state["collapsed"] = ["manual:archived-a", "manual:archived-b"]
+    assert T.execute(app, "collapse", snap).changed
+    registry = G.registry(app)
+    assert all(registry.is_collapsed(group) for group in registry.index.groups.values())
+    assert len(registry.collapsed) == 2
+    assert not app.table_state["groups"] and not app.table_state["auto_groups"]
+
+
 def test_commands_cancel_stale_gestures_and_invalidate_geometry():
     app, snap = fixture()
     app.job_selection_state["capture"] = object()

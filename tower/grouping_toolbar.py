@@ -23,7 +23,8 @@ def command_names():
 def controls(app, g, width):
     from .control_rows import buttons
     return buttons(g, width, [(key, label, ("command", "grouping " + key)) for key, label in
-        (("auto", "Auto Group"), ("undo", "Undo Auto"), ("clear", "Ungroup All"), ("expand", "Expand All"))],
+        (("auto", "Auto Group"), ("undo", "Undo Auto"), ("clear", "Ungroup All"),
+         ("expand", "Expand All"), ("collapse", "Collapse All"))],
         group="grouping-toolbar", prefix="grouping:")
 
 
@@ -104,13 +105,37 @@ def execute(app, action, snap=None):
         table.update(groups=before["enabled"], auto_groups=before["auto"], collapsed=before["collapsed"])
         app.grouping_all_undo = None
         message = "Grouping restored to before Ungroup All"
+    elif action == "collapse":
+        if not index.groups:
+            return M.Result(False, "There are no groups to collapse")
+        if len(index.groups) > G.MAX_COLLAPSED:
+            return M.Result(False, f"Collapse All needs at most {G.MAX_COLLAPSED} known groups; no folds changed")
+        previous = set(registry.collapsed)
+        # Fold the complete current index before retaining older preferences.
+        # This avoids bounded storage evicting a group we have just folded.
+        registry.collapsed.clear()
+        for group in index.groups.values():
+            registry.fold(group.id, True)
+        remaining = G.MAX_COLLAPSED - len(registry.collapsed)
+        registry.collapsed.update(sorted(previous - registry.collapsed)[:remaining])
+        table["collapsed"] = sorted(registry.collapsed)
+        selected_group = index.for_job(getattr(app, "selected_id", None))
+        if selected_group is not None:
+            G._reanchor(app, selected_group.id)
+        undo = getattr(app, "grouping_auto_undo", None)
+        if isinstance(undo, dict):
+            # Like an explicit disclosure click, this action owns its folds.
+            undo.get("added", set()).difference_update(registry.collapsed)
+        message = "All shared groups collapsed; membership unchanged"
+        if previous == registry.collapsed:
+            return M.Result(False, message)
     elif action == "expand":
         if not table.get("collapsed"):
             return M.Result(False, "All groups are already expanded")
         table["collapsed"] = []
         message = "All shared groups expanded"
     else:
-        return M.Result(False, "Use grouping auto, undo, clear, expand, or restore")
+        return M.Result(False, "Use grouping auto, undo, clear, expand, collapse, or restore")
     _invalidate(app)
     G.registry(app).ensure(snap)
     return M.Result(True, message)
@@ -120,7 +145,7 @@ def run_command(app, args):
     if not args or args[0] != "grouping":
         return False
     if len(args) != 2:
-        app.say("Use grouping auto, undo, clear, expand, or restore")
+        app.say("Use grouping auto, undo, clear, expand, collapse, or restore")
         return True
     result = execute(app, args[1])
     app.say(result.message)
