@@ -25,7 +25,9 @@ def path_at(base, value):
 
 
 def signature(value):
-    return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
+    """Keep native identity exact within the worker's JSON integer bounds."""
+    parts = (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
+    return tuple(part if -(1 << 63) <= part < (1 << 63) else str(part) for part in parts)
 
 
 def snapshot(path, *, cancel=None, limit=DATA_LIMIT, keep=False):

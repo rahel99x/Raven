@@ -10,6 +10,8 @@
 - Consolidate documentation around current implementation contracts and
   distinguish historical measurements from current procedures.
 - Add software citation metadata in `CITATION.cff`.
+- Encode large native file identities losslessly in reviewed worker payloads
+  while retaining signed integer bounds and exact source-verification checks.
 
 ## 7.0.0 — Raven
 
