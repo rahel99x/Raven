@@ -361,6 +361,10 @@ class ResearchHub:
                 from .projects import read_bound_json
                 from .submission import SCHEMA, _digest
                 plan = read_bound_json(context["binding"], path, key="submit", files=self.files)
+                if isinstance(plan, dict) and plan.get("schema") == "raven.launch-report/v1":
+                    from .launch_results import validate
+                    report = validate(plan, context["binding"])
+                    return {"status": "ok", "launch_report": report, "display_only": True, "source": path}
                 if (not isinstance(plan, dict) or plan.get("schema") != SCHEMA or type(plan.get("valid")) is not bool
                         or not isinstance(plan.get("resources"), dict) or not isinstance(plan.get("issues"), list)
                         or plan.get("plan_id") != _digest(plan)):

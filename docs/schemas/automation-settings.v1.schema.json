@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven launch and export preferences v1",
+  "description": "Bounded project-local .raven/automation.json. False choices are preserved. Native validation additionally enforces 256 KiB, safe paths, declared scientific values, and preset references. No job identity is stored in a reusable preset.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.automation-settings/v1"
+    },
+    "launch": {
+      "$ref": "#/$defs/launch"
+    },
+    "recipes": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/launch"
+      }
+    },
+    "export_presets": {
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "default_export_preset": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "export_preferences": {
+      "type": "object"
+    },
+    "associations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "required": [
+          "script",
+          "project_root"
+        ],
+        "properties": {
+          "script": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "project_root": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "string"
+          }
+        },
+        "gpu": {
+          "type": "boolean"
+        },
+        "trace": {
+          "type": "boolean"
+        },
+        "cpu_memory": {
+          "type": "boolean"
+        },
+        "trace_adapter": {
+          "enum": [
+            "",
+            "python-monitoring",
+            "python-legacy-profile",
+            "native-cooperative",
+            "mpi"
+          ]
+        },
+        "sampling_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "storage_bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 268435456
+        },
+        "application_metrics": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "array_manifest": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "report_python": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "auto_export": {
+          "oneOf": [
+            {
+              "const": false
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "telemetry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "interval_seconds": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 300
+            },
+            "timeout_seconds": {
+              "type": "number",
+              "minimum": 0.2,
+              "maximum": 10
+            },
+            "max_bytes_per_stream": {
+              "type": "integer",
+              "minimum": 4096,
+              "maximum": 268435456
+            },
+            "gpu_provider": {
+              "enum": [
+                "auto",
+                "nvidia",
+                "amd",
+                "intel"
+              ]
+            }
+          }
+        },
+        "parameters": {
+          "type": "object"
+        },
+        "resources": {
+          "type": "object"
+        },
+        "research_sources": {
+          "type": "object"
+        },
+        "passport": {
+          "type": "object"
+        },
+        "scientific_context": {
+          "type": "object"
+        },
+        "sbatch_defaults": {
+          "type": "object"
+        },
+        "environment": {
+          "type": "object"
+        },
+        "auto_export_scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "user": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        }
+      }
+    }
+  }
+}

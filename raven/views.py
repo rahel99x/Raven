@@ -321,7 +321,7 @@ def _gpu_unavailable(snap, app, jid, record, *, detected=False):
         return []
     managed = _managed_gpu_mode(app)
     if managed is not None:
-        reason = "GPU rate graphs need this job's existing logs/gpu-util-JOBID.csv trace."
+        reason = "GPU rate graphs use retained launch telemetry or this job's existing logs/gpu-util-JOBID.csv trace."
     elif detected:
         reason = "GPU devices were detected, but utilisation counters are unavailable. Missing readings remain graph gaps."
     else:
@@ -446,11 +446,13 @@ def _prepare_trace_metrics(trace, *, owned=False):
                 or charts._finite(point.get("t")) is None):
             continue
         point = point if owned else _owned_metric_record(point)
-        device, timestamp = point["index"], point["t"]
+        device, timestamp = point.get("device_id") or point["index"], point["t"]
+        if not isinstance(device, (int, str)):
+            continue
         groups.setdefault(device, []).append(point)
         bounds = spans.get(device)
         spans[device] = (min(bounds[0], timestamp), max(bounds[1], timestamp)) if bounds else (timestamp, timestamp)
-    devices, plots = sorted(groups)[:4], []
+    devices, plots = sorted(groups, key=lambda value: (isinstance(value, str), value))[:4], []
     for device in devices:
         group = groups[device]
         points = _MetricValues(len(group), lambda group=group: sorted(group, key=lambda point: point["t"]))
@@ -458,13 +460,29 @@ def _prepare_trace_metrics(trace, *, owned=False):
         stamps = _MetricValues(len(points), lambda points=points: [point["t"] for point in points])
         means = _MetricValues(len(values), lambda values=values: _busy_mean(values))
         plots.append((f"GPU trace {device} rate / utilization ({len(points)} samples)", values, 100., "%", spans[device],
-                      stamps, 60., f"gpu-trace:{device}:rate"))
+                      stamps, group[0].get("sample_interval", 60.), f"gpu-trace:{device}:rate"))
         plots.append((f"GPU trace {device} observed busy mean / efficiency proxy", means, 100., "%", spans[device],
-                      stamps, 60., f"gpu-trace:{device}:busy-mean"))
+                      stamps, group[0].get("sample_interval", 60.), f"gpu-trace:{device}:busy-mean"))
     # Availability stays lazy when a native GPU already supplies valid data.
     return dict(plots=plots, devices=devices,
                 availability=lambda: any(_gpu_value(point.get("util")) is not None
                                          for device in devices for point in groups[device]))
+
+
+def _prepare_retained_process_metrics(rows):
+    """Observed process CPU seconds and RSS, separate from scheduler efficiency."""
+    rows = sorted((row for row in rows if charts._finite(row.get("timestamp")) is not None), key=lambda row: row["timestamp"])
+    if not rows:
+        return []
+    stamps = [row["timestamp"] for row in rows]
+    times = stamps[0], stamps[-1]
+    interval = _gpu_value(rows[0].get("interval_seconds"), percentage=False) or 5.
+    interval = min(300., max(1., interval))
+    cpu = [_gpu_value(row.get("cpu_seconds"), percentage=False) for row in rows]
+    memory = [_gpu_value(row.get("rss_bytes"), percentage=False) for row in rows]
+    memory = [value / 1024 ** 3 if value is not None else None for value in memory]
+    return [("Observed local process CPU time (departed processes excluded)", cpu, None, "s", times, stamps, interval, "retained-cpu-seconds"),
+            ("Observed local process RSS sum (shared pages may repeat)", memory, None, "G", times, stamps, interval, "retained-rss")]
 
 
 def _scroll_rule(glyphs, width, title):
@@ -2989,6 +3007,10 @@ class Views:
         trace_samples = snap.get("trace", {}).get(jid, [])
         trace = self._native_sources.remember(("trace", getattr(app.store, "_series_scope", id(app.store)), jid, attempt), trace_samples,
                                              lambda owned: _prepare_trace_metrics(owned, owned=True))
+        retained = getattr(getattr(app, "sampler", None), "retained_telemetry", {}).get(jid, {})
+        process_rows = retained.get("cpu-memory", [])
+        retained_plots = self._native_sources.remember(("retained-process", jid, attempt), process_rows,
+                                                      _prepare_retained_process_metrics)
         series_notice = _series_notice(app, jid)
         live_count, gpu_count, span = native["live_count"], native["gpu_count"], native["span"]
         head = [rule(g, width, f"job series {pos + 1}/{len(ids)}"),
@@ -2999,11 +3021,19 @@ class Views:
             head[1].append((f"   {job.partition} {g.dot} {job.nodelist or 'pending'} {g.dot} {job.cpus} cpus" + (f" {g.dot} {job.gpu_text}" if job.gpus else "") + f" {g.dot} {job.elapsed} of {job.limit}", "dim"))
         if series_notice:
             head.append([(" " + series_notice[0], series_notice[1])])
-        if not live_count and not gpu_count and not trace_samples:
+        if retained:
+            head.append([(" Retained telemetry: local observed scope; export reads the full retained stream, not this chart tail.", "dim")])
+            for source in retained.get("index", {}).get("sources", []):
+                coverage = source.get("coverage", {})
+                note = source.get("reason") or coverage.get("limitation")
+                if note:
+                    head.append([(" " + source["family"] + ": " + display_text(str(note)), "dim")])
+            head.extend([(" " + display_text(str(note)), "dim")] for note in retained.get("warnings", []))
+        if not live_count and not gpu_count and not trace_samples and not process_rows:
             if series_notice:
                 return head
             return head + _gpu_unavailable(snap, app, jid, record) + [[("   no samples recorded for this job yet", "dim")]]
-        charts_ = native["plots"] + trace["plots"]
+        charts_ = native["plots"] + trace["plots"] + retained_plots
         if native["keys"] or trace["devices"]:
             head.append([(" GPU rate is sampled device busy %. Efficiency proxy is the mean of valid retained samples; gaps are excluded.", "dim")])
             head.append([(" GPU scope is observed devices only. Throughput, FLOP efficiency, and full-run allocation efficiency are not measured.", "dim")])

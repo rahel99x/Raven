@@ -139,6 +139,9 @@ def cycle_log_entry(app):
 def clear_binding(app, *, suppress_auto=False):
     """Leave the chosen run without losing the project inventory or manual paths."""
     state = initialize(app)
+    sampler = getattr(app, "sampler", None)
+    if hasattr(sampler, "bind_telemetry"):
+        sampler.bind_telemetry(None)
     if suppress_auto:
         state["auto_suppressed"] = _target_job(app)
     state["auto_generation"] += 1
@@ -263,6 +266,9 @@ def _apply_run(app, value, *, automatic=False, refresh=False):
     from .log_tools import before_source_change
     state = initialize(app)
     binding = value["binding"]
+    sampler = getattr(app, "sampler", None)
+    if hasattr(sampler, "bind_telemetry"):
+        sampler.bind_telemetry(binding if binding.get("telemetry_index") else None)
     previous = state.get("binding") or {}
     current_entry = resolve_log_entry(app) if previous else None
     source_changed = (any(previous.get(key) != binding.get(key) for key in

@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven retained-data export plan v1",
+  "description": "Read-only plan bounded to 4 MiB, with per-source dev/inode/byte/mtime watermarks and endpoint hashes. Plans are data, never scheduler authorization.",
+  "type": "object",
+  "required": [
+    "schema",
+    "export_id",
+    "plan_digest",
+    "request",
+    "attempts",
+    "destinations",
+    "valid"
+  ],
+  "properties": {
+    "schema": {
+      "const": "raven.export-plan/v1"
+    },
+    "export_id": {
+      "type": "string"
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "request": {
+      "$ref": "export-request.v1.schema.json"
+    },
+    "attempts": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "required": [
+          "project",
+          "run_id",
+          "host"
+        ],
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          },
+          "host": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "destinations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "host",
+          "attempt_keys"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "attempt_keys": {
+            "type": "array",
+            "maxItems": 4096,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "maxItems": 513,
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "availability": {
+      "type": "object"
+    }
+  }
+}

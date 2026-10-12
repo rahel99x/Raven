@@ -20,7 +20,7 @@ from .raven_config import SCHEMA, Resolved, canonical, doctor, resolve, to_raven
 
 def _parser(heavy=False):
     name = "ravenh" if heavy else "ravenl"
-    parser = argparse.ArgumentParser(prog=name, add_help=False,
+    parser = argparse.ArgumentParser(prog=name, add_help=False, allow_abbrev=False,
         description="Raven: " + ("explicit Heavy admission; waiting stays lightweight." if heavy else "bounded Light monitoring; opening never requests compute."))
     parser.add_argument("--site", help="Named configured profile; desktop must be explicit")
     parser.add_argument("--profile", help="Legacy named Raven profile (read-only compatibility)")
@@ -133,6 +133,14 @@ def _help(parser):
 
 def _main(argv=None, *, heavy=False):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from .launch import dispatch as dispatch_workload
+    try:
+        workload = dispatch_workload(argv)
+        if workload is not None:
+            return workload
+    except (OSError, ValueError, RuntimeError) as exc:
+        print("Raven: " + str(exc), file=sys.stderr)
+        return 2
     parser = _parser(heavy)
     passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run"}
     # Global options stop at the subcommand. A nested --help/--config belongs

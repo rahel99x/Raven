@@ -107,7 +107,7 @@ def clear(app):
     app.say("Selections cleared; click a job or line to select again")
 
 
-def context_click(app, y, x, button="left"):
+def context_click(app, y, x, button="left", shift=False):
     """A graph or History export owns right-click; all other pages clear."""
     if button != "right":
         return False
@@ -117,6 +117,9 @@ def context_click(app, y, x, button="left"):
             and 0 <= y < getattr(app, "height", 100000)):
         return False
     mode = getattr(app, "mode", "main")
+    chart_options = {"button": button}
+    if shift:
+        chart_options["shift"] = True
     if mode in ("log_tools_page", "log_tools_results", "log_tools_marks"):
         # The modal keeps its own source and control ownership. Its clear must
         # precede the global toolbar so even a top-row right-click is inert.
@@ -124,7 +127,7 @@ def context_click(app, y, x, button="left"):
         return handle_mouse(app, y, x, button=button)
     if mode in ("help", "details", "analysis"):
         from . import chart_interaction
-        if mode == "analysis" and chart_interaction.handle_mouse(app, y, x, button=button):
+        if mode == "analysis" and chart_interaction.handle_mouse(app, y, x, **chart_options):
             return True
         clear_lines(app)
         chart_interaction.cancel(app)
@@ -138,7 +141,7 @@ def context_click(app, y, x, button="left"):
         return False
     tab = getattr(app, "tab", "")
     from .chart_interaction import handle_mouse as chart_mouse
-    if chart_mouse(app, y, x, button=button):
+    if chart_mouse(app, y, x, **chart_options):
         return True
     if tab == "history":
         rect = getattr(app, "history_jobs_rect", None)

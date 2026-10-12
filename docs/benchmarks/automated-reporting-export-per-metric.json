@@ -1,0 +1,31 @@
+{
+  "schema": "raven.export-benchmark/v1",
+  "python": "3.12.14",
+  "exporter_sha256": "1da07acdda3caa59947f9ff1a15e2695b3b44e27b104ba8ca3dea4ffb2c3d217",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "measurements": [
+    {
+      "input_rows": 1000,
+      "metrics_per_record": 32,
+      "layout": "metric",
+      "source_bytes": 1162612,
+      "plan_seconds": 0.02233110900124302,
+      "elapsed_seconds": 6.151330602006055,
+      "observations_per_second": 5202.126510573866,
+      "tracemalloc_peak_bytes": 2272052,
+      "process_max_rss_platform_units": 16256,
+      "cancellation_seconds_after_observed_request": 0.0008357199985766783,
+      "cancellation_total_seconds": 0.006573801001650281,
+      "cancellation_checks": 20,
+      "csv_rows_verified": 32000,
+      "files_verified": 33,
+      "export_bytes": 11746941
+    }
+  ],
+  "notes": [
+    "Synthetic application records; no Slurm or GPU measurements.",
+    "Tracemalloc includes planning/export, excludes input generation and validation.",
+    "Max RSS includes the entire fresh child; its units depend on the platform.",
+    "Measurements describe this machine and filesystem only."
+  ]
+}

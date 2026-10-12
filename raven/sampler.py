@@ -55,6 +55,8 @@ class Sampler(threading.Thread):
         self.want_fin: Optional[str] = None                # a finished job whose steps the details overlay wants
         self.want_trace: Optional[str] = None              # a job (running or finished) whose GPU trace the analytics view wants
         self.trace_status: Dict[str, dict] = {}
+        self.telemetry_binding = None
+        self.retained_telemetry = {}
         # Positive allocation evidence omitted by %b, never persisted. Access
         # and queue reapplication share Store.lock with sampler publication.
         self._gpu_allocation_cache: Dict[str, dict] = {}
@@ -200,7 +202,8 @@ class Sampler(threading.Thread):
             return (self.collection["live_statistics"] != "off" and bool(selected or self._metric_requests)
                     and (tab == "analytics" or "live" in demand["sources"]))
         if name == "trace":
-            return (self.collection["gpu"] != "off" and bool(selected or self.want_trace)
+            retained = self.telemetry_binding and self.telemetry_binding.get("job_id") in (selected, self.want_trace)
+            return ((self.collection["gpu"] != "off" or retained) and bool(selected or self.want_trace)
                     and (tab in ("analytics", "research") or "trace" in demand["sources"]))
         if name == "details":
             return bool(self.want_detail)
@@ -958,6 +961,25 @@ class Sampler(threading.Thread):
         with self.store.lock:
             self.store.budget = info
 
+    @staticmethod
+    def _telemetry_identity(binding):
+        binding = binding or {}
+        launch = binding.get("launch", {})
+        launch = launch if isinstance(launch, dict) else {}
+        return tuple(binding.get(key) for key in ("project_id", "experiment_id", "run_root", "run_id", "attempt", "job_id", "remote_identity")) + tuple(launch.get(key) for key in ("cluster", "restart_count", "submission_token"))
+
+    def bind_telemetry(self, binding):
+        """Publish one exact project binding; all disk reads remain in src_trace."""
+        binding = deepcopy(binding) if binding else None
+        with self.store.lock:
+            prior = self.telemetry_binding
+            if self._telemetry_identity(prior) != self._telemetry_identity(binding):
+                self.retained_telemetry = {}
+                if prior and prior.get("job_id"):
+                    self.store.trace.pop(prior["job_id"], None)
+                self.kick.set()
+            self.telemetry_binding = binding
+
     def trace_path(self, jid: str) -> str:
         """Find the exact live, completed or departed job's trace without inspection."""
         import os
@@ -987,9 +1009,21 @@ class Sampler(threading.Thread):
         with self.store.lock:
             contexts = {jid: self._trace_context_locked(jid) for jid in selected}
         traces, failures = {}, []
-        statuses = {}
+        statuses, retained_reads = {}, {}
         for jid in selected:
             try:
+                binding = self.telemetry_binding
+                if binding and binding.get("job_id") == jid:
+                    from .projects import read_bound_telemetry
+                    from .retained_telemetry import display_gpu_rows
+                    retained = read_bound_telemetry(binding, files=self.files)
+                    retained_reads[jid] = retained
+                    traces[jid] = display_gpu_rows(retained["gpu"])
+                    source = next((item for item in retained["index"]["sources"] if item["family"] == "gpu"), {})
+                    status = {"path": binding["telemetry_index"], "state": "ready" if traces[jid] else "empty",
+                              "reason": source.get("reason", "GPU recording was not requested for this run."), "rows": len(traces[jid])}
+                    statuses[jid] = status
+                    continue
                 path = self.trace_path(jid)
                 status = {"path": path, "state": "missing_workdir", "reason": "The exact job has no valid absolute WorkDir.", "rows": 0}
                 statuses[jid] = status
@@ -1004,7 +1038,8 @@ class Sampler(threading.Thread):
                     status.update(state="ready", reason="", rows=len(rows))
                 else:
                     status.update(state="empty", reason="The trace is empty or contains no valid NVIDIA timestamp/index rows.")
-            except (OSError, CommandError) as exc:
+            except (OSError, CommandError, ValueError) as exc:
+                status = statuses.setdefault(jid, {})
                 status.update(state="error", reason=str(exc)[:400])
                 failures.append(f"job {jid}: {status['reason']}")
             finally:
@@ -1014,6 +1049,8 @@ class Sampler(threading.Thread):
             retained = {jid: status for jid, status in self.trace_status.items() if jid in want}
             retained.update({jid: status for jid, status in statuses.items() if jid in valid})
             self.trace_status = retained
+            self.retained_telemetry = {jid: value for jid, value in self.retained_telemetry.items() if jid in want and jid not in valid}
+            self.retained_telemetry.update({jid: value for jid, value in retained_reads.items() if jid in valid})
             for jid, rows in traces.items():
                 if jid in valid:
                     self.store.trace[jid] = rows
@@ -1027,7 +1064,8 @@ class Sampler(threading.Thread):
     def _trace_context_locked(self, jid):
         record, _ = self.store.record_context(jid)
         return (self.store.job_attempt(jid), type(record), self._metric_attempt(record),
-                getattr(record, "state", None), self.trace_path(jid))
+                getattr(record, "state", None), self.trace_path(jid),
+                self._telemetry_identity(self.telemetry_binding))
 
     def src_fin_details(self):
         jid = self.want_fin

@@ -83,7 +83,7 @@ def source(identity):
     if not isinstance(name, str):
         return None
     if scope in ("resource-series", "resource-area"):
-        if name.startswith("gpu-trace:"):
+        if name.startswith("gpu-trace:") or name in ("retained-cpu-seconds", "retained-rss"):
             return "trace"
         if name.startswith("gpu:"):
             return "gpu"

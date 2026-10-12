@@ -254,7 +254,7 @@ class MetricReader:
         Both metadata and incremental reads use one anchored regular descriptor.
         Replacing any project/run parent with a symlink cannot redirect a read.
         """
-        from .projects import bound_run_root, bound_relative
+        from .projects import bound_run_root, bound_metric_source
         path = os.fspath(path)
         if not isinstance(path, str) or not path:
             raise ValueError("metric path must be a nonempty text path")
@@ -289,9 +289,9 @@ class MetricReader:
                 except OSError as exc:
                     self._error(stream, f"cannot read metrics: {exc}")
                     return self._snapshot(path, stream, "missing" if isinstance(exc, FileNotFoundError) else "error")
-            with bound_run_root(binding) as (_, root_fd, current):
-                relative = bound_relative(binding, path, current, key="metrics")
-                return self._read_stream(path, stream, root_fd=root_fd, relative=relative)
+            with bound_run_root(binding) as (project_fd, root_fd, current):
+                source_fd, relative = bound_metric_source(binding, path, current, project_fd, root_fd)
+                return self._read_stream(path, stream, root_fd=source_fd, relative=relative)
 
     @contextmanager
     def _source(self, path, *, root_fd=None, relative=None):

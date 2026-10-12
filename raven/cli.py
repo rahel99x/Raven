@@ -58,6 +58,8 @@ class Session:
         cancel_trace(self.app, clear=True)
         from .history_log_export import cancel as cancel_log_export
         cancel_log_export(self.app, close=True)
+        from .data_export_ui import cancel as cancel_data_export
+        cancel_data_export(self.app, close=True)
         from .execution_ui import close
         close(self.app)
         from .shell_checks_ui import close as close_shell_checks
@@ -659,6 +661,14 @@ def gpu_check(args, cfg):
 
 
 def main(argv=None, *, raven=None, raven_allocation=None):
+    from .launch import dispatch as dispatch_workload
+    try:
+        workload = dispatch_workload(list(sys.argv[1:] if argv is None else argv), resolved=raven)
+        if workload is not None:
+            return workload
+    except (OSError, ValueError, RuntimeError) as exc:
+        print("Raven: " + str(exc), file=sys.stderr)
+        return 2
     if raven is None:
         return _dispatch_main(argv)
     from .raven_execution import configure_process, process_router, reset_process, cli_admission, needs_job_local
@@ -699,6 +709,10 @@ def main(argv=None, *, raven=None, raven_allocation=None):
 
 def _dispatch_main(argv=None, *, raven=None, raven_allocation=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    from .launch import dispatch as dispatch_workload
+    workload = dispatch_workload(argv, resolved=raven)
+    if workload is not None:
+        return workload
     if argv and argv[0] == "terminal":
         if argv[1:2] == ["selftest"]:
             from .terminal_diagnostics import cli as terminal_selftest

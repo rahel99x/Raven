@@ -680,6 +680,10 @@ class App:
         if export_active(self):
             export_key(self, key)
             return
+        from .data_export_ui import active as data_export_active, handle_key as data_export_key
+        if data_export_active(self):
+            data_export_key(self, key)
+            return
         binding_test = self.mode == "bindings_editor" and self.navigation_tools_state.get("test")
         if key == "ctrl-c" and self.mode != "terminal_probe" and not binding_test and key not in self.keymap:
             self.quit = True
@@ -1977,7 +1981,7 @@ class App:
         if button == "right":
             from .text_selection import clear as clear_text
             clear_text(self)
-        if context_click(self, y, x, button=button):
+        if context_click(self, y, x, button=button, shift=shift):
             return
         if button in ("press", "left"):
             # A fresh gesture commits the previous marked range even when its

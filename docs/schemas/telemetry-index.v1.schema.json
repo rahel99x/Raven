@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven retained telemetry index v1",
+  "description": "Canonical optional runs/<run_id>/telemetry/index.json, published atomically by the job coordinator. Complete means complete for the stated observed scope, never entire-node or whole-job accounting.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run_id",
+    "node",
+    "created_at",
+    "updated_at",
+    "sources"
+  ],
+  "properties": {
+    "schema": {
+      "const": "raven.telemetry-index/v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "node": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "number",
+      "minimum": 0
+    },
+    "updated_at": {
+      "type": "number",
+      "minimum": 0
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": [
+          "family",
+          "path",
+          "schema",
+          "status",
+          "reason",
+          "coverage",
+          "metrics",
+          "devices"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "enum": [
+              "gpu",
+              "cpu-memory"
+            ]
+          },
+          "path": {
+            "enum": [
+              "telemetry/gpu.jsonl",
+              "telemetry/cpu-memory.jsonl"
+            ]
+          },
+          "schema": {
+            "enum": [
+              "raven.gpu-sample/v1",
+              "raven.cpu-memory-sample/v1"
+            ]
+          },
+          "status": {
+            "enum": [
+              "recording",
+              "complete",
+              "partial",
+              "unavailable",
+              "failed"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "coverage": {
+            "type": "object",
+            "required": [
+              "node",
+              "expected_nodes",
+              "observed_nodes",
+              "scope",
+              "samples",
+              "missed_samples",
+              "errors",
+              "started_at",
+              "ended_at",
+              "storage_limit_bytes",
+              "bytes",
+              "interval_seconds",
+              "first_timestamp",
+              "last_timestamp"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "node": {
+                "type": "string"
+              },
+              "expected_nodes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "observed_nodes": {
+                "type": "array",
+                "maxItems": 256,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "scope": {
+                "type": "string"
+              },
+              "samples": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "missed_samples": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "errors": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "started_at": {
+                "type": "number",
+                "minimum": 0
+              },
+              "ended_at": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "storage_limit_bytes": {
+                "type": "integer",
+                "minimum": 4096,
+                "maximum": 268435456
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "interval_seconds": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 300
+              },
+              "first_timestamp": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "last_timestamp": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "limitation": {
+                "type": "string"
+              },
+              "partial_samples": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "counter_gaps": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": "string"
+            }
+          },
+          "devices": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "type": "object",
+              "required": [
+                "node",
+                "provider",
+                "device_uuid",
+                "device_index",
+                "device_bdf",
+                "partition"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "node": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "device_uuid": {
+                  "type": "string"
+                },
+                "device_index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "device_bdf": {
+                  "type": "string"
+                },
+                "partition": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "family": {
+                  "const": "gpu"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "path": {
+                  "const": "telemetry/gpu.jsonl"
+                },
+                "schema": {
+                  "const": "raven.gpu-sample/v1"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "family": {
+                  "const": "cpu-memory"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "path": {
+                  "const": "telemetry/cpu-memory.jsonl"
+                },
+                "schema": {
+                  "const": "raven.cpu-memory-sample/v1"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven retained-data export manifest v1",
+  "description": "Retained original observations; no averaging or inferred metrics. Completeness is independent of application/scheduler outcome. Payload files exclude manifest.json and COMPLETE.json; completion marker hashes manifest.",
+  "type": "object",
+  "required": [
+    "schema",
+    "export_id",
+    "plan_digest",
+    "request",
+    "attempts",
+    "sources",
+    "files",
+    "families",
+    "status",
+    "issues",
+    "transformations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "raven.export-manifest/v1"
+    },
+    "export_id": {
+      "type": "string"
+    },
+    "plan_digest": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "raven_version": {
+      "type": "string"
+    },
+    "request": {
+      "$ref": "export-request.v1.schema.json"
+    },
+    "attempts": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "required": [
+          "project",
+          "run_id",
+          "host"
+        ],
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          },
+          "host": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "required": [
+          "family",
+          "id",
+          "path",
+          "status"
+        ],
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "watermark": {
+            "type": "object",
+            "required": [
+              "device",
+              "inode",
+              "size",
+              "mtime_ns",
+              "ctime_ns"
+            ]
+          },
+          "counts": {
+            "type": "object"
+          },
+          "coverage": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "bytes",
+          "records",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "records": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "columns": {
+            "type": "array",
+            "maxItems": 4096,
+            "items": {
+              "type": "string"
+            }
+          },
+          "family": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "families": {
+      "type": "object"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial"
+      ]
+    },
+    "issues": {
+      "type": "array",
+      "maxItems": 513,
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "transformations": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "column_contract": {
+      "const": "raven.export-columns/v1"
+    },
+    "units": {
+      "type": "object"
+    },
+    "source_consistency": {
+      "type": "string"
+    },
+    "publication": {
+      "type": "string"
+    }
+  }
+}

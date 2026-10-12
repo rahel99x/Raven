@@ -10,6 +10,13 @@ trace files, and retained data.
 
 ## Managed Raven collection
 
+For new jobs, `raven launch batch.sh --gpu` can create a retained, job-owned
+recording inside its verified allocation. This recorder is independent of the
+dashboard and exposes device and node coverage; see
+[automated reporting](automated-reporting-exports.md#5-understand-readiness-and-recording-scope).
+The dashboard polling policy described below remains separate. Selecting a
+finished job cannot create measurements that were never recorded.
+
 The installed `raven`, `ravenl`, and `ravenh` commands use managed collection.
 With `collection.gpu = "existing-telemetry"`, GPU rate graphs read the selected
 job's existing `<WorkDir>/logs/gpu-util-<jobid>.csv` NVIDIA trace. The job must

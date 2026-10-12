@@ -1,5 +1,12 @@
 # Automate Research reporting from Bash
 
+For an existing script, the simpler [launch and export
+workflow](automated-reporting-exports.md) supplies lifecycle records and a
+packaged helper automatically. Use this guide when the application or site
+launcher needs to call the individual reporting operations itself. The new
+`raven launch` route preserves submission WorkDir; `raven report submit` below
+retains its explicit project-root WorkDir contract.
+
 This guide covers the installed CLI for **Slurm job reporting**. For a portable
 launcher that works with both standalone Linux and Slurm without installing
 Raven into the application environment, start with

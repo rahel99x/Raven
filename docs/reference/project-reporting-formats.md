@@ -12,6 +12,10 @@ files for a wrapped command.
 1.** Keep the literal `raven.run/v1`, `raven.summary/v1`, and other version
 markers shown here. An invented `/v2` marker will not select a new reader.
 
+The [automated launch and export guide](../guides/automated-reporting-exports.md)
+adds job-owned retained telemetry and versioned plotting-ready exports. These
+are additive formats; the application reporting contracts below remain valid.
+
 ## Choose the file for the measurement
 
 In this reference, `PROJECT` is the project root and
@@ -25,6 +29,7 @@ In this reference, `PROJECT` is the project root and
 | Application and rank log locations | `RUN/logs.json` | Logs and Research Evidence |
 | Expected outputs and their structural checks | `PROJECT/.raven/contracts/outputs.v1.json` | Research Artifacts and output browser |
 | Existing NVIDIA device utilization and memory trace | `<Slurm WorkDir>/logs/gpu-util-<job_id>.csv` | Selected job's GPU Series graph |
+| Job-owned retained GPU and process CPU/memory observations | `RUN/telemetry/index.json` and declared versioned JSONL streams | Exact-attempt Analytics and plotting-ready export |
 | Selected historical attempts and planning evidence | `RUN/reports/planning.json`, or a declared per-view source | Six Research planning views |
 | An advanced scientific, profiler, energy, or workflow measurement | An explicitly selected operation source | Corresponding Research operation |
 
@@ -694,6 +699,47 @@ that use Raven's current scheduler observations or native action records.
 Those records are not additional application metric files to fabricate.
 Native passports must be created by Raven's provenance API or preparation
 workflow; copying `run.json` into a passport directory does not create one.
+
+## 10. Retained launch telemetry and export bundles
+
+`raven launch` manages these additive files; applications normally do not need
+to write them. Its [workflow guide](../guides/automated-reporting-exports.md)
+explains collection choices and the plotting-ready output columns.
+
+| Contract | Required interpretation |
+| --- | --- |
+| [`raven.telemetry-index/v1`](../schemas/telemetry-index.v1.schema.json) | `run_id` binds the exact attempt. Each source declares its `family`, relative `path`, row `schema`, `status`, `reason`, `coverage`, known `metrics`, and `devices`. |
+| [`raven.gpu-sample/v1`](../schemas/gpu-sample.v1.schema.json) | Complete JSONL records with sequence, run/node/device identity, collector UTC timestamp, monotonic elapsed time, supported utilization/memory counters, units in field names, scope, and quality. |
+| [`raven.cpu-memory-sample/v1`](../schemas/cpu-memory-sample.v1.schema.json) | Complete JSONL records with the same clock/identity conventions and local process observations: `cpu_seconds`, `rss_bytes`, `process_count`, `cpu_scope`, and `memory_scope`. |
+| `raven.export-manifest/v1` | Immutable export selection, attempt identities, per-source byte cutoffs, coverage/outcomes, transformations, and output paths/counts/checksums. |
+
+The index lives at `RUN/telemetry/index.json`; its streams are
+`telemetry/gpu.jsonl` and `telemetry/cpu-memory.jsonl`. `timestamp` is Unix epoch
+seconds and `timestamp_utc` is its explicit UTC spelling. `source_time` remains
+`null` when the vendor or procfs supplies no clock. Collector timestamps do not
+establish simultaneous cross-node measurements. `elapsed_seconds` is monotonic
+duration from recording start. A sequence is local to its producer stream.
+
+GPU identity uses node/provider/UUID and the known device index or partition.
+Never merge unrelated physical devices merely because both have index zero.
+`utilization_percent` is 0–100; `memory_used_mib` and `memory_total_mib` use MiB.
+Unsupported counters remain `null` in retained JSONL and empty in exported CSV.
+Device-wide utilization does not establish exclusive per-process accounting.
+
+CPU time is the sum of currently observed local child-process counters; exited
+processes can disappear between samples. It is not a cumulative whole-job
+accounting total. Summed RSS can double-count shared pages and excludes unseen
+remote ranks. Read `scope`, `cpu_scope`, `memory_scope`, and coverage before
+comparing it with Slurm allocation or peak-RSS summaries.
+
+The exporter emits long-form application metrics, fixed-schema GPU/CPU tables,
+native summaries/reports/traces, and explicitly requested declared logs or
+artifacts. Its schemas are [request](../schemas/export-request.v1.schema.json),
+[plan](../schemas/export-plan.v1.schema.json),
+[manifest](../schemas/export-manifest.v1.schema.json), and
+[receipt](../schemas/export-receipt.v1.schema.json). None replaces the run or
+application-metric contracts above. Exporting preserves missing observations,
+source order, scientific units, and available timestamp precision.
 
 ## Validate an integration
 

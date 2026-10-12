@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven retained cpu-memory observation v1",
+  "description": "One complete UTF-8 JSONL record. Missing counters stay null. Each node/producer owns its stream; cross-node clocks may be skewed.",
+  "type": "object",
+  "required": [
+    "schema",
+    "sequence",
+    "run_id",
+    "timestamp",
+    "timestamp_utc",
+    "source_time",
+    "clock",
+    "elapsed_seconds",
+    "node",
+    "scope",
+    "status",
+    "reason",
+    "quality",
+    "interval_seconds",
+    "source",
+    "cpu_seconds",
+    "rss_bytes",
+    "process_count",
+    "cpu_scope",
+    "memory_scope"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.cpu-memory-sample/v1"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "timestamp": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Collector Unix epoch seconds at observation completion; not a vendor source clock."
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_time": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ],
+      "description": "Original source clock when emitted; null for current vendor/procfs adapters."
+    },
+    "clock": {
+      "type": "string"
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Monotonic seconds since the recorder started on this node."
+    },
+    "node": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "recorded",
+        "partial"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "quality": {
+      "const": "sampled"
+    },
+    "interval_seconds": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 300
+    },
+    "source": {
+      "type": "string"
+    },
+    "cpu_seconds": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Sum of CPU seconds for currently observed processes; departed processes are excluded, so this can decrease."
+    },
+    "rss_bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Sum of observed RSS; shared pages may be counted repeatedly. This is not measured job peak memory."
+    },
+    "process_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4096
+    },
+    "cpu_scope": {
+      "type": "string"
+    },
+    "memory_scope": {
+      "type": "string"
+    }
+  }
+}

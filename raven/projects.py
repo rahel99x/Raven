@@ -443,6 +443,12 @@ def bound_run_root(binding):
             observed = launch.get(field) if isinstance(launch, dict) else None
             if expected != observed:
                 raise ValueError("run launch identity changed; waiting for automatic rebinding")
+        if binding.get("automation_identity"):
+            automation = current.get("metadata", {}).get("automation", {})
+            plan = automation.get("plan", {}) if isinstance(automation, dict) else {}
+            token = plan.get("token") if isinstance(plan, dict) else None
+            if token != binding["automation_identity"].get("token"):
+                raise ValueError("automatic run identity changed; waiting for rebinding")
         yield project_fd, run_fd, current
     finally:
         if run_fd is not None:
@@ -501,14 +507,75 @@ def read_bound_json(binding, path, *, key=None, max_bytes=1048576, files=None):
         return value
 
 
+def read_bound_telemetry(binding, *, files=None, max_bytes=8 * 1024 * 1024):
+    """Read a bounded telemetry tail through the existing exact-attempt boundary."""
+    if getattr(files, "remote", False):
+        from .project_remote import request
+        return request(files, "read_bound_telemetry", binding, max_bytes=max_bytes)
+    from .retained_telemetry_io import MAX_INDEX_BYTES, MAX_READ_BYTES, parse_rows, validate_index
+    if type(max_bytes) is not int or not 1 <= max_bytes <= MAX_READ_BYTES:
+        raise ValueError("invalid retained telemetry read budget")
+    with bound_run_root(binding) as (_, run_fd, current):
+        data, _ = _read(run_fd, "telemetry/index.json", MAX_INDEX_BYTES)
+        index = validate_index(_json(data), binding["run_id"])
+        result = {"index": index, "gpu": [], "cpu-memory": [], "warnings": []}
+        for source in index["sources"]:
+            try:
+                fd, parent, name = _open_local(run_fd, source["path"])
+                try:
+                    before = os.fstat(fd)
+                    if not stat.S_ISREG(before.st_mode):
+                        raise ValueError("telemetry source is not a regular file")
+                    start = max(0, before.st_size - max_bytes)
+                    os.lseek(fd, start, os.SEEK_SET)
+                    chunks, left = [], before.st_size - start
+                    while left:
+                        chunk = os.read(fd, min(left, 65536))
+                        if not chunk:
+                            raise ValueError("telemetry stream shrank during its read")
+                        chunks.append(chunk)
+                        left -= len(chunk)
+                    named = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                    if (before.st_dev, before.st_ino) != (named.st_dev, named.st_ino) or named.st_size < before.st_size:
+                        raise ValueError("telemetry stream identity changed during its read")
+                    raw = b"".join(chunks)
+                    if start:
+                        raw = raw.partition(b"\n")[2]
+                        result["warnings"].append(source["family"] + ": dashboard shows a bounded tail; Export data uses the retained stream")
+                    result[source["family"]] = parse_rows(raw, source, binding["run_id"])
+                finally:
+                    os.close(fd)
+                    os.close(parent)
+            except FileNotFoundError:
+                if source.get("status") not in ("unavailable", "failed"):
+                    result["warnings"].append(source["family"] + ": retained stream is missing")
+        return result
+
+
+def bound_metric_source(binding, path, current, project_fd, run_fd):
+    """Resolve one declared native producer with the same no-symlink boundary."""
+    if binding.get("metrics_scope") != "project-declared":
+        return run_fd, bound_relative(binding, path, current, key="metrics")
+    declaration = current.get("metadata", {}).get("automation", {}).get("metric_binding")
+    if not isinstance(declaration, dict) or declaration != binding.get("metric_binding"):
+        raise ValueError("application metric declaration changed; refresh the exact run")
+    if declaration.get("format") != "raven.metrics/v1" or declaration.get("path") != path:
+        raise ValueError("application metric path or format changed")
+    if not isinstance(path, str) or not os.path.isabs(path) or os.path.normpath(path) != path:
+        raise ValueError("application metrics require a normalized absolute project path")
+    relative = os.path.relpath(path, binding["project_root"]).replace(os.sep, "/")
+    relative_path(relative)
+    return project_fd, relative
+
+
 def read_bound_metric_chunk(binding, path, offset, ident, max_bytes):
     """One SSH round trip supplies an identity-checked incremental byte window."""
     import base64
     if type(offset) is not int or offset < 0 or type(max_bytes) is not int or not 1 <= max_bytes <= 64 * 1024 * 1024:
         raise ValueError("invalid bounded metric read window")
-    with bound_run_root(binding) as (_, run_fd, current):
-        relative = bound_relative(binding, path, current, key="metrics")
-        fd, parent, name = _open_local(run_fd, relative)
+    with bound_run_root(binding) as (project_fd, run_fd, current):
+        source_fd, relative = bound_metric_source(binding, path, current, project_fd, run_fd)
+        fd, parent, name = _open_local(source_fd, relative)
         try:
             before = os.fstat(fd)
             identity = [before.st_dev, before.st_ino]
@@ -659,8 +726,27 @@ def select_run(path, run_id, *, files=None):
         if inventory.get("provenance", {}).get("script_sha256"):
             scientific["script_sha256"] = inventory["provenance"]["script_sha256"]
         binding["scientific_query"] = scientific
+        automation = inventory.get("metadata", {}).get("automation", {})
+        if isinstance(automation, dict) and isinstance(automation.get("plan"), dict) and automation["plan"].get("token"):
+            binding["automation_identity"] = {"token": automation["plan"]["token"],
+                "script_sha256": inventory.get("provenance", {}).get("script_sha256"),
+                "filesystem_id": automation.get("filesystem_id"), "filesystem_host": automation.get("filesystem_host")}
         result = {"status": "ready", "run": run, "binding": binding, "logs": [], "warnings": []}
         paths = inventory.get("paths", {})
+        # Canonical additive telemetry contracts are optional for legacy runs.
+        try:
+            from .retained_telemetry_io import MAX_INDEX_BYTES, validate_index
+            data, _ = _read(run_fd, "telemetry/index.json", MAX_INDEX_BYTES)
+            telemetry = validate_index(_json(data), run_id)
+            binding["telemetry_index"] = os.path.join(run_root, "telemetry/index.json")
+            binding["telemetry_sources"] = telemetry["sources"]
+            for source in telemetry["sources"]:
+                if source.get("status") in ("partial", "failed", "unavailable"):
+                    result["warnings"].append(source["family"] + " telemetry: " + str(source.get("reason") or source["status"]))
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError) as exc:
+            result["warnings"].append("telemetry: binding refused (" + str(exc) + ")")
         planning_missing = "planning" not in paths
         for key, target in (("metrics", "metrics_file"), ("log_index", "log_manifest"), ("stdout", "stdout"), ("stderr", "stderr"),
                             ("planning", "planning_file"), ("submit", "submit_file"), ("array_manifest", "array_manifest")):
@@ -675,6 +761,20 @@ def select_run(path, run_id, *, files=None):
                     result["warnings"].append(f"{key}: {state}")
             except (OSError, ValueError) as exc:
                 result["warnings"].append(f"{key}: binding refused ({exc})")
+        automation = inventory.get("metadata", {}).get("automation", {})
+        declaration = automation.get("metric_binding") if isinstance(automation, dict) else None
+        if declaration is not None:
+            binding.update(metrics_scope="project-declared", metric_binding=declaration, metrics_file="")
+            try:
+                metric_path = declaration.get("path") if isinstance(declaration, dict) else None
+                _, relative = bound_metric_source(binding, metric_path, inventory, root_fd, run_fd)
+                absolute, state = _declared_path(root_fd, root, relative)
+                binding["metrics_file"] = absolute
+                if state != "ready":
+                    result["warnings"].append("application metrics: " + state)
+                result["warnings"].append("Application metrics are explicitly declared by this launch; the producer must keep separate attempt files.")
+            except (OSError, ValueError, TypeError) as exc:
+                result["warnings"].append("application metrics: binding refused (" + str(exc) + ")")
         if planning_missing:
             try:
                 shared = _project_planning(root_fd, binding)

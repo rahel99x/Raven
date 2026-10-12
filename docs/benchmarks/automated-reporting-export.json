@@ -1,0 +1,48 @@
+{
+  "schema": "raven.export-benchmark/v1",
+  "python": "3.12.14",
+  "exporter_sha256": "1da07acdda3caa59947f9ff1a15e2695b3b44e27b104ba8ca3dea4ffb2c3d217",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "measurements": [
+    {
+      "input_rows": 1000,
+      "metrics_per_record": 2,
+      "layout": "category",
+      "source_bytes": 130525,
+      "plan_seconds": 0.03755811000155518,
+      "elapsed_seconds": 0.18213740200008033,
+      "observations_per_second": 10980.721027299587,
+      "tracemalloc_peak_bytes": 1212488,
+      "process_max_rss_platform_units": 15488,
+      "cancellation_seconds_after_observed_request": 0.00012375900405459106,
+      "cancellation_total_seconds": 0.008367561997147277,
+      "cancellation_checks": 20,
+      "csv_rows_verified": 2000,
+      "files_verified": 2,
+      "export_bytes": 735032
+    },
+    {
+      "input_rows": 100000,
+      "metrics_per_record": 2,
+      "layout": "category",
+      "source_bytes": 13246093,
+      "plan_seconds": 0.038498087000334635,
+      "elapsed_seconds": 14.076573887999984,
+      "observations_per_second": 14208.002713678521,
+      "tracemalloc_peak_bytes": 1211263,
+      "process_max_rss_platform_units": 15488,
+      "cancellation_seconds_after_observed_request": 0.00012950899690622464,
+      "cancellation_total_seconds": 0.008380963001400232,
+      "cancellation_checks": 20,
+      "csv_rows_verified": 200000,
+      "files_verified": 2,
+      "export_bytes": 73612850
+    }
+  ],
+  "notes": [
+    "Synthetic application records; no Slurm or GPU measurements.",
+    "Tracemalloc includes planning/export, excludes input generation and validation.",
+    "Max RSS includes the entire fresh child; its units depend on the platform.",
+    "Measurements describe this machine and filesystem only."
+  ]
+}
