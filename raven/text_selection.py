@@ -77,12 +77,17 @@ def initialize(app):
 def _context(app):
     panels = getattr(app, "job_panel_state", {})
     project = getattr(app, "project_state", {})
-    return (getattr(app, "mode", "main"), getattr(app, "tab", ""),
+    mode, tab = getattr(app, "mode", "main"), getattr(app, "tab", "")
+    # Automatic project discovery can finish during a Cluster copy gesture.
+    # Its scheduler counters do not change source when that unrelated root is
+    # published. Project-dependent pages and modals retain the root guard.
+    project_root = None if (mode, tab) == ("main", "cluster") else project.get("root")
+    return (mode, tab,
             getattr(app, "analytics_view", None), getattr(app, "research_view", None),
             getattr(app, "nodes_view", None), getattr(app, "analytics_job", None),
             getattr(app, "research_job_id", None), getattr(app, "selected_id", None),
             panels.get("mode"), panels.get("view"), panels.get("analytics_view"),
-            panels.get("research_view"), project.get("root"))
+            panels.get("research_view"), project_root)
 
 
 def _token(app):

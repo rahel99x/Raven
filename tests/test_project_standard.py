@@ -496,8 +496,8 @@ def test_producer_bundle_is_readable_offline_without_scheduler(project, monkeypa
     producer.export_planning(root, ["runs/offline"], reference_run="runs/offline")
     monkeypatch.setattr(cli, "build", lambda *a, **k: pytest.fail("offline read constructed scheduler"))
     monkeypatch.setattr(cli, "make_backend", lambda *a, **k: pytest.fail("offline read constructed scheduler"))
-    config = root / "private-test-config.toml"
-    config.write_text("")
+    config = root / "private-test-config.json"
+    config.write_text("{}")
     assert cli.main(["--config", str(config), "--no-state", "--no-plugins", "run", "predict",
                      "--file", str(root / "reports" / "planning.json")]) == 0
     payload = json.loads(capsys.readouterr().out)

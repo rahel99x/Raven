@@ -61,9 +61,12 @@ def test_outer_curses_terminal_keeps_shortcuts_and_fragmented_mouse_in_their_own
 
     def until(predicate, label):
         while time.monotonic() < deadline:
+            # Observe liveness before the predicate: an expected clean exit
+            # between two polls must not be reported as an unexpected exit.
+            returncode = process.poll()
             if predicate():
                 return
-            assert process.poll() is None, (label, process.returncode, rendered(), output[-3000:])
+            assert returncode is None, (label, returncode, rendered(), output[-3000:])
             pump()
         pytest.fail(label + " timed out\n" + rendered() + "\n" + repr(output[-3000:]))
 

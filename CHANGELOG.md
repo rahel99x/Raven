@@ -15,7 +15,9 @@
   dependency launch evidence after Slurm clears fulfilled dependencies.
 - Derive recognizable group labels from shared job-name prefixes using a
   bounded linear scan; preserve custom names and stable group identities.
-
+- Preserve nanosecond log timestamp alignment on Python 3.10 as well as newer
+  Python versions.
+- Keep Cluster text selections valid when background project discovery finishes.
 - Add project reporting V2: a portable application launcher, Linux/CARC/HPC3
   recipes with lab allocation guidance, exact file-format examples, and a
   complete Research/Analytics metric and source reference. Retain V1 file

@@ -49,6 +49,18 @@ def test_alignment_retains_nanosecond_precision():
     assert P.aligned(left, right)[0] == [(0, None), (None, 0)]
 
 
+@pytest.mark.parametrize("fraction", ["123456789"[:length] for length in range(1, 10)])
+@pytest.mark.parametrize("second,zone,basis", [
+    ("1970-01-01T00:00:00", "", "naive"),
+    ("1970-01-01T00:00:00", "Z", "zoned"),
+    ("1970-01-01T07:30:00", "+07:30", "zoned"),
+    ("1970-01-01T07:30:00", "+0730", "zoned"),
+    ("1969-12-31T20:30:00", "-0330", "zoned"),
+])
+def test_timestamp_preserves_each_fractional_digit_and_offset(second, zone, basis, fraction):
+    assert P.timestamp(f"{second}.{fraction}{zone} log") == (int(fraction.ljust(9, "0")), basis)
+
+
 @pytest.mark.parametrize("left,right,warning", [
     (["message"], ["2026-10-05T12:00:00Z x"], "missing"),
     (["2026-10-05T12:00:00 x"], ["2026-10-05T12:00:00Z x"], "mixed"),

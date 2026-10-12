@@ -210,7 +210,7 @@ while True:
         process.send_signal(signal.SIGTERM)
         stdout, stderr = process.communicate(timeout=5)
         assert process.returncode == 23, stderr
-        assert (root / "cleaned").read_text() == str(signal.SIGTERM)
+        assert (root / "cleaned").read_text() == str(int(signal.SIGTERM))
         summary = read(Path(stdout.strip()) / "summary.json")
         assert summary["state"] == "INTERRUPTED" and summary["exit_code"] == 23
     finally:

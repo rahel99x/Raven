@@ -231,13 +231,17 @@ def test_broker_coalesces_isolates_results_and_cancel_one_subscriber():
 
 
 def test_broker_all_subscribers_cancel_source_invalidation_and_bounds():
-    cancelled = threading.Event()
+    entered, cancelled = threading.Event(), threading.Event()
     def load(stop):
+        entered.set()
         assert stop.wait(1)
         cancelled.set()
         return {}
     with CollectionBroker(capacity=1) as broker:
         lease = broker.acquire(SCOPE, query(), load, policy(), caps())
+        # Cancellation before dispatch may correctly prevent the loader from
+        # running at all; this assertion exercises cooperative cancellation.
+        assert entered.wait(1)
         other = {**SCOPE, "generation": "other"}
         with pytest.raises(ValueError, match="capacity"):
             broker.acquire(other, query(), load, policy(), caps())
@@ -250,6 +254,26 @@ def test_broker_all_subscribers_cancel_source_invalidation_and_bounds():
         with pytest.raises(ValueError, match="changed"):
             lease.result(1)
         lease.close()
+
+
+def test_broker_cancel_before_dispatch_does_not_call_source_and_frees_capacity():
+    calls = []
+    def load(stop):
+        calls.append(1)
+        return {}
+    # Caller-owned reads remain queued until result(), making pre-dispatch
+    # cancellation deterministic without depending on worker scheduling.
+    with CollectionBroker(capacity=1, caller_owned=True) as broker:
+        lease = broker.acquire(SCOPE, query(), load, policy(), caps())
+        lease.cancel()
+        assert broker.stats()["active"] == 0
+        assert broker.stats()["leases"] == 0
+        with pytest.raises(ValueError, match="closed"):
+            lease.result(1)
+        other = {**SCOPE, "generation": "other"}
+        with broker.acquire(other, query(), lambda _: {"ok": True}, policy(), caps()) as replacement:
+            assert replacement.result(1) == {"ok": True}
+        assert calls == []
 
 
 def test_broker_nested_single_worker_does_not_deadlock():

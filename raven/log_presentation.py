@@ -11,7 +11,10 @@ from itertools import islice
 
 MAX_NODES = 4096
 MAX_DEPTH = 24
-_STAMP = re.compile(r"(?P<stamp>\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})?)")
+_STAMP = re.compile(
+    r"(?P<stamp>(?P<second>\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})"
+    r"(?:\.(?P<fraction>\d{1,9}))?(?P<zone>Z|[+-]\d{2}:?\d{2})?)"
+)
 
 
 def timestamp(line):
@@ -20,11 +23,15 @@ def timestamp(line):
     if not match:
         return None, "missing"
     try:
-        stamp = match["stamp"]
-        value = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
-        fraction = re.search(r"\.(\d+)", stamp)
-        nanoseconds = int(fraction[1].ljust(9, "0")) if fraction else 0
-        value = value.replace(microsecond=0)
+        zone = match["zone"] or ""
+        if zone == "Z":
+            zone = "+00:00"
+        elif len(zone) == 5:
+            zone = zone[:3] + ":" + zone[3:]
+        # Parse whole seconds for Python 3.10 compatibility; keep all nine
+        # fractional digits separately rather than rounding to microseconds.
+        value = datetime.fromisoformat(match["second"] + zone)
+        nanoseconds = int((match["fraction"] or "0").ljust(9, "0"))
         if value.tzinfo is None:
             delta = value - datetime(1970, 1, 1)
             return (delta.days * 86400 + delta.seconds) * 1000000000 + nanoseconds, "naive"

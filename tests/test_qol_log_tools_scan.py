@@ -255,7 +255,11 @@ def test_regex_parser_supports_python310_without_private_re_or_possessive_consta
     import builtins
     import sys
     from types import SimpleNamespace
-    from re import _parser, _constants
+    try:
+        from re import _parser, _constants
+    except ImportError:
+        import sre_parse as _parser
+        import sre_constants as _constants
     original = builtins.__import__
     constants = SimpleNamespace(**{key: value for key, value in vars(_constants).items() if key != 'POSSESSIVE_REPEAT'})
     monkeypatch.setitem(sys.modules, 'sre_parse', SimpleNamespace(parse=_parser.parse))
