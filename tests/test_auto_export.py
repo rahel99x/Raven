@@ -298,7 +298,7 @@ def test_launch_round_robin_advances_past_unresolved_prefix(run, monkeypatch):
     assert '3' * 32 + '.json' in examined
 
 
-def test_dashboard_reconciles_prestart_array_parent_from_launch_candidates(run):
+def test_dashboard_reconciles_prestart_array_parent_from_launch_candidates(run, monkeypatch):
     from types import SimpleNamespace
     from raven import auto_export_ui as UI
     from raven.remote import LocalFiles
@@ -322,9 +322,13 @@ def test_dashboard_reconciles_prestart_array_parent_from_launch_candidates(run):
         return True
     hub.start_task = start
     messages = []
-    app = SimpleNamespace(research=hub, project_state={'root': str(root)},
+    app = SimpleNamespace(interactive=True, research=hub, project_state={'root': str(root)},
                           store=SimpleNamespace(record_context=lambda jid: (job, details)),
                           say=lambda message, **kwargs: messages.append(message))
+    observed = [100.]
+    monkeypatch.setattr(UI.time, "monotonic", lambda: observed[0])
+    assert not UI.tick(app)  # Explicit project work owns the initial interval.
+    observed[0] += UI.RECOVERY_INTERVAL
     assert UI.tick(app)
     result = hub.work()
     hub.complete(result)
@@ -334,7 +338,7 @@ def test_dashboard_reconciles_prestart_array_parent_from_launch_candidates(run):
     assert not (run / 'summary.json').exists()
 
 
-def test_recovery_callback_cannot_publish_after_leaving_supported_project(run):
+def test_recovery_callback_cannot_publish_after_leaving_supported_project(run, monkeypatch):
     from types import SimpleNamespace
     from raven import auto_export_ui as UI
     from raven.remote import LocalFiles
@@ -344,8 +348,12 @@ def test_recovery_callback_cannot_publish_after_leaving_supported_project(run):
         return True
     hub.start_task = start
     messages = []
-    app = SimpleNamespace(research=hub, project_state={'root': str(run.parent.parent)}, store=None,
+    app = SimpleNamespace(interactive=True, research=hub, project_state={'root': str(run.parent.parent)}, store=None,
                           say=lambda message, **kwargs: messages.append(message))
+    observed = [100.]
+    monkeypatch.setattr(UI.time, "monotonic", lambda: observed[0])
+    assert not UI.tick(app)  # Explicit project work owns the initial interval.
+    observed[0] += UI.RECOVERY_INTERVAL
     assert UI.tick(app)
     old_generation = app.auto_export_state['generation']
     app.project_state = {}
@@ -417,3 +425,65 @@ def test_cancellation_retry_exhaustion_is_visible_and_never_changes_workload(run
     assert '--reconcile --retry' in value['reason']
     assert A.process_pending(run.parent.parent) == []
     assert (run / 'summary.json').read_bytes() == before
+
+
+def test_noninteractive_observation_does_not_start_incidental_export_work(run, monkeypatch):
+    from types import SimpleNamespace
+    from raven import auto_export_ui as UI
+    from raven.remote import LocalFiles
+    queued = []
+    hub = SimpleNamespace(files=LocalFiles(), pending=None, future=None,
+                          start_task=lambda *args: queued.append(args) or True)
+    app = SimpleNamespace(interactive=False, research=hub,
+                          project_state={'root': str(run.parent.parent)}, store=None)
+    before = list(run.parent.parent.rglob('*'))
+    monkeypatch.setattr(UI.auto_export, 'pending_status', lambda root: pytest.fail('noninteractive tick inspected exports'))
+    for _ in range(3):
+        assert not UI.tick(app)
+    assert queued == []
+    assert list(run.parent.parent.rglob('*')) == before
+
+
+def test_periodic_recovery_defers_to_initial_project_work_and_active_dialogs(run, monkeypatch):
+    from types import SimpleNamespace
+    from raven import auto_export_ui as UI
+    from raven.remote import LocalFiles
+    observed, queued = [0.], []
+    monkeypatch.setattr(UI.time, 'monotonic', lambda: observed[0])
+    hub = SimpleNamespace(files=LocalFiles(), pending=None, future=None,
+                          start_task=lambda *args: queued.append(args) or True)
+    app = SimpleNamespace(interactive=True, mode='main', research=hub,
+                          project_state={'root': str(run.parent.parent)}, store=None)
+    assert not UI.tick(app)
+    observed[0] = UI.RECOVERY_INTERVAL - .01
+    assert not UI.tick(app)
+    assert queued == []
+    observed[0] = UI.RECOVERY_INTERVAL
+    app.mode = 'project_runs'
+    assert not UI.tick(app)
+    app.mode = 'main'
+    app.project_state['busy'] = True
+    assert not UI.tick(app)
+    app.project_state['busy'] = False
+    assert UI.tick(app)
+    assert len(queued) == 1
+
+
+def test_switching_to_noninteractive_cancels_pending_periodic_recovery(run, monkeypatch):
+    from types import SimpleNamespace
+    from raven import auto_export_ui as UI
+    from raven.remote import LocalFiles
+    observed = [100.]
+    monkeypatch.setattr(UI.time, 'monotonic', lambda: observed[0])
+    hub = SimpleNamespace(files=LocalFiles(), pending=None, future=None,
+                          start_task=lambda *args: True)
+    app = SimpleNamespace(interactive=True, research=hub,
+                          project_state={'root': str(run.parent.parent)}, store=None)
+    assert not UI.tick(app)
+    observed[0] += UI.RECOVERY_INTERVAL
+    assert UI.tick(app)
+    cancellation = app.auto_export_state['cancel']
+    app.interactive = False
+    assert not UI.tick(app)
+    assert cancellation.is_set()
+    assert not app.auto_export_state['pending']

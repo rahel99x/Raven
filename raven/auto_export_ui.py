@@ -7,6 +7,8 @@ import time
 
 from . import auto_export, projects
 
+RECOVERY_INTERVAL = 30.0
+
 
 def initialize(app):
     state = getattr(app, "auto_export_state", None)
@@ -60,7 +62,8 @@ def tick(app):
     project_state = getattr(app, "project_state", {}) or {}
     binding = project_state.get("binding") or {}
     root = binding.get("project_root") or project_state.get("root")
-    if not hub or not root or not projects.local_supported(getattr(hub, "files", None)):
+    if (not getattr(app, "interactive", False) or not hub or not root
+            or not projects.local_supported(getattr(hub, "files", None))):
         if state.get("cancel"):
             state["cancel"].set()
         if state["scope"] is not None or state["pending"]:
@@ -72,10 +75,15 @@ def tick(app):
     if state["scope"] != scope:
         if state.get("cancel"):
             state["cancel"].set()
-        state.update(scope=scope, last=0., pending=False, statuses=[], launches=[], error="",
+        # Let explicit project discovery/selection finish before entering the
+        # shared worker lane. Opening a project is not an immediate export.
+        state.update(scope=scope, last=time.monotonic(), pending=False, statuses=[], launches=[], error="",
                      generation=state["generation"] + 1, notices={})
+        return False
+    if getattr(app, "mode", "main") != "main" or project_state.get("busy"):
+        return False
     if (state["pending"] or getattr(hub, "pending", None) or
-            state["last"] and time.monotonic() - state["last"] < 30):
+            time.monotonic() - state["last"] < RECOVERY_INTERVAL):
         return False
     future = getattr(hub, "future", None)
     if future is not None and not future.done():

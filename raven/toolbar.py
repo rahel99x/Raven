@@ -287,20 +287,26 @@ def render_bar(views, app, width, y=0):
     managed=isinstance(getattr(app,'cfg',{}).get('raven'),dict) or getattr(app,'raven_allocation_manager',None) is not None
     compute_space = 10 if managed and width >= minimum_slider + worker_space + 12 else 0
     copy_space=4 if width >= 80 else 0
+    # A direct export shortcut is optional; full menu names and existing
+    # worker/compute controls remain readable at 80 columns. File always
+    # includes Export data when its dedicated button does not fit.
     export_space=14 if width >= 100 else 9 if width >= 80 else 0
+    named_menu_space=len(forms[1][0]) + sum(map(len, forms[1][1]))
+    if width - minimum_slider - worker_space - compute_space - copy_space - named_menu_space < export_space:
+        export_space=0
     quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space - copy_space - export_space), forms[-1])
     append(quit_label, "danger+bold+bg:surface-raised", "quit")
     for index, label in enumerate(labels):
         selected = state["menu"] == index if len(labels) == len(MENUS) else state["menu"] is not None
         append(label, "accent+bold+bg:surface-sunken" if selected else BAR_STYLE, "menu", index)
-    if export_space:
-        append(" [Export data] " if export_space == 14 else " [Export]", "accent+bold+bg:surface-raised", "export-data")
-    compute_button = raven_ui.button(app, width-x-minimum_slider-worker_space-copy_space) if managed else None
+    compute_button = raven_ui.button(app, width-x-minimum_slider-worker_space-copy_space-export_space) if managed else None
     if compute_button is not None:
         append(*compute_button, 'raven')
-    worker_button = worker_ui.button(app, width - x - minimum_slider-copy_space, ascii_=views.g.ascii)
+    worker_button = worker_ui.button(app, width - x - minimum_slider-copy_space-export_space, ascii_=views.g.ascii)
     if worker_button is not None:
         append(*worker_button, "workers")
+    if export_space:
+        append(" [Export data] " if export_space == 14 else " [Export]", "accent+bold+bg:surface-raised", "export-data")
     from .editor_yank import mode as copy_mode
     destination = copy_mode(app)
     # Keep an update-rate value visible at every width. A compact switch

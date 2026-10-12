@@ -35,7 +35,7 @@ def initialize(app):
         state = dict(generation=0, revision=0, stage="", return_mode="main", cursor=0,
                      top=0, visible=1, follow=True, control_hits=[], painted=None,
                      pending=None, running=False, cancel=None, progress={},
-                     lock=threading.Lock(), frozen=(), attempts=(), discovery=None,
+                     frozen=(), attempts=(), discovery=None,
                      plan=None, receipt=None, error="", message="", editing=None,
                      include=list(DEFAULT_FAMILIES), metrics=[], devices=[], sources=[],
                      layout="category", range_policy="full", chart_range=None,
@@ -248,8 +248,9 @@ def tick(app):
 
     def progress(value):
         if token == state["generation"] and isinstance(value, dict):
-            with state["lock"]:
-                state["progress"] = {key: value[key] for key in ("records", "bytes", "files") if key in value}
+            # Publish a whole snapshot. Readers retain its reference; neither
+            # thread mutates a published dictionary while the other reads it.
+            state["progress"] = {key: value[key] for key in ("records", "bytes", "files") if key in value}
 
     def published(value):
         if token != state["generation"]:
@@ -567,8 +568,7 @@ def _issue(value):
 
 def _document(app):
     state = initialize(app)
-    with state["lock"]:
-        progress = tuple(state["progress"].items()) if state["stage"] == "busy" else ()
+    progress = tuple(state["progress"].items()) if state["stage"] == "busy" else ()
     key = (state.get("content_revision", 0), state["stage"], progress)
     if state.get("document_key") != key:
         state.update(document_key=key, document=_build_document(app))
@@ -589,8 +589,7 @@ def _build_document(app):
     if state["stage"] == "busy":
         action("Cancel background operation", "cancel")
         text(state["message"])
-        with state["lock"]:
-            text(" | ".join(f"{key}: {value:,}" if isinstance(value, int) else f"{key}: {value}" for key, value in state["progress"].items()))
+        text(" | ".join(f"{key}: {value:,}" if isinstance(value, int) else f"{key}: {value}" for key, value in state["progress"].items()))
         return items
     if state["stage"] == "receipt":
         receipt = state["receipt"] or {}

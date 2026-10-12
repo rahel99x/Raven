@@ -290,12 +290,18 @@ def test_launch_setup_rejects_escaping_path_and_keeps_form(app):
     assert app.data_export_state['setup_fields']['application_metrics'] == '../outside.jsonl'
 
 
-def test_export_button_and_setup_actions_available_on_all_views(app):
+@pytest.mark.parametrize('ascii_', [False, True])
+@pytest.mark.parametrize('width', [24, 80, 120])
+def test_export_button_and_setup_actions_available_on_all_views(app, ascii_, width):
     from raven import toolbar
     for tab in ('jobs', 'history', 'research', 'analytics'):
         app.tab = tab
-        row = toolbar.render_bar(SimpleNamespace(g=L.Glyphs(False)), app, 120)
-        assert 'Export data' in L.row_text(row)
+        row = toolbar.render_bar(SimpleNamespace(g=L.Glyphs(ascii_)), app, width)
+        assert L.vlen(L.row_text(row)) == width
+        if width == 120:
+            assert 'Export data' in L.row_text(row)
+        elif width == 24:
+            assert not any(hit[3] == 'export-data' for hit in app.toolbar_state['hits'])
         assert any(item.command == 'exportdata' for item in toolbar.menu_items(app, 'File'))
     assert any(item.command == 'launchsetup' for item in toolbar.menu_items(app, 'Setup'))
 
