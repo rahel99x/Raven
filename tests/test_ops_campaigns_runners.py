@@ -84,7 +84,12 @@ def test_descendant_cannot_escape_resource_accounting(tmp_path):
     pid = int((tmp_path / "results" / "logs" / "parent.out").read_text())
     status = Path(f"/proc/{pid}/stat")
     for _ in range(20):
-        if not status.exists() or status.read_text().rsplit(")", 1)[1].split()[0] == "Z":
+        try:
+            state = status.read_text().rsplit(")", 1)[1].split()[0]
+        except FileNotFoundError:
+            # Reaping may remove /proc between any existence check and read.
+            break
+        if state == "Z":
             break
         time.sleep(.01)
     else:
