@@ -15,7 +15,7 @@
     raven --eval 'n_running'     # an expression over the snapshot
     raven --wait-for 'n_pending == 0' --timeout 3600   # block until it holds (exit 0) or time out (exit 2)
 
-Tabs: Jobs (running then pending, a cursor, marks, actions), Cluster (partitions, GPUs, fair share, the account's
+Tabs: Jobs (ordered batches, a cursor, marks, actions), Cluster (partitions, GPUs, fair share, the account's
 load), History (sacct with efficiency and totals), Analytics (charts), Nodes (the nodes running your jobs), Log
 (the selected job's stdout, following), Sources (health of every Slurm command).  ? lists the keys inside."""
 from __future__ import annotations
@@ -276,6 +276,9 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
     ascii_ = ascii_mode(args, cfg)
     views = Views(Glyphs(ascii_), cfg, files=files, plugins=api)
     app = App(store, sampler, actions, cfg, user, ascii_=ascii_, interactive=not (args.once or args.json or args.csv or args.watch or args.run or args.eval or args.wait_for or args.report))
+    # Keep the source and precedence information outside serializable settings.
+    # Setup uses it to save the selected profile without flattening other ones.
+    app.raven_resolved = getattr(cfg, "raven_resolved", None)
     from .worker_ui import bind
     bind(app, governor)
     from .ui_persistence import bind as bind_preferences
@@ -359,10 +362,16 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
     s.sampler.round(wait=True)
     s.app.tab = "jobs"
     s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)     # settles the selected job
-    if s.app.selected_id:
-        s.sampler.want_detail = s.app.selected_id
+    if tab == "analytics":
+        # The queue's first batch can be pending. Resolve the chart's actual
+        # selection before subscribing to its live measurements.
+        s.app.tab = tab
+        s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)
+    target = selected_job or (s.app.analytics_job if tab == "analytics" else s.app.selected_id)
+    if target:
+        s.sampler.want_detail = target
     if managed:
-        demand(tab or "jobs", selected_job or s.app.selected_id, sources=sources)
+        demand(tab or "jobs", target, sources=sources)
         s.sampler.prime_collection_snapshot()
     else:
         s.sampler.last_run["details"] = s.sampler.last_run["account"] = 0.0
@@ -756,6 +765,7 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
             cfg0.set("raven.managed", True)
             cfg0.path = raven.source or ""
             cfg0.profile_name = raven.data["profile"]
+            cfg0.raven_resolved = raven
             if args.host and args.host != cfg0["host"]:
                 raise ValueError("Select the Raven connection with --site/--config before startup; --host cannot retarget an admitted session.")
             if args.ssh_user and args.ssh_user != cfg0["ssh_user"]:

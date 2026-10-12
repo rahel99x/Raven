@@ -133,6 +133,17 @@ workers do not count as Heavy. **Single/Multi** separately controls background
 worker concurrency. Supported execution paths and deferred actions are listed
 in the [execution contracts](docs/raven/execution-contracts.md).
 
+Use **Setup** in the toolbar for embedded Research and Analytics setup guides,
+project connection, and Heavy allocation preferences. The
+[Setup guide](docs/guides/setup.md) covers account discovery, personal and lab
+billing, and local Slurm defaults. Saving preferences is separate from requesting
+compute.
+
+Jobs keeps each batch together with saved **Sort Min** and **Sort Max** choices.
+Recents offers **Grouped** and **Sequential** views for completed jobs. See
+[batch views](docs/guides/batch-launches.md) for ordering, readable group names,
+and selection behavior.
+
 ## Workflows
 
 Open **File → Research and cluster operations**, or enter `:workbench`.

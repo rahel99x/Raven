@@ -196,6 +196,7 @@ def verify_placement(config, candidate, records, *, purpose="analysis"):
         raise ValueError("Worker process placement is unverified: need step cgroup or fresh task PID membership")
     identity = {**candidate, "site_kind": "slurm", "cluster_id": config.get("context", {}).get("cluster_id", ""),
                 "allocation_id": job_id, "verified": True, "purpose": purpose,
+                "submit_time": job.get("SubmitTime", ""), "start_time": job.get("StartTime", ""),
                 "verification": "scheduler-owner + local process membership",
                 "cgroup_enforcement": "membership observed; CPU/RSS enforcement not inferred"}
     if purpose == "instrumentation":

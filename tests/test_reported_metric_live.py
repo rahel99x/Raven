@@ -314,6 +314,9 @@ def test_inline_reported_live_has_one_canonical_graph_node_per_button_and_shared
     from raven import job_panels as J
     app = dashboard.app
     app.tab, app.research_view = "jobs", "passport"
+    queue = dashboard.views.job_rows(dashboard.store.snapshot(), app)
+    app.cursor["jobs"] = [row["id"] for row in queue].index("1")
+    # The scoped report belongs to running job 1, not the first pending batch.
     assert J.run_command(app, ["jobpanel", "research", "experiment"])
     rows, hits = dashboard.views.compose(dashboard.store.snapshot(), app, 180, 70)
     records = M.initialize(app)["records"]

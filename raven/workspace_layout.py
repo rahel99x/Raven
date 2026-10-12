@@ -714,8 +714,15 @@ def transform_body(app, body, hits, width: int, height: int, *, ascii_: bool = F
             first = min(y for y, _, _ in data_hits) if data_hits else min(headers) + 1 if headers else 0
             # Keep the page's primary summary and table column names visible
             # while large resource charts and individual rows scroll beneath.
-            indices = sorted({index for index in (0, first - 2, first - 1) if 0 <= index < first})
-            indices = indices[:max(0, min(3, page - 1))]
+            if native_jobs and getattr(app, "tab", "") == "jobs":
+                # The queue renderer already fits its toolbar and headings to
+                # this pane's row budget. Preserve the entire ordered prefix:
+                # taking only its first row would move a wrapped second row
+                # below the column headings and separate it from its controls.
+                indices = list(range(min(first, max(0, page - 1))))
+            else:
+                indices = sorted({index for index in (0, first - 2, first - 1) if 0 <= index < first})
+                indices = indices[:max(0, min(3, page - 1))]
             sticky = [source[index] for index in indices]
             sticky_map = {index: position for position, index in enumerate(indices)}
             sticky_hits = [(sticky_map[y], kind, value) for y, kind, value in source_hits

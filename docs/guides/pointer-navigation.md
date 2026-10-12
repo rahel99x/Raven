@@ -149,7 +149,7 @@ See [Panel dividers](adaptive-workspaces.md#change-panel-size) for complete comm
 
 ## Use a menu for several changes
 
-1. Click File, Edit, View, or Help.
+1. Click File, Edit, View, Setup, or Help.
 2. Move the pointer over a menu choice.
 3. Click a choice to activate it.
 4. Keep the pointer inside the dropdown to select another available choice.

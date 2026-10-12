@@ -5,8 +5,8 @@ from . import job_groups, layout as L
 
 
 def fold_icon(collapsed, *, ascii_=False):
-    """Show the action: right folds an open batch; down reopens its summary."""
-    return ("v" if collapsed else ">") if ascii_ else ("▾" if collapsed else "▸")
+    """Show the current state: right is collapsed; down is expanded."""
+    return (">" if collapsed else "v") if ascii_ else ("▸" if collapsed else "▾")
 
 
 def fold_command(group_id, collapsed):
@@ -46,10 +46,10 @@ def summary_row(records, width, *, ascii_=False, selected=False):
         badges = (("running", "R", "green"), ("pending", "P", "yellow"),
                   ("dependent", "D", "cyan"), ("blocked", "!", "red"),
                   ("completed", "C", "green"), ("failed", "F", "red"),
-                  ("cancelled", "X", "yellow"), ("other", "?", "dim"))
+                  ("cancelled", "X", "yellow"), ("other", "?", "dim"), ("accounting", "A", "dim"))
         segments = []
         for key, label, style in badges:
-            if counts[key]:
+            if counts.get(key, 0):
                 if segments:
                     segments.append((" ", "dim"))
                 segments.append((f"{label}{counts[key]}", style))

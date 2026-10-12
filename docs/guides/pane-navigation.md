@@ -62,7 +62,7 @@ Use `v` when you need the rendered table text instead of record fields.
 1. Click a row in the required job list to focus that pane.
 2. Mark at least two jobs with `Space`, plain click-drag, or click followed by Shift-click on the other end of the range.
 3. Press `g`.
-4. Open the resulting closed group with its down-pointing chevron when you need individual members.
+4. Open the resulting closed group with its right-pointing chevron when you need individual members.
 
 **Expected result:** The marked jobs appear in one manual group with the existing state-count summary.
 The group preference applies across job lists and their history browsers.

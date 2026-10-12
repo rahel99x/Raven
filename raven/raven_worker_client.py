@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections import deque
 import os
 import json
+import re
 import selectors
 import signal
 import struct
@@ -20,7 +21,8 @@ from .raven_protocol import MAJOR, MINOR, MAX_QUEUE, Decoder, ProtocolError, bui
 
 
 class WorkerClient:
-    def __init__(self, config, *, launch_argv=None, build_launch=None, launch_env=None, placement_verifier=None):
+    def __init__(self, config, *, launch_argv=None, build_launch=None, launch_env=None, placement_verifier=None,
+                 observe_allocation=False):
         self.config = json.loads(canonical(config))
         self.config.setdefault("session_id", uuid.uuid4().hex)
         self.config.setdefault("generation", 1)
@@ -36,6 +38,11 @@ class WorkerClient:
         self.output = deque()
         self.output_bytes = 0
         self.stderr = bytearray()
+        # Enabled only by the foreground allocation supervisor. This is a
+        # presentation hint, never worker identity or placement evidence.
+        self.observed_allocation_id = ""
+        self._allocation_observation_open = bool(observe_allocation and self.config.get("site_kind") == "slurm")
+        self._allocation_stderr_offset = 0
         self.ready = False
         self.status = "new"
         self.error = ""
@@ -123,6 +130,38 @@ class WorkerClient:
         self._queue(self._message("placement", records=records, error=error))
         return True
 
+    def _retain_stderr(self, raw):
+        self.stderr.extend(raw[:max(0, 16384 - len(self.stderr))])
+        if not self._allocation_observation_open:
+            return
+        while True:
+            end = self.stderr.find(b"\n", self._allocation_stderr_offset)
+            if end < 0:
+                break
+            line = bytes(self.stderr[self._allocation_stderr_offset:end]).removesuffix(b"\r")
+            self._allocation_stderr_offset = end + 1
+            match = re.fullmatch(rb"salloc: (?:Pending job allocation|Granted job allocation) ([1-9][0-9]{0,19})", line)
+            if match is None:
+                continue
+            job_id = match.group(1).decode("ascii")
+            if self.observed_allocation_id and job_id != self.observed_allocation_id:
+                self.observed_allocation_id = ""
+                self._allocation_observation_open = False
+                break
+            self.observed_allocation_id = job_id
+        if len(self.stderr) >= 16384:
+            self._allocation_observation_open = False
+
+    def _finish_allocation_observation(self, message):
+        # The first worker publication ends launch-output observation, before
+        # analysis tasks can produce diagnostics containing unrelated JobIDs.
+        self._allocation_observation_open = False
+        value = message.get("candidate") if message.get("op") == "placement_probe" else message.get("identity")
+        if isinstance(value, dict) and self.observed_allocation_id:
+            job_id = value.get("allocation_id", value.get("job_id"))
+            if str(job_id) != self.observed_allocation_id:
+                self.observed_allocation_id = ""
+
     def _consume(self, message):
         if message.get("session_id") != self.session_id or message.get("generation") != self.generation:
             raise ProtocolError("Worker publication belongs to another generation")
@@ -134,6 +173,7 @@ class WorkerClient:
             raise ProtocolError("Worker identity changed within an execution generation")
         self.worker_id, self.sequence = worker_id, sequence
         op = message.get("op")
+        self._finish_allocation_observation(message)
         if op == "hello":
             if (type(message.get("major")) is not int or message.get("major") != MAJOR or
                     type(message.get("minor")) is not int or message["minor"] < 0 or message.get("nonce") != self.nonce or
@@ -205,6 +245,7 @@ class WorkerClient:
         self._events.append(message)
 
     def _fail(self, error):
+        self._allocation_observation_open = False
         self.ready = False
         self.status = "failed"
         self.error = str(error)[:2000]
@@ -232,7 +273,7 @@ class WorkerClient:
                         self._stdout_eof = True
                     continue
                 if key.data == "stderr":
-                    self.stderr.extend(raw[:max(0, 16384 - len(self.stderr))])
+                    self._retain_stderr(raw)
                 else:
                     self.decoder.feed(raw)
             for message in self.decoder.take(32):

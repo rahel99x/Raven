@@ -397,9 +397,12 @@ def run_command(app, args):
                 _persist(app, "history")
                 app.say("History: " + date_label(app) + "; accounting refreshes as needed")
         elif command == "recents":
+            from .recents_ui import run_command as recent_mode_command
+            if values in (["grouped"], ["sequential"]):
+                return recent_mode_command(app, args)
             settings = dict(state["recents"])
             if not values:
-                app.say(f"Recents: {recent_limit(app)} rows; recents 5|10|25|auto|expand|collapse|window DURATION|window all")
+                app.say(f"Recents: {recent_limit(app)} rows; recents grouped|sequential|5|10|25|auto|expand|collapse|window DURATION|window all")
             elif values in (["expand"], ["collapse"]):
                 state["expand_recent"] = values == ["expand"]
                 app.say(f"Recents temporary limit: {recent_limit(app)}")
@@ -422,7 +425,7 @@ def run_command(app, args):
                 _persist(app)
                 app.say("Recents window updated; awaiting-accounting jobs remain labelled")
             else:
-                raise ValueError("recents 5|10|25|auto|expand|collapse|window DURATION|window all")
+                raise ValueError("recents grouped|sequential|5|10|25|auto|expand|collapse|window DURATION|window all")
         elif command == "marked":
             if values and values[0] not in ("all", "hidden", "visible", "active", "finished") or len(values) > 1:
                 raise ValueError("marked [all|hidden|visible|active|finished]")

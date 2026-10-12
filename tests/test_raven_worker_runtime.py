@@ -122,6 +122,15 @@ def test_slurm_env_is_never_sufficient_placement_proof():
         placement_probe(settings, environ={}, host="compute1", uid=1000, pid=444, cgroups="")
 
 
+def test_verified_identity_retains_observed_allocation_attempt_times():
+    settings, candidate, records = slurm_fixture()
+    records["job_record"] = records["job_record"].replace("SubmitTime=a", "SubmitTime=2026-10-12T10:00:00").replace(
+        "StartTime=b", "StartTime=2026-10-12T10:00:20")
+    identity = verify_placement(settings, candidate, records)
+    assert identity["submit_time"] == "2026-10-12T10:00:00"
+    assert identity["start_time"] == "2026-10-12T10:00:20"
+
+
 @pytest.mark.parametrize("change", ["job", "step", "owner", "host", "probe", "cpus", "state", "step-state", "memory", "attempt", "hard"])
 def test_slurm_mismatches_refuse_heavy(change):
     settings, candidate, records = slurm_fixture()
@@ -282,6 +291,72 @@ def test_stale_placement_probe_is_not_rebound_to_new_worker():
     with pytest.raises(ValueError, match="another worker probe"):
         client.provide_placement({"probe_id": "old"})
     client.close()
+
+
+def test_allocation_observation_reads_only_complete_exact_startup_lines():
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        for ignored in (b"payload: salloc: Pending job allocation 41\n", b"salloc: Granted job allocation 41 error\n",
+                        b"salloc: Pending job allocation 0\n", b"srun: Pending job allocation 41\n",
+                        b"salloc: Pending job allocation 999999999999999999999\n"):
+            client._retain_stderr(ignored)
+            assert client.observed_allocation_id == ""
+        client._retain_stderr(b"salloc: Pending job allocation 4")
+        assert client.observed_allocation_id == ""
+        client._retain_stderr(b"2\n")
+        assert client.observed_allocation_id == "42"
+        client._retain_stderr(b"salloc: Granted job allocation 42\r\n")
+        assert client.observed_allocation_id == "42"
+        assert not client.ready and client.identity == {} and client.placement is None
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("site_kind,opt_in", [("slurm", False), ("desktop", True)])
+def test_allocation_observation_requires_opted_in_slurm_launch(site_kind, opt_in):
+    client = WorkerClient(config(site_kind=site_kind), observe_allocation=opt_in)
+    try:
+        client._retain_stderr(b"salloc: Pending job allocation 42\n")
+        assert client.observed_allocation_id == ""
+    finally:
+        client.close()
+
+
+def test_conflicting_allocation_observations_are_never_rebound():
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        client._retain_stderr(b"salloc: Pending job allocation 42\nsalloc: Granted job allocation 43\n")
+        assert client.observed_allocation_id == ""
+        client._retain_stderr(b"salloc: Granted job allocation 42\n")
+        assert client.observed_allocation_id == ""
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("candidate_job", ["42", "43"])
+def test_worker_publication_closes_launch_observation_and_rejects_conflict(candidate_job):
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        client._retain_stderr(b"salloc: Pending job allocation 42\n")
+        client._consume({"op": "placement_probe", "session_id": client.session_id,
+                         "generation": client.generation, "worker_id": "worker", "seq": 1,
+                         "candidate": {"probe_id": "probe", "job_id": candidate_job}})
+        assert client.observed_allocation_id == ("42" if candidate_job == "42" else "")
+        assert not client.ready and client.identity == {}
+        client._retain_stderr(b"salloc: Granted job allocation 999\n")
+        assert client.observed_allocation_id == ("42" if candidate_job == "42" else "")
+    finally:
+        client.close()
+
+
+def test_allocation_observation_has_the_same_bounded_stderr_budget():
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        client._retain_stderr(b"x" * 16384 + b"\nsalloc: Pending job allocation 42\n")
+        client._retain_stderr(b"salloc: Granted job allocation 42\n")
+        assert len(client.stderr) == 16384 and client.observed_allocation_id == ""
+    finally:
+        client.close()
 
 
 def test_final_large_result_is_drained_after_worker_exits(monkeypatch):

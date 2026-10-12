@@ -1549,12 +1549,15 @@ class Views:
                 recent_cur - fin_top if recent_focus and selection_active else None,
                 app=app, header_cells=recent_cells)
             recent_rows[0] = _scroll_rule(self.g, width, "recent")
+            from .recents_ui import divider as recent_divider
+            recent_rows[0], recent_mode_hits, drag_width = recent_divider(app, self.g, recent_rows[0], width)
+            hits += [(base + y, kind, value) for y, kind, value in recent_mode_hits]
             hits += header_hits("recent", recent_cells, base + 1) + [(base + 2 + i, "recent", f.id) for i, f in enumerate(recent_shown)]
             out += recent_rows
             self.group_controls(app, out, hits, recent_shown, base + 2, "recent", width, first_visible=True)
             recent_history.register_scrollbar(app, width, base + 2, fin_vis, fin_top, header=base)
             hits.append((base, "control", {"id": "recent-divider", "label": "Resize Queue and Recents",
-                "left": 0, "right": width, "action": ("command", "pane-focus recent:jobs"), "group": "pane-dividers"}))
+                "left": 0, "right": drag_width, "action": ("command", "pane-focus recent:jobs"), "group": "pane-dividers"}))
         if native:
             recent_history.publish(app, fin, recent_capacity, n)
             if not rows_d and not fin:
@@ -3199,7 +3202,9 @@ class Views:
     def compose(self, snap: dict, app, width: int, height: Optional[int], actions=None, *, feedback=True) -> Tuple[List[Row], List[Tuple[int, str, str]]]:
         from .job_groups import frame
         from .table_tools import snapshot
-        if app.tab not in ("jobs", "history", "group", "deps", "log", "analytics", "research") or not app.table_state.get("groups"):
+        from .recents_ui import mode as recent_mode
+        groups_visible = app.table_state.get("groups") or app.tab == "jobs" and recent_mode(app) == "grouped"
+        if app.tab not in ("jobs", "history", "group", "deps", "log", "analytics", "research") or not groups_visible:
             return self._compose(snap, app, width, height, actions, feedback=feedback)
         with frame(app, snapshot(app, snap)):
             return self._compose(snap, app, width, height, actions, feedback=feedback)
@@ -3286,6 +3291,11 @@ class Views:
             if divider and main is not None:
                 y, value = divider
                 left, right = value["left"], value["right"]
+                mode_controls = [control for line, kind, control in hits if line == y and kind == "control"
+                                 and isinstance(control, dict) and control.get("group") == "recents-modes"]
+                # Only the visible handle resizes the panes. Mode buttons
+                # share its row, while wheel navigation spans all data cells.
+                content_right = max([right] + [control["right"] + 6 for control in mode_controls])
                 padding = 1 if getattr(app.layout_state, "density", "compact") == "comfortable" and main.width >= 8 and main.height >= 7 else 0
                 toolbar_height = getattr(app, "jobs_toolbar_height", 0)
                 origin = main.y + 1 + padding + toolbar_height
@@ -3299,7 +3309,7 @@ class Views:
                     origin, extent, 100 - recent_state.ratio,
                     resize_recent,
                     minimum=10, maximum=90, label="Resize Queue and Recents")
-                recent_state.rect = Rect(left, y + 2, max(0, right - left), max(0, main.y + main.height - padding - y - 2))
+                recent_state.rect = Rect(left, y + 2, max(0, content_right - left), max(0, main.y + main.height - padding - y - 2))
             else:
                 recent_state.rect = None
         from .column_resize import publish as publish_columns
@@ -3454,7 +3464,7 @@ class Views:
                     (f"{k('next_tab')} {k('prev_tab')} 1-9, 0", "switch tabs; 0 opens Research (Left/Right views, PgUp/PgDn scroll)"),
                     (f"{k('mark')} {k('mark_all')} U", "mark a job, all visible jobs, none: actions apply to the marked jobs, else the selected one"),
                     ("g / u", "in a job list: group marked jobs; ungroup a collapsed group or selected members"),
-                    (k("pin"), "pin / unpin the marked or selected jobs (pinned jobs stay on top; :tag, :note and filter #tag go with it)"),
+                    (k("pin"), "pin / unpin the marked or selected jobs (first within batches and between batch ties; :tag, :note and filter #tag go with it)"),
                     (k("resubmit"), "clone and resubmit the selected job: the palette opens with resubmit <id>, add --mem --time -c --gres -p or --advised; sbatch --test-only previews"),
                     (k("details"), "the job's scontrol show job record and its steps (Esc closes); History: the series"),
                     (k("steps"), "details with the steps: sstat per step of a running job (slowest rank, peak memory), sacct -j of a finished one"),

@@ -87,7 +87,12 @@ def run_action(app, action, *, explicit=False):
                 continue
             # Only a displayed collapsed row implies the whole group. An
             # expanded member never silently adds its siblings to the action.
-            if app.table_state.get("groups") and registry.is_collapsed(group):
+            if app.tab == "jobs" and jid in getattr(app, "recent_ids", ()):
+                meta = job_groups.metadata_for_record(app, "recent", jid)
+                whole_group = bool(meta and meta.header and meta.collapsed and meta.group.id == group.id)
+            else:
+                whole_group = app.table_state.get("groups") and registry.is_collapsed(group)
+            if whole_group:
                 groups.append(group.id)
             else:
                 members.append(jid)

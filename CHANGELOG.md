@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Add an internal Setup menu with named Research/Analytics guides and saved
+  Heavy allocation preferences, including connected-user Slurm account discovery.
+  Keep saving preferences separate from requesting an allocation.
+- Keep Jobs batches contiguous with persistent Sort Min and Sort Max controls;
+  pin the current Raven Heavy allocation by identity and preserve exact job selection.
+  Reject conflicting launch evidence and distinguish scripts behind generic launchers.
+- Use down-pointing arrows for expanded groups and right-pointing arrows for
+  collapsed groups, consistently across job lists and Research array cohorts.
+- Add persistent Grouped and Sequential views to Recents. Keep completed batch
+  members contiguous, preserve exact selection as jobs finish, and retain
+  dependency launch evidence after Slurm clears fulfilled dependencies.
+- Derive recognizable group labels from shared job-name prefixes using a
+  bounded linear scan; preserve custom names and stable group identities.
+
 - Add project reporting V2: a portable application launcher, Linux/CARC/HPC3
   recipes with lab allocation guidance, exact file-format examples, and a
   complete Research/Analytics metric and source reference. Retain V1 file

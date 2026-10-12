@@ -111,12 +111,14 @@ def test_managed_partial_preferences_keep_legacy_shell_and_layout(tmp_path, monk
         'plugins': ['/tmp/unqualified-plugin'], 'gpu_sampling': True}))
     value = resolve(str(source), system_policy_paths=[])
     observed = {}
+    resolved_context = []
     original_build = cli.build
     def build(args, cfg, **kwargs):
         cfg.set('collection_cache_dir', str(tmp_path / 'host-cache'))
         session = original_build(args, cfg, **kwargs)
         try:
             observed.update(session.app.cfg.data)
+            resolved_context.append(session.app.raven_resolved)
         finally:
             session.close()
         raise ValueError('built configuration checked and session closed')
@@ -128,6 +130,8 @@ def test_managed_partial_preferences_keep_legacy_shell_and_layout(tmp_path, monk
     assert observed['workspace']['split'] == 63
     assert observed['workspace']['density'] == 'comfortable'
     assert observed['plugins'] == [] and observed['gpu_sampling'] is False
+    assert resolved_context == [value]
+    assert resolved_context[0] is value
 
 
 @pytest.mark.parametrize("tab", ["jobs", "history", "nodes"])
@@ -156,3 +160,138 @@ def test_live_dashboard_primes_visible_snapshot_before_sampler_start(tmp_path, m
 
     assert cli.main(["--no-state", "--no-plugins", "--watch", "--tab", tab], raven=value) == 0
     assert len(starts) == 1
+
+
+def test_setup_rendered_account_save_updates_real_cli_profile_without_allocating(tmp_path, monkeypatch):
+    """Exercise the bootstrap, governed discovery, background save, and mouse path."""
+    import copy
+    import json
+    import os
+    import pwd
+    import threading
+
+    from raven import setup_ui, workbench
+    from raven.remote import LocalFiles
+    from raven.sampler import Sampler
+
+    resolved(tmp_path, monkeypatch, site="slurm")
+    username = pwd.getpwuid(os.getuid()).pw_name
+    source = tmp_path / "profiles.json"
+    original = {
+        "schema": "raven.config/v1",
+        "profile": "campus",
+        "ui": {"theme": "amber"},
+        "storage": {"coordination_dir": str(tmp_path / "host-cache")},
+        "profiles": {
+            "campus": {"allocation": {"account": "personal", "partition": "cpu"}},
+            "other-campus": {"allocation": {"account": "other-lab", "partition": "gpu"}},
+        },
+    }
+    source.write_text(json.dumps(original))
+    value = resolve(str(source), system_policy_paths=[])
+    calls, worker_threads, visited = [], [], []
+    main_thread = threading.get_ident()
+
+    class SchedulerFixture:
+        def run(self, command, timeout=8.):
+            calls.append(list(command))
+            worker_threads.append(threading.get_ident())
+            if command[0] == "sacctmgr":
+                assert "name=" + username in command
+                return (f"{username}|personal|campus|personal||normal|normal\n"
+                        f"{username}|personal|campus|lab-x|cpu|normal|normal\n"), .001
+            if command == ["sinfo", "--noheader", "--format=%P"]:
+                return "cpu*\n", .001
+            if command == ["scontrol", "show", "config"]:
+                return "ClusterName = campus\n", .001
+            raise AssertionError("Unexpected scheduler command: " + repr(command))
+
+    backend = SchedulerFixture()
+    monkeypatch.setattr(cli, "make_backend", lambda args, cfg, user: (backend, LocalFiles(), None, username))
+    # The live sampler is unrelated to this explicit Setup flow. The real
+    # ResearchHub and its governed background worker remain enabled.
+    monkeypatch.setattr(Sampler, "start", lambda _: None)
+    launch = Mock(side_effect=AssertionError("Saving Setup must not launch an allocation or process"))
+    monkeypatch.setattr("raven.raven_allocation.subprocess.Popen", launch)
+
+    def screen(app, views, sampler, store, actions, cfg, **kwargs):
+        assert isinstance(cfg, Config)
+        assert app.raven_resolved is value
+        assert not app.demo and not app.research.demo
+        assert app.actions.slurm.b.ledger is not None
+        app.width, app.height = 120, 48
+
+        def paint():
+            snapshot = store.snapshot()
+            views.compose(snapshot, app, app.width, app.height)
+            views.overlay(snapshot, app, app.width, app.height)
+
+        def click(command):
+            paint()
+            y, _, control = next(hit for hit in app.setup_ui_state["control_hits"]
+                                 if hit[2]["action"] == ("command", command))
+            assert workbench.handle_mouse(app, y, control["left"])
+
+        def click_action(command):
+            index = next(index for index, item in enumerate(setup_ui._actions(app))
+                         if item[1] == command)
+            click("setup action " + str(index))
+
+        def finish_background():
+            assert app.research.pending is not None
+            app.research.pending[0].result(timeout=5)
+            app.research.poll_task()
+            assert app.research.pending is None
+            assert not app.setup_ui_state["busy"]
+
+        app.run_command("menu Setup")
+        paint()
+        y, left, _, _ = next(hit for hit in app.toolbar_state["menu_hits"] if hit[3] == "setup-allocation")
+        assert workbench.handle_mouse(app, y, left)
+        assert app.mode == "setup"
+        finish_background()
+        discovery = app.setup_ui_state["discovery"]
+        assert discovery["username"] == username
+        assert discovery["cluster"] == "campus"
+        assert not discovery["errors"]
+        assert len(calls) == 3
+        assert all(thread != main_thread for thread in worker_threads)
+        before = copy.deepcopy(app.raven_allocation_manager.config)
+
+        click_action("setup accounts")
+        lab_index = next(index for index, row in enumerate(discovery["accounts"]) if row["account"] == "lab-x")
+        click("setup account " + str(lab_index))
+        click("setup edit cpus_per_task")
+        assert workbench.handle_key(app, "ctrl-u")
+        assert workbench.handle_key(app, "4")
+        assert workbench.handle_key(app, "enter")
+        assert app.raven_allocation_manager.config == before
+        assert json.loads(source.read_text()) == original
+
+        click_action("setup save")
+        finish_background()
+        assert "Saved allocation settings" in app.message
+        assert "No allocation was requested" in app.message
+        allocation = cfg.get("raven.allocation")
+        assert allocation["account"] == "lab-x" and allocation["cpus_per_task"] == 4
+        assert app.raven_allocation_manager.config["allocation"] == allocation
+        assert app.raven_resolved.data["allocation"] == allocation
+        assert cfg.raven_resolved is app.raven_resolved
+        # Allocation preferences do not silently retarget the active Group /
+        # Budget observations, whose account was captured by the sampler.
+        assert cfg.get("account") == sampler.account == "personal"
+        reloaded = resolve(str(source), system_policy_paths=[])
+        assert reloaded.data["allocation"] == allocation
+        expected = copy.deepcopy(original)
+        expected["profiles"]["campus"]["allocation"].update(account="lab-x", cpus_per_task=4)
+        assert json.loads(source.read_text()) == expected
+        assert app.raven_allocation_manager.snapshot()["state"] == "light"
+        assert app.raven_allocation_manager._process is None
+        assert not app.setup_ui_state["dirty"]
+        assert len(calls) == 3
+        visited.append(True)
+
+    monkeypatch.setattr(cli.screen, "run_watch", screen)
+    assert cli.main(["--no-state", "--no-plugins", "--watch"], raven=value) == 0
+    assert visited == [True]
+    launch.assert_not_called()

@@ -42,6 +42,7 @@ class RecentState:
     sorted_rows: list = field(default_factory=list, repr=False)
     expiry: float | None = None
     projector: object = field(default=None, repr=False)
+    transition_anchor: str | None = field(default=None, repr=False)
 
 
 def initialize(app):
@@ -178,10 +179,11 @@ def records(app, snap):
     state = initialize(app)
     options = fingerprint(app, "recent")
     selected = getattr(app, "selected_id", None)
-    anchor = (selected if state.enabled and options == state.options and
+    anchor = state.transition_anchor or (selected if state.enabled and options == state.options and
               any(record.id == selected for record in state.loaded) else None)
     if state.options is not None and options != state.options:
-        state.target, state.exhausted = max(_base(app), state.page), False
+        state.target = max(_base(app), state.page, state.target if state.transition_anchor else 0)
+        state.exhausted = False
         getattr(app, "top", {}).update(recent=0)
         state.index_key, state.index = None, []
         state.sorted_key, state.sorted_rows = None, []
@@ -232,10 +234,17 @@ def records(app, snap):
         # preview while Queue size remains constant. Find only this displaced
         # identity, and admit enough accounting prefix to keep it available.
         # Removed, filtered, expired or newly active jobs are not reintroduced.
-        found = next(((index, record) for index, record in enumerate(snap.get("finished", []))
-                      if record.id == anchor), None)
+        departed = snap.get("departed_jobs", {})
+        if anchor in departed:
+            ordered = reversed(list(departed.values()))
+            found = next(((index, record) for index, record in enumerate(ordered) if record.id == anchor), None)
+            prefix = 0
+        else:
+            found = next(((index, record) for index, record in enumerate(snap.get("finished", []))
+                          if record.id == anchor), None)
+            prefix = len(pending)
         if found and _matching(app, snap, [found[1]], active=active, pending_ids=pending_ids):
-            state.target = max(limit + LOAD_BLOCK, found[0] + len(pending) + 1)
+            state.target = max(limit + LOAD_BLOCK, found[0] + prefix + 1)
             return records(app, snap)
     sorted_key = (state.index_generation, limit, tuple(_record_key(record) for record in pending), options) if indexed else None
     if indexed and sorted_key == state.sorted_key:
@@ -246,6 +255,7 @@ def records(app, snap):
         if indexed:
             state.sorted_key, state.sorted_rows = sorted_key, list(result)
     state.loaded = result
+    state.transition_anchor = None
     state.exhausted = len(result) < limit
     return result
 

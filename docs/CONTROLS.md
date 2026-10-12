@@ -196,15 +196,15 @@ Use `:view NAME` to select an Analytics or Research subview.
 
 ## Terminal toolbar and update slider
 
-The first display row contains `x`, File, Edit, View, Help, the copy destination, and the update-rate control.
+The first display row contains `x`, File, Edit, View, Setup, Help, the copy destination, and the update-rate control.
 The toolbar remains available above pages and overlays.
 Menu actions use the same commands and reviews as their keyboard equivalents.
 
 | Control | Function |
 | --- | --- |
-| Click a menu label, F10, or `:menu [File\|Edit\|View\|Help]` | Open a menu |
+| Click a menu label, F10, or `:menu [File\|Edit\|View\|Setup\|Help]` | Open a menu |
 | Left / Right, Tab / Shift-Tab in a menu | Select the previous or next menu |
-| `f`, `e`, `v`, `h` in a menu | Select File, Edit, View, or Help |
+| `f`, `e`, `v`, `s`, `h` in a menu | Select File, Edit, View, Setup, or Help |
 | Up / Down, page keys, Home / End in a menu | Select a menu choice |
 | Enter / Space, or click a menu choice | Activate the choice |
 | Esc, `q`, F10, or move the pointer outside the dropdown | Dismiss the menu |
@@ -220,6 +220,7 @@ Menu actions use the same commands and reviews as their keyboard equivalents.
 | Esc / Enter / Tab with slider focus | Return input to the page |
 | `:rate [N\|reset]` | Inspect the effective Jobs interval, select position 1 to 50, or restore five seconds |
 | `:about` | Open version and toolbar instructions |
+| **Setup**, `:setup` | Open allocation settings and per-view Research/Analytics guides |
 
 A menu choice ending in `...` opens an editable command prompt.
 Unavailable choices report their required context.
@@ -229,6 +230,7 @@ Dismiss the menu before editing that prompt or completing the review.
 Hover highlights a control without activating it.
 See [Live workbench](guides/live-workbench.md#use-the-terminal-toolbar) for every menu choice.
 See [Update rate](guides/live-workbench.md#set-the-update-rate) for source limits and saved preferences.
+See [Setup](guides/setup.md) for detected Slurm accounts, saved Heavy preferences, and embedded metric guides.
 
 ### Mouse and directional button focus
 
@@ -467,12 +469,18 @@ Recents leaves live-only progress and measurement slots empty. The completion cu
 | **Ungroup All**, `:grouping clear` | Remove manual groups and disable automatic grouping; keep all jobs |
 | **Expand All**, `:grouping expand` | Open all groups without changing membership |
 | **Collapse All**, `:grouping collapse` | Close groups without changing membership |
+| **Sort Min**, `:grouping sort-min` | Order Jobs batches by fewest running jobs, then fewest total jobs; initial default |
+| **Sort Max**, `:grouping sort-max` | Order Jobs batches by most running jobs, then fewest total jobs |
 | `:grouping restore` | Restore the last Ungroup All change if later grouping edits would not be overwritten |
 | Drag a group header's `↕` (`:` in ASCII) onto another Main group | Request placement before an earlier group or after a later group; release opens inspection and review |
 | Esc or right-click during a queue-order drag | Cancel without changing scheduler order |
 | `:ops queue-order` | Open the queue-order form without a mouse |
 
-The five grouping buttons change shared display organization only. Their undo records last for the current session.
+The grouping buttons change shared display organization only. Their undo records last for the current session.
+The two sort buttons keep Jobs batches contiguous and remember the selected mode across launches.
+Counts use the unfiltered queue; filtering and collapsing do not change a batch's rank.
+Raven Heavy stays first when its current allocation identity is known.
+Column sorting orders jobs within each batch; Recents and History keep their own sorts.
 The queue-order handle is separate from the fold chevron and Alt-drag membership control.
 Only its header follows the pointer; expanded members are dimmed during the drag.
 After dropping, inspect **Review action**, then select **Confirm apply** to request a scheduler change.
@@ -593,8 +601,10 @@ Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, an
 | `:historyrange START END` | Select inclusive local calendar dates |
 | `:recents 5\|10\|25\|auto` | Select the initial Recents preview size |
 | `:recents expand\|collapse` | Change the Recents presentation |
-| `:jobgroups [on\|off]` | Toggle shared group visibility; explicit `on` also enables automatic detection |
-| `:grouping auto\|undo\|clear\|expand\|collapse\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
+| **Grouped**, `:recents grouped` | Keep complete Recents batches together; restore newest-completion order |
+| **Sequential**, `:recents sequential` | Show individual recent jobs without folds; restore newest-completion order |
+| `:jobgroups [on\|off]` | Toggle grouping in other lists; Recents uses its own Grouped/Sequential setting. Explicit `on` also enables automatic detection |
+| `:grouping auto\|undo\|clear\|expand\|collapse\|sort-min\|sort-max\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
 | `:jobgroup toggle\|open\|close GROUP_ID` | Fold or expand one known launch group |
 | `:jobgroup create` | Group at least two marked real jobs in the focused list |
 | `:jobgroup ungroup` | Dissolve targeted closed groups or detach targeted expanded members |
@@ -615,9 +625,15 @@ Drag the divider above Recents to change its visible size.
 The wheel inside Recents scrolls that list.
 Click a recent job, then use arrows, page keys, Home, or End to reach older matching history.
 The initial preview size does not cap that navigation.
+Use **Grouped** or **Sequential** on the divider to choose batch blocks or
+individual completion rows. The mode is saved; Grouped is the initial default.
+Switching modes restores newest-completion ordering; subsequent column sorts
+remain available. Grouped keeps each batch contiguous under either sort.
+Sequential preserves saved group membership and shared folds for other views.
+See [Recents grouping](guides/batch-launches.md#choose-grouped-or-sequential-recents).
 
-Click the right-pointing chevron on the first visible row of an expanded launch group to close it.
-Click the down-pointing chevron on its closed summary row to open it again.
+Click the down-pointing chevron on the first visible row of an expanded launch group to close it.
+Click the right-pointing chevron on its closed summary row to open it again.
 When the original first member is above the viewport, the first visible member carries the disclosure control.
 The existing summary formatting and state counts stay available while the group is closed.
 Fold preferences remain shared across the job listings and their history browsers.
@@ -627,7 +643,7 @@ Manual groups use the same chevrons and state summaries.
 `g` creates one from at least two marked jobs; `u` removes the selected group or its selected expanded members.
 Alt-drag a job row or marked selection onto a group row to add those exact jobs.
 Right-click the selected row for equivalent group creation, removal, and destination choices.
-Manual membership uses natural job-ID order. Displayed rows retain each list's active sort, including its default sort.
+Manual membership uses natural job-ID order. Jobs orders complete batches with Sort Min or Sort Max and uses column sorting within each batch. Other lists retain their active sorts.
 Use `U` when you only want to clear marks.
 These membership keys belong to the focused job list. Graph `u` still undoes zoom; text and menu controls retain their own input behavior.
 Their INFO badges use `run`, `pend`, `dep`, `never`, `done`, `fail`, `cancel`, and `other` for nonzero counts.
@@ -980,8 +996,8 @@ See [Charts](guides/charts.md) for coverage, axis restrictions, and declared uni
 
 | Control | Function |
 | --- | --- |
-| Click `▾` / ASCII `v` on an array cohort | Select that cohort and open its task page |
-| Click `▸` / ASCII `>` on an open cohort | Close its task page and retain the summary |
+| Click `▸` / ASCII `>` on an array cohort | Select that cohort and open its task page |
+| Click `▾` / ASCII `v` on an open cohort | Close its task page and retain the summary |
 | Enter in full Research → Arrays | Toggle the selected cohort's task page |
 | Page Up / Page Down in full Research → Arrays | Move through an open task page in groups of 24 |
 | `:array open\|close ARRAYID [CLUSTER]` | Apply an explicit action to an exact published cohort; specify the cluster when the ID is ambiguous |
@@ -1106,6 +1122,7 @@ Job-changing commands open a review; scripted changes require `--yes`.
 | --- | --- | --- |
 | Help and command discovery | `menu`, `about`, `help`, `commands`, `quit` | [Live workbench](guides/live-workbench.md#use-the-terminal-toolbar) |
 | Main navigation | `tab`, `view`, `workspace`, `workspaces`, `back`, `forward`, `jump`, `location` | [Navigation](guides/navigation.md) |
+| Installation and allocation setup | `setup`, `setup allocation`, `setup research VIEW`, `setup analytics VIEW` | [Setup](guides/setup.md) |
 | Settings and field inspection | `settings`, `keybindings`, `explain`, `peek` | [Navigation](guides/navigation.md) |
 | Panel layout | `density`, `focus`, `maximize`, `layout`, `panel-scroll` | [Workbench](WORKBENCH.md#shape-your-workspace) |
 | Table inspection | `sort`, `sortby`, `sorteditor`, `headers`, `columns`, `facet`, `filters`, `where`, `savedview`, `viewpicker`, `jobgroups`, `jobgroup`, `grouping`, `queue-drag`, `filter`, `days`, `historyrange`, `recents`, `marked`, `freeze`, `jobactions`, `node`, `drill` | [Tables](guides/tables.md) |

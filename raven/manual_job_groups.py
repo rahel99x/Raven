@@ -447,7 +447,7 @@ def _save(app, registry, groups, detached, *, labels=None):
 
 def create(app, snap, job_ids):
     """Group exact selected records, leaving unrelated members untouched."""
-    from .job_groups import _digest
+    from .job_groups import _digest, _value, shared_name_prefix
     if not isinstance(job_ids, (tuple, list, set, frozenset)) or len(job_ids) > MAX_IDENTITIES:
         return Result(False, f"Select between 2 and {MAX_IDENTITIES} jobs to group")
     ids = _ordered_ids({item for item in job_ids if isinstance(item, str)})
@@ -474,7 +474,10 @@ def create(app, snap, job_ids):
         return Result(False, "Saved grouping limit reached; use :jobgroup reset to restore automatic grouping")
     if sum(map(len, updated.values())) + len(detached) > MAX_IDENTITIES:
         return Result(False, "Saved grouping identity limit reached; use :jobgroup reset to restore automatic grouping")
-    _save(app, registry, updated, detached)
+    label = state._labels.get(gid)
+    if label is None:
+        label = shared_name_prefix(_value(records[jid], "name") for jid in ids) or "Manual group " + ids[0]
+    _save(app, registry, updated, detached, labels={gid: label})
     registry.ensure(snap)
     session = any(_identity(key) is None for key in keys)
     return Result(True, f"Grouped {len(ids)} jobs" + (" for this session (submission time unavailable)" if session else ""), gid, ids)

@@ -304,7 +304,7 @@ def test_group_controls_precede_table_and_keep_jump_header_and_rows_separate(das
     app, views = dashboard
     rows, hits = views.jobs_tab(app.store.snapshot(), app, None, width, 40)
     buttons = [(y, value) for y, kind, value in hits if kind == "control" and value.get("group") == "grouping-toolbar"]
-    assert [value["id"] for _, value in buttons] == ["grouping:auto", "grouping:undo", "grouping:clear", "grouping:expand", "grouping:collapse"]
+    assert [value["id"] for _, value in buttons] == ["grouping:auto", "grouping:undo", "grouping:clear", "grouping:expand", "grouping:collapse", "grouping:sort-min", "grouping:sort-max"]
     heading = min(y for y, kind, _ in hits if kind == "sort_header")
     assert max(y for y, _ in buttons) == heading - 2
     assert all(y >= heading + 1 for y, kind, _ in hits if kind == "job")

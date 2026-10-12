@@ -27,6 +27,7 @@ def test_changing_fixture_uses_actual_effects_and_new_samples_without_frame_io(b
     assert result["phases_ms"]["frame"]["p95"] <= result["phases_ms"]["frame"]["p99"]
     assert result["phases_ms"]["frame"]["p99"] <= result["phases_ms"]["frame"]["max"]
     frames = result["frames"]
+    assert frames[0]["selected_id"] == "2"  # First sampled running job; job 1 is pending.
     assert sum(frame["publication"] for frame in frames) == 3
     assert any("maintenance" in frame["reasons"] or "live" in frame["reasons"] for frame in frames)
     # Default running plots now move a buffered full-history endpoint too.

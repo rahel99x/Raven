@@ -298,8 +298,8 @@ and runtime summaries. Compressed ranges are counted arithmetically instead of
 expanding millions of indices into Python objects. An observed subset is not
 reported as the complete array; missing size information stays unknown.
 
-Click a cohort's down-pointing `▾` chevron to select it and open its task page.
-Click its right-pointing `▸` chevron to close that page. ASCII mode uses `v` and `>` respectively.
+Click a cohort's right-pointing `▸` chevron to select it and open its task page.
+Click its down-pointing `▾` chevron to close that page. ASCII mode uses `>` and `v` respectively.
 The cohort's summary, state counts, and mosaic remain visible.
 This task-page state is separate from the shared automatic job-group folds.
 Jobs and History Details retain their own Arrays task-page state.

@@ -99,7 +99,8 @@ def test_plain_group_row_drag_selects_while_alt_job_drag_changes_membership(dash
     send(ui, row(ui, "1"), "press", route)
     send(ui, row(ui, "3"), "drag", route)
     send(ui, row(ui, "3"), "release", route)
-    assert app.marks == {"1", "2", "3"} and not ui.calls
+    # Whole-batch sorting puts independent rows 3, 6, 9 before group 1, 2.
+    assert app.marks == {"1", "3", "6", "9"} and not ui.calls
     assert app.table_state["manual_groups"] == original
     app.marks = {"3"}
     S._bind_marks(app, ("3",))
@@ -182,9 +183,9 @@ def test_repaint_cannot_retarget_a_drop_under_an_unmoved_pointer(dashboard):
     send(ui, grip(ui, source), "press")
     send(ui, target_point, "drag")
     assert D.active(app)
-    # Two unrelated jobs disappear. The source stays put and both frozen
-    # groups stay valid, but the third group now sits beneath the pointer.
-    ui.store.jobs[:] = [job for job in ui.store.jobs if job.id not in ("3", "6")]
+    # One unrelated job disappears. Both frozen groups stay valid, but the
+    # third group now sits beneath the pointer in the sorted batch layout.
+    ui.store.jobs[:] = [job for job in ui.store.jobs if job.id != "3"]
     draw(ui)
     assert grip(ui, ui.groups[-1]) == target_point
     send(ui, target_point, "release")

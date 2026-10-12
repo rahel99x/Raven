@@ -502,8 +502,12 @@ The available records remain limited by the accounting window and filters.
 Numeric JOBIDs and array task
 IDs use natural order (`2` before `10`, `123_2` before `123_10`). Measurements use
 their original numeric values rather than rounded labels; unknown values stay
-last in either direction. Jobs pins remain first, and optional array grouping
-arranges the sorted rows into their observed task groups.
+last in either direction. Jobs orders complete batches using **Sort Min**
+(fewest running, then fewest total jobs) or **Sort Max** (most running, then
+fewest total jobs). Sort Min is the initial default; the last choice is saved.
+Column sorting and ordinary pins apply within batches and break ties between
+equally ranked batches. The current Raven Heavy allocation stays first.
+See [batch sorting](guides/batch-launches.md#sort-complete-batches-in-jobs).
 If sorting would hide the selected task behind a different folded group representative, Raven expands that array to keep the same job selected.
 
 Automatic launch grouping is enabled by default; new groups start open.
@@ -512,11 +516,12 @@ Two-job bursts require adjacent IDs, at most ten seconds, and matching nonempty 
 Three or more jobs can use a matching name family within 30 seconds, bounded numeric ID gaps and density, and nonconflicting known script paths.
 Dependency-connected groups require matching ownership and WorkDir within 60 seconds and a numeric ID span of 256.
 Missing provenance and names alone do not establish a group.
-Click the right-pointing chevron on the first visible expanded group row to close it.
-Click the down-pointing chevron on the closed summary to restore its members.
+Click the down-pointing chevron on the first visible expanded group row to close it.
+Click the right-pointing chevron on the closed summary to restore its members.
 During ordinary job-row navigation, Left closes the selected group and Right opens it.
 With directional button focus active, Right from a Jobs row enters Details instead.
-`:jobgroups [on|off]` toggles grouping; `:jobgroup toggle|open|close GROUP_ID` controls one known group.
+`:jobgroups [on|off]` toggles grouping in other lists; Recents uses its own
+Grouped/Sequential setting. `:jobgroup toggle|open|close GROUP_ID` controls one known group.
 `:jobgroup create` and `:jobgroup ungroup` use the focused job list's current marked or selected records.
 `:jobgroup reset` removes all saved and session manual groups and explicit exclusions, allowing normal automatic deduction to apply again when grouping display is enabled.
 It preserves the current `:jobgroups on` or `:jobgroups off` setting.

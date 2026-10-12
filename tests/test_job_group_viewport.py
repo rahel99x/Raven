@@ -43,7 +43,7 @@ def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(raven, 
     controls = [(y, value) for y, kind, value in hits if kind == "control"]
     assert len(controls) == 1
     y, control = controls[0]
-    assert y == 0 and L.row_text(rows[0]).startswith(">" if ascii_ else "▸")
+    assert y == 0 and L.row_text(rows[0]).startswith("v" if ascii_ else "▾")
     assert control["action"] == ("command", "jobgroup close array:700")
     assert "representative job " + representative in control["label"]
     assert [(y, value) for y, kind, value in hits if kind == "job"] == list(enumerate(job.id for job in visible))
@@ -70,7 +70,7 @@ def test_scrolled_job_dock_promotes_only_the_disclosure_cell(raven, tab, dock):
     group_hits = [(y, value) for y, kind, value in hits if kind == "control" and ":group:" in value["id"]]
     assert len(group_hits) == 1
     y, control = group_hits[0]
-    assert y == 1 and L.row_text(rows[y]).startswith("▸ " + items[8].record.id)
+    assert y == 1 and L.row_text(rows[y]).startswith("▾ " + items[8].record.id)
     assert control["action"] == ("command", "jobgroup close array:700")
     assert any(kind == "control" and value["id"].endswith(":job:" + items[8].record.id)
                and value["action"] == ("command", "history-job " + items[8].record.id)
@@ -91,5 +91,5 @@ def test_advisor_uses_actual_scrolled_rows_instead_of_overscan_for_group_arrow(r
     y, control = controls[0]
     assert control["action"] == ("command", "jobgroup close array:700")
     text = L.row_text(rows[y])
-    assert text.startswith("▸") and "700_" in text and "700_00" not in text
-    assert not any(L.row_text(row).startswith("▸") for row in rows[y + 1:])
+    assert text.startswith("▾") and "700_" in text and "700_00" not in text
+    assert not any(L.row_text(row).startswith("▾") for row in rows[y + 1:])

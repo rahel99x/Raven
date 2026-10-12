@@ -139,7 +139,7 @@ def test_menu_motion_updates_only_toolbar_and_removes_old_pointer_feedback(dashb
         screen._apply_input(app, mouse_report(left, y), cache.hits, curses)
         _, overlays, _ = cache.feedback(app, views)
         assert cache.content is content
-        assert app.interaction_state["hovered"] == "toolbar:menu:3:" + key
+        assert app.interaction_state["hovered"] == f"toolbar:menu:{toolbar.MENUS.index('Help')}:" + key
         hovered_rows = {row_y for row_y, _, row in overlays
                         if any(interaction.POINTER_STYLE in style for _, style in row)}
         assert hovered_rows == {y}

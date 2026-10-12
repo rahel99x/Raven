@@ -11,6 +11,75 @@ The procedures assume default keybindings and focus in the relevant job list.
 You can create a manual group from marked jobs, move members between groups, or
 remove members. Scheduler actions require a separate review for exact job IDs.
 
+## Sort complete batches in Jobs
+
+Use **Sort Min** or **Sort Max** beside **Collapse All** in Jobs Main:
+
+| Mode | First comparison | Tie-breaker |
+| --- | --- | --- |
+| Sort Min, the initial default | Fewest running jobs first | Fewest total queue jobs first |
+| Sort Max | Most running jobs first | Fewest total queue jobs first |
+
+These controls sort complete batches. All visible members of an expanded batch
+remain together; closing it leaves one real representative in the same batch
+order. Column sorts control the order within a batch and resolve equal batch
+ranks. Ordinary pins apply within batches and between equally ranked batches.
+Independent jobs form batches of one. The selected mode is saved with
+the connection's ordinary UI preferences for later launches.
+
+Counts use the unfiltered queue before collapse, excluding historical records.
+Running includes Slurm's active startup/completion states. Pending dependency
+jobs contribute to the total but not the running count. Compressed array rows
+count as observed queue records, not an invented number of running tasks.
+Filtering or closing a batch therefore does not change its sort rank.
+
+Raven's current Heavy allocation stays at the top when its exact job identity
+is available, and is kept separate from scientific batches. A matching job name
+alone cannot identify that allocation. Filters still determine which jobs are
+visible. History and Recents retain their independent sorting controls.
+
+For a batch A with one running job and seven dependent jobs, and an independent
+running job B, both have one running job. B therefore precedes the eight-job
+batch in either mode. A's visible members remain contiguous when expanded.
+
+The command equivalents are `:grouping sort-min` and `:grouping sort-max`.
+These are display preferences; they do not change Slurm priority, dependencies,
+or the order in which the scheduler starts jobs. Disabling state persistence
+also disables saving the selection between launches.
+
+## Choose Grouped or Sequential Recents
+
+Use **Grouped** or **Sequential** on the Recents divider. The choice is saved
+with the connection's UI preferences; Grouped is the initial default.
+
+| View | Presentation |
+| --- | --- |
+| Grouped | Keep each batch's recent jobs together. The batch with the newest completion appears first, with its members newest first. Expand or collapse its arrow to inspect individual jobs. |
+| Sequential | Show every admitted recent job as an individual row, newest completion first, without group headers or hidden members. |
+
+As jobs complete, fail, or are cancelled, their confirmed records move into
+Recents. Grouped reuses retained launch evidence to place them with related
+jobs; it does not treat similar names alone as proof of a shared batch.
+An active job that disappears from the queue remains explicitly awaiting
+accounting until its terminal outcome is known.
+
+Switching modes restores completion ordering for Recents. You can then choose
+a column sort explicitly; Grouped keeps batches contiguous under that sort.
+Jobs Main and History retain their own sorting choices. Sequential does not
+remove saved groups or change their shared fold preferences.
+Recents has its own visibility setting: Grouped can show known batches while
+`:jobgroups off` hides grouping in other lists. It still respects manual
+membership, exclusions, and the automatic-detection setting. **Ungroup All**
+therefore remains effective until groups are created or detection is enabled.
+
+The selected job remains an exact scheduler record when new completions arrive
+or the view changes. Filtering, the accounting window, and bounded history
+loading still determine which records are available. Group counts do not imply
+that every historical member has been loaded. Scrolling admits older records
+without adding scheduler queries merely to switch views.
+
+The command equivalents are `:recents grouped` and `:recents sequential`.
+
 ## Create a manual group
 
 1. Click a job row in the required list to focus that pane.
@@ -22,7 +91,7 @@ remove members. Scheduler actions require a separate review for exact job IDs.
 The group uses the existing count and state-summary formatting.
 Raven clears the marks consumed by this operation.
 Creating a group enables grouping display if it was disabled.
-Click the down-pointing chevron to show its members.
+Click the right-pointing chevron to show its members.
 
 The selected jobs do not need to have matching names or submission times.
 Manual membership takes precedence over automatic launch deduction.
@@ -77,7 +146,7 @@ Moving a member removes it from its previous manual group without changing other
 Adding a job already in the destination does not duplicate it.
 Manual membership uses natural job-ID order: `1`, `2`, ..., `9`, `10`, rather than the order in which members were added.
 Array task IDs also use natural order, such as `123_2` before `123_10`.
-Displayed rows follow each list's active sort, including its default sort.
+Jobs orders complete batches by Sort Min or Sort Max and retains column sorting within each batch. Other lists follow their active sorts.
 Sort JOBID ascending to display the group in increasing numeric order; adding `7–9`, then `4–6`, to members `1–3` then displays `1–9`.
 
 Press Esc or right-click to cancel an unfinished move and keep the job marks.
@@ -193,17 +262,17 @@ This command clears all manual grouping choices, not only the currently selected
 ## Fold and open a batch
 
 1. Open a list of jobs.
-2. Find the right-pointing chevron on the first visible row of an expanded group.
+2. Find the down-pointing chevron on the first visible row of an expanded group.
 3. Click that chevron to close the group.
 4. Read the representative job ID and the existing state summary.
-5. Click the down-pointing chevron on the closed summary row to show the members again.
+5. Click the right-pointing chevron on the closed summary row to show the members again.
 
 **Expected result:** One row represents the closed group.
 Opening it restores the matching members under the current filters and sort order.
 The fold preference applies across job lists and their history browsers.
 New automatically detected groups start open. New manual groups start closed.
-The chevron indicates the available action: `▸` closes an expanded group; `▾` opens a closed group.
-ASCII mode uses `>` to close and `v` to open.
+The chevron indicates the current state: `▾` is expanded and `▸` is collapsed.
+ASCII mode uses `v` for expanded and `>` for collapsed. Click either to toggle it.
 The first row follows the current grouping, filters, and sort order.
 If that row scrolls above the pane, the first visible member receives the disclosure control.
 You can therefore close the group without scrolling back to its original header.
@@ -222,7 +291,8 @@ Aggregate charts, timelines, explicit comparison traces, and node ownership disp
 During ordinary job-row navigation, Left closes the selected job's group and Right opens it.
 With directional button focus active, arrows move between controls instead.
 Use F8, arrows, and Enter to focus and activate a visible fold control.
-Use `:jobgroups off` to show individual jobs, or `:jobgroups on` to restore grouping.
+Use `:jobgroups off` to show individual jobs in other lists, or `:jobgroups on`
+to restore grouping. Recents uses its own **Grouped** and **Sequential** modes.
 Use `:jobgroup open GROUP_ID`, `:jobgroup close GROUP_ID`, or `:jobgroup toggle GROUP_ID` to change a known group directly.
 Use `:jobgroup create` and `:jobgroup ungroup` with the focused list's current selection to change membership.
 Normal saved UI state retains grouping and closed-group preferences.
@@ -230,6 +300,23 @@ Normal saved UI state retains grouping and closed-group preferences.
 ## Read the closed row
 
 The group label identifies the launch and its matching record count (`records`, or `rec` in a compact browser).
+Automatically named groups use the longest useful prefix shared by their job
+names, with trailing spaces and separators removed. For example,
+`encoder-seed-1`, `encoder-seed-2`, and `encoder-seed-3` share the label
+`encoder-seed`. Array and heterogeneous groups retain their allocation ID
+alongside the prefix. When no useful prefix exists, the launch marker or group
+kind and ID provide the fallback. Existing custom names remain unchanged.
+New manual groups start with the shared prefix when available and save that
+name; later job-name changes do not overwrite it.
+
+Names are presentation labels; they never determine membership or replace a
+scheduler ID. A label change cannot turn one allocation into another or reset
+its saved fold. Prefix calculation uses a bounded linear scan with constant
+working state and a bounded result. It runs with cached grouping updates,
+without sorting names, building a trie, or recomputing on ordinary redraws.
+The candidate prefix is capped at 160 characters and shrinks on each mismatch;
+names with terminal controls use the existing bounded display normalization.
+
 The INFO cell shows compact state badges in the current theme.
 Zero counts are omitted. Unicode separates badges with `·`; ASCII uses `|`.
 For example:
@@ -404,8 +491,9 @@ The grouping layer reads supplied snapshots. It does not run Slurm commands or r
 
 ## Use the Main grouping controls
 
-The five buttons above Jobs Main use the same group preferences as the other
-job lists. Narrow panes wrap the controls without covering the table headings.
+The grouping buttons above Jobs Main use the same group preferences as the other
+job lists. Adjacent sort buttons apply to Jobs Main. Narrow panes wrap the
+controls without covering the table headings.
 
 | Button | Result |
 | --- | --- |
@@ -414,9 +502,12 @@ job lists. Narrow panes wrap the controls without covering the table headings.
 | **Ungroup All** | Clear saved groups, folds, and exclusions, and disable automatic inference. Jobs remain individual until you group them manually or use Auto Group again. |
 | **Expand All** | Open the shared job groups without changing their membership. |
 | **Collapse All** | Close the shared job groups without changing their membership. |
+| **Sort Min** | Order complete batches by fewest running jobs, then fewest total jobs. |
+| **Sort Max** | Order complete batches by most running jobs, then fewest total jobs. |
 
 The matching commands are `:grouping auto`, `:grouping undo`, `:grouping clear`,
-`:grouping expand`, and `:grouping collapse`. After Ungroup All, `:grouping restore` restores its
+`:grouping expand`, `:grouping collapse`, `:grouping sort-min`, and
+`:grouping sort-max`. After Ungroup All, `:grouping restore` restores its
 session snapshot if no newer membership change would be overwritten.
 These controls affect the shared group presentation; they do not change Slurm.
 Collapse All uses the existing 256-group fold limit. If the known group count

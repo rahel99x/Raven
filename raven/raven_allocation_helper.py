@@ -130,7 +130,7 @@ class Supervisor:
         self.state = {**self.state, **extra, "state": state, "mode": "heavy" if state == "heavy" else "light",
                       "generation": self.generation, "request_id": self.request_id}
         if self.record is not None:
-            receipt = {key: self.state.get(key) for key in ("state", "request_id", "generation", "target", "ownership", "identity", "job_id", "host", "error", "cleanup_uncertain")}
+            receipt = {key: self.state.get(key) for key in ("state", "request_id", "generation", "target", "ownership", "identity", "job_id", "allocation_observation", "host", "error", "cleanup_uncertain")}
             receipt.update(helper_pid=os.getpid(), helper_start=process_start(os.getpid()), updated_at=time.time())
             try:
                 self.record.write(receipt)
@@ -154,7 +154,7 @@ class Supervisor:
         if checked["digest"] != plan.get("digest"):
             raise ValueError("Reviewed allocation plan changed before launch")
         self.plan = checked
-        self.state.update({**checked, "identity": {}, "job_id": "", "host": "", "cleanup_uncertain": False})
+        self.state.update({**checked, "identity": {}, "job_id": "", "allocation_observation": {}, "host": "", "cleanup_uncertain": False})
         try:
             self.record = OwnershipRecord(message["state_dir"], checked, self.request_id)
             self.state["receipt_path"] = str(self.record.path)
@@ -182,7 +182,7 @@ class Supervisor:
                   "context": context, "resources": checked["resources"]}
         launcher = str(Path(__file__).with_name("raven_allocation_exec.py"))
         self.client = WorkerClient(config, build_launch=lambda argv: [sys.executable, launcher, str(os.getpid()), *build_launch(checked, argv)],
-                                   launch_env=launch_environment)
+                                   launch_env=launch_environment, observe_allocation=checked["ownership"] == "dedicated-allocation")
         try:
             self.client.start()
         except (OSError, ValueError, RuntimeError) as exc:
@@ -250,7 +250,22 @@ class Supervisor:
     def collect(self):
         if self.client is None:
             return
-        for event in self.client.poll():
+        events = self.client.poll()
+        if not self.ready_at and not self.cancelled and self.state["state"] in ("pending", "starting"):
+            # This observation can identify the current foreground request in
+            # the queue while pending. It does not change admission, verified
+            # identity, placement validation, or cleanup confirmation.
+            job_id = self.client.observed_allocation_id
+            if job_id != self.state.get("job_id", ""):
+                observation = {}
+                if job_id:
+                    observation = {"allocation_id": job_id, "source": "owned-salloc-stderr",
+                                   "request_id": self.request_id, "generation": self.generation,
+                                   "cluster_id": self.plan["cluster_id"], "transport": self.plan["transport"]}
+                    if self.plan["transport"] != "ssh":
+                        observation["owner_uid"] = self.plan["owner_uid"]
+                self.publish(self.state["state"], job_id=job_id, allocation_observation=observation)
+        for event in events:
             if event.get("op") == "placement_probe":
                 self.publish("starting")
             self.emit("worker", event=event)
@@ -262,6 +277,7 @@ class Supervisor:
                     self.lease_deadline = now + self.plan["resources"]["wall_seconds"]
                 identity = self.client.identity
                 self.publish("heavy", identity=identity, job_id=identity.get("allocation_id", identity.get("job_id", "")),
+                             allocation_observation={},
                              host=identity.get("host", ""), resources=self.client.resources, operations=self.client.operations,
                              error="", cleanup_uncertain=False)
             remaining = max(0, self.lease_deadline - now)

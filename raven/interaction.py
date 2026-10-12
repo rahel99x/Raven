@@ -235,7 +235,9 @@ def _scope(app):
             id(getattr(app, "confirm", None)) if mode == "confirm" else None,
             id(_state(app, "execution_state").get("review")) if mode == "execution" else None,
             tuple(_state(app, "ops_state").get(key) for key in ("generation", "view", "editing"))
-            if mode == "operations" else None)
+            if mode == "operations" else None,
+            tuple(_state(app, "setup_ui_state").get(key) for key in ("page", "generation", "revision", "editing"))
+            if mode == "setup" else None)
 
 
 def _viewport(app):
@@ -308,7 +310,9 @@ def _context(app):
             getattr(app, "analytics_job", None), getattr(app, "research_job_id", None), getattr(app, "log_job", None),
             tuple(binding.get(name) for name in ("project_root", "run_id", "job_id", "attempt")),
             tuple(_state(app, "ops_state").get(key) for key in ("generation", "view", "editing"))
-            if getattr(app, "mode", "main") == "operations" else None)
+            if getattr(app, "mode", "main") == "operations" else None,
+            tuple(_state(app, "setup_ui_state").get(key) for key in ("page", "generation", "revision", "editing"))
+            if getattr(app, "mode", "main") == "setup" else None)
 
 
 def _current(app):
@@ -508,7 +512,7 @@ def _modal_controls(app, rows, width, height, spans):
                    "execution": "execution_state", "columns": "table_state",
                    "telemetry": "telemetry_state", "shell_checks": "shell_checks_state",
                    "arraymap": "array_manifest_state", "gpu_provider": "gpu_provider_state",
-                   "operations": "ops_state", "raven": "raven_ui_state"}
+                   "operations": "ops_state", "raven": "raven_ui_state", "setup": "setup_ui_state"}
     # The log workbench uses additional mode names; only current modal data may
     # contribute controls, never a previous hidden panel's registries.
     state_name = state_names.get(mode)

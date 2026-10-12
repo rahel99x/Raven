@@ -18,7 +18,7 @@ REQUIRED = {"id", "name", "st", "state"}
 
 
 def initialize(app):
-    app.table_state = {"hidden": {}, "order": {}, "widths": {}, "filters": {}, "facets": {}, "views": {}, "sorts": {}, "cursor": 0, "tab": "jobs", "groups": True, "auto_groups": True, "collapsed": [], "control_hits": []}
+    app.table_state = {"hidden": {}, "order": {}, "widths": {}, "filters": {}, "facets": {}, "views": {}, "sorts": {}, "cursor": 0, "tab": "jobs", "groups": True, "auto_groups": True, "jobs_batch_sort": "min", "recents_mode": "grouped", "collapsed": [], "control_hits": []}
 
 
 def restore(app, data):
@@ -63,6 +63,12 @@ def restore(app, data):
         app.table_state["groups"] = data.get("groups") is True
     if isinstance(data.get("auto_groups"), bool):
         app.table_state["auto_groups"] = data["auto_groups"]
+    from .job_batch_sort import MODES
+    if data.get("jobs_batch_sort") in MODES:
+        app.table_state["jobs_batch_sort"] = data["jobs_batch_sort"]
+    from .recents_ui import MODES as RECENT_MODES
+    if data.get("recents_mode") in RECENT_MODES:
+        app.table_state["recents_mode"] = data["recents_mode"]
     from .job_groups import valid_group_id
     app.table_state["collapsed"] = [value for value in data.get("collapsed", [])[:256] if valid_group_id(value)] if isinstance(data.get("collapsed"), list) else []
     from .manual_job_groups import validate_state
@@ -72,6 +78,10 @@ def restore(app, data):
 def save(app):
     result = {key: copy.deepcopy(app.table_state[key]) for key in ("hidden", "order", "widths", "filters", "facets", "views", "sorts", "groups", "collapsed")}
     result["auto_groups"] = app.table_state.get("auto_groups", True) is True
+    from .job_batch_sort import mode
+    result["jobs_batch_sort"] = mode(app)
+    from .recents_ui import mode as recent_mode
+    result["recents_mode"] = recent_mode(app)
     from .column_resize import committed_widths
     committed_widths(app, result["widths"])
     result["column_layout_version"] = COLUMN_LAYOUT_VERSION
@@ -209,8 +219,11 @@ def facets_fingerprint(app, tab):
 def fingerprint(app, tab):
     """Selection cache identity includes both filters and explicit sort state."""
     from .table_tools import extra_fingerprint
+    from .job_batch_sort import mode
+    from .recents_ui import mode as recent_mode
     return (facets_fingerprint(app, tab), sort_fingerprint(app, tab), extra_fingerprint(app, tab),
-            getattr(app, "table_state", {}).get("auto_groups", True) is True)
+            getattr(app, "table_state", {}).get("auto_groups", True) is True, mode(app) if tab == "jobs" else None,
+            recent_mode(app) if tab == "recent" else None)
 
 
 def matches(app, tab, record, snap):
@@ -343,7 +356,8 @@ def run_command(app, args):
             app.table_state["groups"] = not app.table_state["groups"] if not values else values == ["on"]
             if values == ["on"]:
                 app.table_state["auto_groups"] = True
-            app.say("Launch grouping " + ("on; Left/Right closes or opens the selected group" if app.table_state["groups"] else "off"))
+            app.say("Launch grouping " + ("on; Left/Right closes or opens the selected group" if app.table_state["groups"] else "off") +
+                    "; Recents uses its own Grouped/Sequential mode")
         return True
     tab = values.pop(0) if values and values[0] in TABLE_KEYS else app.tab
     if tab not in TABLE_KEYS:
@@ -492,7 +506,12 @@ def run_command(app, args):
 
 
 def handle_key(app, key):
-    if app.mode == "main" and app.tab in ("jobs", "history", "group", "deps") and app.table_state["groups"] and key in ("left", "right"):
+    if app.mode == "main" and app.tab in ("jobs", "history", "group", "deps") and key in ("left", "right"):
+        from .recents_ui import mode as recent_mode
+        in_recent = app.tab == "jobs" and app.selected_id in getattr(app, "recent_ids", ())
+        visible = recent_mode(app) == "grouped" if in_recent else app.table_state["groups"]
+        if not visible:
+            return False
         from .job_groups import fold, registry
         from .table_tools import snapshot
         groups = registry(app)

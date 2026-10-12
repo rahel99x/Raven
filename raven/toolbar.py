@@ -11,7 +11,7 @@ from .command_registry import Control as Item, toolbar_controls
 
 from .pointer_routing import capture_handler
 
-MENUS = ("File", "Edit", "View", "Help")
+MENUS = ("File", "Edit", "View", "Setup", "Help")
 BAR_STYLE = "text+bg:surface-raised"
 
 
@@ -77,7 +77,7 @@ def run_command(app, args):
     elif args[0] == "menu" and (len(args) == 1 or len(args) == 2 and args[1].title() in MENUS):
         _open(app, MENUS.index(args[1].title()) if len(args) == 2 else 0)
     else:
-        app.fail("Use menu [File|Edit|View|Help] or about without arguments.")
+        app.fail("Use menu [File|Edit|View|Setup|Help] or about without arguments.")
     return True
 
 
@@ -120,12 +120,21 @@ def menu_items(app, menu):
         entries += [Item("theme-" + name, "Theme: " + labels.get(name, name), "theme " + name)
                     for name in THEME_NAMES if name != "reader"]
         return entries
+    if menu == "Setup":
+        from .research import RESEARCH_VIEWS
+        from .views import ANALYTICS_VIEWS
+        return (toolbar_controls("Setup") +
+                [Item("setup-research-" + key, "Research: " + label, "setup research " + key)
+                 for key, label in RESEARCH_VIEWS] +
+                [Item("setup-analytics-" + key, "Analytics: " + label.title(), "setup analytics " + key)
+                 for key, label in ANALYTICS_VIEWS])
     return toolbar_controls("Help")
 
 
 def _blocked(app, item):
     pending_execution = getattr(app, "execution_state", {}).get("pending_action")
-    if (getattr(app, "mode", "main") == "confirm" or pending_execution) and item.local not in ("quit", "about", "rate", "workers"):
+    pending_allocation = getattr(app, "raven_ui_state", {}).get("review")
+    if (getattr(app, "mode", "main") == "confirm" or pending_execution or pending_allocation) and item.local not in ("quit", "about", "rate", "workers"):
         return "Close the pending job review first."
     if item.context == "workers":
         from .worker_ui import status
@@ -208,6 +217,11 @@ def _activate(app, item):
         # pending review, selection, and page while switching background work.
         from .worker_ui import run_command
         run_command(app, item.command.split())
+    elif item.command.startswith("setup"):
+        # Setup owns its modal and restores the previous page on close.
+        _close(app)
+        from .setup_ui import run_command
+        run_command(app, item.command.split())
     elif action in ("select", "select-all", "follow"):
         app.mode = "main"
         app.handle_action({"select": "visual", "select-all": "visual_all", "follow": "follow"}[action])
@@ -259,8 +273,9 @@ def render_bar(views, app, width, y=0):
         else:
             append(" " * (width - x))
         return row
-    forms = [(" x ", [" File ", " Edit ", " View ", " Help "]),
-             ("x", [" F ", " E ", " V ", " H "]), ("x", [" M "]),
+    forms = [(" x ", [" " + name + " " for name in MENUS]),
+             ("x ", [name + " " for name in MENUS]),
+             ("x", [" " + name[0] + " " for name in MENUS]), ("x", [" M "]),
              ("x", ["M"])]
     # Reserve the widest effective interval before choosing a menu form.
     # Changing the requested rate must never move menu labels or the track.
@@ -272,10 +287,10 @@ def render_bar(views, app, width, y=0):
     managed=isinstance(getattr(app,'cfg',{}).get('raven'),dict) or getattr(app,'raven_allocation_manager',None) is not None
     compute_space = 10 if managed and width >= minimum_slider + worker_space + 12 else 0
     copy_space=4 if width >= 80 else 0
-    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space), forms[-1])
+    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space - copy_space), forms[-1])
     append(quit_label, "danger+bold+bg:surface-raised", "quit")
     for index, label in enumerate(labels):
-        selected = state["menu"] == index if len(labels) == 4 else state["menu"] is not None
+        selected = state["menu"] == index if len(labels) == len(MENUS) else state["menu"] is not None
         append(label, "accent+bold+bg:surface-sunken" if selected else BAR_STYLE, "menu", index)
     compute_button = raven_ui.button(app, width-x-minimum_slider-worker_space-copy_space) if managed else None
     if compute_button is not None:
@@ -359,8 +374,8 @@ def handle_key(app, key):
     elif key in ("enter", "space"):
         entries = menu_items(app, state["menu"])
         _activate(app, entries[max(0, min(len(entries) - 1, state["cursor"]))])
-    elif len(key) == 1 and key.lower() in "fevh":
-        _open(app, "fevh".index(key.lower()))
+    elif len(key) == 1 and key.lower() in "fevsh":
+        _open(app, "fevsh".index(key.lower()))
     return True
 
 

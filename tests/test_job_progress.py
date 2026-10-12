@@ -170,7 +170,9 @@ def test_leading_progress_mouse_cycle_sorts_raw_fractions_and_keeps_job_identity
     store, app, views = progress_table
     store.jobs = [Job("100", "high", "cpu", "RUNNING"),
                   Job("2", "low", "cpu", "RUNNING"),
-                  Job("3", "unknown", "cpu", "PENDING")]
+                  Job("3", "unknown", "cpu", "RUNNING")]
+    # Equal batch activity isolates progress ordering, including a running
+    # job without reported progress or a usable walltime estimate.
     for jid, fraction in (("100", .5004), ("2", .5003)):
         app.research.cache[(app.research.generation, "experiment", jid)] = (0, {"status": "ok", "latest": {"progress_fraction": fraction}})
     app.table_state["groups"] = False

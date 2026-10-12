@@ -267,11 +267,22 @@ not request unlimited accounting history. The summary shows the active interval.
 :recents 25
 :recents window 2h
 :recents window all
+:recents grouped
+:recents sequential
 ```
 
 Raven selects the latest candidate records before it applies the Recents sort.
 The Jobs sort does not change Recents. Departed jobs remain visible while
 accounting data is pending.
+
+Choose **Grouped** or **Sequential** on the Recents divider. Grouped, the default,
+keeps batch members contiguous and permits expansion and collapse. Sequential
+shows individual records with no folded members. Switching modes restores
+newest-completion order; a later header sort can select a different order.
+Grouped keeps whole batches together under custom sorts. Raven saves the mode
+without changing the Jobs sort or removing group membership.
+See [Recents grouping](batch-launches.md#choose-grouped-or-sequential-recents)
+for completion updates and exact selection behavior.
 
 Use `:recents auto` to adapt the initial preview when several jobs finish.
 Use `:recents expand` for an initial preview of 25 records.

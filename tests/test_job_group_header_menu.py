@@ -299,6 +299,8 @@ def test_header_menu_remains_keyboard_usable_in_small_terminal(dashboard, width,
     app, _ = dashboard
     gid = index(dashboard).for_job("1").id
     job_groups.fold(app, gid, True)
+    frame(dashboard)
+    app.selected_id, app.cursor["jobs"] = "1", app.visible_ids.index("1")
     _, hits = frame(dashboard, width=width, height=height)
     dispatch(app, hits, header_point(hits, "jobs", gid), "right", "sgr")
     assert app.mode == "job_group_menu"

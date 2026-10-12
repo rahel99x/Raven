@@ -109,6 +109,13 @@ It does not scan all accounting history for the default preview.
 Newly departed jobs appear as awaiting accounting until Slurm reports their terminal state.
 Jobs and Recents retain separate filters and cascading sorts.
 
+The divider also contains **Grouped** and **Sequential**. Grouped keeps related
+completions together with expandable batch headers. Sequential shows individual
+jobs without folds. Raven remembers the choice; changing modes restores newest
+completion first, and later column sorts remain available. These controls use
+cached observations and keep the selected job's exact identity.
+See [Recents grouping](batch-launches.md#choose-grouped-or-sequential-recents).
+
 ## Read metric graphs inside Details
 
 Jobs and History share the Inspector, Logs, Investigate, Research, Analytics, Quick Advisor, and Off modes.
@@ -145,20 +152,23 @@ Raven groups jobs when the published evidence supports a shared launch.
 Grouping is enabled by default, and new groups start open.
 The fold setting is shared by Jobs, Recents, History, Group, Dependencies, and the job-history browsers.
 
-1. Find the right-pointing chevron on the first visible row of an expanded launch group.
-2. Click it to close the group. Click the down-pointing chevron on its summary row to open it again.
+1. Find the down-pointing chevron on the first visible row of an expanded launch group.
+2. Click it to close the group. Click the right-pointing chevron on its summary row to open it again.
 3. Select a member and press Left to close the group or Right to open it when ordinary job-row navigation owns the keys.
 4. Open another job page and check the same group's shared fold setting.
 
 **Expected result:** Closing a group leaves one real representative job row.
-Opening it restores its matching jobs in the current sort and filter order.
+Opening it restores its matching jobs under the current filters.
+Jobs keeps each batch contiguous using the selected [batch sort](batch-launches.md#sort-complete-batches-in-jobs),
+with the current column sort within the batch. Other lists retain their own sorts.
 The representative ID remains a real scheduler allocation.
 In scheduler job lists, closing a group moves a hidden selected child to the visible representative.
 A data view opened for an exact historical job can stay on that job while its browser group is folded.
 Check that displayed ID before inspecting or acting on a job.
 
-Use `:jobgroups off` to show individual jobs without grouping.
-Use `:jobgroups on` to restore grouping, or `:jobgroups` to toggle it.
+Use `:jobgroups off` to show individual jobs without grouping in other lists.
+Recents has its own **Grouped** and **Sequential** controls.
+Use `:jobgroups on` to restore shared grouping, or `:jobgroups` to toggle it.
 Use `:jobgroup open GROUP_ID`, `:jobgroup close GROUP_ID`, or `:jobgroup toggle GROUP_ID` for an exact known group.
 A simple unscoped array also accepts its numeric parent ID in this command.
 Normal UI state retains grouping and closed-group preferences.

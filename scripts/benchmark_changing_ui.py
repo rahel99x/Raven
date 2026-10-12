@@ -295,6 +295,10 @@ def run_case(args, kind, ascii_):
         with patch.object(time, "monotonic", lambda: simulated.mono), patch.object(clock, "_source", lambda: simulated.wall):
             # Preload each actual job attempt, native control entry, and paint.
             for record in reversed(records):
+                # Batch priority can place pending rows ahead of these sampled
+                # jobs. Bind the cursor to the actual sorted row before paint.
+                ordered_ids = [row["id"] for row in views.job_rows(store.snapshot(), app)]
+                app.cursor["jobs"] = ordered_ids.index(record.id)
                 app.selected_id = record.id
                 redraw()
                 enable_visible()

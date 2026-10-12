@@ -22,10 +22,22 @@ def command_names():
 
 def controls(app, g, width):
     from .control_rows import buttons
-    return buttons(g, width, [(key, label, ("command", "grouping " + key)) for key, label in
-        (("auto", "Auto Group"), ("undo", "Undo Auto"), ("clear", "Ungroup All"),
-         ("expand", "Expand All"), ("collapse", "Collapse All"))],
-        group="grouping-toolbar", prefix="grouping:")
+    from .job_batch_sort import mode
+    choices = (("auto", "Auto Group"), ("undo", "Undo Auto"), ("clear", "Ungroup All"),
+               ("expand", "Expand All"), ("collapse", "Collapse All"),
+               ("sort-min", "Sort Min"), ("sort-max", "Sort Max"))
+    # The normal 80-column split layout can spare only one toolbar row. Keep
+    # both sort choices together instead of wrapping the last one into a row
+    # which the queue's minimum-height reservation would hide.
+    compact = {"auto": "Auto", "undo": "Undo", "clear": "Ungroup", "expand": "Expand"}
+    full_width = sum(len(label) + 2 for _, label in choices) + len(choices) - 1
+    rows, hits = buttons(g, width, [(key, compact.get(key, label) if width < full_width else label,
+                                   ("command", "grouping " + key)) for key, label in choices],
+        selected="sort-" + mode(app), group="grouping-toolbar", prefix="grouping:")
+    full_labels = dict(choices)
+    for _, _, descriptor in hits:
+        descriptor["label"] = full_labels[descriptor["id"].removeprefix("grouping:")]
+    return rows, hits
 
 
 def _invalidate(app):
@@ -51,7 +63,21 @@ def execute(app, action, snap=None):
     table = app.table_state
     registry = G.registry(app)
     index = registry.ensure(snap)
-    if action == "auto":
+    if action in ("sort-min", "sort-max"):
+        from .job_batch_sort import mode
+        chosen = action[5:]
+        changed = mode(app) != chosen
+        table["jobs_batch_sort"] = chosen
+        _invalidate(app)
+        # Synchronize the actual selected job before another input can act on
+        # old row positions; the existing sort path preserves exact identity.
+        callback = getattr(app, "table_sort_changed", None)
+        if callable(callback):
+            callback("jobs", persist=False)
+        message = ("Sort Min: fewer active jobs, then fewer total queue jobs per batch" if chosen == "min" else
+                   "Sort Max: more active jobs, then fewer total queue jobs per batch")
+        return M.Result(changed, message + "; Raven Heavy first")
+    elif action == "auto":
         before = dict(enabled=table.get("groups", True), auto=table.get("auto_groups", True),
                       collapsed=set(registry.collapsed), revision=getattr(app, "manual_job_groups_revision", 0))
         table.update(groups=True, auto_groups=True)
@@ -135,7 +161,7 @@ def execute(app, action, snap=None):
         table["collapsed"] = []
         message = "All shared groups expanded"
     else:
-        return M.Result(False, "Use grouping auto, undo, clear, expand, collapse, or restore")
+        return M.Result(False, "Use grouping auto, undo, clear, expand, collapse, sort-min, sort-max, or restore")
     _invalidate(app)
     G.registry(app).ensure(snap)
     return M.Result(True, message)
@@ -145,7 +171,7 @@ def run_command(app, args):
     if not args or args[0] != "grouping":
         return False
     if len(args) != 2:
-        app.say("Use grouping auto, undo, clear, expand, collapse, or restore")
+        app.say("Use grouping auto, undo, clear, expand, collapse, sort-min, sort-max, or restore")
         return True
     result = execute(app, args[1])
     app.say(result.message)

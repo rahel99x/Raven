@@ -101,7 +101,14 @@ def test_frozen_frames_reuse_snapshot_without_copying_or_reading(dashboard, monk
         assert app.table_tools_state["freeze"] is frozen
         assert "new" not in app.visible_ids and "0" in app.visible_ids
         assert len(rows) == 32 and len(app.last_rows) == 31
-        assert len(hits) <= 50
+        # Two batch-sort and two Recents-mode controls add fixed hit regions;
+        # the viewport-dependent hit budget must remain unchanged.
+        additions = {"grouping:sort-min", "grouping:sort-max",
+                     "recents-mode:grouped", "recents-mode:sequential"}
+        extra = [value["id"] for _, kind, value in hits
+                 if kind == "control" and value.get("id") in additions]
+        assert len(extra) == len(set(extra))
+        assert len(hits) - len(extra) <= 50
     assert "queue changes" in app.freeze_label
 
 

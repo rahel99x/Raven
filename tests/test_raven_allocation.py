@@ -14,6 +14,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -74,7 +75,10 @@ if name=='ssh':
  os.environ['SLURM_PARENT_TEST']='remote-parent'; command=shlex.split(args[-1]); os.execvp(command[0],command)
 elif name=='salloc':
  if mode=='deny':sys.exit(1)
- if mode=='pending':time.sleep(30)
+ if mode in ('pending','pending-grant'):
+  sys.stderr.write('salloc: Pending job allocation 7654\\n');sys.stderr.flush()
+  if mode=='pending':time.sleep(30)
+  while not os.path.exists(os.environ['RAVEN_FAKE_GATE']):time.sleep(.01)
  if mode=='disconnect':sys.exit(255)
  os.environ['SLURM_JOB_ID']='7654'
  sys.stderr.write('salloc: Granted job allocation 7654\\n');sys.stderr.flush()
@@ -308,6 +312,54 @@ def test_fake_slurm_grant_verifies_placement_and_release_owns_only_its_lifetime(
     commands = [json.loads(line) for line in fake_slurm.read_text().splitlines()]
     assert [item["name"] for item in commands] == ["salloc", "srun"]
     assert all(not item["parent_hints"] for item in commands)
+
+
+@pytest.mark.parametrize("transport", ["local", "ssh"])
+def test_pending_allocation_observation_is_presentation_only_until_verified(tmp_path, fake_slurm, monkeypatch, transport):
+    gate = tmp_path / "grant"
+    monkeypatch.setenv("RAVEN_FAKE_MODE", "pending-grant")
+    monkeypatch.setenv("RAVEN_FAKE_GATE", str(gate))
+    cfg = cluster()
+    if transport == "ssh":
+        cfg["connection"] = {"transport": "ssh", "host": "approved-alias"}
+    verify_allowed = threading.Event()
+
+    def verify(candidate, cancel=None):
+        assert verify_allowed.wait(5), "Test did not release placement verification"
+        return placement(candidate, cancel)
+
+    with AllocationManager(cfg, state_dir=tmp_path / "state", placement_verifier=verify) as manager:
+        try:
+            request = manager.request()
+            until(manager, lambda: manager.snapshot().get("job_id") == "7654")
+            pending = manager.snapshot()
+            assert pending["state"] == "pending" and pending["identity"] == {}
+            assert not manager.worker.ready
+            observation = pending["allocation_observation"]
+            assert observation == {"allocation_id": "7654", "source": "owned-salloc-stderr",
+                                   "request_id": request, "generation": manager.generation,
+                                   "cluster_id": "fixture", "transport": transport,
+                                   **({"owner_uid": os.getuid()} if transport == "local" else {})}
+            record = json.loads(Path(pending["receipt_path"]).read_text())
+            assert record["allocation_observation"] == observation
+            assert record["identity"] == {} and not record["cleanup_uncertain"]
+            with pytest.raises(RuntimeError, match="not ready"):
+                manager.worker.submit("statistics", {}, {})
+            gate.touch()
+            until(manager, lambda: manager.snapshot()["state"] == "starting")
+            assert manager.snapshot()["job_id"] == "7654"
+            assert manager.snapshot()["identity"] == {} and not manager.worker.ready
+            verify_allowed.set()
+            until(manager, lambda: manager.worker.ready)
+            assert manager.snapshot()["identity"]["verified"] is True
+            assert manager.snapshot()["allocation_observation"] == {}
+            manager.release()
+            drained(manager)
+            assert manager.snapshot()["state"] == "light"
+        finally:
+            verify_allowed.set()
+    commands = [json.loads(line)["name"] for line in fake_slurm.read_text().splitlines()]
+    assert commands == (["ssh"] if transport == "ssh" else []) + ["salloc", "srun"]
 
 
 @pytest.mark.parametrize("outside_step", [False, True])

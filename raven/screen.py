@@ -790,7 +790,9 @@ def _navigation_context(app):
             getattr(app, "log_job", None), getattr(logs, "path", None),
             getattr(logs, "browser", None),
             toolbar.get("menu"), toolbar.get("focus"), toolbar.get("cursor"), toolbar.get("panel"),
-            panels.get("mode"), panels.get("focus"), input_identity(app))
+            panels.get("mode"), panels.get("focus"), input_identity(app),
+            tuple(getattr(app, "setup_ui_state", {}).get(key) for key in ("page", "generation", "revision", "editing"))
+            if app.mode == "setup" else None)
 
 
 def _motion_report(buttons, curses):

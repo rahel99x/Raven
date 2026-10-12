@@ -29,7 +29,9 @@ def test_disclosure_follows_first_filtered_sorted_record_without_reintroducing_s
     app, snap = grouping
     source = [snap["jobs"][2], snap["jobs"][3], snap["jobs"][0]]
     displayed = G.project_records(app, snap, source, context)
-    assert all(actual is expected for actual, expected in zip(displayed, source))
+    expected = ([source[1], source[0], source[2]] if context == "jobs" else
+                [source[0], source[2], source[1]] if context == "recent" else source)
+    assert all(actual is original for actual, original in zip(displayed, expected))
     first = G.metadata_for_record(app, context, "52_2")
     assert first.header and first.representative_id == "52_2"
     assert first.visible_count == 2 and first.total_count == 3
@@ -37,7 +39,7 @@ def test_disclosure_follows_first_filtered_sorted_record_without_reintroducing_s
     assert G.fold(app, first.group.id, True)
     assert G.fold(app, first.group.id, True)  # Repeated painted close is safe.
     displayed = G.project_records(app, snap, source, context)
-    assert displayed == source[:2]
+    assert displayed == ([source[1], source[0]] if context == "jobs" else source[:2])
     assert "52_1" not in [record.id for record in displayed]
     folded = G.metadata_for_record(app, context, "52_2")
     assert folded.collapsed and folded.stats.counts["dependent"] == 1
@@ -45,7 +47,7 @@ def test_disclosure_follows_first_filtered_sorted_record_without_reintroducing_s
     assert folded.stats.counts["pending"] == 0
     assert G.fold(app, first.group.id, False)
     assert G.fold(app, first.group.id, False)
-    assert G.project_records(app, snap, source, context) == source
+    assert G.project_records(app, snap, source, context) == expected
 
 
 def test_disclosures_and_shared_fold_survive_new_jobs_and_completion(grouping):
@@ -79,7 +81,7 @@ def test_disclosures_and_shared_fold_survive_new_jobs_and_completion(grouping):
     assert queue_meta.total_count == 4 and queue_meta.visible_count == 3
     assert queue_meta.stats.counts["completed"] == 0
     assert G.fold(app, group.id, False)
-    assert G.project_records(app, snap, snap["jobs"], "jobs") == snap["jobs"]
+    assert [record.id for record in G.project_records(app, snap, snap["jobs"], "jobs")] == ["52_1", "52_2", "52_3", "99"]
     assert not G.metadata_for_record(app, "jobs", "52_1").collapsed
 
 

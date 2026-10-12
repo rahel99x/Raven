@@ -154,6 +154,9 @@ def test_inspector_retains_live_rank_diagnostics_dependencies_tags_and_notes(das
     store.steps["900"] = [Step("900.0", name="0", ntasks=8, cpu_time=3000,
         rss=2 * 1024 ** 3, rss_task="3", rss_node="node-b", min_cpu=1200,
         min_cpu_task="3", min_cpu_node="node-b")]
+    dashboard.render(width=150, height=60)
+    dashboard.app.cursor["jobs"] = dashboard.app.visible_ids.index("900")
+    dashboard.app.sync_selection()  # Inspect the running prerequisite's metrics.
     text, _, _ = dashboard.render(width=150, height=60)
     assert "step 0        8 tasks" in text
     assert "peak 2.0 GB on task 3@node-b" in text

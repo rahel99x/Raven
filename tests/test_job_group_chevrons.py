@@ -67,7 +67,7 @@ def test_painted_table_chevron_closes_and_opens_once_without_selecting_a_batch(r
     rows, hits = frame(raven, context, ascii_=ascii_)
     hit = table_control(hits, context, gid)
     y, control = hit
-    assert L.row_text(rows[y])[control["left"]] == (">" if ascii_ else "▸")
+    assert L.row_text(rows[y])[control["left"]] == ("v" if ascii_ else "▾")
     assert control["action"] == ("command", "jobgroup close " + gid)
     app.marks = {"600_2", "500_2"}
     calls = []
@@ -85,7 +85,7 @@ def test_painted_table_chevron_closes_and_opens_once_without_selecting_a_batch(r
     rows, hits = frame(raven, context, ascii_=ascii_)
     hit = table_control(hits, context, gid)
     y, control = hit
-    assert L.row_text(rows[y])[control["left"]] == ("v" if ascii_ else "▾")
+    assert L.row_text(rows[y])[control["left"]] == (">" if ascii_ else "▸")
     assert control["action"] == ("command", "jobgroup open " + gid)
     previous = len(calls)
     gesture(app, hit, hits)
@@ -96,23 +96,24 @@ def test_painted_table_chevron_closes_and_opens_once_without_selecting_a_batch(r
 
 @pytest.mark.parametrize("tab", history_browser.TABS)
 @pytest.mark.parametrize("dock", ["left", "right", "top", "bottom"])
-def test_each_job_browser_dock_uses_the_same_explicit_chevron_actions(raven, tab, dock, monkeypatch):
+@pytest.mark.parametrize("ascii_", [False, True])
+def test_each_job_browser_dock_uses_the_same_explicit_chevron_actions(raven, tab, dock, ascii_, monkeypatch):
     app, _, _ = raven
     app.tab = tab
     history_browser._view(app)["dock"] = dock
-    rows, hits = frame(raven, tab)
+    rows, hits = frame(raven, tab, ascii_=ascii_)
     hit = dock_control(hits, tab, "array:600")
     y, control = hit
-    assert L.row_text(rows[y])[control["left"]] == "▸"
+    assert L.row_text(rows[y])[control["left"]] == ("v" if ascii_ else "▾")
     assert control["action"] == ("command", "jobgroup close array:600")
     calls = []
     original = app.run_command
     monkeypatch.setattr(app, "run_command", lambda text: (calls.append(text), original(text))[1])
     gesture(app, hit, hits)
     assert is_closed(app, "array:600") and calls == ["jobgroup close array:600"]
-    rows, hits = frame(raven, tab)
+    rows, hits = frame(raven, tab, ascii_=ascii_)
     hit = dock_control(hits, tab, "array:600")
-    assert L.row_text(rows[hit[0]])[hit[1]["left"]] == "▾"
+    assert L.row_text(rows[hit[0]])[hit[1]["left"]] == (">" if ascii_ else "▸")
     assert hit[1]["action"] == ("command", "jobgroup open array:600")
     gesture(app, hit, hits)
     assert not is_closed(app, "array:600")

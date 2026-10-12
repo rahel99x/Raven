@@ -206,6 +206,14 @@ class AllocationManager:
 
     def request_reuse_review(self, job_id):
         """Start one fresh, finite owned-allocation read; never run it on the UI."""
+        if not self._lock.acquire(blocking=False):
+            raise RuntimeError("Allocation settings are busy; retry after saving finishes")
+        try:
+            return self._request_reuse_review(job_id)
+        finally:
+            self._lock.release()
+
+    def _request_reuse_review(self, job_id):
         import re
         if self._closed or self._state["state"] in ACTIVE:
             raise RuntimeError("Return to Light before reviewing another allocation")
@@ -265,6 +273,14 @@ class AllocationManager:
         return receipt
 
     def request(self, reuse=None, plan=None):
+        if not self._lock.acquire(blocking=False):
+            raise RuntimeError("Allocation settings are busy; retry after saving finishes")
+        try:
+            return self._request(reuse, plan)
+        finally:
+            self._lock.release()
+
+    def _request(self, reuse=None, plan=None):
         if self._closed:
             raise RuntimeError("Allocation manager is closed")
         if self._state["state"] in ACTIVE:

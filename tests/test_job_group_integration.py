@@ -52,7 +52,14 @@ def test_sort_reveals_selected_explicit_group_member_when_representative_changes
     assert app.command_ok
     views.compose(store.snapshot(), app, 180, 48)
     assert app.selected_id == selected
-    assert not job_groups.registry(app).is_collapsed(group)
+    if table == "recent":
+        # Recents keeps the exact selected allocation as the folded row;
+        # changing its sort need not unfold that batch in every other view.
+        assert job_groups.registry(app).is_collapsed(group)
+        meta = job_groups.metadata_for_record(app, "recent", selected)
+        assert meta.header and meta.representative_id == selected
+    else:
+        assert not job_groups.registry(app).is_collapsed(group)
     opened = []
     app.open_log = lambda jid=None: opened.append(jid or app.selected_id)
     app.handle("l")
@@ -123,6 +130,7 @@ def test_repeated_dependency_group_fold_controls_have_distinct_semantic_ids(dash
 def test_frozen_group_controls_use_displayed_snapshot_after_live_metadata_changes(dashboard):
     app, views, store = dashboard
     views.compose(store.snapshot(), app, 180, 48)
+    app.selected_id, app.cursor["jobs"] = "101", app.visible_ids.index("101")
     app.run_command("freeze on")
     views.compose(store.snapshot(), app, 180, 48)
     group = job_groups.registry(app).index.for_job("101")

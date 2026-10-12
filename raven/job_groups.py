@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hashlib import blake2s
 import re
 import shlex
@@ -26,11 +26,13 @@ SWEEP_DENSITY = 4
 DEPENDENCY_SECONDS = 60
 DEPENDENCY_ID_SPAN = 256
 MAX_COLLAPSED = 256
+MAX_GROUP_PREFIX = 160
 _ARRAY = re.compile(r"^([0-9]{1,19})_([0-9]{1,19}|\[[0-9,:%-]+\])(?:\+[0-9]{1,19})?$")
 _HET = re.compile(r"^([0-9]{1,19})\+[0-9]{1,19}$")
 _MARKER = re.compile(r"^(?:launch:|group:)([A-Za-z0-9][A-Za-z0-9_.-]{0,127})$")
 _EXPLICIT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _FAMILY = re.compile(r"^(.*?)[_.-]([0-9]+)$")
+_NON_PRINTABLE_ASCII = re.compile(r"[^\x20-\x7e]")
 _EMPTY = frozenset(("", "Unknown", "N/A", "NONE", "None", "(null)", "-"))
 _MISSING = object()
 _EMPTY_VALUES = (_MISSING,) * 12
@@ -53,6 +55,60 @@ def _text(value):
     return value if isinstance(value, str) and value not in _EMPTY and len(value) <= 4096 else ""
 
 
+def shared_name_prefix(names):
+    """Find a useful display prefix in one pass over a name iterator.
+
+    Keep one reference and a shrinking character limit, never a name list,
+    sorted copy, or trie. Plain names reuse their existing strings. Only a
+    control-bearing name needs a temporary normalization of its bounded input.
+    Work stops as soon as fewer than two characters can remain useful.
+    """
+    from .log_text import display_text
+
+    def normalized(name, limit):
+        if not isinstance(name, str) or len(name) > 4096:
+            return ""
+        # Unknown tokens are short. Avoid hashing a long new name merely to
+        # test that small set before the bounded prefix scan.
+        if len(name) <= MAX_GROUP_PREFIX and name in _EMPTY:
+            return ""
+        # ASCII names require no copies, and only the remaining candidate
+        # prefix is examined. Printable Unicode takes one bounded slice;
+        # normalization of the complete bounded input is for controls only.
+        if (_NON_PRINTABLE_ASCII.search(name, 0, limit) is None
+                or name[:limit].isprintable()):
+            return name
+        name = display_text(name)
+        if not name.isprintable():
+            # Includes Unicode format controls not handled as ANSI escapes.
+            name = "".join(char if char.isprintable() else " " for char in name)
+        return name
+
+    names = iter(names)
+    first = normalized(next(names, ""), MAX_GROUP_PREFIX)
+    limit = min(len(first), MAX_GROUP_PREFIX)
+    if limit < 2:
+        return ""
+    for name in names:
+        name = normalized(name, limit)
+        limit = min(limit, len(name))
+        offset = 0
+        while offset < limit and first[offset] == name[offset]:
+            offset += 1
+        limit = offset
+        if limit < 2:
+            return ""
+    prefix = first[:limit].rstrip(" _-./:|([{–—").strip()
+    return prefix if len(prefix) >= 2 and any(char.isalnum() for char in prefix) else ""
+
+
+def array_parent(group):
+    """Read the scheduler identity independently of the presentation label."""
+    if group.kind == "array" and group.id.startswith("array:"):
+        return group.id.split(":", 2)[1]
+    return ""
+
+
 def _digest(parts):
     # Length prefixes avoid collisions between field separators in paths/names.
     digest = blake2s(digest_size=10)
@@ -71,6 +127,9 @@ def _script(command):
     if not pieces:
         return ""
     first = pieces[0]
+    if first.rsplit("/", 1)[-1] in ("env", "srun", "mpirun", "mpiexec", "uv", "torchrun"):
+        # A shared launcher is not evidence of a shared scientific script.
+        return command
     if first.rsplit("/", 1)[-1] in ("bash", "sh", "zsh", "python", "python3", "perl", "Rscript"):
         # Inline snippets and interpreter switches provide no script identity.
         if len(pieces) < 2 or pieces[1].startswith("-"):
@@ -83,6 +142,7 @@ _STATUS = (("running", "run", "running", "green"), ("pending", "pend", "pending"
            ("dependent", "dep", "dependency wait", "cyan"), ("blocked", "never", "dependency never satisfied", "red"),
            ("completed", "done", "completed", "green"), ("failed", "fail", "failed", "red"),
            ("cancelled", "cancel", "cancelled", "yellow"), ("other", "other", "other", "dim"))
+_ACCOUNTING_STATUS = (("accounting", "accounting", "awaiting accounting", "dim"),)
 
 
 def _waiting_dependency(value):
@@ -104,7 +164,7 @@ class StatusSummary:
     compressed: bool = False
 
 
-def status_counts(records):
+def status_counts(records, *, awaiting_ids=()):
     """Disjoint state counts of distinct observed records, not expanded tasks.
 
     A fresh summary intentionally reads state/reason even when launch evidence
@@ -119,6 +179,9 @@ def status_counts(records):
         if jid in seen:
             continue
         seen.add(jid)
+        if jid in awaiting_ids:
+            counts["accounting"] = counts.get("accounting", 0) + 1
+            continue
         state = str(_value(record, "state")).split(" ", 1)[0].rstrip("+").upper()
         reason = str(_value(record, "reason")).replace("_", "").replace(" ", "").lower()
         if state in ("PENDING", "PD"):
@@ -150,8 +213,8 @@ def summary_segments(records, *, ascii_=False, compact=True):
         counts = status_counts(records)
         compressed = any("_[" in str(_value(record, "id")) for record in records)
     result = []
-    for key, short, label, style in _STATUS:
-        if counts[key]:
+    for key, short, label, style in _STATUS + _ACCOUNTING_STATUS:
+        if counts.get(key, 0):
             if result:
                 result.append((" | " if ascii_ else " · ", "dim"))
             result.append((f"{counts[key]} {short if compact else label}", style))
@@ -238,6 +301,7 @@ class _Evidence:
     structural: tuple[str, str] | None
     dependency: str = ""
     comment: str = ""
+    conflicting_marker: bool = False
 
 
 def _records(snap, duplicates=None):
@@ -292,9 +356,9 @@ def _evidence(record, snap, previous=None, inherit=()):
             if not value and previous and (name in inherit or finished_omitted and name == "command"):
                 return getattr(previous, name, "")
             return value
-        # Finished records omit owner, account, and command. Carry only fields
-        # omitted by a record-type transition, not deleted metadata or blanks.
-        return getattr(previous, name, "") if previous and (name in inherit or finished_omitted and name == "dependency") else ""
+        # Carry only proven omissions from the same submission; deleting
+        # authoritative metadata must not recover stale field values.
+        return getattr(previous, name, "") if previous and name in inherit else ""
 
     structural = None
     if match := _ARRAY.fullmatch(jid):
@@ -311,12 +375,13 @@ def _evidence(record, snap, previous=None, inherit=()):
     elif match := _HET.fullmatch(jid):
         structural = ("heterogeneous", match[1])
     if structural:
-        return _Evidence(jid, "", "", field("cluster", "Cluster"), "", "", "", "", "", structural)
+        return _Evidence(jid, _text(_value(record, "name")), "", field("cluster", "Cluster"), "", "", "", "", "", structural)
 
     user = field("user", "UserId")
     if re.fullmatch(r"[^()]+\([0-9]+\)", user):
         user = user.rsplit("(", 1)[0]
     explicit = ""
+    conflicting_marker = False
     for key in ("RavenLaunchId", "LaunchId", "LaunchGroup", "JobGroup"):
         candidate = _text(details.get(key)) or _text(source.get(key) if source is not None else _value(record, key))
         if candidate and _EXPLICIT.fullmatch(candidate):
@@ -334,10 +399,23 @@ def _evidence(record, snap, previous=None, inherit=()):
                           and (match := _MARKER.fullmatch(tag))})
         # Conflicting markers provide no reliable shared launch identity.
         explicit = markers[0] if len(markers) == 1 else ""
-    return _Evidence(jid, _text(_value(record, "name")), field("submit", "SubmitTime"),
-                     field("cluster", "Cluster"), user, field("account", "Account"),
-                     field("workdir", "WorkDir"), field("command", "Command"),
-                     explicit, structural, field("dependency", "Dependency"), field("comment", "Comment"))
+        conflicting_marker = len(markers) > 1
+    result = _Evidence(jid, _text(_value(record, "name")), field("submit", "SubmitTime"),
+                       field("cluster", "Cluster"), user, field("account", "Account"),
+                       field("workdir", "WorkDir"), field("command", "Command"),
+                       explicit, structural, field("dependency", "Dependency"), field("comment", "Comment"), conflicting_marker)
+    if (type(record) in (Job, Finished) and previous is not None and previous.dependency
+            and not result.dependency and not _text(_value(record, "dependency"))
+            and previous.submit and result.submit == previous.submit == _text(record.submit)
+            and (result.cluster, result.user, result.account, result.workdir)
+            == (previous.cluster, previous.user, previous.account, previous.workdir)):
+        # Slurm removes satisfied dependencies while the same submission is
+        # still queued or running; accounting also omits those relations. The
+        # observed relation remains launch evidence, not a claim that the job
+        # is currently waiting. Corrections and changed ownership/project
+        # identity must not inherit that edge.
+        result = replace(result, dependency=previous.dependency)
+    return result
 
 
 def _input(record, jid, snap, *, details_map=None, tags_map=None):
@@ -393,6 +471,8 @@ class Registry:
         self._evidence = {}
         self._inputs = {}
         self.inference_count = 0
+        self.heavy_publication = {}
+        self._heavy_exclusion = None
 
     def ensure(self, snap):
         duplicates = []
@@ -405,13 +485,36 @@ class Registry:
             old = self._unknown_identity_refs.get(jid)
             references[jid] = old if old is not None and old.record is record else _RecordRef(record)
         self._unknown_identity_refs = references
-        identity_inputs = self._source_revision, tuple(duplicates), references
+        from .job_batch_sort import heavy_job_id
+        heavy = heavy_job_id(self.heavy_publication, snap)
+        identity_inputs = self._source_revision, tuple(duplicates), references, heavy
         if identity_inputs != self._selection_inputs:
             self._selection_inputs = identity_inputs
             self.selection_revision += 1
         self.selection_snapshot = snap
         self.index = self.manual.apply(automatic if self.auto_enabled else self._empty_index,
                                        records, snap, self._source_revision)
+        if heavy in self.index.by_job:
+            # The current dashboard allocation is always a separate row. Apply
+            # this to the shared registry so menus and row actions see exactly
+            # the same membership as the queue, including explicit overrides.
+            previous = self._heavy_exclusion
+            if previous is not None and previous[0] is self.index and previous[1] == heavy:
+                self.index = previous[2]
+            else:
+                original = self.index
+                group = original.for_job(heavy)
+                members = tuple(jid for jid in group.members if jid != heavy)
+                groups, by_job = dict(original.groups), dict(original.by_job)
+                by_job.pop(heavy, None)
+                if len(members) > 1:
+                    groups[group.id] = replace(group, members=members)
+                else:
+                    groups.pop(group.id)
+                    for jid in members:
+                        by_job.pop(jid, None)
+                self.index = Index(MappingProxyType(groups), MappingProxyType(by_job))
+                self._heavy_exclusion = original, heavy, self.index
         return self.index
 
     def _ensure_automatic(self, snap, records):
@@ -439,9 +542,23 @@ class Registry:
                 if old_input is not None and old_input[3] is not record_type:
                     same_launch = previous and previous.submit and previous.submit == _text(_value(record, "submit"))
                     inherited = tuple(name for name, old, new in zip(_RECORD_FIELDS, old_input[0], fields)
-                                      if old is not _MISSING and (new is _MISSING or
-                                          (record_type is Finished and old_input[3] is Job and same_launch
+                                      if same_launch and name != "dependency" and old is not _MISSING and (new is _MISSING or
+                                          (record_type is Finished and old_input[3] is Job
                                            and name in ("user", "account", "command", "cluster", "comment") and new == "")))
+                elif (old_input is not None and old_input[3] is Finished and record_type is Finished
+                      and previous is not None and previous.submit
+                      and previous.submit == _text(_value(record, "submit"))):
+                    # Legacy accounting omits these fields on every poll, not
+                    # just the first Job -> Finished transition. Keep already
+                    # inherited omissions when another field is amended, but
+                    # never hide a nonempty field being cleared or the removal
+                    # of authoritative scheduler details. WorkDir is required
+                    # evidence and deliberately is not inherited here.
+                    detail_fields = {"user": 1, "account": 2, "command": 3,
+                                     "cluster": 5, "comment": 10}
+                    inherited = tuple(name for name, old, new in zip(_RECORD_FIELDS, old_input[0], fields)
+                                      if name in detail_fields and old == new == ""
+                                      and old_input[1][detail_fields[name]] is _MISSING)
                 # Ordinary accounting records have no owner/account/command
                 # provenance. Reject that common case before parsing fields
                 # or constructing evidence, while still noticing new details,
@@ -487,7 +604,10 @@ class Registry:
             suffix = ":" + _digest((cluster,)) if cluster else ""
             gid = f"{kind}:{parent}{suffix}"
             reason = "Slurm array task IDs share allocation " if kind == "array" else "Slurm heterogeneous component IDs share allocation "
-            candidates.append(Group(gid, f"{'Array' if kind == 'array' else 'Heterogeneous'} {parent}",
+            identity_label = f"{'Array' if kind == 'array' else 'Heterogeneous'} {parent}"
+            prefix = shared_name_prefix(item.name for item in items)
+            label = prefix + " / " + identity_label if prefix else identity_label
+            candidates.append(Group(gid, label,
                                     kind, reason + parent, "certain", tuple(sorted(item.id for item in items))))
             assigned.update(item.id for item in items)
 
@@ -495,7 +615,8 @@ class Registry:
             if len(items) < 2:
                 continue
             marker = cohort[-1]
-            candidates.append(Group("launch:" + _digest(cohort), f"Launch {marker}", "explicit",
+            label = shared_name_prefix(item.name for item in items) or f"Launch {marker}"
+            candidates.append(Group("launch:" + _digest(cohort), label, "explicit",
                                     f"Matching explicit launch marker {marker}", "explicit",
                                     tuple(sorted(item.id for item in items)), cohort))
             assigned.update(item.id for item in items)
@@ -504,7 +625,7 @@ class Registry:
         # Require shared ownership/project and a bounded launch window so a
         # daily pipeline never swallows a previous day's prerequisite.
         ordinary = {item.id: item for item in evidence.values() if item is not None
-                    and item.id not in assigned and not item.structural and not item.explicit
+                    and item.id not in assigned and not item.structural and not item.explicit and not item.conflicting_marker
                     and len(item.id) <= 19 and item.id.isascii() and item.id.isdigit()
                     and all((item.user, item.account, item.workdir, item.name))}
         timed = {jid: stamp(item.submit) for jid, item in ordinary.items()}
@@ -576,7 +697,9 @@ class Registry:
                       and any(previous.get(jid) is not None and previous[jid].submit == self._evidence[jid].submit
                               for jid in members if jid in self._automatic_index.groups[gid].members)]
         gid = min((group.id for group in compatible), default=kind + ":" + _digest((*cohort, members[0], start)))
-        label = f"Launch {cohort[-1]}" if kind == "burst" else f"Pipeline {members[0]}"
+        label = shared_name_prefix(entry[2].name for entry in run)
+        if not label:
+            label = f"Launch {cohort[-1]}" if kind == "burst" else f"Pipeline {members[0]}"
         candidates.append(Group(gid, label, kind, reason, "likely", members, cohort, start))
         claimed.add(gid)
 
@@ -631,7 +754,7 @@ class Registry:
 
     def is_collapsed(self, group):
         # Old releases persisted numeric array parents. Preserve that setting.
-        parent = group.label.split()[-1]
+        parent = array_parent(group)
         return group.id in self.collapsed or group.kind == "array" and group.id == "array:" + parent and parent in self.collapsed
 
     def fold(self, group_id, collapsed=None):
@@ -642,7 +765,7 @@ class Registry:
             return False
         value = not self.is_collapsed(group) if collapsed is None else bool(collapsed)
         self.collapsed.discard(group.id)
-        parent = group.label.split()[-1]
+        parent = array_parent(group)
         if group.kind == "array":
             self.collapsed.discard(parent)
         stored = parent if group.kind == "array" and group.id == "array:" + parent else group.id
@@ -696,6 +819,8 @@ def registry(app):
         value.collapsed = {item for item in state.get("collapsed", ()) if valid_group_id(item)}
     value.manual.configure(state.get("manual_groups"))
     value.auto_enabled = state.get("auto_groups", True) is not False
+    from .job_batch_sort import heavy_publication
+    value.heavy_publication = heavy_publication(app)
     return value
 
 
@@ -712,7 +837,9 @@ def frame(app, snap):
     """Share one exact inference check during compose, then always clear it."""
     previous = getattr(app, "job_groups_frame_index", None)
     value = registry(app)
-    index = value.ensure(snap) if getattr(app, "table_state", {}).get("groups", False) else value.index
+    from .recents_ui import mode as recent_mode
+    index = value.ensure(snap) if (getattr(app, "table_state", {}).get("groups", False) or
+                                  getattr(app, "tab", "jobs") == "jobs" and recent_mode(app) == "grouped") else value.index
     app.job_groups_frame_index = (snap, index)
     try:
         yield index
@@ -739,7 +866,7 @@ def fold(app, group_id, collapsed=None):
             group = value.index.groups[group_id]
             undo.get("added", set()).discard(group_id)
             if group.kind == "array":
-                undo.get("added", set()).discard(group.label.split()[-1])
+                undo.get("added", set()).discard(array_parent(group))
         app.table_state["collapsed"] = sorted(value.collapsed)
         if value.is_collapsed(value.index.groups[group_id]):
             _reanchor(app, group_id)
@@ -749,22 +876,34 @@ def fold(app, group_id, collapsed=None):
 def project_records(app, snap, records, tab="history", *, enabled=None, index=None):
     """Keep actual representative rows, with separate presentation metadata.
 
-    An open group leaves the caller's complete sort and pin order unchanged.
+    Jobs first orders whole batches, retaining the caller's within-batch order.
+    Recents packs complete groups in its own completion/column sort order.
+    Other views retain their independent table/tree order.
     A closed group retains its first visible record, so selection, log lookup,
     and cancellation always refer to one real allocation.  Filtered-out records
     are not reintroduced, and totals distinguish visible from observed jobs.
     """
     records = list(records)
     value = registry(app)
+    from .recents_ui import mode as recent_mode
     if enabled is None:
-        enabled = bool(getattr(app, "table_state", {}).get("groups", False))
+        enabled = (recent_mode(app) == "grouped" if tab == "recent" else
+                   bool(getattr(app, "table_state", {}).get("groups", False)))
+    if tab == "recent":
+        enabled = enabled and recent_mode(app) == "grouped"
     metadata = getattr(app, "job_group_metadata", None)
     if not isinstance(metadata, dict):
         metadata = app.job_group_metadata = {}
     current = metadata[tab] = {}
+    index = frame_index(app, snap) if enabled and index is None else index
+    if tab == "jobs":
+        from .job_batch_sort import order
+        records = order(app, snap, records, index if enabled else None)
+    elif tab == "recent" and enabled:
+        from .recents_ui import order
+        records = order(records, index)
     if not enabled:
         return records
-    index = frame_index(app, snap) if index is None else index
     visible = defaultdict(list)
     counted = set()
     for record in records:
@@ -774,14 +913,28 @@ def project_records(app, snap, records, tab="history", *, enabled=None, index=No
             visible[gid].append(record)
             counted.add(jid)
     first = {gid: _value(members[0], "id") for gid, members in visible.items()}
+    if tab == "recent":
+        # A new completion can replace the newest member of a folded group.
+        # Keep the exact selected record as its real representative so a log
+        # or job action cannot silently target the new arrival. Group rank is
+        # still determined by the first sorted member, not the representative.
+        selected = getattr(app, "selected_id", None)
+        gid = index.by_job.get(selected)
+        if gid in visible and value.is_collapsed(index.groups[gid]):
+            chosen = next((record for record in visible[gid] if _value(record, "id") == selected), None)
+            if chosen is not None:
+                first[gid] = selected
     counts = {gid: tuple(members) for gid, members in visible.items()}
     # Reuse one immutable summary per closed group for INFO, badges and
     # tooltips in this projection. Rebuild next frame so in-place state/reason
     # updates cannot inherit stale launch-cache data.
-    statistics = {gid: StatusSummary(MappingProxyType(status_counts(members)),
+    awaiting = (set(snap.get("departed_jobs", {})) - {_value(record, "id") for record in snap.get("jobs", ())}
+                if tab == "recent" else set())
+    statistics = {gid: StatusSummary(MappingProxyType(status_counts(members, awaiting_ids=awaiting)),
                                     any("_[" in str(_value(record, "id")) for record in members))
-                  for gid, members in counts.items() if value.is_collapsed(index.groups[gid])}
+                  for gid, members in counts.items() if tab == "recent" or value.is_collapsed(index.groups[gid])}
     result = []
+    emitted = set()
     for record in records:
         jid = _value(record, "id")
         gid = index.by_job.get(jid)
@@ -792,7 +945,12 @@ def project_records(app, snap, records, tab="history", *, enabled=None, index=No
         header = jid == first[gid]
         collapsed = value.is_collapsed(group)
         current[jid] = GroupMeta(group, first[gid], header, collapsed, counts[gid], statistics.get(gid))
-        if header or not collapsed:
+        if collapsed and tab == "recent":
+            if gid not in emitted:
+                emitted.add(gid)
+                representative = next(member for member in visible[gid] if _value(member, "id") == first[gid])
+                result.append(representative)
+        elif header or not collapsed:
             result.append(record)
     return result
 
@@ -808,12 +966,13 @@ def project_rows(app, rows, snap=None, tab="jobs", *, index=None):
         # complete snapshot enables lifecycle and explicit evidence grouping.
         snap = {"jobs": [row["job"] for row in rows]}
     selected = project_records(app, snap, [row["job"] for row in rows], tab, index=index)
-    visible = {_value(record, "id") for record in selected}
+    # Render in projected order. Iterating the original rows would reintroduce
+    # the interleaving which the complete-batch projection just removed.
+    rows_by_id = {_value(row["job"], "id"): row for row in rows}
     result = []
-    for row in rows:
+    for record in selected:
+        row = rows_by_id[_value(record, "id")]
         jid = _value(row["job"], "id")
-        if jid not in visible:
-            continue
         meta = metadata_for_record(app, tab, jid)
         if meta is None:
             result.append(row)

@@ -81,7 +81,7 @@ def classify(argv):
         return None
     name = os.path.basename(argv[0])
     args = list(argv[1:])
-    if name == "id" and args == ["-u"]:
+    if name == "id" and args in (["-u"], ["-un"]):
         return Descriptor("configuration", "local", "hostnames")
     if name in ("squeue", "sacct", "sstat", "sinfo", "sshare", "sreport", "sacctmgr", "scontrol") and args in (["--version"], ["--help"]):
         return Descriptor("configuration", "local", "hostnames")

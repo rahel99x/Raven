@@ -642,7 +642,9 @@ order. `s`, `S`, or `:sort name` resumes a single-key sort. Each of Jobs, Recent
 History, Group, My Nodes, Sources, and Cluster partitions keeps its own cascade;
 use `:sortby recent id asc` to order the latest five Recents by numeric JOBID.
 Cascades survive restart with ordinary state and restore with Back. Unknown
-measurements remain last; Jobs pins stay first and array grouping still applies.
+measurements remain last. Jobs keeps complete batches together using the saved
+Sort Min or Sort Max mode. Ordinary pins apply within batches and between
+equally ranked batches; the current Raven Heavy allocation remains first.
 `:facet clear` clears field filters. `:layout split 50` and `:layout save work`
 save a preferred density/split/focus arrangement separately from table views.
 

@@ -435,6 +435,8 @@ def test_dragging_marked_jobs_across_live_graph_cannot_capture_or_zoom_chart(das
         store.record("1", {"k": "live", "t": 180 + step, "cpu": .2 + step / 60,
                            "rss": 1024 ** 3})
     app.job_panel_state.update(mode="analytics", analytics_view="job")
+    frame(dashboard, height=90)
+    app.selected_id, app.cursor["jobs"] = "1", app.visible_ids.index("1")
     _, hits = frame(dashboard, height=90)
     plot = next(plot for plot in app.chart_interaction_state["plots"] if plot.key[0] == "resource-series")
     graph_point = (plot.visible.top + 1, plot.visible.left + 3)
@@ -460,6 +462,8 @@ def test_real_chart_gesture_and_right_reset_do_not_open_job_menu(dashboard, rout
         store.record("1", {"k": "live", "t": 180 + step, "cpu": .2 + step / 60,
                            "rss": 1024 ** 3})
     app.job_panel_state.update(mode="analytics", analytics_view="job")
+    frame(dashboard, height=90)
+    app.selected_id, app.cursor["jobs"] = "1", app.visible_ids.index("1")
     _, hits = frame(dashboard, height=90)
     plot = next(plot for plot in app.chart_interaction_state["plots"] if plot.key[0] == "resource-series")
     first = (plot.visible.top + 1, plot.visible.left + 3)

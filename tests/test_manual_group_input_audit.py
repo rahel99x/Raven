@@ -392,6 +392,8 @@ def test_graph_input_owners_cannot_group_or_detach_job_marks(dashboard, owner, k
         store.record("600_1", {"k": "live", "t": 180.0 + sample,
                                "cpu": sample / 25, "rss": 1024 ** 3})
     app.job_panel_state.update(mode="analytics", analytics_view="job")
+    frame(dashboard, "jobs", height=90)
+    app.selected_id, app.cursor["jobs"] = "600_1", app.visible_ids.index("600_1")
     _, hits = frame(dashboard, "jobs", height=90)
     app.marks = {"600_1", "600_2"}
     if owner == "metric-slider":

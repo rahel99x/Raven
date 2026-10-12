@@ -384,8 +384,10 @@ See [Charts](charts.md#follow-a-running-metric) for commands, keyboard controls,
 
 ## Use the terminal toolbar
 
-The first display row contains File, Edit, View, Help, copy and worker switches, and a quit control.
-Use the menus for file workflows, preferences, navigation, and diagnostics.
+The first display row contains File, Edit, View, Setup, Help, copy and worker switches, and a quit control.
+Use the menus for file workflows, preferences, navigation, setup, and diagnostics.
+**Setup** includes Heavy allocation settings and named Research/Analytics guides.
+See [Setup](setup.md) for account discovery and the complete configuration walkthrough.
 Job-changing actions retain their existing review and confirmation.
 The worker switch changes background concurrency without restarting Raven.
 See [Background workers](background-workers.md) for Single, Multi, and pending changes.
@@ -405,9 +407,9 @@ Dismiss the dropdown, then complete the command's arguments before running it.
 
 Tab and Shift-Tab change menus while a menu is open.
 Home and End select the first or last choice.
-The letters `f`, `e`, `v`, and `h` choose File, Edit, View, and Help while a menu is open.
+The letters `f`, `e`, `v`, `s`, and `h` choose File, Edit, View, Setup, and Help while a menu is open.
 F10 also closes an open menu.
-Use `:menu File`, `:menu Edit`, `:menu View`, or `:menu Help` for command entry.
+Use `:menu File`, `:menu Edit`, `:menu View`, `:menu Setup`, or `:menu Help` for command entry.
 Use `:menu` to open File.
 
 Unavailable choices appear dimmed.
@@ -415,7 +417,7 @@ Their activation reports the required job, project, file, or page context.
 Close an unfinished job-action review before starting another reviewed action.
 The toolbar remains above overlays.
 On narrow terminals, it abbreviates menu labels and compresses the slider to its interval label.
-F10 keeps all four menus accessible.
+F10 keeps all five menus accessible.
 Move the pointer over a menu choice to highlight it without activating it.
 Direct choices leave the dropdown open while the pointer remains inside it.
 This permits several setting changes without reopening the menu.

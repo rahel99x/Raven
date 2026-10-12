@@ -101,7 +101,7 @@ def test_numbered_name_family_requires_three_with_full_common_provenance():
     records = [job(100 + n, name=f"run_{n}") for n in range(3)]
     assert not G.Registry().ensure(snapshot(records[:2])).groups
     group, = G.Registry().ensure(snapshot(records)).groups.values()
-    assert group.members == ("100", "101", "102") and group.label == "Launch run"
+    assert group.members == ("100", "101", "102") and group.label == "run"
 
 
 @pytest.mark.parametrize("marker", ["launch:series-a", "group:series-a"])
@@ -179,12 +179,12 @@ def test_exact_content_cache_updates_in_place_corrections_but_ignores_live_usage
     assert not registry.ensure(snap).groups and registry.inference_count == 2
 
 
-def test_projection_retains_original_identity_filter_sort_and_pin_order():
+def test_projection_retains_original_identity_and_within_batch_sort_order():
     records = [job("12_0"), job(900), job("12_1"), job(901)]
     snap = snapshot(records)
     value = app()
     out = G.project_records(value, snap, records, "jobs")
-    assert all(left is right for left, right in zip(out, records))
+    assert out == [records[0], records[2], records[1], records[3]]
     meta = G.metadata_for_record(value, "jobs", "12_0")
     assert meta.header and meta.visible_count == meta.total_count == 2
     assert not G.metadata_for_record(value, "jobs", "12_1").header

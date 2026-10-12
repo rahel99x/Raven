@@ -131,17 +131,21 @@ def test_controller_marks_confirms_and_acts(tmp_path):
     backend, store, sampler, actions, views, app = make_app(tmp_path)
     W, H = 160, 45
     rows, hits = views.compose(store.snapshot(), app, W, H, actions)
-    assert app.visible_ids[:2] == ["12480001", "12477369"] and app.selected_id == "12480001" and len(rows) == H
-    app.handle("down"); app.handle("space"); app.handle("space")              # mark the second and third jobs
+    assert app.visible_ids[:3] == ["12480002_[0-7]", "12480003", "12480005"] and app.selected_id == "12480002_[0-7]" and len(rows) == H
+    # Mark exact running and pending jobs independently of their batch ranks.
+    for jid in ("12477369", "12480002_[0-7]"):
+        app.cursor["jobs"] = app.visible_ids.index(jid)
+        app.sync_selection()
+        app.handle("space")
     assert app.marks == {"12477369", "12480002_[0-7]"}
     app.handle("c")
-    assert app.mode == "confirm" and [j.id for j in app.confirm["jobs"]] == ["12477369", "12480002_[0-7]"]
+    assert app.mode == "confirm" and [j.id for j in app.confirm["jobs"]] == ["12480002_[0-7]", "12477369"]
     ov = views.overlay(store.snapshot(), app, W, H)
     assert any("Cancel 2 jobs?" in L.row_text(r) for _, _, r in ov)
     app.handle("n")
     assert app.mode == "main" and app.message == "kept" and not any(c[0] == "scancel" for c in backend.calls)
     app.handle("c"); app.handle("y")
-    assert ["scancel", "12477369", "12480002_[0-7]"] in backend.calls and app.marks == set() and app.message.startswith("cancel 12477369, 12480002_[0-7]: sent")
+    assert ["scancel", "12480002_[0-7]", "12477369"] in backend.calls and app.marks == set() and app.message.startswith("cancel 12480002_[0-7], 12477369: sent")
     assert [e for e in store.events if e["kind"] == "action"][-1]["ok"]
     sampler.round(time.time() + 100, wait=True)
     assert {j.id for j in store.jobs} == {"12480001", "12480003", "12480005"}
@@ -185,10 +189,11 @@ def test_controller_filter_sort_tabs_overlays_and_mouse(tmp_path):
     app.handle("s")
     assert app.sort["jobs"] == "name"
     views.compose(store.snapshot(), app, W, H, actions)
-    assert app.visible_ids[0] == "12477369"                            # rb-setup sorts first by name
+    # Names order equal-ranked batches; pending batches still precede running.
+    assert app.visible_ids == ["12480002_[0-7]", "12480003", "12480005", "12477369", "12480001"]
     app.handle("S")
     views.compose(store.snapshot(), app, W, H, actions)
-    assert app.visible_ids[-1] == "12477369"
+    assert app.visible_ids == ["12480005", "12480003", "12480002_[0-7]", "12480001", "12477369"]
     app.handle("s"); app.handle("S")
     app.handle("enter")
     assert app.mode == "details" and app.detail_id == app.selected_id
@@ -412,6 +417,9 @@ def test_selection_copy_and_exports(tmp_path):
     from raven import text_selection
 
     backend, store, sampler, actions, views, app = make_rich_app(tmp_path)
+    # Keep a sampled running job first for the copy/export fixture. Its four
+    # selected Main rows must exclude the adjacent running-job Details pane.
+    app.run_command("grouping sort-max")
     W, H = 150, 44
     cache = screen._FrameCache()
     cache.rebuild(app, views, store, actions, W, H)                    # publish the same pane ownership as the real UI
@@ -453,7 +461,7 @@ def test_selection_copy_and_exports(tmp_path):
     app.handle("C"); path_c = app.message.split()[-1]
     app.handle("space"); app.handle("J"); path_j = app.message.split()[-1]
     exported = Path(path_t).read_text()
-    assert exported.splitlines()[0].startswith(" x  File  Edit  View  Help")
+    assert exported.splitlines()[0].startswith(" x  File  Edit  View  Setup  Help")
     assert exported.splitlines()[1].startswith(" Raven Light/unconfigured - alex") and "-- selected" in exported
     assert Path(path_c).read_text().splitlines()[0].startswith("id,name,part") and "12477369" in Path(path_c).read_text()
     js = json.loads(Path(path_j).read_text())
@@ -495,6 +503,9 @@ def test_command_palette_and_analytics_views(tmp_path):
     cmd("filter"); cmd("sort name"); assert app.sort["jobs"] == "name"
     cmd("sort bogus"); assert app.message.startswith("sort keys here")
     cmd("days 7"); assert app.analytics_days_value() == 7 and sampler.history_days == 7
+    views.compose(store.snapshot(), app, W, H, actions)
+    app.cursor["jobs"] = app.visible_ids.index("12480001")
+    app.sync_selection()  # Analytics sample assertions need this running job.
     selected_job = app.selected_id
     cmd("tab analytics"); assert app.tab == "analytics" and app.analytics_job == selected_job
     cmd("view timeline"); assert app.analytics_view == "timeline"
@@ -1117,6 +1128,8 @@ def test_dependency_graph_tab_and_chain_actions(tmp_path):
     assert app.mode == "confirm" and [j.id for j in app.confirm["jobs"]] == ["12480003", "12480002_[0-7]"]        # the job and everything downstream
     app.handle("n")
     app.handle("1"); views.compose(store.snapshot(), app, W, H, actions)
+    app.cursor["jobs"] = app.visible_ids.index("12480001")
+    app.sync_selection()  # Inspect the prerequisite rather than the first batch.
     rows, _ = views.compose(store.snapshot(), app, 170, 50, actions)
     text = "\n".join(L.row_text(r) for r in rows)
     assert "2 jobs wait for this one: 12480003(rb2-controls) 12480002_[0-7](rb1-panel)" in text                      # the selected panel of 12480001
@@ -1141,6 +1154,8 @@ def test_tags_pins_notes_filter_and_compare(tmp_path):
     app.run_command("density compact")  # Optional tag columns fit the full-width table.
     W, H = 190, 44
     views.compose(store.snapshot(), app, W, H, actions)
+    app.cursor["jobs"] = app.visible_ids.index("12480001")
+    app.sync_selection()  # Keep this job's tags and note in the Details pane.
     app.run_command("tag 12480001 urgent paper"); assert app.message == "tagged 12480001: #urgent #paper"
     app.run_command("pin 12480003"); assert app.message == "pinned 12480003" and store.pinned("12480003")
     app.run_command("note 12480001 rerun with 32 cores"); assert store.tags["12480001"]["note"] == "rerun with 32 cores"

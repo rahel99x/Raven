@@ -12,6 +12,11 @@ Existing V1 projects remain readable. Do not change their schema markers to
 
 ## Choose the part you need
 
+Inside Raven, open **Setup** and choose a Research or Analytics view for embedded
+instructions and its attachment controls. **Setup → Heavy allocation settings**
+configures Raven's own worker account and resource defaults. See the
+[internal Setup guide](guides/setup.md).
+
 | Need | Start here |
 | --- | --- |
 | Record a first application run | [Quick start](#quick-start) |
