@@ -1022,22 +1022,20 @@ Session devices retain node/vendor identity and stable device IDs when exposed;
 an index-only job trace cannot identify an allocation's node or devices.
 See [GPU graph interpretation](guides/charts.md#read-gpu-utilisation-and-busy-mean) for source scope and stable graph IDs.
 
-The panel, the charts and the advisor read a CSV the job writes itself, `<WorkDir>/logs/gpu-util-<jobid>.csv`, with
-one line per GPU per minute: `timestamp, index, utilization.gpu, memory.used`.  Add this to a GPU job script, before
-the work starts:
+Job Series reads a CSV that the job writes at
+`<WorkDir>/logs/gpu-util-<jobid>.csv`. Each row contains the NVIDIA timestamp,
+device index, utilization percentage, and memory in MiB. Use the
+[batch recorder recipe](guides/gpu-detection.md#provide-an-optional-gpu-trace)
+for exact job and device selection, array IDs, and cleanup. The
+[format cookbook](reference/project-reporting-formats.md#6-nvidia-trace-gpu-util-job_idcsv)
+specifies the serialization and measurement scope.
 
-```bash
-mkdir -p logs
-nvidia-smi --query-gpu=timestamp,index,utilization.gpu,memory.used --format=csv,noheader,nounits -l 60 \
-    > logs/gpu-util-${SLURM_JOB_ID}.csv 2>/dev/null &
-trap 'kill $! 2>/dev/null' EXIT
-```
-
-Without the file the dashboard can sample the selected NVIDIA, AMD, or Intel
-provider live inside the allocation (`gpu_sampling`). The example above is a
-NVIDIA trace producer; provider selection does not convert its format. A
-recorded trace adds history from before the dashboard started and survives the
-job. See [provider requirements](guides/phase-one.md#select-a-gpu-provider).
+Managed Raven reads this existing telemetry and does not automatically start
+GPU probes. Retaining the trace makes its observations available after the
+job ends. Analytics Compare uses retained native series and does not import
+this CSV as a comparison series. Native provider probes have separate
+[requirements](guides/phase-one.md#select-a-gpu-provider); selecting a provider
+does not convert the NVIDIA file format.
 
 ## Architecture
 

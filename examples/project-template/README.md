@@ -4,6 +4,12 @@ This template provides a small scientific application, a dependency-free Python
 reporter, output contracts, and a Slurm batch entry point. Copy the directory into
 a new project and adapt its reporting to your application.
 
+For an existing application, start with the
+[reporting V2 guide](https://github.com/rahel99x/Raven/blob/main/docs/PROJECT_REPORTING_V2.md)
+and its portable command wrapper. That guide covers Linux workstations, CARC,
+UCI HPC3, lab allocations, and complete metric/file contracts. The V2 wrapper
+reuses this directory's canonical `reporting.py`; both retain V1 file formats.
+
 The application writes portable JSON without a Raven installation. Raven attaches
 the reports to exact job attempts through bounded runtime discovery or explicit
 selection. The [project reporting standard](https://github.com/rahel99x/Raven/blob/main/docs/PROJECT_STANDARD.md)

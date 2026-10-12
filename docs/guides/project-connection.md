@@ -4,6 +4,10 @@ Use the project guide to inspect a native reporting project, validate one sample
 run, and prepare reporting hooks. The project root and declared sources must be
 readable through the active connection.
 
+To produce those files, follow [Project reporting V2](../PROJECT_REPORTING_V2.md).
+It includes a copyable launcher, exact formats, and a source reference for every
+Research and Analytics view.
+
 Open `:projectguide /absolute/project/path`, or choose **Connect → Connect and
 validate a research project**. The form reads a bounded inventory and identifies
 which declared sources can populate each Research view. Inspection is read-only.

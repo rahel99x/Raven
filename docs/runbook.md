@@ -51,10 +51,10 @@ Setup is noninteractive and
 repeatable. It never submits or changes jobs, installs system packages, replaces
 your configuration, or asks for a password.
 
-To instrument another application, follow the
-[project reporting standard](PROJECT_STANDARD.md) and copy its
-[project template](../examples/project-template/README.md). It defines the run
-directories, metrics, final reports, contracts, and analysis exports Raven reads.
+To instrument another application, follow [Project reporting V2](PROJECT_REPORTING_V2.md).
+It includes a portable launcher, workstation and cluster recipes, exact file
+formats, and the data sources for every Research and Analytics view. The
+[project standard](PROJECT_STANDARD.md) defines the underlying V1 contracts.
 
 Release 4.14 adds optional measurement and submission checks. Follow the
 [phase one setup guide](guides/phase-one.md) to select a GPU provider, inspect
@@ -393,8 +393,8 @@ and preserves existing output files. All analysis remains terminal only.
 
 ### Attach a project's reports during operation
 
-Use the [project reporting standard](PROJECT_STANDARD.md) when creating a new project.
-Its source map defines the required location and format for each Research workspace.
+Use [Project reporting V2](PROJECT_REPORTING_V2.md) when connecting an application.
+Its metric reference and format cookbook cover each Research and Analytics view.
 Keep each execution attempt in `runs/<run_id>/`.
 Record the actual Slurm job ID in that attempt's `run.json`.
 Append application measurements to `metrics.jsonl` and retain the attempt's log index.

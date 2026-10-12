@@ -145,6 +145,7 @@ current project and job context.
 | Inspect running jobs, history, and resource views | [Adaptive workspaces](docs/guides/adaptive-workspaces.md) |
 | Diagnose an exact failed or cancelled attempt | [Logs](docs/guides/log-view.md) · [Retained rerun](docs/guides/operations-cluster.md#rerun-one-cancelled-job) |
 | Review investigations and compare results | [Scientific investigation](docs/guides/scientific-investigation.md) |
+| Add application reporting on a workstation or HPC cluster | [Reporting V2](docs/PROJECT_REPORTING_V2.md) |
 | Attach project metrics, logs, and artifacts | [Project connection](docs/guides/project-connection.md) |
 | Work in an embedded shell | [Terminal guide](docs/guides/terminal-fusion.md) |
 | Inspect prepared Python or native recordings | [Stack tracing](docs/guides/stack-tracing.md) |
@@ -158,18 +159,23 @@ scrolling, and bounded graph zoom.
 
 ## Project evidence
 
+Start with the [reporting V2 guide](docs/PROJECT_REPORTING_V2.md) to connect an
+existing application using a portable Bash launcher. It covers Linux, CARC,
+UCI HPC3, student and lab allocations, exact file formats, and every Research
+and Analytics data source. The application needs no Raven installation.
+
 Keep your source layout and declare one execution directory per run attempt,
-including its logs, metrics, results, and artifacts. The reporting CLI can
-publish these records from a Bash launcher without application imports:
+including its logs, metrics, results, and artifacts. For Slurm environments with
+Raven installed, the reporting CLI can publish the same records:
 
 ```bash
 raven report --help
 raven report init --root /path/to/project
 ```
 
-Use the [project standard](docs/PROJECT_STANDARD.md),
-[project template](examples/project-template/README.md), and
-[automation guide](docs/guides/research-automation.md). Exact job and attempt
+The [project standard](docs/PROJECT_STANDARD.md) defines the unchanged V1 file
+contracts; the [automation guide](docs/guides/research-automation.md) covers the
+installed Slurm CLI. Exact job and attempt
 identities keep requeues and reused job numbers from inheriting another run's
 evidence. Missing data is reported explicitly.
 

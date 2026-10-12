@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add project reporting V2: a portable application launcher, Linux/CARC/HPC3
+  recipes with lab allocation guidance, exact file-format examples, and a
+  complete Research/Analytics metric and source reference. Retain V1 file
+  compatibility and separate each execution attempt, including reused allocations.
 - Use Raven consistently in documentation, command output, interface labels,
   and package metadata; update repository links to `rahel99x/Raven`.
 - Rename the distribution, Python package, command, environment variables,

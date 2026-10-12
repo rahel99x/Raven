@@ -1,5 +1,11 @@
 # Automate Research reporting from Bash
 
+This guide covers the installed CLI for **Slurm job reporting**. For a portable
+launcher that works with both standalone Linux and Slurm without installing
+Raven into the application environment, start with
+[Project reporting V2](../PROJECT_REPORTING_V2.md). Its
+[site recipes](project-reporting-sites.md) cover CARC, UCI HPC3, and lab accounts.
+
 Use `raven report` in the launcher and batch script to publish native Research
 records. The reporter retains the actual Slurm job ID, experiment, dependencies,
 array identity, and restart attempt. Research refreshes these records while

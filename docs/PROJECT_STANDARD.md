@@ -4,6 +4,12 @@ This convention defines portable files for execution identity, application
 measurements, log locations, outputs, and planning evidence. Applications can
 produce these files without importing or installing Raven.
 
+For a first integration, start with [Project reporting V2](PROJECT_REPORTING_V2.md).
+It provides a portable launcher, workstation and cluster recipes, an exact
+[file-format cookbook](reference/project-reporting-formats.md), and a complete
+[metric and panel reference](reference/project-reporting-metrics.md).
+V2 revises the guide and starter; this version 1 file standard remains current.
+
 For Bash launchers, use the
 [automated Research reporting guide](guides/research-automation.md).
 `raven report` creates the standard files and links them to actual Slurm job

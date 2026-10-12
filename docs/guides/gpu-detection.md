@@ -296,26 +296,54 @@ Use the full array task ID when applicable.
 The queue or accounting work directory preserves spaces.
 Opening Inspector is not required to discover the trace.
 
-Run the trace writer inside the actual job environment:
+Run the trace writer inside the GPU job, from its scheduler-recorded WorkDir.
+Set `RAVEN_GPU_DEVICES` to the actual NVIDIA UUIDs assigned to the job, separated
+by commas. Numeric Slurm or CUDA indices are not a portable NVIDIA device map.
+For a single-GPU workstation where physical NVIDIA device `0` is the allocated
+GPU, `export RAVEN_GPU_DEVICES=0` is sufficient. On a shared cluster, use the
+site's documented allocation-to-device mapping.
+
+Add this block before the normal application launch in the batch script:
 
 ```bash
+: "${SLURM_JOB_ID:?Run this recorder inside a GPU job}"
+: "${RAVEN_GPU_DEVICES:?Set the assigned NVIDIA device UUIDs or verified device index}"
 mkdir -p logs
-job_key="${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}"
+raven_job_key="$SLURM_JOB_ID"
 if [ -n "${SLURM_ARRAY_TASK_ID:-}" ]; then
-  job_key="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
+  raven_job_key="${SLURM_ARRAY_JOB_ID:?Missing array parent}_${SLURM_ARRAY_TASK_ID}"
 fi
-nvidia-smi --query-gpu=timestamp,index,utilization.gpu,memory.used \
-  --format=csv,noheader,nounits --loop=5 > "logs/gpu-util-${job_key}.csv" &
-gpu_trace_pid=$!
-trap 'kill "$gpu_trace_pid" 2>/dev/null || true' EXIT
+nvidia-smi --id="$RAVEN_GPU_DEVICES" \
+  --query-gpu=timestamp,index,utilization.gpu,memory.used \
+  --format=csv,noheader,nounits --loop=5 \
+  >> "logs/gpu-util-${raven_job_key}.csv" &
+raven_gpu_trace_pid=$!
+trap 'kill "$raven_gpu_trace_pid" 2>/dev/null || true;
+      wait "$raven_gpu_trace_pid" 2>/dev/null || true' EXIT
 
-# Run your application here.
+# Keep the normal application launch here, without exec.
+# For the V2 starter, after setting RAVEN_EXPERIMENT and RAVEN_SCRIPT:
+# bash .raven/reporting-v2/run.sh srun python3 train.py
 ```
+
+Keep this shell alive until the application ends so its exit trap stops the
+recorder. When adapting the V2 `batch.sh`, remove `exec` from its final line.
+Merge the cleanup into any existing exit trap. Start one recorder per trace;
+do not launch a writer in every MPI rank. The append redirect preserves an
+existing trace and works with Bash `noclobber`. A requeue or several runs in one
+allocation can share a job ID, so this file can span more than one application
+attempt. Retain those attempt boundaries with the reports.
+
+The recorder produces NVIDIA timestamps, device indices, utilization percent,
+and memory in MiB. The [exact CSV contract](../reference/project-reporting-formats.md#6-nvidia-trace-gpu-util-job_idcsv)
+documents timestamps and device scope. These counters describe a device;
+other permitted activity on that device can contribute.
 
 Use a cadence appropriate for your application and environment.
 This minimal format identifies devices by index and suits one node.
 Do not combine multiple nodes with duplicate device indices into one unlabeled file.
-Automatic multi-node sampling retains separate device identities.
+The native allocation probe has a separate multi-node identity format; managed
+collection does not start that probe.
 An unavailable or removed trace clears its current chart; older session samples remain separate retained evidence.
 Application JSONL metrics remain available in Research and are not automatically converted into scheduler GPU samples.
 
