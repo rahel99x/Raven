@@ -1,5 +1,5 @@
 #!/bin/sh
-# Source launcher for Project Raven Light; never implicitly requests compute.
+# Source launcher for Raven Light; never implicitly requests compute.
 set -eu
 RAVEN_SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ -x "$RAVEN_SOURCE_ROOT/.venv/bin/python" ]; then

@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from tower.worker_scheduler import WorkerScheduler
+from raven.worker_scheduler import WorkerScheduler
 
 
 def await_status(scheduler,predicate):

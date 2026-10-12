@@ -3,10 +3,10 @@ from copy import deepcopy
 
 import pytest
 
-from tower import metric_sampling as rates, refresh_rate
-from tower.config import Config
-from tower.model import Job
-from tower.research import ResearchHub
+from raven import metric_sampling as rates, refresh_rate
+from raven.config import Config
+from raven.model import Job
+from raven.research import ResearchHub
 
 
 def context(*, jid="7", start="start", generation=0, binding=None, view="experiment"):
@@ -82,7 +82,7 @@ def test_changing_report_source_invalidates_old_demand_without_changing_base_int
 
 def test_faster_read_requests_gate_real_reads_and_do_not_rewrite_measurements(monkeypatch):
     now = [100.0]
-    monkeypatch.setattr("tower.research.time.monotonic", lambda: now[0])
+    monkeypatch.setattr("raven.research.time.monotonic", lambda: now[0])
     hub = ResearchHub(Config())
     observed = {"series": {"loss": [{"t": 10.0, "value": .5}, {"t": 70.0, "value": .2}]}, "status": "ok"}
     original = deepcopy(observed)

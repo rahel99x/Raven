@@ -1,9 +1,26 @@
-# Tower controls
+# Raven controls
+
+[README](../README.md) · [Interaction guides](QUALITY_OF_LIFE.md) · [Reference](reference.md)
+
+This guide lists launch methods, default keys, mouse actions, and command families.
+Use `?` in the active page for contextual help. Feature guides provide complete
+procedures and operating limits.
+
+Slider positions describe requested intervals. Raven applies collection floors,
+site policy, demand gating, and command budgets before collection. **Sources**
+and **Poll** show effective intervals; **Set** shows the request. See
+[collection and retention](raven/README.md#collection-and-retention) for the
+governed defaults.
+
+Some native command formats below require an admitted Heavy worker, a verified
+job-local target, or an adapter that is intentionally deferred in managed Raven.
+The [execution contracts](raven/execution-contracts.md) identify these paths.
+Opening a form or retaining a compatibility command does not grant execution.
 
 ## Raven execution controls
 
 `ravenl` opens Light; `ravenh` requests an admitted worker before loading the UI.
-`tower` remains a compatibility route to Light. Open the Light/Heavy toolbar
+`raven` remains a compatibility route to Light. Open the Light/Heavy toolbar
 control or enter `:raven inspect` for mode, target, collection rates, queues, and
 retention coverage. Request, Cancel, and Release use a current identity-bound
 review. `:raven reuse JOBID` starts a fresh ownership/resource review; it does not
@@ -14,14 +31,11 @@ not change the selected job, active terminal, or destination of queued paste.
 See the [Raven runbook](raven/README.md) for profiles, limits, migration, and site
 qualification boundaries.
 
-
-Press Ctrl-C to exit Tower when Tower owns keyboard input. A configured Ctrl-C binding takes precedence.
-When an embedded terminal owns input, Ctrl-C goes to its foreground program.
-Press Ctrl-], then t, to return input to Tower.
+Press `Ctrl-C` to exit when Raven owns keyboard input. A configured `Ctrl-C`
+binding takes precedence. When an embedded terminal owns input, `Ctrl-C` goes to
+its foreground program. Press `Ctrl-]`, then `t`, to return input to Raven.
 The terminal test and keybinding tester record this key without exiting.
-Press Esc to leave either test.
-
-[README](../README.md) · [Feature guides](QUALITY_OF_LIFE.md) · [Reference](reference.md)
+Press `Esc` to leave either test.
 
 ## Embedded terminal
 
@@ -33,15 +47,15 @@ or `:terminal show`.
 
 | Control | Action |
 | --- | --- |
-| Ctrl-], then t | Return keyboard control to Tower |
-| Ctrl-], then Ctrl-] | Send a literal Ctrl-] to the child |
+| `Ctrl-]`, then `t` | Return keyboard control to Raven |
+| `Ctrl-]`, then `Ctrl-]` | Send a literal `Ctrl-]` to the child |
 | `:terminal show` / `:terminal details` | Select the secondary-pane view |
 | `:terminal new` / `:terminal sessions` | Create or choose a named shell |
 | `:terminal menu` | Open Tools; arrows and Enter select an action |
 | Copy | Enter or leave terminal copy mode |
-| v, then arrows, then y in copy mode | Select and copy retained lines |
+| `v`, then arrows, then `y` in copy mode | Select and copy retained lines |
 | Mouse drag in copy mode | Select terminal text without sending a child drag |
-| /, then n in copy mode | Search and move to the next result |
+| `/`, then `n` in copy mode | Search and move to the next result |
 | Home / End in copy mode | Move to the first or last retained line |
 | Esc in a terminal dialog or copy mode | Close that mode; do not exit the shell |
 | `:terminal close` | Terminate the selected owned session; Details only hides it |
@@ -51,9 +65,6 @@ uses the existing Copy/Yank destination setting. Read the
 [terminal guide](guides/terminal-fusion.md) and
 [workflow guide](guides/terminal-workflows.md) for all commands and limits.
 
-This guide lists launch methods, default keys, mouse actions, and command families.
-Use `?` inside Tower for contextual help.
-Use the feature guides for complete procedures and operating limits.
 Use [Mouse and button navigation](guides/pointer-navigation.md) for hover feedback, directional focus, dragging, and motion preferences.
 Use [Adjustable workspaces and job advice](guides/adaptive-workspaces.md) for dividers, Recents, launch groups, history panels, and Quick Advisor.
 
@@ -86,18 +97,23 @@ Key bindings in configuration can replace the defaults below.
 
 | Method | Command | Purpose |
 | --- | --- | --- |
-| Checkout launcher | `./scripts/tower` | Use the checkout's virtual environment when available |
-| Python module | `python3 -m tower` | Run directly from the checkout |
-| Bash alias | `tower` | Use the launcher installed with `scripts/install_shell.py` |
-| Installed entry point | `tower` | Use the Python package installed in the active environment |
-| Demonstration | `tower --fake` | Run the simulated scheduler |
-| One frame | `tower --once --tab history` | Print a page and exit |
-| Updating text screen | `tower --watch` | Refresh an ANSI screen; Ctrl-C exits |
-| Scripted command | `tower run COMMAND ARGUMENTS` | Execute one palette command |
-| Bash Research reporting | `tower report COMMAND ARGUMENTS` | Publish job-linked reports; explicit `submit` launches a tracked Slurm job |
+| Installed Light entry point | `ravenl` | Open the governed interface without requesting compute |
+| Installed Heavy entry point | `ravenh` | Request verified worker admission before opening the interface |
+| Installed compatibility entry point | `raven` | Open Light with compatibility command syntax |
+| Checkout launcher | `./scripts/raven` | Use the checkout's virtual environment when available |
+| Python module | `python3 -m raven` | Run directly from the checkout |
+| Optional managed Bash alias | `raven` | Use the checkout launcher configured by `scripts/install_shell.py` |
+| Demonstration | `raven --fake` | Run the simulated scheduler |
+| One frame | `raven --once --tab history` | Print a page and exit |
+| Updating text screen | `raven --watch` | Refresh an ANSI screen; Ctrl-C exits |
+| Scripted command | `raven run COMMAND ARGUMENTS` | Execute one palette command |
+| Bash Research reporting | `raven report COMMAND ARGUMENTS` | Publish job-linked reports; explicit `submit` launches a tracked Slurm job |
 
-Run `type tower` to identify which shell command will run.
-Use the [runbook](runbook.md#use-one-tower-shell-command) to install or inspect the managed alias.
+Use the [installation guide](INSTALLATION.md) to expose installed commands on
+`PATH` without aliases or shell-file changes. Run `type ravenl ravenh raven` to
+identify which commands the shell will use. The
+[compatibility runbook](runbook.md#use-one-raven-shell-command) describes the
+optional managed alias for an existing source installation.
 Use [Research reporting from Bash](guides/research-automation.md) for `init`,
 `submit`, `start`, `exec`, `finish`, `metric`, `research`, `log`, `passport`,
 `artifact`, and `aggregate`. These are command-line subcommands, not palette commands.
@@ -107,11 +123,15 @@ Use [Research reporting from Bash](guides/research-automation.md) for `init`,
 Click the toolbar worker switch, or use `:workers single`, `:workers multi`,
 `:workers toggle`, and `:workers status`. F8 includes the switch in directional
 button navigation. Single keeps one background worker and a separate UI thread.
-Start with `tower --workers single` or `tower --workers multi` to override the
+Start with `raven --workers single` or `raven --workers multi` to override the
 saved preference. See [Background workers](guides/background-workers.md) for
 pending transitions, result collection, and limits.
 
 ### Select a local setup profile
+
+The commands below use legacy example profiles. `--profile desktop` means local
+Slurm; Raven's `--site desktop` means standalone operation without Slurm. For new
+installed configurations, follow [Choose a site](raven/README.md#choose-a-site).
 
 | Command | Function |
 | --- | --- |
@@ -120,8 +140,8 @@ pending transitions, result collection, and limits.
 | `python3 scripts/install_shell.py --profile desktop` | Preview the desktop alias |
 | `python3 scripts/install_shell.py --profile desktop --apply` | Back up `.bashrc` and install the desktop alias |
 
-Source the updated `.bashrc` to load the alias.
-Use `tower --version`, `tower --doctor`, and `tower --once --tab sources` to inspect the installation.
+If you install the optional alias, source the updated `.bashrc` to load it.
+Use `raven --version`, `raven --doctor`, and `raven --once --tab sources` to inspect the installation.
 Use the [Fedora desktop guide](DESKTOP.md) when Slurm is installed directly on your desktop.
 Use the [runbook](runbook.md#3-adapt-setup-to-your-environment) for other setup modes.
 
@@ -150,7 +170,7 @@ Use the [runbook](runbook.md#3-adapt-setup-to-your-environment) for other setup 
 | `/` | Filter the current list or search the current log |
 | `?` | Open contextual searchable help |
 | `Esc` | Close an overlay, end a selection, or clear the current filter or marks |
-| `q` | Exit Tower |
+| `q` | Exit Raven |
 
 Use `:maximize` for the panel layout action on Logs.
 The [navigation guide](guides/navigation.md) describes Forward, saved locations, jump search, settings, and command editing.
@@ -176,23 +196,23 @@ Use `:view NAME` to select an Analytics or Research subview.
 
 ## Terminal toolbar and update slider
 
-The first display row contains `x`, File, Edit, View, Help, the copy destination, and the update-rate control.
+The first display row contains `x`, File, Edit, View, Setup, Help, the copy destination, and the update-rate control.
 The toolbar remains available above pages and overlays.
 Menu actions use the same commands and reviews as their keyboard equivalents.
 
 | Control | Function |
 | --- | --- |
-| Click a menu label, F10, or `:menu [File\|Edit\|View\|Help]` | Open a menu |
+| Click a menu label, F10, or `:menu [File\|Edit\|View\|Setup\|Help]` | Open a menu |
 | Left / Right, Tab / Shift-Tab in a menu | Select the previous or next menu |
-| `f`, `e`, `v`, `h` in a menu | Select File, Edit, View, or Help |
+| `f`, `e`, `v`, `s`, `h` in a menu | Select File, Edit, View, Setup, or Help |
 | Up / Down, page keys, Home / End in a menu | Select a menu choice |
 | Enter / Space, or click a menu choice | Activate the choice |
 | Esc, `q`, F10, or move the pointer outside the dropdown | Dismiss the menu |
-| Click `x` | Exit Tower |
+| Click `x` | Exit Raven |
 | Click Copy / Yank | Switch between clipboard copying and a running local Vim/Neovim target |
 | Edit → Switch to Vim/Neovim yanking / Switch to clipboard copying | Change the same copy destination |
 | Click or drag the update track | Request a fetching interval; the label shows the effective Jobs interval |
-| Right-click the update track, interval, or step buttons | Restore five-second polling and preserve selections |
+| Right-click the update track, interval, or step buttons | Restore the five-second polling request and preserve selections |
 | Click `[-]` / `[+]`, or use the wheel over the update control | Move one polling position toward five seconds or 500 milliseconds |
 | Click the interval, or View → Focus update-rate slider | Focus slider keyboard controls |
 | Arrows, `-` / `+` with slider focus | Move one polling position |
@@ -200,6 +220,7 @@ Menu actions use the same commands and reviews as their keyboard equivalents.
 | Esc / Enter / Tab with slider focus | Return input to the page |
 | `:rate [N\|reset]` | Inspect the effective Jobs interval, select position 1 to 50, or restore five seconds |
 | `:about` | Open version and toolbar instructions |
+| **Setup**, `:setup` | Open allocation settings and per-view Research/Analytics guides |
 
 A menu choice ending in `...` opens an editable command prompt.
 Unavailable choices report their required context.
@@ -209,6 +230,14 @@ Dismiss the menu before editing that prompt or completing the review.
 Hover highlights a control without activating it.
 See [Live workbench](guides/live-workbench.md#use-the-terminal-toolbar) for every menu choice.
 See [Update rate](guides/live-workbench.md#set-the-update-rate) for source limits and saved preferences.
+See [Setup](guides/setup.md) for detected Slurm accounts, saved Heavy preferences, and embedded metric guides.
+
+When errors or warnings exist, the strip below the page tabs shows red Critical,
+orange Moderate, and yellow Mild count buttons. Click a count or enter
+`:notifications [all|critical|moderate|mild]` to read full messages. Click a
+notification or press Enter for its diagnosis and suggested fixes; use `×`
+(`x` in ASCII mode) or Delete to dismiss it. See
+[Notifications](guides/notifications.md) for severity and retention rules.
 
 ### Mouse and directional button focus
 
@@ -301,7 +330,7 @@ Esc cancels the draft.
 The Polling interval row controls the native global request from five seconds to 500 milliseconds.
 Separate live, GPU, and trace interval rows are not shown.
 Esc restores the exact previous polling position; unaccepted previews are not saved.
-See [Settings](guides/navigation.md#32-change-settings-with-a-preview) for source bases and launch overrides.
+See [Settings](guides/navigation.md#change-settings-with-a-preview) for source bases and launch overrides.
 
 In key bindings, `e` or Enter edits the selected action.
 Use `t` to test a key.
@@ -361,6 +390,8 @@ See [Navigation](guides/navigation.md#feature-35) for multiline input and quotin
 | `S` | Reverse the legacy sort |
 | `=` / `_` | Increase or decrease the accounting and Analytics day window |
 
+### Mark, group, and select jobs
+
 Marked jobs are the target of supported group actions.
 When no jobs are marked, the selected job is the target.
 Click one job, then Shift-click another to mark the inclusive range in either direction.
@@ -379,7 +410,7 @@ Press `g` to group the marked jobs in the focused list.
 On Jobs, this includes marked rows from both Main and Recents. Other workspaces use the focused list only.
 Open the group, mark specific members, and press `u` to detach those members.
 Select its closed summary and press `u` to dissolve the group.
-The membership keys and Alt-drag change Tower's display organization only.
+The membership keys and Alt-drag change Raven's display organization only.
 If the terminal intercepts Alt-drag, use the equivalent right-click group menu.
 See [Manual groups](guides/batch-launches.md#create-a-manual-group) for focus, identity, and persistence rules.
 Right-click a selected or marked job, including its group chevron, for **Create Group** (at least two targets), **Ungroup** (grouped targets), and applicable **Add to GROUP NAME** choices.
@@ -407,12 +438,17 @@ Focus changes preserve marks. Right-click clearing cancels unfinished drags and 
 In History, right-click a selected or marked row and choose **Export logs** to open the log-export menu.
 Right-click elsewhere inside that job list retains the direct log-export control.
 Right-click outside that list to clear the selection without activating another surface.
+
+### Review scheduler actions
+
 Inspect the complete target list in the action review.
 Use Tab to choose Cancel or Confirm.
 Press Enter to activate the selected review control.
 For ordinary action reviews, `y` confirms and `n` or `Esc` cancels.
 Use `:inspect section Overview\|Resources\|Steps\|Files\|Evidence` to select a section in an open structured inspector.
 The inspector's section buttons also accept mouse clicks.
+
+### Sort jobs and read progress
 
 Click column headings for cascading sorts.
 Drag a heading's thin separator to resize that column. Right-click the separator to restore automatic width.
@@ -440,12 +476,18 @@ Recents leaves live-only progress and measurement slots empty. The completion cu
 | **Ungroup All**, `:grouping clear` | Remove manual groups and disable automatic grouping; keep all jobs |
 | **Expand All**, `:grouping expand` | Open all groups without changing membership |
 | **Collapse All**, `:grouping collapse` | Close groups without changing membership |
+| **Sort Min**, `:grouping sort-min` | Order Jobs batches by fewest running jobs, then fewest total jobs; initial default |
+| **Sort Max**, `:grouping sort-max` | Order Jobs batches by most running jobs, then fewest total jobs |
 | `:grouping restore` | Restore the last Ungroup All change if later grouping edits would not be overwritten |
 | Drag a group header's `↕` (`:` in ASCII) onto another Main group | Request placement before an earlier group or after a later group; release opens inspection and review |
 | Esc or right-click during a queue-order drag | Cancel without changing scheduler order |
 | `:ops queue-order` | Open the queue-order form without a mouse |
 
-The five grouping buttons change shared display organization only. Their undo records last for the current session.
+The grouping buttons change shared display organization only. Their undo records last for the current session.
+The two sort buttons keep Jobs batches contiguous and remember the selected mode across launches.
+Counts use the unfiltered queue; filtering and collapsing do not change a batch's rank.
+Raven Heavy stays first when its current allocation identity is known.
+Column sorting orders jobs within each batch; Recents and History keep their own sorts.
 The queue-order handle is separate from the fold chevron and Alt-drag membership control.
 Only its header follows the pointer; expanded members are dimmed during the drag.
 After dropping, inspect **Review action**, then select **Confirm apply** to request a scheduler change.
@@ -566,8 +608,11 @@ Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, an
 | `:historyrange START END` | Select inclusive local calendar dates |
 | `:recents 5\|10\|25\|auto` | Select the initial Recents preview size |
 | `:recents expand\|collapse` | Change the Recents presentation |
-| `:jobgroups [on\|off]` | Toggle shared group visibility; explicit `on` also enables automatic detection |
-| `:grouping auto\|undo\|clear\|expand\|collapse\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
+| **Grouped**, `:recents grouped` | Keep complete Recents batches together; restore newest-completion order |
+| **Sequential**, `:recents sequential` | Show individual recent jobs without folds; restore newest-completion order |
+| `:jobgroups [on\|off]` | Reset list-specific grouping choices and set visibility across lists except Recents; retain batch ranks. Explicit `on` also enables automatic detection |
+| `:joblist CONTEXT grouped\|sequential\|sort-min\|sort-max` | Save presentation and batch ranking for an individual job list; see [contexts and defaults](guides/batch-launches.md#apply-grouping-and-sorting-in-other-job-lists) |
+| `:grouping auto\|undo\|clear\|expand\|collapse\|sort-min\|sort-max\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
 | `:jobgroup toggle\|open\|close GROUP_ID` | Fold or expand one known launch group |
 | `:jobgroup create` | Group at least two marked real jobs in the focused list |
 | `:jobgroup ungroup` | Dissolve targeted closed groups or detach targeted expanded members |
@@ -588,9 +633,15 @@ Drag the divider above Recents to change its visible size.
 The wheel inside Recents scrolls that list.
 Click a recent job, then use arrows, page keys, Home, or End to reach older matching history.
 The initial preview size does not cap that navigation.
+Use **Grouped** or **Sequential** on the divider to choose batch blocks or
+individual completion rows. The mode is saved; Grouped is the initial default.
+Switching modes restores newest-completion ordering; subsequent column sorts
+remain available. Grouped keeps each batch contiguous under either sort.
+Sequential preserves saved group membership and shared folds for other views.
+See [Recents grouping](guides/batch-launches.md#choose-grouped-or-sequential-recents).
 
-Click the right-pointing chevron on the first visible row of an expanded launch group to close it.
-Click the down-pointing chevron on its closed summary row to open it again.
+Click the down-pointing chevron on the first visible row of an expanded launch group to close it.
+Click the right-pointing chevron on its closed summary row to open it again.
 When the original first member is above the viewport, the first visible member carries the disclosure control.
 The existing summary formatting and state counts stay available while the group is closed.
 Fold preferences remain shared across the job listings and their history browsers.
@@ -600,7 +651,7 @@ Manual groups use the same chevrons and state summaries.
 `g` creates one from at least two marked jobs; `u` removes the selected group or its selected expanded members.
 Alt-drag a job row or marked selection onto a group row to add those exact jobs.
 Right-click the selected row for equivalent group creation, removal, and destination choices.
-Manual membership uses natural job-ID order. Displayed rows retain each list's active sort, including its default sort.
+Manual membership uses natural job-ID order. Jobs orders complete batches with Sort Min or Sort Max and uses column sorting within each batch. Other lists retain their active sorts.
 Use `U` when you only want to clear marks.
 These membership keys belong to the focused job list. Graph `u` still undoes zoom; text and menu controls retain their own input behavior.
 Their INFO badges use `run`, `pend`, `dep`, `never`, `done`, `fail`, `cancel`, and `other` for nonzero counts.
@@ -729,7 +780,8 @@ See [Log display](guides/log-view.md) for inspected-source coverage and timestam
 ## Pane scrolling and rendered selection
 
 Scrollable panes reserve four left header cells for top/bottom arrows and one right-edge cell for the scrollbar.
-Drag its thumb to scroll that pane. Click above or below the thumb for a viewport-sized step.
+Drag its thumb to scroll that pane. Click anywhere on its track to seek directly to that position.
+Dragging outside the visible track pauses scrolling; releasing there ends the gesture without moving the pane.
 Click the header arrows for the pane's endpoints, or reach them with F8 and Enter.
 These controls preserve the selected source and do not activate rows under the rail.
 Count growth keeps the current gesture. Changed source, page, geometry, layout, or modal context cancels it.
@@ -777,7 +829,7 @@ Copy is the default destination. Yank uses a running local Vim or Neovim server.
 The toolbar uses compact `C` / `Y` labels when space is limited.
 Editor delivery sets registers `0` and unnamed without opening an editor or changing a buffer.
 `clipboard.destination` accepts `copy` or `yank`.
-An inherited owned Unix socket identifies Neovim; one reported server or `TOWER_VIM_SERVER` identifies Vim.
+An inherited owned Unix socket identifies Neovim; one reported server or `RAVEN_VIM_SERVER` identifies Vim.
 Discovery has a 0.4-second timeout; delivery has a 0.8-second timeout.
 Editor payloads must be complete UTF-8 without NUL bytes and no larger than 8 MiB.
 Failures keep the private export and attempt enabled clipboard fallback.
@@ -917,7 +969,8 @@ A running metric can show **Live off/ON** and two adjacent sliders.
 Compact rows use empty/filled Live symbols, or `o`/`+` in ASCII mode.
 The first slider controls the display window. Drag left for 30 seconds or right for one second.
 The second slider controls polling. Drag left for five seconds or right for 500 milliseconds.
-Both scales use logarithmic steps. Native polling requests do not have a flat region caused by a lower-limit clamp.
+Both scales use logarithmic steps. The requested value continues to change even
+when a governed collection floor keeps the effective interval unchanged.
 **Set** shows that slider's requested interval; **Poll** shows the shared effective interval.
 Compact rows show the effective interval before the polling track and `S` plus the request after it.
 Labels use `s`, `ms`, or `µs`; ASCII mode uses `us`.
@@ -944,7 +997,7 @@ Shared probes use the fastest requested rate: CPU and memory share a resource pr
 The requests do not multiply. Another job keeps its global cadence and its own sampling request.
 Job-produced files retain their own writing cadence.
 A valid rectangular zoom turns Live off. A cancelled rectangle resumes it.
-Completed jobs have no active Live or sampling controls. Metric preferences reset when Tower restarts.
+Completed jobs have no active Live or sampling controls. Metric preferences reset when Raven restarts.
 
 See [Charts](guides/charts.md) for coverage, axis restrictions, and declared units.
 
@@ -952,8 +1005,8 @@ See [Charts](guides/charts.md) for coverage, axis restrictions, and declared uni
 
 | Control | Function |
 | --- | --- |
-| Click `▾` / ASCII `v` on an array cohort | Select that cohort and open its task page |
-| Click `▸` / ASCII `>` on an open cohort | Close its task page and retain the summary |
+| Click `▸` / ASCII `>` on an array cohort | Select that cohort and open its task page |
+| Click `▾` / ASCII `v` on an open cohort | Close its task page and retain the summary |
 | Enter in full Research → Arrays | Toggle the selected cohort's task page |
 | Page Up / Page Down in full Research → Arrays | Move through an open task page in groups of 24 |
 | `:array open\|close ARRAYID [CLUSTER]` | Apply an explicit action to an exact published cohort; specify the cluster when the ID is ambiguous |
@@ -1070,7 +1123,7 @@ and replay sessions, even when a path is explicit.
 ### Command index
 
 These commands are available through the palette.
-The same command families are available through `tower run` when they do not require an interactive overlay.
+The same command families are available through `raven run` when they do not require an interactive overlay.
 Quoted arguments preserve paths that contain spaces.
 Job-changing commands open a review; scripted changes require `--yes`.
 
@@ -1078,6 +1131,7 @@ Job-changing commands open a review; scripted changes require `--yes`.
 | --- | --- | --- |
 | Help and command discovery | `menu`, `about`, `help`, `commands`, `quit` | [Live workbench](guides/live-workbench.md#use-the-terminal-toolbar) |
 | Main navigation | `tab`, `view`, `workspace`, `workspaces`, `back`, `forward`, `jump`, `location` | [Navigation](guides/navigation.md) |
+| Installation and allocation setup | `setup`, `setup allocation`, `setup research VIEW`, `setup analytics VIEW` | [Setup](guides/setup.md) |
 | Settings and field inspection | `settings`, `keybindings`, `explain`, `peek` | [Navigation](guides/navigation.md) |
 | Panel layout | `density`, `focus`, `maximize`, `layout`, `panel-scroll` | [Workbench](WORKBENCH.md#shape-your-workspace) |
 | Table inspection | `sort`, `sortby`, `sorteditor`, `headers`, `columns`, `facet`, `filters`, `where`, `savedview`, `viewpicker`, `jobgroups`, `jobgroup`, `grouping`, `queue-drag`, `filter`, `days`, `historyrange`, `recents`, `marked`, `freeze`, `jobactions`, `node`, `drill` | [Tables](guides/tables.md) |
@@ -1110,19 +1164,23 @@ The [plugin reference](reference.md#plugins) defines the extension interface.
 
 ## Command-line options
 
-Run `tower --help` for the parser's complete current syntax.
+Run `ravenl --help`, `ravenh --help`, or `raven --help` for current syntax.
+The table includes compatibility dashboard options; execution and configuration
+selection are governed by the Raven launcher.
 
 | Option | Purpose |
 | --- | --- |
 | `-h`, `--help` | Print command-line help |
 | `--version` | Print the application version |
 | `--config FILE` | Select TOML or JSON configuration |
-| `--write-config` | Create commented defaults without replacing an existing file |
+| `--write-config [NEW_JSON]` | Create Raven JSON defaults without replacing an existing file |
+| `--site NAME` | Select a Raven profile; `desktop` explicitly selects standalone operation |
+| `--plan` | Explain startup without allocating compute or writing state |
 | `--doctor` | Inspect demo, local, or remote prerequisites |
 | `--gpu-check [JOBID]` | Inspect GPU detection; omit JOBID to check current individual jobs |
 | `--gpu-check-output DIRECTORY` | Save a GPU check to a new private directory |
 | `--ui-trace FILE` | Record bounded interactive UI timings and page transitions; save to a new private JSON file on exit |
-| `--profile NAME` | Apply a configured cluster profile |
+| `--profile NAME` | Select a legacy configuration profile; use `--site` for Raven profiles |
 | `--host HOST` | Run scheduler commands and log reads through SSH |
 | `--ssh-user USER` | Select the remote SSH login |
 | `--user USER` | Select the scheduler user |
@@ -1163,23 +1221,26 @@ Run `tower --help` for the parser's complete current syntax.
 | `--no-state` | Disable normal UI state reads and writes |
 | `--width COLUMNS` | Set report or one-frame output width |
 
-Use `tower run COMMAND ARGUMENTS` as an alternative to `--run`.
+Use `raven run COMMAND ARGUMENTS` as an alternative to `--run`.
 Command-specific flags are passed to that palette command.
 See the [scripted-mode reference](reference.md#scripted-mode-and-expressions) for exit codes.
 
 ## Configuration and environment variables
 
-Use `--config`, `TOWER_CONFIG`, or the default file under `~/.config/tower/`.
+Use `--config`, `RAVEN_CONFIG`, or the default Raven file under
+`~/.config/raven/`, honoring `XDG_CONFIG_HOME`. `RAVEN_CONFIG` and files under
+`~/.config/raven/` remain read-only compatibility inputs. Use
+`ravenl config explain` to inspect which source and profile are active.
 Use `NO_COLOR=1` to disable color.
 Use `--account ACCOUNT` for a single launch override.
 
 | Variable | Managed Bash alias behavior |
 | --- | --- |
-| `SLURM_TOWER_PROFILE` | A nonempty value overrides the installed profile |
-| `SLURM_TOWER_ACCOUNT` | Sets an account for any profile; an empty value suppresses legacy account injection |
+| `RAVEN_PROFILE` | A nonempty value overrides the installed profile |
+| `RAVEN_ACCOUNT` | Sets an account for any profile; an empty value suppresses legacy account injection |
 | `CARC_ACCOUNT` | Provides a fallback only for the CARC profile when the generic account variable is unset |
-| `TOWER_CONFIG` | Selects a custom configuration instead of the supplied example |
-| `SLURM_TOWER_ROOT` | Selects the checkout used by the managed launcher |
+| `RAVEN_CONFIG` | Selects a custom configuration instead of the supplied example |
+| `RAVEN_ROOT` | Selects the checkout used by the managed launcher |
 
 The desktop alias ignores `CARC_ACCOUNT`.
 See [Desktop account overrides](DESKTOP.md#account-and-profile-overrides) for examples.
@@ -1190,12 +1251,15 @@ Editor destination variables are separate from the managed alias settings:
 | --- | --- |
 | `NVIM` | Preferred absolute Unix socket for an already-running local Neovim owned by the current user |
 | `NVIM_LISTEN_ADDRESS` | Alternative owned local Neovim Unix socket |
-| `TOWER_VIM_SERVER` | Exact reported Vim server name; required to choose among multiple servers |
+| `RAVEN_VIM_SERVER` | Exact reported Vim server name; required to choose among multiple servers |
 
 See [Pane navigation](guides/pane-navigation.md#send-text-to-vim-or-neovim) for discovery, timeouts, and clipboard fallback.
 
-The normal persistent state base is `~/.local/state/tower/`.
-The desktop profile uses `state_namespace = "desktop"` to separate connection state.
-See [Desktop state](DESKTOP.md#keep-desktop-state-separate) for the default directory layout.
+The normal Raven state base is `~/.local/state/raven/`, honoring `XDG_STATE_HOME`
+and `RAVEN_STATE_DIR`. Connection-scoped state remains separate. Legacy state
+under `~/.local/state/raven/` is preserved until explicit migration. See
+[migration](raven/README.md#migrate-without-changing-evidence) for the copy and
+rollback workflow, and [Desktop state](DESKTOP.md#keep-desktop-state-separate)
+for the legacy desktop layout.
 The [configuration reference](reference.md#configuration) defines profiles, intervals, timeouts, thresholds, alerts, clipboard options, and plugins.
 The [documentation style](DOCUMENTATION_STYLE.md) defines the terminology used in these guides.

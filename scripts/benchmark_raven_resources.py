@@ -10,7 +10,7 @@ Example:
   python scripts/benchmark_raven_resources.py --variant light --duration 300 \
       --output /tmp/raven-light-monitor.json
   python scripts/benchmark_raven_resources.py --variant baseline \
-      --source-root /path/to/pristine/checkout --output /tmp/tower-baseline.json
+      --source-root /path/to/pristine/checkout --output /tmp/raven-baseline.json
 """
 from __future__ import annotations
 
@@ -26,6 +26,9 @@ import statistics
 import sys
 import tempfile
 import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from benchmark_source import load_module, package_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -47,7 +50,7 @@ def summary(values):
 
 def source_digest(root):
     state = hashlib.sha256()
-    for path in sorted((root / 'tower').glob('*.py')):
+    for path in sorted(package_directory(root).glob('*.py')):
         state.update(path.name.encode() + b'\0' + path.read_bytes())
     return state.hexdigest()
 
@@ -61,13 +64,11 @@ def fixture_specs(count):
 
 
 def child(args):
-    sys.path.insert(0, str(args.source_root))
-    import tower
-    from tower import cli
-    from tower.slurm import Backend, CommandError, FakeBackend
-    from tower.views import Views
-    if Path(tower.__file__).resolve().parent.parent != args.source_root:
-        raise RuntimeError('Child imported another checkout; comparison is invalid')
+    application = load_module(args.source_root)
+    cli = load_module(args.source_root, 'cli')
+    slurm = load_module(args.source_root, 'slurm')
+    Backend, CommandError, FakeBackend = slurm.Backend, slurm.CommandError, slurm.FakeBackend
+    Views = load_module(args.source_root, 'views').Views
     calls, results, observation = Counter(), Counter(), {'frames': 0, 'max_jobs': 0}
     backends = []
     original_init, original_run, original_compose = FakeBackend.__init__, FakeBackend.run, Views.compose
@@ -111,7 +112,7 @@ def child(args):
             observation.update(ready=time.monotonic(), managed=managed,
                                retained_jobs=len(app.store.jobs), selected=app.selected_id,
                                steady_idle_timer_preaged=preaged,
-                               process_id=os.getpid(), version=tower.__version__)
+                               process_id=os.getpid(), version=application.__version__)
             publish(args.ready, observation)
         return rendered
 
@@ -121,7 +122,7 @@ def child(args):
     try:
         common = ['--fake', '--no-state', '--no-plugins', '--no-gpu', '--user', 'benchmark', '--tab', 'jobs']
         if args.variant == 'light':
-            from tower.raven_launch import light_main
+            light_main = load_module(args.source_root, 'raven_launch').light_main
             exit_code = light_main(['--config', str(args.config), *common])
         else:
             exit_code = cli.main(['--config', str(args.config), *common])
@@ -158,7 +159,7 @@ def bounded_disk(root):
 
 def process_sample(pid, scratch):
     # Parent-only diagnostics, even when the child uses a pristine old checkout.
-    from tower.raven_diagnostics import process_tree
+    process_tree = load_module(ROOT, 'raven_diagnostics').process_tree
     tree = process_tree(pid)
     cpu, io, waited_available = 0., {}, True
     ticks = os.sysconf('SC_CLK_TCK')
@@ -211,8 +212,8 @@ def run(args):
     sys.path.insert(0, str(ROOT))
     if args.output.exists():
         raise ValueError('Benchmark output already exists; choose a new path')
-    if not (args.source_root / 'tower/cli.py').is_file():
-        raise ValueError('Source root must contain the requested Tower checkout')
+    if not (package_directory(args.source_root) / 'cli.py').is_file():
+        raise ValueError('Source root must contain the declared application CLI')
     measured_source = source_digest(args.source_root)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='raven-resource-') as temporary:

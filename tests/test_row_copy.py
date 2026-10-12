@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import clipboard, interaction, row_copy, text_selection
+from raven import clipboard, interaction, row_copy, text_selection
 
 
 @pytest.fixture
@@ -155,12 +155,12 @@ def test_selection_under_overlay_cannot_copy_hidden_content(app):
 
 
 def test_native_source_copy_through_full_frame(app, monkeypatch):
-    from tower.config import Config
-    from tower.controller import App
-    from tower.layout import Glyphs
-    from tower.model import Health, Store
-    from tower.screen import _FrameCache
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.layout import Glyphs
+    from raven.model import Health, Store
+    from raven.screen import _FrameCache
+    from raven.views import Views
 
     cfg = Config({"animations": False, "startup_animation": False,
                   "smooth_scrolling": False, "workspace": {"density": "compact"}})

@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import ops_campaigns as ops
-from tower import operations
-from tower import campaign_common as common
+from raven import ops_campaigns as ops
+from raven import operations
+from raven import campaign_common as common
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def write(path, value):
 
 def script(tmp_path):
     path = tmp_path / "job.sh"
-    path.write_text("#!/bin/bash\n#SBATCH --cpus-per-task=1\nprintf '%s' \"${TOWER_TRIAL_PARAMETERS:-$TOWER_CHECKPOINT}\"\n")
+    path.write_text("#!/bin/bash\n#SBATCH --cpus-per-task=1\nprintf '%s' \"${RAVEN_TRIAL_PARAMETERS:-$RAVEN_CHECKPOINT}\"\n")
     return path
 
 
@@ -46,18 +46,18 @@ def recipes(tmp_path):
     checkpoint.write_bytes(b"application-state")
     base = {"script": str(batch), "workdir": str(tmp_path)}
     return {
-        "checkpoint": {"schema": "tower.checkpoint-restart/v1", **base,
+        "checkpoint": {"schema": "raven.checkpoint-restart/v1", **base,
                        "script_sha256": hashlib.sha256(batch.read_bytes()).hexdigest(),
                        "checkpoint": {"path": str(checkpoint), "complete": True, "sha256": hashlib.sha256(checkpoint.read_bytes()).hexdigest()},
                        "compatibility": {"expected": {"application": "solver-1", "format": "v3", "runtime": "gcc-14"},
                                          "actual": {"application": "solver-1", "format": "v3", "runtime": "gcc-14"}},
                        "source_job": {"id": "77", "start": "2026-01-01T10:00:00", "cluster": "test"}},
-        "search": {"schema": "tower.parameter-search/v1", **base, "id": "campaign-a", "budget": 6, "max_parallel": 3,
+        "search": {"schema": "raven.parameter-search/v1", **base, "id": "campaign-a", "budget": 6, "max_parallel": 3,
                    "direction": "minimize", "parameters": {"x": [0, 1, 2], "mode": ["fast", "accurate"]}},
-        "packing": {"schema": "tower.packed-tasks/v1", "cpus": 4, "memory_mb": 128, "parallel": 2,
+        "packing": {"schema": "raven.packed-tasks/v1", "cpus": 4, "memory_mb": 128, "parallel": 2,
                     "workdir": str(tmp_path), "tasks": [{"id": "manifest", "argv": ["/bin/echo", "value"], "cpus": 1, "memory_mb": 32}]},
-        "dask": {"schema": "tower.dask-pool/v1", "id": "pool-a", "cores": 4, "memory_mb": 2048, "max_jobs": 5},
-        "heterogeneous": {"schema": "tower.heterogeneous-allocation/v1", "workdir": str(tmp_path),
+        "dask": {"schema": "raven.dask-pool/v1", "id": "pool-a", "cores": 4, "memory_mb": 2048, "max_jobs": 5},
+        "heterogeneous": {"schema": "raven.heterogeneous-allocation/v1", "workdir": str(tmp_path),
                           "components": [{"resources": {"nodes": 1, "ntasks": 2, "mem": "2G"}, "argv": ["solver", "--cpu"]},
                                          {"resources": {"nodes": 1, "ntasks": 1, "gpus": 1}, "argv": ["solver", "--gpu"]}]}}
 

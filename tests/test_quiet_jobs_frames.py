@@ -4,12 +4,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import clock,layout as L,screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Health,Job,Store
-from tower.raven_limits import LightLimits
-from tower.views import Views
+from raven import clock,layout as L,screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Health,Job,Store
+from raven.raven_limits import LightLimits
+from raven.views import Views
 
 
 @pytest.fixture
@@ -112,7 +112,7 @@ def test_captured_unknown_publication_cannot_be_replaced_with_newer_live_token(s
 
 
 def test_hub_callback_without_message_invalidates_document(scene):
-    from tower.research import ResearchHub
+    from raven.research import ResearchHub
     s=scene; hub=s.app.research=ResearchHub(s.app.cfg,s.views.files)
     s.cache.rebuild(s.app,s.views,s.store,None,160,40)
     future=Future(); future.set_result('published')
@@ -140,13 +140,13 @@ def test_message_expiry_and_manager_publication_invalidate_without_source_call(s
 @pytest.mark.parametrize('reason',['graph','completion','scrolling','startup','other-pane','other-page','terminal','unknown-store','unmanaged'])
 def test_unknown_or_animating_views_keep_original_document_deadline(scene,monkeypatch,reason):
     s=scene
-    if reason=='graph': monkeypatch.setattr('tower.metric_live.document_interval',lambda app:.1)
+    if reason=='graph': monkeypatch.setattr('raven.metric_live.document_interval',lambda app:.1)
     elif reason=='completion': s.app.completion=SimpleNamespace(active=True)
-    elif reason=='scrolling': monkeypatch.setattr('tower.scrolling.active',lambda app:True)
-    elif reason=='startup': monkeypatch.setattr('tower.startup.active',lambda app:True)
+    elif reason=='scrolling': monkeypatch.setattr('raven.scrolling.active',lambda app:True)
+    elif reason=='startup': monkeypatch.setattr('raven.startup.active',lambda app:True)
     elif reason=='other-pane': s.app.job_panel_state['mode']='analytics'
     elif reason=='other-page': s.app.tab='history'
-    elif reason=='terminal': monkeypatch.setattr('tower.terminal_ui.showing',lambda app:True)
+    elif reason=='terminal': monkeypatch.setattr('raven.terminal_ui.showing',lambda app:True)
     elif reason=='unknown-store': s.app.store=SimpleNamespace()
     else: s.app.cfg.data.pop('raven')
     assert not maintenance(s)

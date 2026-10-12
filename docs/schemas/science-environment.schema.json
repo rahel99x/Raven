@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower environment v1",
+  "title": "Raven environment v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.environment/v1"
+      "const": "raven.environment/v1"
     },
     "python": {
       "type": "string",

@@ -4,13 +4,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, interaction as I, job_panels as J
-from tower import job_selection as S, layout as L, metric_live as M, metric_sampling
-from tower import screen, workspace_layout as W
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import chart_interaction as C, interaction as I, job_panels as J
+from raven import job_selection as S, layout as L, metric_live as M, metric_sampling
+from raven import screen, workspace_layout as W
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 MOUSE = SimpleNamespace(
@@ -89,8 +89,8 @@ def test_previous_job_details_actions_are_rejected_before_next_frame(dashboard, 
                             run_command=lambda *_: pytest.fail("stale Details ran a command"))
     state["view_states"]["analytics:job"] = {"proxy": proxy}
     app.selected_id = "8"
-    monkeypatch.setattr("tower.analysis_ui.run_command", lambda *_: pytest.fail("stale metric opened"))
-    monkeypatch.setattr("tower.log_workbench.open_citation", lambda *_: pytest.fail("stale citation opened"))
+    monkeypatch.setattr("raven.analysis_ui.run_command", lambda *_: pytest.fail("stale metric opened"))
+    monkeypatch.setattr("raven.log_workbench.open_citation", lambda *_: pytest.fail("stale citation opened"))
     value = {"action": ("command", "workspace experiment")} if kind == "control" else "E1"
     assert not J._content_action(app, (kind, value))
     assert app.tab == "jobs" and app.selected_id == "8"

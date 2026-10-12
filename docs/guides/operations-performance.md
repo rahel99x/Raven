@@ -2,7 +2,7 @@
 
 [Performance guide](ui-performance.md) · [Scale operations](operations-scale.md)
 
-Tower 4.15.0 uses an immutable operation-definition cache for contextual
+Raven 4.15.0 uses an immutable operation-definition cache for contextual
 buttons, forms, and the catalog. The cache is built at application startup.
 Rendering no longer copies all field definitions for each visible button.
 This also fixes a regression in frozen Jobs views, where the new buttons
@@ -58,8 +58,9 @@ Times below are milliseconds. Each pair is **baseline / candidate**.
 | Scroll to either end | ASCII | 1.77 / 1.78 | 72.60 / 72.95 |
 
 Candidate median frames ranged from 1.56 to 2.15 ms. In this initial comparison,
-the largest recorded frame was 286.11 ms, compared with 472.85 ms in the baseline run. Full document
-rebuilds still have substantially higher latency than pointer-feedback frames.
+the largest recorded frame was 286.11 ms, compared with 472.85 ms in the baseline
+run. Full document rebuilds still have substantially higher latency than
+pointer-feedback frames.
 Two candidate p95 values increased substantially despite identical work
 counts. A targeted repeat below checks these two differences. These measurements
 include shared-host scheduling variation. They establish neither a uniform
@@ -133,13 +134,15 @@ these numbers as a target for that system.
 
 ## Reproduce the comparison
 
-Extract the baseline into a separate directory. Run the same harness and
-arguments once for that directory and once for the current checkout:
+Use the recorded 4.15.0 implementation as the candidate when reproducing these
+results. For a new release comparison, record that candidate's revision
+separately. Extract the baseline into a separate directory and run the same
+harness and arguments once for each source directory:
 
 ```sh
 python3 -S scripts/benchmark_changing_ui.py \
   --source-root /path/to/source \
-  --output /tmp/tower-benchmark.json \
+  --output /tmp/raven-benchmark.json \
   --cases static,live30,live1,switch,resize,scroll-end \
   --glyphs both --repeats 100
 ```

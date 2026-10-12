@@ -7,11 +7,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, charts, layout as L, palette
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import analysis_ui as A, chart_interaction as C, charts, layout as L, palette
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 def render(values, *, width=22, height=6, ascii_=False, **kwargs):

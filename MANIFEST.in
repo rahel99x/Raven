@@ -1,4 +1,5 @@
 include LICENSE README.md CONTRIBUTING.md SECURITY.md
+include CITATION.cff
 include CHANGELOG.md
 recursive-include docs *.md *.json *.toml
 recursive-include docs/examples *.sbatch *.txt
@@ -8,11 +9,12 @@ recursive-include examples/operations-science *.py *.json *.lock *.txt *.md
 recursive-include examples/platform *.py *.json *.md
 recursive-include examples/runtime *.py *.json *.md
 recursive-include examples/scientific-investigation *.py *.json *.md
-recursive-include scripts *.py *.sh tower ravenl ravenh
+recursive-include scripts *.py *.sh raven ravenl ravenh
 recursive-include tests *.py
 recursive-include tests/fixtures *.json *.md
 recursive-include examples/research *.py *.json *.sbatch
 recursive-include examples/planning *.py *.json *.sbatch
 recursive-include examples/project-template *.py *.json *.sbatch *.md .gitignore .gitkeep LICENSE
-recursive-include examples/project-template/.tower *.json
+recursive-include examples/project-template/.raven *.json
+recursive-include examples/reporting-v2 *.py *.sh *.md
 recursive-include .github/workflows *.yml

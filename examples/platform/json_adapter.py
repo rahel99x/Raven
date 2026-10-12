@@ -9,7 +9,7 @@ line = sys.stdin.buffer.readline(LIMIT + 1)
 if len(line) > LIMIT or not line.endswith(b"\n"):
     raise SystemExit(2)
 request = json.loads(line)
-response = {"schema": "tower.adapter-protocol/v1", "id": request.get("id")}
+response = {"schema": "raven.adapter-protocol/v1", "id": request.get("id")}
 if request.get("schema") != response["schema"]:
     raise SystemExit(2)
 method = request.get("method")

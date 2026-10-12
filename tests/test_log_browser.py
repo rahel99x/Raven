@@ -7,12 +7,12 @@ import time
 
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 class BrowserSampler:
@@ -65,7 +65,7 @@ class BrowserDashboard:
             path.write_text(marker + "\n", encoding="utf-8")
             self.markers[str(path)] = marker
             entries.append({"id": f"extra-{i}", "path": str(path), "label": f"Component {i:02d}", "group": f"Group {i % 3}"})
-        report = {"schema": "tower.logs/v1", "logs": entries}
+        report = {"schema": "raven.logs/v1", "logs": entries}
         if manifest_job is not None:
             report["job_id"] = manifest_job
         self.manifest.write_text(json.dumps(report), encoding="utf-8")

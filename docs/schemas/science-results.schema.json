@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower results v1",
+  "title": "Raven results v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.results/v1"
+      "const": "raven.results/v1"
     },
     "runs": {
       "type": "array",

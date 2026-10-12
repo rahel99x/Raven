@@ -2,7 +2,7 @@
   "schema": "raven.resource-benchmark/v1",
   "variant": "light",
   "mode": "monitor",
-  "source_root": "/workspace/Slurm-Tower",
+  "source_root": "/workspace/Raven",
   "source_sha256": "f27f5661b24e069663371fbaf55162b878b0ee572258bb1708f3f7b7066f8a64",
   "host": {
     "system": "Linux-6.18.44-x86_64-with-glibc2.41",
@@ -13,7 +13,7 @@
     "cgroup_memory_max": "34359738368",
     "affinity_cpus": 5
   },
-  "child_python": "/workspace/Slurm-Tower/.venv/bin/python",
+  "child_python": "/workspace/Raven/.venv/bin/python",
   "terminal": {
     "width": 160,
     "height": 48,

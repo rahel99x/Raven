@@ -1,5 +1,5 @@
 {
-  "schema": "tower.packed-tasks/v1",
+  "schema": "raven.packed-tasks/v1",
   "id": "example-packed-01",
   "workdir": ".",
   "cpus": 2,

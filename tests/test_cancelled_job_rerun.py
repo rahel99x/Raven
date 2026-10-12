@@ -10,8 +10,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import operations as O
-from tower.slurm import CommandError
+from raven import operations as O
+from raven.slurm import CommandError
 
 
 def controller(**changes):

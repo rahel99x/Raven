@@ -3,9 +3,9 @@ from dataclasses import replace
 
 import pytest
 
-from tower import job_groups as G
-from tower.model import Finished, Job
-from tower.slurm import (CommandError, GROUP_FMT, GROUP_WIRE_MARKER, JOB_FMT, SACCT_FIELDS,
+from raven import job_groups as G
+from raven.model import Finished, Job
+from raven.slurm import (CommandError, GROUP_FMT, GROUP_WIRE_MARKER, JOB_FMT, SACCT_FIELDS,
                          SACCT_LEGACY_FIELDS, Slurm, parse_group, parse_jobs, parse_sacct)
 
 
@@ -27,7 +27,7 @@ def test_three_historical_jobs_group_on_cold_start_without_live_details_or_comma
     records = [accounting(100 + n, name=f"train_{n}", cpus=2 ** n) for n in range(3)]
     group, = G.Registry().ensure({"finished": records}).groups.values()
     assert group.members == ("100", "101", "102")
-    assert group.label == "Launch train" and group.confidence == "likely"
+    assert group.label == "train" and group.confidence == "likely"
     assert "30 seconds" in group.reason
 
 
@@ -58,6 +58,14 @@ def test_command_script_conflicts_cannot_form_sweep():
 
 def test_inline_python_commands_do_not_share_only_interpreter_identity():
     records = [record(100 + n, command=f"python -c 'print({n})'") for n in range(3)]
+    assert not G.Registry().ensure({"jobs": records}).groups
+
+
+@pytest.mark.parametrize("launcher", ["/usr/bin/env python", "srun python", "mpirun python",
+                                      "mpiexec python", "uv run python", "torchrun --nnodes=1"])
+def test_shared_launcher_does_not_merge_different_scientific_scripts(launcher):
+    records = [record(100 + n, command=f"{launcher} /project/train{n}.py")
+               for n in range(3)]
     assert not G.Registry().ensure({"jobs": records}).groups
 
 
@@ -101,6 +109,32 @@ def test_explicit_comments_support_new_queue_and_cold_history():
 def test_comment_must_be_one_full_valid_marker_not_free_text():
     records = [record(100, comment="note launch:a"), record(900, comment="note launch:a")]
     assert not G.Registry().ensure({"jobs": records}).groups
+
+
+@pytest.mark.parametrize("count", [2, 3])
+def test_conflicting_markers_cannot_fall_back_to_adjacent_or_dense_burst(count):
+    records = [record(100 + n) for n in range(count)]
+    snap = {"jobs": records,
+            "tags": {job.id: {"tags": ["launch:batch-a", "group:batch-b"]} for job in records}}
+    assert not G.Registry().ensure(snap).groups
+
+
+@pytest.mark.parametrize("conflicting_id", ["100", "101"])
+def test_conflicting_marker_on_either_dependency_endpoint_prevents_grouping(conflicting_id):
+    records = [record(100), record(101, dependency="afterok:100")]
+    snap = {"jobs": records,
+            "tags": {conflicting_id: {"tags": ["launch:batch-a", "launch:batch-b"]}}}
+    assert not G.Registry().ensure(snap).groups
+
+
+def test_correcting_conflicting_markers_refreshes_inference_without_replacing_records():
+    records = [record(100), record(101)]
+    snap = {"jobs": records, "tags": {"100": {"tags": ["launch:a", "launch:b"]}}}
+    registry = G.Registry()
+    assert not registry.ensure(snap).groups
+    snap["tags"]["100"]["tags"].clear()
+    group, = registry.ensure(snap).groups.values()
+    assert group.members == ("100", "101")
 
 
 def test_fold_persists_on_growth_backfill_and_completion_without_details():

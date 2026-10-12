@@ -3,13 +3,13 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "slurm-tower"
+name = "raven"
 version = "7.0.0"
-description = "Project Raven: a terminal research workbench with governed collection and explicit compute ownership"
+description = "Raven: a terminal research workbench with governed collection and explicit compute ownership"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{name = "Slurm-Tower contributors"}]
+authors = [{name = "Raven contributors"}]
 keywords = ["slurm", "hpc", "dashboard", "tui", "curses", "cluster", "jobs"]
 classifiers = [
     "Environment :: Console :: Curses",
@@ -31,18 +31,18 @@ dev = ["pytest>=8,<10", "build>=1,<2", "jsonschema>=4.18,<5"]
 terminal = ["pyte>=0.8.2,<0.9", "wcwidth>=0.2.13,<1"]
 
 [project.urls]
-Homepage = "https://github.com/rahel99x/Slurm-Tower"
-Documentation = "https://github.com/rahel99x/Slurm-Tower/blob/main/docs/runbook.md"
-Repository = "https://github.com/rahel99x/Slurm-Tower"
-Issues = "https://github.com/rahel99x/Slurm-Tower/issues"
+Homepage = "https://github.com/rahel99x/Raven"
+Documentation = "https://github.com/rahel99x/Raven/blob/main/docs/raven/README.md"
+Repository = "https://github.com/rahel99x/Raven"
+Issues = "https://github.com/rahel99x/Raven/issues"
 
 [project.scripts]
-tower = "tower.raven_launch:legacy_main"
-ravenl = "tower.raven_launch:light_main"
-ravenh = "tower.raven_launch:heavy_main"
+raven = "raven.raven_launch:light_main"
+ravenl = "raven.raven_launch:light_main"
+ravenh = "raven.raven_launch:heavy_main"
 
 [tool.setuptools]
-packages = ["tower"]
+packages = ["raven"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

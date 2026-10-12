@@ -17,9 +17,9 @@ import time
 
 import pytest
 
-from tower import operations
-from tower.remote import LocalFiles
-from tower.slurm import Backend, CommandError
+from raven import operations
+from raven.remote import LocalFiles
+from raven.slurm import Backend, CommandError
 
 
 @pytest.fixture
@@ -142,7 +142,7 @@ def test_atomic_publish_preserves_existing_destination(operation_context, tmp_pa
     with pytest.raises(FileExistsError):
         operations.atomic_json(path, {"generation": 2})
     assert json.loads(path.read_text()) == {"generation": 1}
-    assert list(tmp_path.glob(".tower-*")) == []
+    assert list(tmp_path.glob(".raven-*")) == []
 
 
 @pytest.mark.parametrize("channel", ["stdout", "stderr"])
@@ -198,13 +198,13 @@ def _transfer_manifest(tmp_path, contents=(b"scientific output",)):
                         "sha256": hashlib.sha256(content).hexdigest(), "size": len(content),
                         "direction": "output"})
     manifest = tmp_path / "transfer.json"
-    manifest.write_text(json.dumps({"schema": "tower.staging/v1", "id": "experiment-results",
+    manifest.write_text(json.dumps({"schema": "raven.staging/v1", "id": "experiment-results",
                                     "entries": entries, "retention": "keep-source"}))
     return manifest, entries
 
 
 def test_transfer_review_then_manifest_edit_never_copies_new_source(operation_context, tmp_path):
-    from tower import ops_services
+    from raven import ops_services
     manifest, entries = _transfer_manifest(tmp_path)
     reviewed = ops_services.run("staging", {"manifest": str(manifest), "direction": "all"}, operation_context)["plan"]
     value = json.loads(manifest.read_text())
@@ -217,7 +217,7 @@ def test_transfer_review_then_manifest_edit_never_copies_new_source(operation_co
 
 
 def test_transfer_review_then_source_edit_reports_failure_and_keeps_collision(operation_context, tmp_path):
-    from tower import ops_services
+    from raven import ops_services
     manifest, entries = _transfer_manifest(tmp_path, (b"result-one", b"result-two"))
     reviewed = ops_services.run("staging", {"manifest": str(manifest), "direction": "all"}, operation_context)["plan"]
     Path(entries[0]["source"]).write_bytes(b"new result")
@@ -231,7 +231,7 @@ def test_transfer_review_then_source_edit_reports_failure_and_keeps_collision(op
 
 
 def test_repeated_transfer_verifies_published_output_and_preserves_source(operation_context, tmp_path):
-    from tower import ops_services
+    from raven import ops_services
     manifest, entries = _transfer_manifest(tmp_path)
     arguments = {"manifest": str(manifest), "direction": "all"}
     first_plan = ops_services.run("staging", arguments, operation_context)["plan"]
@@ -255,9 +255,9 @@ def _scientific_reuse(tmp_path):
     def hashed(path, **extra):
         return {"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), **extra}
 
-    policy = write("acceptance.json", {"schema": "tower.acceptance/v1", "cases": [
+    policy = write("acceptance.json", {"schema": "raven.acceptance/v1", "cases": [
         {"id": "seed-1", "expected": {"accuracy": {"value": .9, "absolute": .01, "relative": 0}}}]})
-    results = write("measurements.json", {"schema": "tower.results/v1", "runs": [
+    results = write("measurements.json", {"schema": "raven.results/v1", "runs": [
         {"id": "seed-1", "metrics": {"accuracy": .901}}]})
     dependencies, identity = [], {"project": "research-model", "inputs_sha256": {}}
     for role, value in (("code", {"version": "abc123"}), ("environment", {"python": "3.11"}),
@@ -269,7 +269,7 @@ def _scientific_reuse(tmp_path):
     output = tmp_path / "model.dat"
     output.write_bytes(b"validated model coefficients")
     request = write("requested-identity.json", identity)
-    manifest = write("reuse.json", {"schema": "tower.reuse/v1", "identity": identity,
+    manifest = write("reuse.json", {"schema": "raven.reuse/v1", "identity": identity,
         "dependencies": dependencies, "outputs": [hashed(output, target="model.dat")],
         "acceptance": hashed(policy), "results": hashed(results)})
     return SimpleNamespace(policy=policy, results=results, manifest=manifest, identity=request, output=output,
@@ -286,11 +286,11 @@ def test_acceptance_then_verified_reuse_then_staging_pipeline(operation_context,
     assert reused["status"] == "ok"
     materialized = source.destination / "model.dat"
     assert materialized.read_bytes() == source.output.read_bytes()
-    assert (source.destination / ".tower-receipt.json").is_file()
-    assert not (source.destination / ".tower-incomplete").exists()
+    assert (source.destination / ".raven-receipt.json").is_file()
+    assert not (source.destination / ".raven-incomplete").exists()
     returned = tmp_path / "returned-model.dat"
     transfer = tmp_path / "return.json"
-    transfer.write_text(json.dumps({"schema": "tower.staging/v1", "id": "scientific-return", "entries": [{
+    transfer.write_text(json.dumps({"schema": "raven.staging/v1", "id": "scientific-return", "entries": [{
         "id": "model", "source": str(materialized), "destination": str(returned), "direction": "output",
         "size": materialized.stat().st_size, "sha256": hashlib.sha256(materialized.read_bytes()).hexdigest()}]}))
     stage = operations.run("staging", {"manifest": str(transfer)}, operation_context)
@@ -303,7 +303,7 @@ def test_acceptance_pass_does_not_authorize_changed_measurements_for_reuse(opera
     source = _scientific_reuse(tmp_path)
     reviewed = operations.run("reuse", {"manifest": str(source.manifest), "identity": str(source.identity),
         "destination": str(source.destination)}, operation_context)
-    source.results.write_text(json.dumps({"schema": "tower.results/v1", "runs": [
+    source.results.write_text(json.dumps({"schema": "raven.results/v1", "runs": [
         {"id": "seed-1", "metrics": {"accuracy": .2}}]}))
     failed = operations.run("acceptance", {"manifest": str(source.policy), "results": str(source.results)}, operation_context)
     assert failed["status"] == "failed"
@@ -346,7 +346,7 @@ def test_pending_editor_and_dependency_repair_detect_each_others_changes(operati
     scheduler = Scheduler()
     ctx = replace(operation_context, slurm=SimpleNamespace(b=scheduler, user="researcher"))
     manifest = tmp_path / "repair.json"
-    manifest.write_text(json.dumps({"schema": "tower.dependency-repair/v1", "repairs": [
+    manifest.write_text(json.dumps({"schema": "raven.dependency-repair/v1", "repairs": [
         {"job_id": "81", "submit_time": "2026-10-09T10:00:00", "dependency": "afterok:84"}]}))
     plans = {
         "pending-edit": operations.run("pending-edit", {"job_id": "81", "field": "Dependency", "value": "afterok:83"}, ctx)["plan"],
@@ -362,16 +362,16 @@ def test_pending_editor_and_dependency_repair_detect_each_others_changes(operati
 
 @pytest.fixture
 def operation_dashboard(tmp_path):
-    from tower import layout as L
-    from tower.actions import Actions
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.research import ResearchHub
-    from tower.sampler import Sampler
-    from tower.slurm import FakeBackend, Slurm
-    from tower.views import Views
-    from tower.worker_scheduler import WorkerScheduler
+    from raven import layout as L
+    from raven.actions import Actions
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Job, Store
+    from raven.research import ResearchHub
+    from raven.sampler import Sampler
+    from raven.slurm import FakeBackend, Slurm
+    from raven.views import Views
+    from raven.worker_scheduler import WorkerScheduler
 
     cfg = Config()
     for key, value in (("startup_animation", False), ("animations", False), ("log_lines", 0)):
@@ -413,7 +413,7 @@ _MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=
 
 @pytest.mark.parametrize("bits", [1, 2, 4, 16, 64, 128, 256, 258])
 def test_operations_modal_owns_raw_input_over_hidden_browser(operation_dashboard, monkeypatch, bits):
-    from tower import chart_interaction, history_browser, screen
+    from raven import chart_interaction, history_browser, screen
     app = operation_dashboard.app
     app.enter_tab("deps")
     history_browser._view(app).update(explicit=True, selected="81")
@@ -434,7 +434,7 @@ def test_operations_modal_owns_raw_input_over_hidden_browser(operation_dashboard
 @pytest.mark.parametrize("dimensions", [(28, 12), (70, 24), (150, 45)])
 @pytest.mark.parametrize("feature", [spec["key"] for spec in operations.catalog()])
 def test_all_operation_forms_render_without_collecting_or_overflow(operation_dashboard, monkeypatch, feature, dimensions, ascii_mode):
-    from tower import layout as L
+    from raven import layout as L
     app = operation_dashboard.app
     operation_dashboard.views.set_ascii(ascii_mode)
     def forbidden(*args, **kwargs):
@@ -461,7 +461,7 @@ def _ui_action(monkeypatch):
 
 
 def test_apply_requires_painted_review_and_press_release_cannot_apply_twice(operation_dashboard, monkeypatch):
-    from tower import screen
+    from raven import screen
     app = operation_dashboard.app
     initial_selection = app.tab, app.selected_id
     _ui_action(monkeypatch)
@@ -491,7 +491,7 @@ def test_edit_form_command_from_catalog_remains_renderable(operation_dashboard):
 
 @pytest.mark.parametrize("initial_mode,target_mode", [("single", "multi"), ("multi", "single")])
 def test_action_completion_survives_close_navigation_and_worker_switch(operation_dashboard, monkeypatch, initial_mode, target_mode):
-    from tower import ops_ui
+    from raven import ops_ui
     app = operation_dashboard.app
     _ui_action(monkeypatch)
     operation_dashboard.scheduler.request_mode(initial_mode)

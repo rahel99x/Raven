@@ -9,8 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import research_reporting as P
-from tower import projects
+from raven import research_reporting as P
+from raven import projects
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def test_submit_start_finish_real_inventory(root):
     run = P.start(root, job_id=job, environ={})
     value = document(run / "run.json")
     assert value["state"] == "RUNNING"
-    assert value["metadata"]["tower_launch"]["dependency"] == "afterany:17?afterok:18"
+    assert value["metadata"]["raven_launch"]["dependency"] == "afterany:17?afterok:18"
     assert len(document(run / "logs.json")["logs"]) == 3
     assert P.start(root, job_id=job, environ={}) == run
     P.finish(run, exit_code=1, runtime_seconds=2)
@@ -61,7 +61,7 @@ def test_submit_start_finish_real_inventory(root):
 
 def test_empty_optional_descriptor_is_idempotent(root):
     assert P.initialize(root) == P.initialize(root)
-    assert document(root / ".tower" / "project.json")["runs"] == "runs"
+    assert document(root / ".raven" / "project.json")["runs"] == "runs"
 
 
 def test_requeue_and_cluster_are_distinct(root):
@@ -74,7 +74,7 @@ def test_requeue_and_cluster_are_distinct(root):
 
 def test_array_concurrency_sparse_identity_and_binding(root):
     source = root / "array.json"
-    source.write_text(json.dumps({"schema": "tower.array-manifest/v1", "cluster": "", "array_id": "1", "entries": [{"index": n, "id": f"sample-{n}"} for n in (2, 19, 44)]}))
+    source.write_text(json.dumps({"schema": "raven.array-manifest/v1", "cluster": "", "array_id": "1", "entries": [{"index": n, "id": f"sample-{n}"} for n in (2, 19, 44)]}))
     P.submit(root, experiment="experiment", script="batch.sh", options=["--array=2,19,44"], array_manifest=source, runner=fake_submit("500;cluster"))
     def one(n):
         return P.start(root, environ={"SLURM_ARRAY_JOB_ID": "500", "SLURM_ARRAY_TASK_ID": str(n), "SLURM_JOB_ID": str(700+n), "SLURM_CLUSTER_NAME": "cluster"})
@@ -94,7 +94,7 @@ def test_unscoped_submission_can_start_on_authoritative_cluster(root):
     run = P.start(root, environ={"SLURM_JOB_ID": "123", "SLURM_CLUSTER_NAME": "cluster"})
     assert run.name == "job-123-a1"
     assert len(projects.discover_project(str(root))["runs"]) == 1
-    assert document(run / "run.json")["metadata"]["tower_launch"]["cluster"] == "cluster"
+    assert document(run / "run.json")["metadata"]["raven_launch"]["cluster"] == "cluster"
 
 
 def test_fast_runtime_before_sbatch_response_has_complete_identity(root):
@@ -111,14 +111,14 @@ def test_fast_runtime_before_sbatch_response_has_complete_identity(root):
     value = found[0]["inventory"]
     assert value["state"] == "RUNNING"
     assert value["parameters"] == {"alpha": .5}
-    assert value["metadata"]["tower_launch"]["dependency"] == "afterok:400"
-    assert value["metadata"]["tower_launch"]["submission_token"]
+    assert value["metadata"]["raven_launch"]["dependency"] == "afterok:400"
+    assert value["metadata"]["raven_launch"]["submission_token"]
     assert P.start(root, environ={"SLURM_JOB_ID": "401", "SLURM_CLUSTER_NAME": "desktop"}) == runs[0]
 
 
 def test_fast_array_before_response_has_real_manifest(root):
     source = root / "array.json"
-    source.write_text(json.dumps({"schema": "tower.array-manifest/v1", "cluster": "", "array_id": "1", "entries": [{"index": 9, "id": "sample"}]}))
+    source.write_text(json.dumps({"schema": "raven.array-manifest/v1", "cluster": "", "array_id": "1", "entries": [{"index": 9, "id": "sample"}]}))
     runs = []
     def fast(argv, **kwargs):
         env = dict(kwargs["env"], SLURM_JOB_ID="700", SLURM_ARRAY_JOB_ID="600", SLURM_ARRAY_TASK_ID="9", SLURM_CLUSTER_NAME="desktop")
@@ -151,7 +151,7 @@ def test_finish_recovers_summary_then_manifest_interruption(root, monkeypatch):
 def test_exact_index_keeps_requeue_attempts(root):
     first = begin(root)
     second = P.start(root, experiment="experiment", script="batch.sh", environ={"SLURM_JOB_ID": "123", "SLURM_RESTART_COUNT": "1"})
-    assert document(root / ".tower/jobs/123.json")["run_ids"] == [first.name, second.name]
+    assert document(root / ".raven/jobs/123.json")["run_ids"] == [first.name, second.name]
 
 
 def test_cluster_alias_becomes_permanently_ambiguous(root):
@@ -159,14 +159,14 @@ def test_cluster_alias_becomes_permanently_ambiguous(root):
         return P.start(root, experiment="experiment", script="batch.sh", environ={"SLURM_JOB_ID": "456", "SLURM_CLUSTER_NAME": cluster})
     first, second = one("alpha"), one("beta")
     assert first != second
-    alias = root / ".tower/jobs/456.json"
-    assert document(alias)["schema"] == "tower.job-index-ambiguous/v1"
+    alias = root / ".raven/jobs/456.json"
+    assert document(alias)["schema"] == "raven.job-index-ambiguous/v1"
     one("alpha")
-    assert document(alias)["schema"] == "tower.job-index-ambiguous/v1"
+    assert document(alias)["schema"] == "raven.job-index-ambiguous/v1"
 
 
 @pytest.mark.parametrize("source", ["cli", "environment", "directive"])
-@pytest.mark.parametrize("export", ["NONE", "NIL", "PATH", "ALL,TOWER_SUBMISSION_TOKEN=oops"])
+@pytest.mark.parametrize("export", ["NONE", "NIL", "PATH", "ALL,RAVEN_SUBMISSION_TOKEN=oops"])
 def test_incompatible_exports_never_submit(root, monkeypatch, source, export):
     options = []
     if source == "cli":
@@ -207,7 +207,7 @@ def test_metadata_obeys_slurm_environment_and_cli_precedence(root, monkeypatch):
 
 def test_launch_from_other_cwd_resolves_source_and_manifest_at_root(root, monkeypatch):
     source = root / "array.json"
-    source.write_text(json.dumps({"schema": "tower.array-manifest/v1", "cluster": "", "array_id": "1", "entries": [{"index": 2, "id": "sample", "parameters": {"seed": 8}}]}))
+    source.write_text(json.dumps({"schema": "raven.array-manifest/v1", "cluster": "", "array_id": "1", "entries": [{"index": 2, "id": "sample", "parameters": {"seed": 8}}]}))
     monkeypatch.chdir(root.parent)
     P.submit(root, experiment="experiment", script="batch.sh", array_manifest="array.json", options=["--array=2"], runner=fake_submit())
     run = P.start(root, environ={"SLURM_ARRAY_JOB_ID": "123", "SLURM_ARRAY_TASK_ID": "2", "SLURM_JOB_ID": "124"})
@@ -246,7 +246,7 @@ def test_unsafe_submission_shape_never_calls_scheduler(root, option):
 def test_ambiguous_reply_retains_intent_and_no_run(root, reply):
     with pytest.raises(ValueError, match="unambiguous"):
         P.submit(root, experiment="experiment", script="batch.sh", runner=fake_submit(reply))
-    records = list((root / ".tower" / "launches").glob("*.json"))
+    records = list((root / ".raven" / "launches").glob("*.json"))
     assert len(records) == 1
     assert document(records[0])["status"] == "unknown"
     assert not (root / "runs").exists()
@@ -260,7 +260,7 @@ def test_timeout_records_unknown_and_does_not_retry(root):
     with pytest.raises(ValueError, match="do not submit again"):
         P.submit(root, experiment="experiment", script="batch.sh", runner=timeout)
     assert len(calls) == 1
-    assert document(next((root / ".tower" / "launches").glob("*.json")))["status"] == "unknown"
+    assert document(next((root / ".raven" / "launches").glob("*.json")))["status"] == "unknown"
 
 
 def test_metric_artifact_research_and_aggregate(root, capsys):
@@ -273,7 +273,7 @@ def test_metric_artifact_research_and_aggregate(root, capsys):
     value = document(run / "run.json")
     assert document(run / value["paths"]["contract"])["outputs"][0]["path"] == "outputs/results.json"
     source = root / "workflow.json"
-    source.write_text(json.dumps({"version": 1, "kind": "tower.workflow", "nodes": []}))
+    source.write_text(json.dumps({"version": 1, "kind": "raven.workflow", "nodes": []}))
     assert P.main(["research", "workflow", str(source), "--run", str(run)]) == 0
     assert document(run / "run.json")["paths"]["workflow"] == "reports/workflow.json"
     P.finish(run, exit_code=0, runtime_seconds=10, results={"accuracy": .8})
@@ -304,7 +304,7 @@ def test_external_metric_binding_does_not_write_wrong_stream(root):
 def test_exec_actual_subprocess_records_failure_and_child_directory(root, monkeypatch):
     monkeypatch.setenv("SLURM_JOB_ID", "901")
     code = P.main(["exec", "--root", str(root), "--script", "batch.sh", "--experiment", "actual",
-                   "--", sys.executable, "-c", "import os,sys; print(os.environ['TOWER_RUN_DIR']); print('oops',file=sys.stderr); sys.exit(7)"])
+                   "--", sys.executable, "-c", "import os,sys; print(os.environ['RAVEN_RUN_DIR']); print('oops',file=sys.stderr); sys.exit(7)"])
     assert code == 7
     run = root / "runs" / "job-901-a1"
     assert str(run) in (run / "logs" / "stdout.log").read_text()
@@ -321,7 +321,7 @@ def test_exec_missing_command_records_failure(root, monkeypatch):
 def test_exclusive_execution_claim_prevents_duplicate_command(root, monkeypatch):
     monkeypatch.setenv("SLURM_JOB_ID", "904")
     run = P.start(root, script="batch.sh", experiment="actual", environ={"SLURM_JOB_ID": "904"})
-    P.R._atomic_json(run / ".execution.json", {"schema": "tower.execution/v1", "pid": 1, "started": 1})
+    P.R._atomic_json(run / ".execution.json", {"schema": "raven.execution/v1", "pid": 1, "started": 1})
     marker = root / "must-not-run"
     assert P.main(["exec", "--root", str(root), "--script", "batch.sh", "--experiment", "actual", "--", sys.executable, "-c", f"open({str(marker)!r}, 'w').close()"]) == 2
     assert not marker.exists()
@@ -347,11 +347,11 @@ def test_symlink_script_and_lock_are_refused(root):
     (root / "alias.sh").symlink_to(root / "batch.sh")
     with pytest.raises(ValueError):
         P.submit(root, experiment="experiment", script="alias.sh", runner=fake_submit())
-    (root / ".tower").mkdir(exist_ok=True)
-    (root / ".tower/report.lock").unlink(missing_ok=True)
+    (root / ".raven").mkdir(exist_ok=True)
+    (root / ".raven/report.lock").unlink(missing_ok=True)
     outside = root / "outside"
     outside.write_text("unchanged")
-    (root / ".tower/report.lock").symlink_to(outside)
+    (root / ".raven/report.lock").symlink_to(outside)
     with pytest.raises(OSError):
         begin(root)
     assert outside.read_text() == "unchanged"

@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from tower import layout as L, table_sort
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Health, Job, Live, Node, Partition, Store
-from tower.views import JOB_COLS, Views
+from raven import layout as L, table_sort
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Health, Job, Live, Node, Partition, Store
+from raven.views import JOB_COLS, Views
 
 
 @pytest.fixture
@@ -39,11 +39,13 @@ def test_job_cascade_orders_all_rows_before_paging_and_keeps_raw_ids(dashboard):
     for key, direction in (("name", "asc"), ("cpus", "desc"), ("id", "asc")):
         table_sort.set_sort(app, "jobs", key, direction)
     records = views.job_rows(store.snapshot(), app)
-    assert [r["id"] for r in records] == ["3_2", "3_10", "2", "100", "20"]
+    # Sort Min places the one-job batches before the two-task array. The
+    # column cascade orders equal-size batches and members within the array.
+    assert [r["id"] for r in records] == ["2", "100", "20", "3_2", "3_10"]
     rows, hits = views.jobs_tab(store.snapshot(), app, None, 160, 5)
-    assert app.visible_ids == ["3_2", "3_10", "2", "100", "20"]
+    assert app.visible_ids == ["2", "100", "20", "3_2", "3_10"]
     assert _body_ids(hits, "job") == app.visible_ids[:len(_body_ids(hits, "job"))]
-    assert "3_2" in L.row_text(rows[next(y for y, kind, _ in hits if kind == "job")])
+    assert "2" in L.row_text(rows[next(y for y, kind, _ in hits if kind == "job")])
 
 
 def test_removing_column_restores_its_original_ties_and_preserves_other_sorts(dashboard):

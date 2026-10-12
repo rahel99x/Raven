@@ -3,14 +3,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import charts, clock, layout as L
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.model import Health, Job, Live, Store
-from tower.sampler import Sampler
-from tower.slurm import FakeBackend, Slurm
-from tower.views import ANALYTICS_VIEWS, TABS, Views
+from raven import charts, clock, layout as L
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.model import Health, Job, Live, Store
+from raven.sampler import Sampler
+from raven.slurm import FakeBackend, Slurm
+from raven.views import ANALYTICS_VIEWS, TABS, Views
 
 
 @pytest.fixture
@@ -94,16 +94,32 @@ def test_sources_scroll_to_selected_row_and_use_replay_clock(dashboard, monkeypa
     assert all(0 <= key[2] < key[3] <= 100 for _, kind, key in hits if kind == "sort_header")
 
 
-def test_dependency_cursor_remains_visible_when_chain_is_taller_than_screen(dashboard):
+@pytest.mark.parametrize("dock", ["auto", "top", "bottom"])
+@pytest.mark.parametrize("height", [12, 13])
+@pytest.mark.parametrize("notification", [False, True])
+def test_dependency_cursor_remains_visible_when_chain_is_taller_than_screen(dashboard, dock, height, notification):
+    from raven.history_browser import _view
     store, app, views, actions = dashboard
     store.jobs = [Job(str(i), f"stage{i}", "main", "PENDING", dependency=f"afterok:{i - 1}" if i else "") for i in range(20)]
     app.tab, app.cursor["deps"] = "deps", 19
-    rows, hits = views.compose(store.snapshot(), app, 120, 12, actions)
+    _view(app)["dock"] = dock
+    if notification:
+        app.say("Accounting refresh is temporarily unavailable", level="warning")
+    rows, hits = views.compose(store.snapshot(), app, 120, height, actions)
     assert app.selected_id == "19"
     selected = next(y for y, kind, jid in hits if kind == "dep" and jid == "19")
     assert "stage19" in L.row_text(rows[selected])
     rect = app.history_browser_content_rect
-    assert rect.x == 0  # The default history dock is on the right.
+    assert rect.x == 0 and rect.height >= 3
+    assert rect.y <= selected < rect.y + rect.height
+    assert len(rows) == height
+    if app.history_browser_state["frame"]["dock"] == "off":
+        assert any(kind == "control" and value["id"] == "history:deps:show"
+                   for _, kind, value in hits)
+    else:
+        assert any(kind == "control" and value["id"].startswith("history:deps:job:")
+                   for _, kind, value in hits)
+    assert _view(app)["dock"] == dock
     selected_content = L.clip_row(rows[selected], rect.width)
     assert all("sel" in style.split("+") for text, style in selected_content if text.strip())
 

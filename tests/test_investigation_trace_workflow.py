@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from tower import derived_results, investigation_workflow as W, operations as O, ops_trace, trace_analysis as A, trace_protocol as T
-from tower.trace_recorder import Recorder
+from raven import derived_results, investigation_workflow as W, operations as O, ops_trace, trace_analysis as A, trace_protocol as T
+from raven.trace_recorder import Recorder
 
 
 def write(path, value):
@@ -25,7 +25,7 @@ def prepare(tmp_path, *, ranks=(0, 1), collective=True, coverage=None, close=Tru
             recorder.emit("collective", dict(data, phase="enter"))
             recorder.emit("collective", dict(data, phase="complete"))
         recorder.close() if close else recorder.flush()
-    planner = {"schema": "tower.investigation-plan/v1", "budget": {"seconds": 10, "resource_seconds": 10, "trials": 1},
+    planner = {"schema": "raven.investigation-plan/v1", "budget": {"seconds": 10, "resource_seconds": 10, "trials": 1},
                "known_evidence": ["collectives"], "actions": [{"id": "next", "kind": "trace", "seconds": 1,
                  "resource_seconds": 1, "queue_seconds": 0, "decision_gain": 1, "success_probability": 1,
                  "scientific_risk": 0, "requires": ["causal", "collectives"], "model": "declared"}]}

@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import history_browser as H, layout as L, pane_drag as P
-from tower import refresh_rate as R, scrollbars as S, text_selection as T, toolbar as B
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
+from raven import history_browser as H, layout as L, pane_drag as P
+from raven import refresh_rate as R, scrollbars as S, text_selection as T, toolbar as B
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
 
 
 @pytest.fixture

@@ -10,11 +10,11 @@ import time
 
 import pytest
 
-from tower import layout, screen, terminal_ui as T, terminal_fusion as F
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import layout, screen, terminal_ui as T, terminal_fusion as F
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,7 +59,7 @@ def control(app, args):
 
 
 @pytest.fixture
-def tower(tmp_path):
+def raven(tmp_path):
     pytest.importorskip("pyte")
     cfg = Config({"animations": False, "startup_animation": False, "gpu_sampling": False})
     store = Store(persist=False)
@@ -75,8 +75,8 @@ def tower(tmp_path):
     T.shutdown(app)
 
 
-def shell(tower, label="integration"):
-    app, views, store, cache, tmp_path = tower
+def shell(raven, label="integration"):
+    app, views, store, cache, tmp_path = raven
     sid = T.open_session(app, argv=["/bin/bash", "--noprofile", "--norc", "-i"], cwd=str(tmp_path),
                          label=label, metadata={"shell": "/bin/bash", "host": __import__('socket').gethostname()},
                          env={"PS1": "FUSION_READY> ", "PYTHONPATH": str(ROOT)})
@@ -87,12 +87,12 @@ def shell(tower, label="integration"):
 
 
 @pytest.mark.parametrize("page", ["jobs", "history", "analytics", "deps", "log", "research"])
-def test_real_shell_shared_across_native_pages_and_details_switches(tower, page):
-    app, views, store, cache, tmp_path = tower
-    sid = shell(tower)
+def test_real_shell_shared_across_native_pages_and_details_switches(raven, page):
+    app, views, store, cache, tmp_path = raven
+    sid = shell(raven)
     command(app, "FUSION_KEEP=37")
     until(app, lambda: "FUSION_KEEP=37" in text(app))
-    # Page changes are ordinary Tower navigation after explicit focus escape.
+    # Page changes are ordinary Raven navigation after explicit focus escape.
     key(app, "ctrl-]"); key(app, "t")
     assert not T.focused(app)
     app.tab = page
@@ -111,9 +111,9 @@ def test_real_shell_shared_across_native_pages_and_details_switches(tower, page)
     assert app.terminal_state.service.snapshot(sid)["status"] == "running"
 
 
-def test_real_shell_menu_can_reach_last_action_at_narrow_size(tower):
-    app, views, store, cache, _ = tower
-    shell(tower)
+def test_real_shell_menu_can_reach_last_action_at_narrow_size(raven):
+    app, views, store, cache, _ = raven
+    shell(raven)
     app.terminal_state.menu = False
     T.run_command(app, ["terminal", "menu"])
     cache.rebuild(app, views, store, None, 78, 19)
@@ -131,11 +131,11 @@ def test_real_shell_menu_can_reach_last_action_at_narrow_size(tower):
     assert app.tab == "jobs"
 
 
-def test_real_bridge_cli_connects_output_submission_and_research_context(tower):
-    app, views, store, cache, tmp_path = tower
-    sid = shell(tower)
+def test_real_bridge_cli_connects_output_submission_and_research_context(raven):
+    app, views, store, cache, tmp_path = raven
+    sid = shell(raven)
     py = shlex.quote(sys.executable)
-    report = py + " -m tower terminal report "
+    report = py + " -m raven terminal report "
     # The child receives a real private socket capability from open_session.
     command(app, report + "prompt --cwd " + shlex.quote(str(tmp_path)))
     until(app, lambda: app.terminal_fusion_state["store"].sessions[sid]["state"] == "prompt")
@@ -156,14 +156,14 @@ def test_real_bridge_cli_connects_output_submission_and_research_context(tower):
     T.run_command(app, ["terminal", "failures"])
     cache.feedback(app, views)
     assert block["id"] in repr(app.terminal_state.report)
-    assert "TOWER_BRIDGE_TOKEN" not in repr(block)
+    assert "RAVEN_BRIDGE_TOKEN" not in repr(block)
 
 
-def test_stale_shell_input_does_not_reach_new_real_session(tower):
-    app, views, store, cache, _ = tower
-    first = shell(tower, "first")
+def test_stale_shell_input_does_not_reach_new_real_session(raven):
+    app, views, store, cache, _ = raven
+    first = shell(raven, "first")
     pending = screen.InputEvent(("paste", "UNEXPECTED_CROSS_SESSION=1"), origin=T.input_identity(app))
-    second = shell(tower, "second")
+    second = shell(raven, "second")
     assert first != second
     screen._apply_input(app, pending, app.last_hits, curses)
     command(app, "printf 'STATE:%s\\n' \"${UNEXPECTED_CROSS_SESSION-unset}\"")
@@ -174,9 +174,9 @@ def test_stale_shell_input_does_not_reach_new_real_session(tower):
     assert app.tab == "jobs" and not app.quit
 
 
-def test_preview_and_dialog_input_cannot_execute_in_real_shell(tower):
-    app, views, store, cache, tmp_path = tower
-    shell(tower)
+def test_preview_and_dialog_input_cannot_execute_in_real_shell(raven):
+    app, views, store, cache, tmp_path = raven
+    shell(raven)
     command(app, "stty -echo")
     T.run_command(app, ["terminal", "rename"])
     cache.feedback(app, views)
@@ -196,9 +196,9 @@ def test_preview_and_dialog_input_cannot_execute_in_real_shell(tower):
 
 
 @pytest.mark.parametrize("width,height", [(1, 1), (20, 6), (80, 10)])
-def test_invisible_terminal_loses_keyboard_lease_and_rejects_queued_input(tower, width, height):
-    app, views, store, cache, _ = tower
-    sid = shell(tower)
+def test_invisible_terminal_loses_keyboard_lease_and_rejects_queued_input(raven, width, height):
+    app, views, store, cache, _ = raven
+    sid = shell(raven)
     pending = screen.InputEvent(("paste", "INVISIBLE_DESTINATION=1"), origin=T.input_identity(app))
     cache.rebuild(app, views, store, None, width, height)
     assert not T.focused(app), "A shell must not retain keyboard ownership without visible usable content"
@@ -209,9 +209,9 @@ def test_invisible_terminal_loses_keyboard_lease_and_rejects_queued_input(tower,
     until(app, lambda: "VISIBLE:unset" in text(app, sid))
 
 
-def test_terminal_report_bottom_reaches_the_final_evidence_line(tower):
-    app, views, store, cache, _ = tower
-    shell(tower)
+def test_terminal_report_bottom_reaches_the_final_evidence_line(raven):
+    app, views, store, cache, _ = raven
+    shell(raven)
     T.show_report(app, [f"evidence-{number}" for number in range(100)], "Acceptance report")
     cache.rebuild(app, views, store, None, 100, 24)
     key(app, "end")
@@ -219,10 +219,10 @@ def test_terminal_report_bottom_reaches_the_final_evidence_line(tower):
     assert "evidence-99" in "\n".join(layout.row_text(row) for row in rows)
 
 
-def test_real_bridge_completion_in_hidden_active_session_is_reported(tower):
-    app, views, store, cache, _ = tower
-    sid = shell(tower)
-    report = shlex.quote(sys.executable) + " -m tower terminal report "
+def test_real_bridge_completion_in_hidden_active_session_is_reported(raven):
+    app, views, store, cache, _ = raven
+    sid = shell(raven)
+    report = shlex.quote(sys.executable) + " -m raven terminal report "
     command(app, report + "start --command hidden-command; sleep .2; " + report + "end --status 3")
     until(app, lambda: bool(app.terminal_fusion_state["store"].blocks))
     control(app, ["terminal", "details"])
@@ -233,10 +233,10 @@ def test_real_bridge_completion_in_hidden_active_session_is_reported(tower):
     assert "hidden terminal" in app.message
 
 
-def test_real_terminal_does_not_steal_job_selection_drag_crossing_panes(tower):
-    from tower import pointer_routing
-    app, views, store, cache, _ = tower
-    shell(tower)
+def test_real_terminal_does_not_steal_job_selection_drag_crossing_panes(raven):
+    from raven import pointer_routing
+    app, views, store, cache, _ = raven
+    shell(raven)
     key(app, "ctrl-]"); key(app, "t")
     cache.rebuild(app, views, store, None, 160, 48)
     job = app.interaction_state["graph"].get("job:701")
@@ -257,12 +257,12 @@ def test_real_terminal_does_not_steal_job_selection_drag_crossing_panes(tower):
     assert app.terminal_state.service.snapshot(app.terminal_state.active)["status"] == "running"
 
 
-def test_closing_real_session_revokes_bridge_capability_and_preserves_other_shell(tower):
-    from tower.terminal_bridge import report
-    app, views, store, cache, tmp_path = tower
-    first = shell(tower, "first")
+def test_closing_real_session_revokes_bridge_capability_and_preserves_other_shell(raven):
+    from raven.terminal_bridge import report
+    app, views, store, cache, tmp_path = raven
+    first = shell(raven, "first")
     env = app.terminal_fusion_state["bridge"].register(first)
-    second = shell(tower, "second")
+    second = shell(raven, "second")
     T.run_command(app, ["terminal", "session", first])
     T.run_command(app, ["terminal", "close"])
     assert app.terminal_state.active == second

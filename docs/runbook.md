@@ -1,13 +1,21 @@
-# Project Raven: compatibility runbook
+# Raven operations runbook
 
 Use the [Raven runbook](raven/README.md) for release 7.0 launchers, execution
 profiles, allocation controls, collection limits, migration, and rollback.
-The `tower` commands below remain compatibility examples. Their effective
-polling and execution limits now follow the Raven policy. Use `--site` with
-new Raven configuration files; retain `--profile` only with old Tower files.
+The `raven` command opens Light, like `ravenl`. These procedures cover native
+source workflows under Raven's polling and execution policy. Use `--site` with
+versioned Raven configuration files and `--profile` with native named profiles.
+The source setup and optional alias procedures select a checkout. For
+new installations without shell-file changes, use the [installation guide](INSTALLATION.md).
+
+Supported analyses require a Heavy worker, selected reporting/capture commands
+require verified job-local placement, and some native
+Apply actions remain deferred. Follow the
+[execution contracts](raven/execution-contracts.md) before adopting those paths.
+Heavy admission does not enable an undeclared adapter or relax scheduler policy.
 
 [README](../README.md) · [Controls](CONTROLS.md) ·
-[Desktop setup](DESKTOP.md) · [Tower 4.0 guides](QUALITY_OF_LIFE.md) ·
+[Desktop setup](DESKTOP.md) · [Interaction guides](QUALITY_OF_LIFE.md) ·
 [Complete reference](reference.md)
 
 The [generated operation reference](reference/operations.md) lists each current
@@ -15,9 +23,9 @@ operation key, input field, default, and allowed choice.
 
 For the optional embedded terminal, run
 `python3 scripts/setup.py --mode demo --terminal`, then
-`./scripts/tower terminal selftest`. This reuses `.venv` and does not change the
+`./scripts/raven terminal selftest`. This reuses `.venv` and does not change the
 selected Slurm profile. Open **Terminal** beside **Details** in a supported page.
-Use **Ctrl-]**, then **t**, to return input to Tower. The
+Use **Ctrl-]**, then **t**, to return input to Raven. The
 [terminal guide](guides/terminal-fusion.md) covers offline wheels, sessions,
 copying, shell hooks, recordings and compatibility checks.
 
@@ -37,23 +45,25 @@ feature scope. Prepared [stack tracing](guides/stack-tracing.md),
 input contract. For deployments, follow [administration](ADMINISTRATION.md),
 [qualification](QUALIFICATION.md), and the [support policy](SUPPORT_POLICY.md).
 
-Run Tower on your CARC login node or in a terminal with working local Slurm tools.
+Run Raven on your CARC login node or in a terminal with working local Slurm tools.
 Use the [desktop guide](DESKTOP.md) for Slurm installed directly on Fedora.
 Setup is noninteractive and
 repeatable. It never submits or changes jobs, installs system packages, replaces
 your configuration, or asks for a password.
 
-To instrument another application, follow the
-[project reporting standard](PROJECT_STANDARD.md) and copy its
-[project template](../examples/project-template/README.md). It defines the run
-directories, metrics, final reports, contracts, and analysis exports Tower reads.
+To instrument another application, follow [Project reporting V2](PROJECT_REPORTING_V2.md).
+It includes a portable launcher, workstation and cluster recipes, exact file
+formats, and the data sources for every Research and Analytics view. The
+[project standard](PROJECT_STANDARD.md) defines the underlying V1 contracts.
 
 Release 4.14 adds optional measurement and submission checks. Follow the
 [phase one setup guide](guides/phase-one.md) to select a GPU provider, inspect
 upstream sampling, check local shell scripts, and attach array input manifests.
 These features do not require Python packages. Vendor GPU tools and ShellCheck
-are optional external commands; Tower setup does not install them or alter
-Slurm services. Existing aliases and profiles remain valid after an update.
+are optional external commands; Raven setup does not install them or alter
+Slurm services. When replacing a previous package installation, use the
+[package replacement procedure](INSTALLATION.md#replace-an-installation-with-the-previous-package-name)
+and repoint `execution.worker_python` to the new environment.
 
 ## 1. Connect to CARC and check the tools
 
@@ -73,9 +83,10 @@ available modules; load the actual Python/Slurm modules your site specifies.
 Module names and available versions vary, so no specific module name is assumed.
 
 The application uses standard-library Python and POSIX curses on Linux, macOS,
-or WSL. There are no runtime packages, databases, servers, or build tools to install.
+or WSL. The core has no third-party runtime packages, database, server, or native build
+requirement. The optional embedded terminal needs `pyte` and `wcwidth`.
 Use the site's existing Slurm installation.
-Tower setup does not start or configure a Slurm controller.
+Raven setup does not start or configure a Slurm controller.
 
 ### Use Slurm already installed on Fedora
 
@@ -97,10 +108,10 @@ See [Fedora prerequisites](DESKTOP.md#1-check-the-local-environment) if Python o
 ## 2. Get the source and set up locally
 
 ```bash
-git clone https://github.com/rahel99x/Slurm-Tower.git
-cd Slurm-Tower
+git clone https://github.com/rahel99x/Raven.git
+cd Raven
 python3 scripts/setup.py --mode local
-./scripts/tower --config docs/config.example.json --profile carc
+./scripts/raven --config docs/config.example.json --profile carc
 ```
 
 If the login node cannot access GitHub, download the repository on a permitted
@@ -112,7 +123,9 @@ The `carc` example profile configures slower history and cluster-source bases,
 disables in-allocation GPU sampling, disables forecast probes, and disables allocation-budget queries. Start
 there, then adjust the profile to your site's usage guidelines. It does not assume
 an account name, partition, scheduler version, or institution-specific hostname.
-The global Jobs and live-resource controls use five-second polling by default and can request intervals down to 500 milliseconds.
+Global Jobs and live-resource sliders can request intervals from five seconds
+to 500 milliseconds. Raven applies governed collection floors and budgets; these
+requests do not establish the effective collection rate.
 
 Every mode validates simulated JSON output, all ten terminal tabs, all twelve
 Research workspaces in Unicode and ASCII, and a plain-text report.
@@ -122,8 +135,8 @@ Slurm controller or your site's authorization rules. Verify real data in step 4.
 
 Setup creates `.venv` without downloading pip or packages. Existing valid virtual
 environments are reused; unrelated directories are rejected. Keep the checkout:
-the `./scripts/tower` launcher runs its source with `.venv/bin/python` when present,
-otherwise `python3`. To run without setup, use `python3 -m tower` from the checkout.
+the `./scripts/raven` launcher runs its source with `.venv/bin/python` when present,
+otherwise `python3`. To run without setup, use `python3 -m raven` from the checkout.
 
 ### Select the desktop profile
 
@@ -131,16 +144,17 @@ For Slurm installed directly on Fedora, run these commands from the checkout:
 
 ```bash
 python3 scripts/setup.py --mode local --profile desktop
-./scripts/tower --config docs/config.example.json --profile desktop
+./scripts/raven --config docs/config.example.json --profile desktop
 ```
 
 The desktop profile clears configured host, user, account, and partition restrictions.
 It uses local commands and normal identity detection.
 Cluster includes reported idle CPU-only partitions.
-Jobs and live resources poll every 5 seconds at the default update setting; accounting polls every 10 seconds.
-It enables GPU sampling for detected running GPU allocations.
+The legacy desktop profile declares five-second Jobs/live intervals and a
+ten-second accounting interval. Raven applies its governed collection floors
+instead. Automatic GPU steps remain disabled at startup.
 Queue forecast probes and allocation-budget queries remain disabled.
-The desktop profile also uses a separate state namespace.
+The legacy desktop profile also declares a separate state namespace.
 Desktop preferences, log bookmarks, tags, and recorded resource samples stay separate from existing CARC state.
 See [Desktop state](DESKTOP.md#keep-desktop-state-separate) for the directory layout.
 
@@ -148,22 +162,24 @@ Setup accepts `--profile PROFILE` from the supplied example configuration.
 It checks the selected profile and prints the corresponding launcher.
 The default profile remains `carc` for compatibility with existing installations.
 
-### Use one `tower` shell command
+### Use one `raven` shell command
 
-After setting up the application, install the optional Bash alias from the new
-Slurm-Tower checkout on CARC. If this is an older clone, run `git pull --ff-only`
+Installing the package supplies `ravenl`, `ravenh`, and `raven` directly on `PATH`.
+The [installation guide](INSTALLATION.md) requires no Bash alias. To keep an
+existing source installation, install its optional managed alias from the Raven
+checkout on CARC. If this is an older clone, run `git pull --ff-only`
 first to obtain `scripts/install_shell.py`; preserve any conflicting local edits.
 
 ```bash
 python3 scripts/install_shell.py --apply
 source ~/.bashrc
-type tower
-tower
+type raven
+raven
 ```
 
 The helper backs up `.bashrc` before updating it atomically and prints the backup
-location. Its managed block clears the old `tower`, `dash`, and `dash2` aliases or
-functions, then defines one `tower` alias for this checkout's `scripts/tower` with
+location. Its managed block clears the old `raven`, `dash`, and `dash2` aliases or
+functions, then defines one `raven` alias for this checkout's `scripts/raven` with
 the low-impact `carc` profile and Unicode visuals. It preserves the rest of your
 shell configuration.
 Rerunning the helper updates the same managed block.
@@ -173,32 +189,32 @@ For desktop use, select the profile during alias installation:
 ```bash
 python3 scripts/install_shell.py --profile desktop --apply
 source ~/.bashrc
-type tower
+type raven
 ```
 
 The desktop alias uses local scheduler settings.
 It ignores `CARC_ACCOUNT`.
 Use the helper without `--apply` to preview the selected profile's alias block.
 
-The launcher uses the Slurm-Tower checkout's own `.venv`, independently of an
+The launcher uses the Raven checkout's own `.venv`, independently of an
 active virtual environment for another project. Run normal setup first so that `.venv` exists;
 without it, the source launcher falls back to `python3` on `PATH`. Keep this
 checkout at its current location, or rerun the helper after moving it.
 
 The alias passes your arguments through.
-`SLURM_TOWER_PROFILE` overrides the profile selected during alias installation.
-`SLURM_TOWER_ACCOUNT` supplies an account override for any resolved profile.
+`RAVEN_PROFILE` overrides the profile selected during alias installation.
+`RAVEN_ACCOUNT` supplies an account override for any resolved profile.
 An explicitly empty value suppresses legacy account injection.
 When that variable is unset, only the CARC profile can use `CARC_ACCOUNT`.
-Without an account override, Tower retains normal account detection.
-Use `tower --account ACCOUNT` to override the account for one invocation.
+Without an account override, Raven retains normal account detection.
+Use `raven --account ACCOUNT` to override the account for one invocation.
 Use the [desktop guide](DESKTOP.md#account-and-profile-overrides) for examples.
 
 ```bash
-tower --doctor
-tower --once --tab sources
-tower --fake
-tower --ascii --no-color     # portable fallback for a limited terminal
+raven --doctor
+raven --once --tab sources
+raven --fake
+raven --ascii --no-color     # portable fallback for a limited terminal
 ```
 
 To inspect the alias block without changing a file, run the helper with no flags.
@@ -206,7 +222,7 @@ To create a complete updated-file preview, choose an output path:
 
 ```bash
 python3 scripts/install_shell.py
-python3 scripts/install_shell.py --output /tmp/tower-bashrc-preview
+python3 scripts/install_shell.py --output /tmp/raven-bashrc-preview
 ```
 
 Use `--bashrc /path/to/bashrc` to select a different Bash configuration file for
@@ -216,20 +232,20 @@ Bash session, to load the alias.
 
 ### Preview and choose terminal visuals
 
-Tower renders every chart inside the terminal; no browser, graphical display, or
+Raven renders every chart inside the terminal; no browser, graphical display, or
 image viewer is needed. A UTF-8 terminal and a font with block and braille glyphs
 provide the fullest visuals. Unicode is the default, with an automatic ASCII
 fallback for unsupported output encodings and dumb terminals. `--unicode` selects
 the Unicode preference explicitly, even when `$TERM` is `dumb`, while an unsupported
 output encoding still requires ASCII. `--ascii` selects portable characters. An
-explicit `tower --ascii` also overrides the alias's Unicode preference.
+explicit `raven --ascii` also overrides the alias's Unicode preference.
 
 Try the full dashboard without contacting the cluster:
 
 ```bash
-./scripts/tower --fake --unicode
+./scripts/raven --fake --unicode
 # Or print one simulated Analytics frame in the current terminal:
-./scripts/tower --fake --unicode --once --tab analytics
+./scripts/raven --fake --unicode --once --tab analytics
 ```
 
 Let the demo run briefly to build sample history, then use `Tab` for the ten pages
@@ -259,11 +275,11 @@ Use [Mouse and button navigation](guides/pointer-navigation.md) for saved prefer
 
 | Your environment | Setup | Launch |
 | --- | --- | --- |
-| CARC or another Slurm login node | `python3 scripts/setup.py --mode local` | `./scripts/tower --config docs/config.example.json --profile carc` |
-| Slurm installed directly on Fedora | `python3 scripts/setup.py --mode local --profile desktop` | `./scripts/tower --config docs/config.example.json --profile desktop` |
-| Try the simulated cluster | `python3 scripts/setup.py --mode demo` | `./scripts/tower --fake` |
+| CARC or another Slurm login node | `python3 scripts/setup.py --mode local` | `./scripts/raven --config docs/config.example.json --profile carc` |
+| Slurm installed directly on Fedora | `python3 scripts/setup.py --mode local --profile desktop` | `./scripts/raven --config docs/config.example.json --profile desktop` |
+| Try the simulated cluster | `python3 scripts/setup.py --mode demo` | `./scripts/raven --fake` |
 | Let setup detect it | `python3 scripts/setup.py` | Use the command it prints |
-| Optional SSH transport from another machine | `python3 scripts/setup.py --mode remote --host your-ssh-alias` | `./scripts/tower --host your-ssh-alias` |
+| Optional SSH transport from another machine | `python3 scripts/setup.py --mode remote --host your-ssh-alias` | `./scripts/raven --host your-ssh-alias` |
 
 Automatic mode uses remote when given `--host`, local when `squeue` is on `PATH`,
 and demo otherwise. If a Slurm command is present but the installation is incomplete,
@@ -271,13 +287,13 @@ setup reports the missing capability; it does not disguise a broken cluster as a
 
 ```bash
 # Choose a separate virtual environment; use the launch command setup prints.
-python3 scripts/setup.py --mode demo --venv /path/to/tower-venv
+python3 scripts/setup.py --mode demo --venv /path/to/raven-venv
 
 # Read a complete ASCII snapshot in the terminal.
-less .tower/demo.txt
+less .raven/demo.txt
 
 # Save a fresh demo report without replacing an existing file.
-python3 scripts/setup.py --mode demo --report /tmp/tower-preview.txt
+python3 scripts/setup.py --mode demo --report /tmp/raven-preview.txt
 
 # Optional contributor tools and full regression suite; requires a package index.
 python3 scripts/setup.py --mode demo --dev --test
@@ -294,45 +310,46 @@ explicitly for the local desktop configuration. Demo setup prints `--fake`.
 
 ### Optional SSH transport
 
-The primary workflow runs Tower directly on the login node. If you choose to run
+The primary workflow runs Raven directly on the login node. If you choose to run
 its terminal interface on a different machine, `--host` sends Slurm commands and
 log reads over your existing SSH connection:
 
 ```bash
 ssh your-ssh-alias 'command -v squeue; command -v sacct'
-./scripts/tower --doctor --host your-ssh-alias
-./scripts/tower --host your-ssh-alias --no-gpu
+./scripts/raven --doctor --host your-ssh-alias
+./scripts/raven --host your-ssh-alias --no-gpu
 ```
 
 Doctor uses a bounded, read-only SSH check in batch mode. Establish normal SSH
 access first; do not disable host-key checking. Put a bastion, nondefault port, or
-login username in your normal `~/.ssh/config`, then pass that SSH alias to Tower.
+login username in your normal `~/.ssh/config`, then pass that SSH alias to Raven.
 Remote log reads use Linux coreutils (`stat`, `dd`, `base64`, and `ls`).
 
 Slurm must be on the remote noninteractive `PATH`, not only in an interactive
 shell. Follow the site's module-loading instructions if those differ. No SSH
-keys or tokens belong in the repository; Tower uses your existing credentials.
+keys or tokens belong in the repository; Raven uses your existing credentials.
 
 ## 4. Verify real data with low-impact settings
 
 ```bash
-./scripts/tower --doctor
-./scripts/tower --config docs/config.example.json --profile carc --once
-./scripts/tower --config docs/config.example.json --profile carc --once --tab sources
+./scripts/raven --doctor
+./scripts/raven --config docs/config.example.json --profile carc --once
+./scripts/raven --config docs/config.example.json --profile carc --once --tab sources
 ```
 
 Jobs and Cluster should match your usual `squeue` and `sinfo` views. Sources shows
 each command's status, latency, retries, and last error. Missing optional accounting,
 allocation, or GPU features can leave those sections empty while the queue works.
 
-The `carc` profile disables live GPU collection. If site policy allows it, enable
-`gpu_sampling` in your personal profile. It runs short `srun` steps in an existing
-allocation and may fall back to SSH to the assigned node. `--no-gpu` disables it
-for one run. Forecasts use `sbatch --test-only` probes: these do not submit jobs but
-do contact the scheduler, and are also disabled in the `carc` profile.
+Raven starts with automatic GPU steps, weather probes, and allocation-budget
+queries disabled. The legacy `gpu_sampling` collector uses short `srun` steps in
+an existing allocation and may use SSH to its assigned node. Explicit GPU checks
+require site permission and allocation identity; `--no-gpu` disables live sampling
+for one run. Scheduler `sbatch --test-only` probes do not submit jobs, but they
+still contact the controller and require an explicit supported workflow.
 
 The dashboard reads job and log data. Job mutations are separate actions with
-confirmations. `tower run ... --yes` is explicit unattended authorization for
+confirmations. `raven run ... --yes` is explicit unattended authorization for
 that action; do not add it to a generic health check.
 
 ### Inspect experiments and plan the next run
@@ -344,17 +361,17 @@ queue-start forecast calibration, scheduler blockers, resource tradeoffs,
 controlled scaling and workflow critical paths.
 
 ```bash
-./scripts/tower --fake --tab research --research-view predict
-./scripts/tower --fake --tab research --research-view scaling
-./scripts/tower run scaling plan examples/planning/scaling.json --workdir "$PWD"
-./scripts/tower run workflow analyze examples/planning/workflow.json
+./scripts/raven --fake --tab research --research-view predict
+./scripts/raven --fake --tab research --research-view scaling
+./scripts/raven run scaling plan examples/planning/scaling.json --workdir "$PWD"
+./scripts/raven run workflow analyze examples/planning/workflow.json
 ```
 
 Preparing a scaling or workflow plan inspects explicit local inputs and prints
 reviewable commands. It does not submit jobs or run scheduler probes. Evidence
 gaps remain visible; resource predictions use matching completed runs, calibrated
 queue windows require recorded start outcomes, and failed/censored scaling runs
-cannot support relative performance claims. Use the [wave two guide](WAVE_TWO.md)
+cannot support relative performance claims. Use the [planning guide](WAVE_TWO.md)
 for the complete recipes, commands and assumptions, and the
 [research guide](RESEARCH.md) for metric instrumentation and output validation.
 
@@ -364,7 +381,7 @@ To measure the bounded CPU example locally without Slurm, choose three new paths
 .venv/bin/python examples/planning/scaling_workload.py local --workers 1 --problem-size 10000 --output one.json
 .venv/bin/python examples/planning/scaling_workload.py local --workers 2 --problem-size 10000 --output two.json
 .venv/bin/python examples/planning/scaling_workload.py combine one.json two.json --output measurements.json
-./scripts/tower run scaling analyze measurements.json --mode strong --baseline 1
+./scripts/raven run scaling analyze measurements.json --mode strong --baseline 1
 ```
 
 The example writes actual measured elapsed times, including process startup;
@@ -376,13 +393,13 @@ and preserves existing output files. All analysis remains terminal only.
 
 ### Attach a project's reports during operation
 
-Use the [project reporting standard](PROJECT_STANDARD.md) when creating a new project.
-Its source map defines the required location and format for each Research workspace.
+Use [Project reporting V2](PROJECT_REPORTING_V2.md) when connecting an application.
+Its metric reference and format cookbook cover each Research and Analytics view.
 Keep each execution attempt in `runs/<run_id>/`.
 Record the actual Slurm job ID in that attempt's `run.json`.
 Append application measurements to `metrics.jsonl` and retain the attempt's log index.
 
-Start Tower on the machine that can read those project files.
+Start Raven on the machine that can read those project files.
 Use the CARC profile on the login node or the desktop profile for native Fedora Slurm.
 Open the project with `:project /absolute/project/path`.
 Use the [live project procedure](guides/live-workbench.md#connect-a-project-to-its-jobs) for job attachment, refresh behavior, and source errors.
@@ -420,11 +437,12 @@ The top-right update control remains available on every page.
 Press and drag its track to adjust the fetching interval.
 Its labels show the effective Jobs polling interval in `s`, `ms`, or `µs`; ASCII mode uses `us`.
 Use `:rate` to inspect that interval.
-The logarithmic endpoints are five seconds and 500 milliseconds.
+The logarithmic request endpoints are five seconds and 500 milliseconds.
 Use `:rate 50` to request 500-millisecond Jobs polling.
 The command accepts positions from one to 50; position one requests five seconds.
 Use `:rate reset` or right-click the update control to restore five seconds.
-Source minimum intervals, timeouts, and retry backoff remain active.
+Raven collection floors, command budgets, source minimum intervals, timeouts,
+and retry backoff remain active.
 Inspect Sources for the effective cadences.
 See [Live workbench](guides/live-workbench.md) for the toolbar and complete panel controls.
 
@@ -432,14 +450,19 @@ See [Live workbench](guides/live-workbench.md) for the toolbar and complete pane
 
 All defaults work without a config file. Copy [config.example.json](config.example.json)
 to a new personal file, preserve the `carc` profile, and add your account, partitions,
-thresholds, or polling preferences. Use `--config /path/to/my-tower.json --profile carc`
+thresholds, or polling preferences. Use `--config /path/to/my-raven.json --profile carc`
 to select it. Do not overwrite an existing personal configuration to follow this guide.
 
 JSON works on every supported Python. Python 3.11+ also accepts TOML. The optional
-`tower --write-config` command creates a default config only when none exists.
-Tower normally reads `~/.config/tower/config.toml` or `config.json`, honoring
-`XDG_CONFIG_HOME` and `TOWER_CONFIG`. State is under `~/.local/state/tower`, honoring
-`XDG_STATE_HOME`. Use `--no-state` to skip state and `--no-plugins` to skip plugins.
+`raven --write-config` command creates a default config only when none exists.
+Raven configurations load from `~/.config/raven/config.json` or `config.toml`,
+honoring `XDG_CONFIG_HOME` and `RAVEN_CONFIG`. Native unversioned configurations
+can be selected explicitly with `--config` and their named `--profile`.
+Raven state defaults to `~/.local/state/raven`, honoring `XDG_STATE_HOME` and
+`RAVEN_STATE_DIR`. Records from a previous installation stay at their original
+paths; use an explicit [migration plan](MIGRATION.md) to import selected files.
+Use `--no-state` to skip ordinary UI state and `--no-plugins` for native plugin
+compatibility controls.
 
 Notification hooks and plugins execute code: load trusted files only. Demo mode
 simulates Slurm, but normal config/plugin loading still applies. Setup's smoke test
@@ -452,11 +475,11 @@ to identify slow or unavailable commands.
 ### Reports and automation
 
 ```bash
-./scripts/tower --config /path/to/my-tower.json --profile carc --report report.txt
+./scripts/raven --config /path/to/my-raven.json --profile carc --report report.txt
 less report.txt
-./scripts/tower --json > snapshot.json
-./scripts/tower --csv --tab history > history.csv
-./scripts/tower --doctor --json
+./scripts/raven --json > snapshot.json
+./scripts/raven --csv --tab history > history.csv
+./scripts/raven --doctor --json
 ```
 
 Reports are plain ASCII snapshots for terminals, text editors, and attachments.
@@ -474,12 +497,12 @@ a partial report. Its Log page is a selected 40-line window; use `Y` in Logs for
 the entire original file. Scripted `--report` still waits for completion.
 
 For scheduled collection, use absolute paths to the venv's Python, the checkout's
-`tower` directory, and your config. The interactive UI needs a terminal; use
+`raven` directory, and your config. The interactive UI needs a terminal; use
 `--once`, `--json`, or `--report` in automation. No background service is required.
 
 ### Queue departures and completion notices
 
-If a job disappears from a successful live queue refresh, Tower retains its
+If a job disappears from a successful live queue refresh, Raven retains its
 last observed record in Jobs' Recents as **awaiting accounting** and requests
 a bounded accounting refresh. It adds the matching record to History when Slurm
 confirms a terminal state. Queue disappearance is never treated as proof of
@@ -508,11 +531,11 @@ with `--workdir /absolute/project/runs/attempt-id`. Without a workdir override,
 a relative index filename uses the selected job's actual scheduler WorkDir.
 Relative entry paths resolve from the index directory, including explicit
 sibling paths. Absolute entries retain their source-machine meaning when moved.
-Tower lists actual stdout/stderr and bounded matching names from both output
+Raven lists actual stdout/stderr and bounded matching names from both output
 directories alongside the index; it performs no recursive filesystem scan.
 
 Some Slurm accounting installations do not retain historical stdout/stderr or
-WorkDir. Tower keeps controller paths it actually observed, reports absent
+WorkDir. Raven keeps controller paths it actually observed, reports absent
 evidence, and never substitutes a running job. Preserve failed-run files and
 indexes, and bind their run directory explicitly when scheduler metadata is gone.
 
@@ -527,11 +550,11 @@ In the open log file, arrows move the line cursor before `v` begins selection.
 Arrows/PgUp/PgDn/Home/End then extend it across pages; Esc cancels it. A right-edge
 `›` marks the cursor, and orange `◆` marks selected lines (`>` and `*` in ASCII).
 Press `y` to copy the original selected text, preserving tabs and CRLF endings
-for UTF-8 logs, without Tower headers, row numbers, or wrapping.
+for UTF-8 logs, without Raven headers, row numbers, or wrapping.
 
 Ranges above 256 KiB or 4,096 lines run on the shared worker, as do non-UTF-8
 ranges. These copies save the pinned exact bytes as
-`state/exports/log-selected-<uuid>.log` (or `./tower-exports/` with `--no-state`)
+`state/exports/log-selected-<uuid>.log` (or `./raven-exports/` with `--no-state`)
 before clipboard delivery; non-UTF-8 skips text transport. Small valid UTF-8
 ranges keep the immediate private `clipboard.txt` fallback.
 If rotation, truncation, or tail eviction invalidates a range, `y` asks you to
@@ -542,8 +565,9 @@ Use `V` then `y`, `Y`, or `:copy all` for the entire exact selected file. `y`
 without a line selection in Logs also copies the entire file. This reads through
 the selected local/SSH backend on the shared worker, independent of the retained
 tail, search, scrolling, or wrapping. The private, unique export is
-`~/.local/state/tower/exports/log-full-<uuid>.log`, honoring `XDG_STATE_HOME`.
-With `--no-state`, use the reported file under `./tower-exports/` instead. Files
+`exports/log-full-<uuid>.log` under the active connection-scoped state directory.
+Use the path reported by the copy result.
+With `--no-state`, use the reported file under `./raven-exports/` instead. Files
 are mode `0600` and stream in 1 MiB chunks with bounded memory.
 
 The copy captures the source's initial bytes; later appends are excluded and
@@ -551,7 +575,7 @@ reported. Detected rotation, replacement, truncation, mutation, or a short read
 fails without publishing a partial file; retry the current log. An active writer
 is not locked, so the exported byte range is not an application checkpoint.
 
-Clipboard transport depends on your terminal and display. Tower sends OSC 52
+Clipboard transport depends on your terminal and display. Raven sends OSC 52
 only when the complete UTF-8 text fits its limit, never a shortened prefix.
 The status reports a request rather than confirmed terminal acceptance. Large
 or non-UTF-8 logs retain their complete raw export even if clipboard delivery is
@@ -566,7 +590,7 @@ adopting them.
 
 ## 6. Troubleshoot the specific failure
 
-### Use the Tower 4.0 guides
+### Find an operating procedure
 
 Open `?` for contextual help.
 Use the [Controls guide](CONTROLS.md) to find a key or command.
@@ -587,9 +611,9 @@ Check the identity shown in the page header.
 Read coverage and freshness notices before you interpret measurements.
 Use the ASCII display if your terminal cannot render Unicode graphics correctly.
 
-### Learn the Tower 3.0 workbench
+### Use the terminal workbench
 
-Start with `tower --fake` to try navigation without scheduler access. Press `?`,
+Start with `raven --fake` to try navigation without scheduler access. Press `?`,
 then `/` and a keyword to search the current page's help; arrows and page keys
 scroll all matches. In `:`, edit anywhere with cursor keys, Tab completes supported
 commands/arguments/paths, and PgUp/PgDn recalls command history. Quote paths with
@@ -618,11 +642,13 @@ order. `s`, `S`, or `:sort name` resumes a single-key sort. Each of Jobs, Recent
 History, Group, My Nodes, Sources, and Cluster partitions keeps its own cascade;
 use `:sortby recent id asc` to order the latest five Recents by numeric JOBID.
 Cascades survive restart with ordinary state and restore with Back. Unknown
-measurements remain last; Jobs pins stay first and array grouping still applies.
+measurements remain last. Jobs keeps complete batches together using the saved
+Sort Min or Sort Max mode. Ordinary pins apply within batches and between
+equally ranked batches; the current Raven Heavy allocation remains first.
 `:facet clear` clears field filters. `:layout split 50` and `:layout save work`
 save a preferred density/split/focus arrangement separately from table views.
 
-For a project following the reporting standard, run Tower on CARC and enter:
+For a project following the reporting standard, run Raven on CARC and enter:
 
 ```text
 project /absolute/project
@@ -634,7 +660,8 @@ outputs
 ```
 
 Select the actual run ID. Discovery reads bounded direct run inventories, not
-the entire project tree; the SSH backend cannot perform this local picker.
+the entire project tree. The standard SSH backend also supports confined
+discovery through a Python 3.10+ helper on the selected host.
 The selected attempt binds its declared reports, log index, contract, and
 verified passport. Runs without a scheduler job still expose their project
 metrics, logs, and outputs. `:run clear` restores previous report settings.
@@ -651,11 +678,13 @@ Interactive local and SSH logs use background snapshots, including cold file
 loads. Redraw and key handling consume the published buffer while a read is
 pending, keeping slow CARC shared-filesystem reads and job-pane previews out of
 the input loop. Scrolling avoids preference writes on every key; queued arrows
-and wheel ticks share bounded redraws while preserving input order. Local log
-changes are checked at most twice per second. Pending/source errors stay visible;
+and wheel ticks share bounded redraws while preserving input order. Native
+local readers
+support checks at most twice per second; Raven applies a five-second log-follow
+floor and the configured collection policy. Pending/source errors stay visible;
 `r` requests a fresh observation. Noninteractive commands can wait for their result.
 
-Each new log source and each Tower launch starts at column zero. If you pan a
+Each new log source and each Raven launch starts at column zero. If you pan a
 wide log, the status begins with its offset and `:logpan 0` reset hint. ANSI
 commands and embedded terminal controls are normalized only for display; copy
 and exports preserve the original file bytes.
@@ -684,7 +713,7 @@ keys. The low-impact CARC profile remains the starting point for live monitoring
 | --- | --- |
 | Python is too old | Select a Python 3.10+ module/interpreter provided by the site. |
 | `.venv` is not a virtual environment | Keep its contents; choose a new `--venv PATH`. |
-| `No module named venv` | Select a site Python with venv support, or run `python3 -m tower --fake` directly. |
+| `No module named venv` | Select a site Python with venv support, or run `python3 -m raven --fake` directly. |
 | `No module named curses` | Use a Python build with curses support, or WSL on Windows. |
 | Slurm command missing | Load the site's Slurm module and rerun `--doctor` on the login node. |
 | SSH check fails | Verify normal SSH, keys/MFA, host keys, network access, and remote noninteractive `PATH`. |
@@ -693,19 +722,19 @@ keys. The low-impact CARC profile remains the starting point for live monitoring
 | Historical logs have no path | Select the job's actual run directory with `--workdir`; configure its `logs.manifest_file` index. Accounting may not retain old paths. |
 | Job stays "awaiting accounting" | Check the accounting source in Sources; queue absence alone cannot establish its terminal state. |
 | Full log did not reach the clipboard | Read the reported complete `log-full-<uuid>.log` export; the terminal may disable OSC 52 or the full text may exceed its limit. |
-| Log rotated during copying | Open the current file and retry; Tower does not publish an incomplete export. |
+| Log rotated during copying | Open the current file and retry; Raven does not publish an incomplete export. |
 | Selected range changed or expired | Reselect after rotation, truncation, or retained-tail eviction; `y` will not substitute the whole file. |
 | Log lines appear to lose their first characters | Use `:logpan 0` to restore the left edge; version 3.0.1 clears old saved offsets and resets position for each new source. |
-| Scrolling stalls and keys replay in a burst | Update Tower, inspect source failures, and try `:smoothscroll off`; current wheel handling combines target movement and cached navigation avoids foreground file reads. |
-| Fast pointer movement stalls or changes tabs | Install 4.9.0 or later. Use `tower --ui-trace ui-trace.json`, reproduce the issue, and quit normally. Review the phase timings and transitions in the new report. See [the latency audit](guides/ui-performance.md#tower-490-latency-audit). |
+| Scrolling stalls and keys replay in a burst | Update Raven, inspect source failures, and try `:smoothscroll off`; current wheel handling combines target movement and cached navigation avoids foreground file reads. |
+| Fast pointer movement stalls or changes tabs | Install 4.9.0 or later. Use `raven --ui-trace ui-trace.json`, reproduce the issue, and quit normally. Review the phase timings and transitions in the new report. See [the latency audit](guides/ui-performance.md#raven-490-latency-audit). |
 | Mouse hover or slider dragging is missing | Check reports with `:terminaltest`; inspect the terminal emulator and tmux connection, or use F8 and `:rate N`. |
 | Arrows move buttons instead of document content | Press Esc or use `:focusbuttons off`; press F8 when you want directional control focus. |
 | Details seem clipped or arrows move the wrong panel | Use Ctrl-W/F6 to focus Main or Details, then scroll or maximize that panel; `:density compact` restores the compact layout. |
-| Project picker reports no compatible run | Use the actual project root; create direct `runs/<run_id>/run.json` inventories with matching IDs, and inspect `!` notices. Discovery is local and bounded. |
+| Project picker reports no compatible run | Use the actual project root; create direct `runs/<run_id>/run.json` inventories with matching IDs, and inspect `!` notices. Discovery is confined and bounded. |
 | Project sources cannot bind | Check selected-run notices and declared paths; missing reports remain missing, identity mismatches and symlink traversal are refused. |
 | Evidence omits a worker log | Inspect reported coverage, preserve/register exact files in the run's `logs.json`, and open omitted sources in Logs directly. |
 | Batch outcome is unknown | Preserve the receipt and verify the scheduler directly; reviewed recovery requires exact SubmitLine and WorkDir evidence, rather than retrying an uncertain submission. |
-| Batch execution refuses `--no-state` | Relaunch with a writable private Tower state directory; durable receipts are required before scheduler calls. |
+| Batch execution refuses `--no-state` | Relaunch with a writable private Raven state directory; durable receipts are required before scheduler calls. |
 | Missing GPU metrics | Start with `--no-gpu`; enable sampling only for allocated GPUs where site policy permits. |
 | Terminal looks broken | Check `$TERM`, widen the terminal, and try `--ascii --no-color`. |
 | Blocks or braille look misaligned | Use a UTF-8 locale and a monospace terminal font with those glyphs, or use `--ascii`. |
@@ -714,13 +743,15 @@ keys. The low-impact CARC profile remains the starting point for live monitoring
 
 Network access is needed only for cloning, optional package installation, and SSH
 to a real cluster. Standard pip downloads use `pypi.org` and
-`files.pythonhosted.org` unless a different index is configured. Tower requires no
+`files.pythonhosted.org` unless a different index is configured. Raven requires no
 analytics or telemetry endpoint.
 
 ## 7. Update or remove
 
-Pull reviewed updates with `git pull --ff-only` when your checkout has no conflicting
-local edits, then rerun the same setup command. If you installed the Bash alias,
+For a pipx installation, pull reviewed updates with `git pull --ff-only`, then
+run `pipx reinstall raven`. For source development, rerun the same setup
+command after pulling updates with no conflicting local edits. If you installed
+the Bash alias,
 refresh its managed block and reload it as well:
 
 ```bash
@@ -728,7 +759,7 @@ git pull --ff-only
 python3 scripts/setup.py --mode local
 python3 scripts/install_shell.py --apply
 source ~/.bashrc
-tower
+raven
 ```
 
 This refresh enables the current Unicode preference even if your old alias passed
@@ -737,7 +768,12 @@ install, reinstall with that venv's
 `python -m pip install .`. Preserve personal changes and review incoming code before
 running it.
 
-To remove Tower, remove only the checkout and virtual environment you created.
+An installation recorded under a previous distribution name needs replacement
+with Raven from this checkout before `pipx reinstall raven` applies. Follow the
+[replacement procedure](INSTALLATION.md#replace-an-installation-with-the-previous-package-name),
+preserve configuration and state, and update the configured worker interpreter.
+
+To remove Raven, remove only the checkout and virtual environment you created.
 Personal configuration and state are separate; keep them for future use or remove
 them intentionally. Core setup never edits shell startup files or creates services.
 The optional

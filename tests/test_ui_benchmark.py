@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture(scope="module")
 def benchmark():
     path = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_ui.py"
-    spec = importlib.util.spec_from_file_location("tower_ui_benchmark", path)
+    spec = importlib.util.spec_from_file_location("raven_ui_benchmark", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -27,7 +27,7 @@ def benchmark():
 ])
 def test_benchmark_targets_real_graphs_and_controls_without_scheduler_or_file_access(
         benchmark, monkeypatch, ascii_, scenario, gesture, graphs, controls):
-    from tower import screen
+    from raven import screen
     # Test input invalidation independently of scheduled maintenance, animation,
     # and buffered-graph deadlines. CPU timings still use real perf_counter;
     # a slow worker must not turn a valid timer refresh into a hover failure.

@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, charts, job_panels as J, layout as L, palette
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, GpuSample, Health, Job, Node, Store
-from tower.views import Views
+from raven import chart_interaction as C, charts, job_panels as J, layout as L, palette
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, GpuSample, Health, Job, Node, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -272,7 +272,7 @@ def test_empty_gpu_series_explains_collection_state_before_first_success(monkeyp
     curves, text = inspect_curves(monkeypatch, dashboard, ascii_=ascii_)
     assert not curves
     assert expected in text
-    assert "tower --gpu-check 900" in text
+    assert "raven --gpu-check 900" in text
     assert "no samples recorded" in text
 
 
@@ -287,13 +287,28 @@ def test_gpu_health_notice_never_queries_sources_or_executes_terminal_controls(m
     assert "\x1b" not in text and "^Jretry" in text
 
 
+@pytest.mark.parametrize("mode", ["off", "existing-telemetry"])
+def test_managed_empty_gpu_graph_explains_existing_trace_requirement(monkeypatch, dashboard, mode):
+    dashboard.cfg.set("raven", {"managed": True, "collection": {"gpu": mode}})
+    dashboard.app.gpu = True
+    dashboard.store.health["gpu"] = Health("gpu")
+    curves, text = inspect_curves(monkeypatch, dashboard)
+    assert not curves
+    assert "existing logs/gpu-util-JOBID.csv trace" in text
+    if mode == "off":
+        assert "GPU collection is disabled by configuration" in text
+    else:
+        assert "automatic device probes are disabled" in text
+    assert "Enable GPU sampling" not in text and "GPU sampling is off" not in text
+
+
 @pytest.mark.parametrize("state", ["missing_workdir", "missing_file", "empty", "error"])
 def test_empty_gpu_series_shows_published_trace_reason_without_loading_the_path(monkeypatch, dashboard, state):
     dashboard.app.sampler = SimpleNamespace(trace_status={"900": {
         "state": state, "path": "/unreachable/gpu-util-900.csv", "reason": "No valid timestamp/index rows", "rows": 0}})
     _, text = inspect_curves(monkeypatch, dashboard)
     assert "GPU trace: No valid timestamp/index rows" in text
-    assert "tower --gpu-check 900" in text
+    assert "raven --gpu-check 900" in text
 
 
 @pytest.mark.parametrize("source", ["live", "trace"])
@@ -306,12 +321,12 @@ def test_detected_devices_with_only_unknown_counters_keep_gaps_and_explain_state
     assert len(curves) == 2
     assert all(item["values"] == [None, None] for item in curves.values())
     assert "devices were detected" in text and "counters are unavailable" in text
-    assert "tower --gpu-check 900" in text
+    assert "raven --gpu-check 900" in text
 
 
 @pytest.mark.parametrize("ascii_", [False, True])
 def test_optional_gpu_counters_are_safe_in_jobs_inspector_nodes_and_sort_values(dashboard, ascii_):
-    from tower.views import job_sort_values
+    from raven.views import job_sort_values
     dashboard.views.g = L.Glyphs(ascii_)
     job = dashboard.store.jobs[0]
     job.hosts = ["nodeA"]
@@ -372,7 +387,7 @@ def test_trace_summary_old_device_has_unknown_recent_value(dashboard):
                                                ([None, 20, 80], 50.),
                                                ([math.nan, math.inf, -1, 101, True, "50", 10**400], None)])
 def test_gpu_expressions_and_full_field_peeks_use_only_valid_observations(dashboard, counters, expected):
-    from tower import expr, navigation_tools as N, table_tools as T
+    from raven import expr, navigation_tools as N, table_tools as T
     job = dashboard.store.jobs[0]
     job.hosts = ["nodeA"]
     dashboard.store.nodes["nodeA"] = Node("nodeA", cpus=8)
@@ -387,7 +402,7 @@ def test_gpu_expressions_and_full_field_peeks_use_only_valid_observations(dashbo
 
 
 def test_node_field_peek_handles_failed_gpu_source_without_iterating_none(dashboard):
-    from tower import navigation_tools as N, table_tools as T
+    from raven import navigation_tools as N, table_tools as T
     dashboard.store.jobs[0].hosts = ["nodeA"]
     dashboard.store.nodes["nodeA"] = Node("nodeA", cpus=8)
     dashboard.store.gpu["900"] = None
@@ -396,7 +411,7 @@ def test_node_field_peek_handles_failed_gpu_source_without_iterating_none(dashbo
 
 
 def test_inspector_resource_graph_uses_valid_gpu_devices_and_keeps_unknown_time_gaps(monkeypatch, dashboard):
-    from tower import analysis_ui as A
+    from raven import analysis_ui as A
     for timestamp, values in enumerate(([None], [None, 0], [20, None, 80], [math.nan, -1, 101, True])):
         dashboard.store.record("900", dict(k="gpu", t=float(timestamp),
             gpu={f"nodeA:{i}": [value] for i, value in enumerate(values)}))

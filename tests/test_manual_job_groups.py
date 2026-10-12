@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_groups as G
-from tower import manual_job_groups as M
-from tower.model import Finished, Job
+from raven import job_groups as G
+from raven import manual_job_groups as M
+from raven.model import Finished, Job
 
 
 def job(jid, **kwargs):
@@ -366,4 +366,14 @@ def test_random_edit_sequence_never_duplicates_or_loses_observed_records():
         assert set(all_members) <= {record.id for record in records}
         assert all(len(group.members) >= 2 for group in current.groups.values())
         projected = G.project_records(value, snap, records)
-        assert [record.id for record in projected] == [record.id for record in records]
+        positions = {record.id: position for position, record in enumerate(projected)}
+        originals = {record.id: record for record in records}
+        assert len(projected) == len(positions) == len(records)
+        assert positions.keys() == originals.keys()
+        assert all(record is originals[record.id] for record in projected)
+        # Expanded batches stay contiguous while keeping the source's order
+        # within each batch. Moving a block must neither invent nor lose jobs.
+        for group in current.groups.values():
+            members = [record for record in records if record.id in group.members]
+            start = min(positions[record.id] for record in members)
+            assert projected[start:start + len(members)] == members

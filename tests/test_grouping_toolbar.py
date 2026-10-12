@@ -1,8 +1,8 @@
 """Automatic presentation commands preserve explicit choices and undo scope."""
 from types import SimpleNamespace
 
-from tower import job_groups as G, manual_job_groups as M, grouping_toolbar as T
-from tower.model import Job
+from raven import job_groups as G, manual_job_groups as M, grouping_toolbar as T
+from raven.model import Job
 
 
 def fixture():
@@ -49,6 +49,20 @@ def test_repeated_auto_retains_original_undo():
     assert app.grouping_auto_undo is undo
     T.execute(app, "undo", snap)
     assert not app.table_state["auto_groups"]
+
+
+def test_undo_auto_restores_local_sequential_presentation_after_repeated_press():
+    from raven.job_list_controls import mode
+    app, snap = fixture()
+    app.table_state["job_list_modes"] = {"jobs": "sequential", "history": "grouped"}
+    T.execute(app, "auto", snap)
+    assert mode(app, "jobs") == "grouped"
+    undo = app.grouping_auto_undo
+    T.execute(app, "auto", snap)
+    assert app.grouping_auto_undo is undo
+    T.execute(app, "undo", snap)
+    assert mode(app, "jobs") == "sequential"
+    assert mode(app, "history") == "grouped"
 
 
 def test_undo_keeps_preexisting_collapsed_manual_and_auto_groups():

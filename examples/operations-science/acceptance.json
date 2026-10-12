@@ -1,5 +1,5 @@
 {
-  "schema": "tower.acceptance/v1",
+  "schema": "raven.acceptance/v1",
   "cases": [
     {
       "id": "sum-three",

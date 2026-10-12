@@ -9,13 +9,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_panels as J, layout as L, quick_advisor as Q
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Live, Step, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import job_panels as J, layout as L, quick_advisor as Q
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Live, Step, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views
 
 GIB = 1024 ** 3
 
@@ -114,7 +114,7 @@ def test_explicit_button_starts_one_shared_worker_and_publishes_only_on_ui_threa
     hub.poll_task()
     assert state["status"] == "ok" and state["result"]["job"] == "900"
     assert len(calls) == 1 and calls[0][0] == "900"
-    assert calls[0][1].startswith("tower-research")
+    assert calls[0][1].startswith("raven-research")
 
 
 @pytest.mark.parametrize("transition", ["job", "off", "tab", "attempt", "accounting"])
@@ -368,7 +368,7 @@ def test_gpu_samples_and_job_trace_are_not_mixed_into_one_average():
 
 
 def test_latest_gpu_snapshot_is_usable_without_claiming_a_history():
-    from tower.model import GpuSample
+    from raven.model import GpuSample
     payload = evidence(Job("900", "workload", "gpu", "RUNNING", gpus=1))
     payload["gpu"] = [GpuSample("node", 0, util=75, used=800, total=1000)]
     gpu = section(Q.analyze(payload), "GPU")
@@ -387,7 +387,7 @@ def test_pending_attempt_does_not_borrow_retained_resource_observations():
 
 
 def test_requeued_attempt_excludes_previous_attempt_samples():
-    from tower.model import stamp
+    from raven.model import stamp
     start = "2026-10-08T10:00:00"
     epoch = stamp(start)
     job = Job("900", "workload", "cpu", "RUNNING", start=start, cpus=8)
@@ -510,7 +510,7 @@ def test_persistent_reader_releases_store_lock_before_file_read(dashboard, tmp_p
         def seek(self, offset):
             return self.stream.seek(offset)
         def read(self, count):
-            assert current_thread().name.startswith("tower-research")
+            assert current_thread().name.startswith("raven-research")
             entered.set()
             assert release.wait(3)
             return self.stream.read(count)

@@ -10,7 +10,7 @@ import pytest
 @pytest.fixture(scope="module")
 def benchmark():
     path = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_sustained_pointer.py"
-    spec = importlib.util.spec_from_file_location("tower_sustained_pointer_benchmark", path)
+    spec = importlib.util.spec_from_file_location("raven_sustained_pointer_benchmark", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -110,6 +110,20 @@ def test_valid_bounded_arguments_preserve_requested_comparison(benchmark, monkey
     assert output.is_file()
 
 
+def test_retained_checkout_namespace_is_selected_before_pty_launch(benchmark, monkeypatch, tmp_path):
+    source = tmp_path / "retained"
+    source.mkdir()
+    (source / "pyproject.toml").write_text('[tool.setuptools]\npackages = ["retained_fixture"]\n')
+    package = source / "retained_fixture"
+    package.mkdir()
+    (package / "__init__.py").write_text('')
+    calls = []
+    monkeypatch.setattr(benchmark, "run", lambda args, rate: calls.append(args.source_root) or {"rate_hz": rate})
+    assert benchmark.main(["--source-root", str(source), "--output", str(tmp_path / "result.json"),
+                           "--rates", "50"]) == 0
+    assert calls == [source]
+
+
 def test_shared_live_delta_skips_retained_ineligible_and_other_job_controls(benchmark):
     entries = {("live", "7", "cpu"): {"delta": 30},
                ("live", "7", "retired"): {"delta": 30},
@@ -135,11 +149,11 @@ def test_live_fixture_requires_at_least_one_eligible_control(benchmark):
 
 @pytest.mark.parametrize("interactive", [False, True])
 def test_fixture_seeds_the_actual_sorted_job_and_renders_its_4000_point_history(benchmark, interactive):
-    from tower import chart_interaction as C, layout as L, metric_live
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.views import Views
+    from raven import chart_interaction as C, layout as L, metric_live
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Job, Store
+    from raven.views import Views
     cfg = Config({"animations": False, "log_lines": 0, "series_keep": 9000})
     store = Store(persist=False, series_keep=9000)
     jobs = [Job("10", "first-source", "cpu", "RUNNING", submit="s", start="r"),
@@ -200,7 +214,7 @@ def test_switch_fixture_requires_enough_time_and_reports_before_opening_pty(benc
 
 
 def test_toolbar_switch_uses_published_cell_coordinates_and_complete_press_release(benchmark):
-    from tower import screen
+    from raven import screen
     raw = benchmark.switch_input("single", "toolbar", (0, 50, 60)).decode("ascii")
     packets = [packet for packet in raw.split("\x1b") if packet]
     press = screen._SGR_MOUSE.fullmatch("\x1b" + packets[0])
@@ -270,7 +284,7 @@ def test_managed_variant_is_forwarded_to_measurement(benchmark, monkeypatch, tmp
 
 @pytest.mark.parametrize('count', [6, 100])
 def test_queue_fixture_preserves_exact_requested_retained_count(benchmark, count):
-    from tower.slurm import FakeBackend, Slurm
+    from raven.slurm import FakeBackend, Slurm
     backend = FakeBackend()
     backend.spec = benchmark.fixture_specs(count)
     jobs = Slurm(backend, backend.user).jobs()

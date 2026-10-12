@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_progress as P, layout as L
-from tower.model import Job
+from raven import job_progress as P, layout as L
+from raven.model import Job
 
 
 def fixture():
@@ -160,11 +160,11 @@ def test_malformed_hit_publication_is_ignored_and_previous_slots_are_cleared():
                                                      (True, True, "default"),
                                                      (False, True, "reader")])
 def test_cached_curses_feedback_animates_without_io_or_document_rebuild(monkeypatch, ascii_, animations, theme):
-    from tower import screen
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Store
-    from tower.views import Views
+    from raven import screen
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Store
+    from raven.views import Views
 
     cfg = Config({"animations": animations, "startup_animation": False, "log_lines": 0, "theme": theme})
     store = Store(persist=False)

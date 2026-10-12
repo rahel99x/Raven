@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/query-source.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/query-source.schema.json",
   "title": "query source",
   "description": "Native validation checks unique raw references and selected column values using the paired query; it preserves missingness and validates finite aggregate results.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.query-source/v1"
+      "const": "raven.query-source/v1"
     },
     "identity": {
       "type": "string",

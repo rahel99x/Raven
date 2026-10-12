@@ -1,5 +1,5 @@
 {
-  "schema": "tower.staging/v1",
+  "schema": "raven.staging/v1",
   "id": "experiment-42",
   "retention": "keep-source",
   "entries": [

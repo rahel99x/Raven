@@ -4,8 +4,8 @@ import threading
 
 import pytest
 
-from tower import native_series_cache as N
-from tower.views import _prepare_native_metrics
+from raven import native_series_cache as N
+from raven.views import _prepare_native_metrics
 
 
 def _samples(value=24.):

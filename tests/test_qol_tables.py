@@ -8,11 +8,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import clock, layout as L, table_sort, table_tools, table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Health, Job, Live, Node, Partition, Store
-from tower.views import JOB_COLS, Views
+from raven import clock, layout as L, table_sort, table_tools, table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Health, Job, Live, Node, Partition, Store
+from raven.views import JOB_COLS, Views
 
 
 @pytest.fixture
@@ -318,7 +318,7 @@ def test_freeze_is_immutable_session_only_and_resumes_accumulated_changes(dashbo
 def test_job_action_menu_keeps_exact_accounting_id(dashboard, monkeypatch):
     _, app, _ = dashboard
     copied = []
-    monkeypatch.setattr("tower.clipboard.copy", lambda text, *args, **kwargs: copied.append(text) or "copied")
+    monkeypatch.setattr("raven.clipboard.copy", lambda text, *args, **kwargs: copied.append(text) or "copied")
     command(app, "jobactions", "90")
     app.table_tools_state["cursor"] = 2
     table_tools.handle_key(app, "enter")
@@ -389,7 +389,7 @@ def test_commands_keep_independent_filters_after_restart(dashboard):
 
 
 def test_recents_real_controller_limit_filter_and_history_range(dashboard, monkeypatch):
-    from tower import recent_history
+    from raven import recent_history
     store, app, views = dashboard
     store.finished.extend(Finished(str(100 + index), f"older-{index}", "COMPLETED", end="2026-10-01T12:00:00") for index in range(30))
     app.run_command("recents 10")
@@ -439,7 +439,7 @@ def test_source_filter_end_and_immediate_toggle_never_targets_hidden_source(dash
 
 
 def test_user_drill_is_exact_and_back_restores_filters(dashboard):
-    from tower.navigation_ui import back
+    from raven.navigation_ui import back
     store, app, views = dashboard
     store.group.append(Job("999", "similar username", "main", "RUNNING", user="samuel"))
     app.enter_tab("group")
@@ -490,7 +490,7 @@ def test_group_user_drill_buttons_do_not_displace_sticky_headers(dashboard):
 @pytest.mark.parametrize("ascii_", [False, True])
 @pytest.mark.parametrize("density", ["compact", "comfortable"])
 def test_cluster_map_cells_click_exact_node_at_transformed_coordinates(dashboard, ascii_, density):
-    from tower.model import NodeCell
+    from raven.model import NodeCell
     store, app, views = dashboard
     store.nodemap = {name: NodeCell(name, ["main"], "idle", cpus=64) for name in ("map-first", "map-next", "map-third")}
     app.enter_tab("nodes")
@@ -535,7 +535,7 @@ def test_history_range_restores_accounting_lookback_after_restart(dashboard, mon
 
 
 def _action_backend(store):
-    from tower.actions import Actions
+    from raven.actions import Actions
     calls = []
     def invoke(action):
         def operation(ids):

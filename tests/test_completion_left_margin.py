@@ -3,14 +3,14 @@ from copy import deepcopy
 
 import pytest
 
-from tower import layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.screen import _DifferentialPainter
-from tower.transitions import paint_completion_trails
-from tower.views import Views
-from tower.workspace_layout import Rect
+from raven import layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.screen import _DifferentialPainter
+from raven.transitions import paint_completion_trails
+from raven.views import Views
+from raven.workspace_layout import Rect
 
 
 def cells(row, width):
@@ -87,7 +87,7 @@ def test_hidden_recents_and_hidden_main_have_no_trail():
 @pytest.mark.parametrize("ascii_", [False, True])
 @pytest.mark.parametrize("density", ["compact", "comfortable"])
 def test_composed_departure_stays_inside_main_margin(monkeypatch, width, height, ascii_, density):
-    import tower.transitions as transitions
+    import raven.transitions as transitions
 
     now = [100.0]
     monkeypatch.setattr(transitions.time, "monotonic", lambda: now[0])

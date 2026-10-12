@@ -3,13 +3,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, charts, clock, layout as L
-from tower import metric_live as M
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.native_series_cache import ObservationIndex
-from tower.views import Views
+from raven import analysis_ui as A, chart_interaction as C, charts, clock, layout as L
+from raven import metric_live as M
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.native_series_cache import ObservationIndex
+from raven.views import Views
 
 
 @pytest.fixture(params=["native", "reported", "reported-modal"])
@@ -85,7 +85,7 @@ def test_unchanged_flat_history_reuses_raster_and_keeps_published_axes_and_lag_h
         # must describe the older endpoint that is actually on screen.
         status = M.playback_status(item.app, identity)
         assert status.end >= current.x_bounds[1]
-        from tower.metric_sampling import format_interval
+        from raven.metric_sampling import format_interval
         expected = "buffered " + format_interval(item.timer[0] - current.x_bounds[1]) + " behind"
         assert M.playback_label(item.app, identity, displayed_end=current.x_bounds[1]) == expected
         assert expected in L.to_text(rows, item.app.width)

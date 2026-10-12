@@ -10,9 +10,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import submission
-from tower.remote import SshBackend
-from tower.slurm import FakeBackend, Slurm
+from raven import submission
+from raven.remote import SshBackend
+from raven.slurm import FakeBackend, Slurm
 
 
 @pytest.fixture(autouse=True)
@@ -309,7 +309,7 @@ def test_save_load_preserves_plan_and_refuses_overwrite_or_tampering(script, tmp
     path.write_text(json.dumps(modified))
     with pytest.raises(ValueError, match="modified"):
         submission.load(path)
-    path.write_text('{"schema":"tower.submission-plan/v1"}')
+    path.write_text('{"schema":"raven.submission-plan/v1"}')
     with pytest.raises(ValueError, match="incomplete"):
         submission.load(path)
 
@@ -339,7 +339,7 @@ def test_plan_read_bounds_and_nonregular_files(script, tmp_path, monkeypatch):
     (False, "Command timed out after 30 seconds", None, "unknown"),
 ])
 def test_submit_receipt_states_and_passport_capture(script, tmp_path, ok, output, expected, state):
-    pytest.importorskip("tower.provenance")
+    pytest.importorskip("raven.provenance")
     scheduler = Scheduler((ok, output, "999999"))  # Do not trust the old permissive ID parser.
     plan = submission.prepare(script, tmp_path)
     result = submission.submit(plan, scheduler, tmp_path / "passports")
@@ -351,7 +351,7 @@ def test_submit_receipt_states_and_passport_capture(script, tmp_path, ok, output
 
 
 def test_passport_write_failure_prevents_submission(script, tmp_path):
-    pytest.importorskip("tower.provenance")
+    pytest.importorskip("raven.provenance")
     blocker = tmp_path / "not-directory"
     blocker.write_text("block")
     scheduler = Scheduler()
@@ -361,7 +361,7 @@ def test_passport_write_failure_prevents_submission(script, tmp_path):
 
 
 def test_scheduler_exception_after_contact_has_unknown_outcome(script, tmp_path):
-    pytest.importorskip("tower.provenance")
+    pytest.importorskip("raven.provenance")
     scheduler = Scheduler()
 
     def failed_receipt(argv, workdir):
@@ -379,7 +379,7 @@ def test_scheduler_exception_after_contact_has_unknown_outcome(script, tmp_path)
 
 
 def test_fake_backend_end_to_end_submit_and_preview(script, tmp_path):
-    pytest.importorskip("tower.provenance")
+    pytest.importorskip("raven.provenance")
     backend = FakeBackend()
     scheduler = Slurm(backend, "alex")
     plan = submission.prepare(script, tmp_path, ["--gres=gpu:a100:1", "--array=0-9%2"])

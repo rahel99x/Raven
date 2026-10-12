@@ -1,6 +1,6 @@
 {
   "schema": "raven.benchmark-harness/v1",
-  "harness": "/workspace/Slurm-Tower/scripts/benchmark_raven_resources.py",
+  "harness": "/workspace/Raven/scripts/benchmark_raven_resources.py",
   "sha256": "cdc61a99b4d2664507d663065dc6f11a7eb0f4b8909df4d99a01debf72227a65",
   "resource_runs": [
     {
@@ -49,7 +49,7 @@
     }
   ],
   "pointer_harness": {
-    "path": "/workspace/Slurm-Tower/scripts/benchmark_sustained_pointer.py",
+    "path": "/workspace/Raven/scripts/benchmark_sustained_pointer.py",
     "sha256": "f8a46f022e1b7e5589fbab2798febdf735c3d3cbfcfdecf1ee055d4a9201e98f",
     "fixture": "exact deterministic six- or 100-job queue, verified by retained count"
   },
@@ -112,64 +112,86 @@
   "published_artifacts": [
     {
       "path": "docs/benchmarks/7.0.0-baseline-idle.json",
-      "sha256": "2d11ab35f760541b7310bc866a6a8a1ce1c581d2325b7b33f6eec094ae8f6773"
+      "sha256": "201a36f0a5568662e976f5eb494c3743695bbf584f10acd7342ac23f2b583379",
+      "recorded_sha256": "2d11ab35f760541b7310bc866a6a8a1ce1c581d2325b7b33f6eec094ae8f6773"
     },
     {
       "path": "docs/benchmarks/7.0.0-baseline-monitor.json",
-      "sha256": "03b632f30fe04691296d06e411ed39e3d2d5048c3584d4d6eda7b64e2168ee6f"
+      "sha256": "90215f62899efc68050730befffee7a40071547640160838ed613eebd6686837",
+      "recorded_sha256": "03b632f30fe04691296d06e411ed39e3d2d5048c3584d4d6eda7b64e2168ee6f"
     },
     {
       "path": "docs/benchmarks/7.0.0-idle-profile-raw.json",
-      "sha256": "c28f0cc5697bb1c6915146445669ba4e41a075780eb1893d30c16f8c4e8143a5"
+      "sha256": "15afc61dc6d5b5e3f28b98ac7465115a5013e931c07c6a35d2f63b7afb4f9d63",
+      "recorded_sha256": "c28f0cc5697bb1c6915146445669ba4e41a075780eb1893d30c16f8c4e8143a5"
     },
     {
       "path": "docs/benchmarks/7.0.0-idle-profile.json",
-      "sha256": "f3d769221d9edbfc935b7e1a3d6a4702f660532b29e7272e6db798eaa686de2b"
+      "sha256": "f3d769221d9edbfc935b7e1a3d6a4702f660532b29e7272e6db798eaa686de2b",
+      "recorded_sha256": "f3d769221d9edbfc935b7e1a3d6a4702f660532b29e7272e6db798eaa686de2b"
     },
     {
       "path": "docs/benchmarks/7.0.0-light-idle-short-diagnostic.json",
-      "sha256": "425a84105d6c6288eb62eeaa7406094825a06ef3add384b544ccc998bff48f40"
+      "sha256": "93af8fab815821b91fedcc05ca0d704bcdb4d53458a14f7b7411c1acebfe91de",
+      "recorded_sha256": "425a84105d6c6288eb62eeaa7406094825a06ef3add384b544ccc998bff48f40"
     },
     {
       "path": "docs/benchmarks/7.0.0-light-idle.json",
-      "sha256": "2f49d0ac1d3328652490d6e4324ca949dff8b2bdb47fe9f54a4a1af1f051d3a6"
+      "sha256": "817778bc40c5ebb089b174b96ec466b3dd32eb24837bb817d5aea95e5a03bcb2",
+      "recorded_sha256": "2f49d0ac1d3328652490d6e4324ca949dff8b2bdb47fe9f54a4a1af1f051d3a6"
     },
     {
       "path": "docs/benchmarks/7.0.0-light-monitor-before-cache-fix.json",
-      "sha256": "51a122c5162f3cf58b8ae8940277af4e538d9ebaa4ab34c41c2f56531b121079"
+      "sha256": "df41132c8bacbe053dccc14e6bcdac12dc475c1c88678e0d2c883a43a3cbf336",
+      "recorded_sha256": "51a122c5162f3cf58b8ae8940277af4e538d9ebaa4ab34c41c2f56531b121079"
     },
     {
       "path": "docs/benchmarks/7.0.0-light-monitor-short-diagnostic.json",
-      "sha256": "794cc94563ead1d8ac66548eb881130890a8f7b0c0de707b4e7d5a27a610060f"
+      "sha256": "39104806c7427caa981cf1ed4e3d3e055869ced428ce613da85d26fcf4d38ae6",
+      "recorded_sha256": "794cc94563ead1d8ac66548eb881130890a8f7b0c0de707b4e7d5a27a610060f"
     },
     {
       "path": "docs/benchmarks/7.0.0-light-monitor.json",
-      "sha256": "1b38c2a0e7a387a3079db44d2d67b59a228362c0f00fbc57adb9c43f558d2651"
+      "sha256": "2d7e57f891c87df81de4fca94f7112d03543658b966698c6cf5ba3ff505a8b15",
+      "recorded_sha256": "1b38c2a0e7a387a3079db44d2d67b59a228362c0f00fbc57adb9c43f558d2651"
     },
     {
       "path": "docs/benchmarks/7.0.0-pointer-multi-100.json",
-      "sha256": "191dde026da3ac486aa6ef235eebd6a1c323b3c3636aed0a18cb95124bb06e64"
+      "sha256": "3adc260068f981363069a8cb866a3f91b8725261bf51a274cd9eb872bb0a10ec",
+      "recorded_sha256": "191dde026da3ac486aa6ef235eebd6a1c323b3c3636aed0a18cb95124bb06e64"
     },
     {
       "path": "docs/benchmarks/7.0.0-pointer-multi-6.json",
-      "sha256": "67721db37e906ebf277417b25c9583b0c8cc73dafbf404840f42657f2489edf0"
+      "sha256": "5ae8d0c2694e585d96b643bd38239009a5cb76b34fad6031118c5cb5d2ccd938",
+      "recorded_sha256": "67721db37e906ebf277417b25c9583b0c8cc73dafbf404840f42657f2489edf0"
     },
     {
       "path": "docs/benchmarks/7.0.0-pointer-single-100.json",
-      "sha256": "e396c288fe0b84c921227de25162595a7ccdf0ef80fac0b531d9d675229b38fa"
+      "sha256": "aae5562a421c9197716f7f58760ea4ef25dd41d102ad9b2be3b8237dd72b80eb",
+      "recorded_sha256": "e396c288fe0b84c921227de25162595a7ccdf0ef80fac0b531d9d675229b38fa"
     },
     {
       "path": "docs/benchmarks/7.0.0-pointer-single-6.json",
-      "sha256": "0f20722660cf03d014bb216be24090105e73e6a8ce52a09dbfccbfe3096360ff"
+      "sha256": "4ad6f98136c4de397569913e411eed08219f3451956038be14b8e131494a49a6",
+      "recorded_sha256": "0f20722660cf03d014bb216be24090105e73e6a8ce52a09dbfccbfe3096360ff"
     },
     {
       "path": "docs/benchmarks/7.0.0-pointer-switch-100.json",
-      "sha256": "862a5760013b001a22e327ed3ab7b7451f3b16c09de13a135465d012572d45c1"
+      "sha256": "02d181b94317fc3f6fcab82b8d8abb37f1208a23da90f0fb71c50efba3afaf14",
+      "recorded_sha256": "862a5760013b001a22e327ed3ab7b7451f3b16c09de13a135465d012572d45c1"
     },
     {
       "path": "docs/benchmarks/7.0.0-idle-profile.txt",
-      "sha256": "5f15dd02b5f054ac9e12b917b5cb81da5201a39dad65a3d7217a8eef6b9c2fe3"
+      "sha256": "5f15dd02b5f054ac9e12b917b5cb81da5201a39dad65a3d7217a8eef6b9c2fe3",
+      "recorded_sha256": "5f15dd02b5f054ac9e12b917b5cb81da5201a39dad65a3d7217a8eef6b9c2fe3"
     }
   ],
-  "source_hash_note": "Resource and pointer harnesses use different filename delimiters when hashing the same application modules; their digest strings are not directly comparable."
+  "source_hash_note": "Resource and pointer harnesses use different filename delimiters when hashing the same application modules; their digest strings are not directly comparable.",
+  "publication_metadata": {
+    "normalization": "Raven names, schema identifiers and paths normalized in publication copies.",
+    "measurement_rerun": false,
+    "measurements": "Numeric measurements, recorded source fingerprints and harness fingerprints are unchanged.",
+    "hashes": "published_artifacts.sha256 identifies current publication bytes; recorded_sha256 and resource_runs/pointer_runs sha256 identify original recorded bytes.",
+    "paths": "Names and paths in retained reports are publication-normalized; they do not establish the original run directory."
+  }
 }

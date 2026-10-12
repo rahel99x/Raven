@@ -9,8 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import orchestrator, submission, workflow
-from tower.model import Finished, Job
+from raven import orchestrator, submission, workflow
+from raven.model import Finished, Job
 
 
 @pytest.fixture(autouse=True)
@@ -24,7 +24,7 @@ def clear_sbatch_environment(monkeypatch):
 def recipe(tmp_path):
     for name in ("first", "second", "third"):
         (tmp_path / (name + ".sh")).write_text("#!/bin/bash\ntrue\n")
-    return {"version": 1, "kind": "tower.workflow", "nodes": [
+    return {"version": 1, "kind": "raven.workflow", "nodes": [
         {"id": "first", "script": "first.sh", "resources": {"cpus_per_task": 1}},
         {"id": "second", "script": "second.sh", "depends_on": ["first"], "resources": {"cpus_per_task": 1}},
         {"id": "third", "script": "third.sh", "depends_on": ["first", "second"], "resources": {"cpus_per_task": 1}},
@@ -97,7 +97,7 @@ def test_execution_rebuilds_dependencies_from_real_receipts(recipe, tmp_path):
     assert "--dependency=afterok:101" in scheduler.calls[1][0]
     assert "--dependency=afterok:101:102" in scheduler.calls[2][0]
     for index, (argv, _) in enumerate(scheduler.calls):
-        assert any(token.startswith("--comment=tower-execution:" + receipt["execution_id"]) for token in argv)
+        assert any(token.startswith("--comment=raven-execution:" + receipt["execution_id"]) for token in argv)
         assert receipt["nodes"][index]["attempts"][0]["passport_path"]
     assert review == original
     stored = orchestrator.load(receipt["receipt_path"])
@@ -333,7 +333,7 @@ def test_atomic_save_refuses_receipt_symlink(recipe, tmp_path):
 def test_receipt_lock_refuses_concurrent_execution(recipe, tmp_path):
     receipt = orchestrator.create_receipt(reviewed(recipe, tmp_path), tmp_path / "state")
     with orchestrator._locked(receipt["receipt_path"]):
-        with pytest.raises(ValueError, match="another Tower"):
+        with pytest.raises(ValueError, match="another Raven"):
             orchestrator.execute(receipt["review"], Scheduler(), tmp_path / "state", confirmed=True, receipt_path=receipt["receipt_path"])
 
 
@@ -373,7 +373,7 @@ def test_resume_refuses_unsubmitted_descendants_of_observed_failure(recipe, tmp_
 
 def scaling_recipe(tmp_path):
     (tmp_path / "scaling.sh").write_text("#!/bin/bash\ntrue\n")
-    return {"version": 1, "kind": "tower.scaling", "script": "scaling.sh", "mode": "strong", "repeats": 1,
+    return {"version": 1, "kind": "raven.scaling", "script": "scaling.sh", "mode": "strong", "repeats": 1,
             "problem_size": 100, "parameters": {"algorithm": "controlled"},
             "configurations": [{"workers": 1}, {"workers": 2}]}
 

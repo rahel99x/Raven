@@ -1,4 +1,4 @@
-# Project Raven profile; values are pilot defaults, not site qualification.
+# Raven profile; values are pilot defaults, not site qualification.
 schema = "raven.config/v1"
 profile = "desktop"
 
@@ -64,7 +64,8 @@ max_inflight = 2
 controller_requests_per_minute = 12
 controller_burst = 2
 accounting_requests_per_minute = 2
-step_launches_per_minute = 1
+step_launches_per_minute = 6
+step_launch_interval_seconds = 10
 statistics_requests_per_minute = 4
 action_validation_requests_per_minute = 6
 max_response_bytes = 4194304

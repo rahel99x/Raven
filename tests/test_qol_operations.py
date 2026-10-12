@@ -9,14 +9,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import activity_ui, doctor, layout as L, session_tools
-from tower.alerts import AlertEngine
-from tower.config import Config
-from tower.controller import App
-from tower.logs import LogBuffer
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven import activity_ui, doctor, layout as L, session_tools
+from raven.alerts import AlertEngine
+from raven.config import Config
+from raven.controller import App
+from raven.logs import LogBuffer
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 def app_for(tmp_path):
@@ -151,7 +151,7 @@ def test_log_copy_rejects_source_or_selection_changed_by_completed_publication(t
 
 
 def test_report_export_publishes_completed_work_before_capturing_snapshot(tmp_path):
-    from tower.views import Views
+    from raven.views import Views
     app = controller_app_for(tmp_path)
     app.views_ref = Views(L.Glyphs(True), app.cfg, files=app.logs.files)
     app.store.apply_jobs([Job('7', 'before publication', 'main', 'RUNNING')])
@@ -168,14 +168,14 @@ def test_report_export_publishes_completed_work_before_capturing_snapshot(tmp_pa
         assert len(exports) == 1
         text = exports[0].read_text()
         assert 'captured report job' in text and 'before publication' not in text
-        assert text.endswith('End of report | Slurm Tower | Plain ASCII, no external resources.\n')
+        assert text.endswith('End of report | Raven | Plain ASCII, no external resources.\n')
         assert app.activity.task['status'] == 'ready'
     finally:
         app.research.close()
 
 
 def test_report_export_does_not_wait_for_or_prepare_behind_unfinished_work(tmp_path, monkeypatch):
-    from tower import report
+    from raven import report
     app = controller_app_for(tmp_path)
     previous, published = Future(), []
     pending = (previous, published.append)
@@ -327,7 +327,7 @@ def test_export_preview_is_worker_bounded_and_survives_close(tmp_path, monkeypat
     original_open, started, release = os.open, threading.Event(), threading.Event()
     def delayed(path, flags, *args, **kwargs):
         if str(path) == str(p):
-            assert threading.current_thread().name.startswith('tower-research')
+            assert threading.current_thread().name.startswith('raven-research')
             started.set()
             release.wait(timeout=3)
         return original_open(path, flags, *args, **kwargs)
@@ -414,7 +414,7 @@ def test_export_preview_rejects_nonregular_or_symlink_sources(tmp_path, kind):
 def test_snooze_expiry_prunes_cap_and_delivery_only_is_muted(tmp_path, monkeypatch):
     app = app_for(tmp_path)
     now = [1000.0]
-    monkeypatch.setattr('tower.alerts.time.time', lambda: now[0])
+    monkeypatch.setattr('raven.alerts.time.time', lambda: now[0])
     notifications = []
     engine = AlertEngine([{'name': 'running', 'when': 'running', 'actions': ['bell', 'event', 'notify'], 'every': 1}], app.store, user='alex', notify=notifications.append)
     app.store.alerts = engine
@@ -462,7 +462,7 @@ def test_alert_restore_is_bounded_and_invalid_controls_atomic(tmp_path):
 def test_terminal_diagnostics_are_passive_and_probe_never_actions(tmp_path, monkeypatch):
     app = app_for(tmp_path)
     def forbidden(*args, **kwargs): raise AssertionError('scheduler or SSH invoked')
-    monkeypatch.setattr('tower.remote.SshBackend.run', forbidden)
+    monkeypatch.setattr('raven.remote.SshBackend.run', forbidden)
     monkeypatch.setattr('subprocess.run', forbidden)
     try:
         checks = doctor.terminal_evidence(app.cfg, state_dir=str(tmp_path), environ={'TERM': 'xterm-256color', 'TMUX': '1', 'SSH_TTY': '/dev/pts/1'}, encoding='ascii')

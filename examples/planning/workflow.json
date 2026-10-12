@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "kind": "tower.workflow",
+  "kind": "raven.workflow",
   "name": "Illustrative experiment DAG",
-  "description": "A review-only fork/join demonstration. Every node reuses the independent toy experiment script; replace scripts and actual data dependencies for your own workflow. Durations are illustrative estimates. Tower does not submit or orchestrate this DAG.",
+  "description": "A review-only fork/join demonstration. Every node reuses the independent toy experiment script; replace scripts and actual data dependencies for your own workflow. Durations are illustrative estimates. Raven does not submit or orchestrate this DAG.",
   "deadline_seconds": 900,
   "nodes": [
     {

@@ -6,11 +6,11 @@ import threading
 
 import pytest
 
-from tower import interaction, layout, toolbar, workbench, worker_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import interaction, layout, toolbar, workbench, worker_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 class Governor:
@@ -123,7 +123,7 @@ def test_scheduler_error_preserves_preference_and_surfaces_the_reason():
 
 
 def test_real_scheduler_pending_switch_returns_before_active_collection_finishes():
-    from tower.worker_scheduler import WorkerScheduler
+    from raven.worker_scheduler import WorkerScheduler
 
     started, finish = threading.Event(), threading.Event()
     governor = WorkerScheduler(workers=2)
@@ -259,7 +259,7 @@ def test_real_published_toolbar_supports_mouse_and_arrow_navigation(ascii_):
         return interaction.initialize(app)["graph"]
 
     graph = draw()
-    before = graph.get("toolbar:menu:3")
+    before = graph.get(f"toolbar:menu:{toolbar.MENUS.index('Help')}")
     app.click(before.rect.top, before.rect.left, app.last_hits, button="motion")
     app.handle("f8")
     assert app.interaction_state["focused"] == before.id
@@ -274,7 +274,7 @@ def test_real_published_toolbar_supports_mouse_and_arrow_navigation(ascii_):
     app.click(target.rect.top, target.rect.left, app.last_hits, button="left")
     assert app.worker_scheduler.requests == ["single", "multi"]
     assert app.tab == "jobs" and app.job_panel_state["mode"] == "inspector"
-    assert toolbar.control_descriptors(app)[5]["id"] == "toolbar:workers"
+    assert any(item["id"] == "toolbar:workers" for item in toolbar.control_descriptors(app))
 
 
 @pytest.mark.parametrize('ascii_',[False,True])
@@ -286,9 +286,13 @@ def test_eighty_column_toolbar_retains_readable_refresh_and_worker_controls(asci
     row=toolbar.render_bar(ui(ascii_),app,80)
     text=layout.row_text(row)
     assert 'Updates' in text and 'Multi' in text
-    assert 'File' in text and 'Help' in text
+    assert all(name in text for name in toolbar.MENUS)
     kinds={hit[3] for hit in app.toolbar_state['hits']}
     assert {'workers','copy-mode','rate','minus','plus','track'}<=kinds
     assert ('raven' in kinds)==managed
     assert ('Light' in text)==managed
     assert layout.vlen(text)==80
+    menu_hits = [hit for hit in app.toolbar_state['hits'] if hit[3] == 'menu']
+    assert [hit[4] for hit in menu_hits] == list(range(len(toolbar.MENUS)))
+    for _, left, right, _, index in menu_hits:
+        assert text[left:right].strip() == toolbar.MENUS[index]

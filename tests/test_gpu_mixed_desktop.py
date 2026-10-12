@@ -8,14 +8,14 @@ import json
 
 import pytest
 
-from tower import chart_interaction as C, job_panels as J, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.gpu_collectors import parse_probe_output
-from tower.model import Job, Store
-from tower.sampler import Sampler
-from tower.slurm import Slurm
-from tower.views import Views
+from raven import chart_interaction as C, job_panels as J, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.gpu_collectors import parse_probe_output
+from raven.model import Job, Store
+from raven.sampler import Sampler
+from raven.slurm import Slurm
+from raven.views import Views
 
 
 UUID = "GPU-12345678-1234-5678-1234-567812345678"
@@ -24,7 +24,7 @@ BDF = "00000000:01:00.0"
 
 
 def desktop_reply(*, resolved=False):
-    payload = dict(tower_gpu=1, node="desktop", job_id="506", gpus="0",
+    payload = dict(raven_gpu=1, node="desktop", job_id="506", gpus="0",
                    hardware_vendors=["amd", "nvidia"],
                    visible={"nvidia": "0", "amd": ""}, cuda_device_order="",
                    vendors={"nvidia": {"metrics":

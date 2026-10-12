@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analytics_document as D, chart_interaction as C, layout as L, metric_live as M
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import analytics_document as D, chart_interaction as C, layout as L, metric_live as M
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -285,7 +285,7 @@ def test_doc_scroll_and_passive_queries_never_read_metric_files_or_schedule_work
 
 
 def test_smooth_wheel_rasterizes_painted_cards_and_keyboard_commands_snap(native, monkeypatch):
-    from tower import scrolling as S
+    from raven import scrolling as S
     app, _, _ = native
     now = [100.0]
     monkeypatch.setattr(S.time, "monotonic", lambda: now[0])

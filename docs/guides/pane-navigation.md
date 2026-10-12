@@ -2,8 +2,9 @@
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Charts](charts.md) · [Log sources](log-search.md)
 
-These controls use the pane's published terminal content.
-They do not request extra scheduler samples or read a file during pointer movement.
+Scroll pane content, select rendered text, and send copies to the clipboard or an existing editor.
+These controls use Raven's published terminal content.
+Pointer movement does not request extra scheduler samples or read source files.
 
 ## Scroll a pane
 
@@ -19,7 +20,8 @@ The controls do not add table columns or overlap the pane's text.
 
 **Expected result:** That pane scrolls toward the requested position.
 Dragging the scrollbar preserves the selected job, source, and line selection.
-Click above or below the thumb to move by one viewport.
+Click anywhere on the track to seek directly to that position.
+Dragging changes the pane only while the pointer is on the visible track; an outside release ends the gesture without scrolling.
 Use the wheel over the rail for smaller movements.
 Click the header's up arrow to reach the top.
 Click its down arrow to reach the bottom.
@@ -43,7 +45,7 @@ Esc also cancels an unfinished capture.
 
 The viewport uses the existing bounded PID scroll controller.
 Successive movements update its target instead of replaying old wheel positions.
-Set `animations` to `false`, select the reader theme, or use `:smoothscroll off` for immediate movement.
+Disable **Interface animations**, select the reader theme, or use `:smoothscroll off` for immediate movement.
 These settings do not increase scheduler polling.
 
 ## Group selected jobs
@@ -55,13 +57,13 @@ Press `y` to copy the selected job or marked jobs in the focused list.
 The copy contains one tab-separated record per job: JOBID, NAME, STATE, PARTITION, ELAPSED, CPUS, GPUS, and INFO.
 It includes marked rows outside the viewport, in list order, and excludes other panes.
 A closed group identifies its representative job; hidden members are not selected automatically.
-Tower checks job identity before copying. If that identity changed, select the current rows again.
+Raven checks job identity before copying. If that identity changed, select the current rows again.
 Use `v` when you need the rendered table text instead of record fields.
 
 1. Click a row in the required job list to focus that pane.
 2. Mark at least two jobs with `Space`, plain click-drag, or click followed by Shift-click on the other end of the range.
 3. Press `g`.
-4. Open the resulting closed group with its down-pointing chevron when you need individual members.
+4. Open the resulting closed group with its right-pointing chevron when you need individual members.
 
 **Expected result:** The marked jobs appear in one manual group with the existing state-count summary.
 The group preference applies across job lists and their history browsers.
@@ -102,7 +104,7 @@ Use source exports when you need content beyond the rendered view.
 4. Release the button.
 5. Press `y`, or select **Edit → Copy**.
 
-**Expected result:** Tower copies the selected rendered lines to the current copy destination.
+**Expected result:** Raven copies the selected rendered lines to the current copy destination.
 Selected text remains pinned while new metric values arrive.
 A source or view-context change invalidates the selection.
 After invalidation, `y` asks you to select again. It does not copy another row or the entire screen.
@@ -130,22 +132,22 @@ See [log copying](log-view.md#clear-a-selection-without-changing-files) for sour
 The rendered cache retains at most 20,000 lines and 8 MiB of UTF-8 text.
 Cross-page keyboard selection can scroll the same published pane.
 It cannot fabricate lines that have never been displayed.
-If the range has missing cached lines, Tower refuses the copy and explains how to continue.
+If the range has missing cached lines, Raven refuses the copy and explains how to continue.
 Scroll through the required range, narrow the selection, or export the source.
 A failed coverage check sends no partial selection.
 `V` selects the painted pane, not its undisplayed document or source file.
 
 ## Send text to Vim or Neovim
 
-**Prerequisites:** A local editor is already running on the machine that runs Tower.
+**Prerequisites:** A local editor is already running on the machine that runs Raven.
 Its executable is available on `PATH`.
 The editor exposes a supported local server.
-Tower does not start an editor or modify an editor buffer.
+Raven does not start an editor or modify an editor buffer.
 
 1. Click **Copy** in the top toolbar to switch to **Yank**.
 2. Select the required rendered text or original log content.
 3. Press `y`, or use the existing complete-file copy control.
-4. Check Tower's delivery notice.
+4. Check Raven's delivery notice.
 5. Inspect register `0` in the editor with `:echo getreg('0')`.
 
 **Expected result:** Successful delivery sets the editor's `0` and unnamed registers.
@@ -153,7 +155,7 @@ Paste with the editor's normal controls when required.
 The toolbar uses compact `C` and `Y` labels in narrow terminals.
 The Edit menu also provides **Switch to Vim/Neovim yanking** and **Switch to clipboard copying**.
 
-Set the launch preference in the existing configuration:
+For the compatibility `raven` launcher, set the launch preference in its existing configuration:
 
 ```json
 {
@@ -171,18 +173,18 @@ Complete-log copies and History multi-job log exports use the same destination s
 
 ### Connect to an existing Neovim server
 
-Tower resolves `nvim` on `PATH`.
+Raven resolves `nvim` on `PATH`.
 It checks `NVIM`, then `NVIM_LISTEN_ADDRESS`, for an absolute Unix socket owned by the current user.
 An inherited editor terminal normally supplies the socket through `NVIM`.
 Use `:echo v:servername` in the existing editor to inspect its server address.
-Supply that existing socket to Tower's launch shell when it is not inherited.
-Tower does not discover arbitrary sockets or infer a remote TCP connection.
+Supply that existing socket to Raven's launch shell when it is not inherited.
+Raven does not discover arbitrary sockets or infer a remote TCP connection.
 
 ### Select an existing Vim server
 
-Tower resolves `vim` on `PATH` and requests `vim --serverlist`.
+Raven resolves `vim` on `PATH` and requests `vim --serverlist`.
 It selects one unambiguous running server.
-When several servers exist, set `TOWER_VIM_SERVER` to the required exact server name before starting Tower.
+When several servers exist, set `RAVEN_VIM_SERVER` to the required exact server name before starting Raven.
 That name must appear in the reported server list.
 A Vim build without usable server support remains eligible for clipboard fallback.
 
@@ -195,7 +197,7 @@ The payload travels through a private file and a fixed register-setting expressi
 The text is not interpreted as editor commands.
 
 Unavailable servers, invalid text, excessive size, or delivery errors produce a stated fallback result.
-Tower keeps the complete private export and attempts the enabled clipboard transports when applicable.
+Raven keeps the complete private export and attempts the enabled clipboard transports when applicable.
 Invalid UTF-8 retains its raw export instead of replacement text.
 An SSH session does not make a workstation editor a local editor on the cluster.
 Use the terminal clipboard or exported file when the editor is on another machine.
@@ -206,17 +208,17 @@ Use the terminal clipboard or exported file when the editor is on another machin
 | --- | --- |
 | No rail appears | Check whether the content exceeds the viewport and whether the pane has sufficient space. |
 | A scrollbar selects a job | Check mouse press and release reports with `:terminaltest`. |
-| A document feels too animated | Use `:smoothscroll off` or disable Interface animations in Settings. |
+| Scrolling animation makes reading difficult | Use `:smoothscroll off` or disable Interface animations in Settings. |
 | Dragging job rows marks jobs | Press `v` first when you need rendered job-row text. |
 | Copy reports missing rendered lines | Scroll through the range, narrow it, or export the source. |
 | Yank cannot find Neovim | Check `PATH` and the inherited owned Unix socket address. |
-| Yank reports multiple Vim servers | Set `TOWER_VIM_SERVER` to one exact reported server name. |
+| Yank reports multiple Vim servers | Set `RAVEN_VIM_SERVER` to one exact reported server name. |
 | Editor delivery is rejected | Check the notice for the UTF-8, NUL, size, timeout, or server condition. Use the retained export. |
 
 ## Integration methods
 
 These methods operate on published geometry and bounded display state.
-`tower.editor_yank` performs the explicit local editor delivery.
+`raven.editor_yank` performs the explicit local editor delivery.
 
 | Method | Purpose and result |
 | --- | --- |

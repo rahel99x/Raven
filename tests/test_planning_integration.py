@@ -9,14 +9,14 @@ import time
 
 import pytest
 
-from tower import cli, clock, layout as L
-from tower.config import Config
-from tower.metrics import write_metric
-from tower.model import Finished, Job
-from tower.planning import PLANNING_VIEWS, demo_source
-from tower.provenance import capture
-from tower.research import RESEARCH_VIEWS
-from tower.submission import prepare
+from raven import cli, clock, layout as L
+from raven.config import Config
+from raven.metrics import write_metric
+from raven.model import Finished, Job
+from raven.planning import PLANNING_VIEWS, demo_source
+from raven.provenance import capture
+from raven.research import RESEARCH_VIEWS
+from raven.submission import prepare
 
 
 def write_json(path, value):
@@ -59,7 +59,7 @@ def planning_files(tmp_path):
     for node in bundle["workflow"]["nodes"]:
         node["script"] = str(script)
     observations = write_json(tmp_path / "planning observations.json", bundle)
-    scaling_recipe = {"version": 1, "kind": "tower.scaling", "name": "controlled", "script": str(script),
+    scaling_recipe = {"version": 1, "kind": "raven.scaling", "name": "controlled", "script": str(script),
                       "mode": "strong", "baseline": 1, "problem_size": 1000, "repeats": 3,
                       "configurations": [{"workers": 1, "cpus_per_task": 1, "nodes": 1, "gpus": 0},
                                          {"workers": 2, "cpus_per_task": 1, "nodes": 1, "gpus": 0}]}
@@ -232,7 +232,7 @@ def test_remote_or_replay_offline_plan_rejected_before_backend(planning_files, m
 
 def test_palette_runs_analysis_in_bounded_background_and_never_changes_jobs(planning_dashboard, monkeypatch):
     session, files, calls = planning_dashboard
-    from tower import planning_commands
+    from raven import planning_commands
     entered, release = threading.Event(), threading.Event()
     original = planning_commands.result
     def blocking(*a, **k):

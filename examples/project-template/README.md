@@ -1,22 +1,41 @@
-# Portable Tower project template
+# Portable Raven project template
 
-For Bash launchers, use the [automated Research reporting guide](https://github.com/rahel99x/Slurm-Tower/blob/main/docs/guides/research-automation.md). `tower report` creates these standard files and links them to actual Slurm job attempts. The copyable Python reporter remains available for projects without a Tower installation.
+This template provides a small scientific application, a dependency-free Python
+reporter, output contracts, and a Slurm batch entry point. Copy the directory into
+a new project and adapt its reporting to your application.
 
-Copy this directory into a new project. The application writes portable JSON;
-it does not need Tower installed. Tower attaches exact job-bound reports through
-bounded runtime discovery or explicit selection. The complete convention and schemas
-are in [the project integration guide](https://github.com/rahel99x/Slurm-Tower/blob/main/docs/PROJECT_STANDARD.md).
-The included MIT `LICENSE` permits reuse and adaptation; retain its notice when
+For an existing application, start with the
+[reporting V2 guide](https://github.com/rahel99x/Raven/blob/main/docs/PROJECT_REPORTING_V2.md)
+and its portable command wrapper. That guide covers Linux workstations, CARC,
+UCI HPC3, lab allocations, and complete metric/file contracts. The V2 wrapper
+reuses this directory's canonical `reporting.py`; both retain V1 file formats.
+
+The application writes portable JSON without a Raven installation. Raven attaches
+the reports to exact job attempts through bounded runtime discovery or explicit
+selection. The [project reporting standard](https://github.com/rahel99x/Raven/blob/main/docs/PROJECT_STANDARD.md)
+defines the convention and schemas.
+
+For Bash launchers, use the
+[automated Research reporting guide](https://github.com/rahel99x/Raven/blob/main/docs/guides/research-automation.md).
+`raven report` creates the same standard files and links them to actual Slurm job
+attempts. The included MIT [license](LICENSE) permits reuse and adaptation; retain its notice when
 copying the reporting code.
 
-## Try the real, small example
+The reporter and scientific application run independently of a managed Raven
+session. The dashboard commands below retain native compatibility syntax;
+computational validation and planning can defer under Light until a supported
+worker is admitted. Provenance capture has a verified job-local requirement.
+See [execution contracts](https://github.com/rahel99x/Raven/blob/main/docs/raven/execution-contracts.md)
+for current availability.
+
+## Run the local example
 
 From your copied **project root**:
 
 ```bash
 python3 experiment.py --run-id demo-001 --steps 20 --terms-per-step 1000
 python3 reporting.py export runs/demo-001 --reference runs/demo-001
-tower --fake --config .tower/config.json --workdir "$PWD/runs/demo-001" \
+raven --fake --config .raven/config.json --workdir "$PWD/runs/demo-001" \
   --tab research --research-view experiment
 ```
 
@@ -34,9 +53,9 @@ absent. Its single run cannot support a calibrated resource prediction.
 Inspect outputs and planning independently:
 
 ```bash
-tower run validate .tower/contracts/outputs.v1.json runs/demo-001
-tower run predict --file reports/planning.json
-tower run workflow analyze .tower/definitions/workflow.json
+raven run validate .raven/contracts/outputs.v1.json runs/demo-001
+raven run predict --file reports/planning.json
+raven run workflow analyze .raven/definitions/workflow.json
 ```
 
 `predict` explains missing evidence rather than estimating from one local run.
@@ -47,8 +66,8 @@ with your real dependencies and measured timing estimates when available.
 
 ```text
 your-project/
-  .tower/
-    config.json                    Tower binding; committed
+  .raven/
+    config.json                    Raven binding; committed
     contracts/outputs.v1.json       Exact expected outputs; committed
     definitions/workflow.json      Optional project-owned planning recipe
   experiment.py                    Replace with your scientific application
@@ -57,14 +76,14 @@ your-project/
   runs/<unique-attempt-id>/
     run.json                       Project-owned manifest and explicit paths
     logs.json                      Grouped index of exact per-run log locations
-    metrics.jsonl                  Append-only native Tower metric rows
+    metrics.jsonl                  Append-only native Raven metric rows
     summary.json                   One terminal summary per attempt
     reports/planning.json           Optional shared native planning source
     reports/<view>.json             Optional exact per-view source; declared in run.json
     outputs/results.json           Scientific outputs declared by the contract
     logs/stdout.log                 Application stdout
     logs/stderr.log                 Application stderr
-    passports/                     Optional explicit Tower provenance captures
+    passports/                     Optional explicit Raven provenance captures
   reports/planning.json             Explicit aggregate of selected summaries
   logs/<slurm-job-id>.out           Scheduler launch stdout, created by Slurm
   logs/<slurm-job-id>.err           Scheduler launch stderr, created by Slurm
@@ -80,14 +99,14 @@ identifiers. Do not pool runs after changing work or inputs.
 
 `run.json` and `summary.json` are reporting conventions. For automatic attachment,
 publish the actual `job_id` and use a scheduler WorkDir at this project root or
-beneath its standard `runs/<run_id>` directory. Tower discovers bounded direct
+beneath its standard `runs/<run_id>` directory. Raven discovers bounded direct
 inventories and attaches only an unambiguous exact selected-job match.
 `:project /absolute/project` registers a root, and `:run select RUN_ID` selects
 an attempt explicitly. Local runs without job IDs need explicit selection.
 Known scheduler restart evidence can identify a requeued attempt; otherwise
 select that attempt explicitly. No arbitrary filesystem search or newest-run guess is used.
-The config also supports explicit metrics, output checks, and a planning aggregate.
-The config also binds the native `logs.json` index, so application logs can be
+The configuration supports explicit metrics, output checks, a planning aggregate,
+and the native `logs.json` index. Application logs can be
 opened independently of the scheduler's launch stdout/stderr.
 
 ## Paths and terminal views
@@ -112,7 +131,7 @@ appends and atomic replacements without changing the current tab.
 
 ## Report sources for Research views
 
-Use the [complete per-view source table](https://github.com/rahel99x/Slurm-Tower/blob/main/docs/PROJECT_STANDARD.md#files-for-every-research-view)
+Use the [complete per-view source table](https://github.com/rahel99x/Raven/blob/main/docs/PROJECT_STANDARD.md#files-for-every-research-view)
 when adapting another application. These are the producer locations:
 
 | View ID | This template's location | Producer |
@@ -120,20 +139,20 @@ when adapting another application. These are the producer locations:
 | `experiment` | `runs/<run_id>/metrics.jsonl` | Actual numeric application measurements and progress |
 | `arrays` | One distinct attempt directory per exact array task | Actual scheduler task identities/states; no separate arrays file |
 | `evidence` | `logs.json`, its exact files, and `metrics.jsonl` | Application/worker logs plus real scheduler observations |
-| `artifacts` | `.tower/contracts/outputs.v1.json` and declared run outputs | Project-owned output expectations and actual files |
-| `passport` | `runs/<run_id>/passports/` | Genuine Tower provenance capture |
-| `submit` | `runs/<run_id>/reports/submit.json` | Intact offline `tower run prepare` result; read-only attachment |
+| `artifacts` | `.raven/contracts/outputs.v1.json` and declared run outputs | Project-owned output expectations and actual files |
+| `passport` | `runs/<run_id>/passports/` | Genuine Raven provenance capture |
+| `submit` | `runs/<run_id>/reports/submit.json` | Intact offline `raven run prepare` result; read-only attachment |
 | `predict` | `runs/<run_id>/reports/predict.json` | Native planning bundle of selected summaries and query |
 | `forecast` | `runs/<run_id>/reports/forecast.json` | Actual queued-job and pre-start prediction observations |
 | `blockers` | `runs/<run_id>/reports/blockers.json` | Actual matching job/controller/node/partition snapshot |
 | `tradeoffs` | `runs/<run_id>/reports/tradeoffs.json` | Explicit comparable configurations and measured histories |
 | `scaling` | `runs/<run_id>/reports/scaling.json` | Controlled repeats or an actual native scaling recipe |
 | `workflow` | `runs/<run_id>/reports/workflow.json` | Real dependency recipe and timing evidence when known |
-| `operations` | Explicit `.tower/definitions/operations/`, `reports/operations/`, or per-run operation manifests | Declared policies, measurements, and campaign inputs for the selected operation; use its reviewed Operations controls |
+| `operations` | Explicit `.raven/definitions/operations/`, `reports/operations/`, or per-run operation manifests | Declared policies, measurements, and campaign inputs for the selected operation; use its reviewed Operations controls |
 
 Operations uses its own manifest contracts. It has no generic
 `publish_research(..., "operations", ...)` source. See the
-[operation-specific file conventions](https://github.com/rahel99x/Slurm-Tower/blob/main/docs/PROJECT_STANDARD.md#research-operation-contracts)
+[operation-specific file conventions](https://github.com/rahel99x/Raven/blob/main/docs/PROJECT_STANDARD.md#research-operation-contracts)
 before preparing a reviewed action.
 
 Use the dependency-free publisher for actual native source objects:
@@ -147,14 +166,14 @@ publish_research(run, "workflow", actual_workflow_recipe)
 
 It writes the exact per-run location and updates its inventory path. It checks
 finite bounded JSON, native headers, an explicit source job ID, and native
-preflight fingerprints. Tower performs scientific and semantic validation.
+preflight fingerprints. Raven performs scientific and semantic validation.
 This helper does not create measurements, infer scheduler observations, or
 launch a job. Recipes and summaries remain project-owned evidence.
 
 Publish an existing native source through the same helper:
 
 ```bash
-python3 reporting.py report workflow .tower/definitions/workflow.json --run runs/demo-001
+python3 reporting.py report workflow .raven/definitions/workflow.json --run runs/demo-001
 python3 reporting.py export runs/demo-001 --reference runs/demo-001 \
   --output runs/demo-001/reports/planning.json
 ```
@@ -168,7 +187,7 @@ For Submit evidence, capture an actual preflight:
 
 ```bash
 preflight_file=$(mktemp)
-tower run prepare jobs/run.sbatch --workdir "$PWD" > "$preflight_file"
+raven run prepare jobs/run.sbatch --workdir "$PWD" > "$preflight_file"
 python3 reporting.py report submit "$preflight_file" --run runs/demo-001
 rm "$preflight_file"
 ```
@@ -179,9 +198,9 @@ Prepare again interactively for a current reviewed scheduler action.
 
 For artifact checks use the same config and run directory with
 `--research-view artifacts`. For aggregate resource analysis use
-`--research-view predict`. Inside Tower, `:metrics /absolute/project/runs/demo-001/metrics.jsonl`
+`--research-view predict`. Inside Raven, `:metrics /absolute/project/runs/demo-001/metrics.jsonl`
 attaches an explicit stream; use an absolute path when a run workdir is already
-selected. `:artifacts .tower/contracts/outputs.v1.json
+selected. `:artifacts .raven/contracts/outputs.v1.json
 runs/demo-001` attaches the matching output root.
 
 ## Organize logs across locations
@@ -214,12 +233,12 @@ to open the grouped file list, move with arrows or PgUp/PgDn/Home/End, and press
 Enter to open a file. Esc returns to the list, then back to the file view;
 choose another entry without changing jobs. `o` retains quick cycling and `e`
 switches stdout/stderr. Scheduler paths and bounded job-ID-matching files in
-their directories join the explicit index; Tower does not scan the filesystem.
+their directories join the explicit index; Raven does not scan the filesystem.
 
 Inside the file, arrows move a logical line cursor before `v` begins selection;
 arrows/page keys/Home/End extend it across pages. The right edge shows `›` for
 the cursor and orange `◆` for selected lines (`>` and `*` in ASCII). `y` copies
-the original UTF-8 text, including tabs and CRLF endings, without Tower headers
+the original UTF-8 text, including tabs and CRLF endings, without Raven headers
 or row numbers. Esc cancels the selection before returning to the file list.
 Ranges above 256 KiB or 4,096 lines, and any invalid-UTF-8 range, run on the shared
 worker. They pin the selected raw bytes in a private unique
@@ -233,20 +252,20 @@ For all contents, use `V` then `y`, `Y`, or `:copy all`; `y` without a selection
 also copies the entire file. The shared worker streams exact bytes through the
 selected local/SSH backend independently of displayed tail limits, search,
 scrolling, or wrapping. Its private unique `log-full-<uuid>.log` export is under
-Tower's `state/exports/`, or `./tower-exports/` with `--no-state`. Keep these
-generated/private exports out of Git; add `tower-exports/` to your project's
+Raven's `state/exports/`, or `./raven-exports/` with `--no-state`. Keep these
+generated/private exports out of Git; add `raven-exports/` to your project's
 ignore rules if using that fallback.
 
 An active log copy includes only its initial byte range and reports later
 growth. Detected rotation, replacement, truncation, mutation, or a short read
 fails without publishing a partial export. The producer keeps running; the
 copy is not an application checkpoint. Full raw exports remain available when
-clipboard transport cannot accept the entire file. Tower never silently sends
+clipboard transport cannot accept the entire file. Raven never silently sends
 a prefix through OSC 52 and reports a request rather than confirmed terminal
 acceptance; non-UTF-8 logs keep their exact bytes in the export.
 
 For old jobs whose accounting service did not retain stdout/stderr or WorkDir,
-Tower reports missing evidence instead of using a currently running job. Select
+Raven reports missing evidence instead of using a currently running job. Select
 the run directory explicitly with `--workdir` to attach its `logs.json`.
 
 Jobs leaving the live queue remain in Recents as **awaiting accounting** until
@@ -312,7 +331,7 @@ Only summaries with explicit scaling controls also enter `scaling`.
 
 The default report is an authoritative snapshot of the selected attempts. A
 later export replaces a prior native planning bundle atomically; it refuses to
-replace other content. Keep the final document below Tower's default 1 MiB JSON
+replace other content. Keep the final document below Raven's default 1 MiB JSON
 limit; oversize selections fail without silently discarding evidence. Split
 large projects into explicit comparable experiment reports with `--output`.
 
@@ -323,10 +342,10 @@ resource requests for your CARC allocation. From the project root:
 
 ```bash
 mkdir -p logs
-tower run prepare jobs/run.sbatch --workdir "$PWD"
+raven run prepare jobs/run.sbatch --workdir "$PWD"
 ```
 
-Review the preflight before choosing Tower's explicit confirmation-based submit
+Review the preflight before choosing Raven's explicit confirmation-based submit
 flow, or submitting the script through your usual `sbatch` process. `logs/` must
 exist **before submission** because Slurm opens stdout/stderr before the script
 runs. The batch job then creates its unique run and application logs. This

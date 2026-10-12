@@ -1,11 +1,11 @@
 """Visible Advisor jobs share retained publications without LRU thrashing."""
 from types import SimpleNamespace
 
-from tower import model as M
-from tower import native_series_cache as N
-from tower import series_publication as P
-from tower.model import Store
-from tower.views import normalized_series
+from raven import model as M
+from raven import native_series_cache as N
+from raven import series_publication as P
+from raven.model import Store
+from raven.views import normalized_series
 
 
 def advisor_sources():

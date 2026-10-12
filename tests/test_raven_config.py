@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tower import raven_config as C
+from raven import raven_config as C
 
 
 def environment(tmp_path):
@@ -68,6 +68,52 @@ def test_file_bytes_budget_is_not_request_count(tmp_path):
     C.validate(result.data)
 
 
+def test_step_launch_defaults_match_collection_admission(tmp_path):
+    from raven.raven_collection import DEFAULTS
+    collection = resolve(tmp_path).data['collection']
+    assert collection['step_launch_interval_seconds'] == DEFAULTS['step_launch_interval_seconds'] == 10
+    assert collection['step_launches_per_minute'] == DEFAULTS['step_launches_per_minute'] == 6
+
+
+def test_step_launch_interval_and_quota_follow_mandatory_policy(tmp_path):
+    policy = write(tmp_path/'policy.json', {'schema': C.POLICY_SCHEMA, 'restrictions': {
+        'floors': {'collection.step_launch_interval_seconds': 30},
+        'ceilings': {'collection.step_launches_per_minute': 1}}})
+    result = C.resolve(env=environment(tmp_path), system_policy_paths=[policy],
+                       cli_overrides={'collection': {'step_launch_interval_seconds': .5,
+                                                    'step_launches_per_minute': 6}})
+    assert result.data['collection']['step_launch_interval_seconds'] == 30
+    assert result.data['collection']['step_launches_per_minute'] == 1
+    assert result.origins['collection.step_launch_interval_seconds'] == 'site restriction'
+
+
+def test_existing_step_quota_is_preserved_and_missing_interval_uses_default(tmp_path):
+    path = write(tmp_path/'config.json', {'schema': C.SCHEMA,
+                                        'collection': {'step_launches_per_minute': 1}})
+    original = Path(path).read_bytes()
+    result = resolve(tmp_path, config_path=path)
+    assert result.data['collection']['step_launches_per_minute'] == 1
+    assert result.data['collection']['step_launch_interval_seconds'] == 10
+    assert Path(path).read_bytes() == original
+
+
+@pytest.mark.parametrize('interval', [0, -.1, .01, True, '10', 31536001])
+def test_step_launch_interval_rejects_invalid_units_and_bounds(interval):
+    import jsonschema
+    document = {'schema': C.SCHEMA, 'collection': {'step_launch_interval_seconds': interval}}
+    with pytest.raises(ValueError):
+        C.validate(document, partial=True)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.Draft202012Validator(C.schema_document()).validate(document)
+
+
+def test_step_launch_interval_accepts_fractional_seconds():
+    import jsonschema
+    document = {'schema': C.SCHEMA, 'collection': {'step_launch_interval_seconds': .5}}
+    C.validate(document, partial=True)
+    jsonschema.Draft202012Validator(C.schema_document()).validate(document)
+
+
 def test_profile_cli_site_and_user_values_precedence(tmp_path):
     path=write(tmp_path/'config.json',{'schema':C.SCHEMA,'profile':'a','collection':{'queue_seconds':100},
         'profiles':{'a':{'allocation':{'account':'old'}},'b':{'allocation':{'account':'new'},'collection':{'queue_seconds':120}}}})
@@ -117,9 +163,9 @@ def test_missing_account_fails_before_admission(tmp_path):
         C.resolve(env=environment(tmp_path),system_policy_paths=[path],launcher='heavy')
 
 
-def test_new_config_precedes_legacy_without_merge_or_writes(tmp_path):
+def test_default_config_does_not_discover_or_merge_other_user_directories(tmp_path):
     env=environment(tmp_path)
-    old=Path(write(Path(env['XDG_CONFIG_HOME'])/'tower/config.json',{'theme':'mono','host':'old-host','intervals':{'jobs':.5}}))
+    old=Path(write(Path(env['XDG_CONFIG_HOME'])/'previous-app/config.json',{'theme':'mono','host':'old-host','intervals':{'jobs':.5}}))
     old_bytes=old.read_bytes()
     new=write(Path(env['XDG_CONFIG_HOME'])/'raven/config.json',{'schema':C.SCHEMA,'ui':{'theme':'dark'}})
     result=C.resolve(env=env,system_policy_paths=[])
@@ -128,11 +174,21 @@ def test_new_config_precedes_legacy_without_merge_or_writes(tmp_path):
     assert old.read_bytes()==old_bytes and not Path(env['XDG_STATE_HOME']).exists()
 
 
+def test_missing_raven_config_does_not_discover_other_user_directories(tmp_path):
+    env=environment(tmp_path)
+    old=Path(write(Path(env['XDG_CONFIG_HOME'])/'previous-app/config.json',{'theme':'mono','host':'old-host'}))
+    original=old.read_bytes()
+    result=C.resolve(env=env,system_policy_paths=[])
+    assert not result.source and not result.legacy_source
+    assert result.data['connection']['host']=='' and result.data['ui']['theme']=='terminal'
+    assert old.read_bytes()==original and not Path(env['XDG_STATE_HOME']).exists()
+
+
 def test_legacy_view_maps_semantics_and_retains_profile_names(tmp_path):
     env=environment(tmp_path)
-    old=write(Path(env['XDG_CONFIG_HOME'])/'tower/config.json',{'theme':'mono','worker_mode':'multi',
+    old=write(Path(env['XDG_CONFIG_HOME'])/'previous-app/config.json',{'theme':'mono','worker_mode':'multi',
         'intervals':{'jobs':.5,'finished':600},'profiles':{'lab':{'account':'my-lab'}}})
-    result=C.resolve(site='lab',env=env,system_policy_paths=[])
+    result=C.resolve(config_path=old,site='lab',env=env,system_policy_paths=[])
     assert result.legacy_source==old
     assert result.data['collection']['queue_seconds']==60 and result.data['collection']['history_seconds']==600
     assert result.data['ui']['worker_mode']=='multi' and result.data['execution']['startup']=='light'
@@ -140,15 +196,15 @@ def test_legacy_view_maps_semantics_and_retains_profile_names(tmp_path):
     assert result.explain()['legacy_view']
 
 
-def test_new_environment_names_win_and_warnings_do_not_leak_values(tmp_path):
+def test_raven_environment_overrides_are_native_and_warnings_do_not_leak_values(tmp_path):
     new=write(tmp_path/'new.json',{'schema':C.SCHEMA,'ui':{'theme':'dark'}})
-    old=write(tmp_path/'old-secret.json',{'theme':'mono'})
-    env={**environment(tmp_path),'RAVEN_CONFIG':new,'TOWER_CONFIG':old,
-         'RAVEN_STATE_DIR':str(tmp_path/'new-state'),'TOWER_STATE_DIR':'secret-state-value'}
+    env={**environment(tmp_path),'RAVEN_CONFIG':new,
+         'RAVEN_STATE_DIR':str(tmp_path/'new-state')}
     result=C.resolve(env=env,system_policy_paths=[])
     assert result.data['ui']['theme']=='dark'
     assert result.data['storage']['state_dir']==str(tmp_path/'new-state')
-    assert 'old-secret' not in '\n'.join(result.warnings) and 'secret-state-value' not in '\n'.join(result.warnings)
+    assert not result.warnings
+    assert result.origins['storage.state_dir']=='environment state path'
 
 
 def test_explain_redacts_paths_and_credential_reference(tmp_path):
@@ -187,7 +243,7 @@ def test_worker_refuses_resource_policy_clamp(tmp_path):
 
 def test_legacy_bridge_embeds_managed_and_conservative_defaults(tmp_path):
     result=resolve(tmp_path)
-    values=C.to_tower_config(result)
+    values=C.to_raven_config(result)
     assert values['raven']['managed'] and values['raven']['schema']==C.SCHEMA
     assert not values['gpu_sampling'] and not values['weather'] and not values['plugins']
     assert values['intervals']['jobs']==60 and values['intervals']['finished']==300

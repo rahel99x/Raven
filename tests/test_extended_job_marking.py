@@ -1,11 +1,11 @@
 """Exact row marking in docked browsers and the Advisor document."""
 import pytest
 
-from tower import history_browser as H, job_selection as S, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import history_browser as H, job_selection as S, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -163,7 +163,7 @@ def test_group_context_does_not_leak_job_marks_into_other_input_owners(dashboard
     if guard == "legacy_text":
         app.sel_anchor = 0
     elif guard == "explicit_text":
-        from tower.text_selection import initialize
+        from raven.text_selection import initialize
         initialize(app)["explicit"] = True
     elif guard == "chart":
         app.chart_interaction_state["capture"] = {"active": True}

@@ -1,10 +1,18 @@
 # Experiment and research workflows
 
-Tower's Research workspace connects application progress, run evidence, batch
+Raven's Research workspace connects application progress, run evidence, batch
 submission, arrays, failure investigation, and declared outputs. Everything runs
-in a terminal. The scientific result comes from your application; Tower reads
+in a terminal. The scientific result comes from your application; Raven reads
 job-bound reports and scheduler evidence rather than guessing convergence from
 CPU or GPU utilization.
+
+Use Light to inspect bounded job and run evidence. Request Heavy in the same
+interface before using supported scientific-analysis adapters. The shell
+examples below retain native compatibility syntax; bare `raven` starts Light,
+so computational commands can return a deferred result. Provenance capture
+requires a verified job-local target in managed Raven. See the
+[execution contracts](raven/execution-contracts.md) for supported and deferred
+paths. Standalone Python APIs retain their behavior outside a managed session.
 
 For a common layout and reporting contract across your own projects, use the
 [project reporting standard](PROJECT_STANDARD.md), its
@@ -36,7 +44,7 @@ The regular Jobs and History views remain the place to select a job.
 Place each attempt under `PROJECT/runs/<run_id>` and publish its actual Slurm
 `job_id` in `run.json`. Make the job's scheduler WorkDir the project root or a
 directory beneath that standard attempt. A known project root registered with
-`:project PROJECT` also enables bounded discovery. Tower attaches an
+`:project PROJECT` also enables bounded discovery. Raven attaches an
 unambiguous exact match and refreshes declared sources in the background.
 Array task IDs and retry attempts remain distinct. Missing identity, ambiguous
 attempts, or incomplete discovery coverage require explicit selection.
@@ -45,10 +53,10 @@ The [per-view source table](PROJECT_STANDARD.md#files-for-every-research-view)
 specifies concrete file locations and fields for all twelve views. Publish
 metrics in `runs/<run_id>/metrics.jsonl`, logs in the declared `logs.json`, and
 planning sources under that attempt's `reports/`. The copied reporter publishes
-and binds native sources without importing Tower:
+and binds native sources without importing Raven:
 
 ```bash
-python3 reporting.py report workflow .tower/definitions/workflow.json --run runs/my-run
+python3 reporting.py report workflow .raven/definitions/workflow.json --run runs/my-run
 python3 reporting.py export runs/prior-run runs/my-run --reference runs/my-run \
   --output runs/my-run/reports/planning.json
 ```
@@ -65,11 +73,11 @@ From an installed checkout, create a fresh output location and run the included
 regression experiment:
 
 ```bash
-demo_dir=$(mktemp -d /tmp/tower-research.XXXXXX)
+demo_dir=$(mktemp -d /tmp/raven-research.XXXXXX)
 .venv/bin/python examples/research/experiment.py \
   --output "$demo_dir/run" --steps 120 --delay 0.1 &
 experiment_pid=$!
-scripts/tower --fake --tab research --research-view experiment \
+scripts/raven --fake --tab research --research-view experiment \
   --metrics-file "$demo_dir/run/metrics.jsonl" --workdir "$demo_dir/run"
 wait "$experiment_pid"
 ```
@@ -81,25 +89,29 @@ full-batch regression gradients using sufficient statistics in
 `O(samples + steps)` work. `--delay` only makes its progress easier to watch.
 It refuses an existing output directory, protecting previous runs.
 
-Validate the results and inspect a snapshot:
+The following native commands express artifact validation, provenance capture,
+and submission preparation. Managed Light can defer validation, and capture
+requires the verified job-local target described above. File-view and preparation
+commands do not themselves authorize submission:
 
 ```bash
-scripts/tower run validate examples/research/contract.json "$demo_dir/run"
-scripts/tower --fake --tab research --research-view artifacts \
+scripts/raven run validate examples/research/contract.json "$demo_dir/run"
+scripts/raven --fake --tab research --research-view artifacts \
   --contract examples/research/contract.json --workdir "$demo_dir/run" --once
-scripts/tower run passport capture examples/research/sample.sbatch \
+scripts/raven run passport capture examples/research/sample.sbatch \
   --workdir "$PWD" --output-dir "$demo_dir/passports"
-scripts/tower --fake run prepare examples/research/sample.sbatch --workdir "$PWD"
+scripts/raven --fake run prepare examples/research/sample.sbatch --workdir "$PWD"
 ```
 
 `--fake` explicitly identifies simulated scheduler data. Attached metric files
 are still your actual files. The simulated application curves used when no file
 is attached are demonstration data, not measurements of a CARC job. Passports,
-contracts, and local preparation do not require a Slurm installation.
+contracts, and native local preparation do not inherently require a Slurm
+installation. Managed execution admission remains a separate requirement.
 
 ## Application metrics
 
-Report only the values you want Tower to inspect. A stream is UTF-8 JSONL: one
+Report only the values you want Raven to inspect. A stream is UTF-8 JSONL: one
 object per newline, with a finite epoch timestamp `t`, a `metrics` object, and
 optional `step`, `phase`, and `progress`:
 
@@ -117,7 +129,7 @@ ever-growing file on every terminal frame.
 Python applications can use the optional reporter:
 
 ```python
-from tower.metrics import MetricReader, write_metric
+from raven.metrics import MetricReader, write_metric
 
 write_metric("metrics.jsonl", {"loss": 0.4}, step=1, phase="fit",
              completed=1, total=100, unit="steps")
@@ -128,9 +140,9 @@ print(snapshot["latest"], snapshot["progress"])
 Other applications can write the same format, or append through the CLI:
 
 ```bash
-tower run metric metrics.jsonl --value loss=0.4 --step 1 \
+raven run metric metrics.jsonl --value loss=0.4 --step 1 \
   --completed 1 --total 100 --unit steps
-tower --metrics-file metrics.jsonl --workdir "$PWD" \
+raven --metrics-file metrics.jsonl --workdir "$PWD" \
   --tab research --research-view experiment
 ```
 
@@ -149,10 +161,10 @@ application progress rather than a scheduler finish guarantee.
 ## Reproducible run passports
 
 ```bash
-tower run passport capture examples/research/sample.sbatch \
+raven run passport capture examples/research/sample.sbatch \
   --workdir "$PWD" --output-dir ./passports
-tower run passport show /absolute/path/to/printed-passport.json
-tower run passport compare /absolute/path/to/first-passport.json \
+raven run passport show /absolute/path/to/printed-passport.json
+raven run passport compare /absolute/path/to/first-passport.json \
   /absolute/path/to/second-passport.json
 ```
 
@@ -166,7 +178,7 @@ environment. The actual batch script is never executed by capture.
 The Python API supports more explicit declarations:
 
 ```python
-from tower.provenance import capture, diff, load, save
+from raven.provenance import capture, diff, load, save
 
 passport = capture(
     "/absolute/path/to/workdir", script="run.sbatch",
@@ -195,7 +207,7 @@ selected. Parameters and resource objects also reject secret-like field names.
 Do not put credential values under other field names. A passport describes
 observed local metadata, not an exhaustive or verified compute-node environment.
 
-Records are immutable through Tower's API, published atomically with mode
+Records are immutable through Raven's API, published atomically with mode
 `0600`, and limited to 1 MiB. Equivalent evidence shares an ID despite different
 capture timestamps; saving it again reuses the original record. A separate
 checksum covers the entire record, including its timestamp, and is verified on
@@ -208,7 +220,7 @@ missing fields from explicit `null` and different JSON types.
 Prepare and review a batch file before submitting:
 
 ```bash
-tower run prepare examples/research/sample.sbatch --workdir "$PWD" \
+raven run prepare examples/research/sample.sbatch --workdir "$PWD" \
   --account "$CARC_ACCOUNT"
 ```
 
@@ -225,15 +237,15 @@ On a CARC login node, set the checkout path for the supplied example and confirm
 a reviewed submission:
 
 ```bash
-export SLURM_TOWER_ROOT="$PWD"
-tower run submit examples/research/sample.sbatch --workdir "$PWD" \
+export RAVEN_ROOT="$PWD"
+raven run submit examples/research/sample.sbatch --workdir "$PWD" \
   --account "$CARC_ACCOUNT" --yes
 ```
 
 Choose a partition or other resources appropriate to your site if necessary.
 The example uses a single CPU, 256 MiB, and five minutes; its output directory is
 `runs/JOBID` below the submitted working directory. It executes the checkout's
-own `.venv/bin/python` and imports Tower's reporter. Array submissions use
+own `.venv/bin/python` and imports Raven's reporter. Array submissions use
 `runs/JOBID_TASKID` and a distinct seed per task.
 
 Interactive `:prepare SCRIPT --workdir DIR [flags]` reviews a plan in the Submit
@@ -241,23 +253,23 @@ view; `:submit` starts its confirmation flow. Preparation never submits a job.
 Submitting rechecks the script and plan, captures a passport before contacting
 Slurm, and links the returned job ID without changing that immutable passport.
 Confirmed CLI and interactive submissions save private passports under the batch
-workdir's `.tower/passports` by default. Use `--passport-dir DIR` on `submit` to
+workdir's `.raven/passports` by default. Use `--passport-dir DIR` on `submit` to
 choose another directory. Passports are explicit run artifacts, independent of
 the dashboard's `--no-state` option. Heavy palette preparation, capture and
 validation run on the single Research worker; results appear on the next UI tick.
 An accepted response without an unambiguous ID, or a transport timeout, requires
-queue inspection before retrying; Tower does not automatically repeat it.
+queue inspection before retrying; Raven does not automatically repeat it.
 
 Programmatic callers use the same separation:
 
 ```python
-from tower.submission import prepare, preview, submit
+from raven.submission import prepare, preview, submit
 
 plan = prepare("run.sbatch", workdir="/absolute/workdir",
                overrides=["--cpus-per-task=8", "--mem=32G"],
                parameters={"seed": 7}, inputs=["dataset.csv"],
                outputs=["result.json"])
-# `slurm` is an existing tower.slurm.Slurm instance for the selected cluster.
+# `slurm` is an existing raven.slurm.Slurm instance for the selected cluster.
 # preview(plan, slurm) runs the scheduler's test-only probe when requested.
 # Only call submit(plan, slurm, passport_directory="/absolute/passports")
 # after the user has reviewed and explicitly confirmed this exact plan.
@@ -277,7 +289,7 @@ command.
 ## Array operations
 
 ```bash
-tower --tab research --research-view arrays
+raven --tab research --research-view arrays
 ```
 
 The Arrays view merges current and historical task records, gives individual
@@ -286,8 +298,8 @@ and runtime summaries. Compressed ranges are counted arithmetically instead of
 expanding millions of indices into Python objects. An observed subset is not
 reported as the complete array; missing size information stays unknown.
 
-Click a cohort's down-pointing `▾` chevron to select it and open its task page.
-Click its right-pointing `▸` chevron to close that page. ASCII mode uses `v` and `>` respectively.
+Click a cohort's right-pointing `▸` chevron to select it and open its task page.
+Click its down-pointing `▾` chevron to close that page. ASCII mode uses `>` and `v` respectively.
 The cohort's summary, state counts, and mosaic remain visible.
 This task-page state is separate from the shared automatic job-group folds.
 Jobs and History Details retain their own Arrays task-page state.
@@ -315,7 +327,7 @@ layout distinguishes original attempts from retries.
 The API also supports a bounded subset and concurrency limit:
 
 ```python
-from tower.arrays import summarize, tasks, select_failed, retry_plan
+from raven.arrays import summarize, tasks, select_failed, retry_plan
 
 groups = summarize(current_job_records, accounting_records)
 group = groups[0]
@@ -342,7 +354,7 @@ checks, optional ShellCheck, and handling of remote paths.
 ## Evidence-based failure investigation
 
 Select a job from Jobs or History, then open Evidence, or use
-`:investigate JOBID`. Tower ranks candidate explanations from scheduler state,
+`:investigate JOBID`. Raven ranks candidate explanations from scheduler state,
 exit code/signal, available resource observations, selected stdout/stderr tails,
 and job-scoped events. Each hypothesis links to supporting evidence,
 contradictory observations, and useful next checks. A recovered warning in a
@@ -351,7 +363,7 @@ completed job does not change its recorded scheduler state.
 The pure analysis API does not open files or run commands:
 
 ```python
-from tower.investigate import investigate
+from raven.investigate import investigate
 
 case = investigate(
     {"id": "12345", "state": "OUT_OF_MEMORY", "exitcode": "0:125"},
@@ -386,15 +398,15 @@ a CSV with specified columns and at least ten data rows, plus a JSON summary:
 ```
 
 ```bash
-tower run validate contract.json /absolute/output-root
-tower --contract contract.json --workdir /absolute/output-root \
+raven run validate contract.json /absolute/output-root
+raven --contract contract.json --workdir /absolute/output-root \
   --tab research --research-view artifacts
 ```
 
 Interactive `:artifacts CONTRACT ROOT` attaches the same checks. The API is:
 
 ```python
-from tower.artifacts import load_contract, validate_contract
+from raven.artifacts import load_contract, validate_contract
 
 result = validate_contract(load_contract("contract.json"), "/absolute/output-root")
 print(result["status"], result["summary"])
@@ -418,7 +430,7 @@ and `error` and records per-check observations independently of Slurm's state.
 
 ## CARC and remote operation
 
-Install and run Tower on a CARC login node for local submission and confined
+Install and run Raven on a CARC login node for local submission and confined
 output validation. Keep application work inside allocations; the example's
 offline experiment is deliberately small. The CARC profile slows scheduler
 polling and avoids enabling GPU job steps or scheduling probes automatically.

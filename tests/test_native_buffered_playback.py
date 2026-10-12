@@ -3,10 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, charts, clock, layout as L, metric_live as M
-from tower.config import Config
-from tower.native_series_cache import ObservationIndex
-from tower.views import Views, _metric_source_times, _metric_edge_values
+from raven import chart_interaction as C, charts, clock, layout as L, metric_live as M
+from raven.config import Config
+from raven.native_series_cache import ObservationIndex
+from raven.views import Views, _metric_source_times, _metric_edge_values
 
 
 def dashboard(ascii_=False):

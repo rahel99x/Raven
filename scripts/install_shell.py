@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print, preview, or install a Bash alias for Slurm Tower without sourcing .bashrc."""
+"""Print, preview, or install an optional Raven source-checkout alias."""
 from __future__ import annotations
 
 import argparse
@@ -12,38 +12,38 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-BEGIN = "# >>> Slurm Tower alias >>>"
-END = "# <<< Slurm Tower alias <<<"
+BEGIN = "# >>> Raven alias >>>"
+END = "# <<< Raven alias <<<"
 
 
 def shell_block(root: Path | None = ROOT, profile: str = "carc") -> str:
-    location = shlex.quote(str(root)) if root is not None else '"$HOME/projects/Slurm-Tower"'
+    location = shlex.quote(str(root)) if root is not None else '"$HOME/projects/Raven"'
     default_profile = shlex.quote(profile)
     return f'''{BEGIN}
 # The checkout's launcher uses its own .venv; your active environment stays intact.
-export SLURM_TOWER_ROOT={location}
-unalias tower dash dash2 2>/dev/null || :
-unset -f tower dash dash2 2>/dev/null || :
-_slurm_tower() {{
-  local root="$SLURM_TOWER_ROOT"
+export RAVEN_ROOT={location}
+unalias raven dash dash2 2>/dev/null || :
+unset -f raven dash dash2 2>/dev/null || :
+_raven() {{
+  local root="$RAVEN_ROOT"
   local profile={default_profile}
-  profile="${{RAVEN_PROFILE:-${{SLURM_TOWER_PROFILE:-$profile}}}}"
-  local account="${{SLURM_TOWER_ACCOUNT-}}"
-  if [ "$profile" = carc ] && [ -z "${{RAVEN_CONFIG-}}" ] && [ "${{SLURM_TOWER_ACCOUNT+x}}" != x ]; then
+  profile="${{RAVEN_PROFILE:-$profile}}"
+  local account="${{RAVEN_ACCOUNT-}}"
+  if [ "$profile" = carc ] && [ -z "${{RAVEN_CONFIG-}}" ] && [ "${{RAVEN_ACCOUNT+x}}" != x ]; then
     account="${{CARC_ACCOUNT:-}}"
   fi
-  if [ ! -x "$root/scripts/tower" ]; then
-    printf 'tower: checkout not found at %s; set SLURM_TOWER_ROOT to your Slurm-Tower directory.\\n' "$root" >&2
+  if [ ! -x "$root/scripts/raven" ]; then
+    printf 'raven: checkout not found at %s; set RAVEN_ROOT to your Raven directory.\\n' "$root" >&2
     return 127
   fi
-  local -a command=("$root/scripts/tower")
+  local -a command=("$root/scripts/raven")
   if [ -n "${{RAVEN_CONFIG-}}" ]; then
     command+=(--config "$RAVEN_CONFIG")
     if [ -n "${{RAVEN_PROFILE-}}" ]; then
       command+=(--site "$RAVEN_PROFILE")
     fi
   else
-    command+=(--config "${{TOWER_CONFIG:-$root/docs/config.example.json}}" --profile "$profile")
+    command+=(--config "${{RAVEN_CONFIG:-$root/docs/config.example.json}}" --profile "$profile")
   fi
   command+=(--unicode)
   if [ -n "$account" ]; then
@@ -51,7 +51,7 @@ _slurm_tower() {{
   fi
   "${{command[@]}}" "$@"
 }}
-alias tower='_slurm_tower'
+alias raven='_raven'
 {END}'''
 
 
@@ -61,7 +61,7 @@ def render(text: str, block: str) -> str:
     ends = [i for i, line in enumerate(lines) if line.rstrip('\r\n') == END]
     if starts or ends:
         if len(starts) != 1 or len(ends) != 1 or starts[0] >= ends[0]:
-            raise ValueError("Existing Slurm Tower markers are incomplete or duplicated; no files changed.")
+            raise ValueError("Existing Raven markers are incomplete or duplicated; no files changed.")
         del lines[starts[0]:ends[0] + 1]
     # Preserve existing shell code verbatim. Runtime unalias/unset handles old
     # definitions without attempting to parse arbitrary Bash functions/heredocs.
@@ -83,13 +83,13 @@ def apply(path: Path, original: bytes, updated: bytes) -> Path | None:
     if path.exists():
         if path.read_bytes() != original:
             raise ValueError("The Bash configuration changed during preparation; no update applied.")
-        with tempfile.NamedTemporaryFile(prefix=path.name + ".slurm-tower-", suffix=".bak", dir=path.parent, delete=False) as f:
+        with tempfile.NamedTemporaryFile(prefix=path.name + ".raven-", suffix=".bak", dir=path.parent, delete=False) as f:
             backup = Path(f.name)
             f.write(original)
     mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o600
     temporary = None
     try:
-        with tempfile.NamedTemporaryFile(prefix="." + path.name + ".tower-", dir=path.parent, delete=False) as f:
+        with tempfile.NamedTemporaryFile(prefix="." + path.name + ".raven-", dir=path.parent, delete=False) as f:
             temporary = Path(f.name)
             os.fchmod(f.fileno(), mode)
             f.write(updated)
@@ -105,7 +105,7 @@ def apply(path: Path, original: bytes, updated: bytes) -> Path | None:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bashrc", type=Path, default=Path.home() / ".bashrc", help="Bash configuration to update; symlinks are preserved")
-    parser.add_argument("--profile", default="carc", help="default Tower profile for the alias; SLURM_TOWER_PROFILE can override it")
+    parser.add_argument("--profile", default="carc", help="default Raven profile for the alias; RAVEN_PROFILE can override it")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--output", type=Path, help="write a complete updated preview to a new file")
     mode.add_argument("--apply", action="store_true", help="back up and atomically update the Bash configuration")

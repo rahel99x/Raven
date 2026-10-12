@@ -7,10 +7,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_groups as G
-from tower import manual_job_groups as M
-from tower.model import Finished, Job
-from tower.table_sort import _natural
+from raven import job_groups as G
+from raven import manual_job_groups as M
+from raven.model import Finished, Job
+from raven.table_sort import _natural
 
 
 def job(jid, **changes):
@@ -39,7 +39,7 @@ def test_add_ranges_is_natural_and_keeps_manual_identity_label_and_sort():
         assert added.changed and added.group_id == made.group_id
     group = current(owner, snap).groups[made.group_id]
     assert group.members == tuple(str(jid) for jid in range(1, 13))
-    assert group.label == "Manual group 1"
+    assert group.label == "experiment"
     assert [record.id for record in G.project_records(owner, snap, records[::-1])] == list(group.members)[::-1]
 
 
@@ -53,7 +53,7 @@ def test_add_lower_id_keeps_label_through_removal_and_restart():
     restored.table_state["manual_groups"] = json.loads(json.dumps(owner.table_state["manual_groups"]))
     group = current(restored, snap).groups[made.group_id]
     assert group.members == ("1", "3", "9")
-    assert group.label == "Manual group 7"
+    assert group.label == "experiment"
 
 
 def test_natural_order_handles_arrays_heterogeneous_steps_and_leading_zeroes():
@@ -284,7 +284,7 @@ def test_explicit_menu_evidence_includes_all_valid_targets_above_render_budget(m
 def test_long_inferred_label_can_be_promoted_without_losing_its_name():
     owner = app()
     records = [job(1), job(2), job(300)]
-    records[0].name = records[1].name = "a" * 128
+    records[0].name = records[1].name = "a" * 160
     snap = {"jobs": records}
     group = current(owner, snap).for_job("1")
     assert len(group.label) > 128
@@ -313,4 +313,9 @@ def test_random_add_remove_sequence_never_duplicates_or_appends_out_of_order():
         for group in index.groups.values():
             if group.kind == "manual":
                 assert group.members == tuple(sorted(group.members, key=lambda value: (_natural(value), value)))
-        assert [record.id for record in G.project_records(owner, snap, snap["jobs"])] == [str(jid) for jid in range(1, 36)]
+        projected = [record.id for record in G.project_records(owner, snap, snap["jobs"])]
+        assert len(projected) == 35 and set(projected) == {str(jid) for jid in range(1, 36)}
+        positions = {jid: position for position, jid in enumerate(projected)}
+        for group in index.groups.values():
+            start = min(positions[jid] for jid in group.members)
+            assert projected[start:start + len(group.members)] == list(group.members)

@@ -88,7 +88,7 @@ def prepare_venv(path):
             # No downloads, ensurepip dependency, or system package changes.
             venv.EnvBuilder(with_pip=False, symlinks=os.name == "posix").create(path)
         except (OSError, RuntimeError) as exc:
-            raise SetupError(f"Cannot create a venv: {exc}. Install your OS's Python venv package, or run python3 -m tower directly.") from exc
+            raise SetupError(f"Cannot create a venv: {exc}. Install your OS's Python venv package, or run python3 -m raven directly.") from exc
     else:
         print(f"Reusing Python environment: {path}", flush=True)
     python = path / "bin" / "python"
@@ -112,7 +112,7 @@ def install_terminal(python):
     if probe.returncode:
         run([python, "-m", "ensurepip", "--upgrade"])
     run([python, "-m", "pip", "install", "--disable-pip-version-check", "-e", f"{ROOT}[terminal]"], timeout=600)
-    run([python, "-c", "from tower.terminal_emulator import TerminalEngine; e = TerminalEngine(4, 20); e.feed(b'Tower terminal ready'); assert e.snapshot()['lines']"], capture=True)
+    run([python, "-c", "from raven.terminal_emulator import TerminalEngine; e = TerminalEngine(4, 20); e.feed(b'Raven terminal ready'); assert e.snapshot()['lines']"], capture=True)
 
 
 def publish_report(source, destination):
@@ -130,11 +130,11 @@ def publish_report(source, destination):
 
 
 def validate(python, mode, host, report, profile=""):
-    with tempfile.TemporaryDirectory(prefix="tower-setup-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="raven-setup-") as temporary:
         scratch = Path(temporary)
         config = scratch / "config.json"
         config.write_text("{}\n", encoding="utf-8")
-        command = [python, ROOT / "tower", "--config", config, "--no-state", "--no-plugins"]
+        command = [python, ROOT / "raven", "--config", config, "--no-state", "--no-plugins"]
         print(f"Validating simulated jobs, Unicode and ASCII terminal views, all {len(RESEARCH_SMOKE_VIEWS)} Research workspaces, and the ASCII report...", flush=True)
         snapshot = json.loads(run([*command, "--fake", "--json"], capture=True))
         if not isinstance(snapshot, dict) or not snapshot.get("jobs"):
@@ -160,7 +160,7 @@ def validate(python, mode, host, report, profile=""):
             raise SetupError("The report smoke test did not produce a complete ASCII snapshot.")
         publish_report(preview, report)
         print(f"Checking {mode} capabilities...", flush=True)
-        doctor = [python, ROOT / "tower", "--no-state", "--no-plugins"]
+        doctor = [python, ROOT / "raven", "--no-state", "--no-plugins"]
         if not profile:
             doctor += ["--config", config]
         run([*doctor, "--doctor", *launch_flags(mode, host, profile)], timeout=45)
@@ -172,7 +172,7 @@ def parser():
     ap.add_argument("--host", default="", help="SSH hostname or user@hostname for remote mode; uses existing SSH authentication")
     ap.add_argument("--profile", default="", help="profile from docs/config.example.json; local/remote default to carc, use desktop for your computer")
     ap.add_argument("--venv", type=Path, default=ROOT / ".venv", help="isolated Python environment to create or reuse")
-    ap.add_argument("--report", type=Path, default=ROOT / ".tower" / "demo.txt", help="save a demo ASCII report; existing files are preserved")
+    ap.add_argument("--report", type=Path, default=ROOT / ".raven" / "demo.txt", help="save a demo ASCII report; existing files are preserved")
     ap.add_argument("--dev", action="store_true", help="also install editable package, pytest and build tools (requires pip index access)")
     ap.add_argument("--terminal", action="store_true", help="install and validate the optional embedded terminal engine (requires pip index access)")
     ap.add_argument("--test", action="store_true", help="also run the complete test suite; use --dev to install test dependencies")
@@ -200,12 +200,12 @@ def main(argv=None):
                 run([python, "-m", "pytest", "-q"], timeout=600)
             except SetupError as exc:
                 raise SetupError(f"{exc}\nIf pytest is unavailable, rerun setup with --dev --test.") from exc
-        command = [str(python), str(ROOT / "tower")]
+        command = [str(python), str(ROOT / "raven")]
         flags = launch_flags(mode, args.host, profile)
         command += flags
         print(f"\nReady ({mode}). Launch in a terminal:\n  {shlex.join(command)}")
         if args.venv.expanduser().resolve() == ROOT / ".venv":
-            print(f"Or, from this checkout:\n  {shlex.join(['./scripts/tower', *flags])}")
+            print(f"Or, from this checkout:\n  {shlex.join(['./scripts/raven', *flags])}")
         print("Press ? for help; q to quit. Read docs/runbook.md for cluster configuration and troubleshooting.")
         return 0
     except (SetupError, ValueError, OSError) as exc:

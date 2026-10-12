@@ -6,12 +6,12 @@ import json
 
 import pytest
 
-from tower import analysis_ui, clipboard, layout as L, screen, scrolling
-from tower.config import Config
-from tower.controller import App
-from tower.metrics import MetricReader
-from tower.model import Job, Store
-from tower.views import Views
+from raven import analysis_ui, clipboard, layout as L, screen, scrolling
+from raven.config import Config
+from raven.controller import App
+from raven.metrics import MetricReader
+from raven.model import Job, Store
+from raven.views import Views
 
 
 def frame(app, views, *, width=120, height=28):

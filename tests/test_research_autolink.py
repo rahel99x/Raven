@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from tower import projects, project_ui, navigation_ui
-from tower.config import Config
-from tower.controller import App
-from tower.metrics import MetricReader
-from tower.model import Job, Store
-from tower.remote import LocalFiles, RemoteFiles
-from tower.research import ResearchHub, detach_manual_source
+from raven import projects, project_ui, navigation_ui
+from raven.config import Config
+from raven.controller import App
+from raven.metrics import MetricReader
+from raven.model import Job, Store
+from raven.remote import LocalFiles, RemoteFiles
+from raven.research import ResearchHub, detach_manual_source
 
 
 class DeferredHub:
@@ -49,7 +49,7 @@ class DeferredHub:
 def make_run(root, run_id="attempt", job_id="7", paths=None):
     run = root / "runs" / run_id
     run.mkdir(parents=True, exist_ok=True)
-    value = {"schema": "tower.run/v1", "run_id": run_id, "experiment_id": "observed", "attempt": 1,
+    value = {"schema": "raven.run/v1", "run_id": run_id, "experiment_id": "observed", "attempt": 1,
              "state": "RUNNING", "job_id": job_id, "paths": paths or {"metrics": "metrics.jsonl"}}
     (run / "run.json").write_text(json.dumps(value))
     return run
@@ -165,13 +165,13 @@ def test_late_inventory_and_completed_state_update_without_restart(app, tmp_path
 def test_added_log_files_preserve_current_stream_and_selected_lines(app, tmp_path):
     run = make_run(tmp_path, paths={"metrics": "metrics.jsonl", "stdout": "stdout.log", "log_index": "logs.json"})
     (run / "stdout.log").write_text("actual\n")
-    (run / "logs.json").write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "7", "logs": []}))
+    (run / "logs.json").write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "7", "logs": []}))
     attach_workdir(app, tmp_path)
     refresh(app)
     app.logs.entry = dict(project_ui.log_entries(app)[0])
     app.logs.top, app.logs.cursor = 31, 32
     (run / "worker.log").write_text("worker\n")
-    (run / "logs.json").write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "7", "logs": [{"id": "worker", "path": "worker.log"}]}))
+    (run / "logs.json").write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "7", "logs": [{"id": "worker", "path": "worker.log"}]}))
     refresh(app)
     assert len(project_ui.log_entries(app)) == 2
     assert app.logs.entry["path"] == str(run / "stdout.log")
@@ -305,8 +305,8 @@ def test_parent_symlink_replacement_cannot_redirect_bound_report_read(tmp_path, 
     run = make_run(root, paths={"metrics": "metrics.jsonl", "planning": "planning.json", "passports": "passports"})
     (run / "metrics.jsonl").write_text('{"t":1,"metrics":{"public":1}}\n')
     (run / "planning.json").write_text('{"public":1}')
-    (root / ".tower/contracts").mkdir(parents=True)
-    (root / ".tower/contracts/outputs.v1.json").write_text('{"version":1,"outputs":[]}')
+    (root / ".raven/contracts").mkdir(parents=True)
+    (root / ".raven/contracts/outputs.v1.json").write_text('{"version":1,"outputs":[]}')
     binding = projects.select_run(str(root), "attempt")["binding"]
     old = tmp_path / "old-project"
     root.rename(old)
@@ -330,8 +330,8 @@ def test_artifact_validation_uses_pinned_fd_when_named_run_is_replaced(tmp_path,
     root = tmp_path / "project"
     run = make_run(root)
     (run / "result.json").write_text('{"public":1}')
-    (root / ".tower/contracts").mkdir(parents=True)
-    (root / ".tower/contracts/outputs.v1.json").write_text(json.dumps({"version":1,"outputs":[{"path":"result.json","format":"json","required_keys":["public"]}]}))
+    (root / ".raven/contracts").mkdir(parents=True)
+    (root / ".raven/contracts/outputs.v1.json").write_text(json.dumps({"version":1,"outputs":[{"path":"result.json","format":"json","required_keys":["public"]}]}))
     binding = projects.select_run(str(root), "attempt")["binding"]
     private = tmp_path / "private"
     private.mkdir()
@@ -397,9 +397,9 @@ def test_back_forward_preserve_per_view_planning_sources_without_aliasing(app, t
 @pytest.mark.parametrize("view", ["predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow"])
 def test_native_hub_reads_each_exact_per_view_source_and_refreshes_replacement(app, tmp_path, view):
     run = make_run(tmp_path, paths={"planning": "planning.json", view: "view.json"})
-    source = {"version": 1, "kind": "tower.planning", "job_id": "7", "jobs": [{"id": "7", "name": "CPU local", "state": "PENDING", "partition": "localcpu", "cpus": 1, "nodes": 1, "gpus": 0}], "history": [], "now": 100}
+    source = {"version": 1, "kind": "raven.planning", "job_id": "7", "jobs": [{"id": "7", "name": "CPU local", "state": "PENDING", "partition": "localcpu", "cpus": 1, "nodes": 1, "gpus": 0}], "history": [], "now": 100}
     if view == "workflow":
-        source = {"version": 1, "kind": "tower.workflow", "nodes": [{"id": "task", "script": "jobs/task.sh"}]}
+        source = {"version": 1, "kind": "raven.workflow", "nodes": [{"id": "task", "script": "jobs/task.sh"}]}
     (run / "view.json").write_text(json.dumps(source))
     (run / "planning.json").write_text('{"private_aggregate_marker":99}')
     attach_workdir(app, tmp_path)
@@ -435,7 +435,7 @@ def test_native_hub_reads_each_exact_per_view_source_and_refreshes_replacement(a
 @pytest.mark.parametrize("view", ["predict", "forecast", "blockers", "tradeoffs"])
 def test_bound_planning_never_falls_back_to_another_job_in_report(app, tmp_path, view):
     run = make_run(tmp_path, paths={view: "view.json"})
-    (run / "view.json").write_text(json.dumps({"version":1, "kind":"tower.planning", "jobs":[{"id":"8","state":"PENDING"}], "history":[]}))
+    (run / "view.json").write_text(json.dumps({"version":1, "kind":"raven.planning", "jobs":[{"id":"8","state":"PENDING"}], "history":[]}))
     attach_workdir(app, tmp_path)
     hub = ResearchHub(app.cfg)
     app.research = hub
@@ -454,7 +454,7 @@ def test_source_status_row_is_cached_bounded_and_reflects_conflicts(app, tmp_pat
     attach_workdir(app, tmp_path)
     refresh(app)
     monkeypatch.setattr(projects, "discover_project", lambda *a, **kw: pytest.fail("status renderer read project files"))
-    from tower.layout import row_text, vlen
+    from raven.layout import row_text, vlen
     text = row_text(project_ui.status_row(app, 120))
     assert "Auto-linked attempt" in text and "job 7" in text
     assert vlen(row_text(project_ui.status_row(app, 10, True))) <= 10
@@ -464,7 +464,7 @@ def test_source_status_row_is_cached_bounded_and_reflects_conflicts(app, tmp_pat
 
 
 def test_saved_location_preserves_original_planning_paths_and_rejects_invalid_extra_settings(app, tmp_path):
-    from tower import navigation_tools
+    from raven import navigation_tools
     run = make_run(tmp_path)
     attach_workdir(app, tmp_path)
     original = copy.deepcopy(app.research.settings)
@@ -490,11 +490,11 @@ def test_evidence_revalidates_log_declarations_and_refuses_replaced_parent(tmp_p
     run = make_run(root, paths={"stdout": "stdout.log", "log_index": "logs.json"})
     (run / "stdout.log").write_text("public stdout\\n")
     (run / "worker.log").write_text("public worker\\n")
-    (run / "logs.json").write_text(json.dumps({"schema":"tower.logs/v1", "job_id":"7", "logs":[{"id":"worker", "path":"worker.log"}]}))
+    (run / "logs.json").write_text(json.dumps({"schema":"raven.logs/v1", "job_id":"7", "logs":[{"id":"worker", "path":"worker.log"}]}))
     selected = projects.select_run(str(root), "attempt")
     worker = next(entry for entry in selected["logs"] if entry["path"].endswith("worker.log"))
     assert projects.read_bound_tail(selected["binding"], worker, 65536)[0] == b"public worker\\n"
-    (run / "logs.json").write_text(json.dumps({"schema":"tower.logs/v1", "job_id":"7", "logs":[]}))
+    (run / "logs.json").write_text(json.dumps({"schema":"raven.logs/v1", "job_id":"7", "logs":[]}))
     with pytest.raises(ValueError, match="no longer declared"):
         projects.read_bound_tail(selected["binding"], worker, 65536)
     private = tmp_path / "private"
@@ -508,8 +508,8 @@ def test_evidence_revalidates_log_declarations_and_refuses_replaced_parent(tmp_p
 
 
 def test_bound_read_only_report_cannot_submit_previous_manual_plan(app, tmp_path):
-    from tower import research_commands
-    from tower.submission import prepare
+    from raven import research_commands
+    from raven.submission import prepare
     run = make_run(tmp_path)
     attach_workdir(app, tmp_path)
     script = tmp_path / "batch.sh"
@@ -524,7 +524,7 @@ def test_bound_read_only_report_cannot_submit_previous_manual_plan(app, tmp_path
 
 
 def test_explicit_preparation_detaches_auto_report_and_shows_new_manual_plan(app, tmp_path):
-    from tower import research_commands
+    from raven import research_commands
     run = make_run(tmp_path, paths={"submit":"old-submit.json"})
     attach_workdir(app, tmp_path)
     hub = ResearchHub(app.cfg)

@@ -6,19 +6,19 @@ import threading
 
 import pytest
 
-from tower import array_manifest_ui, project_remote, project_ui, projects
-from tower.config import Config
-from tower.controller import App
-from tower.metrics import MetricReader, write_metric
-from tower.model import Finished, Job, Store
-from tower.provenance import capture, save
-from tower.remote import LocalFiles, RemoteFiles, SshBackend
-from tower.research import RESEARCH_VIEWS, ResearchHub
-from tower.submission import prepare
+from raven import array_manifest_ui, project_remote, project_ui, projects
+from raven.config import Config
+from raven.controller import App
+from raven.metrics import MetricReader, write_metric
+from raven.model import Finished, Job, Store
+from raven.provenance import capture, save
+from raven.remote import LocalFiles, RemoteFiles, SshBackend
+from raven.research import RESEARCH_VIEWS, ResearchHub
+from raven.submission import prepare
 
 
 class IsolatedSSH:
-    """Run the exact transmitted command with no installed Tower on its path."""
+    """Run the exact transmitted command with no installed Raven on its path."""
     def __init__(self):
         self.commands = []
         self.threads = []
@@ -34,11 +34,11 @@ class IsolatedSSH:
         return result.stdout, 0
 
 
-def test_bundled_model_publications_work_without_installed_tower(tmp_path):
+def test_bundled_model_publications_work_without_installed_raven(tmp_path):
     """Model imports and lazy history dependencies must travel with the helper."""
-    bootstrap = project_remote._BOOTSTRAP.partition("from tower import projects")[0]
+    bootstrap = project_remote._BOOTSTRAP.partition("from raven import projects")[0]
     script = bootstrap + '''
-from tower.model import Store
+from raven.model import Store
 store = Store(persist=False)
 store.record("71", {"k": "live", "t": 1.0, "cpu": .5})
 first = store.series_publication("71", memory_only=True)
@@ -65,30 +65,30 @@ def reported_project(tmp_path):
     run.mkdir(parents=True)
     script = root / "batch.sh"
     script.write_text("#!/bin/bash\n#SBATCH --time=00:10:00\necho experiment\n")
-    inventory = {"schema": "tower.run/v1", "run_id": run.name, "experiment_id": "trial", "attempt": 1,
+    inventory = {"schema": "raven.run/v1", "run_id": run.name, "experiment_id": "trial", "attempt": 1,
                  "state": "FAILED", "job_id": "901_2", "parameters": {"seed": 1},
-                 "metadata": {"tower_launch": {"cluster": "test-cluster", "dependency": "afterok:900"}},
+                 "metadata": {"raven_launch": {"cluster": "test-cluster", "dependency": "afterok:900"}},
                  "paths": {"metrics": "metrics.jsonl", "stdout": "stdout.log", "stderr": "stderr.log",
                            "planning": "reports/planning.json", "workflow": "reports/workflow.json",
                            "submit": "reports/submit.json", "array_manifest": "reports/array.json",
-                           "passports": "passports", "contract": ".tower/contracts/outputs.v1.json"}}
+                           "passports": "passports", "contract": ".raven/contracts/outputs.v1.json"}}
     write_json(run / "run.json", inventory)
     write_metric(run / "metrics.jsonl", {"loss": .2}, step=1, t=100)
     (run / "stdout.log").write_text("Started experiment\n")
     (run / "stderr.log").write_text("RuntimeError: CUDA out of memory\n")
     write_json(run / "result.json", {"observed": 2})
-    write_json(run / ".tower/contracts/outputs.v1.json", {"version": 1, "outputs": [
+    write_json(run / ".raven/contracts/outputs.v1.json", {"version": 1, "outputs": [
         {"path": "result.json", "format": "json", "required_keys": ["observed"]}]})
     # A project-wide contract deliberately does not apply to this attempt.
-    write_json(root / ".tower/contracts/outputs.v1.json", {"version": 1, "outputs": [{"path": "not-this-run"}]})
-    write_json(run / "reports/planning.json", {"version": 1, "kind": "tower.planning", "history": [],
+    write_json(root / ".raven/contracts/outputs.v1.json", {"version": 1, "outputs": [{"path": "not-this-run"}]})
+    write_json(run / "reports/planning.json", {"version": 1, "kind": "raven.planning", "history": [],
         "job_id": "901_2", "jobs": [{"id": "901_2", "name": "trial", "state": "FAILED",
                                      "partition": "cpu", "cpus": 1, "nodes": 1, "gpus": 0}]})
-    write_json(run / "reports/workflow.json", {"version": 1, "kind": "tower.workflow", "name": "trial",
+    write_json(run / "reports/workflow.json", {"version": 1, "kind": "raven.workflow", "name": "trial",
         "nodes": [{"id": "preprocess", "script": "batch.sh"},
                   {"id": "train", "script": "batch.sh", "depends_on": ["preprocess"]}]})
     write_json(run / "reports/submit.json", prepare(str(script), workdir=str(root)))
-    write_json(run / "reports/array.json", {"schema": "tower.array-manifest/v1", "cluster": "test-cluster",
+    write_json(run / "reports/array.json", {"schema": "raven.array-manifest/v1", "cluster": "test-cluster",
         "array_id": "901", "entries": [{"index": 2, "id": "seed-1", "label": "Seed 1", "parameters": {"seed": 1}}]})
     passport = capture(str(root), script=str(script), job_id="901_2")
     save(passport, str(run / "passports"))
@@ -117,7 +117,7 @@ def test_every_research_view_reads_same_exact_attempt_on_local_and_isolated_ssh(
     try:
         binding = project_ui.settle(app)
         assert binding["job_id"] == "901_2"
-        assert binding["contract"] == str(run / ".tower/contracts/outputs.v1.json")
+        assert binding["contract"] == str(run / ".raven/contracts/outputs.v1.json")
         assert binding["launch"]["dependency"] == "afterok:900"
         assert (app.tab, app.selected_id) == ("jobs", "901_2")
         manifest = array_manifest_ui.initialize(app)["manifest"]
@@ -268,7 +268,7 @@ def test_report_source_refresh_preserves_other_cached_views_and_discards_stale_r
 
 def test_exact_index_binds_after_directory_discovery_limit(reported_project, backend, monkeypatch):
     root, run = reported_project
-    write_json(root / ".tower/jobs/901_2.json", {"schema": "tower.job-index/v1", "job_id": "901_2",
+    write_json(root / ".raven/jobs/901_2.json", {"schema": "raven.job-index/v1", "job_id": "901_2",
         "cluster": "test-cluster", "run_ids": [run.name]})
     # These malformed siblings would make an ordinary scan incomplete. The
     # producer's explicit exact-job index never scans or trusts those siblings.
@@ -283,26 +283,26 @@ def test_exact_index_binds_after_directory_discovery_limit(reported_project, bac
 
 def test_index_collision_and_missing_attempt_fail_closed(reported_project, backend):
     root, run = reported_project
-    index = root / ".tower/jobs/901_2.json"
-    write_json(index, {"schema": "tower.job-index-ambiguous/v1", "job_id": "901_2", "clusters": ["test-cluster", "other"]})
+    index = root / ".raven/jobs/901_2.json"
+    write_json(index, {"schema": "raven.job-index-ambiguous/v1", "job_id": "901_2", "clusters": ["test-cluster", "other"]})
     assert projects.discover_job([str(root)], "901_2", files=backend)["status"] == "incomplete"
-    scoped = root / (".tower/jobs/" + hashlib.sha256(b"test-cluster").hexdigest()[:12] + "-901_2.json")
-    write_json(scoped, {"schema": "tower.job-index/v1", "job_id": "901_2", "cluster": "test-cluster", "run_ids": [run.name]})
+    scoped = root / (".raven/jobs/" + hashlib.sha256(b"test-cluster").hexdigest()[:12] + "-901_2.json")
+    write_json(scoped, {"schema": "raven.job-index/v1", "job_id": "901_2", "cluster": "test-cluster", "run_ids": [run.name]})
     assert projects.discover_job([str(root)], "901_2", files=backend, cluster="test-cluster")["status"] == "ready"
-    write_json(scoped, {"schema": "tower.job-index/v1", "job_id": "901_2", "cluster": "test-cluster", "run_ids": ["missing"]})
+    write_json(scoped, {"schema": "raven.job-index/v1", "job_id": "901_2", "cluster": "test-cluster", "run_ids": ["missing"]})
     assert projects.discover_job([str(root)], "901_2", files=backend, cluster="test-cluster")["status"] != "ready"
 
 
 def test_requeues_use_scheduler_restart_evidence_and_never_guess_latest(reported_project, backend):
     root, run = reported_project
     first = json.loads((run / "run.json").read_text())
-    first["metadata"]["tower_launch"]["restart_count"] = 0
+    first["metadata"]["raven_launch"]["restart_count"] = 0
     write_json(run / "run.json", first)
     second = json.loads(json.dumps(first))
     second.update(run_id="trial-requeued", attempt=2)
-    second["metadata"]["tower_launch"]["restart_count"] = 1
+    second["metadata"]["raven_launch"]["restart_count"] = 1
     write_json(root / "runs/trial-requeued/run.json", second)
-    write_json(root / ".tower/jobs/901_2.json", {"schema": "tower.job-index/v1", "job_id": "901_2",
+    write_json(root / ".raven/jobs/901_2.json", {"schema": "raven.job-index/v1", "job_id": "901_2",
         "cluster": "test-cluster", "run_ids": [run.name, "trial-requeued"]})
     assert projects.discover_job([str(root)], "901_2", files=backend)["status"] == "ambiguous"
     selected = projects.discover_job([str(root)], "901_2", files=backend, restart_count=1)
@@ -311,15 +311,15 @@ def test_requeues_use_scheduler_restart_evidence_and_never_guess_latest(reported
 
 def test_shared_project_planning_refreshes_but_explicit_run_report_wins(reported_project, backend):
     root, run = reported_project
-    write_json(root / ".tower/project.json", {"schema": "tower.project/v1", "paths": {"planning": "reports/planning.json"}})
-    write_json(root / "reports/planning.json", {"version": 1, "kind": "tower.planning", "history": [], "shared": 1})
+    write_json(root / ".raven/project.json", {"schema": "raven.project/v1", "paths": {"planning": "reports/planning.json"}})
+    write_json(root / "reports/planning.json", {"version": 1, "kind": "raven.planning", "history": [], "shared": 1})
     explicit = projects.select_run(str(root), run.name, files=backend)["binding"]
     assert explicit["planning_scope"] == "run"
     (run / "reports/planning.json").unlink()
     shared = projects.select_run(str(root), run.name, files=backend)["binding"]
     assert shared["planning_scope"] == "project"
     assert projects.read_bound_json(shared, shared["planning_file"], key="planning", files=backend)["shared"] == 1
-    write_json(root / ".tower/project.json", {"schema": "tower.project/v1", "paths": {"planning": "reports/other.json"}})
+    write_json(root / ".raven/project.json", {"schema": "raven.project/v1", "paths": {"planning": "reports/other.json"}})
     with pytest.raises(ValueError, match="declaration changed"):
         projects.read_bound_json(shared, shared["planning_file"], key="planning", files=backend)
 
@@ -344,7 +344,7 @@ def test_bound_reader_refuses_cluster_changed_after_selection(reported_project, 
     root, run = reported_project
     binding = projects.select_run(str(root), run.name, files=backend)["binding"]
     value = json.loads((run / "run.json").read_text())
-    value["metadata"]["tower_launch"]["cluster"] = "other"
+    value["metadata"]["raven_launch"]["cluster"] = "other"
     write_json(run / "run.json", value)
     with pytest.raises(ValueError, match="launch identity changed"):
         projects.read_bound_json(binding, binding["planning_file"], key="planning", files=backend)
@@ -389,7 +389,7 @@ def test_auto_array_map_clear_is_respected_and_manual_map_is_not_overwritten(rep
 
 
 def test_bash_producer_reports_auto_link_metrics_shared_history_and_failed_attempt(tmp_path, backend):
-    from tower import research_reporting as reporting
+    from raven import research_reporting as reporting
     root = tmp_path / "producer project"
     root.mkdir()
     (root / "batch.sh").write_text("#!/bin/bash\n#SBATCH --job-name=different-scheduler-name\necho measured\n")
@@ -421,7 +421,7 @@ def test_bash_producer_reports_auto_link_metrics_shared_history_and_failed_attem
 
 
 def test_ssh_artifact_browser_uses_same_confined_pager(reported_project):
-    from tower.artifact_pages import read_page
+    from raven.artifact_pages import read_page
     root, run = reported_project
     files = RemoteFiles(IsolatedSSH())
     selected = projects.select_run(str(root), run.name, files=files)
@@ -449,11 +449,11 @@ def test_endpoint_change_during_remote_read_never_stamps_result_with_new_host(re
 
 
 def test_array_parent_picker_explicitly_labels_submission_receipt(reported_project):
-    from tower import cli, layout
+    from raven import cli, layout
     root, run = reported_project
     value = json.loads((run / "run.json").read_text())
     value.update(job_id="901", state="SUBMITTED")
-    value["metadata"]["tower_launch"].update(array_submission_receipt=True, array_id="901", array_index=None)
+    value["metadata"]["raven_launch"].update(array_submission_receipt=True, array_id="901", array_index=None)
     write_json(run / "run.json", value)
     session = cli.build(cli.parse(["--fake", "--no-state", "--no-plugins"]), Config())
     try:
@@ -474,7 +474,7 @@ def test_unknown_scheduler_cluster_still_rejects_launch_swap_during_discovery(re
     original = projects.select_run
     def changed(*args, **kwargs):
         value = json.loads((run / "run.json").read_text())
-        value["metadata"]["tower_launch"]["cluster"] = "other"
+        value["metadata"]["raven_launch"]["cluster"] = "other"
         write_json(run / "run.json", value)
         return original(*args, **kwargs)
     monkeypatch.setattr(projects, "select_run", changed)

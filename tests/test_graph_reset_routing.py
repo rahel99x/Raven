@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, clock, layout as L, metric_live as M, screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import chart_interaction as C, clock, layout as L, metric_live as M, screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,
@@ -139,7 +139,7 @@ def test_right_reset_ends_chart_capture_and_delayed_release_cannot_zoom_or_selec
 
 
 def test_jobs_divider_capture_is_cancelled_before_reset_and_delayed_release(dashboard):
-    from tower import pane_drag
+    from raven import pane_drag
     d, app = dashboard, dashboard.app
     d.draw("jobs")
     chosen = _plots(d)[0]
@@ -160,7 +160,7 @@ def test_jobs_divider_capture_is_cancelled_before_reset_and_delayed_release(dash
 
 
 def test_jobs_rate_slider_capture_ends_before_graph_reset_and_delayed_release(dashboard):
-    from tower import toolbar
+    from raven import toolbar
     d, app = dashboard, dashboard.app
     d.draw("jobs")
     chosen = _plots(d)[0]
@@ -221,7 +221,7 @@ def test_right_click_cannot_reset_graph_through_dropdown_or_other_modal(dashboar
 
 
 def test_jobs_outside_graph_clear_cancels_divider_without_a_delayed_resize(dashboard):
-    from tower import pane_drag
+    from raven import pane_drag
     d, app = dashboard, dashboard.app
     d.draw("jobs")
     divider = next(value for value in pane_drag.initialize(app)["dividers"].values()
@@ -247,7 +247,7 @@ def test_jobs_outside_graph_clear_cancels_divider_without_a_delayed_resize(dashb
 
 @pytest.mark.parametrize("tab", ["jobs", "history"])
 def test_outside_graph_clear_cancels_update_slider_without_delayed_rate_change(dashboard, tab):
-    from tower import toolbar
+    from raven import toolbar
     d, app = dashboard, dashboard.app
     d.draw(tab)
     state = toolbar.initialize(app)

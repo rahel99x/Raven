@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import array_disclosure as D, arrays, job_panels as J, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import array_disclosure as D, arrays, job_panels as J, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def test_cohort_arrows_open_and_close_once_without_navigating_or_starting_work(d
     views.set_ascii(ascii_)
     rows, hits = dashboard.render()
     y, x, _, descriptor = button(hits, "52")
-    assert L.row_text(rows[y])[x] == ("v" if ascii_ else "▾")
+    assert L.row_text(rows[y])[x] == (">" if ascii_ else "▸")
     assert descriptor["action"] == ("command", "array open 52 ''")
     before = app.tab, app.mode, app.selected_id, app.research_job_id
     app.click(y, x, hits, button="press")
@@ -72,7 +72,7 @@ def test_cohort_arrows_open_and_close_once_without_navigating_or_starting_work(d
     assert app.research_array_open and app.research_task_offset == 24
     rows, hits = dashboard.render()
     y, x, _, descriptor = button(hits, "52")
-    assert L.row_text(rows[y])[x] == (">" if ascii_ else "▸")
+    assert L.row_text(rows[y])[x] == ("v" if ascii_ else "▾")
     assert descriptor["action"] == ("command", "array close 52 ''")
     app.click(y, x, hits, button="press")
     app.click(y, x, hits, button="release")
@@ -108,7 +108,7 @@ def test_inline_disclosure_is_exact_and_keeps_full_research_state_separate(dashb
     before = app.research_view, app.research_array_open, app.research_task_offset, app.cursor["research"]
     rows, hits = dashboard.render()
     y, x, _, descriptor = button(hits, "52", inline=True)
-    assert L.row_text(rows[y])[x] == ("v" if ascii_ else "▾")
+    assert L.row_text(rows[y])[x] == (">" if ascii_ else "▸")
     selected = app.selected_id
     app.click(y, x, hits, button="press")
     app.click(y, x, hits, button="release")
@@ -119,7 +119,7 @@ def test_inline_disclosure_is_exact_and_keeps_full_research_state_separate(dashb
     assert (app.research_view, app.research_array_open, app.research_task_offset, app.cursor["research"]) == before
     rows, hits = dashboard.render()
     y, x, _, _ = button(hits, "52", inline=True)
-    assert L.row_text(rows[y])[x] == (">" if ascii_ else "▸")
+    assert L.row_text(rows[y])[x] == ("v" if ascii_ else "▾")
     assert "task page / offset" in L.to_text(rows, 240)
     app.click(y, x, hits)
     dashboard.render()

@@ -13,7 +13,7 @@
     "cgroup_memory_max": "34359738368",
     "affinity_cpus": 5
   },
-  "child_python": "/workspace/Slurm-Tower/.venv/bin/python",
+  "child_python": "/workspace/Raven/.venv/bin/python",
   "terminal": {
     "width": 160,
     "height": 48,

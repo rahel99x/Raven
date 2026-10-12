@@ -4,8 +4,8 @@ import curses
 
 import pytest
 
-from tower import chart_interaction, cli, clock, metric_live, screen
-from tower.config import Config
+from raven import chart_interaction, cli, clock, metric_live, screen
+from raven.config import Config
 
 
 class PointerWindow:
@@ -43,6 +43,8 @@ def native(monkeypatch):
     session = cli.build(cli.parse(["--fake", "--no-state", "--no-plugins"]), cfg)
     session.sampler.src_jobs()
     job = next(job for job in session.store.jobs if not job.pending and job.gpus)
+    ordered_ids = [row["id"] for row in session.views.job_rows(session.store.snapshot(), session.app)]
+    session.app.cursor["jobs"] = ordered_ids.index(job.id)
     session.app.selected_id = session.app.analytics_job = job.id
     session.app.project_state["auto_suppressed"] = job.id
     for _ in range(4):

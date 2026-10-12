@@ -4,7 +4,7 @@ import copy
 
 import pytest
 
-from tower import layout as L, raven_ui as R, terminal_ui as T
+from raven import layout as L, raven_ui as R, terminal_ui as T
 
 
 class Manager:
@@ -198,7 +198,7 @@ def test_reuse_requires_allocation_id_not_task_or_command(job_id):
 
 
 def test_real_manager_plan_review_paints_charging_and_ownership_without_process(tmp_path):
-    from tower.raven_allocation import AllocationManager
+    from raven.raven_allocation import AllocationManager
     config={'site':{'kind':'slurm','cluster_id':'test-cluster'},'execution':{'heavy_target':'slurm'},
         'connection':{'transport':'local'},'allocation':{'account':'research','partition':'compute',
         'nodes':1,'tasks':1,'cpus_per_task':2,'memory_mib':512,'walltime_seconds':30},
@@ -262,7 +262,7 @@ def test_reuse_result_never_reopens_closed_modal():
 
 
 def test_modal_buttons_publish_graph_actions():
-    from tower import interaction
+    from raven import interaction
     a=app(); R.run_command(a,['raven','status'])
     overlays=render(a)
     interaction.publish(a,[[(' '*a.width,'')]]*a.height,[],a.width,a.height,overlays=overlays)
@@ -271,15 +271,15 @@ def test_modal_buttons_publish_graph_actions():
 
 
 def test_palette_and_toolbar_share_allocation_commands():
-    from tower.command_registry import toolbar_controls
+    from raven.command_registry import toolbar_controls
     controls=toolbar_controls('View')
     for action in ('status','request','inspect','cancel','release'):
         assert any(item.command=='raven '+action for item in controls)
 
 
 def test_unobserved_empty_queue_differs_from_observed_empty_queue(monkeypatch):
-    from tower.model import Health
-    from tower import clock
+    from raven.model import Health
+    from raven import clock
     a=app(); monkeypatch.setattr(clock,'now',lambda:1000)
     snap={'jobs':[],'finished':[],'health':{'jobs':Health('jobs'),'finished':Health('finished')}}
     assert 'Waiting for governed queue/history observation' in R.observation_notice(a,snap)
@@ -298,7 +298,7 @@ def test_disabled_desktop_slurm_is_unavailable_not_waiting():
 
 
 def test_disabled_source_and_legacy_observation_notices():
-    from tower.model import Health
+    from raven.model import Health
     a=app()
     notice=R.observation_notice(a,{'health':{'jobs':Health('jobs',enabled=False),'finished':Health('finished',last_ok=1)}})
     assert 'Queue unavailable: source disabled' in notice and 'Waiting' not in notice
@@ -309,10 +309,10 @@ def test_disabled_source_and_legacy_observation_notices():
 @pytest.mark.parametrize('width',[40,80,140])
 @pytest.mark.parametrize('tab',['jobs','history'])
 def test_observation_banner_reuses_header_row_without_moving_tab_hits(width,tab):
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Health,Store
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Health,Store
+    from raven.views import Views
     cfg=Config(); cfg.data['raven']={'site':{'kind':'slurm'},'collection':{'slurm_enabled':True}}
     store=Store(persist=False)
     a=App(store,None,None,cfg,'researcher',ascii_=True)

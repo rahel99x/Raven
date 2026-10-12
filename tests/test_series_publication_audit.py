@@ -8,13 +8,13 @@ import weakref
 
 import pytest
 
-from tower import native_series_cache as N
-from tower import series_archive as A
-from tower import series_publication as P
-from tower.model import Job, Store
-from tower.report import _ReportStore
-from tower.series_cache_limits import MAX_SERIES_CACHE_ENTRIES
-from tower.views import _prepare_native_metrics
+from raven import native_series_cache as N
+from raven import series_archive as A
+from raven import series_publication as P
+from raven.model import Job, Store
+from raven.report import _ReportStore
+from raven.series_cache_limits import MAX_SERIES_CACHE_ENTRIES
+from raven.views import _prepare_native_metrics
 
 
 def sample(value=24.0, timestamp=1.0):

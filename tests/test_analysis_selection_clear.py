@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, job_selection as S, layout as L, screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import analysis_ui as A, chart_interaction as C, job_selection as S, layout as L, screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,
@@ -129,7 +129,7 @@ def test_exact_event_row_click_resumes_only_local_cursor(dashboard, monkeypatch,
 
 @pytest.mark.parametrize("modal", ["timeline", "chart_events"])
 def test_cleared_event_graph_focus_cannot_bypass_hidden_enter_guard(dashboard, monkeypatch, modal):
-    from tower import interaction
+    from raven import interaction
     app, _, store = dashboard
     app.tab = "analytics"
     app.analysis_state["modal"] = modal
@@ -206,7 +206,7 @@ def test_local_dialog_handler_leaves_toolbar_overlay_ownership(dashboard, toolba
 
 
 def test_research_evidence_clear_hides_rows_and_enter_until_local_arrow(dashboard, monkeypatch):
-    from tower.research_views import render
+    from raven.research_views import render
     app, views, store = dashboard
     app.mode, app.tab, app.research_view = "main", "research", "evidence"
     result = {"evidence": [{"id": "e1", "source": "log", "text": "failure", "path": "/logs/job-7.log", "line": 3}]}
@@ -218,7 +218,7 @@ def test_research_evidence_clear_hides_rows_and_enter_until_local_arrow(dashboar
     rows, _ = render(views, store.snapshot(), app, 120, 40)
     assert not any("rev" in style for row in rows for _, style in row)
     opened = []
-    from tower import log_workbench
+    from raven import log_workbench
     monkeypatch.setattr(log_workbench, "open_citation", lambda *args: opened.append(args[1]))
     A.handle_key(app, "enter")
     assert opened == []
@@ -229,8 +229,8 @@ def test_research_evidence_clear_hides_rows_and_enter_until_local_arrow(dashboar
 
 
 def test_research_array_clear_hides_cohort_and_task_selection_until_deliberate_arrow(dashboard):
-    from tower import arrays
-    from tower.research_views import render
+    from raven import arrays
+    from raven.research_views import render
     app, views, store = dashboard
     app.mode, app.tab, app.research_view = "main", "research", "arrays"
     records = [Job(f"{base}_{index}", f"array-{base}", "cpu", "RUNNING")

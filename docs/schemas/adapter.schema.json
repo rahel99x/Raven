@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/adapter.schema.json",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/adapter.schema.json",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.adapter/v1"
+      "const": "raven.adapter/v1"
     },
     "id": {
       "type": "string",
@@ -17,7 +17,7 @@
       "maxLength": 256
     },
     "protocol": {
-      "const": "tower.adapter-protocol/v1"
+      "const": "raven.adapter-protocol/v1"
     },
     "argv": {
       "type": "array",

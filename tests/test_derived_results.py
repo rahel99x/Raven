@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from tower.derived_results import ResultCache, ResultKey, StaleResult
+from raven.derived_results import ResultCache, ResultKey, StaleResult
 
 
 def key(**changes):

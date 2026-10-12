@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, charts, layout as L, palette as P, selector_glyphs as G
-from tower.interaction import Rect
+from raven import chart_interaction as C, charts, layout as L, palette as P, selector_glyphs as G
+from raven.interaction import Rect
 
 
 @pytest.fixture

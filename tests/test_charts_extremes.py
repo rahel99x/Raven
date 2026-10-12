@@ -5,8 +5,8 @@ import sys
 
 import pytest
 
-from tower import charts
-from tower.layout import Glyphs, row_text, vlen
+from raven import charts
+from raven.layout import Glyphs, row_text, vlen
 
 
 MAX = sys.float_info.max

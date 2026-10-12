@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from tower.record import ReplayBackend
-from tower.slurm import CommandError, GROUP_FMT, JOB_FMT, SACCT_FIELDS, Slurm
+from raven.record import ReplayBackend
+from raven.slurm import CommandError, GROUP_FMT, JOB_FMT, SACCT_FIELDS, Slurm
 
 
 # Literal released formats keep these compatibility checks independent of the

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import screen
+from raven import screen
 
 
 MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,

@@ -3,10 +3,10 @@ from copy import deepcopy
 
 import pytest
 
-from tower import chart_interaction as Charts, column_resize as Columns, group_queue_drag as Queue
-from tower import job_groups as Groups, job_group_drag as Membership, job_selection as Selection
-from tower import table_ui
-from tower.model import Job
+from raven import chart_interaction as Charts, column_resize as Columns, group_queue_drag as Queue
+from raven import job_groups as Groups, job_group_drag as Membership, job_selection as Selection
+from raven import table_ui
+from raven.model import Job
 from test_group_queue_drag import dashboard, draw, grip, row, send
 
 
@@ -84,12 +84,12 @@ def test_dynamic_grouping_selection_resize_graph_and_stale_queue_sequence(dashbo
     redraw()
     send(ui, row(ui, "6"), "press", route, shift=True)
     send(ui, row(ui, "6"), "release", route, shift=True)
-    assert app.marks == {"3", "4", "5", "6"}
+    assert app.marks == {"3", "6"}
     redraw()
     send(ui, row(ui, "6"), "press", route)
     send(ui, row(ui, "3"), "drag", route)
     send(ui, row(ui, "3"), "release", route)
-    assert app.marks == {"3", "4", "5", "6"} and not Queue.active(app)
+    assert app.marks == {"3", "6"} and not Queue.active(app)
 
     # The explicit membership gesture must not be mistaken for queue ordering.
     redraw()
@@ -98,7 +98,8 @@ def test_dynamic_grouping_selection_resize_graph_and_stale_queue_sequence(dashbo
     send(ui, row(ui, "7"), "drag", route, alt=True)
     send(ui, row(ui, "7"), "release", route, alt=True)
     redraw()
-    assert index().for_job("3").members == ("3", "4", "5", "6", "7", "8")
+    assert index().for_job("3").members == ("3", "6", "7", "8")
+    assert index().for_job("4").members == ("4", "5")
     assert not app.marks and not ui.calls
 
     send(ui, row(ui, "1"), "press", route)
@@ -164,7 +165,7 @@ def test_dynamic_grouping_selection_resize_graph_and_stale_queue_sequence(dashbo
         guard.setattr(ui.store, "snapshot", lambda: pytest.fail("Queue motion copied Store"))
         send(ui, target_point, "drag", route)
     assert Queue.active(app) and not Charts.active(app)
-    ui.store.jobs[:] = [job for job in ui.store.jobs if job.id not in ("10", "11", "12", "13")]
+    ui.store.jobs[:] = [job for job in ui.store.jobs if job.id not in ("9", "10", "11", "12", "13")]
     redraw()
     assert not Queue.active(app)
     send(ui, target_point, "release", route)

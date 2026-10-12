@@ -4,12 +4,12 @@ import json
 
 import pytest
 
-from tower import clipboard, layout as L, operations, ops_ui, telemetry_ui, text_selection
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.screen import _FrameCache
-from tower.views import Views
+from raven import clipboard, layout as L, operations, ops_ui, telemetry_ui, text_selection
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.screen import _FrameCache
+from raven.views import Views
 
 
 @pytest.fixture(params=["operations", "telemetry"])

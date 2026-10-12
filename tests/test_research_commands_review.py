@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from tower import cli, research_commands
-from tower.config import Config
-from tower.research import ResearchHub
-from tower.submission import prepare
+from raven import cli, research_commands
+from raven.config import Config
+from raven.research import ResearchHub
+from raven.submission import prepare
 
 
 @pytest.fixture(autouse=True)
@@ -317,7 +317,7 @@ def test_workbench_options_cannot_steal_sbatch_option_values(batch_files, tokens
     (["--comment", "--config=/untrusted/config"], "config", None),
     (["--output", "--record=/untrusted/recording"], "record", ""),
 ])
-def test_global_tower_options_cannot_steal_sbatch_option_values(batch_files, tokens, attribute, default):
+def test_global_raven_options_cannot_steal_sbatch_option_values(batch_files, tokens, attribute, default):
     args = cli.parse(["run", "submit", str(batch_files["script"]), *tokens])
     assert getattr(args, attribute) == default
     assert shlex.split(args.run) == ["submit", str(batch_files["script"]), *tokens]
@@ -325,7 +325,7 @@ def test_global_tower_options_cannot_steal_sbatch_option_values(batch_files, tok
 
 @pytest.mark.parametrize("literal,attribute,default", [("--yes", "yes", False), ("--fake", "fake", False),
                                                        ("--record=/untrusted/path", "record", "")])
-def test_command_separator_prevents_extraction_of_literal_tower_flags(batch_files, literal, attribute, default):
+def test_command_separator_prevents_extraction_of_literal_raven_flags(batch_files, literal, attribute, default):
     # Everything after -- belongs to the command; --yes must never become an
     # implicit confirmation for a literal, unsupported batch argument.
     args = cli.parse(["run", "submit", str(batch_files["script"]), "--", literal])
@@ -341,7 +341,7 @@ def test_command_separator_prevents_extraction_of_literal_tower_flags(batch_file
     (["passport", "capture", "batch.sh", "--input", "--record=/tmp/a-literal-input"], "record", ""),
     (["passport", "capture", "batch.sh", "--env", "--yes"], "yes", False),
 ])
-def test_nonbatch_research_command_values_cannot_be_extracted_as_tower_flags(words, attribute, default):
+def test_nonbatch_research_command_values_cannot_be_extracted_as_raven_flags(words, attribute, default):
     args = cli.parse(["run", *words])
     assert getattr(args, attribute) == default
     assert shlex.split(args.run) == words
@@ -373,7 +373,7 @@ def test_cli_prepare_preserves_all_safe_batch_flag_boundaries_without_backend(ba
 @pytest.mark.parametrize("mode", ["host", "profile", "replay"])
 def test_remote_and_replay_offline_refusal_precedes_session_or_file_io(batch_files, monkeypatch, capsys, mode):
     monkeypatch.setattr(cli, "build", lambda *a: pytest.fail("offline refusal constructed a scheduler session"))
-    from tower import submission
+    from raven import submission
     monkeypatch.setattr(submission, "_read_script", lambda *a: pytest.fail("remote offline command read local script"))
     args = ["--config", str(batch_files["config"])]
     if mode == "host":

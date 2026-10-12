@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.recommendation-review/v1"
+      "const": "raven.recommendation-review/v1"
     },
     "contract": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

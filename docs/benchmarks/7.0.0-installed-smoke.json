@@ -3,7 +3,7 @@
   "core_without_dependencies": true,
   "checks": [
     {
-      "launcher": "tower",
+      "launcher": "raven",
       "args": [
         "--version"
       ],
@@ -46,7 +46,7 @@
       "exit": 0
     },
     {
-      "launcher": "tower",
+      "launcher": "raven",
       "args": [
         "--config",
         "/tmp/raven-final-smoke-iou8g9dh/config.json",
@@ -74,7 +74,7 @@
     }
   ],
   "terminal_selftest": {
-    "schema": "tower.terminal-selftest/v1",
+    "schema": "raven.terminal-selftest/v1",
     "scope": "local PTY and embedded engine",
     "scheduler_contacted": false,
     "checks": [

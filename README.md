@@ -1,183 +1,236 @@
-# Project Raven
+# Raven
 
-**Monitor jobs, inspect evidence, and run admitted analysis in your terminal.**
+Raven is a terminal workbench for Slurm-based research. It combines job
+monitoring, resource graphs, logs, project evidence, and an embedded shell with
+governed data collection and explicit ownership of analysis compute.
 
-Project Raven is the next release of Slurm Tower. It retains the terminal
-workspaces, job groups, resource graphs, logs, research reports, and embedded
-shell. It adds governed collection and explicit ownership of analysis compute.
-Unicode and ASCII modes remain available. Python 3.10 or later is required.
+The core uses Python's standard library on POSIX systems. Python 3.10 or later
+is required. Unicode and ASCII interfaces are available; the embedded terminal
+uses optional `pyte` and `wcwidth` dependencies.
 
-- **`ravenl` starts Light.** It opens the interface without requesting compute.
-- **`ravenh` requests Heavy.** It waits for a verified worker before loading the
-  dashboard. On Slurm, the worker must run in the requested allocation.
-- **`tower` remains a compatibility command.** It starts the governed Light
-  interface. Existing project files and `tower.*` evidence schemas keep their IDs.
+| Command | Behavior |
+| --- | --- |
+| `ravenl` | Opens Light without requesting compute. |
+| `ravenh` | Requests Heavy and waits for a verified worker before loading the interface. On Slurm, the worker runs in the requested allocation. |
+| `raven` | Opens the governed Light interface; equivalent to `ravenl`. |
 
-The Python distribution remains **`slurm-tower`**. Install or upgrade that one
-package. The public product name is Project Raven; the Python import is `tower`.
+The Python distribution and import namespace are **`raven`**. Current evidence
+schemas use the `raven.*` namespace. Install from this repository or a wheel
+built from it; an identically named package on an index is not this implementation.
 
-[Raven runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
-[Delivery and qualification](docs/raven/implementation.md) ·
-[Project integration](docs/PROJECT_STANDARD.md) · [Release history](CHANGELOG.md)
+[Installation](docs/INSTALLATION.md) · [Configuration migration](docs/MIGRATION.md) ·
+[Runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
+[Implementation status](docs/raven/implementation.md) · [Validation](docs/raven/validation.md)
 
-## Install and try the interface
+## Installation
+
+Install Python 3.10+ and `pipx` through your operating system's package manager,
+then install from a checkout:
 
 ```bash
-git clone https://github.com/rahel99x/Slurm-Tower.git
-cd Slurm-Tower
+git clone https://github.com/rahel99x/Raven.git
+cd Raven
+pipx install '.[terminal]'
+ravenl --version
+ravenl doctor
+ravenh --plan
+```
+
+Pipx installs the commands in an isolated application environment. Run them
+from any directory without activating a virtual environment or adding aliases.
+Use `pipx install .` for the core without the embedded terminal.
+
+The executable directory must be on your shell's `PATH`; user installations
+normally use `~/.local/bin`. The [installation guide](docs/INSTALLATION.md)
+covers other existing `PATH` directories, administrator installation, and
+updates without shell-startup edits.
+
+For an offline demonstration from the source checkout:
+
+```bash
 python3 scripts/setup.py --mode demo
 ./scripts/ravenl --fake --no-state --no-plugins
 ```
 
-The demonstration uses simulated Slurm data. It does not submit jobs. To install
-console commands in a virtual environment, use `python -m pip install .`.
-Add `[terminal]` to install the optional embedded-terminal dependencies:
-`python -m pip install '.[terminal]'`.
+The demonstration uses simulated jobs and submits no work. Source setup
+prepares the checkout's launchers; it does not expose commands on `PATH`.
+After updating a pipx installation's original checkout, run
+`pipx reinstall raven`. User configuration and state remain separate.
 
-## Select the execution environment
+## Configuration
 
-For a cluster or a workstation with Slurm installed:
-
-```bash
-./scripts/ravenl --config docs/examples/raven/slurm.json
-./scripts/ravenl --config docs/examples/raven/slurm.json config explain
-./scripts/ravenh --config docs/examples/raven/slurm.json --plan
-```
-
-Copy and edit the example first. Set the account, partition, time limit, cluster
-identity, and worker Python path for your site. `--plan` prints the request and
-makes no allocation. Remove `--plan` to request the reviewed configuration.
-A profile is a starting configuration, not a site's approval or qualification.
-
-For a standalone Linux desktop **without Slurm**, select it explicitly:
+A fresh installation defaults to local Slurm. Create persistent defaults once:
 
 ```bash
-./scripts/ravenl --site desktop
-./scripts/ravenh --site desktop --plan
-./scripts/ravenh --site desktop
+ravenl --write-config
+ravenl config explain
+ravenh --plan
 ```
 
-A missing `squeue` command never changes a cluster profile into desktop Heavy.
-The portable desktop adapter reports its process limits. A policy that requires
-hard aggregate cgroup limits is rejected if those limits cannot be enforced.
+Both launchers read `~/.config/raven/config.json`, or
+`$XDG_CONFIG_HOME/raven/config.json`. The write command preserves existing
+files. Review the cluster identity, account, partition, QOS, resource request,
+and worker Python path for your site before starting Heavy. The worker must
+have the same Raven release available on the selected compute nodes.
 
-## Use compute and terminals
+For a standalone machine **without Slurm**, select the desktop adapter
+explicitly:
 
-Open the **Light/Heavy** toolbar control or **View → Compute allocation** to
-inspect, request, cancel, or release compute. Pending and draining workers do
-not count as Heavy. **Single/Multi** remains a separate background-worker
-concurrency control. More compute does not grant faster scheduler polling.
+```bash
+ravenl --site desktop
+ravenh --site desktop --plan
+```
 
-The **Details | Terminal** buttons select the secondary pane. Both use the same
-focus indicator, including narrow layouts and panes with scroll controls.
-Press **Ctrl-]**, then **t**, to return terminal input to the dashboard.
-Allocation changes do not move an existing shell or redirect queued paste.
-See the [terminal guide](docs/guides/terminal-fusion.md).
+After reviewing a plan, `ravenh` requests the selected compute. A missing Slurm
+command does not select standalone execution. The desktop adapter reports its
+available process limits and rejects policies that require unavailable hard
+aggregate enforcement. See the [runbook](docs/raven/README.md#choose-a-site)
+for local, SSH, and site-policy configuration.
 
-The starter Slurm policy uses a 60-second queue interval and a 300-second history
-interval. The refresh control reports actual requested and admitted intervals.
-Automatic GPU steps and weather probes are disabled. Existing telemetry and
-project metric files remain available. Read [collection and limits](docs/raven/README.md#collection-and-retention).
+## Configuration migration
 
-## Choose a task
+The Bash helpers preview a copy-only migration from a previous installation.
+Select its configuration directory explicitly, then save and review a plan:
+
+```bash
+raven_migration_dir="$(mktemp -d)"
+bash scripts/migrate-config.sh --source-config /path/to/previous-config \
+  --save-plan "$raven_migration_dir/plan.json"
+cat -- "$raven_migration_dir/plan.json"
+```
+
+Review the source paths, destinations, and omissions before applying that plan:
+
+```bash
+bash scripts/migrate-config.sh --apply --plan-file "$raven_migration_dir/plan.json"
+```
+
+The migration preserves original files and existing Raven configuration.
+State and history imports are optional. The [migration guide](docs/MIGRATION.md)
+covers custom paths, retained local Slurm profiles, restart recovery, and
+rollback with `scripts/rollback-config.sh`. Previous package imports and evidence
+schema identifiers require explicit conversion before use by this implementation.
+
+## Execution model
+
+| Component | Responsibility |
+| --- | --- |
+| Light interface | Displays observations, evidence, controls, and terminal sessions without requesting compute. |
+| Collection owner | Admits source requests under interval, rate, concurrency, and retention limits. |
+| Heavy worker | Executes supported admitted tasks after target and resource ownership are verified. |
+| Project evidence | Associates logs, metrics, results, and artifacts with an exact job attempt. |
+
+Compute admission and collection permission are independent. A larger
+allocation does not increase scheduler polling rates. The starter Slurm policy
+uses a 60-second queue interval and a 300-second history interval; controls
+report both requested and admitted intervals. Automatic GPU steps and weather
+probes are disabled. Existing telemetry and project metric files remain
+available.
+
+The Light/Heavy toolbar control and **View → Compute allocation** expose
+allocation review, request, cancellation, and release. Pending and draining
+workers do not count as Heavy. **Single/Multi** separately controls background
+worker concurrency. Supported execution paths and deferred actions are listed
+in the [execution contracts](docs/raven/execution-contracts.md).
+
+Use **Setup** in the toolbar for embedded Research and Analytics setup guides,
+project connection, and Heavy allocation preferences. The
+[Setup guide](docs/guides/setup.md) covers account discovery, personal and lab
+billing, and local Slurm defaults. Saving preferences is separate from requesting
+compute.
+
+Job lists offer saved **Grouped**, **Sequential**, **Sort Min**, and **Sort Max**
+choices, including History and the browsers beside Research and Analytics. See
+[batch views](docs/guides/batch-launches.md) for ordering, readable group names,
+and selection behavior.
+
+## Workflows
 
 Open **File → Research and cluster operations**, or enter `:workbench`.
-Task controls select **Run**, **Investigate**, **Compare**, **Results** or
-**Connect**. `:workbench all` shows the complete operation catalog.
-Use **Pin tool** or press `p` on a tool to save it. Open those tools with
-`:workbench pinned`; each opening uses the current job and project context.
+Select Run, Investigate, Compare, Results, or Connect. `:workbench all` opens
+the operation catalog; `:workbench pinned` opens your saved tools in the
+current project and job context.
 
-| Goal | Start here | Guide |
-| --- | --- | --- |
-| Check a running job | Select it in Jobs, then use its Details controls | [Workspaces and advice](docs/guides/adaptive-workspaces.md) |
-| Diagnose a failure | Select the exact attempt in Recents or History; open Logs or Investigate | [Log controls](docs/guides/log-view.md) |
-| Rerun one cancelled job | Right-click its row in Recents or History; inspect **Rerun cancelled job**, then review and confirm | [Exact retained rerun](docs/guides/operations-cluster.md#rerun-one-cancelled-job) |
-| Follow an investigation | Open `:ops investigation-workflow`; inspect evidence, review a diagnostic, then inspect its results | [Investigation workflow](docs/guides/scientific-investigation.md) |
-| Connect metrics and outputs | Enter `:projectguide /path/to/project`; validate an exact sample and copy its Bash hooks | [Project connection](docs/guides/project-connection.md) |
-| Compare performance and scientific results | Use Compare, Analytics or a declared investigation manifest | [Scientific investigation](docs/guides/scientific-investigation.md) |
-| Inspect recorded stacks | Select Trace in job Details; attach a prepared recording or inspect supported capture options | [Stack tracing](docs/guides/stack-tracing.md) |
-| Work in a shell beside the data | Select Terminal, then use Tools for sessions, copy mode, diagnostics and evidence | [Embedded terminal](docs/guides/terminal-fusion.md) |
-| Prepare a change | Inspect the operation, review its exact scope, then confirm Apply | [Operation catalog](docs/guides/operations.md) |
+| Task | Guide |
+| --- | --- |
+| Inspect running jobs, history, and resource views | [Adaptive workspaces](docs/guides/adaptive-workspaces.md) |
+| Read full errors, dismiss notices, and review suggested fixes | [Notifications](docs/guides/notifications.md) |
+| Diagnose an exact failed or cancelled attempt | [Logs](docs/guides/log-view.md) · [Retained rerun](docs/guides/operations-cluster.md#rerun-one-cancelled-job) |
+| Review investigations and compare results | [Scientific investigation](docs/guides/scientific-investigation.md) |
+| Add application reporting on a workstation or HPC cluster | [Reporting V2](docs/PROJECT_REPORTING_V2.md) |
+| Attach project metrics, logs, and artifacts | [Project connection](docs/guides/project-connection.md) |
+| Work in an embedded shell | [Terminal guide](docs/guides/terminal-fusion.md) |
+| Inspect prepared Python or native recordings | [Stack tracing](docs/guides/stack-tracing.md) |
+| Review and apply supported operations | [Operation catalog](docs/guides/operations.md) |
 
-Mouse and keyboard controls use the same selected job context. Tables support
-cascading sorts, column resizing, range selection, manual and inferred groups,
-and scrollbars. Graphs support bounded zoom, independent display and polling
-controls, and right-click reset. Read the [complete controls](docs/CONTROLS.md)
-and [pointer guide](docs/guides/pointer-navigation.md).
+The **Details | Terminal** controls select the secondary pane. Press **Ctrl-]**,
+then **t**, to return terminal input to Raven. Allocation changes do not move an
+existing shell. Tables and graphs support mouse and keyboard navigation;
+[complete controls](docs/CONTROLS.md) describe selection, sorting, resizing,
+scrolling, and bounded graph zoom.
 
-## Publish project evidence
+## Project evidence
 
-Keep your current source layout. Add one execution directory per run attempt,
-with declared logs, metrics, results and artifacts. `tower report` can create and
-update those records from a Bash launcher without requiring application imports.
+Start with the [reporting V2 guide](docs/PROJECT_REPORTING_V2.md) to connect an
+existing application using a portable Bash launcher. It covers Linux, CARC,
+UCI HPC3, student and lab allocations, exact file formats, and every Research
+and Analytics data source. The application needs no Raven installation.
 
-```bash
-tower report --help
-tower report init --root /path/to/project
-```
-
-Use the [project standard](docs/PROJECT_STANDARD.md),
-[copyable template](examples/project-template/README.md), and
-[automation guide](docs/guides/research-automation.md). Exact job and attempt
-identities prevent a requeue or reused job number from inheriting another run's
-evidence. Tower reports missing data explicitly.
-
-## Advanced research and tracing
-
-The workbench includes evidence imports, capability and policy checks, reviewed
-external adapters, diagnostic trials, scientific acceptance and lineage,
-constrained simulation, application safe-point controls, and bounded field views.
-These features consume explicit contracts and supported formats. They do not
-infer missing scientific thresholds or replace arbitrary workflow engines.
-Use the [platform starter guide](examples/platform/README.md) for telemetry,
-portable evidence, adapters and private support bundles.
-Several managed Apply actions and external drivers remain deferred even with
-Heavy. Check the [execution contracts and supported paths](docs/raven/execution-contracts.md)
-before choosing a workflow.
-
-Prepared stack recording supports declared Python events and explicit native
-instrumentation. Late attachment provides only the supported current snapshot
-or recording history. There is no universal lossless debugger for every language,
-MPI implementation, or GPU. The interface reports coverage, gaps and limits;
-read the [implementation ledger](docs/FLAGSHIP_IMPLEMENTATION.md) before selecting
-an advanced adapter.
-
-## Validate and troubleshoot
+Keep your source layout and declare one execution directory per run attempt,
+including its logs, metrics, results, and artifacts. For Slurm environments with
+Raven installed, the reporting CLI can publish the same records:
 
 ```bash
-tower --doctor
-tower --gpu-check JOBID
-tower --ui-trace /tmp/tower-ui-trace.json
-python3 scripts/qualify_flagship.py --output /tmp/tower-qualification.json
+raven report --help
+raven report init --root /path/to/project
 ```
 
-The [Raven 7.0 validation record](docs/raven/validation.md) records current
-regression, compatibility, packaging, and local qualification results.
-The [6.1 consolidation guide](docs/guides/consolidation.md) describes the shared
-components, compatibility rules, and measured validation. The
-[6.1 validation record](docs/guides/consolidation-validation.md) records the
-regression and performance checks. The
-[6.0 validation record](docs/guides/flagship-validation.md) retains the preceding
-release's regression, interaction, packaging and performance results. The
-[qualification guide](docs/QUALIFICATION.md) separates passed offline checks
-from untested site, device and user-evaluation requirements. See
+The [project standard](docs/PROJECT_STANDARD.md) defines the unchanged V1 file
+contracts; the [automation guide](docs/guides/research-automation.md) covers the
+installed Slurm CLI. Exact job and attempt
+identities keep requeues and reused job numbers from inheriting another run's
+evidence. Missing data is reported explicitly.
+
+Advanced analysis, external adapters, runtime controls, and field views require
+their declared contracts and supported formats. They do not infer scientific
+acceptance thresholds. Prepared tracing has explicit coverage and gaps; it is
+not a universal lossless debugger. Consult the
+[implementation ledger](docs/FLAGSHIP_IMPLEMENTATION.md) and
+[platform examples](examples/platform/README.md) before selecting an adapter.
+
+## Validation
+
+```bash
+ravenl doctor
+ravenh --plan
+ravenl --fake --no-state --no-plugins --once --ascii
+```
+
+For development validation, follow [CONTRIBUTING.md](CONTRIBUTING.md): run the
+regression suite, check generated references and schemas, build distributions,
+and qualify the actual wheel outside the checkout.
+
+The [validation record](docs/raven/validation.md) reports regression,
+compatibility, packaging, terminal, and resource measurements with their test
+conditions. Local qualification does not establish production Slurm, device,
+or multi-node coverage. The [qualification guide](docs/QUALIFICATION.md)
+defines the additional target-system checks. See
 [GPU diagnosis](docs/guides/gpu-detection.md),
-[display performance](docs/guides/ui-performance.md),
-[administrator deployment](docs/ADMINISTRATION.md), and
-[compatibility policy](docs/SUPPORT_POLICY.md).
+[performance methods](docs/guides/ui-performance.md), and
+[administrator deployment](docs/ADMINISTRATION.md) for specific integrations.
 
-Terminal transport, scheduler/accounting cadence, site permissions and runtime
-instrumentation affect the available data. Display interpolation and faster reads
-do not create additional measurements. Optional tools require their documented
-versions and permissions.
+## Contributing
 
-## Contribute
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development and validation. Report
-security concerns through [SECURITY.md](SECURITY.md). Tower is
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for development and review requirements.
+Report security concerns through [SECURITY.md](SECURITY.md). Raven is
 [MIT licensed](LICENSE).
 
 The [research strategy](docs/research/flagship-strategy.md) records prior art and
-research hypotheses. Implemented mechanisms, external validation, scientific
-outcomes and novelty claims remain separate in the
-[implementation ledger](docs/FLAGSHIP_IMPLEMENTATION.md).
+research hypotheses. Implementation, measured outcomes, external validation,
+and novelty claims are distinguished in the implementation and validation
+records. Historical releases remain documented in [CHANGELOG.md](CHANGELOG.md).
+
+## Citation
+
+Use [CITATION.cff](CITATION.cff) to cite the software. Record the release version
+and commit used in an experiment so the implementation can be identified.

@@ -2,10 +2,122 @@
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Project reporting standard](../PROJECT_STANDARD.md) · [Adjustable workspaces](adaptive-workspaces.md)
 
-Tower uses available scheduler evidence and explicit launch markers to group related jobs.
-Grouping works with jobs that were submitted before Tower started and jobs that arrive during the session.
-It changes the displayed rows. Each member keeps its actual Slurm job ID, logs, measurements, and action target.
-You can also create a manual group from selected jobs or remove members from an existing group.
+Use automatic launch detection or explicit membership to organize related jobs.
+Raven can group jobs submitted before startup and jobs that arrive during the
+session. Grouping changes the displayed rows; each member retains its actual
+Slurm job ID, logs, measurements, and action target.
+
+The procedures assume default keybindings and focus in the relevant job list.
+You can create a manual group from marked jobs, move members between groups, or
+remove members. Scheduler actions require a separate review for exact job IDs.
+
+## Sort complete batches in Jobs
+
+Use **Sort Min** or **Sort Max** beside **Collapse All** in Jobs Main:
+
+| Mode | First comparison | Tie-breaker |
+| --- | --- | --- |
+| Sort Min, the initial default | Fewest running jobs first | Fewest total queue jobs first |
+| Sort Max | Most running jobs first | Fewest total queue jobs first |
+
+These controls sort complete batches. All visible members of an expanded batch
+remain together; closing it leaves one real representative in the same batch
+order. Column sorts control the order within a batch and resolve equal batch
+ranks. Ordinary pins apply within batches and between equally ranked batches.
+Independent jobs form batches of one. The selected mode is saved with
+the connection's ordinary UI preferences for later launches.
+
+Counts use the unfiltered queue before collapse, excluding historical records.
+Running includes Slurm's active startup/completion states. Pending dependency
+jobs contribute to the total but not the running count. Compressed array rows
+count as observed queue records, not an invented number of running tasks.
+Filtering or closing a batch therefore does not change its sort rank.
+
+Raven's current Heavy allocation stays at the top when its exact job identity
+is available, and is kept separate from scientific batches. A matching job name
+alone cannot identify that allocation. Filters still determine which jobs are
+visible. History and Recents retain their independent sorting controls.
+
+For a batch A with one running job and seven dependent jobs, and an independent
+running job B, both have one running job. B therefore precedes the eight-job
+batch in either mode. A's visible members remain contiguous when expanded.
+
+The command equivalents are `:grouping sort-min` and `:grouping sort-max`.
+These are display preferences; they do not change Slurm priority, dependencies,
+or the order in which the scheduler starts jobs. Disabling state persistence
+also disables saving the selection between launches.
+
+## Apply grouping and sorting in other job lists
+
+**Grouped**, **Sequential**, **Sort Min**, and **Sort Max** are available in
+Jobs, Recents, History, Group account jobs, the Advisor job list, and the job
+browsers beside Analytics, Research, Logs, and Dependencies. Narrow panes use
+shorter labels. Scientific tables, charts, and dependency trees retain their
+domain-specific ordering.
+
+Each list saves its own choices. Jobs starts in Grouped with Sort Min. Other
+lists initially retain their existing chronological or column order while
+keeping grouped batches contiguous. Selecting Sort Min or Sort Max enables
+Grouped and applies the batch ranking above. Selecting Grouped or Sequential
+in those lists clears that additional rank; Sequential exposes every admitted
+record without collapsed headers. Jobs retains its saved Min/Max preference
+for the next grouped view.
+
+Batch counts use the complete observed queue in Jobs and Group. History,
+Recents, browsers, and Advisor count only records already admitted to that
+list; changing a display control does not fetch missing historical siblings.
+Column sorts order members within batches and break ties between batches.
+
+Command examples:
+
+```text
+:joblist history sort-max
+:joblist group sequential
+:joblist recent sort-min
+:joblist history:research grouped
+```
+
+The available contexts are `jobs`, `recent`, `history`, `group`,
+`analytics:advisor`, `history:analytics`, `history:research`, `history:log`, and
+`history:deps`. The four actions are `grouped`, `sequential`, `sort-min`, and
+`sort-max`.
+
+## Choose Grouped or Sequential Recents
+
+Use **Grouped** or **Sequential** on the Recents divider. The choice is saved
+with the connection's UI preferences; Grouped is the initial default.
+
+| View | Presentation |
+| --- | --- |
+| Grouped | Keep each batch's recent jobs together. The batch with the newest completion appears first, with its members newest first. Expand or collapse its arrow to inspect individual jobs. |
+| Sequential | Show every admitted recent job as an individual row, newest completion first, without group headers or hidden members. |
+
+As jobs complete, fail, or are cancelled, their confirmed records move into
+Recents. Grouped reuses retained launch evidence to place them with related
+jobs; it does not treat similar names alone as proof of a shared batch.
+An active job that disappears from the queue remains explicitly awaiting
+accounting until its terminal outcome is known.
+
+Switching modes restores completion ordering for Recents. You can then choose
+a column sort explicitly; Grouped keeps batches contiguous under that sort.
+Jobs Main and History retain their own sorting choices. Sequential does not
+remove saved groups or change their shared fold preferences.
+Each list has its own saved visibility setting. The legacy `:jobgroups on|off`
+command resets those overrides and sets visibility across lists; Recents keeps
+its independent choice. Stored Min/Max ranks remain available. Lists still
+respect manual membership, exclusions, and the automatic-detection setting.
+**Ungroup All**
+therefore remains effective until groups are created or detection is enabled.
+
+The selected job remains an exact scheduler record when new completions arrive
+or the view changes. When it completes, Raven keeps that record selected in
+Recents and preserves the Jobs viewport, clamping only if the shrinking queue
+makes the previous offset invalid. Filtering, the accounting window, and bounded history
+loading still determine which records are available. Group counts do not imply
+that every historical member has been loaded. Scrolling admits older records
+without adding scheduler queries merely to switch views.
+
+The command equivalents are `:recents grouped` and `:recents sequential`.
 
 ## Create a manual group
 
@@ -14,11 +126,11 @@ You can also create a manual group from selected jobs or remove members from an 
 3. Check the marked job IDs.
 4. Press `g`, or enter `:jobgroup create`.
 
-**Expected result:** Tower creates a closed manual group and selects its real representative row.
+**Expected result:** Raven creates a closed manual group and selects its real representative row.
 The group uses the existing count and state-summary formatting.
-Tower clears the marks consumed by this operation.
+Raven clears the marks consumed by this operation.
 Creating a group enables grouping display if it was disabled.
-Click the down-pointing chevron to show its members.
+Click the right-pointing chevron to show its members.
 
 The selected jobs do not need to have matching names or submission times.
 Manual membership takes precedence over automatic launch deduction.
@@ -29,7 +141,7 @@ A marked closed summary contributes its representative job, not its hidden membe
 Open the old group and mark its members when you want to include those jobs.
 
 Marks outside that scope or excluded by its current filters are not included.
-They remain marked. After a membership change, Tower reports how many other job marks remain.
+They remain marked. After a membership change, Raven reports how many other job marks remain.
 Offscreen rows in the same filtered scope remain eligible.
 When fewer than two eligible jobs are marked, `g` retains its ordinary beginning-of-list behavior.
 The explicit `:jobgroup create` command instead reports that at least two marked jobs are required.
@@ -54,14 +166,14 @@ Use an existing group's closed summary or any of its visible expanded members as
 3. Drag to a row in the destination group.
 4. Release the button on that group row.
 
-**Expected result:** Tower adds the exact source jobs to the destination group.
+**Expected result:** Raven adds the exact source jobs to the destination group.
 A drag from a marked row uses the applicable marks in its focused list; Jobs can include marks from both Main and Recents.
 A drag from an unmarked row that you previously clicked and released moves that one job.
 Plain click-drag always selects a range, including when its first row is selected or marked.
 Alt-drag explicitly requests a membership move. Shift takes precedence over Alt and keeps range selection.
 A closed source summary contributes only its real representative. Expand it and mark its members to move those members together.
 The destination can be closed or expanded.
-Tower highlights an eligible destination and displays a move hint while you drag.
+Raven highlights an eligible destination and displays a move hint while you drag.
 You can drop into another job pane on the same page when its destination row is visible.
 You can release on the destination group's chevron as well as its row.
 A left press on a chevron still folds or opens that group; it does not start a move.
@@ -73,13 +185,13 @@ Moving a member removes it from its previous manual group without changing other
 Adding a job already in the destination does not duplicate it.
 Manual membership uses natural job-ID order: `1`, `2`, ..., `9`, `10`, rather than the order in which members were added.
 Array task IDs also use natural order, such as `123_2` before `123_10`.
-Displayed rows follow each list's active sort, including its default sort.
+Jobs orders complete batches by Sort Min or Sort Max and retains column sorting within each batch. Other lists follow their active sorts.
 Sort JOBID ascending to display the group in increasing numeric order; adding `7–9`, then `4–6`, to members `1–3` then displays `1–9`.
 
 Press Esc or right-click to cancel an unfinished move and keep the job marks.
 Releasing outside an eligible group cancels it without changing membership.
 A new keyboard action, changed page, layout, filter, sort, source identity, or destination membership invalidates the gesture instead of redirecting it to different jobs.
-Tower checks the current execution attempts again before it applies a change.
+Raven checks the current execution attempts again before it applies a change.
 Pointer movement uses published row data and does not issue scheduler queries.
 The terminal must report press, movement, and release events; use the menu below if it does not.
 
@@ -121,7 +233,7 @@ Use the arrow keys, Tab, Shift-Tab, Page Up, Page Down, Home, or End to select a
 The mouse wheel scrolls a long menu. Esc, `q`, or Ctrl-C closes it.
 F8 also enables the standard directional button navigation for its visible choices.
 Creating and removing groups follows the same identity, focus, and persistence rules as `g` and `u`.
-The group choices change Tower's membership only. **Rerun cancelled job** opens
+The group choices change Raven's membership only. **Rerun cancelled job** opens
 a separate scheduler-operation review for one job in Recents or History. It
 restarts that job under the same JobID and preserves its retained individual
 submission; it does not launch the group again. Controller retention and
@@ -153,22 +265,22 @@ Removed jobs remain individual rows instead of immediately returning to an autom
 You can include them in a later manual group with `g`.
 Within a focused job list, `u` keeps its previous clear-marks behavior when no applicable grouped target exists.
 Use `U` to clear job marks explicitly without changing membership.
-These commands change Tower's local organization. They do not alter Slurm jobs, array membership, dependencies, allocation, or report files.
+These commands change Raven's local organization. They do not alter Slurm jobs, array membership, dependencies, allocation, or report files.
 
 ### Keep membership attached to the correct attempt
 
-Manual choices are shared across Tower's job lists and their history browsers.
+Manual choices are shared across Raven's job lists and their history browsers.
 They apply to exact execution attempts rather than job numbers alone.
-Tower uses the available cluster, job ID, and submit-time evidence to retain these choices in saved UI state.
+Raven uses the available cluster, job ID, and submit-time evidence to retain these choices in saved UI state.
 A reused job number with a different submit time does not inherit an old manual group or removal.
 Filtering, sorting, or temporarily losing a member from the fetched history does not change the saved attempt identity.
 When the missing members return, the same manual membership applies.
 
-When the submit time is unavailable, Tower keeps the choice in the current session only.
+When the submit time is unavailable, Raven keeps the choice in the current session only.
 An ambiguous record replacement invalidates that temporary membership instead of assuming it is the same job.
-If current and historical records disagree about the same job ID's attempt, Tower refuses the membership change and asks you to select refreshed records.
+If current and historical records disagree about the same job ID's attempt, Raven refuses the membership change and asks you to select refreshed records.
 No scheduler query is issued merely to paint a group or move the pointer.
-Saved preferences are local to the current Tower state directory; another installation does not receive them automatically.
+Saved preferences are local to the current Raven state directory; another installation does not receive them automatically.
 The preference store accepts at most 256 manual groups and 8,192 saved or session identities across groups and explicit removals.
 An operation that exceeds a limit reports the problem without applying a partial change.
 Ungrouping retains an identity as an explicit removal, so it does not free an identity slot.
@@ -182,24 +294,24 @@ Automatic grouping can then identify those jobs again from its normal evidence w
 Reset preserves the current `:jobgroups on` or `:jobgroups off` setting.
 Use `:jobgroups on` if grouping display is currently disabled.
 
-Reset changes Tower's local display preferences only.
+Reset changes Raven's local display preferences only.
 It does not cancel or modify Slurm jobs, remove reports, or change scheduler arrays and dependencies.
 This command clears all manual grouping choices, not only the currently selected group.
 
 ## Fold and open a batch
 
 1. Open a list of jobs.
-2. Find the right-pointing chevron on the first visible row of an expanded group.
+2. Find the down-pointing chevron on the first visible row of an expanded group.
 3. Click that chevron to close the group.
 4. Read the representative job ID and the existing state summary.
-5. Click the down-pointing chevron on the closed summary row to show the members again.
+5. Click the right-pointing chevron on the closed summary row to show the members again.
 
 **Expected result:** One row represents the closed group.
 Opening it restores the matching members under the current filters and sort order.
 The fold preference applies across job lists and their history browsers.
 New automatically detected groups start open. New manual groups start closed.
-The chevron indicates the available action: `▸` closes an expanded group; `▾` opens a closed group.
-ASCII mode uses `>` to close and `v` to open.
+The chevron indicates the current state: `▾` is expanded and `▸` is collapsed.
+ASCII mode uses `v` for expanded and `>` for collapsed. Click either to toggle it.
 The first row follows the current grouping, filters, and sort order.
 If that row scrolls above the pane, the first visible member receives the disclosure control.
 You can therefore close the group without scrolling back to its original header.
@@ -218,7 +330,8 @@ Aggregate charts, timelines, explicit comparison traces, and node ownership disp
 During ordinary job-row navigation, Left closes the selected job's group and Right opens it.
 With directional button focus active, arrows move between controls instead.
 Use F8, arrows, and Enter to focus and activate a visible fold control.
-Use `:jobgroups off` to show individual jobs, or `:jobgroups on` to restore grouping.
+Use `:jobgroups off` to show individual jobs in other lists, or `:jobgroups on`
+to restore grouping. Recents uses its own **Grouped** and **Sequential** modes.
 Use `:jobgroup open GROUP_ID`, `:jobgroup close GROUP_ID`, or `:jobgroup toggle GROUP_ID` to change a known group directly.
 Use `:jobgroup create` and `:jobgroup ungroup` with the focused list's current selection to change membership.
 Normal saved UI state retains grouping and closed-group preferences.
@@ -226,6 +339,23 @@ Normal saved UI state retains grouping and closed-group preferences.
 ## Read the closed row
 
 The group label identifies the launch and its matching record count (`records`, or `rec` in a compact browser).
+Automatically named groups use the longest useful prefix shared by their job
+names, with trailing spaces and separators removed. For example,
+`encoder-seed-1`, `encoder-seed-2`, and `encoder-seed-3` share the label
+`encoder-seed`. Array and heterogeneous groups retain their allocation ID
+alongside the prefix. When no useful prefix exists, the launch marker or group
+kind and ID provide the fallback. Existing custom names remain unchanged.
+New manual groups start with the shared prefix when available and save that
+name; later job-name changes do not overwrite it.
+
+Names are presentation labels; they never determine membership or replace a
+scheduler ID. A label change cannot turn one allocation into another or reset
+its saved fold. Prefix calculation uses a bounded linear scan with constant
+working state and a bounded result. It runs with cached grouping updates,
+without sorting names, building a trie, or recomputing on ordinary redraws.
+The candidate prefix is capped at 160 characters and shrinks on each mismatch;
+names with terminal controls use the existing bounded display normalization.
+
 The INFO cell shows compact state badges in the current theme.
 Zero counts are omitted. Unicode separates badges with `·`; ASCII uses `|`.
 For example:
@@ -264,20 +394,20 @@ The narrowest layouts can clip badge text; enlarge the pane or expand the group 
 
 Use an explicit marker when your project already knows which jobs form one launch.
 Create one unique ID for that launch and pass it as the whole Slurm comment on each member.
-Tower accepts `launch:ID` and `group:ID`.
+Raven accepts `launch:ID` and `group:ID`.
 The ID must start with a letter or digit and contain 1–128 letters, digits, `.`, `_`, or `-`.
 
 For example, run these commands from one project working directory.
 Replace the script paths with your project's actual batch entry points.
 
 ```bash
-tower_batch_id="study-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
-sbatch --comment="launch:${tower_batch_id}" jobs/first.sbatch
-sbatch --comment="launch:${tower_batch_id}" jobs/second.sbatch
-sbatch --comment="launch:${tower_batch_id}" jobs/third.sbatch
+raven_batch_id="study-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+sbatch --comment="launch:${raven_batch_id}" jobs/first.sbatch
+sbatch --comment="launch:${raven_batch_id}" jobs/second.sbatch
+sbatch --comment="launch:${raven_batch_id}" jobs/third.sbatch
 ```
 
-**Expected result:** Tower groups available members that share the marker and its scope.
+**Expected result:** Raven groups available members that share the marker and its scope.
 It reads comments from queue and accounting publications when Slurm supplies them.
 Slurm must retain and expose job comments for that marker to remain available in historical accounting.
 The full comment must match the supported marker; free text around it is not a launch ID.
@@ -288,22 +418,22 @@ Use the same project working directory for all marked members that you want to g
 Use a new marker for each independent launch, including a new batch retry.
 Reusing a marker in the same scope can combine otherwise separate launches.
 
-You can tag jobs that already exist from Tower's command palette:
+You can tag jobs that already exist from Raven's command palette:
 
 ```text
 :tag 101 102 103 launch:study-17
 ```
 
 Use the actual available job IDs.
-Local tags persist in the current Tower state directory; they are not written to Slurm and are not shared automatically with another installation.
+Local tags persist in the current Raven state directory; they are not written to Slurm and are not shared automatically with another installation.
 Remove a local marker with `:untag 101 102 103 launch:study-17`.
 Conflicting local marker tags do not establish a reliable local marker.
-When an integration already publishes `TowerLaunchId`, `LaunchId`, `LaunchGroup`, or `JobGroup` in scheduler details, Tower also accepts that explicit ID.
+When an integration already publishes `RavenLaunchId`, `LaunchId`, `LaunchGroup`, or `JobGroup` in scheduler details, Raven also accepts that explicit ID.
 An explicit scheduler detail takes precedence over a comment; a recognized comment takes precedence over local marker tags.
 
 ## Understand automatic deduction
 
-Tower uses these evidence rules in order:
+Raven uses these evidence rules in order:
 
 | Evidence | Requirement |
 | --- | --- |
@@ -364,7 +494,7 @@ It does not retrieve an unlimited scheduler archive.
 The configured `history_days` value sets the initial accounting window.
 Source access, Slurm retention, permissions, and filters can limit the visible records.
 Use Sources to check an accounting error or delayed update.
-If Slurm rejects the optional accounting metadata fields, Tower falls back to its legacy history fields.
+If Slurm rejects the optional accounting metadata fields, Raven falls back to its legacy history fields.
 The job history remains available, but missing provenance can reduce automatic grouping.
 Existing session recordings remain readable. An older recording without owner, account, command, or marker evidence cannot supply those missing grouping facts.
 
@@ -400,8 +530,9 @@ The grouping layer reads supplied snapshots. It does not run Slurm commands or r
 
 ## Use the Main grouping controls
 
-The five buttons above Jobs Main use the same group preferences as the other
-job lists. Narrow panes wrap the controls without covering the table headings.
+The grouping buttons above Jobs Main use the same group preferences as the other
+job lists. Adjacent sort buttons apply to Jobs Main. Narrow panes wrap the
+controls without covering the table headings.
 
 | Button | Result |
 | --- | --- |
@@ -410,9 +541,12 @@ job lists. Narrow panes wrap the controls without covering the table headings.
 | **Ungroup All** | Clear saved groups, folds, and exclusions, and disable automatic inference. Jobs remain individual until you group them manually or use Auto Group again. |
 | **Expand All** | Open the shared job groups without changing their membership. |
 | **Collapse All** | Close the shared job groups without changing their membership. |
+| **Sort Min** | Order complete batches by fewest running jobs, then fewest total jobs. |
+| **Sort Max** | Order complete batches by most running jobs, then fewest total jobs. |
 
 The matching commands are `:grouping auto`, `:grouping undo`, `:grouping clear`,
-`:grouping expand`, and `:grouping collapse`. After Ungroup All, `:grouping restore` restores its
+`:grouping expand`, `:grouping collapse`, `:grouping sort-min`, and
+`:grouping sort-max`. After Ungroup All, `:grouping restore` restores its
 session snapshot if no newer membership change would be overwritten.
 These controls affect the shared group presentation; they do not change Slurm.
 Collapse All uses the existing 256-group fold limit. If the known group count
@@ -435,7 +569,7 @@ Esc, right-click, or an invalid drop cancels the gesture. A changed row order,
 layout, execution attempt, or destination invalidates it. Hover and dragging
 use the published frame and do not query the scheduler.
 
-Tower uses Slurm's native `scontrol top` command. The site must enable
+Raven uses Slurm's native `scontrol top` command. The site must enable
 `SchedulerParameters=enable_user_top`. Source and destination need pending
 jobs owned by your account in the same partition, Slurm account, and QOS.
 Running, completed, and archived members stay unchanged. Held jobs,
@@ -446,13 +580,13 @@ The review includes all eligible pending peers in that scheduling scope,
 including peers outside the two displayed groups. It preserves their relative
 order and shows the complete resulting order. Inspection is bounded to 512
 jobs in the scope. Unrelated jobs in other scopes do not consume that bound.
-Before applying, Tower rechecks identities, restart counts, priorities,
+Before applying, Raven rechecks identities, restart counts, priorities,
 configuration, and scope. A changed plan requires a fresh review.
 
 This operation changes your eligible jobs' scheduler priority order. It does
 not alter another user's job records. Slurm can adjust nice values as part of
 its native operation. Dependencies, resources, reservations, and site policy
-still determine actual start times. Tower cannot reserve the scheduler between
+still determine actual start times. Raven cannot reserve the scheduler between
 its final check and Slurm's command execution; the review states this limit.
 The displayed table still follows its current sort; drag order does not
 silently replace that sort.

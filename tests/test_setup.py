@@ -10,7 +10,7 @@ import sys
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-_spec = importlib.util.spec_from_file_location("tower_setup", ROOT / "scripts" / "setup.py")
+_spec = importlib.util.spec_from_file_location("raven_setup", ROOT / "scripts" / "setup.py")
 setup = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(setup)
 
@@ -52,14 +52,14 @@ def test_local_setup_checks_and_prints_selected_profile_without_running_slurm(tm
     personal = tmp_path / "personal.json"
     personal.write_text("invalid personal settings must not affect setup")
     env = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ.get("PATH", ""),
-               TOWER_CONFIG=str(personal), XDG_CONFIG_HOME=str(tmp_path / "config"), XDG_STATE_HOME=str(tmp_path / "state"))
+               RAVEN_CONFIG=str(personal), XDG_CONFIG_HOME=str(tmp_path / "config"), XDG_STATE_HOME=str(tmp_path / "state"))
     command = [sys.executable, str(ROOT / "scripts" / "setup.py"), "--mode", "local",
                "--venv", str(tmp_path / "environment with spaces"), "--report", str(tmp_path / "report.txt")]
     if requested:
         command += ["--profile", requested]
     result = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "Project Raven / local environment" in result.stdout and "Ready (local)" in result.stdout
+    assert "Raven / local environment" in result.stdout and "Ready (local)" in result.stdout
     launch = next(line.strip() for line in result.stdout.splitlines() if line.startswith("  ") and "--profile " in line)
     args = shlex.split(launch)
     assert args[args.index("--profile") + 1] == expected and "--fake" not in args
@@ -69,7 +69,7 @@ def test_local_setup_checks_and_prints_selected_profile_without_running_slurm(tm
 
 
 def test_setup_covers_every_research_workspace():
-    from tower.research import RESEARCH_VIEWS
+    from raven.research import RESEARCH_VIEWS
     assert set(setup.RESEARCH_SMOKE_VIEWS) == {name for name, _ in RESEARCH_VIEWS}
     assert len(setup.RESEARCH_SMOKE_VIEWS) == 13
 
@@ -122,7 +122,7 @@ def test_offline_setup_is_repeatable_and_ignores_personal_configuration(tmp_path
     environment = tmp_path / "venv with spaces"
     report = tmp_path / "preview.txt"
     personal_config = tmp_path / "config"
-    plugin_directory = personal_config / "tower" / "plugins"
+    plugin_directory = personal_config / "raven" / "plugins"
     plugin_directory.mkdir(parents=True)
     marker = tmp_path / "plugin-was-executed"
     (plugin_directory / "untrusted.py").write_text(
@@ -130,11 +130,11 @@ def test_offline_setup_is_repeatable_and_ignores_personal_configuration(tmp_path
     )
     invalid_config = personal_config / "invalid.json"
     invalid_config.write_text("This personal config must never be loaded by setup.")
-    state = tmp_path / "state" / "tower"
+    state = tmp_path / "state" / "raven"
     state.mkdir(parents=True)
     saved_state = state / "ui.json"
     saved_state.write_text('{"tab": "history"}\n')
-    env = dict(os.environ, TOWER_CONFIG=str(invalid_config), XDG_CONFIG_HOME=str(personal_config), XDG_STATE_HOME=str(state.parent))
+    env = dict(os.environ, RAVEN_CONFIG=str(invalid_config), XDG_CONFIG_HOME=str(personal_config), XDG_STATE_HOME=str(state.parent))
     command = [sys.executable, str(ROOT / "scripts" / "setup.py"), "--mode", "demo", "--venv", str(environment), "--report", str(report)]
     first = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60)
     assert first.returncode == 0, first.stdout + first.stderr
@@ -158,7 +158,7 @@ def test_source_launcher_works_outside_checkout(tmp_path):
     config = tmp_path / "empty.json"
     config.write_text("{}")
     result = subprocess.run(
-        [str(ROOT / "scripts" / "tower"), "--fake", "--config", str(config), "--no-state", "--no-plugins", "--json"],
+        [str(ROOT / "scripts" / "raven"), "--fake", "--config", str(config), "--no-state", "--no-plugins", "--json"],
         cwd=tmp_path, capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 0, result.stderr

@@ -1,4 +1,12 @@
-# Log presentation guide
+# Log presentation and export
+
+[README](../../README.md) · [Controls](../CONTROLS.md) · [Log source search](log-search.md)
+
+Inspect registered log sources as original text, aligned streams, differences, or structured records.
+Display modes preserve the underlying file identity and bytes.
+History exports collect complete initial source ranges, subject to the reported availability and discovery limits.
+
+**Prerequisites:** Select a job or project run with declared log sources and a working local or SSH file connection.
 
 ## Open an exact source
 
@@ -7,7 +15,9 @@
 3. Use the log file catalog to select a registered source.
 4. Press Enter to read that source.
 
-The file name and path identify the source. A source can be stdout, stderr, a worker log, or a declared external log. Tower reads files in the background. A file adapter error does not cause a local-file fallback.
+**Expected result:** Logs opens the selected source and displays its path.
+A source can be stdout, stderr, a worker log, or a declared external log.
+Raven reads files in the background. A file adapter error does not cause a local-file fallback.
 
 For full-file search, older pages, named bookmarks, and saved reading positions, use the [log search guide](log-search.md).
 
@@ -43,7 +53,7 @@ It does not use the displayed log page as the export content.
 An unmarked selected-row menu uses that exact job and retains unrelated marks.
 The target list stays fixed while the menu and background task are open.
 A right-click outside the History list clears the selection without activating another control.
-Right-click elsewhere inside the list to open the legacy export menu directly for marked jobs, or the selected job when there are no marks.
+Right-click elsewhere inside the list to open the export menu directly for marked jobs, or the selected job when there are no marks.
 
 Use Space to mark individual rows when the terminal cannot report a drag.
 Hold Shift during a drag to add its range to the existing marks.
@@ -55,12 +65,12 @@ Use `:historylogs cancel` to cancel the open procedure.
 ### Copy to the clipboard
 
 Select **Copy all logs to clipboard**.
-Tower discovers the exact sources and copies their complete initial byte ranges in a background task.
+Raven discovers the exact sources and copies their complete initial byte ranges in a background task.
 The clipboard text has job and source headings so that separate files remain identifiable.
-Tower also retains a private raw-file bundle and its manifest.
+Raven also retains a private raw-file bundle and its manifest.
 
 The clipboard requires valid UTF-8 and an available local clipboard tool or terminal OSC 52 support.
-Tower does not replace invalid bytes or send a truncated clipboard prefix.
+Raven does not replace invalid bytes or send a truncated clipboard prefix.
 If a transport cannot accept the complete text, the result identifies the retained export and the reason.
 The directory bundle preserves the original bytes regardless of clipboard support.
 
@@ -74,8 +84,8 @@ The directory bundle preserves the original bytes regardless of clipboard suppor
 6. Open the new folder if required.
 7. Select **Save here** to copy the logs, or **Cancel** to return without an export.
 
-The picker starts at `exports.projects_root` in the Tower configuration.
-If that field is empty, Tower uses the registered native project root when available, then `~/projects`.
+The picker starts at `exports.projects_root` in the Raven configuration.
+If that field is empty, Raven uses the registered native project root when available, then `~/projects`.
 Set an explicit existing root when your projects use another location:
 
 ```json
@@ -87,7 +97,7 @@ Set an explicit existing root when your projects use another location:
 ```
 
 Add the field to your existing configuration.
-The selected destination is on the machine that runs Tower, including a CARC login node when Tower runs there.
+The selected destination is on the machine that runs Raven, including a CARC login node when Raven runs there.
 The picker remains inside its root and rejects symlink traversal.
 New folder names must be printable, contain no path separator, and fit within 255 UTF-8 bytes.
 An existing folder is not overwritten by **New folder...**.
@@ -101,7 +111,7 @@ Esc cancels the current dialog, except in the folder-name prompt where it return
 
 ### Check missing outputs and the result
 
-Before publishing, Tower checks the expected scheduler paths and each registered project source.
+Before publishing, Raven checks the expected scheduler paths and each registered project source.
 If an expected file is absent or unavailable, an alert lists its job ID, label, path, and reason.
 Scroll the alert to inspect all affected jobs.
 Correct the source locations or restore the files, then use **Retry**.
@@ -111,7 +121,7 @@ Use **Back to export menu** to choose another destination, or **Cancel** to retu
 Files that were never declared cannot be identified as missing expected outputs.
 Declare every worker or external log in the [project log inventory](../PROJECT_STANDARD.md#log-locations-logsjson).
 
-Tower gives each export a unique `tower-logs-...` directory.
+Raven gives each export a unique `raven-logs-...` directory.
 It stores each raw source beneath a job and source directory, with the original basename.
 `manifest.json` records job IDs, source paths, byte counts, SHA-256 digests, aliases, missing outputs, and warnings.
 Identical source files shared by several selected jobs are copied once and keep all associated job IDs.
@@ -124,8 +134,8 @@ A source that grows during copying contributes its complete initial byte range a
 A replaced, truncated, or changed source does not become a published partial file.
 If a source becomes unavailable after the initial check, the alert identifies the affected job and source and any bundle already published.
 Use **View export receipt** to inspect that bundle's destination and clipboard methods.
-Use **Cancel** while a task is active to stop it; Tower removes its unfinished bundle before publication.
-If publication finished before Tower receives the cancel request, the receipt identifies the completed bundle.
+Use **Cancel** while a task is active to stop it; Raven removes its unfinished bundle before publication.
+If publication finished before Raven receives the cancel request, the receipt identifies the completed bundle.
 
 Discovery and copying run outside the terminal input loop.
 An export accepts at most 1,024 exact job IDs.
@@ -137,13 +147,13 @@ Register exact log paths when a source is outside those bounded catalogs.
 
 ## Align two streams by time
 
-Enter `:logview split`. Tower chooses distinct registered stdout and stderr files. If those roles are absent, Tower uses the selected file and another registered file.
+Enter `:logview split`. Raven chooses distinct registered stdout and stderr files. If those roles are absent, Raven uses the selected file and another registered file.
 
 Use `:logalign on` to align reported ISO 8601 timestamps. Equal, unique instants occupy the same row. Events at different instants occupy separate rows. Zoned timestamps use UTC for comparison. Unzoned timestamps retain their wall-clock values; confirm that the sources use the same time zone.
 
-Tower states when timing is missing, mixed, or backwards. In these cases, it shows positional rows. Repeated equal timestamps stay separate. An aligned row does not prove that two events have the same cause.
+Raven states when timing is missing, mixed, or backwards. In these cases, it shows positional rows. Repeated equal timestamps stay separate. An aligned row does not prove that two events have the same cause.
 
-Use `:logalign off` for positional rows. Press `[` to choose the left original source for copy. Press `]` to choose the right original source for copy.
+Use `:logalign off` for positional rows. Press `[` to select the left original source for copying. Press `]` to select the right original source.
 
 Drag the grey separator between the two sources to change their widths.
 Its one-cell capture buffer and keyboard focus use the shared divider controls.
@@ -164,7 +174,7 @@ Enter `:logdiff` to compare the registered pair. To choose a pair, enter:
 :logdiff LEFT_ID RIGHT_ID ignore-time
 ```
 
-Press `O` to open the file catalog. Source IDs appear in brackets after each file label. Tower refuses unknown IDs. Register files from different execution attempts in the same declared log inventory to compare them. Tower does not discover unrelated attempt files.
+Press `O` to open the file catalog. Source IDs appear in brackets after each file label. Raven refuses unknown IDs. Register files from different execution attempts in the same declared log inventory to compare them. Raven does not discover unrelated attempt files.
 
 Removed lines have a minus sign. Added lines have a plus sign. Exact comparison preserves timestamp fields. `ignore-time` replaces the first reported ISO timestamp for comparison only. The original text remains available.
 
@@ -186,13 +196,13 @@ To filter records by a field, enter:
 
 Fields use dot-separated names. Numeric path elements select array indexes. Values use case-insensitive text containment. The header gives the count of filtered source lines. Plain lines remain visible when no field filter is active.
 
-Press `o` on a structured row to return to its original source location. If the file changed or the location left the retained window, Tower reports that condition. Press `v` in the original view to select source lines. Press `y` to copy them.
+Press `o` on a structured row to return to its original source location. If the file changed or the location left the retained window, Raven reports that condition. Press `v` in the original view to select source lines. Press `y` to copy them.
 
 <a id="feature-27"></a>
 
 ## Fold repeated messages
 
-Enter `:logfold on`. Tower folds consecutive groups of at least three repeated messages. It ignores the first ISO timestamp when it checks repetition. Each summary states the original line range, repetition count, and hidden-line count.
+Enter `:logfold on`. Raven folds consecutive groups of at least three repeated messages. It ignores the first ISO timestamp when it checks repetition. Each summary states the original line range, repetition count, and hidden-line count.
 
 Use the arrows to select a group. Press Enter or Space to expand it. Press the same key on an expanded group to fold it again. Enter `:logfold off` or press Esc to return to the original view.
 
@@ -204,7 +214,7 @@ Press `o` to inspect the original group. Selection and copying use original sour
 
 Scroll away from the end to pause following. The status line shows the number of unread retained lines as new data arrives. It counts a partial line once when that line becomes complete.
 
-Enter `:logunread` to visit the first unread retained source line. Press End to resume following and clear the indicator. Replacement or truncation of the source resets the indicator. If the first unread line left the retained window, Tower reports that it cannot locate that line.
+Enter `:logunread` to visit the first unread retained source line. Press End to resume following and clear the indicator. Replacement or truncation of the source resets the indicator. If the first unread line left the retained window, Raven reports that it cannot locate that line.
 
 ## Controls and limits
 
@@ -229,7 +239,7 @@ Structured records have bounded nesting and collection sizes. Invalid or oversiz
 
 ## Integration methods
 
-The `tower.log_workbench` methods use the existing terminal event loop and the shared background reader.
+The `raven.log_workbench` methods use the existing terminal event loop and the shared background reader.
 
 | Method | Function |
 | --- | --- |
@@ -248,7 +258,7 @@ The `tower.log_workbench` methods use the existing terminal event loop and the s
 | `open_citation(app, citation)` | Choose a cited exact source. |
 | `apply_citation(app, buf)` | Check source identity and locate the citation in a published buffer. |
 
-The `tower.log_presentation` methods perform no file reads.
+The `raven.log_presentation` methods perform no file reads.
 
 | Method | Function |
 | --- | --- |
@@ -262,7 +272,7 @@ The `tower.log_presentation` methods perform no file reads.
 | `structured_rows(lines, collapsed, field, query)` | Produce source-indexed structured rows and a filtered-line count. |
 | `folded_rows(lines, expanded)` | Produce reversible repeated-message groups with exact source ranges. |
 
-The `tower.log_bundle` methods implement full-source History exports.
+The `raven.log_bundle` methods implement full-source History exports.
 Run discovery, directory operations, and copying on a background worker.
 
 | Method | Function |
@@ -273,7 +283,7 @@ Run discovery, directory operations, and copying on a background worker.
 | `mkdir_directory(root, current, name, ...)` | Create one private child without overwrite or symlink traversal. |
 | `export_logs(report, destination=None, ...)` | Stream complete raw sources into a unique manifest bundle and optionally deliver the labelled clipboard text. |
 
-The `tower.history_log_export` methods connect these tasks to the terminal UI.
+The `raven.history_log_export` methods connect these tasks to the terminal UI.
 
 | Method | Function |
 | --- | --- |

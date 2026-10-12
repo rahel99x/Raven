@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_progress, layout as L, metric_live, palette as P, pane_drag, toolbar
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import job_progress, layout as L, metric_live, palette as P, pane_drag, toolbar
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 THEMES = P.THEME_NAMES + ("Darcula", "Monokai", "Gruvbox", "Gruvbox Dark", "gruvbox_dark")

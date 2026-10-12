@@ -7,7 +7,7 @@ import subprocess
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("tower_install_shell", ROOT / "scripts/install_shell.py")
+spec = importlib.util.spec_from_file_location("raven_install_shell", ROOT / "scripts/install_shell.py")
 installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 
@@ -15,7 +15,7 @@ spec.loader.exec_module(installer)
 def shell_env(**values):
     """Do not let an inherited user profile/account affect alias tests."""
     env = dict(os.environ)
-    for key in ("TOWER_CONFIG", "RAVEN_CONFIG", "RAVEN_PROFILE", "SLURM_TOWER_PROFILE", "SLURM_TOWER_ACCOUNT", "CARC_ACCOUNT"):
+    for key in ("RAVEN_CONFIG", "RAVEN_PROFILE", "RAVEN_ACCOUNT", "CARC_ACCOUNT"):
         env.pop(key, None)
     env.update(values)
     return env
@@ -24,7 +24,7 @@ def shell_env(**values):
 def recording_checkout(tmp_path):
     root = tmp_path / "checkout with 'quotes'"
     (root / "scripts").mkdir(parents=True)
-    launcher = root / "scripts/tower"
+    launcher = root / "scripts/raven"
     launcher.write_text('#!/bin/sh\nprintf "%s\\0" "$@"\n')
     launcher.chmod(0o755)
     return root
@@ -35,7 +35,7 @@ def run_alias(block, env, *args):
         ["bash", "--noprofile", "--norc", "-c", '''shopt -s expand_aliases
 source "$1"
 shift
-tower "$@"
+raven "$@"
 ''', "bash", str(block), *args], capture_output=True, text=True, env=env, timeout=10,
     )
     assert result.returncode == 0, result.stderr
@@ -48,17 +48,17 @@ def test_alias_preserves_argument_boundaries_and_reads_current_account(tmp_path)
     block.write_text(installer.shell_block(root))
     result = subprocess.run(
         ["bash", "--noprofile", "--norc", "-c", '''shopt -s expand_aliases
-tower() { return 99; }
+raven() { return 99; }
 dash2() { return 99; }
-alias tower='false'
+alias raven='false'
 alias dash='false'
 source "$1"
 alias dash >/dev/null 2>&1 && exit 90
 declare -F dash2 >/dev/null && exit 91
 CARC_ACCOUNT="current account"
-tower --once --tab history "argument with spaces"
+raven --once --tab history "argument with spaces"
 ''', "bash", str(block)], capture_output=True, text=True,
-        env=shell_env(TOWER_CONFIG="", SLURM_TOWER_PROFILE=""),
+        env=shell_env(RAVEN_CONFIG="", RAVEN_PROFILE=""),
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.split("\0")[:-1] == [
@@ -72,26 +72,26 @@ def test_real_alias_uses_the_project_launcher_from_another_directory(tmp_path):
     block.write_text(installer.shell_block(ROOT))
     result = subprocess.run(["bash", "--noprofile", "--norc", "-c", '''shopt -s expand_aliases
 source "$1"
-tower --fake --doctor
+raven --fake --doctor
 ''', "bash", str(block)], cwd=tmp_path, capture_output=True, text=True,
-        env=shell_env(CARC_ACCOUNT="", TOWER_CONFIG="", SLURM_TOWER_PROFILE=""), timeout=20)
+        env=shell_env(CARC_ACCOUNT="", RAVEN_CONFIG="", RAVEN_PROFILE=""), timeout=20)
     assert result.returncode == 0, result.stderr
     assert "Prerequisites ready" in result.stdout
 
 
 def test_update_backs_up_and_preserves_unrelated_settings_and_is_repeatable(tmp_path):
     path = tmp_path / ".bashrc"
-    original = b"export KEEP='unchanged'\nalias dash='old-dashboard'\nalias tower='old-tower'\nalias other='echo keep'\n"
+    original = b"export KEEP='unchanged'\nalias dash='old-dashboard'\nalias raven='old-raven'\nalias other='echo keep'\n"
     path.write_bytes(original)
     path.chmod(0o640)
     assert installer.main(["--bashrc", str(path), "--apply"]) == 0
     result = path.read_text()
     assert result.startswith(original.decode())
-    backups = list(tmp_path.glob(".bashrc.slurm-tower-*.bak"))
+    backups = list(tmp_path.glob(".bashrc.raven-*.bak"))
     assert len(backups) == 1 and backups[0].read_bytes() == original
     assert path.stat().st_mode & 0o777 == 0o640
     assert installer.main(["--bashrc", str(path), "--apply"]) == 0
-    assert path.read_text() == result and list(tmp_path.glob(".bashrc.slurm-tower-*.bak")) == backups
+    assert path.read_text() == result and list(tmp_path.glob(".bashrc.raven-*.bak")) == backups
 
 
 def test_preview_never_replaces_original_or_existing_output(tmp_path):
@@ -127,13 +127,13 @@ def test_apply_preserves_a_bashrc_symlink(tmp_path):
 @pytest.mark.parametrize("default_profile,values,profile,account", [
     ("desktop", {"CARC_ACCOUNT": "old cluster account"}, "desktop", None),
     ("carc", {"CARC_ACCOUNT": "legacy account"}, "carc", "legacy account"),
-    ("carc", {"SLURM_TOWER_PROFILE": "desktop", "CARC_ACCOUNT": "old cluster account"}, "desktop", None),
-    ("desktop", {"SLURM_TOWER_PROFILE": "carc", "CARC_ACCOUNT": "legacy account"}, "carc", "legacy account"),
-    ("desktop", {"SLURM_TOWER_PROFILE": "another cluster", "CARC_ACCOUNT": "old cluster account"}, "another cluster", None),
-    ("desktop", {"SLURM_TOWER_ACCOUNT": "local account", "CARC_ACCOUNT": "old cluster account"}, "desktop", "local account"),
-    ("carc", {"SLURM_TOWER_ACCOUNT": "new account", "CARC_ACCOUNT": "legacy account"}, "carc", "new account"),
-    ("carc", {"SLURM_TOWER_ACCOUNT": "", "CARC_ACCOUNT": "legacy account"}, "carc", None),
-    ("desktop", {"SLURM_TOWER_PROFILE": "", "CARC_ACCOUNT": "old cluster account"}, "desktop", None),
+    ("carc", {"RAVEN_PROFILE": "desktop", "CARC_ACCOUNT": "old cluster account"}, "desktop", None),
+    ("desktop", {"RAVEN_PROFILE": "carc", "CARC_ACCOUNT": "legacy account"}, "carc", "legacy account"),
+    ("desktop", {"RAVEN_PROFILE": "another cluster", "CARC_ACCOUNT": "old cluster account"}, "another cluster", None),
+    ("desktop", {"RAVEN_ACCOUNT": "local account", "CARC_ACCOUNT": "old cluster account"}, "desktop", "local account"),
+    ("carc", {"RAVEN_ACCOUNT": "new account", "CARC_ACCOUNT": "legacy account"}, "carc", "new account"),
+    ("carc", {"RAVEN_ACCOUNT": "", "CARC_ACCOUNT": "legacy account"}, "carc", None),
+    ("desktop", {"RAVEN_PROFILE": "", "CARC_ACCOUNT": "old cluster account"}, "desktop", None),
 ])
 def test_profile_and_account_precedence_in_actual_bash(tmp_path, default_profile, values, profile, account):
     root = recording_checkout(tmp_path)
@@ -155,11 +155,11 @@ def test_quoted_profile_default_and_overrides_cannot_execute_shell_text(tmp_path
     config = str(tmp_path / "custom config with 'quotes' 界.json")
     account = "account $(touch '" + str(marker) + "') with spaces"
     args = ("argument with spaces", "", "a\nb", "literal * ; $(touch) 'quotes' 界")
-    expected = ["--config", config, "--profile", profile, "--unicode", "--account", account, *args]
-    assert run_alias(block, shell_env(TOWER_CONFIG=config, SLURM_TOWER_ACCOUNT=account), *args) == expected
+    expected = ["--config", config, "--unicode", "--account", account, *args]
+    assert run_alias(block, shell_env(RAVEN_CONFIG=config, RAVEN_ACCOUNT=account), *args) == expected
     override = "override's $(touch '" + str(marker) + "')"
-    expected[3] = override
-    assert run_alias(block, shell_env(TOWER_CONFIG=config, SLURM_TOWER_ACCOUNT=account, SLURM_TOWER_PROFILE=override), *args) == expected
+    expected[2:2] = ["--site", override]
+    assert run_alias(block, shell_env(RAVEN_CONFIG=config, RAVEN_ACCOUNT=account, RAVEN_PROFILE=override), *args) == expected
     assert not marker.exists()
 
 
@@ -171,14 +171,14 @@ def test_account_and_profile_overrides_are_read_at_each_invocation(tmp_path):
         ["bash", "--noprofile", "--norc", "-c", '''shopt -s expand_aliases
 source "$1"
 CARC_ACCOUNT="legacy account"
-tower first
-SLURM_TOWER_PROFILE=carc
-tower second
-SLURM_TOWER_ACCOUNT="new account"
-tower third
-SLURM_TOWER_PROFILE=desktop
-SLURM_TOWER_ACCOUNT=
-tower fourth
+raven first
+RAVEN_PROFILE=carc
+raven second
+RAVEN_ACCOUNT="new account"
+raven third
+RAVEN_PROFILE=desktop
+RAVEN_ACCOUNT=
+raven fourth
 ''', "bash", str(block)], capture_output=True, text=True, env=shell_env(), timeout=10,
     )
     assert result.returncode == 0, result.stderr
@@ -202,14 +202,14 @@ def test_desktop_cli_install_replaces_legacy_block_and_is_repeatable(tmp_path, m
     updated = path.read_text()
     assert updated.startswith("export KEEP='unchanged'\n")
     assert updated.count(installer.BEGIN) == updated.count(installer.END) == 1
-    backups = list(tmp_path.glob(".bashrc.slurm-tower-*.bak"))
+    backups = list(tmp_path.glob(".bashrc.raven-*.bak"))
     assert len(backups) == 1 and backups[0].read_text() == original
     assert path.stat().st_mode & 0o777 == 0o640
     assert run_alias(path, shell_env(CARC_ACCOUNT="must not leak"), "--once") == [
         "--config", str(root / "docs/config.example.json"), "--profile", "desktop", "--unicode", "--once",
     ]
     assert installer.main(["--bashrc", str(path), "--profile", "desktop", "--apply"]) == 0
-    assert path.read_text() == updated and list(tmp_path.glob(".bashrc.slurm-tower-*.bak")) == backups
+    assert path.read_text() == updated and list(tmp_path.glob(".bashrc.raven-*.bak")) == backups
 
 
 def test_cli_prints_selected_profile_without_modifying_configuration(tmp_path, monkeypatch, capsys):
@@ -229,7 +229,7 @@ def test_new_config_has_precedence_without_implicit_legacy_profile_or_account(tm
     root = recording_checkout(tmp_path)
     block = tmp_path / "alias.bash"
     block.write_text(installer.shell_block(root))
-    env = shell_env(RAVEN_CONFIG="/new/raven.json", TOWER_CONFIG="/old/tower.json", CARC_ACCOUNT="old-account")
+    env = shell_env(RAVEN_CONFIG="/new/raven.json", CARC_ACCOUNT="old-account")
     assert run_alias(block, env, "--once") == ["--config", "/new/raven.json", "--unicode", "--once"]
     env["RAVEN_PROFILE"] = "lab"
     assert run_alias(block, env) == ["--config", "/new/raven.json", "--site", "lab", "--unicode"]

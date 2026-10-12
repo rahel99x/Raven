@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower historical infrastructure events",
+  "title": "Raven historical infrastructure events",
   "type": "object", "required": ["schema", "events"],
   "properties": {
-    "schema": {"const": "tower.incidents/v1"},
+    "schema": {"const": "raven.incidents/v1"},
     "events": {"type": "array", "maxItems": 20000, "items": {
       "type": "object", "required": ["cluster", "nodes", "start"],
       "properties": {

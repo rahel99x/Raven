@@ -14,13 +14,14 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
 
-from tower.raven_allocation import AllocationManager, Decoder, MAX_FRAME, WorkerProxy, encode
-from tower.raven_allocation_adapters import VerifiedReuse, build_launch, prepare, scrub_launch_environment
-from tower.raven_allocation_helper import OwnershipRecord
+from raven.raven_allocation import AllocationManager, Decoder, MAX_FRAME, WorkerProxy, encode
+from raven.raven_allocation_adapters import VerifiedReuse, build_launch, prepare, scrub_launch_environment
+from raven.raven_allocation_helper import OwnershipRecord
 
 
 def desktop(**allocation):
@@ -74,7 +75,10 @@ if name=='ssh':
  os.environ['SLURM_PARENT_TEST']='remote-parent'; command=shlex.split(args[-1]); os.execvp(command[0],command)
 elif name=='salloc':
  if mode=='deny':sys.exit(1)
- if mode=='pending':time.sleep(30)
+ if mode in ('pending','pending-grant'):
+  sys.stderr.write('salloc: Pending job allocation 7654\\n');sys.stderr.flush()
+  if mode=='pending':time.sleep(30)
+  while not os.path.exists(os.environ['RAVEN_FAKE_GATE']):time.sleep(.01)
  if mode=='disconnect':sys.exit(255)
  os.environ['SLURM_JOB_ID']='7654'
  sys.stderr.write('salloc: Granted job allocation 7654\\n');sys.stderr.flush()
@@ -123,7 +127,7 @@ def test_protocol_rejects_size_depth_and_nonfinite():
 def test_plan_does_not_create_state_or_launch_commands(tmp_path, monkeypatch):
     def forbidden(*args, **kwargs):
         pytest.fail("Plan must not start a process")
-    monkeypatch.setattr("tower.raven_allocation.subprocess.Popen", forbidden)
+    monkeypatch.setattr("raven.raven_allocation.subprocess.Popen", forbidden)
     manager = AllocationManager(desktop(), state_dir=tmp_path / "absent")
     plan = manager.plan()
     assert plan["site_kind"] == "desktop" and not (tmp_path / "absent").exists()
@@ -174,7 +178,7 @@ def test_ssh_argv_quotes_complete_remote_command_once():
     cfg["connection"] = {"transport": "ssh", "host": "approved-alias"}
     cfg["execution"]["worker_python"] = "/opt/runtime with spaces/python"
     planned = prepare(cfg)
-    argv = build_launch(planned, [sys.executable, "-m", "tower.raven_worker"])
+    argv = build_launch(planned, [sys.executable, "-m", "raven.raven_worker"])
     assert argv[:2] == ["ssh", "-T"] and argv[-2] == "approved-alias"
     remote = shlex.split(argv[-1])
     assert remote[0] == cfg["execution"]["worker_python"]
@@ -187,7 +191,7 @@ def test_ssh_launch_preserves_governed_connection_routing_and_safe_options():
     cfg["connection"] = {"transport": "ssh", "host": "approved-alias", "user": "researcher",
                          "ssh_options": ["-p", "2222", "-i", "/keys/key with spaces", "-o", "ProxyJump=gateway"]}
     value = prepare(cfg)
-    argv = build_launch(value, [sys.executable, "-m", "tower.raven_worker"])
+    argv = build_launch(value, [sys.executable, "-m", "raven.raven_worker"])
     assert argv[-2] == "researcher@approved-alias"
     assert argv[6:-3] == cfg["connection"]["ssh_options"]
     for options in (["-tt"], ["another-host"], ["-o", "ProxyCommand=command"], ["-o", "StrictHostKeyChecking=no"], ["-o", "RemoteCommand=command"]):
@@ -215,7 +219,7 @@ def test_desktop_request_ready_real_task_release_and_receipt(tmp_path):
         assert manager.request() == request
         until(manager, lambda: manager.worker.ready)
         assert manager.snapshot()["identity"]["verified"] is True
-        document = {"schema": "tower.statistics/v1", "design": "independent", "unit": "independent runs",
+        document = {"schema": "raven.statistics/v1", "design": "independent", "unit": "independent runs",
                     "control": [{"id": "a", "value": 1}, {"id": "b", "value": 2}, {"id": "c", "value": 3}],
                     "treatment": [{"id": "d", "value": 4}, {"id": "e", "value": 5}, {"id": "f", "value": 6}]}
         task = manager.worker.submit("statistics", {"document": document}, {"test": "exact"})
@@ -240,7 +244,7 @@ def test_desktop_source_worker_from_another_directory(tmp_path, monkeypatch):
         manager.request()
         until(manager, lambda: manager.worker.ready)
         assert manager.snapshot()["host"] == socket.gethostname()
-        task = manager.worker.submit("statistics", {"document": {"schema": "tower.statistics/v1", "design": "independent",
+        task = manager.worker.submit("statistics", {"document": {"schema": "raven.statistics/v1", "design": "independent",
             "unit": "runs", "control": [{"id": "a", "value": 1}, {"id": "b", "value": 2}],
             "treatment": [{"id": "c", "value": 4}, {"id": "d", "value": 5}]}}, {})
         until(manager, lambda: manager.worker.tasks.get(task, {}).get("status") in ("committed", "failed"))
@@ -308,6 +312,106 @@ def test_fake_slurm_grant_verifies_placement_and_release_owns_only_its_lifetime(
     commands = [json.loads(line) for line in fake_slurm.read_text().splitlines()]
     assert [item["name"] for item in commands] == ["salloc", "srun"]
     assert all(not item["parent_hints"] for item in commands)
+
+
+@pytest.mark.parametrize("transport", ["local", "ssh"])
+def test_pending_allocation_observation_is_presentation_only_until_verified(tmp_path, fake_slurm, monkeypatch, transport):
+    gate = tmp_path / "grant"
+    monkeypatch.setenv("RAVEN_FAKE_MODE", "pending-grant")
+    monkeypatch.setenv("RAVEN_FAKE_GATE", str(gate))
+    cfg = cluster()
+    if transport == "ssh":
+        cfg["connection"] = {"transport": "ssh", "host": "approved-alias"}
+    verify_allowed = threading.Event()
+
+    def verify(candidate, cancel=None):
+        assert verify_allowed.wait(5), "Test did not release placement verification"
+        return placement(candidate, cancel)
+
+    with AllocationManager(cfg, state_dir=tmp_path / "state", placement_verifier=verify) as manager:
+        try:
+            request = manager.request()
+            until(manager, lambda: manager.snapshot().get("job_id") == "7654")
+            pending = manager.snapshot()
+            assert pending["state"] == "pending" and pending["identity"] == {}
+            assert not manager.worker.ready
+            observation = pending["allocation_observation"]
+            assert observation == {"allocation_id": "7654", "source": "owned-salloc-stderr",
+                                   "request_id": request, "generation": manager.generation,
+                                   "cluster_id": "fixture", "transport": transport,
+                                   **({"owner_uid": os.getuid()} if transport == "local" else {})}
+            record = json.loads(Path(pending["receipt_path"]).read_text())
+            assert record["allocation_observation"] == observation
+            assert record["identity"] == {} and not record["cleanup_uncertain"]
+            with pytest.raises(RuntimeError, match="not ready"):
+                manager.worker.submit("statistics", {}, {})
+            gate.touch()
+            until(manager, lambda: manager.snapshot()["state"] == "starting")
+            assert manager.snapshot()["job_id"] == "7654"
+            assert manager.snapshot()["identity"] == {} and not manager.worker.ready
+            verify_allowed.set()
+            until(manager, lambda: manager.worker.ready)
+            assert manager.snapshot()["identity"]["verified"] is True
+            assert manager.snapshot()["allocation_observation"] == {}
+            manager.release()
+            drained(manager)
+            assert manager.snapshot()["state"] == "light"
+        finally:
+            verify_allowed.set()
+    commands = [json.loads(line)["name"] for line in fake_slurm.read_text().splitlines()]
+    assert commands == (["ssh"] if transport == "ssh" else []) + ["salloc", "srun"]
+
+
+@pytest.mark.parametrize("outside_step", [False, True])
+def test_real_slurm_step_fields_admit_only_the_allocated_worker(tmp_path, fake_slurm, outside_step):
+    from raven.platform_session import wrap_backend
+    from raven.raven_collection import make_placement_verifier
+
+    class ControllerRecords:
+        candidate = None
+
+        def __init__(self):
+            self.commands = []
+
+        def run(self, argv, timeout=8):
+            self.commands.append(tuple(argv))
+            probe = self.candidate
+            if argv == ["scontrol", "show", "job", probe["job_id"], "-o"]:
+                return (f"JobId={probe['job_id']} JobState=RUNNING UserId=test({os.getuid()}) "
+                        f"NumCPUs=2 MinMemoryNode=512 NodeList={probe['host']}"), .001
+            assert argv == ["scontrol", "show", "step", probe["job_id"] + "." + probe["step_id"], "-o"]
+            node = "outside-allocation.invalid" if outside_step else probe["host"]
+            return (f"StepId={probe['job_id']}.{probe['step_id']} State=RUNNING "
+                    f"NodeList={node} Nodes=1 CPUs=2"), .001
+
+    raw = ControllerRecords()
+    governed = wrap_backend(raw, {"raven": {"collection": {}},
+                                  "collection_cache_dir": str(tmp_path / "cache")},
+                            {"cluster": "fixture", "user": "test"}, None)
+    read_placement = make_placement_verifier(governed)
+
+    def verify(candidate, cancel=None):
+        raw.candidate = candidate
+        records = read_placement(candidate, cancel=cancel)
+        # The fake scheduler supplies exact task membership in place of a cgroup.
+        records["pids"] = [candidate["pid"]]
+        return records
+
+    with AllocationManager(cluster(), state_dir=tmp_path / "state", placement_verifier=verify) as manager:
+        manager.request()
+        until(manager, lambda: manager.worker.ready or bool(manager.snapshot()["error"]))
+        if outside_step:
+            assert not manager.worker.ready
+            assert "Worker host is outside" in manager.snapshot()["error"]
+        else:
+            assert manager.snapshot()["state"] == "heavy"
+            assert manager.snapshot()["identity"]["verified"]
+            manager.release()
+        drained(manager)
+        assert manager.snapshot()["state"] == "light"
+
+    assert len(raw.commands) == 2
+    assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
 
 
 @pytest.mark.parametrize("mode", ["pending", "deny", "disconnect"])
@@ -450,7 +554,7 @@ def test_reuse_review_is_async_governed_and_token_bound(tmp_path, fake_slurm):
     {"Cluster": "another"}, {"NodeList": "node[1-2]"},
 ])
 def test_reuse_review_rejects_unproven_ownership_capacity_and_attempt(changed):
-    from tower.raven_allocation_reuse import review
+    from raven.raven_allocation_reuse import review
     with pytest.raises(ValueError):
         review(ReuseBackend(reuse_record(**changed)), "7654", prepare(cluster()))
 
@@ -472,7 +576,7 @@ def test_reuse_token_cannot_be_replayed_after_expiry_or_generation(tmp_path):
 
 
 def test_remote_reuse_verifies_remote_uid_instead_of_desktop_uid():
-    from tower.raven_allocation_reuse import review
+    from raven.raven_allocation_reuse import review
     remote_uid = os.getuid() + 20000
     class RemoteBackend(ReuseBackend):
         def command(self, argv, timeout, limit, cancel=None):
@@ -508,7 +612,7 @@ def test_task_with_declared_deadline_beyond_lease_is_rejected(tmp_path):
 
 
 def test_captured_light_policy_still_blocks_later_heavy_request(tmp_path):
-    from tower.raven_config import resolve
+    from raven.raven_config import resolve
     policy = tmp_path / "policy.json"
     policy.write_text(json.dumps({"schema": "raven.site-policy/v1", "restrictions": {"deny_heavy": True}}))
     resolved = resolve(site="desktop", env={"HOME": str(tmp_path), "XDG_CONFIG_HOME": str(tmp_path / "config"),
@@ -525,7 +629,7 @@ def test_helper_crash_stops_owned_desktop_worker_and_refuses_replay(tmp_path):
     # whose intentionally killed supervisor can no longer collect it.
     code = '''
 import ctypes,json,os,signal,sys,time
-from tower.raven_allocation import AllocationManager
+from raven.raven_allocation import AllocationManager
 assert ctypes.CDLL(None).prctl(36,1,0,0,0)==0
 manager=AllocationManager(json.loads(sys.argv[1]),state_dir=sys.argv[2])
 try:

@@ -1,9 +1,18 @@
 # Release inventory and checksums
 
-Create release metadata after you build and qualify the final wheel and source
-archive. The generator uses the Python standard library. It reads the artifacts;
-it does not extract files, execute package code, install tools, or contact a
-service.
+Use the release inventory to record the final wheel, source archive, license,
+and bundled member checksums. Build and qualify the artifacts first. The
+inventory generator uses the Python standard library and reads artifacts
+without extracting them, executing package code, or contacting a service.
+
+## Prerequisites
+
+Use a development installation with the `build` package. Confirm the release
+version in `pyproject.toml` and select the exact qualified wheel and source
+archive. The examples below use Raven 7.0.0. Distribution filenames retain the
+compatible `raven` package name.
+
+## Generate the metadata
 
 From the repository root, run:
 
@@ -11,10 +20,10 @@ From the repository root, run:
 python3 -m build
 python3 scripts/release_inventory.py create \
   --output dist/release-inventory.json \
-  --spdx dist/slurm-tower.spdx.json \
+  --spdx dist/raven.spdx.json \
   --checksums dist/SHA256SUMS \
-  dist/slurm_tower-6.1.0-py3-none-any.whl \
-  dist/slurm_tower-6.1.0.tar.gz
+  dist/raven-7.0.0-py3-none-any.whl \
+  dist/raven-7.0.0.tar.gz
 ```
 
 Use the exact filenames for the release. Do not include old versions with a
@@ -24,12 +33,12 @@ script does not prove that the artifacts came from that revision. Set
 `SOURCE_DATE_EPOCH` to a Unix timestamp for reproducible metadata timestamps.
 This does not make the build itself reproducible.
 
-The generator writes:
+**Expected result:** The generator writes these three files:
 
 - `release-inventory.json`: SHA-256 and size for each artifact and each regular
   archive member, package version, Python requirement, declared optional
   dependencies, core MIT license path and checksum, and wheel build metadata.
-- `slurm-tower.spdx.json`: a minimal SPDX 2.3 document with one package entry per
+- `raven.spdx.json`: a minimal SPDX 2.3 document with one package entry per
   distribution artifact. It declares MIT from package metadata and records the
   artifact SHA-256. It does not claim an independent license audit. Member hashes
   remain in the companion inventory; SPDX `filesAnalyzed` is `false`.
@@ -37,17 +46,19 @@ The generator writes:
 
 The script requires the packaged core license to match the repository's
 `LICENSE` file exactly. Use `--license PATH` to select that reference explicitly
-when you verify a release from another working directory. Tower's core must have
+when you verify a release from another working directory. Raven's core must have
 no runtime `Requires-Dist` entries. Optional development requirements remain in
 the inventory. Complex dependency markers that do not match a declared extra are
 rejected conservatively for review.
 
-Validate the files again before you publish them:
+## Verify before publication
+
+Validate the files again before publication:
 
 ```bash
 python3 scripts/release_inventory.py verify dist/release-inventory.json \
-  dist/slurm_tower-6.1.0-py3-none-any.whl \
-  dist/slurm_tower-6.1.0.tar.gz
+  dist/raven-7.0.0-py3-none-any.whl \
+  dist/raven-7.0.0.tar.gz
 ```
 
 Verification recomputes both the archive hashes and the member inventory. It
@@ -65,7 +76,7 @@ prove that code is safe. The SPDX schema was validated against the upstream
 ## Scope and limits
 
 The inventory includes the files bundled in the wheel and source archive,
-including Tower's adapter source code where present. It explicitly excludes
+including Raven's adapter source code where present. It explicitly excludes
 external components that are not bundled: Python and system libraries, Slurm,
 MPI implementations and compilers, GPU drivers and CUDA/ROCm runtimes, optional
 profilers/debuggers such as `py-spy`, user workloads, site plugins, and separately

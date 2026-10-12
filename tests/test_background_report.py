@@ -5,15 +5,15 @@ import threading
 
 import pytest
 
-from tower import report
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Job, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import report
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Job, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 @pytest.fixture
@@ -170,7 +170,7 @@ def test_published_report_is_complete_ascii_and_private(dashboard, tmp_path):
     path = Path(prepared.write(str(tmp_path / "published"), "complete.txt"))
     assert path.stat().st_mode & 0o777 == 0o600
     assert path.read_text().isascii()
-    assert path.read_text().endswith("End of report | Slurm Tower | Plain ASCII, no external resources.\n")
+    assert path.read_text().endswith("End of report | Raven | Plain ASCII, no external resources.\n")
     assert not list(path.parent.glob(".report-*.tmp"))
 
 

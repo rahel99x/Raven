@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import terminal_ui as T, layout as L, workspace_layout as W
+from raven import terminal_ui as T, layout as L, workspace_layout as W
 
 
 class Service:
@@ -56,7 +56,7 @@ def test_raven_scrollback_policy_caps_session_launch_options(tmp_path, monkeypat
 
 
 @pytest.mark.parametrize('key',['q','y','g','u',':','esc','ctrl-c','ctrl-z','tab','f6','up'])
-def test_shell_owns_tower_bindings(tmp_path,key):
+def test_shell_owns_raven_bindings(tmp_path,key):
     a=app(tmp_path); s=a.terminal_state
     assert T.handle_key(a,key)
     assert s.service.events[-1]==('one',{'type':'key','key':key})
@@ -139,7 +139,7 @@ def test_selection_copy_contains_only_pinned_terminal_rows(tmp_path,monkeypatch)
     assert s.selected==('line 1','line 2')
     s.service.sessions['one']['lines']=[[('replacement','text')]]
     copied=[]
-    monkeypatch.setattr('tower.clipboard.copy',lambda text,*args,**kwargs:copied.append(text) or 'copied')
+    monkeypatch.setattr('raven.clipboard.copy',lambda text,*args,**kwargs:copied.append(text) or 'copied')
     assert T.handle_key(a,'y')
     assert copied==['line 1\nline 2']
     T.handle_mouse(a,r.y,r.x,'right'); T.handle_key(a,'y')
@@ -324,14 +324,14 @@ def test_copy_joins_real_soft_wraps_and_preserves_hard_newline(tmp_path,monkeypa
     T.run_command(a,['terminal','copy-mode'])
     T.handle_key(a,'v'); T.handle_key(a,'down'); T.handle_key(a,'down')
     copied=[]
-    monkeypatch.setattr('tower.clipboard.copy',lambda text,*a,**kw:copied.append(text) or 'copied')
+    monkeypatch.setattr('raven.clipboard.copy',lambda text,*a,**kw:copied.append(text) or 'copied')
     T.handle_key(a,'y')
     assert copied==['softwrap\nhard']
 
 
 def test_child_clipboard_is_previewed_and_never_copied_on_output(tmp_path,monkeypatch):
     a=app(tmp_path); s=a.terminal_state; copied=[]
-    monkeypatch.setattr('tower.clipboard.copy',lambda text,*a,**kw:copied.append(text) or 'copied')
+    monkeypatch.setattr('raven.clipboard.copy',lambda text,*a,**kw:copied.append(text) or 'copied')
     s.service.sessions['one']['clipboard_requests']=[{'id':1,'text':'requested text','selection':'c'}]
     T.tick(a); T.render(a,50,14)
     assert not copied
@@ -343,7 +343,7 @@ def test_child_clipboard_is_previewed_and_never_copied_on_output(tmp_path,monkey
 
 def test_link_destination_is_explicit_and_health_cannot_copy_stale_link(tmp_path,monkeypatch):
     a=app(tmp_path); s=a.terminal_state; copied=[]
-    monkeypatch.setattr('tower.clipboard.copy',lambda text,*a,**kw:copied.append(text) or 'copied')
+    monkeypatch.setattr('raven.clipboard.copy',lambda text,*a,**kw:copied.append(text) or 'copied')
     s.service.sessions['one']['links']=[{'id':1,'url':'https://example.test/safe'}]
     T.run_command(a,['terminal','links','1'])
     assert s.clipboard_preview['text']=='https://example.test/safe'
@@ -441,7 +441,7 @@ def test_restart_cannot_reuse_reviewed_allocation_launch(tmp_path,monkeypatch,ki
 @pytest.mark.parametrize('pane_focus', ['main', 'details'])
 def test_host_header_replaces_old_title_and_uses_same_focus_gutter(
         tmp_path, ascii_, count, mode, pane_focus):
-    from tower import scrollbars
+    from raven import scrollbars
     a=app(tmp_path); a.width=160; a.ascii=ascii_
     s=a.terminal_state; s.modes['jobs']=mode
     W.initialize(a).focus=pane_focus
@@ -486,7 +486,7 @@ def test_click_details_assigns_pane_focus_without_sending_child_input(tmp_path):
 
 
 def test_terminal_feedback_erases_hover_without_mutating_cached_paint(tmp_path):
-    from tower import interaction
+    from raven import interaction
     a=app(tmp_path); a.animations_enabled=False
     rows,hits=T.render(a,40,12,x=55,y=6)
     base=[[(' '*100,'text')] for _ in range(30)]

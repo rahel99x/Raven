@@ -1,5 +1,5 @@
 {
-  "schema": "tower.statistics/v1",
+  "schema": "raven.statistics/v1",
   "design": "paired",
   "unit": "independently seeded simulation",
   "confidence": 0.95,

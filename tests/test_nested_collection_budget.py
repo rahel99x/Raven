@@ -4,13 +4,13 @@ from threading import Event, Lock, get_ident
 
 import pytest
 
-from tower import scale_clusters as clusters
-from tower.operations import Context
-from tower.worker_scheduler import WorkerScheduler, current_scheduler
+from raven import scale_clusters as clusters
+from raven.operations import Context
+from raven.worker_scheduler import WorkerScheduler, current_scheduler
 
 
 def sources(count=8):
-    return clusters.configuration({"schema": "tower.cluster-workspace/v1",
+    return clusters.configuration({"schema": "raven.cluster-workspace/v1",
                                    "clusters": [{"name": f"cluster-{index}"} for index in range(count)]})
 
 

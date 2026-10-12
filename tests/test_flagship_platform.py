@@ -11,12 +11,12 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 import pytest
 
-from tower import evidence as E, evidence_formats as F, site_policy as P
-from tower import adapter_protocol as A, ops_platform as OPS
-from tower import operations as O
-from tower.collection_broker import CollectionBroker
-from tower.shared_collection import SharedQueryCache
-from tower.platform_session import wrap_backend, GovernedBackend, read_operation
+from raven import evidence as E, evidence_formats as F, site_policy as P
+from raven import adapter_protocol as A, ops_platform as OPS
+from raven import operations as O
+from raven.collection_broker import CollectionBroker
+from raven.shared_collection import SharedQueryCache
+from raven.platform_session import wrap_backend, GovernedBackend, read_operation
 
 IDENTITY = {"cluster": "alpha", "job_id": "123_4", "attempt": "2026-01-01T00:00:00/2026-01-01T00:00:02"}
 SCOPE = {"connection": "alpha/user", "generation": "connection-1"}
@@ -86,7 +86,7 @@ def test_evidence_rejects_invalid_json(value):
 
 
 @pytest.mark.parametrize("mutate", [
-    lambda v: v.update(schema="tower.evidence/v999"),
+    lambda v: v.update(schema="raven.evidence/v999"),
     lambda v: v["identity"].update(pid=10),
     lambda v: v["identity"].update(job_id="1_[0-9]"),
     lambda v: v["records"].append(copy.deepcopy(v["records"][0])),
@@ -182,7 +182,7 @@ def test_explicit_unsupported_formats(dialect, value):
 def test_evidence_identity_must_match():
     other = {**IDENTITY, "attempt": "later"}
     with pytest.raises(ValueError, match="identity"):
-        F.import_document(receipt(), "tower-evidence", other)
+        F.import_document(receipt(), "raven-evidence", other)
 
 
 @pytest.mark.parametrize("change", [{"intrusive": True}, {"source": "other"}, {"operation": "write"}, {"interval": .001}, {"duration": 10}, {"max_bytes": 9999999}, {"max_records": 999999}])
@@ -231,13 +231,17 @@ def test_broker_coalesces_isolates_results_and_cancel_one_subscriber():
 
 
 def test_broker_all_subscribers_cancel_source_invalidation_and_bounds():
-    cancelled = threading.Event()
+    entered, cancelled = threading.Event(), threading.Event()
     def load(stop):
+        entered.set()
         assert stop.wait(1)
         cancelled.set()
         return {}
     with CollectionBroker(capacity=1) as broker:
         lease = broker.acquire(SCOPE, query(), load, policy(), caps())
+        # Cancellation before dispatch may correctly prevent the loader from
+        # running at all; this assertion exercises cooperative cancellation.
+        assert entered.wait(1)
         other = {**SCOPE, "generation": "other"}
         with pytest.raises(ValueError, match="capacity"):
             broker.acquire(other, query(), load, policy(), caps())
@@ -252,8 +256,28 @@ def test_broker_all_subscribers_cancel_source_invalidation_and_bounds():
         lease.close()
 
 
+def test_broker_cancel_before_dispatch_does_not_call_source_and_frees_capacity():
+    calls = []
+    def load(stop):
+        calls.append(1)
+        return {}
+    # Caller-owned reads remain queued until result(), making pre-dispatch
+    # cancellation deterministic without depending on worker scheduling.
+    with CollectionBroker(capacity=1, caller_owned=True) as broker:
+        lease = broker.acquire(SCOPE, query(), load, policy(), caps())
+        lease.cancel()
+        assert broker.stats()["active"] == 0
+        assert broker.stats()["leases"] == 0
+        with pytest.raises(ValueError, match="closed"):
+            lease.result(1)
+        other = {**SCOPE, "generation": "other"}
+        with broker.acquire(other, query(), lambda _: {"ok": True}, policy(), caps()) as replacement:
+            assert replacement.result(1) == {"ok": True}
+        assert calls == []
+
+
 def test_broker_nested_single_worker_does_not_deadlock():
-    from tower.worker_scheduler import WorkerScheduler
+    from raven.worker_scheduler import WorkerScheduler
     scheduler = WorkerScheduler(workers=2, mode="single")
     lane = scheduler.lane("research")
     def parent():
@@ -281,8 +305,8 @@ def test_broker_oversize_source_output_and_cancel_before_admit():
 
 
 def test_adapter_real_subprocess_success_and_environment_isolation(tmp_path, monkeypatch):
-    monkeypatch.setenv("TOWER_TEST_SECRET", "must-not-leak")
-    manifest = adapter(tmp_path, "assert 'TOWER_TEST_SECRET' not in os.environ\n" + EMIT)
+    monkeypatch.setenv("RAVEN_TEST_SECRET", "must-not-leak")
+    manifest = adapter(tmp_path, "assert 'RAVEN_TEST_SECRET' not in os.environ\n" + EMIT)
     assert A.AdapterClient(manifest).request("describe") == {"ok": True}
     Path(manifest["argv"][1]).write_text("different code")
     with pytest.raises(ValueError, match="hash changed"):
@@ -339,11 +363,11 @@ def test_adapter_manifest_never_executes_on_inspection_and_plan_revalidates(tmp_
 
 def test_portable_review_export_and_changed_source(tmp_path):
     source = write_json(tmp_path / "evidence.json", receipt())
-    params = {"path": source, "format": "tower-evidence", **IDENTITY, "destination": str(tmp_path / "export"), "export_format": "workflow-run-ro-crate"}
+    params = {"path": source, "format": "raven-evidence", **IDENTITY, "destination": str(tmp_path / "export"), "export_format": "workflow-run-ro-crate"}
     result = OPS.run("research-portable", params, context())
     assert not Path(params["destination"]).exists()
     OPS.apply("research-portable", result["plan"], context())
-    assert (tmp_path / "export" / "tower-evidence.json").is_file()
+    assert (tmp_path / "export" / "raven-evidence.json").is_file()
     assert (tmp_path / "export" / "ro-crate-metadata.json").is_file()
     with pytest.raises(ValueError, match="new directory"):
         OPS.apply("research-portable", result["plan"], context())
@@ -356,7 +380,7 @@ def test_portable_review_export_and_changed_source(tmp_path):
 
 def test_portable_selected_attempt_mismatch_remote_write_refused(tmp_path):
     path = write_json(tmp_path / "source.json", receipt())
-    params = {"path": path, "format": "tower-evidence", **IDENTITY}
+    params = {"path": path, "format": "raven-evidence", **IDENTITY}
     with pytest.raises(ValueError, match="attempt"):
         OPS.run("research-portable", params, context(jobs=({"id": "123_4", "submit": "other", "start": "later"},)))
     class Remote:
@@ -372,8 +396,8 @@ def test_qualification_is_real_hashed_fixture_not_live_claim(tmp_path):
     raw = E.canonical(receipt())
     path = tmp_path / "fixture.json"
     path.write_bytes(raw)
-    check = {"id": "format", "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "format": "tower-evidence", "identity": IDENTITY, "expect": {"min_records": 1, "max_records": 1, "mode": "mixed"}}
-    manifest = write_json(tmp_path / "qualification.json", {"schema": "tower.qualification/v1", "id": "example", "checks": [check]})
+    check = {"id": "format", "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "format": "raven-evidence", "identity": IDENTITY, "expect": {"min_records": 1, "max_records": 1, "mode": "mixed"}}
+    manifest = write_json(tmp_path / "qualification.json", {"schema": "raven.qualification-manifest/v1", "id": "example", "checks": [check]})
     result = OPS.run("qualification", {"manifest": manifest}, context())
     assert result["data"]["passed"] and not result["data"]["live_slurm_tested"]
     path.write_text("{}")
@@ -384,7 +408,7 @@ def test_qualification_is_real_hashed_fixture_not_live_claim(tmp_path):
 def test_support_explicit_sources_redaction_and_source_revalidation(tmp_path):
     report = O.report("fixture", "token=secret-password", data={"api_token": "hidden", "environment": {"SECRET": "bad"}, "public": "fine"})
     report_path = write_json(tmp_path / "report.json", report)
-    manifest = write_json(tmp_path / "support.json", {"schema": "tower.support-bundle/v1", "reports": [report_path]})
+    manifest = write_json(tmp_path / "support.json", {"schema": "raven.support-bundle/v1", "reports": [report_path]})
     params = {"manifest": manifest, "destination": str(tmp_path / "bundle")}
     result = OPS.run("support-bundle", params, context())
     encoded = json.dumps(result["data"])
@@ -542,9 +566,9 @@ def test_shared_cache_byte_budget_and_policy_epoch(tmp_path):
 
 
 def test_governed_backend_preserves_remote_forecast_scope(tmp_path):
-    from tower.remote import SshBackend
-    from tower.cli import forecast_scope
-    from tower.config import Config
+    from raven.remote import SshBackend
+    from raven.cli import forecast_scope
+    from raven.config import Config
     backend = SshBackend('cluster.example', user='person', opts=['-p', '2222'])
     cfg = Config()
     original = forecast_scope(backend, cfg, 'person')
@@ -583,7 +607,7 @@ def test_large_integer_rejected_without_overflow():
 
 
 def test_broker_submit_failure_rolls_back_admission_and_throttle():
-    from tower.worker_scheduler import WorkerScheduler, WorkerQueueFull
+    from raven.worker_scheduler import WorkerScheduler, WorkerQueueFull
     scheduler = WorkerScheduler(workers=1, mode='single')
     lane = scheduler.lane('source')
     real_submit = lane.submit
@@ -641,7 +665,7 @@ def test_native_reexport_refuses_missing_original_records_even_if_receipt_rehash
 
 def test_support_snapshot_includes_ui_persistence_status_without_reading_store(tmp_path):
     path = write_json(tmp_path / 'evidence.json', receipt())
-    manifest = write_json(tmp_path / 'support.json', {'schema': 'tower.support-bundle/v1', 'reports': [path]})
+    manifest = write_json(tmp_path / 'support.json', {'schema': 'raven.support-bundle/v1', 'reports': [path]})
     ctx = context(ui_state_status={'state': 'corrupt', 'message': 'recovered snapshot'})
     result = OPS.run('support-bundle', {'manifest': manifest}, ctx)
     assert result['data']['ui_state_status'] == ctx.ui_state_status
@@ -672,7 +696,7 @@ def test_perfetto_malformed_flow_ids_are_controlled(token):
 
 
 def test_shared_cache_refuses_known_network_storage(tmp_path, monkeypatch):
-    from tower import shared_collection
+    from raven import shared_collection
     monkeypatch.setattr(shared_collection, '_network_mount', lambda path: True)
     with pytest.raises(ValueError, match='host-local'):
         shared_collection.SharedQueryCache(tmp_path / 'network')

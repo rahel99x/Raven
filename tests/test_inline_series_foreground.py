@@ -4,10 +4,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_panels, layout as L
-from tower.config import Config
-from tower.model import Job, Live
-from tower.views import Views
+from raven import job_panels, layout as L
+from raven.config import Config
+from raven.model import Job, Live
+from raven.views import Views
 
 
 @pytest.mark.parametrize("page", ["advisor", "advisor-document", "compare"])

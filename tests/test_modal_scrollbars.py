@@ -3,14 +3,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import (activity_ui, command_ui, execution_ui, history_log_export,
+from raven import (activity_ui, command_ui, execution_ui, history_log_export,
                    layout as L, modal_scrollbars as B, navigation_tools,
                    navigation_ui, project_ui, scrollbars as S, scrolling,
                    session_tools, table_tools, table_ui)
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Store
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -214,7 +214,7 @@ def test_cursor_change_resumes_autoreveal_without_selecting_during_scroll():
 @pytest.mark.parametrize("kind", ("alerts", "diagnostics"))
 @pytest.mark.parametrize("ascii_", (False, True))
 def test_multirow_modal_cross_page_selection_copies_exact_physical_lines(dashboard, monkeypatch, kind, ascii_):
-    from tower import clipboard, text_selection as T
+    from raven import clipboard, text_selection as T
     app, views, key, render = source(dashboard, kind, monkeypatch)
     views.g = L.Glyphs(ascii_)
     if kind == "diagnostics":

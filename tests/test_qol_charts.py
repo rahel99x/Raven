@@ -5,11 +5,11 @@ import math
 
 import pytest
 
-from tower import analysis_ui as A, chart_tools as C, charts, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.research import ResearchHub
+from raven import analysis_ui as A, chart_tools as C, charts, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.research import ResearchHub
 
 
 @pytest.fixture
@@ -227,7 +227,7 @@ def test_chart_events_pin_job_and_open_original_citation_with_return_location(ap
     assert "Saved checkpoint" in rendered and "/actual/worker.err" in rendered and "original line 52" in rendered
     assert "Different job" not in rendered and len(A.chart_events(app, app.store.snapshot())) == 2
     seen = []
-    from tower import log_workbench
+    from raven import log_workbench
     monkeypatch.setattr(log_workbench, "open_citation", lambda application, citation: seen.append(citation) or True)
     A.handle_key(app, "enter")
     assert seen[0]["path"] == "/actual/worker.err" and seen[0]["line"] == 52 and seen[0]["job"] == "9"

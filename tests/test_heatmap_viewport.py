@@ -1,8 +1,8 @@
 """Offscreen telemetry summaries retain geometry without preparing their data."""
 import pytest
 
-from tower import analytics_document as D, chart_interaction as C, charts, clock
-from tower import layout as L, scrollbars as S, views as V, workspace_layout as W
+from raven import analytics_document as D, chart_interaction as C, charts, clock
+from raven import layout as L, scrollbars as S, views as V, workspace_layout as W
 from test_analytics_document import native
 
 

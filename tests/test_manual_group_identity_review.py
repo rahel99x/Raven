@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_groups, manual_job_groups as manual
-from tower.model import Finished, Job
+from raven import job_groups, manual_job_groups as manual
+from raven.model import Finished, Job
 
 
 SUBMIT = "2026-10-09T09:00:00"

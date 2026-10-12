@@ -12,7 +12,7 @@ from types import ModuleType
 
 import pytest
 
-from tower import tradeoffs
+from raven import tradeoffs
 
 
 def choice(**values):
@@ -37,15 +37,15 @@ def clear_sbatch_environment(monkeypatch):
 
 
 def fake_predict(monkeypatch, function):
-    module = ModuleType("tower.predict")
+    module = ModuleType("raven.predict")
     module.predict = function
-    monkeypatch.setitem(sys.modules, "tower.predict", module)
+    monkeypatch.setitem(sys.modules, "raven.predict", module)
 
 
 def fake_forecast(monkeypatch, function):
-    module = ModuleType("tower.forecast")
+    module = ModuleType("raven.forecast")
     module.forecast = function
-    monkeypatch.setitem(sys.modules, "tower.forecast", module)
+    monkeypatch.setitem(sys.modules, "raven.forecast", module)
 
 
 def interval(lower, upper, estimate=None, **values):
@@ -459,7 +459,7 @@ def test_real_history_timeout_censoring_is_preserved_after_indexing():
 
 
 def test_real_history_model_aliases_remain_available_with_core_indexing():
-    from tower.model import Finished
+    from raven.model import Finished
     candidate = choice(account=None, qos=None, parameters=None, estimated_runtime_seconds=None)
     records = [Finished(id=str(i), name="same-work", state="COMPLETED", cpus=8,
                         elapsed="00:01:40", req_mem=8 << 30, rss=1 << 30, cpu_time=800,

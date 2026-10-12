@@ -1,5 +1,5 @@
 {
-  "schema": "tower.profiler/v1", "cluster": "example", "job_id": "1234", "attempt": "2026-10-01T12:00:00/2026-10-01T12:00:02",
+  "schema": "raven.profiler/v1", "cluster": "example", "job_id": "1234", "attempt": "2026-10-01T12:00:00/2026-10-01T12:00:02",
   "expected_ranks": [0, 1], "ordered_barrier_phases": true,
   "records": [
     {"rank": 0, "node": "n1", "phase": "solve", "elapsed_s": 8, "cpu_s": 7, "mpi_s": 1, "io_s": 0.1, "read_bytes": 1024, "write_bytes": 0},

@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from tower import logs as log_module
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.log_text import display_text
-from tower.logs import LogBuffer, LogSession
-from tower.model import Finished, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven import logs as log_module
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.log_text import display_text
+from raven.logs import LogBuffer, LogSession
+from raven.model import Finished, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 @pytest.mark.parametrize("prefix,suffix", [

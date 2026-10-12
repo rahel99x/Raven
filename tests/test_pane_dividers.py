@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import interaction, job_panels, layout as L, pane_drag as P, workspace_layout as W
+from raven import interaction, job_panels, layout as L, pane_drag as P, workspace_layout as W
 
 
 def app(**overrides):
@@ -404,10 +404,10 @@ def test_explicit_main_focus_releases_nested_controls_without_changing_details_m
 
 
 def test_native_focus_main_restores_job_home_after_jobpanel_off():
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Job, Store
+    from raven.views import Views
     cfg = Config()
     store = Store(persist=False)
     store.jobs = [Job("900", "first experiment", "cpu", "RUNNING"),

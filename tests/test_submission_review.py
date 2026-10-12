@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import provenance, submission
+from raven import provenance, submission
 
 
 @pytest.fixture(autouse=True)

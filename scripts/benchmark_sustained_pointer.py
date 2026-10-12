@@ -21,6 +21,9 @@ import sys
 import threading
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from benchmark_source import load_module, package_directory
+
 
 def quantiles(values):
     if not values:
@@ -132,7 +135,7 @@ def diagnostic_drain_motion(screen, app, window, curses, hits, *, pending=False,
                             limit=256, seconds=.012):
     """Harness-only experiment: preserve the first deliberate queued event.
 
-    This does not change Tower's screen loop. No capture or mode transition is
+    This does not change Raven's screen loop. No capture or mode transition is
     eligible. Press, release, wheel, resize, key, and paste retain their exact
     decoded identity and order in the input reader's existing queue.
     """
@@ -171,15 +174,17 @@ def diagnostic_drain_motion(screen, app, window, curses, hits, *, pending=False,
 
 
 def worker(args):
-    sys.path.insert(0, str(args.source_root))
+    package = package_directory(args.source_root)
     source_digest = hashlib.sha256()
-    for path in sorted((args.source_root / "tower").glob("*.py")):
+    for path in sorted(package.glob("*.py")):
         source_digest.update(path.name.encode())
         source_digest.update(path.read_bytes())
-    from tower import chart_interaction, clock, metric_live, palette, screen
-    from tower.cli import main
-    from tower.slurm import FakeBackend, Slurm
-    from tower.views import Views
+    chart_interaction, clock, metric_live, palette, screen = (
+        load_module(args.source_root, name) for name in ("chart_interaction", "clock", "metric_live", "palette", "screen"))
+    main = load_module(args.source_root, "cli").main
+    slurm = load_module(args.source_root, "slurm")
+    FakeBackend, Slurm = slurm.FakeBackend, slurm.Slurm
+    Views = load_module(args.source_root, "views").Views
 
     events, inputs, decoded, counts, totals = [], [], [], Counter(), Counter()
     running = threading.Event()
@@ -378,7 +383,7 @@ def worker(args):
         if args.workers is not None:
             arguments.extend(("--workers", args.workers))
         if args.managed:
-            from tower.raven_launch import light_main
+            light_main = load_module(args.source_root, "raven_launch").light_main
             result = light_main(arguments)
         else:
             result = main(arguments)
@@ -622,9 +627,13 @@ def main(argv=None):
         parser.error("--switch-workers requires at least one second and six pointer reports per rate")
     if args.switch_control == "toolbar" and not args.switch_workers:
         parser.error("--switch-control toolbar requires --switch-workers")
-    if not (args.source_root / "tower" / "__init__.py").is_file():
-        parser.error("--source-root must contain a Tower source package")
-    if args.managed and not (args.source_root / "tower" / "raven_launch.py").is_file():
+    try:
+        package = package_directory(args.source_root)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    if not (package / "__init__.py").is_file():
+        parser.error("--source-root must contain its declared application package")
+    if args.managed and not (package / "raven_launch.py").is_file():
         parser.error("--managed requires a source package with the Raven Light launcher")
     if not args.output.parent.is_dir():
         parser.error("the --output parent directory must already exist")

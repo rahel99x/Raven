@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from tower import raven_migration as M
-from tower import raven_config as C
+from raven import raven_migration as M
+from raven import raven_config as C
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def migration(tmp_path):
     old=tmp_path/'old-config';old.mkdir(mode=0o700)
     state=tmp_path/'old-state';state.mkdir(mode=0o700)
     (old/'config.json').write_text(json.dumps({'theme':'mono','intervals':{'jobs':.5}}))
-    (state/'groups.json').write_text('{"schema":"tower.groups/v1","jobs":["123"]}')
+    (state/'groups.json').write_text('{"schema":"raven.groups/v1","jobs":["123"]}')
     return dict(source_config=old,source_state=state,destination_config=tmp_path/'new-config'/'config.json',destination_state=tmp_path/'new-state')
 
 
@@ -31,6 +31,40 @@ def test_plan_is_bounded_read_only_and_explicit(migration):
     assert originals(migration)==initial
     assert value['converted_config']['collection']['queue_seconds']==60
     assert value['converted_config']['ui']['theme']=='mono'
+
+
+@pytest.mark.parametrize('missing', ['source_config', 'source_state'])
+def test_new_plan_requires_both_explicit_source_roots(migration, missing):
+    arguments = {key: value for key, value in migration.items() if key != missing}
+    initial = originals(migration)
+    with pytest.raises(ValueError, match='explicit --source-config and --source-state'):
+        M.plan(**arguments)
+    assert originals(migration) == initial
+    assert not migration['destination_state'].exists()
+
+
+def test_versioned_source_config_preserves_supported_settings(migration):
+    source = migration['source_config'] / 'config.json'
+    source.write_text(json.dumps({'schema': C.SCHEMA, 'profile': 'lab',
+                                 'allocation': {'account': 'research', 'partition': 'local'},
+                                 'ui': {'theme': 'mono'}}))
+    original = source.read_bytes()
+    value = M.plan(**migration)
+    assert value['converted_config']['profile'] == 'lab'
+    assert value['converted_config']['allocation']['account'] == 'research'
+    assert value['converted_config']['allocation']['partition'] == 'local'
+    assert value['converted_config']['ui']['theme'] == 'mono'
+    assert source.read_bytes() == original
+
+
+def test_unknown_versioned_source_config_is_not_silently_replaced(migration):
+    source = migration['source_config'] / 'config.json'
+    source.write_text(json.dumps({'schema': 'unrelated.config/v1', 'ui': {'theme': 'mono'}}))
+    original = source.read_bytes()
+    with pytest.raises(ValueError, match='Unsupported configuration schema'):
+        M.plan(**migration)
+    assert source.read_bytes() == original
+    assert not migration['destination_state'].exists()
 
 
 def test_apply_restart_and_rollback_keep_originals_and_schemas(migration):
@@ -119,7 +153,7 @@ def test_fifo_symlinks_runtime_and_default_history_skipped(migration,tmp_path):
     state=migration['source_state']
     os.mkfifo(state/'fifo');(state/'linked').symlink_to(state/'groups.json')
     (state/'runtime').mkdir();(state/'runtime'/'worker.pid').write_text('42')
-    (state/'history.jsonl').write_text('{"schema":"tower.event/v1"}\n')
+    (state/'history.jsonl').write_text('{"schema":"raven.event/v1"}\n')
     value=M.plan(**migration)
     assert {record['path'] for record in value['files']}=={'config.json','groups.json'}
     explicit=M.plan(**migration,include_history=True)

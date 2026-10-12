@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from tower import charts as C, layout as L, metric_raster as R
+from raven import charts as C, layout as L, metric_raster as R
 
 
 def test_callable_style_redraws_reuse_buckets_but_keep_each_new_presentation(monkeypatch):

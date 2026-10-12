@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C
-from tower.interaction import Rect
+from raven import chart_interaction as C
+from raven.interaction import Rect
 
 
 @pytest.fixture

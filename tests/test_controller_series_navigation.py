@@ -6,12 +6,12 @@ import os
 
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.sampler import Sampler
-from tower.actions import Actions
-from tower.slurm import FakeBackend, Slurm
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.sampler import Sampler
+from raven.actions import Actions
+from raven.slurm import FakeBackend, Slurm
 
 
 def test_interactive_navigation_uses_the_native_sampler_archive_worker(tmp_path, monkeypatch):
@@ -70,7 +70,7 @@ def test_headless_navigation_keeps_synchronous_saved_history_discovery(tmp_path)
 @pytest.mark.parametrize("command", ["advise 12480001", "resubmit 12480001 --advised"])
 @pytest.mark.parametrize("interactive", [False, True])
 def test_explicit_advice_keeps_full_saved_evidence_and_ignores_corrupt_counters(tmp_path, monkeypatch, command, interactive):
-    from tower import advisor
+    from raven import advisor
     backend = FakeBackend("alex")
     slurm = Slurm(backend, "alex")
     store = Store(state_dir=str(tmp_path))

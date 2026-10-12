@@ -7,10 +7,10 @@ import sys
 
 import pytest
 
-from tower.trace_analysis import audit_collectives
-from tower.trace_mpi import SOURCE
-from tower.trace_native import HEADER
-from tower.trace_protocol import discover_trace, read_trace
+from raven.trace_analysis import audit_collectives
+from raven.trace_mpi import SOURCE
+from raven.trace_native import HEADER
+from raven.trace_protocol import discover_trace, read_trace
 
 
 APP = r'''#include <mpi.h>
@@ -41,18 +41,18 @@ def mpi_program(tmp_path_factory):
     if not compiler or not runner:
         pytest.skip("Real MPI compiler/runtime unavailable")
     root = tmp_path_factory.mktemp("trace-mpi-toolchain")
-    (root / "tower_trace.h").write_text(HEADER)
-    (root / "tower_mpi.c").write_text(SOURCE)
+    (root / "raven_trace.h").write_text(HEADER)
+    (root / "raven_mpi.c").write_text(SOURCE)
     (root / "app.c").write_text(APP)
-    include = os.environ.get("TOWER_TEST_MPI_INCLUDE")
+    include = os.environ.get("RAVEN_TEST_MPI_INCLUDE")
     if include:
         compiler_args = [shutil.which("cc") or "cc", "-I" + include]
-        link = shlex.split(os.environ.get("TOWER_TEST_MPI_LINK", "-l:libmpi.so.40"))
+        link = shlex.split(os.environ.get("RAVEN_TEST_MPI_LINK", "-l:libmpi.so.40"))
     else:
         compiler_args, link = [compiler], []
-    library, program = root / "libtower_mpi.so", root / "app"
+    library, program = root / "libraven_mpi.so", root / "app"
     args = compiler_args + ["-std=c11", "-D_GNU_SOURCE", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC",
-                            str(root / "tower_mpi.c"), *link, "-o", str(library)]
+                            str(root / "raven_mpi.c"), *link, "-o", str(library)]
     compiled = subprocess.run(args, capture_output=True, text=True, timeout=30)
     if compiled.returncode and not include and ("mpi.h" in compiled.stderr or "cannot find -lmpi" in compiled.stderr):
         pytest.skip("MPI runtime exists but development headers/libraries are not installed")
@@ -65,14 +65,14 @@ def mpi_program(tmp_path_factory):
 @pytest.mark.parametrize("mode", ["supported", "maximum", "self", "multiple", "missing-generation"])
 def test_real_two_rank_mpi_protocol_capture(tmp_path, mpi_program, mode):
     runner, library, program = mpi_program
-    command = [runner, "-n", "2", sys.executable, "-m", "tower.trace_recorder", "native",
+    command = [runner, "-n", "2", sys.executable, "-m", "raven.trace_recorder", "native",
                "--project", str(tmp_path), "--job-id", "123", "--attempt", "mpi-test", "--",
                "env", "LD_PRELOAD=" + str(library)]
     if mode != "missing-generation":
-        command.append("TOWER_MPI_COMM_GENERATION=verified-test-world")
+        command.append("RAVEN_MPI_COMM_GENERATION=verified-test-world")
     command += [str(program), mode]
     env = dict(os.environ)
-    env.pop("TOWER_MPI_COMM_GENERATION", None)
+    env.pop("RAVEN_MPI_COMM_GENERATION", None)
     if os.getuid() == 0:
         env.update(OMPI_ALLOW_RUN_AS_ROOT="1", OMPI_ALLOW_RUN_AS_ROOT_CONFIRM="1")
     result = subprocess.run(command, capture_output=True, text=True, env=env, timeout=30)
@@ -94,7 +94,7 @@ def test_real_two_rank_mpi_protocol_capture(tmp_path, mpi_program, mode):
 
 
 def test_source_command_prints_only_explicit_adapter():
-    result = subprocess.run([sys.executable, "-m", "tower.trace_recorder", "mpi", "--source"], capture_output=True, text=True, timeout=10)
+    result = subprocess.run([sys.executable, "-m", "raven.trace_recorder", "mpi", "--source"], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0
     assert "PMPI_Allreduce" in result.stdout and "MPI_THREAD_MULTIPLE" in result.stdout
     assert "MPI_Send(" not in result.stdout

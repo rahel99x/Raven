@@ -1,5 +1,5 @@
 import pytest
-from tower.raven_qualification import cohort_report, qualify
+from raven.raven_qualification import cohort_report, qualify
 
 
 def test_distinct_users_each_retain_separate_capped_entitlement(tmp_path):

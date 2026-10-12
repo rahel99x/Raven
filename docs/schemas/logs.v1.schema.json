@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower portable log catalog v1",
-  "description": "An explicit catalog of a run's logs. Tower reads this manifest when logs.manifest_file identifies it for the selected job. Relative paths resolve against this manifest's directory, including explicit ../ sibling locations; exact absolute external paths are supported. No glob or recursive discovery is implied.",
+  "title": "Raven portable log catalog v1",
+  "description": "An explicit catalog of a run's logs. Raven reads this manifest when logs.manifest_file identifies it for the selected job. Relative paths resolve against this manifest's directory, including explicit ../ sibling locations; exact absolute external paths are supported. No glob or recursive discovery is implied.",
   "type": "object",
   "required": ["schema", "logs"],
   "additionalProperties": false,
   "properties": {
-    "schema": {"const": "tower.logs/v1"},
+    "schema": {"const": "raven.logs/v1"},
     "run_id": {
       "type": "string",
       "minLength": 1,

@@ -3,9 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import interaction, layout as L, log_workbench as W, pane_drag as P, workspace_layout
-from tower.history_browser import Rect
-from tower.logs import LogSession
+from raven import interaction, layout as L, log_workbench as W, pane_drag as P, workspace_layout
+from raven.history_browser import Rect
+from raven.logs import LogSession
 
 
 def dashboard(monkeypatch, *, width=160, height=48, ascii_=False):

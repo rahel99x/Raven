@@ -1,5 +1,5 @@
 {
-  "schema": "tower.incidents/v1",
+  "schema": "raven.incidents/v1",
   "events": [
     {"cluster": "example", "nodes": ["n2"], "start": "2026-10-01T12:05:00Z", "end": "2026-10-01T12:07:00Z", "state": "DOWN", "reason": "Site-reported network interruption"}
   ]

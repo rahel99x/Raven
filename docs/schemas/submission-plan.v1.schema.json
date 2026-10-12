@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower native captured submission preflight v1",
-  "description": "The intact JSON result of tower run prepare. run.json paths.submit binds it for read-only Research/Submit display; it cannot arm a scheduler action.",
+  "title": "Raven native captured submission preflight v1",
+  "description": "The intact JSON result of raven run prepare. run.json paths.submit binds it for read-only Research/Submit display; it cannot arm a scheduler action.",
   "type": "object",
   "required": [
     "schema",
@@ -23,7 +23,7 @@
   "additionalProperties": true,
   "properties": {
     "schema": {
-      "const": "tower.submission-plan/v1"
+      "const": "raven.submission-plan/v1"
     },
     "script": {
       "type": "string",

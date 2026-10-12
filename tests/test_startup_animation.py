@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L
-from tower import startup
-from tower.config import Config
+from raven import layout as L
+from raven import startup
+from raven.config import Config
 
 
 def app(*, interactive=True, theme="default", ascii_=False, **config):
@@ -169,7 +169,7 @@ def test_every_frame_fits_body_and_keeps_toolbar_row_zero(clock, width, height, 
             assert all("\x1b" not in segment for segment, _ in row)
         if ascii_:
             assert text(rows).isascii()
-        assert "TOWER" in text(rows) or "█████" in text(rows)
+        assert "RAVEN" in text(rows) or "█████" in text(rows)
 
 
 def test_ascii_welcome_is_static_even_if_view_glyphs_are_not_yet_updated(clock):
@@ -177,6 +177,7 @@ def test_ascii_welcome_is_static_even_if_view_glyphs_are_not_yet_updated(clock):
     assert startup.begin(target)
     first = startup.overlay(views(), {}, target, 80, 24)
     assert text(first).isascii()
+    assert "RAVEN" in text(first)
     assert target.startup_state["duration"] == startup.ASCII_DURATION
     clock[0] += .3
     assert first == startup.overlay(views(), {}, target, 80, 24)

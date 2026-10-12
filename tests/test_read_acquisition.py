@@ -8,9 +8,9 @@ import weakref
 
 import pytest
 
-from tower import read_acquisition as A
-from tower.shared_collection import SharedQueryCache
-from tower.worker_scheduler import WorkerScheduler
+from raven import read_acquisition as A
+from raven.shared_collection import SharedQueryCache
+from raven.worker_scheduler import WorkerScheduler
 from test_flagship_platform import SCOPE, caps, policy, query
 
 
@@ -295,7 +295,7 @@ def telemetry_manifest(tmp_path):
     from test_prometheus_source import manifest
     doc = manifest('https://telemetry.example')
     doc['cache_directory'] = str(tmp_path / 'telemetry')
-    doc['policy'] = {'schema': 'tower.site-policy/v1', 'id': 'site', 'revision': '1',
+    doc['policy'] = {'schema': 'raven.collection-policy/v1', 'id': 'site', 'revision': '1',
                      'sources': ['site-metrics'], 'operations': ['query-range'],
                      'allocation_required': True, 'allow_intrusive': False,
                      'limits': {'min_interval': .5, 'max_duration': 5, 'max_bytes': 500000,
@@ -304,7 +304,7 @@ def telemetry_manifest(tmp_path):
 
 
 def test_production_telemetry_concurrent_collects_share_acquisition(tmp_path, monkeypatch):
-    from tower import prometheus_source as source
+    from raven import prometheus_source as source
     from test_prometheus_source import response
     doc = telemetry_manifest(tmp_path)
     entered, release = threading.Event(), threading.Event()
@@ -327,7 +327,7 @@ def test_production_telemetry_concurrent_collects_share_acquisition(tmp_path, mo
 
 
 def test_telemetry_moving_windows_keep_source_rate_floor(tmp_path, monkeypatch):
-    from tower import prometheus_source as source
+    from raven import prometheus_source as source
     doc = telemetry_manifest(tmp_path)
     starts = []
     def fetch(manifest, credential, stop):
@@ -341,7 +341,7 @@ def test_telemetry_moving_windows_keep_source_rate_floor(tmp_path, monkeypatch):
 
 
 def test_telemetry_credential_rotation_and_anonymous_are_distinct(tmp_path, monkeypatch):
-    from tower import prometheus_source as source
+    from raven import prometheus_source as source
     doc = telemetry_manifest(tmp_path)
     credentials = []
     def fetch(manifest, credential, stop):
@@ -349,17 +349,17 @@ def test_telemetry_credential_rotation_and_anonymous_are_distinct(tmp_path, monk
         return {'status': 'success', 'data': {'resultType': 'matrix', 'result': []}}
     monkeypatch.setattr(source, '_fetch', fetch)
     source.collect(doc)
-    doc['auth'] = {'kind': 'bearer_env', 'source': 'TOWER_FIXTURE_PRINCIPAL'}
-    monkeypatch.setenv('TOWER_FIXTURE_PRINCIPAL', 'anonymous')
+    doc['auth'] = {'kind': 'bearer_env', 'source': 'RAVEN_FIXTURE_PRINCIPAL'}
+    monkeypatch.setenv('RAVEN_FIXTURE_PRINCIPAL', 'anonymous')
     source.collect(doc)
-    monkeypatch.setenv('TOWER_FIXTURE_PRINCIPAL', 'second')
+    monkeypatch.setenv('RAVEN_FIXTURE_PRINCIPAL', 'second')
     source.collect(doc)
     assert credentials == [None, 'anonymous', 'second']
 
 
 def test_governed_backends_share_production_read_and_preserve_output_contract(tmp_path):
-    from tower.platform_session import GovernedBackend
-    from tower.slurm import CommandError
+    from raven.platform_session import GovernedBackend
+    from raven.slurm import CommandError
     entered, release = threading.Event(), threading.Event()
     class Backend:
         calls = 0

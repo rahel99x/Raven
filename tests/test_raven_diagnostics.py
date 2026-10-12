@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import threading
 import time
 
-from tower import raven_diagnostics as D
-from tower.worker_scheduler import WorkerScheduler
+from raven import raven_diagnostics as D
+from raven.worker_scheduler import WorkerScheduler
 
 
 def test_snapshot_never_observes_proc_or_starts_a_task(monkeypatch):

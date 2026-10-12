@@ -1,16 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name=tower-science
+#SBATCH --job-name=raven-science
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=256M
 #SBATCH --time=00:05:00
-#SBATCH --output=tower-science-%A_%a.out
-#SBATCH --error=tower-science-%A_%a.err
+#SBATCH --output=raven-science-%A_%a.out
+#SBATCH --error=raven-science-%A_%a.err
 set -euo pipefail
 
 # Submit from the checkout, or export its absolute path before submitting.
 # SLURM_SUBMIT_DIR remains valid when Slurm copies this script into its spool.
-checkout=${SLURM_TOWER_ROOT:-${SLURM_SUBMIT_DIR:?}}
+checkout=${RAVEN_ROOT:-${SLURM_SUBMIT_DIR:?}}
 python="$checkout/.venv/bin/python"
 if [ ! -x "$python" ]; then
     printf 'Run python3 scripts/setup.py --mode local in %s first.\n' "$checkout" >&2

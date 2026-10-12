@@ -1,12 +1,12 @@
 """Terminal capabilities and command-line preferences must agree with the alias."""
 from types import SimpleNamespace
 
-from tower import cli
-from tower.config import Config
-from tower.controller import App
-from tower.model import Store
-from tower.views import Views
-from tower.layout import Glyphs
+from raven import cli
+from raven.config import Config
+from raven.controller import App
+from raven.model import Store
+from raven.views import Views
+from raven.layout import Glyphs
 
 
 def test_glyph_preferences_override_old_config_and_alias_in_argument_order(monkeypatch):

@@ -34,7 +34,7 @@ def test_outer_curses_terminal_keeps_shortcuts_and_fragmented_mouse_in_their_own
     environment = dict(os.environ, TERM="xterm-256color", LC_ALL="C.UTF-8",
                        PYTHONPATH=str(root), PS1="OUTER_READY> ", ENV="")
     process = subprocess.Popen(
-        [sys.executable, "-m", "tower", "--fake", "--no-state", "--no-plugins",
+        [sys.executable, "-m", "raven", "--fake", "--no-state", "--no-plugins",
          "--config", str(config), "--ui-trace", str(trace)],
         cwd=root, env=environment, stdin=slave, stdout=slave, stderr=slave,
         start_new_session=True,
@@ -61,20 +61,23 @@ def test_outer_curses_terminal_keeps_shortcuts_and_fragmented_mouse_in_their_own
 
     def until(predicate, label):
         while time.monotonic() < deadline:
+            # Observe liveness before the predicate: an expected clean exit
+            # between two polls must not be reported as an unexpected exit.
+            returncode = process.poll()
             if predicate():
                 return
-            assert process.poll() is None, (label, process.returncode, rendered(), output[-3000:])
+            assert returncode is None, (label, returncode, rendered(), output[-3000:])
             pump()
         pytest.fail(label + " timed out\n" + rendered() + "\n" + repr(output[-3000:]))
 
     try:
-        until(lambda: "File" in rendered() and "Jobs" in rendered(), "Initial Tower frame")
+        until(lambda: "File" in rendered() and "Jobs" in rendered(), "Initial Raven frame")
         os.write(master, b":terminal show\r")
         until(lambda: "OUTER_READY>" in rendered(), "Embedded shell prompt")
 
         # Every character passes through ncurses, the production decoder,
         # controller, broker, child PTY, emulator and outer renderer. These
-        # bytes would quit, yank, group, ungroup or open the palette in Tower.
+        # bytes would quit, yank, group, ungroup or open the palette in Raven.
         command = ("printf '%s\\n' 'qyg:u' > " + shlex.quote(str(result)) +
                    "; printf '%s:%s\\n' 'OUTER_RENDERED' 'qyg:u'").encode()
         split = command.index(b"qyg:u") + 2
@@ -93,7 +96,7 @@ def test_outer_curses_terminal_keeps_shortcuts_and_fragmented_mouse_in_their_own
         until(lambda: "OUTER_RENDERED:qyg:u" in rendered(), "Rendered child output")
         assert process.poll() is None
         os.write(master, b"\x1dtq")
-        until(lambda: process.poll() is not None, "Explicit return to Tower and quit")
+        until(lambda: process.poll() is not None, "Explicit return to Raven and quit")
         assert process.returncode == 0, output.decode("utf-8", "replace")
         captured = json.loads(trace.read_text())
         assert captured["inputs"]["mouse"] >= len(reports)

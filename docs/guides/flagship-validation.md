@@ -1,4 +1,4 @@
-# Tower 6.0.0 validation record
+# Raven 6.0.0 validation record
 
 Recorded on 11 October 2026 on a shared Linux cloud host. This record separates
 executable checks from target-system qualification. It does not certify every
@@ -129,6 +129,10 @@ multi-node transport, arbitrary MPI implementations, or GPU device stacks.
 
 ## Reproduce the checks
 
+Use the corresponding 6.0.0 source and a development installation to reproduce
+this record. Run from that release's repository root. Later releases require
+their own artifact version and validation record.
+
 ```bash
 python3 -m pip install -e '.[dev]'
 python3 -m pytest -q -ra
@@ -136,15 +140,15 @@ python3 scripts/generate_operation_reference.py --check
 python3 scripts/validate_operation_schemas.py
 python3 -m build
 python3 scripts/qualify_flagship.py \
-  --wheel dist/slurm_tower-6.0.0-py3-none-any.whl \
-  --output /tmp/tower-qualification.json
+  --wheel dist/raven-6.0.0-py3-none-any.whl \
+  --output /tmp/raven-qualification.json
 python3 scripts/benchmark_sustained_pointer.py --help
 python3 -S scripts/benchmark_changing_ui.py --help
 ```
 
 Real MPI tests require a supported MPI compiler and launcher. If development
 headers live outside the compiler's default search path, the optional
-`TOWER_TEST_MPI_INCLUDE` setting supplies their directory. No test here submits
+`RAVEN_TEST_MPI_INCLUDE` setting supplies their directory. No test here submits
 a production Slurm job.
 
 ## Remaining qualification

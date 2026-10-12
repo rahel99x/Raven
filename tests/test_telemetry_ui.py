@@ -6,14 +6,14 @@ import time
 
 import pytest
 
-from tower import interaction, layout as L, telemetry, telemetry_ui as U, workbench
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.model import Health, Job, Live, Store
-from tower.research import ResearchHub
-from tower.slurm import Slurm
-from tower.worker_scheduler import WorkerScheduler
+from raven import interaction, layout as L, telemetry, telemetry_ui as U, workbench
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.model import Health, Job, Live, Store
+from raven.research import ResearchHub
+from raven.slurm import Slurm
+from raven.worker_scheduler import WorkerScheduler
 
 
 class Backend:
@@ -99,10 +99,10 @@ def test_effective_native_polling_and_health_captured_without_snapshot(app):
     state = complete(app)
     assert calls == [(source, "17", "2026-01-01T01:00:00|2026-01-01T01:05:00") for source in ("live", "gpu", "trace")]
     cpu = state["report"]["metrics"][0]
-    assert cpu["tower_interval_seconds"] == .5
+    assert cpu["raven_interval_seconds"] == .5
     assert cpu["producer_interval_seconds"] == 5
     assert cpu["backoff_seconds"] == 10 and cpu["error"] == "temporary"
-    assert state["report"]["metrics"][-1]["tower_interval_seconds"] == 2.5
+    assert state["report"]["metrics"][-1]["raven_interval_seconds"] == 2.5
 
 
 def test_explicit_job_does_not_change_underlying_selection(app):
@@ -267,7 +267,7 @@ def test_button_controls_map_exactly_to_rendered_semantic_targets(app):
 
 def test_keyboard_selection_copy_and_right_click_reset(app, monkeypatch):
     copied = []
-    monkeypatch.setattr("tower.clipboard.copy", lambda text, *args, **kwargs: copied.append(text) or "copied")
+    monkeypatch.setattr("raven.clipboard.copy", lambda text, *args, **kwargs: copied.append(text) or "copied")
     state = complete(app)
     render(app)
     U.handle_key(app, "v")
@@ -321,7 +321,7 @@ def test_tab_arrows_enter_activate_only_chosen_button(app):
 
 def test_clicking_evidence_restores_content_keys_after_button_traversal(app, monkeypatch):
     copied = []
-    monkeypatch.setattr("tower.clipboard.copy", lambda text, *args, **kwargs: copied.append(text) or "copied")
+    monkeypatch.setattr("raven.clipboard.copy", lambda text, *args, **kwargs: copied.append(text) or "copied")
     state = complete(app)
     rows = render(app)
     interaction.publish(app, [], [], app.width, app.height, overlays=rows)

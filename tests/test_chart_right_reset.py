@@ -3,9 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, layout as L, metric_live as M
-from tower.config import Config
-from tower.views import Views
+from raven import analysis_ui as A, chart_interaction as C, layout as L, metric_live as M
+from raven.config import Config
+from raven.views import Views
 
 
 @pytest.fixture

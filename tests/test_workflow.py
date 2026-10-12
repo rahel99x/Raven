@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tower import workflow
+from raven import workflow
 
 
 def node(jid, runtime=10, parents=(), **extra):
@@ -21,7 +21,7 @@ def node(jid, runtime=10, parents=(), **extra):
 
 
 def recipe(*nodes, **extra):
-    return {"kind": "tower.workflow", "version": 1, "nodes": list(nodes), **extra}
+    return {"kind": "raven.workflow", "version": 1, "nodes": list(nodes), **extra}
 
 
 def by_id(result):
@@ -188,9 +188,9 @@ def test_graph_errors_are_actionable(data, message):
         workflow.analyze(data, now=0)
 
 
-@pytest.mark.parametrize("data", [None, [], {}, {"version": 1, "kind": "tower.workflow", "nodes": []},
-                                {"version": True, "kind": "tower.workflow", "nodes": [node("a")]},
-                                {"version": 1.0, "kind": "tower.workflow", "nodes": [node("a")]},
+@pytest.mark.parametrize("data", [None, [], {}, {"version": 1, "kind": "raven.workflow", "nodes": []},
+                                {"version": True, "kind": "raven.workflow", "nodes": [node("a")]},
+                                {"version": 1.0, "kind": "raven.workflow", "nodes": [node("a")]},
                                 {"version": 1, "kind": "unknown", "nodes": [node("a")]},
                                 recipe(node("a"), unknown=True), recipe({"id": "a", "execute": "touch bad"}),
                                 recipe(node("a"), deadline=10, deadline_seconds=10)])
@@ -311,7 +311,7 @@ def test_plans_are_exact_review_only_and_symbolic_not_scheduler_dependencies(tmp
     assert plans[0]["resources"]["cpus_per_task"] == "4"
     assert plans[1]["parameters"] == {"rate": .1}
     assert not marker.exists()
-    from tower.submission import _digest
+    from raven.submission import _digest
     assert all(plan["plan_id"] == _digest(plan) for plan in plans)
     assert json.loads(json.dumps(plans, allow_nan=False)) == plans
 
@@ -320,7 +320,7 @@ def test_plans_are_exact_review_only_and_symbolic_not_scheduler_dependencies(tmp
                                          (recipe(node("a", parents=["a"], script="missing.sh")), "cycle"),
                                          (recipe(node("a", script="missing.sh"), node("b")), "script declarations")])
 def test_invalid_graph_or_missing_script_fails_before_any_preparation(data, message, monkeypatch):
-    monkeypatch.setattr("tower.submission.prepare", lambda *args, **kwargs: pytest.fail("read scripts before full graph validation"))
+    monkeypatch.setattr("raven.submission.prepare", lambda *args, **kwargs: pytest.fail("read scripts before full graph validation"))
     with pytest.raises(ValueError, match=message):
         workflow.plans(data)
 
@@ -363,7 +363,7 @@ def test_script_requests_cannot_silently_contradict_recipe_envelope(tmp_path, di
 def test_repeated_identical_script_preflight_is_cached_without_shared_plan_mutation(tmp_path, monkeypatch):
     script = tmp_path / "job.sh"
     script.write_text("#!/bin/bash\ntrue\n")
-    from tower import submission
+    from raven import submission
     real_prepare = submission.prepare
     calls = []
     def counted_prepare(*args, **kwargs):
@@ -383,7 +383,7 @@ def test_repeated_identical_script_preflight_is_cached_without_shared_plan_mutat
 
 @pytest.mark.parametrize("workdir", [False, [], "x\n", "\x1b[2J"])
 def test_plan_workdir_paths_are_strict_before_preflight(workdir, monkeypatch):
-    monkeypatch.setattr("tower.submission.prepare", lambda *args, **kwargs: pytest.fail("invalid workdir entered preflight"))
+    monkeypatch.setattr("raven.submission.prepare", lambda *args, **kwargs: pytest.fail("invalid workdir entered preflight"))
     with pytest.raises(ValueError, match="workdir"):
         workflow.plans(recipe(node("a", script="job.sh")), workdir=workdir)
 
@@ -402,6 +402,6 @@ def test_loaded_cycles_and_duplicate_keys_are_rejected(tmp_path):
     source.write_text(json.dumps(recipe(node("a", parents=["a"]))))
     with pytest.raises(ValueError, match="cycle"):
         workflow.load(source)
-    source.write_text('{"version":1,"version":2,"kind":"tower.workflow","nodes":[]}')
+    source.write_text('{"version":1,"version":2,"kind":"raven.workflow","nodes":[]}')
     with pytest.raises(ValueError):
         workflow.load(source)

@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/source-capabilities.schema.json",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/source-capabilities.schema.json",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.capabilities/v1"
+      "const": "raven.capabilities/v1"
     },
     "source": {
       "type": "string",

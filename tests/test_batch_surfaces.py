@@ -1,11 +1,11 @@
 """Batch presentation across job selectors must keep allocation actions exact."""
 import pytest
 
-from tower import history_browser, job_groups, layout as L, table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import history_browser, job_groups, layout as L, table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -129,7 +129,7 @@ def test_advisor_and_independent_dependencies_publish_group_fold_controls(batch)
 
 
 def test_narrow_summary_preserves_blocked_badge_and_uses_theme_roles(batch):
-    from tower.job_group_ui import summary_row
+    from raven.job_group_ui import summary_row
     app, views, store = batch
     row = summary_row(store.jobs, 16)
     assert L.row_text(row).strip() == "R1 P1 D1 !1"
@@ -164,7 +164,7 @@ def test_fold_controls_never_escape_narrow_table_frames(batch, width):
 def test_group_info_splices_once_with_wide_combining_and_selection_parity(batch, monkeypatch):
     import random
     from types import SimpleNamespace
-    from tower import job_group_ui, pane_drag
+    from raven import job_group_ui, pane_drag
     app, views, store = batch
     original = pane_drag._replace
     calls = []

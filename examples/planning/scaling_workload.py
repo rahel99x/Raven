@@ -4,7 +4,7 @@
 Examples, from the checkout:
   .venv/bin/python examples/planning/scaling_workload.py local --workers 1 --output one.json
   .venv/bin/python examples/planning/scaling_workload.py combine one.json two.json --output measurements.json
-  tower run scaling analyze measurements.json --mode strong --baseline 1
+  raven run scaling analyze measurements.json --mode strong --baseline 1
 
 The workload is intentionally small and synthetic. It measures actual elapsed
 time including process startup; it does not predict production application speed.
@@ -24,10 +24,10 @@ import sys
 import time
 import uuid
 
-# Allow the documented direct invocation with either an installed Tower or a
+# Allow the documented direct invocation with either an installed Raven or a
 # source checkout, without launching setup or installing dependencies.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tower.planning_io import load_json
+from raven.planning_io import load_json
 
 MAX_WORKERS = 8
 MAX_PROBLEM = 1000000
@@ -102,23 +102,23 @@ def run(args):
     if args.command == "run":
         if os.environ.get("SLURM_JOB_NUM_NODES", "1") != "1":
             raise ValueError("the demonstration requires exactly one allocated node")
-        workers = integer(os.environ.get("TOWER_SCALING_WORKERS", ""), "workers", 1, MAX_WORKERS)
-        raw_problem = os.environ.get("TOWER_SCALING_PROBLEM_SIZE", "")
+        workers = integer(os.environ.get("RAVEN_SCALING_WORKERS", ""), "workers", 1, MAX_WORKERS)
+        raw_problem = os.environ.get("RAVEN_SCALING_PROBLEM_SIZE", "")
         problem_number = float(raw_problem)
         if not math.isfinite(problem_number) or not problem_number.is_integer():
             raise ValueError("this demonstration requires an integer problem_size")
         problem = integer(int(problem_number), "problem_size", 1, MAX_PROBLEM)
-        repeat = integer(os.environ.get("TOWER_SCALING_REPEAT", ""), "repeat", 1, 20)
-        seed = integer(os.environ.get("TOWER_SCALING_SEED", ""), "seed", 0, 2147483647)
-        terms = integer(os.environ.get("TOWER_PARAM_KERNEL_TERMS", ""), "kernel_terms", 1, 64)
-        scale = number(os.environ.get("TOWER_PARAM_SCALE", ""), "scale")
-        unexpected = set(name for name in os.environ if name.startswith("TOWER_PARAM_")) - {"TOWER_PARAM_KERNEL_TERMS", "TOWER_PARAM_SCALE"}
+        repeat = integer(os.environ.get("RAVEN_SCALING_REPEAT", ""), "repeat", 1, 20)
+        seed = integer(os.environ.get("RAVEN_SCALING_SEED", ""), "seed", 0, 2147483647)
+        terms = integer(os.environ.get("RAVEN_PARAM_KERNEL_TERMS", ""), "kernel_terms", 1, 64)
+        scale = number(os.environ.get("RAVEN_PARAM_SCALE", ""), "scale")
+        unexpected = set(name for name in os.environ if name.startswith("RAVEN_PARAM_")) - {"RAVEN_PARAM_KERNEL_TERMS", "RAVEN_PARAM_SCALE"}
         if unexpected:
             raise ValueError("this example does not consume all exported user parameters")
         job_id = os.environ.get("SLURM_JOB_ID", "")
         if not re.fullmatch(r"[1-9][0-9]{0,19}", job_id):
             raise ValueError("run requires a valid Slurm job environment; use local for explicit local execution")
-        experiment_id = os.environ.get("TOWER_SCALING_EXPERIMENT_ID", "")
+        experiment_id = os.environ.get("RAVEN_SCALING_EXPERIMENT_ID", "")
         if not re.fullmatch(r"[a-f0-9]{64}", experiment_id):
             raise ValueError("run requires the reviewed experiment identity")
         cpus, gpus = observed_resources()
@@ -175,7 +175,7 @@ def combine(args):
         if consumed > MAX_BYTES:
             raise ValueError("combined input exceeds the 8 MiB read budget")
         records.append(record)
-    write_json(args.output, {"version": 1, "kind": "tower.scaling-records", "records": records})
+    write_json(args.output, {"version": 1, "kind": "raven.scaling-records", "records": records})
     print(f"Collected {len(records)} explicit records in {args.output}")
 
 

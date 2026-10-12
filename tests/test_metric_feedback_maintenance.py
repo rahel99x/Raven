@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, layout as L, metric_live as M
-from tower.model import Job, Store
+from raven import chart_interaction as C, layout as L, metric_live as M
+from raven.model import Job, Store
 
 
 @pytest.fixture

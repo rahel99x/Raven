@@ -1,11 +1,11 @@
 """Frozen job menus never resolve a new target from stale terminal coordinates."""
 import pytest
 
-from tower import job_group_menu as M, job_groups as G, layout as L, manual_job_groups as B
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import job_group_menu as M, job_groups as G, layout as L, manual_job_groups as B
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -100,6 +100,7 @@ def test_ungroup_exists_only_for_grouped_jobs_and_collapsed_group_is_whole(dashb
     gid = group(app, store, ("1", "2", "3"))
     app.table_state["groups"] = True
     G.fold(app, gid, True)
+    frame(app, store)
     assert M.open_menu(app, source(app, store))
     assert gid in M.initialize(app)["context"]["ungroup_groups"]
     choose(app, "ungroup")
@@ -283,7 +284,7 @@ def test_changed_page_tick_closes_without_snapshot(dashboard, monkeypatch):
 
 
 def test_f8_graph_uses_current_semantic_menu_action(dashboard):
-    from tower import interaction
+    from raven import interaction
     app, store = dashboard
     app.marks = {"1", "2"}
     M.open_menu(app, source(app, store))
@@ -341,7 +342,7 @@ def test_context_group_and_destination_labels_disambiguate_duplicate_names(dashb
 
 
 def test_repeated_cosmetic_overlay_keeps_one_rail_and_preserves_other_panes(dashboard):
-    from tower import scrollbars
+    from raven import scrollbars
     app, store = dashboard
     M.open_menu(app, source(app, store))
     scrollbars.begin_frame(app)

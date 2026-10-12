@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, clock, layout as L
+from raven import analysis_ui as A, clock, layout as L
 
 
 @pytest.fixture

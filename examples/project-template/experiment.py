@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A tiny real CPU experiment showing portable Tower instrumentation."""
+"""A tiny real CPU experiment showing portable Raven instrumentation."""
 from __future__ import annotations
 
 import argparse

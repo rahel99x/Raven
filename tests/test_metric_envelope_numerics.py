@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from tower import charts, metric_envelope as E
+from raven import charts, metric_envelope as E
 
 
 def summarized(values, width=None):

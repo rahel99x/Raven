@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import charts, layout as L, research_views
+from raven import charts, layout as L, research_views
 
 
 @pytest.mark.parametrize("ascii_", [False, True])

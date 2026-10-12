@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from tower import clipboard
+from raven import clipboard
 
 
 class Terminal(io.StringIO):
@@ -307,7 +307,7 @@ def test_copy_file_rejects_fifo_without_blocking(tmp_path):
     os.mkfifo(source)
     completed = subprocess.run(
         [sys.executable, "-c",
-         "import json, sys; from tower.clipboard import copy_file; "
+         "import json, sys; from raven.clipboard import copy_file; "
          "print(json.dumps(copy_file(sys.argv[1], use_osc52=False)))", str(source)],
         capture_output=True, timeout=2, check=True,
     )

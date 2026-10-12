@@ -1,8 +1,8 @@
 {
-  "schema": "tower.checkpoint-restart/v1",
+  "schema": "raven.checkpoint-restart/v1",
   "id": "example-restart-01",
   "script": "restart.sbatch",
-  "script_sha256": "63751a3a318d5c83ee93f56e2a0c594a6382b471e5afc0d0f6fa7048dc4624b2",
+  "script_sha256": "bdb21740b909b4fa486056ed6cf5bb07c7fa377ee15ec380d942c5822cf59c57",
   "workdir": ".",
   "checkpoint": {
     "path": "checkpoint.txt",

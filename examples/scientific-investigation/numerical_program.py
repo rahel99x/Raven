@@ -17,4 +17,4 @@ else:
     for value in values:
         answer += value
 Path(output).write_text(json.dumps({"answer": answer, "seconds": time.perf_counter()-started}), encoding="utf-8")
-print("TOWER_DEMO_MEASURED")
+print("RAVEN_DEMO_MEASURED")

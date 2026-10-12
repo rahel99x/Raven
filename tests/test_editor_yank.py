@@ -8,8 +8,8 @@ import subprocess
 
 import pytest
 
-from tower import clipboard, editor_yank as E, toolbar, layout as L
-from tower.config import Config
+from raven import clipboard, editor_yank as E, toolbar, layout as L
+from raven.config import Config
 
 
 def executable(tmp_path, name):
@@ -61,7 +61,7 @@ def test_vim_requires_unambiguous_live_server(tmp_path, monkeypatch, servers, re
     monkeypatch.setattr(E.shutil, "which", lambda name: editor if name == "vim" else None)
     seen = []
     monkeypatch.setattr(E.subprocess, "run", lambda argv, **kw: seen.append((argv, kw)) or SimpleNamespace(returncode=0, stdout=servers))
-    found, message = E.discover({} if requested is None else {"TOWER_VIM_SERVER": requested})
+    found, message = E.discover({} if requested is None else {"RAVEN_VIM_SERVER": requested})
     assert (found.server if found else None) == expected
     assert seen[0][0] == [editor, "--serverlist"]
     assert seen[0][1]["timeout"] < 1

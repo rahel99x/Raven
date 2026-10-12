@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from tower import layout as L, selector_glyphs as G
+from raven import layout as L, selector_glyphs as G
 
 
 @pytest.mark.parametrize("fraction,slot", [(0., 0), (.249999, 0), (.25, 1), (.499999, 1),

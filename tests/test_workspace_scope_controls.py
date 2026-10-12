@@ -3,11 +3,11 @@ import curses
 
 import pytest
 
-from tower import history_browser as H, layout as L, screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import history_browser as H, layout as L, screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture

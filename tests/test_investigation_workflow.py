@@ -9,8 +9,8 @@ import threading
 
 import pytest
 
-from tower import diagnostic_trials, investigation_workflow as W, operations as O, ops_investigation as adapter
-from tower.derived_results import ResultCache
+from raven import diagnostic_trials, investigation_workflow as W, operations as O, ops_investigation as adapter
+from raven.derived_results import ResultCache
 
 
 def write(path, value):
@@ -20,15 +20,15 @@ def write(path, value):
 
 def setup(tmp_path):
     identity = {"cluster": "test", "job_id": "12", "attempt": "producer-attempt-1"}
-    source = {"schema": "tower.numerical-stability/v1", "metrics": [{"name": "answer", "reference": 1, "absolute": 0, "relative": 0}],
+    source = {"schema": "raven.numerical-stability/v1", "metrics": [{"name": "answer", "reference": 1, "absolute": 0, "relative": 0}],
               "runs": [{"id": "pilot", "configuration": "baseline", "metrics": {"answer": 1}}]}
-    planner = {"schema": "tower.investigation-plan/v1", "budget": {"seconds": 20, "resource_seconds": 30, "trials": 1},
+    planner = {"schema": "raven.investigation-plan/v1", "budget": {"seconds": 20, "resource_seconds": 30, "trials": 1},
                "known_evidence": ["forged"], "actions": [{"id": "accuracy", "kind": "scientific-validation", "seconds": 5,
                  "resource_seconds": 5, "queue_seconds": 0, "decision_gain": 1, "success_probability": 1,
                  "scientific_risk": 0, "requires": ["baseline"], "model": "declared pilot estimate"}]}
     script = tmp_path/"measure.py"
     script.write_text("import json,sys\nfrom pathlib import Path\nPath(sys.argv[1]).write_text(json.dumps({'answer': float(sys.argv[2])}))\nprint('MEASURED')\n")
-    recipe = {"schema": "tower.diagnostic-campaign/v1", "id": "accuracy", "kind": "campaign", "mode": "local-diagnostic",
+    recipe = {"schema": "raven.diagnostic-campaign/v1", "id": "accuracy", "kind": "campaign", "mode": "local-diagnostic",
               "command": [str(Path(sys.executable).resolve()), "{file:measure.py}"],
               "files": [{"name": "measure.py", "path": "measure.py", "sha256": hashlib.sha256(script.read_bytes()).hexdigest()}],
               "limits": {"max_trials": 4, "trial_seconds": 2, "total_seconds": 10, "cpus": 1, "memory_mb": 256, "output_bytes": 4096, "repeats": 2},
@@ -205,7 +205,7 @@ def test_status_cannot_borrow_another_attempt_or_unbound_workspace(tmp_path, mon
         doc["identity"]["attempt"] = "second"
         write(Path(params["manifest"]), doc)
     elif change == "unbound":
-        path = tmp_path/"run"/".tower-receipt.json"
+        path = tmp_path/"run"/".raven-receipt.json"
         receipt = json.loads(path.read_text())
         del receipt["workflow_binding"]
         write(path, receipt)
@@ -260,7 +260,7 @@ def test_optional_intent_uses_existing_compiler_without_executing_commands(tmp_p
     write(Path(params["manifest"]), doc)
     monkeypatch.setattr(adapter, "_launch_local", lambda *args: pytest.fail("inspection executed a command"))
     result = W.run(params, ctx)
-    assert result["data"]["compiled"]["schema"] == "tower.diagnostic-plan/v1"
+    assert result["data"]["compiled"]["schema"] == "raven.diagnostic-plan/v1"
     assert result["data"]["compiled"]["executable"] is False
 
 
@@ -283,10 +283,10 @@ def test_schema_and_generated_demo_match_runtime_contract(tmp_path):
 def test_expiry_between_review_and_apply_blocks_execution(tmp_path, monkeypatch):
     doc, params, ctx = setup(tmp_path)
     clock = [100.0]
-    from tower import science_contracts
+    from raven import science_contracts
     monkeypatch.setattr(science_contracts.time, "time", lambda: clock[0])
     evidence = {"x": 1}
-    recommendation = {"schema": "tower.recommendation-review/v1", "contract": {
+    recommendation = {"schema": "raven.recommendation-review/v1", "contract": {
         "id": "policy", "identity": doc["identity"], "created": 90, "expires": 120,
         "evidence": [{"id": "pilot", "sha256": O.digest(evidence)}],
         "preconditions": [{"source": "pilot", "path": ["x"], "op": "eq", "value": 1}],
@@ -328,7 +328,7 @@ def test_nested_execution_warning_is_preserved(tmp_path, monkeypatch, state):
     recipe = json.loads((tmp_path/"recipe.json").read_text())
     nested = O.report("diagnostic-campaign", "Incomplete", status="warning", rows=["Incomplete"], data={
         "state": state, "recipe_sha256": O.digest(recipe), "result": None,
-        "workflow_binding": {"schema": "tower.investigation-binding/v1", "identity": doc["identity"], "diagnostic_id": "accuracy"}})
+        "workflow_binding": {"schema": "raven.investigation-binding/v1", "identity": doc["identity"], "diagnostic_id": "accuracy"}})
     monkeypatch.setattr(adapter, "run", lambda *args: nested)
     result = W.run(dict(params, action="status"), ctx)
     assert result["status"] == "warning"

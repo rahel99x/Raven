@@ -14,9 +14,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.raven_protocol import Decoder, MAX_FRAME, MAX_QUEUE, ProtocolError, build_digest, canonical, digest, encode
-from tower.raven_resources import child_environment, limits, placement_probe, task_limits, verify_placement
-from tower.raven_worker_client import WorkerClient
+from raven.raven_protocol import Decoder, MAX_FRAME, MAX_QUEUE, ProtocolError, build_digest, canonical, digest, encode
+from raven.raven_resources import child_environment, limits, placement_probe, task_limits, verify_placement
+from raven.raven_worker_client import WorkerClient
 
 
 def config(**updates):
@@ -25,7 +25,7 @@ def config(**updates):
 
 
 def inputs():
-    return {"document": {"schema": "tower.statistics/v1", "design": "independent", "unit": "seed",
+    return {"document": {"schema": "raven.statistics/v1", "design": "independent", "unit": "seed",
                          "control": [{"id": "a", "value": 1}, {"id": "b", "value": 2}, {"id": "c", "value": 3}],
                          "treatment": [{"id": "d", "value": 4}, {"id": "e", "value": 5}, {"id": "f", "value": 6}]}}
 
@@ -122,6 +122,15 @@ def test_slurm_env_is_never_sufficient_placement_proof():
         placement_probe(settings, environ={}, host="compute1", uid=1000, pid=444, cgroups="")
 
 
+def test_verified_identity_retains_observed_allocation_attempt_times():
+    settings, candidate, records = slurm_fixture()
+    records["job_record"] = records["job_record"].replace("SubmitTime=a", "SubmitTime=2026-10-12T10:00:00").replace(
+        "StartTime=b", "StartTime=2026-10-12T10:00:20")
+    identity = verify_placement(settings, candidate, records)
+    assert identity["submit_time"] == "2026-10-12T10:00:00"
+    assert identity["start_time"] == "2026-10-12T10:00:20"
+
+
 @pytest.mark.parametrize("change", ["job", "step", "owner", "host", "probe", "cpus", "state", "step-state", "memory", "attempt", "hard"])
 def test_slurm_mismatches_refuse_heavy(change):
     settings, candidate, records = slurm_fixture()
@@ -210,12 +219,12 @@ def test_immediate_cancellation_reaps_task_and_later_work_is_admitted():
 
 
 def test_worker_module_bootstrap_imports_no_sampler_or_ui():
-    result = subprocess.run([sys.executable, "-c", "import sys,tower.raven_worker; print(','.join(sorted(k for k in sys.modules if k.startswith('tower.'))))"],
+    result = subprocess.run([sys.executable, "-c", "import sys,raven.raven_worker; print(','.join(sorted(k for k in sys.modules if k.startswith('raven.'))))"],
                             capture_output=True, text=True, timeout=5)
     assert result.returncode == 0
-    assert "tower.sampler" not in result.stdout
-    assert "tower.screen" not in result.stdout
-    assert "tower.views" not in result.stdout
+    assert "raven.sampler" not in result.stdout
+    assert "raven.screen" not in result.stdout
+    assert "raven.views" not in result.stdout
 
 
 def test_client_rejects_generation_sequence_nonce_and_context_changes():
@@ -249,7 +258,7 @@ def test_task_cancellation_kills_owned_child_and_preserves_worker_process():
 
 def test_analysis_task_cli_refuses_missing_or_forged_supervisor():
     for parent in (None, os.getpid() + 999999):
-        command = [sys.executable, "-m", "tower.raven_worker", "--task"]
+        command = [sys.executable, "-m", "raven.raven_worker", "--task"]
         if parent is not None:
             command += ["--parent-pid", str(parent)]
         result = subprocess.run(command, input=b"", capture_output=True, timeout=5)
@@ -282,6 +291,72 @@ def test_stale_placement_probe_is_not_rebound_to_new_worker():
     with pytest.raises(ValueError, match="another worker probe"):
         client.provide_placement({"probe_id": "old"})
     client.close()
+
+
+def test_allocation_observation_reads_only_complete_exact_startup_lines():
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        for ignored in (b"payload: salloc: Pending job allocation 41\n", b"salloc: Granted job allocation 41 error\n",
+                        b"salloc: Pending job allocation 0\n", b"srun: Pending job allocation 41\n",
+                        b"salloc: Pending job allocation 999999999999999999999\n"):
+            client._retain_stderr(ignored)
+            assert client.observed_allocation_id == ""
+        client._retain_stderr(b"salloc: Pending job allocation 4")
+        assert client.observed_allocation_id == ""
+        client._retain_stderr(b"2\n")
+        assert client.observed_allocation_id == "42"
+        client._retain_stderr(b"salloc: Granted job allocation 42\r\n")
+        assert client.observed_allocation_id == "42"
+        assert not client.ready and client.identity == {} and client.placement is None
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("site_kind,opt_in", [("slurm", False), ("desktop", True)])
+def test_allocation_observation_requires_opted_in_slurm_launch(site_kind, opt_in):
+    client = WorkerClient(config(site_kind=site_kind), observe_allocation=opt_in)
+    try:
+        client._retain_stderr(b"salloc: Pending job allocation 42\n")
+        assert client.observed_allocation_id == ""
+    finally:
+        client.close()
+
+
+def test_conflicting_allocation_observations_are_never_rebound():
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        client._retain_stderr(b"salloc: Pending job allocation 42\nsalloc: Granted job allocation 43\n")
+        assert client.observed_allocation_id == ""
+        client._retain_stderr(b"salloc: Granted job allocation 42\n")
+        assert client.observed_allocation_id == ""
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("candidate_job", ["42", "43"])
+def test_worker_publication_closes_launch_observation_and_rejects_conflict(candidate_job):
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        client._retain_stderr(b"salloc: Pending job allocation 42\n")
+        client._consume({"op": "placement_probe", "session_id": client.session_id,
+                         "generation": client.generation, "worker_id": "worker", "seq": 1,
+                         "candidate": {"probe_id": "probe", "job_id": candidate_job}})
+        assert client.observed_allocation_id == ("42" if candidate_job == "42" else "")
+        assert not client.ready and client.identity == {}
+        client._retain_stderr(b"salloc: Granted job allocation 999\n")
+        assert client.observed_allocation_id == ("42" if candidate_job == "42" else "")
+    finally:
+        client.close()
+
+
+def test_allocation_observation_has_the_same_bounded_stderr_budget():
+    client = WorkerClient(config(site_kind="slurm"), observe_allocation=True)
+    try:
+        client._retain_stderr(b"x" * 16384 + b"\nsalloc: Pending job allocation 42\n")
+        client._retain_stderr(b"salloc: Granted job allocation 42\n")
+        assert len(client.stderr) == 16384 and client.observed_allocation_id == ""
+    finally:
+        client.close()
 
 
 def test_final_large_result_is_drained_after_worker_exits(monkeypatch):
@@ -342,7 +417,7 @@ def test_actual_task_wall_budget_terminates_child_and_allows_followup():
 
 
 def test_build_mismatch_has_correlated_diagnostic_without_admission(monkeypatch):
-    from tower import raven_worker_client
+    from raven import raven_worker_client
     monkeypatch.setattr(raven_worker_client, 'build_digest', lambda: '0' * 64)
     with WorkerClient(config()) as client:
         until(client, lambda: client.status == 'failed')

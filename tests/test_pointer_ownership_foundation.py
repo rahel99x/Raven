@@ -4,8 +4,8 @@ import curses
 
 import pytest
 
-from tower import screen, toolbar, refresh_rate
-from tower.pointer_routing import RELEASE_MARKERS, PointerEvent
+from raven import screen, toolbar, refresh_rate
+from raven.pointer_routing import RELEASE_MARKERS, PointerEvent
 from test_pointer_integration import dashboard, MOUSE
 
 

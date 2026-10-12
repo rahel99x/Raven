@@ -5,7 +5,7 @@ import math
 
 import pytest
 
-from tower import telemetry as T
+from raven import telemetry as T
 
 
 CONFIG = """ClusterName = research
@@ -88,7 +88,7 @@ def test_default_is_not_assumed_and_repeated_values_do_not_infer_it():
     assert report["configured_task_seconds"] is None
     assert report["job_task_seconds"] is None
     assert report["metrics"][0]["producer_interval_seconds"] is None
-    assert report["metrics"][0]["tower_interval_seconds"] == .5
+    assert report["metrics"][0]["raven_interval_seconds"] == .5
     assert report["metrics"][0]["capability"] == "unknown"
     assert "30s" not in "\n".join(T.report_lines(report))
 
@@ -130,7 +130,7 @@ def test_gpu_and_reported_files_never_inherit_task_frequency():
     gpu, trace, project = report["metrics"][3:]
     assert gpu["capability"] == "observed"
     assert all(row["producer_interval_seconds"] is None for row in (gpu, trace, project))
-    assert [row["tower_interval_seconds"] for row in (gpu, trace, project)] == [.5, 1.5, 2]
+    assert [row["raven_interval_seconds"] for row in (gpu, trace, project)] == [.5, 1.5, 2]
     report = T.build_report({}, {}, gpu_enabled=False, gpu_observation={"devices": 1})
     assert report["metrics"][3]["capability"] == "disabled"
 
@@ -138,7 +138,7 @@ def test_gpu_and_reported_files_never_inherit_task_frequency():
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -1, True, "0.5", 10**1000, None])
 def test_invalid_interval_and_health_values_are_unknown(value):
     report = T.build_report({}, {}, intervals={"live": value}, health={"live": {"last_ok": value, "backoff": value}})
-    assert report["metrics"][0]["tower_interval_seconds"] is None
+    assert report["metrics"][0]["raven_interval_seconds"] is None
     assert report["metrics"][0]["last_success_at"] is None
     assert report["metrics"][0]["backoff_seconds"] is None
 
@@ -149,7 +149,7 @@ def test_health_backoff_is_evidence_not_a_new_sampling_frequency():
     text = "\n".join(T.report_lines(report))
     assert "20s before snapshot" in text and "backoff: 60s" in text
     assert "permission denied" in text and "collector is disabled" in text
-    assert report["metrics"][0]["tower_interval_seconds"] == .5
+    assert report["metrics"][0]["raven_interval_seconds"] == .5
 
 
 def test_cache_ttl_refresh_and_connection_isolation():

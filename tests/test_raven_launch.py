@@ -1,5 +1,6 @@
 """Bootstrap tests never request a real allocation or read the user's state."""
 import json
+from pathlib import Path
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -7,13 +8,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from tower import raven_launch as L
-from tower import raven_config as C
+from raven import raven_launch as L
+from raven import raven_config as C
 
 
 @pytest.fixture(autouse=True)
 def isolated(tmp_path, monkeypatch):
-    for name in ('RAVEN_CONFIG','RAVEN_PROFILE','RAVEN_STATE_DIR','RAVEN_SITE_POLICY','TOWER_CONFIG','TOWER_PROFILE','TOWER_STATE_DIR','TOWER_SITE_POLICY'):
+    for name in ('RAVEN_CONFIG','RAVEN_PROFILE','RAVEN_STATE_DIR','RAVEN_SITE_POLICY'):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv('HOME',str(tmp_path))
     monkeypatch.setenv('XDG_CONFIG_HOME',str(tmp_path/'config'))
@@ -22,7 +23,7 @@ def isolated(tmp_path, monkeypatch):
 
 
 def test_light_plan_is_pure_and_does_not_load_dashboard(tmp_path,capsys):
-    program='from tower.raven_launch import light_main; import sys; assert light_main(["--plan"]) == 0; assert "tower.cli" not in sys.modules; assert "tower.raven_allocation" not in sys.modules'
+    program='from raven.raven_launch import light_main; import sys; assert light_main(["--plan"]) == 0; assert "raven.cli" not in sys.modules; assert "raven.raven_allocation" not in sys.modules'
     result=subprocess.run([sys.executable,'-c',program],capture_output=True,text=True,timeout=10)
     assert result.returncode==0,result.stderr
     assert json.loads(result.stdout)['mutations']==0
@@ -47,7 +48,7 @@ def test_fake_heavy_rejected_before_manager(monkeypatch,args,capsys):
 @pytest.mark.parametrize('entry', [L.light_main,L.heavy_main])
 @pytest.mark.parametrize('prefix', [[],['--site','desktop']])
 def test_nested_help_preserved_and_never_allocates(monkeypatch,entry,prefix):
-    from tower import cli
+    from raven import cli
     dispatch=Mock(return_value=0)
     monkeypatch.setattr(cli,'main',dispatch)
     monkeypatch.setattr(L,'_allocation',Mock(side_effect=AssertionError('help cannot allocate')))
@@ -57,18 +58,18 @@ def test_nested_help_preserved_and_never_allocates(monkeypatch,entry,prefix):
 
 
 def test_nested_config_is_not_bootstrap_config(monkeypatch):
-    from tower import cli
+    from raven import cli
     dispatch=Mock(return_value=0); monkeypatch.setattr(cli,'main',dispatch)
     assert L.light_main(['--site','desktop','report','init','--config','project.json'])==0
     assert dispatch.call_args.args[0]==['report','init','--config','project.json']
 
 
 def test_legacy_profile_desktop_preserves_slurm(monkeypatch,tmp_path,capsys):
-    from tower import cli
+    from raven import cli
     source=tmp_path/'legacy.json'
     source.write_text(json.dumps({'profiles':{'desktop':{'account':'workstation','research_roots':['/tmp/project']}}}))
     dispatch=Mock(return_value=0); monkeypatch.setattr(cli,'main',dispatch)
-    assert L.legacy_main(['--config',str(source),'--profile','desktop','--once'])==0
+    assert L.light_main(['--config',str(source),'--profile','desktop','--once'])==0
     value=dispatch.call_args.kwargs['raven']
     assert value.legacy_profile=='desktop'
     assert value.data['site']['kind']=='slurm'
@@ -78,7 +79,7 @@ def test_legacy_profile_desktop_preserves_slurm(monkeypatch,tmp_path,capsys):
 
 
 def test_heavy_wait_keeps_ui_import_after_ready_and_reuses_manager(monkeypatch):
-    from tower import cli
+    from raven import cli
     events=[]
     manager=SimpleNamespace(worker=SimpleNamespace(ready=False),request=lambda **kw:events.append('request'),
         shutdown=lambda:events.append('shutdown'))
@@ -99,7 +100,7 @@ def test_heavy_wait_keeps_ui_import_after_ready_and_reuses_manager(monkeypatch):
 
 @pytest.mark.parametrize('state', [{'state':'light','error':'denied'},{'state':'reconciling','cleanup_uncertain':True}])
 def test_startup_failure_cleans_owned_manager_and_never_opens_ui(monkeypatch,state):
-    from tower import cli
+    from raven import cli
     manager=SimpleNamespace(request=Mock(),tick=Mock(),snapshot=lambda:state,shutdown=Mock())
     monkeypatch.setattr(L,'_allocation',lambda _:manager)
     monkeypatch.setattr(L,'configure_placement',lambda *a:None)
@@ -128,12 +129,21 @@ def test_compute_interface_and_light_reuse_fail_closed(capsys):
     assert L.light_main(['--allocation','123'])==2
 
 
-@pytest.mark.parametrize('entry',[L.light_main,L.heavy_main,L.legacy_main])
+@pytest.mark.parametrize('entry',[L.light_main,L.heavy_main])
 def test_version_never_allocates_or_resolves_configuration(monkeypatch,entry,capsys):
     monkeypatch.setattr(L,'resolve',Mock(side_effect=AssertionError('version resolves nothing')))
     monkeypatch.setattr(L,'_allocation',Mock(side_effect=AssertionError))
     assert entry(['--version'])==0
-    assert capsys.readouterr().out.startswith('Project Raven ')
+    assert capsys.readouterr().out.startswith('Raven ')
+
+
+@pytest.mark.parametrize('arguments', [['-m','raven'],[str(Path(__file__).resolve().parents[1]/'raven')]])
+def test_module_and_package_directory_version_are_clean_entry_points(arguments,monkeypatch,tmp_path):
+    monkeypatch.setenv('RAVEN_CONFIG',str(tmp_path/'missing.json'))
+    result=subprocess.run([sys.executable,*arguments,'--version'],capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
+    assert result.stdout.startswith('Raven ')
+    assert result.stderr==''
 
 
 def test_explicit_reuse_waits_for_opaque_receipt(monkeypatch,tmp_path):
@@ -168,7 +178,7 @@ def test_explicit_legacy_account_resolves_before_site_policy(monkeypatch,tmp_pat
 
 @pytest.mark.parametrize('tail', [['run','resubmit','123','--account','other'],['report','example','--account','other']])
 def test_nested_account_stays_with_its_command(monkeypatch,tail):
-    from tower import cli
+    from raven import cli
     dispatch=Mock(return_value=0);monkeypatch.setattr(cli,'main',dispatch)
     assert L.light_main(['--account','science',*tail])==0
     assert dispatch.call_args.args[0]==tail

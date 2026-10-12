@@ -5,15 +5,15 @@ import re
 
 import pytest
 
-from tower import (analysis_ui, chart_interaction as charts, clock, layout,
+from raven import (analysis_ui, chart_interaction as charts, clock, layout,
                    metric_live, metric_sampling, refresh_rate, screen,
                    text_selection)
-from tower.config import Config
-from tower.controller import App
-from tower.model import GpuSample, Job, Live, Store
-from tower.research import ResearchHub
-from tower.sampler import Sampler
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.model import GpuSample, Job, Live, Store
+from raven.research import ResearchHub
+from raven.sampler import Sampler
+from raven.views import Views
 
 
 MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,
@@ -201,7 +201,7 @@ def test_accelerated_job_probes_do_not_accelerate_other_jobs(dashboard, monkeypa
     d.draw()
     control = controls(app)[0]
     now, calls = [100.0], []
-    monkeypatch.setattr("tower.sampler.time.monotonic", lambda: now[0])
+    monkeypatch.setattr("raven.sampler.time.monotonic", lambda: now[0])
 
     def live(job, previous, timestamp):
         calls.append(job.id)
@@ -227,7 +227,7 @@ def test_poll_slider_endpoints_gate_real_native_probes(dashboard, monkeypatch, t
     """Both layouts reach the same real collection deadlines, including GPU."""
     d, app = dashboard, dashboard.app
     now, calls = [100.0], []
-    monkeypatch.setattr("tower.sampler.time.monotonic", lambda: now[0])
+    monkeypatch.setattr("raven.sampler.time.monotonic", lambda: now[0])
     sample = GpuSample(0, 50, 100, 200, "GPU")
     for job in d.store.jobs:
         job.gpus = 1
@@ -285,7 +285,7 @@ def test_linked_project_native_chart_uses_scheduler_attempt_for_real_polling(das
     app.project_state.update(root="/project", binding={
         "job_id": "7", "project_root": "/project", "run_id": "training", "attempt": attempt,
     })
-    identity = analysis_ui.chart_key(app, metric, "Tower session resource samples", jid="7", job=d.store.jobs[0])
+    identity = analysis_ui.chart_key(app, metric, "Raven session resource samples", jid="7", job=d.store.jobs[0])
     assert identity[4:] == ("scheduler:submit|start", None, None, None)
     charts.begin_frame(app, 190, 90)
     metric_live.controls(d.views.g, app, identity, 100, running=True, row=8, column=10)
@@ -297,7 +297,7 @@ def test_linked_project_native_chart_uses_scheduler_attempt_for_real_polling(das
 
     # Changing the report binding cannot detach a native scheduler collector.
     app.project_state["binding"].update(attempt="trial-next", run_id="other-report")
-    assert analysis_ui.chart_key(app, metric, "Tower session resource samples", jid="7") == identity
+    assert analysis_ui.chart_key(app, metric, "Raven session resource samples", jid="7") == identity
     external = analysis_ui.chart_key(app, "loss", "/project/metrics.jsonl", jid="7")
     assert external[4:7] == ("trial-next", "/project", "other-report")
 

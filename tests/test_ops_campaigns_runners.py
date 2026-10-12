@@ -9,13 +9,13 @@ import time
 
 import pytest
 
-from tower import campaign_common as common
-from tower import campaign_dask as dask
-from tower import campaign_packing as packing
+from raven import campaign_common as common
+from raven import campaign_dask as dask
+from raven import campaign_packing as packing
 
 
 def manifest(tmp_path, tasks=None):
-    return {"schema": "tower.packed-tasks/v1", "cpus": 4, "memory_mb": 8, "parallel": 3,
+    return {"schema": "raven.packed-tasks/v1", "cpus": 4, "memory_mb": 8, "parallel": 3,
             "tasks": tasks if tasks is not None else [
                 {"id": "task-" + str(i), "argv": [sys.executable, "-c", "import time; print(time.monotonic(),flush=True); time.sleep(.08); print(time.monotonic())"],
                  "cwd": str(tmp_path), "cpus": 2, "memory_mb": 4} for i in range(4)]}
@@ -84,7 +84,12 @@ def test_descendant_cannot_escape_resource_accounting(tmp_path):
     pid = int((tmp_path / "results" / "logs" / "parent.out").read_text())
     status = Path(f"/proc/{pid}/stat")
     for _ in range(20):
-        if not status.exists() or status.read_text().rsplit(")", 1)[1].split()[0] == "Z":
+        try:
+            state = status.read_text().rsplit(")", 1)[1].split()[0]
+        except FileNotFoundError:
+            # Reaping may remove /proc between any existence check and read.
+            break
+        if state == "Z":
             break
         time.sleep(.01)
     else:
@@ -145,7 +150,7 @@ def test_fifo_receipt_does_not_block(tmp_path):
     assert time.monotonic() - start < .5
 
 
-def test_standalone_runner_needs_no_tower_import(tmp_path):
+def test_standalone_runner_needs_no_raven_import(tmp_path):
     runner = tmp_path / "runner.py"
     runner.write_bytes(Path(packing.__file__).read_bytes())
     recipe = manifest(tmp_path, [{"id": "one", "argv": [sys.executable, "-c", "print('portable')"],
@@ -183,7 +188,7 @@ class Cluster:
 
 
 def pool(tmp_path, adaptive=False):
-    recipe = {"schema": "tower.dask-pool/v1", "cores": 4, "memory_mb": 1024, "max_jobs": 5, "adaptive": adaptive}
+    recipe = {"schema": "raven.dask-pool/v1", "cores": 4, "memory_mb": 1024, "max_jobs": 5, "adaptive": adaptive}
     config = {"recipe": recipe, "owner": "one-controller", "scope": {"cluster": "test"}, "target": 1}
     common.atomic(tmp_path / "config.json", config)
     return config
@@ -236,7 +241,7 @@ def test_dask_controller_failure_is_durable_and_closes_cluster(tmp_path):
 @pytest.mark.parametrize("field,value", [("cores", 0), ("memory_mb", True), ("max_jobs", 10000), ("min_jobs", 20),
                                          ("walltime", "1; touch x"), ("adaptive", "yes")])
 def test_dask_recipe_resource_limits(field, value):
-    recipe = {"schema": "tower.dask-pool/v1", "cores": 4, "memory_mb": 1024, "max_jobs": 5, field: value}
+    recipe = {"schema": "raven.dask-pool/v1", "cores": 4, "memory_mb": 1024, "max_jobs": 5, field: value}
     with pytest.raises(ValueError):
         dask.validate(recipe)
 

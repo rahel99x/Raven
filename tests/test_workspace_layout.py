@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L, palette as P, workspace_layout as W
+from raven import layout as L, palette as P, workspace_layout as W
 
 
 def app(**settings):

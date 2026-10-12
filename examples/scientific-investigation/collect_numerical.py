@@ -1,4 +1,4 @@
-"""Convert completed demo trial measurements to Tower's numerical analysis schema."""
+"""Convert completed demo trial measurements to Raven's numerical analysis schema."""
 import json
 from pathlib import Path
 import sys
@@ -17,7 +17,7 @@ def collect(workspace):
             raise ValueError("A demo trial did not produce its measurement marker")
         measured = json.loads((root/"trials"/f"{trial['sequence']:04d}"/"result.json").read_text())
         runs.append({"id": f"trial-{trial['sequence']}", "configuration": recipe["cases"][index//repeats]["id"], "metrics": {"answer": measured["answer"]}})
-    return {"schema": "tower.numerical-stability/v1", "metrics": [{"name": "answer", "reference": 1, "absolute": 0, "relative": 0}], "runs": runs}
+    return {"schema": "raven.numerical-stability/v1", "metrics": [{"name": "answer", "reference": 1, "absolute": 0, "relative": 0}], "runs": runs}
 
 
 if __name__ == "__main__":

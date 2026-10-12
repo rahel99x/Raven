@@ -14,7 +14,7 @@ Treat commands, file paths, key names, Slurm terms, and metric identifiers as te
 
 | Term | Meaning |
 | --- | --- |
-| Tower | The Slurm Tower application |
+| Raven | The application; `raven` is the distribution and `raven` is its import namespace and compatibility command |
 | Page | A main application view, such as Jobs or History |
 | Workspace | A Research subview, such as Experiment or Workflow |
 | Panel | A separately focused area within a page |
@@ -57,7 +57,7 @@ Avoid decorative claims and unexplained adjectives.
 | --- | --- |
 | The configuration should then be loaded by the user. | Open the configuration file. |
 | Simply press the appropriate shortcut. | Press `Ctrl-B`. |
-| This seamlessly restores everything. | Tower restores the selected job, filter, and scroll position. |
+| This seamlessly restores everything. | Raven restores the selected job, filter, and scroll position. |
 | The metric is bad. | The sample is unavailable. Inspect Sources for the read error. |
 | Copy the log. | Press `Y` to copy the entire selected log file. |
 
@@ -90,7 +90,7 @@ State whether an action changes a preference, a local file, or a scheduler job.
 
 A leading `:` means that the user must open the command palette.
 The user types the command text without that leading character.
-Command examples in a terminal shell must use the `tower` launcher or another explicit program.
+Command examples in a terminal shell must use the `raven` launcher or another explicit program.
 Do not place palette commands in a Bash code block.
 
 Describe uppercase and lowercase keys separately.
@@ -112,7 +112,15 @@ Do not claim that a chart proves an unobserved event.
 
 Document implemented behavior.
 Do not present an intention, prototype, or stub as a completed feature.
-Match examples to actual command parsing and help text.
+Match examples to actual command parsing and help text. Use Raven consistently
+in current product prose. Keep historical release names, literal command and
+module identifiers, and published evidence-schema identifiers intact.
+
+For research and evaluation documents, distinguish implementation, measured
+results, and hypotheses. State the workload, runtime, baseline, sample scope,
+and limitations needed to reproduce a result. Cite existing records rather
+than inventing paper titles, venue acceptance, external evaluations, or novelty
+claims. Keep documentation suitable for review as a software artifact.
 
 ## Review documentation changes
 
@@ -120,7 +128,7 @@ Match examples to actual command parsing and help text.
 2. Check links to section headings.
 3. Compare key names with the configured default bindings.
 4. Compare command names with the command registry.
-5. Compare CLI options with `tower --help`.
+5. Compare CLI options with `raven --help`.
 6. Run examples against simulated data where they do not change real jobs.
 7. Check that each procedure identifies its expected result.
 8. Check that source identity, limits, and unknown states are described correctly.

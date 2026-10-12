@@ -1,4 +1,4 @@
-# Contributing to Slurm Tower
+# Contributing to Raven
 
 Small fixes, cluster compatibility improvements, accessible visual design, and
 clearer documentation are welcome. Open an issue for a substantial change so the
@@ -7,14 +7,15 @@ scope can be discussed before implementation.
 ## Start locally
 
 ```bash
-git clone https://github.com/rahel99x/Slurm-Tower.git
-cd Slurm-Tower
-python3 scripts/setup.py --mode demo --dev --test
-./scripts/tower --fake
+git clone https://github.com/rahel99x/Raven.git
+cd Raven
+python3 scripts/setup.py --mode demo --dev --terminal
+./scripts/ravenl --fake --no-state --no-plugins
+.venv/bin/python -m pytest -q -ra
 .venv/bin/python -m build
 ```
 
-Use a feature branch for your change. Keep the runtime dependency-free and compatible
+Use a feature branch for your change. Keep the core runtime dependency-free and compatible
 with Python 3.10+. The demo backend makes development possible without an HPC account.
 Test targeted behavior while iterating, then run `.venv/bin/python -m pytest -q`
 before opening a pull request. CI also builds and smoke-tests the wheel.
@@ -33,9 +34,9 @@ After changing a form or task descriptor, run
 `python3 scripts/generate_operation_reference.py`. Use its `--check` option in
 validation; do not maintain a second handwritten list of input defaults.
 
-Use `tower.command_registry` for built-in command metadata and static toolbar
+Use `raven.command_registry` for built-in command metadata and static toolbar
 actions. Keep contextual validation in the appropriate command handler. Use
-`tower.capabilities` to assign proposals to their primary owner, then run
+`raven.capabilities` to assign proposals to their primary owner, then run
 `python3 scripts/generate_capability_reference.py --check`. Read the
 [consolidation guide](docs/guides/consolidation.md) before adding a second
 collection, pane, investigation, or action lifecycle.
@@ -88,7 +89,7 @@ original observations distinct from derived summaries and inferred explanations.
 Run the focused suite and the complete regression suite, build a wheel, then use:
 
 ```bash
-python3 scripts/qualify_flagship.py --output /tmp/tower-qualification.json
+.venv/bin/python scripts/qualify_flagship.py --output /tmp/raven-qualification.json
 ```
 
 Pass `--wheel` with the actual built artifact to check a clean offline

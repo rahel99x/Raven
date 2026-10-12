@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, charts, layout as L
+from raven import analysis_ui as A, chart_interaction as C, charts, layout as L
 
 
 @pytest.fixture
@@ -108,7 +108,7 @@ def test_held_report_survives_bounded_retention_without_manufacturing_samples(ap
 
 @pytest.mark.parametrize("ascii_", [False, True])
 def test_aligned_job_comparison_pins_only_captured_job_axes(app, ascii_):
-    from tower.model import Job, Store
+    from raven.model import Job, Store
     store = Store(persist=False)
     store.jobs = [Job(str(jid), "train", "cpu", "RUNNING", cpus=4) for jid in (7, 8)]
     for job in store.jobs:

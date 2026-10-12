@@ -3,7 +3,7 @@
 [Desktop guide](DESKTOP.md) · [Runbook](runbook.md)
 
 Use this procedure to enable persistent job history on a personal, single-machine Slurm installation.
-Tower reads this history through `sacct`.
+Raven reads this history through `sacct`.
 The procedure adds MariaDB and `slurmdbd` to an existing working scheduler.
 
 This procedure targets Fedora packages with Slurm 24.05 and MariaDB 10.11.
@@ -296,7 +296,7 @@ scontrol show config | rg 'AccountingStorage|JobAcctGather'
 **Expected result:** The controller is up and the node is available.
 The configuration output reports `accounting_storage/slurmdbd` and `jobacct_gather/cgroup`.
 
-## 9. Verify a new job and Tower
+## 9. Verify a new job and Raven
 
 Submit a small CPU job as your normal login user:
 
@@ -316,15 +316,15 @@ sacct -j "$ACCOUNTING_JOB_ID" --format=JobID,JobName,State,ExitCode,Elapsed,Allo
 Its batch-step record supplies resource measurements when available.
 A short job can have sparse usage samples.
 
-From the Tower checkout, run:
+From the Raven checkout, run:
 
 ```bash
-./scripts/tower --config docs/config.example.json --profile desktop --once --tab sources
-./scripts/tower --config docs/config.example.json --profile desktop
+./scripts/raven --config docs/config.example.json --profile desktop --once --tab sources
+./scripts/raven --config docs/config.example.json --profile desktop
 ```
 
 **Expected result:** The `finished` source succeeds and History contains the new job.
-If a Tower session had accounting sources disabled, restart Tower or enter `:source finished on` and `:source fin_details on` in the command palette.
+If a Raven session had accounting sources disabled, restart Raven or enter `:source finished on` and `:source fin_details on` in the command palette.
 
 ## 10. Limits and troubleshooting
 
@@ -335,7 +335,7 @@ Old output files remain application evidence.
 `AccountingStorageTRES=gres/gpu` records allocated GPU resources.
 It does not by itself provide GPU utilization or GPU-memory measurements.
 Those measurements need supported GPU accounting and detection plugins.
-Tower's desktop profile continues to disable live GPU sampling.
+Raven's desktop profile continues to disable live GPU sampling.
 
 If a service fails, inspect:
 
@@ -349,7 +349,7 @@ sudo journalctl -b -u mariadb -u munge -u slurmdbd -u slurmctld -u slurmd --no-p
 | Database settings are rejected | Confirm MariaDB 10.11 and inspect the exact unknown option in the MariaDB log. |
 | Accounting daemon cannot register the cluster | Confirm the existing `ClusterName` matches the database cluster record. |
 | `sacct` still reports disabled accounting | Check the active `AccountingStorageType`, then confirm the controller restarted after the configuration change. |
-| Tower History is empty | Query the new job directly with `sacct`. Confirm the job is in Tower's history window and belongs to the selected user. |
+| Raven History is empty | Query the new job directly with `sacct`. Confirm the job is in Raven's history window and belongs to the selected user. |
 | Service address filter is unavailable | Inspect systemd's service logs and cgroup support before relying on loopback-only service traffic. |
 
 Retain database backups when job history matters.

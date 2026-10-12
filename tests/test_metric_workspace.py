@@ -4,11 +4,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from tower import chart_interaction as C, clock, layout as L, metric_live, screen, table_ui, workspace_layout
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import chart_interaction as C, clock, layout as L, metric_live, screen, table_ui, workspace_layout
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -162,7 +162,7 @@ def test_legacy_job_columns_migrate_once_and_keep_fixed_progress_width(dashboard
 
 
 def test_narrow_inline_comparison_coordinates_follow_replaced_summary_cards(dashboard):
-    from tower import job_panels
+    from raven import job_panels
     app, views, store = dashboard.app, dashboard.views, dashboard.store
     app.compare_ids = ["7", "8"]
     state = job_panels.initialize(app)
@@ -176,7 +176,7 @@ def test_narrow_inline_comparison_coordinates_follow_replaced_summary_cards(dash
 
 
 def test_inline_analysis_preserves_explicit_axis_preferences(dashboard):
-    from tower import job_panels
+    from raven import job_panels
     app = dashboard.app
     app.analysis_state["axes"] = {"loss": {"mode": "fixed", "low": 1, "high": 9}}
     copied = job_panels._analysis_settings(app)
@@ -334,7 +334,7 @@ def test_live_controls_disappear_when_selected_job_finishes(dashboard, monkeypat
 
 @pytest.mark.parametrize("delta", [1.0, 30.0])
 def test_native_live_curve_cannot_use_future_observations_to_fill_current_window(dashboard, monkeypatch, delta):
-    from tower import charts
+    from raven import charts
     app, views = dashboard.app, dashboard.views
     monkeypatch.setattr(clock, "now", lambda: 1191.0)
     identity = C.key(app, "cpu-rate", "%", "7", scope="resource-series", attempt="2026-10-08T00:00:00|")

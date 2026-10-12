@@ -1,5 +1,5 @@
 {
-  "schema": "tower.energy/v1", "work_unit": "accepted simulations",
+  "schema": "raven.energy/v1", "work_unit": "accepted simulations",
   "attempts": [
     {"cluster": "example", "job_id": "1233", "attempt": "2026-10-01T11:00:00", "state": "FAILED", "accepted_work": 0,
      "energy": {"scope": "job", "attribution": "exclusive", "source": "validated job energy exporter", "kind": "total", "unit": "Wh", "value": 100, "coverage_complete": true}},

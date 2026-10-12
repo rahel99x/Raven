@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower project-owned run manifest v1",
+  "title": "Raven project-owned run manifest v1",
   "description": "Project execution-attempt inventory. Bounded local discovery attaches only an unambiguous exact scheduler job_id match from a known project root or standard selected job WorkDir. Explicit project/run selection and flags remain supported.",
   "type": "object",
   "required": [
@@ -13,7 +13,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.run/v1"
+      "const": "raven.run/v1"
     },
     "project_id": {
       "$ref": "summary.v1.schema.json#/properties/project_id"
@@ -107,7 +107,7 @@
           "minLength": 1,
           "maxLength": 4096,
           "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\*?\\[\\]\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
-          "description": "Exact relative log index path, normally logs.json. Tower reads tower.logs/v1 entries for an explicitly selected attempt or an unambiguous exact job-bound discovered run; logs.manifest_file remains supported."
+          "description": "Exact relative log index path, normally logs.json. Raven reads raven.logs/v1 entries for an explicitly selected attempt or an unambiguous exact job-bound discovered run; logs.manifest_file remains supported."
         },
         "planning": {
           "type": "string",
@@ -163,21 +163,21 @@
           "minLength": 1,
           "maxLength": 4096,
           "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\*?\\[\\]\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
-          "description": "Exact run-relative tower.array-manifest/v1 input map. Its parent and cluster must match this run."
+          "description": "Exact run-relative raven.array-manifest/v1 input map. Its parent and cluster must match this run."
         },
         "contract": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4096,
           "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\*?\\[\\]\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
-          "description": "Exact run-relative output contract. Overrides the project-level .tower/contracts/outputs.v1.json for this attempt only."
+          "description": "Exact run-relative output contract. Overrides the project-level .raven/contracts/outputs.v1.json for this attempt only."
         },
         "submit": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4096,
           "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[\\\\*?\\[\\]\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
-          "description": "Exact run-relative read-only native tower.submission-plan/v1 report; no submission authorization is inferred."
+          "description": "Exact run-relative read-only native raven.submission-plan/v1 report; no submission authorization is inferred."
         }
       },
       "description": "Every path resolves relative to this attempt directory. Optional reports normally live under reports/. Existing version-1 inventories remain valid. Confined exact paths never imply recursive or glob discovery."
@@ -274,5 +274,5 @@
       "$ref": "summary.v1.schema.json#/properties/input_size"
     }
   },
-  "$comment": "State changes update this application-owned manifest atomically; preserve separate directories for each retry/attempt. Native Tower passports have their own schema and should be captured through Tower, not fabricated from this manifest."
+  "$comment": "State changes update this application-owned manifest atomically; preserve separate directories for each retry/attempt. Native Raven passports have their own schema and should be captured through Raven, not fabricated from this manifest."
 }

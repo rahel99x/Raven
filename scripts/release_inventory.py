@@ -25,7 +25,7 @@ import uuid
 import zipfile
 import zlib
 
-SCHEMA = "tower.release-inventory/v1"
+SCHEMA = "raven.release-inventory/v1"
 MAX_ARTIFACT_BYTES = 128 * 1024 * 1024
 MAX_EXPANDED_BYTES = 256 * 1024 * 1024
 MAX_MEMBER_BYTES = 32 * 1024 * 1024
@@ -211,8 +211,8 @@ def inspect_artifact(path, license_bytes):
     for field in ("Name", "Version", "License-Expression", "License", "Requires-Python"):
         if len(metadata.get_all(field, [])) > 1:
             raise ValueError(f"Duplicate package metadata field: {field}")
-    if metadata.get("Name", "").lower().replace("_", "-") != "slurm-tower":
-        raise ValueError("Artifact is not the slurm-tower package")
+    if metadata.get("Name", "").lower().replace("_", "-") != "raven":
+        raise ValueError("Artifact is not the raven package")
     version = metadata.get("Version", "")
     if not re.fullmatch(r"[A-Za-z0-9_.+!-]{1,128}", version):
         raise ValueError("Missing or invalid package version")
@@ -228,7 +228,7 @@ def inspect_artifact(path, license_bytes):
         else:
             runtime.append(requirement)
     if runtime:
-        raise ValueError("Tower release violates its dependency-free runtime policy: " + ", ".join(runtime))
+        raise ValueError("Raven release violates its dependency-free runtime policy: " + ", ".join(runtime))
     build = {"format": kind, "metadata_version": metadata.get("Metadata-Version", "unknown")}
     if kind == "wheel":
         wheel_path = metadata_names[0].rsplit("/", 1)[0] + "/WHEEL"
@@ -253,7 +253,7 @@ def create_inventory(artifacts, license_path=DEFAULT_LICENSE, *, source_commit=N
         raise ValueError("Source commit must be a hexadecimal revision identifier")
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     created = datetime.fromtimestamp(int(epoch), timezone.utc) if epoch is not None else datetime.now(timezone.utc)
-    return {"schema": SCHEMA, "name": "slurm-tower", "version": records[0]["version"],
+    return {"schema": SCHEMA, "name": "raven", "version": records[0]["version"],
             "created": created.replace(microsecond=0).isoformat().replace("+00:00", "Z"),
             "source_commit": source_commit, "source_commit_verification": "Caller-supplied; not independently verified",
             "scope": "Bundled release archive bytes and declared package metadata; no signatures or publisher authentication",
@@ -266,16 +266,16 @@ def spdx_document(inventory):
     packages, relationships = [], []
     for index, artifact in enumerate(inventory["artifacts"], 1):
         identifier = f"SPDXRef-Artifact-{index}"
-        packages.append({"SPDXID": identifier, "name": "slurm-tower", "versionInfo": artifact["version"],
+        packages.append({"SPDXID": identifier, "name": "raven", "versionInfo": artifact["version"],
                          "packageFileName": artifact["filename"], "downloadLocation": "NOASSERTION", "filesAnalyzed": False,
                          "checksums": [{"algorithm": "SHA256", "checksumValue": artifact["sha256"]}],
                          "licenseConcluded": "NOASSERTION", "licenseDeclared": "MIT", "copyrightText": "NOASSERTION",
-                         "comment": "Distribution artifact; archive members are in the companion Tower inventory. Runtime Requires-Dist is empty. External interpreters, schedulers, MPI/GPU runtimes, optional tools and dev dependencies are excluded."})
+                         "comment": "Distribution artifact; archive members are in the companion Raven inventory. Runtime Requires-Dist is empty. External interpreters, schedulers, MPI/GPU runtimes, optional tools and dev dependencies are excluded."})
         relationships.append({"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": identifier})
     return {"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT",
-            "name": f"slurm-tower-{inventory['version']}-distributions",
-            "documentNamespace": "https://spdx.org/spdxdocs/slurm-tower-" + str(uuid.uuid5(uuid.NAMESPACE_URL, fingerprint)),
-            "creationInfo": {"created": inventory["created"], "creators": ["Tool: Slurm-Tower-release-inventory-v1"]},
+            "name": f"raven-{inventory['version']}-distributions",
+            "documentNamespace": "https://spdx.org/spdxdocs/raven-" + str(uuid.uuid5(uuid.NAMESPACE_URL, fingerprint)),
+            "creationInfo": {"created": inventory["created"], "creators": ["Tool: Raven-release-inventory-v1"]},
             "comment": inventory["scope"], "packages": packages, "relationships": relationships}
 
 
@@ -297,7 +297,7 @@ def _write(path, content):
         raise ValueError("Output must be a regular file")
     temporary = None
     try:
-        descriptor, temporary = tempfile.mkstemp(prefix=".tower-inventory-", dir=path.parent)
+        descriptor, temporary = tempfile.mkstemp(prefix=".raven-inventory-", dir=path.parent)
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(content)
             stream.flush()

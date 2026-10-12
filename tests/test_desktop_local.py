@@ -13,12 +13,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import cli
-from tower.config import Config
-from tower.model import Store
-from tower.record import RecordingBackend
-from tower.remote import LocalFiles, SshBackend
-from tower.slurm import Backend
+from raven import cli
+from raven.config import Config
+from raven.model import Store
+from raven.record import RecordingBackend
+from raven.remote import LocalFiles, SshBackend
+from raven.slurm import Backend
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,10 +33,10 @@ def test_native_desktop_automatically_links_and_refreshes_actual_project_reports
     spec.loader.exec_module(producer)
     run = producer.begin_run(fixture.root, 'native-desktop-7', name='desktop-cpu',
                              script='experiment.py', job_id='7')
-    from tower import clock, metric_live
+    from raven import clock, metric_live
     origin = clock.now()
     producer.write_metric(run, {'native_loss': .75}, step=1, t=origin)
-    producer.publish_research(run, 'predict', {'kind': 'tower.planning', 'version': 1,
+    producer.publish_research(run, 'predict', {'kind': 'raven.planning', 'version': 1,
                                               'history': [], 'job_id': '7'})
     output = fixture.run('--once', '--tab', 'research')
     assert output.returncode == 0, output.stderr
@@ -44,7 +44,7 @@ def test_native_desktop_automatically_links_and_refreshes_actual_project_reports
     session = fixture.build('--no-state', '--rate', '50')
     try:
         cli.settle(session, 'research')
-        from tower import project_ui
+        from raven import project_ui
         binding = project_ui.selected_binding(session.app)
         assert binding['job_id'] == '7' and binding['run_id'] == run.name
         assert binding['metrics_file'] == str(run / 'metrics.jsonl')
@@ -53,7 +53,7 @@ def test_native_desktop_automatically_links_and_refreshes_actual_project_reports
         wall = [origin + .5]
         monkeypatch.setattr(clock, 'now', lambda: wall[0])
         producer.write_metric(run, {'native_loss': .25}, step=2, t=wall[0])
-        producer.publish_research(run, 'workflow', {'kind': 'tower.planning', 'version': 1,
+        producer.publish_research(run, 'workflow', {'kind': 'raven.planning', 'version': 1,
                                                    'jobs': [], 'job_id': '7'})
         project_ui.settle(session.app, session.store.snapshot())
         binding = project_ui.selected_binding(session.app)
@@ -109,9 +109,9 @@ CPU_ROW = ('7|desktop-cpu|localcpu|RUNNING|00:00:12|01:00:00|1|2|N/A|fedora-box|
 NATIVE_COMMAND = r'''
 import json, os, pathlib, sys
 name = pathlib.Path(sys.argv[0]).name
-with open(os.environ['TOWER_DESKTOP_CALLS'], 'a') as output:
+with open(os.environ['RAVEN_DESKTOP_CALLS'], 'a') as output:
     output.write(json.dumps([name, *sys.argv[1:]]) + '\n')
-scenario = json.loads(pathlib.Path(os.environ['TOWER_DESKTOP_SCENARIO']).read_text())
+scenario = json.loads(pathlib.Path(os.environ['RAVEN_DESKTOP_SCENARIO']).read_text())
 if name == 'squeue':
     print('' if '--start' in sys.argv else scenario.get('jobs', ''), end='')
     sys.exit(0)
@@ -126,9 +126,9 @@ if name == 'scontrol':
         print('NodeName=fedora-box State=IDLE CPUTot=8 CPUAlloc=0 CPULoad=0 RealMemory=32768 '
               'FreeMem=25000 Gres=(null) GresUsed=(null) Partitions=localcpu'); sys.exit(0)
     if 'job' in sys.argv:
-        print('JobId=7 JobName=desktop-cpu JobState=RUNNING WorkDir=' + os.environ['TOWER_DESKTOP_ROOT']
-              + ' StdOut=' + os.environ['TOWER_DESKTOP_STDOUT']
-              + ' StdErr=' + os.environ['TOWER_DESKTOP_STDERR']); sys.exit(0)
+        print('JobId=7 JobName=desktop-cpu JobState=RUNNING WorkDir=' + os.environ['RAVEN_DESKTOP_ROOT']
+              + ' StdOut=' + os.environ['RAVEN_DESKTOP_STDOUT']
+              + ' StdErr=' + os.environ['RAVEN_DESKTOP_STDERR']); sys.exit(0)
 if name == 'sstat' and scenario.get('live', True):
     print('7.batch|00:00:04|128M|0|fedora-box|64M|1|00:00:04|0|fedora-box'); sys.exit(0)
 if name in ('sacct', 'sstat', 'sshare', 'sreport', 'sacctmgr'):
@@ -163,16 +163,16 @@ def native_desktop(tmp_path, monkeypatch):
     runtime = tmp_path / 'runtime'
     runtime.mkdir(mode=0o700)
     for key, value in {'PATH': str(commands) + os.pathsep + os.environ.get('PATH', ''),
-        'USER': 'desktop-user', 'TOWER_ACCOUNT': 'CARC_ENV_ACCOUNT', 'CARC_ACCOUNT': 'CARC_ENV_ACCOUNT',
+        'USER': 'desktop-user', 'RAVEN_ACCOUNT': 'CARC_ENV_ACCOUNT', 'CARC_ACCOUNT': 'CARC_ENV_ACCOUNT',
         'XDG_STATE_HOME': str(tmp_path / 'state'), 'XDG_CONFIG_HOME': str(tmp_path / 'personal-config'),
         'XDG_RUNTIME_DIR': str(runtime),
-        'TERM': 'xterm', 'TOWER_DESKTOP_CALLS': str(calls), 'TOWER_DESKTOP_SCENARIO': str(scenario),
-        'TOWER_DESKTOP_ROOT': str(tmp_path), 'TOWER_DESKTOP_STDOUT': str(stdout),
-        'TOWER_DESKTOP_STDERR': str(stderr)}.items():
+        'TERM': 'xterm', 'RAVEN_DESKTOP_CALLS': str(calls), 'RAVEN_DESKTOP_SCENARIO': str(scenario),
+        'RAVEN_DESKTOP_ROOT': str(tmp_path), 'RAVEN_DESKTOP_STDOUT': str(stdout),
+        'RAVEN_DESKTOP_STDERR': str(stderr)}.items():
         monkeypatch.setenv(key, value)
     argv = ['--config', str(config), '--profile', 'desktop', '--no-plugins', '--ascii']
     def run(*flags):
-        return subprocess.run([sys.executable, '-m', 'tower', *argv, *flags], cwd=ROOT,
+        return subprocess.run([sys.executable, '-m', 'raven', *argv, *flags], cwd=ROOT,
                               capture_output=True, text=True, timeout=20)
     def recorded():
         return [json.loads(row) for row in calls.read_text().splitlines()]
@@ -279,7 +279,7 @@ def test_explicit_cluster_partition_names_still_limit_show_all(native_desktop):
 
 def test_desktop_scope_does_not_restore_or_change_legacy_carc_state(native_desktop):
     fixture = native_desktop
-    legacy_root = fixture.root / 'state' / 'tower'
+    legacy_root = fixture.root / 'state' / 'raven'
     legacy = Store(str(legacy_root))
     legacy.tag('7', 'CARC_TAG')
     legacy.record('7', {'t': 1, 'k': 'live', 'cpu': .99, 'rss': 123456})

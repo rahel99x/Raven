@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import operations as O, trace_snapshot as S, trace_protocol as T
+from raven import operations as O, trace_snapshot as S, trace_protocol as T
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def test_review_never_runs_pyspy_or_writes_snapshot(sample):
     assert result["plan"]["feature"] == "trace-snapshot"
     assert result["data"]["attempt"] == "2026-10-10T10:00:00/2026-10-10T10:01:00"
     assert all(argv[0] == "scontrol" for argv, _, _ in sample.calls)
-    assert not (sample.project / ".tower").exists()
+    assert not (sample.project / ".raven").exists()
 
 
 def test_capture_uses_nonblocking_only_and_saves_real_checked_snapshot(sample):
@@ -161,14 +161,14 @@ def test_process_or_membership_change_during_capture_discards_data(sample):
     sample.during = lambda: sample.process.update(start="changed")
     with pytest.raises(ValueError, match="discarded"):
         capture(sample)
-    assert not (sample.project / ".tower").exists()
+    assert not (sample.project / ".raven").exists()
 
 
 def test_membership_disappearing_during_capture_discards_data(sample):
     sample.during = lambda: setattr(sample, "membership", "PID JOBID\n")
     with pytest.raises(ValueError, match="not uniquely verified"):
         capture(sample)
-    assert not (sample.project / ".tower").exists()
+    assert not (sample.project / ".raven").exists()
 
 
 def test_binary_replacement_invalidates_review(sample):
@@ -207,7 +207,7 @@ def test_bad_tool_output_never_creates_a_journal(sample, raw):
     sample.raw = raw
     with pytest.raises(ValueError):
         capture(sample)
-    assert not (sample.project / ".tower").exists()
+    assert not (sample.project / ".raven").exists()
 
 
 @pytest.mark.parametrize("field,value", [("pid", 43211), ("pid", True), ("thread_id", 0), ("thread_id", True),
@@ -216,7 +216,7 @@ def test_invalid_thread_structures_fail_before_publish(sample, field, value):
     sample.trace[0][field] = value
     with pytest.raises(ValueError):
         capture(sample)
-    assert not (sample.project / ".tower").exists()
+    assert not (sample.project / ".raven").exists()
 
 
 @pytest.mark.parametrize("field,value", [("name", {}), ("filename", 5), ("line", True), ("line", 1 << 32)])

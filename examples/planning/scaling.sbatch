@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Review each generated plan before explicitly submitting it. This is a small,
 # single-node CPU demonstration, not a representative application benchmark.
-checkout=${SLURM_TOWER_ROOT:-${SLURM_SUBMIT_DIR:?}}
+checkout=${RAVEN_ROOT:-${SLURM_SUBMIT_DIR:?}}
 python="$checkout/.venv/bin/python"
 if [ ! -x "$python" ]; then
     printf 'Run python3 scripts/setup.py --mode local in %s first.\n' "$checkout" >&2
@@ -18,7 +18,7 @@ fi
 mkdir -p runs/scaling
 # The job allocation contains workers CPU tasks. One bounded multiprocessing
 # step consumes those CPUs; the Python workload partitions the fixed problem.
-srun --ntasks=1 --cpus-per-task="${TOWER_SCALING_WORKERS:?}" --cpu-bind=cores \
+srun --ntasks=1 --cpus-per-task="${RAVEN_SCALING_WORKERS:?}" --cpu-bind=cores \
     "$python" "$checkout/examples/planning/scaling_workload.py" run \
     --script "$checkout/examples/planning/scaling.sbatch" \
     --output "runs/scaling/${SLURM_JOB_ID:?}.json"

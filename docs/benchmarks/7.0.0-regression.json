@@ -67,7 +67,7 @@
     "tests/test_terminal_ui.py",
     "tests/test_terminal_workflows.py",
     "tests/test_toolbar.py",
-    "tests/test_tower.py",
+    "tests/test_raven.py",
     "tests/test_worker_aggregate.py",
     "tests/test_worker_ui.py"
   ],
@@ -109,11 +109,11 @@
     "skipped": 8,
     "warnings": 3,
     "seconds": 598.31,
-    "failure": "tests/test_tower.py::test_curses_screen_through_a_pseudo_terminal",
+    "failure": "tests/test_raven.py::test_curses_screen_through_a_pseudo_terminal",
     "observation": "No clipboard file in the failed fixed-sleep journey. The original test passed alone; its exact missed intermediate state could not be reconstructed. No production copy defect was reproduced.",
     "resolution": "Replace blind timed input and stripped-ANSI matching with bounded native PTY state waits, reconstructed screen assertions, isolated clipboard tools/cache, and mandatory two-line clipboard payload. Production source unchanged after the sweep.",
     "followup": {
-      "command": ".venv/bin/python -m pytest tests/test_tower.py -q --disable-warnings --maxfail=1",
+      "command": ".venv/bin/python -m pytest tests/test_raven.py -q --disable-warnings --maxfail=1",
       "passed": 35,
       "seconds": 41.78,
       "journey_repetitions": [
@@ -146,7 +146,7 @@
       "tests/test_live_completion_ui.py",
       "tests/test_completion_sync.py",
       "tests/test_completion_left_margin.py",
-      "tests/test_tower.py"
+      "tests/test_raven.py"
     ],
     "results": [
       {

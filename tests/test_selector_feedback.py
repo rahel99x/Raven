@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, layout as L, palette as P, screen, selector_glyphs as G
+from raven import chart_interaction as C, layout as L, palette as P, screen, selector_glyphs as G
 
 
 @pytest.fixture
@@ -289,10 +289,10 @@ def test_selector_feedback_and_deadlines_do_not_query_sources_snapshots_or_raste
 
 
 def test_frame_cache_selector_wakeups_remain_cosmetic_and_preserve_document_deadlines(clock, monkeypatch):
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Job, Store
+    from raven.views import Views
 
     cfg = Config({"animations": True, "startup_animation": False, "log_lines": 0})
     store = Store(persist=False)

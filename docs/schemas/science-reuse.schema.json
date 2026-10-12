@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower reuse v1",
+  "title": "Raven reuse v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.reuse/v1"
+      "const": "raven.reuse/v1"
     },
     "identity": {
       "type": "object",

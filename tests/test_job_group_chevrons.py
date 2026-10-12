@@ -1,15 +1,15 @@
 """Painted group arrows route one explicit fold action across real job panes."""
 import pytest
 
-from tower import history_browser, job_groups, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import history_browser, job_groups, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
-def tower():
+def raven():
     store = Store(persist=False)
     store.jobs = [Job("600_1", "train", "gpu", "RUNNING", cpus=8, gpus=1),
                   Job("600_2", "train", "gpu", "RUNNING", cpus=16, gpus=2),
@@ -29,8 +29,8 @@ def tower():
         app.research.close()
 
 
-def frame(tower, tab="jobs", *, ascii_=False, width=280, height=58):
-    app, views, store = tower
+def frame(raven, tab="jobs", *, ascii_=False, width=280, height=58):
+    app, views, store = raven
     app.tab = "jobs" if tab == "recent" else "analytics" if tab == "analytics:advisor" else tab
     if tab == "analytics:advisor":
         app.analytics_view = "advisor"
@@ -61,13 +61,13 @@ def gesture(app, hit, hits):
 
 @pytest.mark.parametrize("context", ["jobs", "recent", "history", "group", "deps", "analytics:advisor"])
 @pytest.mark.parametrize("ascii_", [False, True])
-def test_painted_table_chevron_closes_and_opens_once_without_selecting_a_batch(tower, context, ascii_, monkeypatch):
-    app, _, _ = tower
+def test_painted_table_chevron_closes_and_opens_once_without_selecting_a_batch(raven, context, ascii_, monkeypatch):
+    app, _, _ = raven
     gid = "array:500" if context in ("recent", "history") else "array:600"
-    rows, hits = frame(tower, context, ascii_=ascii_)
+    rows, hits = frame(raven, context, ascii_=ascii_)
     hit = table_control(hits, context, gid)
     y, control = hit
-    assert L.row_text(rows[y])[control["left"]] == (">" if ascii_ else "▸")
+    assert L.row_text(rows[y])[control["left"]] == ("v" if ascii_ else "▾")
     assert control["action"] == ("command", "jobgroup close " + gid)
     app.marks = {"600_2", "500_2"}
     calls = []
@@ -82,10 +82,10 @@ def test_painted_table_chevron_closes_and_opens_once_without_selecting_a_batch(t
     # Repeated input against the still-painted close action is idempotent.
     gesture(app, hit, hits)
     assert is_closed(app, gid)
-    rows, hits = frame(tower, context, ascii_=ascii_)
+    rows, hits = frame(raven, context, ascii_=ascii_)
     hit = table_control(hits, context, gid)
     y, control = hit
-    assert L.row_text(rows[y])[control["left"]] == ("v" if ascii_ else "▾")
+    assert L.row_text(rows[y])[control["left"]] == (">" if ascii_ else "▸")
     assert control["action"] == ("command", "jobgroup open " + gid)
     previous = len(calls)
     gesture(app, hit, hits)
@@ -96,23 +96,24 @@ def test_painted_table_chevron_closes_and_opens_once_without_selecting_a_batch(t
 
 @pytest.mark.parametrize("tab", history_browser.TABS)
 @pytest.mark.parametrize("dock", ["left", "right", "top", "bottom"])
-def test_each_job_browser_dock_uses_the_same_explicit_chevron_actions(tower, tab, dock, monkeypatch):
-    app, _, _ = tower
+@pytest.mark.parametrize("ascii_", [False, True])
+def test_each_job_browser_dock_uses_the_same_explicit_chevron_actions(raven, tab, dock, ascii_, monkeypatch):
+    app, _, _ = raven
     app.tab = tab
     history_browser._view(app)["dock"] = dock
-    rows, hits = frame(tower, tab)
+    rows, hits = frame(raven, tab, ascii_=ascii_)
     hit = dock_control(hits, tab, "array:600")
     y, control = hit
-    assert L.row_text(rows[y])[control["left"]] == "▸"
+    assert L.row_text(rows[y])[control["left"]] == ("v" if ascii_ else "▾")
     assert control["action"] == ("command", "jobgroup close array:600")
     calls = []
     original = app.run_command
     monkeypatch.setattr(app, "run_command", lambda text: (calls.append(text), original(text))[1])
     gesture(app, hit, hits)
     assert is_closed(app, "array:600") and calls == ["jobgroup close array:600"]
-    rows, hits = frame(tower, tab)
+    rows, hits = frame(raven, tab, ascii_=ascii_)
     hit = dock_control(hits, tab, "array:600")
-    assert L.row_text(rows[hit[0]])[hit[1]["left"]] == "▾"
+    assert L.row_text(rows[hit[0]])[hit[1]["left"]] == (">" if ascii_ else "▸")
     assert hit[1]["action"] == ("command", "jobgroup open array:600")
     gesture(app, hit, hits)
     assert not is_closed(app, "array:600")
@@ -121,9 +122,9 @@ def test_each_job_browser_dock_uses_the_same_explicit_chevron_actions(tower, tab
 
 
 @pytest.mark.parametrize("context", ["jobs", "recent", "history", "group", "deps", "analytics:advisor"])
-def test_passive_motion_and_orphan_drag_release_never_fold_or_read_sources(tower, context, monkeypatch):
-    app, _, store = tower
-    _, hits = frame(tower, context)
+def test_passive_motion_and_orphan_drag_release_never_fold_or_read_sources(raven, context, monkeypatch):
+    app, _, store = raven
+    _, hits = frame(raven, context)
     gid = "array:500" if context in ("recent", "history") else "array:600"
     y, control = table_control(hits, context, gid)
     selected, marks, tab = app.selected_id, set(app.marks), app.tab
@@ -136,9 +137,9 @@ def test_passive_motion_and_orphan_drag_release_never_fold_or_read_sources(tower
 
 
 @pytest.mark.parametrize("tab", history_browser.TABS)
-def test_browser_passive_motion_and_orphan_release_cannot_toggle_groups(tower, tab, monkeypatch):
-    app, _, store = tower
-    _, hits = frame(tower, tab)
+def test_browser_passive_motion_and_orphan_release_cannot_toggle_groups(raven, tab, monkeypatch):
+    app, _, store = raven
+    _, hits = frame(raven, tab)
     y, control = dock_control(hits, tab, "array:600")
     selected = app.selected_id
     monkeypatch.setattr(store, "snapshot", lambda: pytest.fail("Passive browser event fetched a snapshot"))
@@ -151,9 +152,9 @@ def test_browser_passive_motion_and_orphan_release_cannot_toggle_groups(tower, t
 @pytest.mark.parametrize("context,kind,jid", [("jobs", "job", "600_2"), ("recent", "recent", "500_2"),
                                              ("history", "fin", "500_2"), ("group", "group", "600_2"),
                                              ("deps", "dep", "600_2")])
-def test_clicking_an_ordinary_job_cell_selects_exact_job_without_folding(tower, context, kind, jid):
-    app, _, _ = tower
-    _, hits = frame(tower, context)
+def test_clicking_an_ordinary_job_cell_selects_exact_job_without_folding(raven, context, kind, jid):
+    app, _, _ = raven
+    _, hits = frame(raven, context)
     y = next(y for y, actual_kind, value in hits if actual_kind == kind and value == jid)
     app.click(y, 12, hits, button="press")
     app.click(y, 12, hits, button="release")
@@ -163,11 +164,11 @@ def test_clicking_an_ordinary_job_cell_selects_exact_job_without_folding(tower, 
 
 
 @pytest.mark.parametrize("tab", history_browser.TABS)
-def test_browser_row_text_selects_exact_job_without_folding(tower, tab, monkeypatch):
-    app, _, _ = tower
+def test_browser_row_text_selects_exact_job_without_folding(raven, tab, monkeypatch):
+    app, _, _ = raven
     opened = []
     monkeypatch.setattr(app, "open_log", lambda jid: opened.append(jid))
-    _, hits = frame(tower, tab)
+    _, hits = frame(raven, tab)
     y, control = next((y, value) for y, kind, value in hits if kind == "control"
                       and value["id"] == "history:" + tab + ":job:600_2")
     app.click(y, control["left"] + 4, hits, button="press")
@@ -178,17 +179,17 @@ def test_browser_row_text_selects_exact_job_without_folding(tower, tab, monkeypa
 
 
 @pytest.mark.parametrize("stale", ["resized", "other-tab", "replacement-frame"])
-def test_stale_group_hit_maps_cannot_execute_an_action(tower, stale, monkeypatch):
-    app, _, _ = tower
-    _, old_hits = frame(tower)
+def test_stale_group_hit_maps_cannot_execute_an_action(raven, stale, monkeypatch):
+    app, _, _ = raven
+    _, old_hits = frame(raven)
     y, control = table_control(old_hits, "jobs", "array:600")
     if stale == "resized":
-        frame(tower, width=180)
+        frame(raven, width=180)
     elif stale == "other-tab":
-        frame(tower, "history")
+        frame(raven, "history")
     else:
         job_groups.fold(app, "array:600", True)
-        frame(tower)
+        frame(raven)
     before = list(app.table_state["collapsed"])
     monkeypatch.setattr(app, "run_command", lambda text: pytest.fail("Stale group hit executed " + text))
     app.click(y, control["left"], old_hits, button="press")
@@ -196,9 +197,9 @@ def test_stale_group_hit_maps_cannot_execute_an_action(tower, stale, monkeypatch
     assert app.table_state["collapsed"] == before
 
 
-def test_collapsed_summary_does_not_turn_representative_resources_into_batch_totals(tower):
-    app, views, store = tower
-    _, hits = frame(tower)
+def test_collapsed_summary_does_not_turn_representative_resources_into_batch_totals(raven):
+    app, views, store = raven
+    _, hits = frame(raven)
     gesture(app, table_control(hits, "jobs", "array:600"), hits)
     rows = views.job_rows(store.snapshot(), app)
     summary = next(row for row in rows if row["id"] == "600_1")

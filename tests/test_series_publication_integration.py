@@ -4,14 +4,14 @@ from unittest.mock import Mock
 
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Job, Store
-from tower.native_series_cache import NativeSeriesCache
-from tower.pane_context import PaneContext
-from tower.series_publication import PublishedSeries
-from tower.views import Views, normalized_series, prepared_series
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Job, Store
+from raven.native_series_cache import NativeSeriesCache
+from raven.pane_context import PaneContext
+from raven.series_publication import PublishedSeries
+from raven.views import Views, normalized_series, prepared_series
 
 
 def dashboard():
@@ -33,9 +33,9 @@ def test_unchanged_owned_series_skips_signing_copying_and_rebuilding(monkeypatch
     result = cache.remember("cpu", first, build)
     def forbidden(*args, **kwargs):
         pytest.fail("Unchanged owned sources must not sign or copy their retained records")
-    monkeypatch.setattr("tower.native_series_cache.signature", forbidden)
-    monkeypatch.setattr("tower.native_series_cache.owned_snapshot", forbidden)
-    monkeypatch.setattr("tower.series_publication._freeze", forbidden)
+    monkeypatch.setattr("raven.native_series_cache.signature", forbidden)
+    monkeypatch.setattr("raven.native_series_cache.owned_snapshot", forbidden)
+    monkeypatch.setattr("raven.series_publication._freeze", forbidden)
     for _ in range(30):
         assert store.series_publication("7") is first
         assert cache.remember("cpu", store.series_publication("7"), build) is result
@@ -69,7 +69,7 @@ def test_append_reuses_unchanged_record_publications():
 
 @pytest.mark.parametrize("interactive", [False, True])
 def test_inspector_preparation_does_not_request_archive(monkeypatch, interactive):
-    from tower.analysis_ui import _resource_series
+    from raven.analysis_ui import _resource_series
     store, app = dashboard()
     app.interactive = interactive
     def forbidden(*args, **kwargs):
@@ -106,7 +106,7 @@ def test_same_job_number_from_new_store_cannot_reuse_analysis():
 
 
 def test_adapted_store_without_explicit_reader_retains_resource_columns():
-    from tower.analysis_ui import _resource_series
+    from raven.analysis_ui import _resource_series
     app = SimpleNamespace(store=SimpleNamespace(series={"7": [dict(k="live", t=1., cpu=.5, rss=1024**3)]}))
     result = _resource_series(app, "7")
     assert result["CPU per core (%)"] == [{"t": 1., "value": 50.}]

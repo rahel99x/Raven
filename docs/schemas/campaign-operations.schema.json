@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://slurm-tower.dev/schemas/campaign-operations.schema.json",
-  "title": "Tower campaign operation manifests",
+  "$id": "https://raven.dev/schemas/campaign-operations.schema.json",
+  "title": "Raven campaign operation manifests",
   "description": "Local, explicit recovery and campaign contracts. Runtime validation additionally verifies files, resource conflicts, receipts, and connection identities.",
   "oneOf": [
     {
@@ -16,7 +16,7 @@
       ],
       "properties": {
         "schema": {
-          "const": "tower.checkpoint-restart/v1"
+          "const": "raven.checkpoint-restart/v1"
         },
         "id": {
           "type": "string",
@@ -164,7 +164,7 @@
       ],
       "properties": {
         "schema": {
-          "const": "tower.parameter-search/v1"
+          "const": "raven.parameter-search/v1"
         },
         "id": {
           "type": "string",
@@ -283,7 +283,7 @@
       ],
       "properties": {
         "schema": {
-          "const": "tower.packed-tasks/v1"
+          "const": "raven.packed-tasks/v1"
         },
         "id": {
           "type": "string",
@@ -387,7 +387,7 @@
       ],
       "properties": {
         "schema": {
-          "const": "tower.dask-pool/v1"
+          "const": "raven.dask-pool/v1"
         },
         "id": {
           "type": "string",
@@ -462,7 +462,7 @@
       ],
       "properties": {
         "schema": {
-          "const": "tower.heterogeneous-allocation/v1"
+          "const": "raven.heterogeneous-allocation/v1"
         },
         "id": {
           "type": "string",

@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from tower import clipboard, interaction, layout as L, scrollbars as S, text_selection as T
+from raven import clipboard, interaction, layout as L, scrollbars as S, text_selection as T
 
 
 def instance(**kw):
@@ -194,6 +194,52 @@ def test_source_switch_cancels_capture_and_consumes_late_release():
     assert not T.selected(app) and not T.active(app)
     assert T.handle_mouse(app, 3, 2, button="release")
     assert not T.handle_mouse(app, 3, 2, button="release")
+
+
+@pytest.mark.parametrize("repaint", [False, True])
+def test_cluster_copy_survives_background_project_discovery(monkeypatch, repaint):
+    app = instance(tab="cluster", project_state={"root": ""})
+    lines = ["GPU free 6", "GPU used 10"]
+    paint(app, lines, key="workspace:cluster:details")
+    assert T.handle_key(app, "v")
+    assert T.handle_key(app, "down")
+    # The automatic project reader can publish between selection and yank.
+    # Cluster counters keep their source even when that unrelated task ends.
+    app.project_state["root"] = "/lab/project"
+    if repaint:
+        paint(app, ["GPU free 5", "GPU used 11"], key="workspace:cluster:details")
+    copied = []
+    monkeypatch.setattr(clipboard, "copy", lambda text, *a, **kw: copied.append(text) or "copied")
+    assert T.handle_key(app, "y")
+    assert copied == ["GPU free 6\nGPU used 10\n"]
+    assert not app.failures
+
+
+@pytest.mark.parametrize("tab", ["jobs", "research", "analytics"])
+def test_project_dependent_copy_still_rejects_changed_project(monkeypatch, tab):
+    app = instance(tab=tab, project_state={"root": "/lab/first"})
+    paint(app, ["First project metric"])
+    assert T.handle_key(app, "v")
+    app.project_state["root"] = "/lab/second"
+    paint(app, ["Second project metric"])
+    monkeypatch.setattr(clipboard, "copy", lambda *a, **kw: pytest.fail("Copied a changed source"))
+    assert T.handle_key(app, "y")
+    assert app.failures == ["The selected text source changed. Select the lines again; no copy was sent."]
+
+
+def test_project_modal_on_cluster_still_rejects_changed_project(monkeypatch):
+    app = instance(tab="cluster", mode="project_runs", project_state={"root": "/lab/first"})
+    rows = [[("cluster counters", "text")] for _ in range(app.height)]
+    overlays = [(3, 5, [("+------------+", "dim")]),
+                (4, 5, [("| First run  |", "text")]),
+                (5, 5, [("+------------+", "dim")])]
+    T.publish(app, rows, app.width, app.height, overlays=overlays)
+    assert T.handle_key(app, "v")
+    app.project_state["root"] = "/lab/second"
+    T.publish(app, rows, app.width, app.height, overlays=overlays)
+    monkeypatch.setattr(clipboard, "copy", lambda *a, **kw: pytest.fail("Copied a changed project modal"))
+    assert T.handle_key(app, "y")
+    assert app.failures == ["The selected text source changed. Select the lines again; no copy was sent."]
 
 
 def test_geometry_change_preserves_pinned_text_but_ends_pointer_capture():
@@ -401,11 +447,11 @@ def test_selected_feedback_renders_same_pinned_text_that_copy_delivers():
 
 
 def test_default_keyboard_job_selection_prefers_main_not_one_row_recents():
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.screen import _FrameCache
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Job, Store
+    from raven.screen import _FrameCache
+    from raven.views import Views
     cfg = Config({"animations": False, "gpu_sampling": False})
     store = Store(persist=False)
     store.apply_jobs([Job("41", "one", "cpu", "RUNNING"), Job("42", "two", "cpu", "RUNNING")])

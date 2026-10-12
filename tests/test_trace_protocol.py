@@ -8,8 +8,8 @@ import time
 
 import pytest
 
-from tower import trace_protocol as P
-from tower.trace_recorder import Recorder, register_trace
+from raven import trace_protocol as P
+from raven.trace_recorder import Recorder, register_trace
 
 
 def make_trace(tmp_path, count=3, **options):
@@ -153,7 +153,7 @@ def test_replaced_journal_and_attempt_are_refused(tmp_path):
 
 def test_registration_forgery_and_escape_refused(tmp_path):
     recorder = make_trace(tmp_path)
-    path = tmp_path / ".tower/traces/index.json"
+    path = tmp_path / ".raven/traces/index.json"
     doc = json.loads(path.read_text())
     doc["records"][0]["path"] = "../manifest.json"
     path.write_text(json.dumps(doc))
@@ -195,8 +195,8 @@ def test_fork_never_appends_child_events_to_parent_stream(tmp_path):
     script = '''
 import os
 import sys
-from tower.trace_protocol import read_trace
-from tower.trace_recorder import Recorder
+from raven.trace_protocol import read_trace
+from raven.trace_recorder import Recorder
 
 with Recorder(sys.argv[1]) as recorder:
     pid = os.fork()
@@ -247,7 +247,7 @@ def test_manifest_terminal_controls_are_rejected(tmp_path):
 
 
 def test_closed_recorders_are_not_retained_by_fork_registry(tmp_path):
-    from tower.trace_recorder import _RECORDERS
+    from raven.trace_recorder import _RECORDERS
     recorder = make_trace(tmp_path)
     assert recorder not in _RECORDERS
 

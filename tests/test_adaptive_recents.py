@@ -4,11 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import recent_history as recents, table_tools, table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Live, Store, stamp
-from tower.workspace_layout import Rect
+from raven import recent_history as recents, table_tools, table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Live, Store, stamp
+from raven.workspace_layout import Rect
 
 
 @pytest.fixture
@@ -221,7 +221,7 @@ def test_tag_filter_cascading_jobid_sort_and_empty_reset(app):
     snap = observation(20)
     snap["tags"] = {str(1000 + index): {"tags": ["keep"]} for index in range(2, 20)}
     table_tools.set_filter_text(app, "recent", "#keep")
-    from tower.table_sort import set_sort
+    from raven.table_sort import set_sort
     set_sort(app, "recent", "id", "desc")
     assert [record.id for record in recents.records(app, snap)] == ["1006", "1005", "1004", "1003", "1002"]
     set_sort(app, "recent", "id", "off")
@@ -247,7 +247,7 @@ def test_large_index_skips_repeat_filter_work_but_amended_content_invalidates(ap
 def test_large_history_does_not_repeat_cascading_sort_without_data_changes(app):
     snap = observation(1000)
     activate(app, snap)
-    from tower.table_sort import set_sort
+    from raven.table_sort import set_sort
     set_sort(app, "recent", "name", "desc")
     set_sort(app, "recent", "id", "asc")
     recents.records(app, snap)

@@ -1,16 +1,23 @@
-# Tower 3.0 terminal workbench
+# Raven terminal workbench
 
 [Quick start](../README.md) · [Reference](reference.md) · [Runbook](runbook.md) ·
 [Project reporting standard](PROJECT_STANDARD.md) · [Planning guide](WAVE_TWO.md)
 
-This guide describes the original Tower 3.0 workbench.
-Tower 4.0 extends these workflows.
-Use the [50-improvement index](QUALITY_OF_LIFE.md) for the additional procedures.
+This guide describes workbench workflows introduced in release 3.0.
+The [interaction guide index](QUALITY_OF_LIFE.md) covers additional procedures
+introduced in release 4.0.
 Use [Controls](CONTROLS.md) for the complete control index.
 
-Tower remains a terminal-only application for CARC and other Slurm clusters.
+The controls below describe native workbench contracts. Managed Raven applies
+execution admission in addition to each contract's input validation and review.
+Request Heavy in the same interface for supported scientific-analysis adapters.
+Some native execution handoffs remain deferred; consult the
+[execution contracts](raven/execution-contracts.md) before adopting them.
+
+Raven remains a terminal-only application for CARC and other Slurm clusters.
 Everything here renders as terminal characters, with Unicode block charts, an
-ASCII fallback, optional color and motion, and no extra runtime dependencies.
+ASCII fallback, and optional color and motion. The core has no third-party
+runtime dependencies; the embedded terminal has separate optional dependencies.
 Run it on the CARC login node so local project paths and scheduler commands refer
 to the same machine. The simulated cluster demonstrates the interface without
 submitting a real job.
@@ -22,9 +29,9 @@ Update your checkout, keep its existing configuration, and launch normally:
 ```bash
 git pull --ff-only
 python3 scripts/setup.py --mode local
-tower
+raven
 # Explore without accessing Slurm:
-tower --fake --unicode
+raven --fake --unicode
 ```
 
 1. Press `?`, then `/` and a word such as `logs` to search help. Arrows and page
@@ -40,9 +47,9 @@ tower --fake --unicode
 6. Use `:activity` to revisit operation results and export paths. Notices remain
    available during the session even after the footer changes.
 
-The command examples below are entered after `:` inside Tower. They are
-interactive workbench commands, rather than a claim that every overlay is
-available through the scripted `tower run` interface. Use `?` on the current page
+The command examples below are entered after `:` inside Raven. They are
+interactive workbench commands. Overlay availability differs from the scripted
+`raven run` interface. Use `?` on the current page
 for its keys and the [reference](reference.md) for scripted commands.
 
 ## The twenty improvements
@@ -88,7 +95,7 @@ layout load inspection
 ```
 
 Named layouts store density, split, focus, and maximization. Preferences save in
-ordinary Tower UI state when enabled; `--no-state` disables that persistence.
+ordinary Raven UI state when enabled; `--no-state` disables that persistence.
 Roomier layouts reveal more content, while narrow terminals wrap the same
 evidence into a vertical presentation. Panels inspect bounded source rows rather
 than allowing a frame to allocate an unbounded document.
@@ -125,13 +132,13 @@ the others; turning all off restores source order. `:sortby [TABLE] COLUMN
 
 Jobs, Recents, History, Group, My Nodes, Sources, and Cluster partitions keep
 independent cascades (`jobs`, `recent`, `history`, `group`, `nodes`, `sources`,
-`cluster`). Recents defaults to five retained records. Tower 4.0 adds count and
+`cluster`). Recents defaults to five retained records. Raven 4.0 adds count and
 time-window controls through `:recents`; see the [table guide](guides/tables.md#feature-09).
 JOBID uses natural
 numeric and array-task order: `2` before `10`, `123_2` before `123_10`. Measured
 values sort before rounding; unknowns remain last in both directions. Jobs pins
 remain first, and grouping presents the sorted observed array tasks together.
-If sorting would hide the selected task behind a different folded representative, Tower expands that array and preserves the selected job.
+If sorting would hide the selected task behind a different folded representative, Raven expands that array and preserves the selected job.
 Cascades persist with ordinary UI state, restore with Back, and travel with
 saved Jobs and History views.
 
@@ -223,7 +230,7 @@ one based within the visible samples. A time window is positive seconds, up to
 events. Unknown values and observed sampling outages remain gaps; graph inspection
 does not fabricate readings between samples.
 
-Timeline collects events Tower actually observed. Application phases appear as
+Timeline collects events Raven actually observed. Application phases appear as
 their reports arrive; older phases absent from those observations stay unknown.
 Enter follows an attached job or log citation; events without an attached source
 explain that limitation. In a recording, `s` or `:timeline seek EVENT_NUMBER`
@@ -233,7 +240,7 @@ seeks the event's timestamp. Replay stays visibly distinct from live data.
 Passport comparisons load actual passport files in the background and show
 changed fields; `u` includes unchanged fields. Job comparisons align retained
 resource samples on elapsed time. Neither comparison invents history from before
-Tower observed it.
+Raven observed it.
 
 ## Read logs and follow evidence
 
@@ -266,11 +273,11 @@ with truncation visible. Arrows/page keys scroll their presentation. Esc or
 `:logview plain` returns to original lines. In Split, `[` and `]` choose which
 source full-file copy uses. Return to Plain for logical source-line selection.
 
-In version 3.0.1, opening another job/run/file and restarting Tower starts at the
+In version 3.0.1, opening another job/run/file and restarting Raven starts at the
 left edge. Horizontal position is kept only for the current source; `Ctrl-B`
 restores a previous source's deliberate position. An active offset and the
-`:logpan 0` reset command stay at the beginning of the status line so hidden
-prefixes are easy to explain and restore. ANSI color/cursor commands in logs
+`:logpan 0` reset command stay at the beginning of the status line. This keeps
+the horizontal offset and its reset visible. ANSI color/cursor commands in logs
 are removed from the display; embedded carriage returns, backspaces and NUL
 appear as `^M`, `^H` and `^@` without overwriting text or moving terminal cursors.
 These display changes preserve physical source lines and original copy bytes.
@@ -292,7 +299,7 @@ Scheduler-only citations have no log file to open. `Ctrl-B` returns to Evidence.
 ## Bind a project execution attempt
 
 Follow the [reporting standard](PROJECT_STANDARD.md) and create
-`runs/<run_id>/run.json`. Then, with Tower running locally on CARC:
+`runs/<run_id>/run.json`. Then, with Raven running locally on CARC:
 
 ```text
 project /absolute/project
@@ -310,13 +317,14 @@ binding/discovery notices. The inventory is revalidated when selected; its
 `run_id` must match its directory, and `attempt` identifies that execution attempt.
 
 A selected inventory binds its declared metrics and log index, the standard
-`.tower/contracts/outputs.v1.json`, and a verified passport where unambiguous.
+`.raven/contracts/outputs.v1.json`, and a verified passport where unambiguous.
 Runs without `job_id` remain project runs: metrics, logs, and outputs work without
 attaching an unrelated running job. Missing sources stay missing. Multiple
 passports require an explicit `:run passport passports/FILE.json`. Clearing the
-binding restores the original research/log settings. Project discovery is not
-available through the SSH file backend; run Tower on the machine hosting those
-project files.
+binding restores the original research/log settings. The standard SSH backend
+also supports confined project discovery through an isolated Python helper on
+the selected host. That host needs Python 3.10 or later. See
+[automatic reads and SSH](guides/research-automation.md#automatic-reads-and-ssh).
 Failure Evidence and the job inspector require an actual visible scheduler
 record; a project-only run still exposes its declared files in Logs and Outputs.
 
@@ -353,7 +361,7 @@ live scheduler; actual submission needs the local cluster backend.
 The existing `workflow plan`, `scaling plan`, and analysis commands remain
 offline preparation. Workflow plans keep sealed symbolic dependencies and
 `submittable: false`; an individual `submit` cannot bypass that seal.
-Tower 3.0 adds a separate, explicit interactive handoff:
+Use the separate, explicit interactive handoff:
 
 ```text
 orchestrate workflow /absolute/project/workflow.json --workdir /absolute/project
@@ -365,20 +373,21 @@ The review lists each node/repeat, its dependencies, effective resources, and
 command. Arrows/page keys inspect every node; Enter or `d` expands its details.
 Tab moves to the visible Cancel/Confirm controls, then Enter activates one.
 Only explicit confirmation starts scheduler calls. Batch execution requires
-Tower running locally on the cluster; SSH viewers and replay cannot submit.
+Raven running locally on the cluster; SSH viewers and replay cannot submit.
 
 Execution allows at most 64 reviewed jobs and 16 recorded attempts per node.
 Workflow children receive actual accepted upstream IDs in `afterok` dependencies;
 symbolic IDs are never sent as scheduler receipts. Scripts are revalidated before
-new calls. Tower durably records each launching intent before contacting Slurm
+new calls. Raven durably records each launching intent before contacting Slurm
 and retains actual accepted IDs, rejected responses, and unknown outcomes in a
 private execution receipt. A partial failure stops further submissions.
 
 While execution is running, `c` requests cancellation before further nodes.
 Already accepted jobs keep running; this does not cancel them on the scheduler.
 Closing the execution overlay also does not undo accepted jobs. Receipts live
-under `~/.local/state/tower/executions/`, honoring `XDG_STATE_HOME`, with private
-passports alongside them. Execution requires persistent private state and
+in the configured state's `executions/` directory, with private passports
+alongside them. Raven's default state base is `~/.local/state/raven/`, honoring
+`XDG_STATE_HOME`. Execution requires persistent private state and
 refuses new submissions with `--no-state`; preserve receipts for recovery.
 
 Receipts belong to their recorded connection, profile, and owner. Copied or
@@ -416,5 +425,5 @@ The interface and scheduler integration are covered with simulated jobs, local
 files, malformed/stale data, bounded-work checks, and terminal rendering tests.
 Development verification does not submit real jobs. Live CARC accounting,
 permissions, submission receipts, and workload performance still require local
-verification. Start with `tower --fake`, then the runbook's low-impact CARC
+verification. Start with `raven --fake`, then the runbook's low-impact CARC
 checks, and review one small real submission before adopting batch execution.

@@ -4,8 +4,8 @@ from __future__ import annotations
 import json
 import pytest
 
-from tower.investigate import MAX_EVENTS, MAX_EVIDENCE, MAX_LOG_BYTES, MAX_LOG_LINES, investigate, sanitize_text
-from tower.model import Finished, Job
+from raven.investigate import MAX_EVENTS, MAX_EVIDENCE, MAX_LOG_BYTES, MAX_LOG_LINES, investigate, sanitize_text
+from raven.model import Finished, Job
 
 
 def finished(state="FAILED", **kwargs):

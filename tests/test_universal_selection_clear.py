@@ -4,14 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import history_browser as H, interaction as I, job_selection as S
-from tower import log_workbench as W, log_tools as T, log_scan, screen
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven import history_browser as H, interaction as I, job_selection as S
+from raven import log_workbench as W, log_tools as T, log_scan, screen
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 @pytest.fixture
@@ -207,7 +207,7 @@ def test_graph_right_reset_retains_selection_and_has_priority_on_any_page(dashbo
     d, app = dashboard, dashboard.app
     app.marks, app.selected_id = {"7", "8"}, "7"
     calls = []
-    monkeypatch.setattr("tower.chart_interaction.handle_mouse", lambda *args, **kwargs: calls.append(kwargs) or True)
+    monkeypatch.setattr("raven.chart_interaction.handle_mouse", lambda *args, **kwargs: calls.append(kwargs) or True)
     app.tab = "research"
     right(d)
     assert app.marks == {"7", "8"} and app.selected_id == "7"
@@ -424,7 +424,7 @@ def test_analysis_modal_graph_reset_preserves_carried_ranges(dashboard, monkeypa
     app.sel_anchor, app.sel_end, app.click_row = 4, 6, 4
     app.mode = "analysis"
     app.analysis_state["modal"] = "chart"
-    monkeypatch.setattr("tower.chart_interaction.handle_mouse", lambda *args, **kwargs: True)
+    monkeypatch.setattr("raven.chart_interaction.handle_mouse", lambda *args, **kwargs: True)
     right(d)
     assert app.logs.selection_active and app.sel_anchor == 4 and not S.lines_cleared(app)
     assert app.mode == "analysis"

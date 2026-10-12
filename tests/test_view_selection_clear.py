@@ -1,11 +1,11 @@
 """Maintenance frames preserve cleared rows and existing metric sources."""
 import pytest
 
-from tower import job_selection as S, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import job_selection as S, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ def test_analytics_without_source_does_not_pick_first_job_after_clear(dashboard)
 
 
 def test_inline_analytics_retains_explicit_jobs_source_despite_analytics_clear(dashboard):
-    from tower.job_panels import _scoped_app, initialize
+    from raven.job_panels import _scoped_app, initialize
     app, views, store = dashboard
     app.tab = "analytics"
     S.clear(app)

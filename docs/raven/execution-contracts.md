@@ -1,17 +1,16 @@
-# Execution contracts and compatibility
+# Raven execution contracts and compatibility
 
 Raven assigns each operation to the interface, a reviewed scheduler target, or
 an admitted Heavy worker. Light does not run a Heavy algorithm when a worker is
 missing, expires, disconnects, changes identity, or rejects the request. It
 returns a deferred result and a nonzero command exit code.
 
-The [generated capability ledger](capability-ledger.json) covers all 57 operation
-keys, all 56 original proposal entries, and 44 named worker adapters. Registration
-is an execution contract. It is not evidence of qualification on a live site.
-The ledger's generic Light input allowance describes a baseline contract.
-Actual read limits vary by reader and background admission; the limits below
-describe the enforced paths. Do not treat a catalog entry as a universal
-per-operation resource measurement.
+The [generated capability ledger](capability-ledger.json) covers 57 operation
+keys, 56 original proposal entries, and 44 named worker adapters. It specifies
+dispatch and resource contracts; the [validation record](validation.md) identifies
+the exercised paths and remaining site checks. Actual Light read limits depend
+on the reader and background admission. The enforced limits below take precedence
+over the ledger's generic baseline allowance.
 
 ## Boundaries
 
@@ -85,8 +84,8 @@ sandbox for arbitrary Python programs or user shell commands.
 
 ## Explicit deferred paths
 
-The ledger's `deferred_paths` field is the authoritative list. This release does
-not invent a transport or local fallback for:
+The ledger's `deferred_paths` field is the authoritative list. The following
+paths require an additional transport, adapter, or verified execution target:
 
 - Live multi-cluster collection, starting a detached supervisor, or querying a
   site telemetry service without a governed source adapter.

@@ -1,12 +1,12 @@
 """Published-geometry job moves retain exact intent across pointer reports."""
 import pytest
 
-from tower import job_group_drag as D, job_groups as G, job_selection as S, manual_job_groups as M
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Job, Store
-from tower.views import Views
+from raven import job_group_drag as D, job_groups as G, job_selection as S, manual_job_groups as M
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -207,7 +207,7 @@ def test_disclosure_details_and_scrollbar_cells_cannot_start_moves(screen):
 @pytest.mark.parametrize("tab", ["analytics", "deps", "log", "research"])
 @pytest.mark.parametrize("dock", ["left", "right", "top", "bottom"])
 def test_all_history_browser_docks_publish_exact_rows_and_drop_groups(screen, tab, dock):
-    from tower import history_browser as H
+    from raven import history_browser as H
     app, store, views, gid = screen
     app.tab = tab
     H._view(app).update(dock=dock, ratio=40)

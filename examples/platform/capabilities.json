@@ -1,7 +1,7 @@
 {
-  "schema": "tower.capabilities/v1",
+  "schema": "raven.capabilities/v1",
   "source": "slurm-cli",
-  "version": "tower-native-read-subset/v1",
+  "version": "raven-native-read-subset/v1",
   "operations": [
     "queue",
     "accounting",

@@ -4,12 +4,12 @@ import curses
 
 import pytest
 
-from tower import chart_interaction, metric_live, pane_drag, screen, scrollbars
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Job, Store
-from tower.views import TABS, Views
+from raven import chart_interaction, metric_live, pane_drag, screen, scrollbars
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Job, Store
+from raven.views import TABS, Views
 
 
 class Window:

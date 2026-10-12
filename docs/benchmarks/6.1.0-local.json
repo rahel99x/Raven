@@ -1,11 +1,11 @@
 {
-  "schema": "tower.local-release-benchmark/v1",
+  "schema": "raven.local-release-benchmark/v1",
   "release": "6.1.0",
   "date_utc": "2026-10-11",
   "scope": "Shared Linux cloud host; synthetic published metrics and real local PTY. No live Slurm, physical GPU, remote terminal transport or emulator presentation measurement.",
   "baseline_commit": "dd97ec4cae5c061e10df3a579c3eaaf8776ac4cd",
   "runtime_sha256": "5cd8693001cf94335598ac970f0a5edebba690bac2b0282bce757595ff90622e",
-  "runtime_digest_method": "Concatenate each tower/*.py filename UTF-8 followed by its bytes, in filename order, then SHA-256.",
+  "runtime_digest_method": "Concatenate each raven/*.py filename UTF-8 followed by its bytes, in filename order, then SHA-256.",
   "changing_ui": {
     "before": {
       "metadata": {

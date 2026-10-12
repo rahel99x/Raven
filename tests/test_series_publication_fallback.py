@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import series_publication as P
-from tower.analysis_ui import _resource_series
-from tower.model import Store
-from tower.native_series_cache import NativeSeriesCache
-from tower.views import _prepare_native_metrics
+from raven import series_publication as P
+from raven.analysis_ui import _resource_series
+from raven.model import Store
+from raven.native_series_cache import NativeSeriesCache
+from raven.views import _prepare_native_metrics
 
 
 @pytest.mark.parametrize("shape", ["deep", "wide"])

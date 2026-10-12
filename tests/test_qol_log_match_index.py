@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import log_match_index as index, log_tools
-from tower.logs import LogBuffer, LogSession
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven import log_match_index as index, log_tools
+from raven.logs import LogBuffer, LogSession
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 def buffer(lines, partial=b'', skipped=0):
@@ -172,7 +172,7 @@ def test_new_query_cannot_receive_prior_pending_worker_results():
 
 
 def test_legacy_interactive_without_worker_refreshes_same_mutable_buffer(tmp_path):
-    from tower.logs import LogSession
+    from raven.logs import LogSession
     path = tmp_path / 'legacy.log'
     path.write_bytes(b'ERROR\n')
     app = SimpleNamespace(logs=LogSession(), interactive=True, research=None, cfg={}, mode='main', tab='log')
@@ -196,7 +196,7 @@ def test_legacy_interactive_without_worker_refreshes_same_mutable_buffer(tmp_pat
 
 
 def test_same_mutable_buffer_partial_word_match_is_not_reused_after_append(tmp_path):
-    from tower.logs import LogSession
+    from raven.logs import LogSession
     path = tmp_path / 'partial.log'
     path.write_bytes(b'ERROR')
     app = SimpleNamespace(logs=LogSession(), interactive=True, research=None, cfg={}, mode='main', tab='log')

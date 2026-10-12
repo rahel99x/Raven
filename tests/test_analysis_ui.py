@@ -4,13 +4,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Live, Store
-from tower.research import ResearchHub
-from tower.research_views import render
-from tower.views import Views
+from raven import analysis_ui as A, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Live, Store
+from raven.research import ResearchHub
+from raven.research_views import render
+from raven.views import Views
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ def test_crosshair_reports_original_precision_timestamp_step_and_unknown_value(a
     assert "value 3" in rendered and "step 1" in rendered and "1970-01-01" in rendered
     A.handle_key(app, "right")
     assert "value unavailable" in overlay(app, ascii_=ascii_)
-    from tower import palette
+    from raven import palette
     theme = getattr(getattr(app, "views", None), "theme", "default")
     assert any(palette.resolve(style, theme).foreground == palette.resolve("yellow", theme).foreground
                and "bold" in palette.resolve(style, theme).flags
@@ -178,7 +178,7 @@ def test_frames_do_not_load_sample_files_from_disk(app, monkeypatch):
 
 
 def test_passport_comparison_runs_in_worker_and_publishes_only_on_tick(app, tmp_path):
-    from tower.provenance import capture, save
+    from raven.provenance import capture, save
     left = capture(tmp_path, parameters={"batch_size": 4})
     right = capture(tmp_path, parameters={"batch_size": 8})
     paths = [str(save(left, tmp_path / "passports")), str(save(right, tmp_path / "passports"))]
@@ -247,7 +247,7 @@ def test_reported_phase_events_are_observations_not_invented_history(app):
 
 
 def test_report_ui_copy_cannot_add_phase_events_to_interactive_state(app):
-    from tower.report import _ui_copy
+    from raven.report import _ui_copy
     result = {"path": "run.jsonl", "phase": "training", "last_t": 10}
     A.observe_metrics(app, result, "1")
     private = _ui_copy(app)
@@ -258,7 +258,7 @@ def test_report_ui_copy_cannot_add_phase_events_to_interactive_state(app):
 
 
 def test_timeline_seek_updates_real_replay_clock_only_when_explicit(app):
-    from tower.record import ReplayClock
+    from raven.record import ReplayClock
     clock = ReplayClock(0, 100, paused=True)
     app.replay = SimpleNamespace(clock=clock)
     app.store.events = deque([{"t": 42, "kind": "fail", "text": "failed", "job": "2"}])
@@ -290,7 +290,7 @@ def test_visible_event_links_open_exact_job_with_mouse(app, modal, width, ascii_
 
 
 def test_timeline_open_does_not_seek_and_invalid_index_preserves_context(app):
-    from tower.record import ReplayClock
+    from raven.record import ReplayClock
     clock = ReplayClock(0, 100, paused=True)
     app.replay = SimpleNamespace(clock=clock)
     app.store.events = deque([{"t": 42, "kind": "failed", "job": "2", "text": "failed"}])
@@ -313,7 +313,7 @@ def test_event_mouse_target_keeps_painted_identity_when_live_events_change(app):
 
 
 def test_inspector_drilldown_records_modal_context_before_opening_logs(app, monkeypatch):
-    from tower import navigation_ui
+    from raven import navigation_ui
     opened = []
     monkeypatch.setattr(app, "open_log", lambda jid: opened.append(jid))
     A.open_inspector(app, "2")
@@ -403,7 +403,7 @@ def bind_other_run(app):
 
 
 def test_manual_source_detaches_before_settings_restore_and_back_restores_bound_run(app):
-    from tower import navigation_ui, project_ui
+    from raven import navigation_ui, project_ui
     bind_other_run(app)
     app.run_command("metrics /explicit/manual.jsonl")
     assert app.command_ok and project_ui.selected_binding(app) is None
@@ -422,8 +422,8 @@ def test_immediate_chart_after_manual_attachment_cannot_reuse_previous_file_samp
 
 
 def test_selecting_same_bound_job_keeps_declared_run_sources(app):
-    from tower.research import select_job
-    from tower.project_ui import selected_binding
+    from raven.research import select_job
+    from raven.project_ui import selected_binding
     bind_other_run(app)
     select_job(app, "2", view="evidence")
     assert selected_binding(app)["run_id"] == "other"
@@ -432,7 +432,7 @@ def test_selecting_same_bound_job_keeps_declared_run_sources(app):
 
 @pytest.mark.parametrize("route", ["investigate", "keyboard"])
 def test_research_job_change_restores_original_sources_before_selecting_other_job(app, route):
-    from tower import navigation_ui, project_ui
+    from raven import navigation_ui, project_ui
     bind_other_run(app)
     if route == "investigate":
         app.run_command("investigate 1")

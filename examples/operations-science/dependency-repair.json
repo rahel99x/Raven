@@ -1,5 +1,5 @@
 {
-  "schema": "tower.dependency-repair/v1",
+  "schema": "raven.dependency-repair/v1",
   "repairs": [
     {
       "job_id": "12345",

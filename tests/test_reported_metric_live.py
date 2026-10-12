@@ -3,12 +3,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, clock, layout as L, metric_live as M
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.research_views import render
-from tower.views import Views
+from raven import analysis_ui as A, chart_interaction as C, clock, layout as L, metric_live as M
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.research_views import render
+from raven.views import Views
 
 
 @pytest.fixture
@@ -311,9 +311,12 @@ def test_published_attempt_key_lookup_reuses_exact_slot_without_snapshot_and_det
 
 
 def test_inline_reported_live_has_one_canonical_graph_node_per_button_and_shared_state(dashboard):
-    from tower import job_panels as J
+    from raven import job_panels as J
     app = dashboard.app
     app.tab, app.research_view = "jobs", "passport"
+    queue = dashboard.views.job_rows(dashboard.store.snapshot(), app)
+    app.cursor["jobs"] = [row["id"] for row in queue].index("1")
+    # The scoped report belongs to running job 1, not the first pending batch.
     assert J.run_command(app, ["jobpanel", "research", "experiment"])
     rows, hits = dashboard.views.compose(dashboard.store.snapshot(), app, 180, 70)
     records = M.initialize(app)["records"]

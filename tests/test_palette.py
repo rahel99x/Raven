@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import palette as P, screen
+from raven import palette as P, screen
 
 
 @pytest.fixture(autouse=True)

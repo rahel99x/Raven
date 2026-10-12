@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from tower.log_catalog import build_catalog
+from raven.log_catalog import build_catalog
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "examples" / "project-template"
@@ -34,7 +34,7 @@ def index(run):
 def test_begin_run_publishes_private_log_index_with_real_identity_and_relative_paths(project):
     _, _, run = project
     document = index(run)
-    assert document["schema"] == "tower.logs/v1"
+    assert document["schema"] == "raven.logs/v1"
     assert document["run_id"] == "attempt-1" and document["job_id"] == "12345_7"
     assert {row["path"] for row in document["logs"]} == {"logs/stdout.log", "logs/stderr.log"}
     assert json.loads((run / "run.json").read_text())["paths"]["log_index"] == "logs.json"
@@ -95,7 +95,7 @@ def test_log_registration_is_available_for_failed_runs_and_never_rewrites_summar
 def test_local_execution_does_not_fabricate_a_scheduler_identity(tmp_path):
     root = tmp_path / "copied"
     shutil.copytree(TEMPLATE, root)
-    env = {key: value for key, value in os.environ.items() if not key.startswith(("SLURM_", "TOWER_"))}
+    env = {key: value for key, value in os.environ.items() if not key.startswith(("SLURM_", "RAVEN_"))}
     env.pop("PYTHONPATH", None)
     result = subprocess.run([sys.executable, "-S", "experiment.py", "--run-id", "local",
                              "--steps", "2", "--terms-per-step", "8"], cwd=root, env=env,
@@ -171,7 +171,7 @@ def test_existing_nonregular_paths_and_symlink_ancestors_are_refused_without_ope
 @pytest.mark.parametrize("change", [
     lambda doc: doc.update(job_id="99999"),
     lambda doc: doc.update(run_id="another-run"),
-    lambda doc: doc.update(schema="tower.logs/v9"),
+    lambda doc: doc.update(schema="raven.logs/v9"),
     lambda doc: doc.update(extra="unsupported"),
     lambda doc: doc["logs"].append(dict(doc["logs"][0])),
     lambda doc: doc["logs"][0].update(label=""),
@@ -201,7 +201,7 @@ def test_maximum_log_count_is_bounded_without_silently_dropping_entries(project)
 
 def test_duplicate_json_keys_do_not_replace_the_previous_index(project):
     _, producer, run = project
-    (run / "logs.json").write_text('{"schema":"tower.logs/v1","logs":[],"logs":[]}')
+    (run / "logs.json").write_text('{"schema":"raven.logs/v1","logs":[],"logs":[]}')
     before = (run / "logs.json").read_bytes()
     with pytest.raises(ValueError, match="duplicate"):
         producer.register_log(run, "another", "logs/another.log")

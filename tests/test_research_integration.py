@@ -8,13 +8,13 @@ import time
 
 import pytest
 
-from tower import cli, layout as L
-from tower.config import Config
-from tower.metrics import write_metric
-from tower.model import Finished, Job
-from tower.provenance import capture
-from tower.research import RESEARCH_VIEWS
-from tower.submission import prepare
+from raven import cli, layout as L
+from raven.config import Config
+from raven.metrics import write_metric
+from raven.model import Finished, Job
+from raven.provenance import capture
+from raven.research import RESEARCH_VIEWS
+from raven.submission import prepare
 
 
 def finish_research_command(app):
@@ -131,7 +131,7 @@ def test_research_palette_view_keys_array_selection_scroll_and_mouse_hits(resear
 
 def test_passport_comparison_is_visible_in_research(research_dashboard):
     session, files = research_dashboard
-    from tower.provenance import save
+    from raven.provenance import save
     left = capture(files["root"], script=str(files["script"]), parameters={"size": 1})
     right = capture(files["root"], script=str(files["script"]), parameters={"size": 2})
     left_path = save(left, files["root"] / "passports")
@@ -229,7 +229,7 @@ def test_cli_submission_preview_exit_and_yes_execution(research_files, monkeypat
     monkeypatch.setattr(session.backend, "call", lambda command, *args, **kwargs: calls.append(list(command)) or original(command, *args, **kwargs))
     argv = ["--config", str(files["config"]), "--fake", "--no-state", "--no-plugins", "run", "submit", str(files["script"]),
             "--workdir", str(files["root"])]
-    directory = files["root"] / ("submission-passports" if explicit_directory else ".tower/passports")
+    directory = files["root"] / ("submission-passports" if explicit_directory else ".raven/passports")
     if explicit_directory:
         argv += ["--passport-dir", str(directory)]
     assert cli.main(argv) == 3
@@ -253,15 +253,15 @@ def test_cli_submission_preview_exit_and_yes_execution(research_files, monkeypat
 
 def test_installed_alias_forwards_ascii_override_and_live_account(tmp_path):
     from scripts.install_shell import shell_block
-    root = tmp_path / "a tower checkout"
+    root = tmp_path / "a raven checkout"
     scripts = root / "scripts"
     scripts.mkdir(parents=True)
-    launcher = scripts / "tower"
+    launcher = scripts / "raven"
     launcher.write_text("#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps(sys.argv[1:]))\n")
     launcher.chmod(0o755)
     block = tmp_path / "alias.bash"
     block.write_text(shell_block(root))
-    command = "shopt -s expand_aliases\nsource " + shlex.quote(str(block)) + "\nCARC_ACCOUNT='live account'\neval \"tower --ascii --job-name 'two words'\"\n"
+    command = "shopt -s expand_aliases\nsource " + shlex.quote(str(block)) + "\nCARC_ACCOUNT='live account'\neval \"raven --ascii --job-name 'two words'\"\n"
     result = subprocess.run(["bash", "--noprofile", "--norc", "-c", command], capture_output=True, text=True, timeout=5)
     assert result.returncode == 0, result.stderr
     arguments = json.loads(result.stdout)
@@ -272,7 +272,7 @@ def test_installed_alias_forwards_ascii_override_and_live_account(tmp_path):
 
 def test_interactive_preflight_stays_responsive_and_has_only_one_background_operation(research_dashboard, monkeypatch):
     session, files = research_dashboard
-    from tower import submission
+    from raven import submission
     entered, released = threading.Event(), threading.Event()
     original = submission.prepare
     def slow_prepare(*args, **kwargs):

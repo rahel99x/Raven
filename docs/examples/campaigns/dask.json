@@ -1,5 +1,5 @@
 {
-  "schema": "tower.dask-pool/v1",
+  "schema": "raven.dask-pool/v1",
   "id": "example-pool-01",
   "cores": 2,
   "memory_mb": 1024,

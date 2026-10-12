@@ -9,21 +9,21 @@ import zipfile
 
 import pytest
 
-SPEC = importlib.util.spec_from_file_location("tower_release_inventory", Path(__file__).resolve().parents[1] / "scripts/release_inventory.py")
+SPEC = importlib.util.spec_from_file_location("raven_release_inventory", Path(__file__).resolve().parents[1] / "scripts/release_inventory.py")
 R = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(R)
 LICENSE = R.DEFAULT_LICENSE.read_bytes()
 
 
 def wheel(tmp_path, *, version="6.0.0", license_bytes=LICENSE, extra=(), runtime="", members=None):
-    path = tmp_path / f"slurm_tower-{version}-py3-none-any.whl"
-    metadata = f'Metadata-Version: 2.4\nName: slurm-tower\nVersion: {version}\nLicense-Expression: MIT\nRequires-Python: >=3.10\nProvides-Extra: dev\nRequires-Dist: pytest>=8; extra == "dev"\n{runtime}\n'
-    prefix = f"slurm_tower-{version}.dist-info/"
+    path = tmp_path / f"raven-{version}-py3-none-any.whl"
+    metadata = f'Metadata-Version: 2.4\nName: raven\nVersion: {version}\nLicense-Expression: MIT\nRequires-Python: >=3.10\nProvides-Extra: dev\nRequires-Dist: pytest>=8; extra == "dev"\n{runtime}\n'
+    prefix = f"raven-{version}.dist-info/"
     with zipfile.ZipFile(path, "w") as z:
         z.writestr(prefix + "METADATA", metadata)
         z.writestr(prefix + "WHEEL", "Wheel-Version: 1.0\nGenerator: test-builder\nTag: py3-none-any\n")
         z.writestr(prefix + "licenses/LICENSE", license_bytes)
-        z.writestr("tower/__init__.py", "VERSION = '6.0.0'\n")
+        z.writestr("raven/__init__.py", "VERSION = '6.0.0'\n")
         for name, value in (members or {}).items():
             z.writestr(name, value)
         for info, value in extra:
@@ -32,11 +32,11 @@ def wheel(tmp_path, *, version="6.0.0", license_bytes=LICENSE, extra=(), runtime
 
 
 def sdist(tmp_path, *, special=None):
-    path = tmp_path / "slurm_tower-6.0.0.tar.gz"
-    metadata = b'Metadata-Version: 2.4\nName: slurm-tower\nVersion: 6.0.0\nLicense-Expression: MIT\nRequires-Python: >=3.10\n\n'
+    path = tmp_path / "raven-6.0.0.tar.gz"
+    metadata = b'Metadata-Version: 2.4\nName: raven\nVersion: 6.0.0\nLicense-Expression: MIT\nRequires-Python: >=3.10\n\n'
     with tarfile.open(path, "w:gz") as archive:
-        for name, content in (("PKG-INFO", metadata), ("LICENSE", LICENSE), ("tower/__init__.py", b"pass\n")):
-            entry = tarfile.TarInfo("slurm_tower-6.0.0/" + name)
+        for name, content in (("PKG-INFO", metadata), ("LICENSE", LICENSE), ("raven/__init__.py", b"pass\n")):
+            entry = tarfile.TarInfo("raven-6.0.0/" + name)
             entry.size = len(content)
             archive.addfile(entry, io.BytesIO(content))
         if special:
@@ -117,7 +117,7 @@ def test_archive_traversal_and_controls_rejected(tmp_path, name):
 
 
 def test_archive_symlink_rejected(tmp_path):
-    member = zipfile.ZipInfo("tower/link")
+    member = zipfile.ZipInfo("raven/link")
     member.create_system = 3
     member.external_attr = (stat.S_IFLNK | 0o777) << 16
     with pytest.raises(ValueError, match="Links"):
@@ -126,7 +126,7 @@ def test_archive_symlink_rejected(tmp_path):
 
 @pytest.mark.parametrize("kind", [tarfile.SYMTYPE, tarfile.LNKTYPE, tarfile.FIFOTYPE])
 def test_sdist_links_and_special_files_rejected(tmp_path, kind):
-    member = tarfile.TarInfo("slurm_tower-6.0.0/link")
+    member = tarfile.TarInfo("raven-6.0.0/link")
     member.type, member.linkname = kind, "target"
     with pytest.raises(ValueError, match="Links"):
         R.create_inventory([sdist(tmp_path, special=member)])
@@ -134,7 +134,7 @@ def test_sdist_links_and_special_files_rejected(tmp_path, kind):
 
 def test_duplicate_archive_members_rejected(tmp_path):
     with pytest.warns(UserWarning):
-        artifact = wheel(tmp_path, extra=[("tower/__init__.py", "duplicate")])
+        artifact = wheel(tmp_path, extra=[("raven/__init__.py", "duplicate")])
     with pytest.raises(ValueError, match="Duplicate"):
         R.create_inventory([artifact])
 

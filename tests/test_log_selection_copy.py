@@ -7,8 +7,8 @@ import tracemalloc
 
 import pytest
 
-from tower import clipboard, log_copy
-from tower.log_copy import copy_log_selection
+from raven import clipboard, log_copy
+from raven.log_copy import copy_log_selection
 
 
 def raw_export(chunks, state_dir, **kwargs):

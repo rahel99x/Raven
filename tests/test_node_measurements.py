@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.model import Node
-from tower.slurm import parse_node
-from tower.config import Config
-from tower.layout import Glyphs, row_text
-from tower.views import Views
+from raven.model import Node
+from raven.slurm import parse_node
+from raven.config import Config
+from raven.layout import Glyphs, row_text
+from raven.views import Views
 
 
 def test_node_defaults_preserve_unknown_telemetry():

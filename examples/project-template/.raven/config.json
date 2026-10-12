@@ -1,0 +1,37 @@
+{
+  "profiles": {
+    "desktop": {
+      "host": "",
+      "ssh_user": "",
+      "user": "",
+      "account": "",
+      "partitions": [],
+      "show_all_partitions": true,
+      "state_namespace": "desktop",
+      "gpu_sampling": false,
+      "weather": false,
+      "budget": false,
+      "history_days": 7,
+      "intervals": {"jobs": 2, "starts": 10, "live": 5, "nodes": 10,
+                    "partitions": 30, "finished": 10, "details": 5,
+                    "fin_details": 2, "account": 60}
+    },
+    "carc": {
+      "gpu_sampling": false,
+      "weather": false,
+      "budget": false,
+      "intervals": {"jobs": 10, "starts": 60, "live": 30, "nodes": 60,
+                    "partitions": 120, "finished": 120, "share": 300,
+                    "account": 120, "details": 60, "trace": 120}
+    }
+  },
+  "logs": {
+    "manifest_file": "logs.json"
+  },
+  "research": {
+    "metrics_file": "metrics.jsonl",
+    "contract": ".raven/contracts/outputs.v1.json",
+    "planning_file": "reports/planning.json",
+    "interval": 5
+  }
+}

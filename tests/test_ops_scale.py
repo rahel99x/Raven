@@ -8,11 +8,11 @@ import time
 
 import pytest
 
-from tower.operations import Context, command
-from tower.remote import LocalFiles
-from tower.slurm import Slurm, FakeBackend, Backend
-from tower import ops_scale as S, scale_bottlenecks as B, scale_clusters as C, scale_energy as E, scale_incidents as I
-from tower.scale_common import timestamp, number
+from raven.operations import Context, command
+from raven.remote import LocalFiles
+from raven.slurm import Slurm, FakeBackend, Backend
+from raven import ops_scale as S, scale_bottlenecks as B, scale_clusters as C, scale_energy as E, scale_incidents as I
+from raven.scale_common import timestamp, number
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def ctx():
 
 
 def profiler():
-    return {"schema": "tower.profiler/v1", "cluster": "alpha", "job_id": "7", "attempt": "a1", "expected_ranks": [0, 1],
+    return {"schema": "raven.profiler/v1", "cluster": "alpha", "job_id": "7", "attempt": "a1", "expected_ranks": [0, 1],
             "ordered_barrier_phases": True,
             "records": [{"rank": 0, "node": "n1", "phase": "solve", "elapsed_s": 2, "cpu_s": 4, "mpi_s": 1, "io_s": .5, "read_bytes": 100, "write_bytes": 0},
                         {"rank": 1, "node": "n2", "phase": "solve", "elapsed_s": 4, "mpi_s": 2}]}
@@ -40,13 +40,13 @@ def energy(kind="total"):
 
 
 def campaign():
-    return {"schema": "tower.energy/v1", "work_unit": "accepted samples", "attempts": [
+    return {"schema": "raven.energy/v1", "work_unit": "accepted samples", "attempts": [
         {"cluster": "alpha", "job_id": "7", "attempt": "a1", "state": "FAILED", "accepted_work": 0, "energy": energy()},
         {"cluster": "alpha", "job_id": "8", "attempt": "a2", "state": "COMPLETED", "accepted_work": 2, "energy": energy()}]}
 
 
 def events():
-    return {"schema": "tower.incidents/v1", "events": [dict(cluster="alpha", nodes=["n1"], start=100, end=200, state="DOWN", reason="power failure")]}
+    return {"schema": "raven.incidents/v1", "events": [dict(cluster="alpha", nodes=["n1"], start=100, end=200, state="DOWN", reason="power failure")]}
 
 
 @pytest.mark.parametrize("bad", [True, -1, float("nan"), float("inf"), 1e308, 1e-300, "1", {}])
@@ -231,7 +231,7 @@ def test_cluster_config_profiles_and_endpoint_identity():
     cfg = {"profiles": {"a": {"host": "login-a"}, "b": {"host": "login-b"}}}
     values = C.configuration(None, cfg)
     assert len(values) == 2 and values[0]["cluster_key"] != values[1]["cluster_key"]
-    changed = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": "a", "host": "changed"}]})
+    changed = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "a", "host": "changed"}]})
     assert changed[0]["cluster_key"] != values[0]["cluster_key"]
 
 
@@ -243,11 +243,11 @@ def test_cluster_profiles_inherit_remote_host():
 
 @pytest.mark.parametrize("entry", [{"name": "x", "host": "-evil"}, {"name": "x", "host": "host;cmd"}, {"name": "x", "profile": "missing"}, {"name": "x", "cluster": "a,b"}])
 def test_cluster_rejects_bad_addresses(entry):
-    with pytest.raises(ValueError): C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [entry]})
+    with pytest.raises(ValueError): C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [entry]})
 
 
 def test_cluster_failures_isolated_and_ids_scoped(ctx, monkeypatch):
-    sources = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": n} for n in ("a", "b", "offline")]})
+    sources = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": n} for n in ("a", "b", "offline")]})
     barrier = threading.Barrier(3)
     def collect_one(context, source, user, hours):
         barrier.wait(timeout=2)
@@ -263,13 +263,13 @@ def test_cluster_failures_isolated_and_ids_scoped(ctx, monkeypatch):
 
 
 def test_cluster_single_mode_honors_one_worker(ctx, monkeypatch):
-    sources = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": n} for n in ("a", "b")]})
+    sources = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": n} for n in ("a", "b")]})
     monkeypatch.setattr(C, "collect_one", lambda context, source, user, hours: dict(source=source, jobs=[], errors=[], status="ok"))
     assert C.collect(replace(ctx, cfg={"worker_mode": "single"}), sources)["workers"] == 1
 
 
 def test_cluster_collect_one_keeps_partial_queue_on_history_error(ctx, monkeypatch):
-    from tower import operations
+    from raven import operations
     backend = FakeBackend()
     captured = []
     def run(context, argv, **kwargs):
@@ -277,7 +277,7 @@ def test_cluster_collect_one_keeps_partial_queue_on_history_error(ctx, monkeypat
         if argv[0] == "sacct": raise OSError("accounting unavailable")
         return backend.run(argv)[0]
     monkeypatch.setattr(operations, "command", run)
-    source = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": "remote", "host": "login.example"}]})[0]
+    source = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "remote", "host": "login.example"}]})[0]
     result = C.collect_one(ctx, source, "other", 24)
     assert result["status"] == "partial" and result["jobs"]
     assert result["errors"] == ["history: accounting unavailable"]
@@ -287,25 +287,25 @@ def test_cluster_collect_one_keeps_partial_queue_on_history_error(ctx, monkeypat
 
 
 def test_cluster_reused_sacct_ids_keep_distinct_attempts(ctx, monkeypatch):
-    from tower import operations
+    from raven import operations
     line = "7|run|COMPLETED|00:01:00|1|00:00:30|1G|10M|2026-10-01T01:00:00|2026-10-01T01:01:00|main|1|0:0|cpu=1|n1|2026-10-01T00:00:00|/tmp|00:10:00|alex|lab|"
     lines = line + "\n" + line.replace("2026-10-01", "2026-10-02")
     monkeypatch.setattr(operations, "command", lambda context, argv, **kwargs: "" if argv[0] == "squeue" else lines)
-    source = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": "a"}]})[0]
+    source = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "a"}]})[0]
     result = C.collect_one(ctx, source, "alex", 24)
     assert len(result["jobs"]) == 2
     assert result["jobs"][0]["identity"] != result["jobs"][1]["identity"]
 
 
 def test_cluster_garbage_output_is_not_empty_healthy_queue(ctx, monkeypatch):
-    from tower import operations
+    from raven import operations
     monkeypatch.setattr(operations, "command", lambda *args, **kwargs: "unexpected wire format")
-    source = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": "a"}]})[0]
+    source = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "a"}]})[0]
     assert C.collect_one(ctx, source, "alex", 24)["status"] == "unavailable"
 
 
 def test_cluster_owner_precedence(ctx, monkeypatch):
-    sources = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": "a", "user": "siteuser"}]})
+    sources = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "a", "user": "siteuser"}]})
     users = []
     def collect_one(context, source, user, hours):
         users.append(user)
@@ -317,7 +317,7 @@ def test_cluster_owner_precedence(ctx, monkeypatch):
 
 
 def test_cluster_report_budget_and_transport_options_not_exported(ctx, monkeypatch):
-    sources = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": "a"}]}, {"ssh_opts": ["-J", "bastion"]})
+    sources = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "a"}]}, {"ssh_opts": ["-J", "bastion"]})
     def collect_one(context, source, user, hours):
         jobs = [dict(id=str(n), job_id=str(n), name="same", state="RUNNING", submit="a", identity=[source["cluster_key"], str(n), "a"]) for n in range(5001)]
         return dict(source=source, jobs=jobs, errors=[], status="ok")
@@ -340,7 +340,7 @@ def test_real_bounded_command_process(ctx):
 
 
 def test_replay_and_cancel_no_live_reads(ctx, monkeypatch):
-    source = C.configuration({"schema": "tower.cluster-workspace/v1", "clusters": [{"name": "a"}]})
+    source = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "a"}]})
     monkeypatch.setattr(C, "collect_one", lambda *args: pytest.fail("unexpected live read"))
     with pytest.raises(ValueError, match="recorded"): C.collect(replace(ctx, replay=True), source)
     ctx.cancel.set()
@@ -352,7 +352,7 @@ def test_operation_file_end_to_end_and_no_script_execution(ctx, tmp_path):
     report = S.run("energy", {"path": str(path)}, ctx)
     assert report["data"]["joules_per_work"] == 100
     assert not ctx.slurm.b.calls
-    path.write_text('{"schema":"tower.energy/v1","schema":"other"}')
+    path.write_text('{"schema":"raven.energy/v1","schema":"other"}')
     with pytest.raises(ValueError, match="duplicate"): S.run("energy", {"path": str(path)}, ctx)
 
 

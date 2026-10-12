@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import table_sort, table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Column
-from tower.model import Finished, Job, Store
+from raven import table_sort, table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Column
+from raven.model import Finished, Job, Store
 
 
 @pytest.fixture

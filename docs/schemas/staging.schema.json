@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/staging.schema.json",
-  "title": "Tower declared verified staging manifest",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/staging.schema.json",
+  "title": "Raven declared verified staging manifest",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "id", "entries"],
   "properties": {
-    "schema": {"const": "tower.staging/v1"},
+    "schema": {"const": "raven.staging/v1"},
     "id": {"type": "string", "minLength": 1, "maxLength": 128},
     "retention": {"const": "keep-source", "default": "keep-source"},
     "entries": {

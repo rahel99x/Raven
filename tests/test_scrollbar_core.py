@@ -1,6 +1,7 @@
 from types import SimpleNamespace
-from tower import scrollbars as S, scrolling
-from tower.interaction import Rect, publish as publish_graph
+import pytest
+from raven import scrollbars as S, scrolling
+from raven.interaction import Rect, publish as publish_graph
 
 
 def app():
@@ -15,15 +16,97 @@ def pane(a, count=100, page=10, target=0, context='job1', rect=(5, 3, 15, 30)):
                       lambda value: setattr(a, 'offset', value), context=context, header=(4, 3, 30))
 
 
-def test_drag_capture_clamps_and_never_changes_cursor():
+def test_drag_capture_updates_only_on_rail_and_never_changes_cursor():
     a = app()
     pane(a)
     S.publish(a, 80, 30)
     assert S.handle_mouse(a, 5, 29, 'press')
+    assert S.handle_mouse(a, 10, 29, 'drag')
+    assert a.offset == 50 and a.cursor == {}
     assert S.handle_mouse(a, 1000, -200, 'drag')
-    assert a.offset == 90 and a.cursor == {}
+    assert a.offset == 50
+    assert S.handle_mouse(a, 14, 29, 'drag')
+    assert a.offset == 90
     assert S.handle_mouse(a, -100, 200, 'release')
+    assert a.offset == 90 and not S.initialize(a)['capture']
+
+
+@pytest.mark.parametrize('point', [(10, 28), (10, 30), (4, 29), (15, 29)])
+@pytest.mark.parametrize('button', ['press', 'left'])
+def test_click_outside_rail_never_seeks(point, button):
+    a = app()
+    pane(a)
+    S.publish(a, 80, 30)
+    assert not S.handle_mouse(a, *point, button)
+    assert a.offset == 0
+    assert not S.initialize(a)['capture']
+
+
+@pytest.mark.parametrize('button', ['press', 'left'])
+@pytest.mark.parametrize('row,expected', [(8, 30), (10, 50), (14, 90)])
+def test_entire_track_seeks_directly_and_press_can_continue_drag(button, row, expected):
+    a = app()
+    pane(a)
+    S.publish(a, 80, 30)
+    assert S.handle_mouse(a, row, 29, button)
+    assert a.offset == expected
+    assert bool(S.initialize(a)['capture']) == (button == 'press')
+    if button == 'press':
+        assert S.handle_mouse(a, 5, 29, 'drag')
+        assert a.offset == 0
+        assert S.handle_mouse(a, 5, 29, 'release')
+
+
+@pytest.mark.parametrize('button', ['press', 'left'])
+def test_fresh_details_click_ends_missing_release_and_falls_through(button):
+    a = app()
+    pane(a)
+    S.publish(a, 80, 30)
+    assert S.handle_mouse(a, 5, 29, 'press')
+    assert S.handle_mouse(a, 10, 29, 'drag')
+    assert not S.handle_mouse(a, 14, 50, button)
+    assert a.offset == 50 and not S.initialize(a)['capture']
+    assert not S.handle_mouse(a, 14, 50, 'release')
+    assert not S.handle_mouse(a, 14, 29, 'motion')
+    assert a.offset == 50
+
+
+def test_delayed_release_cannot_seek_after_completed_drag():
+    a = app()
+    pane(a)
+    S.publish(a, 80, 30)
+    S.handle_mouse(a, 5, 29, 'press')
+    assert S.handle_mouse(a, 10, 29, 'release')
+    assert not S.handle_mouse(a, 14, 29, 'release')
+    assert a.offset == 50
+
+
+@pytest.mark.parametrize('obstruction', ['overlay', 'menu'])
+def test_published_obstruction_blocks_existing_drag_and_release(obstruction):
+    a = app()
+    pane(a)
+    S.publish(a, 80, 30)
+    S.handle_mouse(a, 5, 29, 'press')
+    if obstruction == 'menu':
+        a.toolbar_state = {'menu_rect': (5, 20, 15, 40)}
+    overlay = [(y, 20, [(' ' * 20, '')]) for y in range(5, 15)]
+    S.publish(a, 80, 30, overlays=overlay if obstruction == 'overlay' else ())
+    assert S.handle_mouse(a, 14, 29, 'drag')
+    assert a.offset == 0
+    assert S.handle_mouse(a, 14, 29, 'release')
     assert a.offset == 0 and not S.initialize(a)['capture']
+
+
+def test_track_escape_restores_last_manual_target_before_repaint():
+    a = app()
+    pane(a)
+    S.publish(a, 80, 30)
+    S.handle_mouse(a, 8, 29, 'left')
+    assert a.offset == 30
+    S.handle_mouse(a, 14, 29, 'press')
+    assert a.offset == 90
+    assert S.handle_key(a, 'esc')
+    assert a.offset == 30
 
 
 def test_endpoint_buttons_and_keyboard_semantics():
@@ -38,7 +121,7 @@ def test_endpoint_buttons_and_keyboard_semantics():
 
 
 def test_source_or_geometry_change_consumes_stale_release():
-    for change in ('source', 'geometry', 'tab'):
+    for change in ('source', 'geometry', 'tab', 'mode', 'resize'):
         a = app()
         pane(a)
         S.publish(a, 80, 30)
@@ -46,8 +129,13 @@ def test_source_or_geometry_change_consumes_stale_release():
         S.begin_frame(a)
         pane(a, context='job2' if change == 'source' else 'job1',
              rect=(6, 3, 16, 30) if change == 'geometry' else (5, 3, 15, 30))
-        if change == 'tab':
-            a.tab = 'research'
+        if change in ('tab', 'mode', 'resize'):
+            if change == 'tab':
+                a.tab = 'research'
+            elif change == 'mode':
+                a.mode = 'help'
+            else:
+                a.width = 90
             assert S.handle_mouse(a, 8, 29, 'release')
         else:
             S.publish(a, 80, 30)

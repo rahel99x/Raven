@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import execution_ui, orchestrator, submission
-from tower.layout import Glyphs, row_text, vlen
+from raven import execution_ui, orchestrator, submission
+from raven.layout import Glyphs, row_text, vlen
 
 
 class Worker:
@@ -78,7 +78,7 @@ def form(app, script):
 
 def review(app, script, tmp_path):
     path = tmp_path / "workflow.json"
-    path.write_text(json.dumps({"version": 1, "kind": "tower.workflow", "nodes": [
+    path.write_text(json.dumps({"version": 1, "kind": "raven.workflow", "nodes": [
         {"id": "first", "script": str(script), "resources": {"cpus_per_task": 4}},
         {"id": "second", "script": str(script), "depends_on": ["first"], "resources": {"cpus_per_task": 4}},
     ]}))

@@ -3,10 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import history_browser as H, job_groups, layout as L, pane_drag
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
+from raven import history_browser as H, job_groups, layout as L, pane_drag
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
 
 
 @pytest.fixture
@@ -301,11 +301,11 @@ def test_left_right_fold_a_selected_child_without_changing_its_data_source(brows
     rows, hits = render(browser)
     assert browser.app.analytics_job == '1200_1'
     assert len([item for item in H.initialize(browser.app)['items'] if item.meta]) == 1
-    representative = next(hit for hit in hits if hit[1] == 'control' and hit[2]['id'] == 'history:analytics:job:1200_2')
-    assert '>1200_1' in L.row_text(rows[representative[0]])
-    assert '1200_2 [>1200_1]' in L.row_text(rows[representative[0]])
+    representative = next(hit for hit in hits if hit[1] == 'control' and hit[2]['id'] == 'history:analytics:job:1200_1')
+    assert '1200_1' in L.row_text(rows[representative[0]])
+    assert '1200_2' not in L.row_text(rows[representative[0]])
     assert any('sel' in style.split('+') for _, style in rows[representative[0]])
-    assert representative[2]['action'] == ('command', 'history-job 1200_2')
+    assert representative[2]['action'] == ('command', 'history-job 1200_1')
     assert H.handle_key(browser.app, 'right')
     render(browser)
     assert len([item for item in H.initialize(browser.app)['items'] if item.meta]) == 2
@@ -354,7 +354,7 @@ def test_ascii_group_labels_escape_external_unicode(browser):
 @pytest.mark.parametrize('tab', H.TABS)
 @pytest.mark.parametrize('dock', ['left', 'right', 'top', 'bottom'])
 def test_native_compose_preserves_explicit_history_job_and_hit_geometry(browser, tab, dock):
-    from tower.views import Views
+    from raven.views import Views
     app = browser.app
     app.tab = tab
     app.analytics_job, app.research_job_id, app.log_job = '301', '301', '301'
@@ -379,7 +379,7 @@ def test_native_compose_preserves_explicit_history_job_and_hit_geometry(browser,
 
 
 def test_native_browser_click_consumes_history_column_before_log_line_selection(browser):
-    from tower.views import Views
+    from raven.views import Views
     app = browser.app
     app.tab, app.log_job, app.log_record = 'log', '900', browser.store.jobs[0]
     views = Views(browser.views.g, app.cfg)
@@ -390,9 +390,9 @@ def test_native_browser_click_consumes_history_column_before_log_line_selection(
     target = next(hit for hit in hits if hit[1] == 'control' and hit[2]['id'] == 'history:log:job:301')
     # A source line at the same y must not intercept a history-pane click.
     hits.append((target[0], 'log_line', 4))
-    from tower.interaction import publish
-    from tower.metric_live import descriptors as live_descriptors
-    from tower.scrollbars import descriptors as scroll_descriptors
+    from raven.interaction import publish
+    from raven.metric_live import descriptors as live_descriptors
+    from raven.scrollbars import descriptors as scroll_descriptors
     publish(app, app.frame_rows, hits, 160, 50,
             overlays=(getattr(app, 'content_overlay_rows', [])
                       + getattr(app, 'toolbar_overlay_rows', [])),
@@ -404,7 +404,7 @@ def test_native_browser_click_consumes_history_column_before_log_line_selection(
 
 
 def test_native_browser_shares_one_group_input_check_per_composed_frame(browser, monkeypatch):
-    from tower.views import Views
+    from raven.views import Views
     app = browser.app
     app.tab = 'analytics'
     views = Views(browser.views.g, app.cfg)
@@ -421,7 +421,7 @@ def test_native_browser_shares_one_group_input_check_per_composed_frame(browser,
 
 
 def test_native_dependency_graph_does_not_promote_an_old_jobs_selection_to_scope(browser):
-    from tower.views import Views
+    from raven.views import Views
     app = browser.app
     app.tab, app.selected_id = 'deps', '900'
     views = Views(browser.views.g, app.cfg)
@@ -434,7 +434,7 @@ def test_native_dependency_graph_does_not_promote_an_old_jobs_selection_to_scope
 
 
 def test_native_dependency_graph_keeps_native_selection_without_becoming_scoped(browser):
-    from tower.views import Views
+    from raven.views import Views
     browser.store.jobs.append(Job('901', 'dependent', 'cpu', 'PENDING', dependency='afterok:900'))
     app = browser.app
     app.tab = 'deps'
@@ -448,7 +448,7 @@ def test_native_dependency_graph_keeps_native_selection_without_becoming_scoped(
 
 @pytest.mark.parametrize('tab', ['analytics', 'deps'])
 def test_native_removed_explicit_job_does_not_select_an_unrelated_running_job(browser, tab):
-    from tower.views import Views
+    from raven.views import Views
     app = browser.app
     app.tab = tab
     views = Views(browser.views.g, app.cfg)
@@ -478,8 +478,8 @@ MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4
 @pytest.mark.parametrize('dock', ['left', 'right', 'top', 'bottom'])
 @pytest.mark.parametrize('motion', [MOUSE.REPORT_MOUSE_POSITION, MOUSE.REPORT_MOUSE_POSITION | MOUSE.BUTTON1_PRESSED])
 def test_real_input_routes_dock_handle_capture_motion_and_release(browser, dock, motion):
-    from tower import screen
-    from tower.views import Views
+    from raven import screen
+    from raven.views import Views
     app = browser.app
     H._view(app)['dock'] = dock
     views = Views(browser.views.g, app.cfg)
@@ -503,8 +503,8 @@ def test_real_input_routes_dock_handle_capture_motion_and_release(browser, dock,
 
 @pytest.mark.parametrize('tab', ['research', 'log'])
 def test_real_input_routes_browser_wheel_before_data_scrolling(browser, tab):
-    from tower import screen
-    from tower.views import Views
+    from raven import screen
+    from raven.views import Views
     app = browser.app
     app.tab = tab
     views = Views(browser.views.g, app.cfg)

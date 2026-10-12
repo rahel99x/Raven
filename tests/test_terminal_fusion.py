@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import terminal_bridge as B, terminal_fusion as F
+from raven import terminal_bridge as B, terminal_fusion as F
 
 
 def event(kind, session='s', **kwargs):
@@ -46,7 +46,7 @@ def test_private_bridge_roundtrip(tmp_path):
 def test_bridge_rejects_untrusted_invalid_fields(tmp_path, change):
     bridge = B.Bridge(tmp_path)
     env = bridge.register('s')
-    value = {'schema':B.SCHEMA, 'session':'s', 'token':env['TOWER_BRIDGE_TOKEN'], 'event':'end', 'status':0, **change}
+    value = {'schema':B.SCHEMA, 'session':'s', 'token':env['RAVEN_BRIDGE_TOKEN'], 'event':'end', 'status':0, **change}
     try:
         with socket.socket(socket.AF_UNIX,socket.SOCK_DGRAM) as client:
             client.sendto(json.dumps(value).encode(),bridge.path)
@@ -88,7 +88,7 @@ def test_bridge_max_sessions_and_tick_work(tmp_path):
 
 
 def test_report_rejects_public_or_missing_socket(tmp_path):
-    with pytest.raises(ValueError, match='no Tower bridge'): B.report('prompt', env={})
+    with pytest.raises(ValueError, match='no Raven bridge'): B.report('prompt', env={})
     bridge = B.Bridge(tmp_path)
     env = bridge.register('s')
     os.chmod(bridge.path,0o666)
@@ -100,9 +100,9 @@ def test_report_rejects_public_or_missing_socket(tmp_path):
 @pytest.mark.parametrize('shell', ['bash','zsh','fish'])
 def test_shell_hooks_are_opt_in_idempotent_and_do_not_capture_history(shell):
     text = B.shell_hook(shell)
-    assert '_TOWER_HOOK_INSTALLED' in text
-    assert '_tower_report start' in text
-    assert '_tower_report end' in text
+    assert '_RAVEN_HOOK_INSTALLED' in text
+    assert '_raven_report start' in text
+    assert '_raven_report end' in text
     assert 'history ' not in text
     assert 'DEBUG' not in text
 
@@ -173,7 +173,7 @@ def test_paths_resolve_against_observed_host_cwd_without_opening(tmp_path):
     assert not (tmp_path/'results').exists()
 
 
-def test_unknown_cwd_does_not_resolve_using_tower_directory():
+def test_unknown_cwd_does_not_resolve_using_raven_directory():
     store=F.FusionStore();store.register('s')
     with pytest.raises(ValueError,match='absolute'):store.observe(event('artifact',artifact='relative'))
 
@@ -264,7 +264,7 @@ def test_duplicate_start_marks_incomplete_without_fabricating_end():
 
 
 def app_for_ui(monkeypatch):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app=SimpleNamespace(tab='jobs',mode='main',reports=[],errors=[])
     app.fail=app.errors.append
     monkeypatch.setattr(terminal_ui,'show_report',lambda app,lines,title='':app.reports.append((title,list(lines))))
@@ -349,7 +349,7 @@ def test_unregister_revokes_capability_without_forgetting_evidence(monkeypatch):
 
 def test_background_file_export_does_not_write_or_retarget_before_completion(tmp_path,monkeypatch):
     app,state=app_for_ui(monkeypatch)
-    from tower import terminal_ui
+    from raven import terminal_ui
     pending=[]
     app.interactive=True
     app.say=lambda *_:None
@@ -406,15 +406,15 @@ def test_absolute_helper_commands_quote_local_source_paths(monkeypatch,tmp_path)
     assert shlex.split(command)[1:]==[str(source),'hook','--shell','bash']
     for shell in ('bash','zsh','fish'):
         script=B.shell_hook(shell)
-        assert 'command tower ' not in script
+        assert 'command raven ' not in script
         assert 'command grep' not in script
-        assert '_tower_report' in script and 'terminal bridge.py' in script
+        assert '_raven_report' in script and 'terminal bridge.py' in script
     assert "dir\\'s" in B.helper_command('fish','report')
 
 
 def test_hook_preparation_uses_absolute_helper_and_rejects_remote(monkeypatch):
     app,state=app_for_ui(monkeypatch)
-    from tower import terminal_ui
+    from raven import terminal_ui
     terminal=terminal_ui.initialize(app)
     terminal.active='s'
     snapshot={'kind':'local','metadata':{'host':socket.gethostname(),'shell':'/bin/bash'}}
@@ -423,17 +423,17 @@ def test_hook_preparation_uses_absolute_helper_and_rejects_remote(monkeypatch):
     monkeypatch.setattr(terminal_ui,'prepare_input',lambda app,text,**kwargs:prepared.append(text))
     assert F.run_command(app,['terminal','hook','bash'])
     assert len(prepared)==1 and 'source <(' in prepared[0]
-    assert 'tower terminal' not in prepared[0] and 'terminal_bridge.py' in prepared[0]
+    assert 'raven terminal' not in prepared[0] and 'terminal_bridge.py' in prepared[0]
     snapshot.update(kind='ssh',metadata={'host':'other-host'})
     assert F.run_command(app,['terminal','hook','bash'])
     assert len(prepared)==1 and 'explicit local' in app.errors[-1]
 
 
-def test_real_bash_hooks_work_without_tower_on_path_and_with_quoted_source(tmp_path,monkeypatch):
+def test_real_bash_hooks_work_without_raven_on_path_and_with_quoted_source(tmp_path,monkeypatch):
     pytest.importorskip('pyte')
     import shlex
     import time
-    from tower.terminal_service import TerminalService
+    from raven.terminal_service import TerminalService
     # The standalone bridge uses stdlib only; its source may have spaces and apostrophes.
     source=tmp_path/"source dir's"/'terminal bridge.py'
     source.parent.mkdir()
@@ -477,7 +477,7 @@ def test_real_bash_hooks_work_without_tower_on_path_and_with_quoted_source(tmp_p
 @pytest.mark.parametrize('actual,requested',[('/bin/sh','bash'),('/bin/bash','zsh'),('/bin/zsh','fish'),('/usr/bin/python','bash'),('','bash')])
 def test_hook_preparation_refuses_unknown_or_mismatched_shell(monkeypatch,actual,requested):
     app,_=app_for_ui(monkeypatch)
-    from tower import terminal_ui
+    from raven import terminal_ui
     terminal=terminal_ui.initialize(app);terminal.active='s'
     snapshot={'kind':'local','metadata':{'host':socket.gethostname(),'shell':actual}}
     terminal.service=SimpleNamespace(snapshot=lambda _:snapshot)

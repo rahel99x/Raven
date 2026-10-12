@@ -1,14 +1,14 @@
 """Optional mpi4py application-side control demonstration.
 
 Initialize the mailbox on rank zero's host before launching the application.
-Use the site's existing MPI launch command; Tower does not allocate extra ranks.
+Use the site's existing MPI launch command; Raven does not allocate extra ranks.
 """
 import argparse
 import json
 import time
 
 from mpi4py import MPI
-from tower.collective_runtime import CollectiveRuntime
+from raven.collective_runtime import CollectiveRuntime
 
 
 def main():
@@ -22,8 +22,8 @@ def main():
     error = None
     if args.initialize and comm.rank == 0:
         try:
-            from tower.runtime_control import initialize
-            from tower.science_files import json_file
+            from raven.runtime_control import initialize
+            from raven.science_files import json_file
             initialize(args.mailbox, json_file(args.initialize)[0])
         except Exception as exc:
             error = str(exc)

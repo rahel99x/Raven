@@ -1,5 +1,5 @@
 {
-  "schema": "tower.scientific-field/v1",
+  "schema": "raven.scientific-field/v1",
   "identity": "temperature-slice-at-step100",
   "shape": [
     0,

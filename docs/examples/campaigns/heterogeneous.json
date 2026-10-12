@@ -1,5 +1,5 @@
 {
-  "schema": "tower.heterogeneous-allocation/v1",
+  "schema": "raven.heterogeneous-allocation/v1",
   "id": "example-coupled-01",
   "workdir": ".",
   "walltime": "00:05:00",

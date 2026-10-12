@@ -2,7 +2,7 @@
 """Optional developer audit of operation schemas and their published examples.
 
 Requires jsonschema >= 4 and referencing in the auditing Python environment;
-neither package is a Tower runtime dependency. Never contacts a scheduler.
+neither package is a Raven runtime dependency. Never contacts a scheduler.
 """
 from __future__ import annotations
 

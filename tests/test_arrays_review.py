@@ -4,7 +4,7 @@ import random
 
 import pytest
 
-from tower import arrays
+from raven import arrays
 
 
 def expanded(ranges):

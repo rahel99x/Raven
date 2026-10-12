@@ -10,7 +10,7 @@ import pytest
     ("pane_drag_state", "capture"), ("history_browser_state", "drag"),
     ("toolbar_state", "dragging")])
 def test_active_pointer_escape_grace_tracks_every_capture_owner(state, key):
-    from tower.screen import _protect_pointer_escape
+    from raven.screen import _protect_pointer_escape
     dashboard = SimpleNamespace()
     assert not _protect_pointer_escape(dashboard)
     setattr(dashboard, state, {key: {"active": True}})

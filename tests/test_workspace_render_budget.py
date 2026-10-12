@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_panels as J, layout as L, scrollbars as S, workspace_layout as W
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Live, Store
-from tower.views import Views
+from raven import job_panels as J, layout as L, scrollbars as S, workspace_layout as W
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Live, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -87,7 +87,7 @@ def test_deferred_queue_identity_restores_flags_if_renderer_fails(dashboard):
 
 
 def test_narrow_advisor_aggregates_once_and_retains_empty_running_cards(dashboard, monkeypatch):
-    from tower import advisor
+    from raven import advisor
     app, views, store = dashboard.app, dashboard.views, dashboard.store
     store.finished.clear()
     store.live["900"] = Live(rss=4 * 1024 ** 3, rate=.5)

@@ -3,9 +3,9 @@ import threading
 
 import pytest
 
-from tower.operations import Context
-from tower.ops_trace import run, apply, SPECIFICATIONS
-from tower.trace_recorder import Recorder
+from raven.operations import Context
+from raven.ops_trace import run, apply, SPECIFICATIONS
+from raven.trace_recorder import Recorder
 
 
 def context(**kwargs):
@@ -18,7 +18,7 @@ def test_capture_plan_does_not_run_script_and_quotes_paths(tmp_path):
     report = run("trace-capture", {"project": str(tmp_path), "script": str(script),
         "attempt": "submit/start", "job_id": "123"}, context())
     assert shlex.split(report["rows"][1]) == report["data"]["argv"]
-    assert not (tmp_path / ".tower").exists()
+    assert not (tmp_path / ".raven").exists()
     assert "No command was executed. Copy this into the batch launch script." in report["rows"]
 
 
@@ -91,6 +91,6 @@ def test_mpi_capture_plan_binds_library_and_shared_generation(tmp_path):
     result = run("trace-capture", {"project": str(tmp_path), "script": str(program), "adapter": "mpi",
         "mpi_library": str(library), "mpi_generation": "world-1", "attempt": "submit/start"}, context())
     argv = result["data"]["argv"]
-    assert argv[:3] == ["tower", "trace", "native"]
+    assert argv[:3] == ["raven", "trace", "native"]
     assert "LD_PRELOAD=" + str(library) in argv
-    assert "TOWER_MPI_COMM_GENERATION=world-1" in argv
+    assert "RAVEN_MPI_COMM_GENERATION=world-1" in argv

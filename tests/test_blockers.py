@@ -7,8 +7,8 @@ import time
 
 import pytest
 
-from tower.blockers import MAX_DEPTH, MAX_DEPENDENCY_TEXT, MAX_RECORDS, MAX_TREE, explain
-from tower.model import Finished, Health, Job, Node, NodeCell, Partition
+from raven.blockers import MAX_DEPTH, MAX_DEPENDENCY_TEXT, MAX_RECORDS, MAX_TREE, explain
+from raven.model import Finished, Health, Job, Node, NodeCell, Partition
 
 
 def queued(jid="90", reason="Dependency", dependency="", **kwargs):

@@ -1,8 +1,0 @@
-#!/bin/sh
-# Source launcher: no pip installation needed; works from any directory.
-set -eu
-TOWER_SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-if [ -x "$TOWER_SOURCE_ROOT/.venv/bin/python" ]; then
-    exec "$TOWER_SOURCE_ROOT/.venv/bin/python" "$TOWER_SOURCE_ROOT/tower" "$@"
-fi
-exec python3 "$TOWER_SOURCE_ROOT/tower" "$@"

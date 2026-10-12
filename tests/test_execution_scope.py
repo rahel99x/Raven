@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import execution_ui, orchestrator
-from tower.model import Finished
+from raven import execution_ui, orchestrator
+from raven.model import Finished
 
 
 class Scheduler:
@@ -69,7 +69,7 @@ def app(tmp_path, monkeypatch):
 def recipe(tmp_path):
     script = tmp_path / "run.sh"
     script.write_text("#!/bin/bash\ntrue\n")
-    return {"version": 1, "kind": "tower.workflow", "nodes": [
+    return {"version": 1, "kind": "raven.workflow", "nodes": [
         {"id": "parent", "script": str(script), "resources": {"cpus_per_task": 1}},
         {"id": "child", "script": str(script), "resources": {"cpus_per_task": 1}, "depends_on": ["parent"]},
     ]}
@@ -187,7 +187,7 @@ def test_scope_is_detached_hashed_and_bounded(app, recipe, tmp_path):
 
 
 def test_confirmation_rechecks_profile_changed_after_review_was_displayed(app, recipe, tmp_path):
-    from tower.layout import Glyphs
+    from raven.layout import Glyphs
     review = orchestrator.prepare_review("workflow", recipe, workdir=tmp_path, scope=execution_ui.connection_scope(app))
     app.mode = "execution"
     state = app.execution_state

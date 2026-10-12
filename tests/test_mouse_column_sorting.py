@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from tower import table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Health, Job, Store
-from tower.views import Views
+from raven import table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Health, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -54,6 +54,8 @@ def click_column(app, views, table, column, *, width=160, height=50, button="lef
 @pytest.mark.parametrize("width,height", [(80, 24), (160, 50)])
 def test_jobid_click_cycle_restores_numeric_order_and_source_order(dashboard, ascii_, density, width, height):
     app, views, store = dashboard
+    # Keep the original single-job order distinct from either numeric sort.
+    store.jobs[0], store.jobs[2] = store.jobs[2], store.jobs[0]
     views.set_ascii(ascii_)
     app.run_command("density " + density)
     expected = ["2", "9", "10", "123_2", "123_10"]
@@ -61,10 +63,14 @@ def test_jobid_click_cycle_restores_numeric_order_and_source_order(dashboard, as
     assert app.visible_ids == expected
     assert table_ui.chain(app, "jobs") == [("id", "asc")]
     click_column(app, views, "jobs", "id", width=width, height=height)
-    assert app.visible_ids == list(reversed(expected))
+    # Batch priority remains fixed while JobID reverses within each batch
+    # and between the three equal-size single-job batches.
+    assert app.visible_ids == ["10", "9", "2", "123_10", "123_2"]
     assert table_ui.chain(app, "jobs") == [("id", "desc")]
     click_column(app, views, "jobs", "id", width=width, height=height)
-    assert app.visible_ids == [job.id for job in store.jobs]
+    # Removing the cascade restores source order within the batch priorities,
+    # preserving contiguous array members instead of interleaving them.
+    assert app.visible_ids == ["9", "10", "2", "123_10", "123_2"]
     assert table_ui.chain(app, "jobs") == []
 
 
@@ -74,12 +80,12 @@ def test_two_clicked_columns_combine_and_remove_independently(dashboard):
     click_column(app, views, "jobs", "cpus")
     click_column(app, views, "jobs", "cpus")
     assert table_ui.chain(app, "jobs") == [("name", "asc"), ("cpus", "desc")]
-    assert app.visible_ids == ["123_10", "123_2", "9", "2", "10"]
+    assert app.visible_ids == ["9", "2", "10", "123_10", "123_2"]
     text = "\n".join(row_text(row) for row in render(app, views)[0])
     assert "NAME ^1" in text and "CPU v2" in text
     click_column(app, views, "jobs", "cpus")
     assert table_ui.chain(app, "jobs") == [("name", "asc")]
-    assert app.visible_ids == ["123_10", "123_2", "10", "9", "2"]
+    assert app.visible_ids == ["10", "9", "2", "123_10", "123_2"]
 
 
 @pytest.mark.parametrize("table", ["jobs", "history", "group", "recent"])
@@ -189,7 +195,7 @@ def test_sort_reveals_selected_array_task_if_folded_representative_changes(dashb
 @pytest.mark.parametrize("target", ["header", "row", "blank"])
 def test_double_click_activates_only_job_rows(dashboard, table, target):
     import curses
-    from tower.screen import _apply_input
+    from raven.screen import _apply_input
 
     app, views, store = dashboard
     app.enter_tab(table)

@@ -1,15 +1,15 @@
 """A scrolled batch retains one usable disclosure without changing job identity."""
 import pytest
 
-from tower import history_browser as H, job_groups as G, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import history_browser as H, job_groups as G, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
-def tower():
+def raven():
     store = Store(persist=False)
     store.jobs = [Job(f"700_{index:02}", "batch", "cpu", "RUNNING") for index in range(40)]
     store.group = list(store.jobs)
@@ -26,8 +26,8 @@ def tower():
 @pytest.mark.parametrize("context", ["jobs", "recent", "history", "group", "analytics:advisor"])
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("ascii_", [False, True])
-def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(tower, context, reverse, ascii_):
-    app, views, store = tower
+def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(raven, context, reverse, ascii_):
+    app, views, store = raven
     views.set_ascii(ascii_)
     # Filtering omits the first allocations; sort then changes the real
     # representative. The viewport begins still farther into that projection.
@@ -43,7 +43,7 @@ def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(tower, 
     controls = [(y, value) for y, kind, value in hits if kind == "control"]
     assert len(controls) == 1
     y, control = controls[0]
-    assert y == 0 and L.row_text(rows[0]).startswith(">" if ascii_ else "▸")
+    assert y == 0 and L.row_text(rows[0]).startswith("v" if ascii_ else "▾")
     assert control["action"] == ("command", "jobgroup close array:700")
     assert "representative job " + representative in control["label"]
     assert [(y, value) for y, kind, value in hits if kind == "job"] == list(enumerate(job.id for job in visible))
@@ -55,8 +55,8 @@ def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(tower, 
 
 @pytest.mark.parametrize("tab", H.TABS)
 @pytest.mark.parametrize("dock", ["left", "right", "top", "bottom"])
-def test_scrolled_job_dock_promotes_only_the_disclosure_cell(tower, tab, dock):
-    app, views, store = tower
+def test_scrolled_job_dock_promotes_only_the_disclosure_cell(raven, tab, dock):
+    app, views, store = raven
     app.tab = tab
     snap = store.snapshot()
     records = H._records(snap, H.initialize(app))
@@ -70,7 +70,9 @@ def test_scrolled_job_dock_promotes_only_the_disclosure_cell(tower, tab, dock):
     group_hits = [(y, value) for y, kind, value in hits if kind == "control" and ":group:" in value["id"]]
     assert len(group_hits) == 1
     y, control = group_hits[0]
-    assert y == 1 and L.row_text(rows[y]).startswith("▸ " + items[8].record.id)
+    list_controls = [yy for yy, kind, value in hits if kind == "control" and value.get("group") == "job-list-controls"]
+    assert list_controls and y == max(list_controls) + 1
+    assert L.row_text(rows[y]).startswith("▾ " + items[8].record.id)
     assert control["action"] == ("command", "jobgroup close array:700")
     assert any(kind == "control" and value["id"].endswith(":job:" + items[8].record.id)
                and value["action"] == ("command", "history-job " + items[8].record.id)
@@ -78,8 +80,8 @@ def test_scrolled_job_dock_promotes_only_the_disclosure_cell(tower, tab, dock):
     assert items[8].meta.representative_id == representative and not items[8].meta.header
 
 
-def test_advisor_uses_actual_scrolled_rows_instead_of_overscan_for_group_arrow(tower):
-    app, views, store = tower
+def test_advisor_uses_actual_scrolled_rows_instead_of_overscan_for_group_arrow(raven):
+    app, views, store = raven
     app.tab, app.analytics_view = "analytics", "advisor"
     app.width, app.height = 120, 18
     views.analytics_tab(store.snapshot(), app, 120, 18)
@@ -91,5 +93,5 @@ def test_advisor_uses_actual_scrolled_rows_instead_of_overscan_for_group_arrow(t
     y, control = controls[0]
     assert control["action"] == ("command", "jobgroup close array:700")
     text = L.row_text(rows[y])
-    assert text.startswith("▸") and "700_" in text and "700_00" not in text
-    assert not any(L.row_text(row).startswith("▸") for row in rows[y + 1:])
+    assert text.startswith("▾") and "700_" in text and "700_00" not in text
+    assert not any(L.row_text(row).startswith("▾") for row in rows[y + 1:])

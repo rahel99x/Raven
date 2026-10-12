@@ -11,7 +11,7 @@ import time
 
 import pytest
 
-from tower.terminal_service import Decoder, MAX_EVENT, MAX_FRAME, TerminalService, dimensions, frame
+from raven.terminal_service import Decoder, MAX_EVENT, MAX_FRAME, TerminalService, dimensions, frame
 
 
 def wait_for(service, predicate, timeout=6):
@@ -120,8 +120,8 @@ def test_environment_factory_not_persisted_in_metadata(service):
     calls = []
     def environment(sid):
         calls.append(sid)
-        return {"TOWER_TEST_PRIVATE": "private-value"}
-    sid = service.open([sys.executable, "-c", "import os; print('ENVOK',os.getenv('TOWER_TEST_PRIVATE')=='private-value')"], env_factory=environment)
+        return {"RAVEN_TEST_PRIVATE": "private-value"}
+    sid = service.open([sys.executable, "-c", "import os; print('ENVOK',os.getenv('RAVEN_TEST_PRIVATE')=='private-value')"], env_factory=environment)
     wait_for(service, lambda: service.snapshot(sid).get("status") == "exited")
     assert calls == [sid]
     assert "ENVOK True" in screen(service, sid)
@@ -131,8 +131,8 @@ def test_environment_factory_not_persisted_in_metadata(service):
 def test_shell_retains_cwd_and_state_between_requests(service, tmp_path):
     sid = service.open(["/bin/bash", "--noprofile", "--norc", "-i"], cwd=tmp_path, env={"PS1": "READY> "})
     wait_for(service, lambda: "READY> " in screen(service, sid))
-    assert service.send(sid, {"type": "text", "text": "TOWERTEST=42\r"})
-    assert service.send(sid, {"type": "text", "text": "printf 'VALUE:%s\\n' \"$TOWERTEST\"\r"})
+    assert service.send(sid, {"type": "text", "text": "RAVENTEST=42\r"})
+    assert service.send(sid, {"type": "text", "text": "printf 'VALUE:%s\\n' \"$RAVENTEST\"\r"})
     wait_for(service, lambda: "VALUE:42" in screen(service, sid))
     assert service.snapshot(sid)["status"] == "running"
 
@@ -182,7 +182,7 @@ def test_final_output_and_nonzero_exit_are_retained(service):
 
 
 def test_failed_command_does_not_crash_other_sessions(service):
-    bad = service.open(["/missing/tower-test-command"])
+    bad = service.open(["/missing/raven-test-command"])
     good = service.open(["/bin/sh", "-c", "echo GOOD"])
     wait_for(service, lambda: all(service.snapshot(s).get("status") == "exited" for s in (bad, good)))
     assert service.snapshot(bad)["exit_code"] == 127
@@ -258,8 +258,8 @@ def test_history_snapshot_pages_remain_coherent_after_new_output(service):
 
 def test_slow_recording_storage_cannot_block_pty_owner(monkeypatch):
     import threading
-    from tower import terminal_recording
-    from tower.terminal_broker import RecordingWriter
+    from raven import terminal_recording
+    from raven.terminal_broker import RecordingWriter
     release = threading.Event()
     class SlowRecorder:
         closed = False
@@ -456,8 +456,8 @@ def test_recording_failure_does_not_kill_terminal(service, tmp_path):
 
 
 def test_missing_optional_engine_is_a_visible_session_error(monkeypatch):
-    from tower import terminal_emulator
-    from tower.terminal_broker import Broker
+    from raven import terminal_emulator
+    from raven.terminal_broker import Broker
     monkeypatch.setattr(terminal_emulator, "pyte", None)
     left, right = socket.socketpair()
     broker = Broker(left)
@@ -465,7 +465,7 @@ def test_missing_optional_engine_is_a_visible_session_error(monkeypatch):
         sid = "a" * 32
         broker.open({"id": sid, "argv": ["/bin/sh"]})
         state = broker.sessions[sid]
-        assert state.status == "error" and "slurm-tower[terminal]" in state.error
+        assert state.status == "error" and "pipx install --force '.[terminal]'" in state.error
         assert state.process is None and state.fd == -1
     finally:
         broker.selector.close()

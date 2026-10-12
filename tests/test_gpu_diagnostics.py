@@ -10,11 +10,11 @@ import sys
 
 import pytest
 
-from tower import gpu_diagnostics as G
-from tower import cli
-from tower.config import Config
-from tower.remote import LocalFiles, SshBackend
-from tower.slurm import Backend, CommandError, GPU_ALLOC_FMT, JOB_FMT, NVSMI, SACCT_FIELDS
+from raven import gpu_diagnostics as G
+from raven import cli
+from raven.config import Config
+from raven.remote import LocalFiles, SshBackend
+from raven.slurm import Backend, CommandError, GPU_ALLOC_FMT, JOB_FMT, NVSMI, SACCT_FIELDS
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,7 +61,7 @@ class ProbeBackend(Backend):
         if cmd[0] == "python3":
             if "nvidia-smi" in self.errors:
                 raise CommandError(self.errors["nvidia-smi"])
-            return json.dumps(dict(tower_gpu=1, node="scheduler-host", vendors={"nvidia": {"metrics": self.host}}), separators=(",", ":")), 0
+            return json.dumps(dict(raven_gpu=1, node="scheduler-host", vendors={"nvidia": {"metrics": self.host}}), separators=(",", ":")), 0
         if cmd[0] == "nvidia-smi":
             return self.host, 0
         if cmd[0] == "lspci":
@@ -84,7 +84,7 @@ class ProbeBackend(Backend):
             # The production helper wraps vendor output with verified allocation metadata.
             metrics = "\n".join(line.split(": ", 1)[-1] for line in self.live.splitlines())
             jid = cmd[cmd.index("--jobid") + 1]
-            return "0: " + json.dumps(dict(tower_gpu=1, node="desktop", job_id=jid,
+            return "0: " + json.dumps(dict(raven_gpu=1, node="desktop", job_id=jid,
                 gpus="0", vendors={"nvidia": {"metrics": metrics}}), separators=(",", ":")), 0
         if cmd[0] == "ssh":
             if isinstance(self.ssh, Exception):
@@ -156,7 +156,7 @@ def test_scheduler_metadata_for_other_task_or_component_is_discarded(job, identi
 def test_success_probes_exact_allocation_and_preserves_host_scope():
     backend = ProbeBackend()
     result = check(backend)
-    assert result["schema"] == "tower.gpu-check/v1"
+    assert result["schema"] == "raven.gpu-check/v1"
     assert result["mode"] == "local" and result["requested_job"] == "all"
     assert result["summary"]["jobs_with_graph_data"] == 1
     assert result["jobs"][0]["sampling_eligible"]
@@ -168,6 +168,71 @@ def test_success_probes_exact_allocation_and_preserves_host_scope():
     assert "python3" in srun and "--label" in srun
     assert "SLURM_STEP_GPUS" in srun[srun.index("-c") + 1]
     assert_read_only(backend)
+
+
+@pytest.mark.parametrize("saved", [True, False])
+def test_managed_check_uses_existing_trace_without_host_or_allocation_probes(tmp_path, saved):
+    path = trace_file(tmp_path, TRACE_ROW.encode())
+    state = tmp_path / "state"
+    state.mkdir()
+    (state / "ui.json").write_text(json.dumps({"gpu": saved}))
+    cfg = Config({"raven": {"managed": True, "collection": {"gpu": "existing-telemetry"}},
+                  "gpu_sampling": True})
+    backend = ProbeBackend(queue=queue_row(workdir=str(path.parent.parent)))
+    result = check(backend, cfg=cfg, state_path=str(state))
+    assert result["collection_mode"] == "existing-telemetry"
+    assert not result["sampling_enabled"]
+    assert not result["jobs"][0]["sampling_eligible"]
+    assert result["summary"]["jobs_with_graph_data"] == 1
+    assert result["jobs"][0]["trace"]["valid_utilization_rows"] == 1
+    assert findings(result, "existing_telemetry", job="7")
+    assert not findings(result, "sampling_disabled")
+    assert not any(cmd[0] in {"sh", "python3", "nvidia-smi", "lspci", "srun", "ssh"}
+                   for cmd, _ in backend.calls)
+    assert "allow GPU sampling to run" not in G.render(result)
+    assert "existing" in G.render(result).lower()
+
+
+def test_managed_check_preserves_governed_host_expansion_and_controller_limits(tmp_path):
+    from raven.platform_session import wrap_backend
+    cfg = Config({"raven": {"managed": True, "collection": {"gpu": "existing-telemetry"}},
+                  "collection_cache_dir": str(tmp_path / "cache")})
+    raw = ProbeBackend()
+    backend = wrap_backend(raw, cfg, {"cluster": "test", "user": "alex"}, None)
+    try:
+        result = check(backend, cfg=cfg)
+        assert result["ok"]
+        assert result["collection_mode"] == "existing-telemetry"
+        assert findings(result, "trace_workdir_missing", job="7")
+        assert not any(cmd[:3] == ["scontrol", "show", "hostnames"] for cmd, _ in raw.calls)
+        assert not any(cmd[0] in {"srun", "sh", "python3"} for cmd, _ in raw.calls)
+        assert backend.ledger.report()["rates_last_minute"]["controller"] == 2
+    finally:
+        backend.close()
+
+
+def test_managed_remote_check_retains_typed_file_admission(tmp_path, monkeypatch):
+    from raven.platform_session import wrap_backend
+    from raven.raven_collection import wrap_files
+    from raven import remote
+    class RemoteFixture(LocalFiles):
+        remote = True
+    path = trace_file(tmp_path, TRACE_ROW.encode())
+    cfg = Config({"raven": {"managed": True, "collection": {"gpu": "existing-telemetry"}},
+                  "collection_cache_dir": str(tmp_path / "cache")})
+    raw = ProbeBackend(queue=queue_row(workdir=str(path.parent.parent)))
+    backend = wrap_backend(raw, cfg, {"cluster": "test", "user": "alex"}, None)
+    files = wrap_files(RemoteFixture(), backend)
+    monkeypatch.setattr(remote, "RemoteFiles", lambda *_a, **_kw: pytest.fail("Managed file admission was replaced"))
+    try:
+        result = check(backend, cfg=cfg, files=files)
+        assert result["mode"] == "remote"
+        assert result["jobs"][0]["trace"]["valid_utilization_rows"] == 1
+        rates = backend.ledger.report()["rates_last_minute"]
+        assert rates["filesystem"] == 2
+        assert rates["file-bytes"] == G.MAX_TRACE
+    finally:
+        backend.close()
 
 
 @pytest.mark.parametrize("tres", ["cpu=8,gres/gpu=1", "cpu=8,gres/gpu:rtx4090=1",
@@ -357,7 +422,7 @@ def test_probe_failure_classification_retains_original_reason(detail, code):
 
 def test_mixed_desktop_gpu_mapping_failure_explains_identity_and_preserves_probe():
     """A successful NVIDIA command can still lack safe allocation identity."""
-    payload = dict(tower_gpu=1, node="desktop", job_id="7", gpus="0",
+    payload = dict(raven_gpu=1, node="desktop", job_id="7", gpus="0",
                    hardware_vendors=["amd", "nvidia"],
                    visible={"nvidia": "0", "amd": ""},
                    vendors={"nvidia": {"metrics":
@@ -831,7 +896,7 @@ def test_native_check_file_pipeline_saves_exact_errors_and_finds_typed_fedora_al
         (bin_dir / tool).symlink_to(script)
     env = dict(os.environ)
     env.pop("PYTHONPATH", None)
-    env.pop("TOWER_CONFIG", None)
+    env.pop("RAVEN_CONFIG", None)
     env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
     env["XDG_CONFIG_HOME"] = str(tmp_path / "config")
     env["XDG_STATE_HOME"] = str(tmp_path / "state")

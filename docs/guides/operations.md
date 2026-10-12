@@ -2,20 +2,20 @@
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Rollout status](../ROADMAP.md) · [Validation](operations-validation.md)
 
-For the current catalog, read the [generated controls and fields](../reference/operations.md).
-The task workbench uses `:workbench run|investigate|compare|results|connect|all`.
-Prepared tracing, scientific investigations, site integration and cooperative
-runtime controls have their exact boundaries in the
-[implementation ledger](../FLAGSHIP_IMPLEMENTATION.md). This guide preserves
-the original research-operation contracts and shared review controls.
+Raven provides forms, bounded background inspections, and structured reports
+for research and cluster operations. Actions that change a job, start a service,
+submit work, or write results require a separate review and confirmation.
+This guide explains the shared controls and the twenty-six research operations
+introduced in the 4.15 release. The catalog also includes the `queue-order` and
+`rerun-job` job-management operations.
 
-Tower 4.15 adds twenty-six operations from the research review. Each operation
-has a terminal form, bounded background inspection, and a readable report.
-An operation that changes a job, starts a service, submits work, or writes
-results also has a separate action review. The four additions from 4.14 remain
-available through their [phase one controls](phase-one.md).
-The catalog also includes `queue-order` and `rerun-job`, separate job-management
-operations. The twenty-six research proposals below retain their original scope.
+Read the [generated catalog](../reference/operations.md) for the current
+operations and field definitions. Use
+`:workbench run|investigate|compare|results|connect|all` to open a task workspace.
+The [implementation ledger](../FLAGSHIP_IMPLEMENTATION.md) records the supported
+scope of tracing, scientific investigation, site integration, and cooperative
+runtime control. Earlier measurement and submission tools are documented in the
+[phase one guide](phase-one.md).
 
 ## Open and use an operation
 
@@ -30,7 +30,7 @@ operations. The twenty-six research proposals below retain their original scope.
 Inspection never silently confirms a plan. Some explicit inspections create
 short, read-only Slurm steps to measure allocation placement or compute-host
 runtime. The operation guide identifies those probes. A generated environment
-bundle is written only after review; Tower does not execute its recreation
+bundle is written only after review; Raven does not execute its recreation
 script.
 
 Use `:ops FEATURE` to open a form directly. Use
@@ -76,8 +76,10 @@ inserts text at the caret. Use one line with no tabs or control characters;
 each paste can contain at most 4096 characters, and a field can contain at most
 8192 characters. An invalid or oversized paste leaves the field unchanged.
 Pasting never runs an operation. Enter accepts the edit; Esc discards it.
-Field choices cycle without opening an editor. The report display has an 8192-line limit. A notice identifies
-truncation. **Copy report** without a selection copies the complete structured
+Field choices cycle without opening an editor.
+
+The report display has an 8192-line limit. A notice identifies truncation.
+**Copy report** without a selection copies the complete structured
 evidence that the adapter retained, including its own source-limit warnings.
 Copying cannot recover records that an adapter omitted at its collection limit.
 
@@ -128,7 +130,7 @@ support for every scheduler, application, profiler, or workflow format.
 | P05 | `licenses` | Read Slurm's license inventory; no claim about unreported vendor-server use | [Cluster](operations-cluster.md#license-inventory--p05) |
 | A05 | `slurm-doctor` | Read controller, accounting, partition, and selected configuration evidence | [Cluster](operations-cluster.md#slurm-service-doctor--a05) |
 | A20 | `batch-script` | Retrieve Slurm's retained script; optionally create a new local copy | [Cluster](operations-cluster.md#retrieve-a-retained-batch-script--a20) |
-| A19 | `allocation-shell` | Review a shell step or exact numeric-step attachment, then return to Tower | [Cluster](operations-cluster.md#allocation-shell-and-step-attachment--a19) |
+| A19 | `allocation-shell` | Review a shell step or exact numeric-step attachment, then return to Raven | [Cluster](operations-cluster.md#allocation-shell-and-step-attachment--a19) |
 | A01 | `environment` | Compare pinned runtime evidence; write a hashed Python/optional Apptainer recreation bundle | [Science](operations-science.md) |
 | A02 | `placement` | Inspect existing allocation-process CPU, NUMA, and GPU visibility; no affinity changes | [Science](operations-science.md) |
 | A04 | `acceptance` | Check all required measurements against project-defined tolerances | [Science](operations-science.md) |
@@ -168,7 +170,7 @@ The same operation is available through `:ops queue-order`. Its fields are:
 :ops run queue-order source_jobs=120,121 target_jobs=100,101 placement=before
 ```
 
-Tower reads both sets of jobs, then discovers the current pending queue for
+Raven reads both sets of jobs, then discovers the current pending queue for
 their owner, partition, account, and QOS. The report lists every affected job's
 old and proposed position, including other jobs in that scheduling scope.
 Members of the moved group retain their relative priority order. Unrelated
@@ -177,7 +179,7 @@ scheduling scopes are excluded.
 
 The operation uses the native `scontrol top` command with one ordered,
 comma-separated ID list. It requires the site's
-`SchedulerParameters=enable_user_top` setting. Tower does not change that
+`SchedulerParameters=enable_user_top` setting. Raven does not change that
 setting or substitute direct priority edits. Slurm adjusts nice values to
 express the preference. Resources, dependencies, reservations, and site policy
 still determine eligibility and start order; **the requested order is not a
@@ -185,8 +187,9 @@ start-time guarantee**. Dependencies remain unchanged.
 
 These limits apply:
 
-- Both sets must contain a pending job with a priority greater than one.
-  Held jobs keep their hold state. Running jobs are not moved.
+- Each set must contain at least one pending job. Every pending source or
+  destination job must have a priority greater than one. A held or priority-one
+  target blocks the operation and keeps its hold state. Running jobs are not moved.
 - Pending source and destination members must have the same owner, single
   partition, account, and QOS. Cross-scope moves are rejected.
 - A review accepts at most 512 exact jobs in the affected scheduling scope.
@@ -206,7 +209,7 @@ These limits apply:
 
 The operation uses the shared background worker and the common one-use review
 and receipt rules below. Pointer motion makes no scheduler calls. A timeout or
-lost response requires a fresh inspection; Tower does not retry an uncertain
+lost response requires a fresh inspection; Raven does not retry an uncertain
 queue mutation automatically.
 
 Upstream reference: [SchedMD `scontrol top` documentation](https://github.com/SchedMD/slurm/blob/master/doc/man/man1/scontrol.1).
@@ -223,17 +226,17 @@ protection for campaign launches and transfers.
 With normal state persistence, the common action layer writes
 `operations-receipts/<plan-digest>.intent.json` before execution and a matching
 `.result.json` when it collects the outcome. These files use
-`tower.operation-receipt/v1`. A durable intent prevents the same plan from
+`raven.operation-receipt/v1`. A durable intent prevents the same plan from
 being attempted again after a restart. An error record can describe a partial
 or unknown outcome; read the result and inspect current state before preparing
 another review. With `--no-state`, this common persistence is unavailable and
-Tower reports that limit. Adapter-specific requirements can still refuse an
+Raven reports that limit. Adapter-specific requirements can still refuse an
 action that needs a durable state directory.
 
 Scheduler updates are not transactional. A dependency repair or campaign launch
 can partially succeed. Read every outcome. A command timeout or lost response
 can leave its result unknown; it does not prove that Slurm rejected the action.
-Inspect Slurm and the durable receipt before deciding how to continue. Tower
+Inspect Slurm and the durable receipt before deciding how to continue. Raven
 does not blindly repeat uncertain submissions.
 
 Inspection uses the existing research worker lane and keeps I/O outside
@@ -258,7 +261,7 @@ from a measured zero and a successful action.
 
 ## Project contracts and optional dependencies
 
-Keep reusable input policies in `.tower/definitions/operations/`. Keep generated
+Keep reusable input policies in `.raven/definitions/operations/`. Keep generated
 per-attempt evidence in `runs/<run_id>/reports/operations/`, and campaign evidence
 in `reports/operations/`. These are recommended locations, not automatic
 attachment rules. Enter explicit paths in operation forms. The existing
@@ -273,7 +276,7 @@ with correct science.
 
 | Capability | Additional requirement |
 | --- | --- |
-| Core operations and parsing | Standard-library Tower installation and the relevant readable files |
+| Core operations and parsing | Standard-library Raven installation and the relevant readable files |
 | Slurm commands or mutations | Matching Slurm clients, account permissions, and supported site configuration |
 | Lustre quota | Optional `lfs`; generic quota uses the site's `quota` command |
 | Allocation/runtime probes | Compute-node Python 3 and permission for bounded `srun` steps |
@@ -281,9 +284,9 @@ with correct science.
 | Dask pool | Optional `dask-jobqueue` on the controller, compatible workers, and site network/queue configuration |
 | Persistent monitor and Dask identity | Linux `/proc`; site-approved service hosting |
 | Native workflow observation | A supported Nextflow trace or Snakemake DAG/runtime export |
-| Darshan inspection | An exported `darshan-parser` POSIX text file; Tower does not parse native binary traces |
+| Darshan inspection | An exported `darshan-parser` POSIX text file; Raven does not parse native binary traces |
 
-Use a local Tower session on the target host for local file mutations,
+Use a local Raven session on the target host for local file mutations,
 submission composers, and persistent-service controls. SSH-capable inspections
 read through their captured connection. A remote path never authorizes a
 silent local substitute. Recorded sessions cannot prepare or apply live changes.
@@ -298,13 +301,15 @@ installations require the target-system checks described in the group guides.
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Feature index](../QUALITY_OF_LIFE.md)
 
-Use this guide to review application results and control notifications.
-These procedures do not submit or change scheduler jobs.
-An explicit clipboard test sends a test copy request.
+Use these controls to inspect application results and manage notifications.
+The procedures change local display or notification preferences. The clipboard
+test sends a test copy request to the configured clipboard transport.
 
 <a id="feature-39"></a>
 
-## 39. Search Activity and exported files
+<a id="39-search-activity-and-exported-files"></a>
+
+## Search Activity and exported files
 
 ### Find a notice
 
@@ -356,7 +361,7 @@ Do not interpret a busy state as a measured completion percentage.
 5. Press `y` to copy the exact path.
 6. Press Esc to return to the export list.
 
-**Expected result:** Tower opens the selected file through the background reader.
+**Expected result:** Raven opens the selected file through the background reader.
 A preview reads at most 64 KiB and 256 lines.
 A visible notice identifies content outside that preview.
 The original file remains available through the copied path.
@@ -395,7 +400,9 @@ A symbolic link is not opened as an export preview.
 
 <a id="feature-40"></a>
 
-## 40. Inspect terminal compatibility
+<a id="40-inspect-terminal-compatibility"></a>
+
+## Inspect terminal compatibility
 
 ### Read capability evidence
 
@@ -405,7 +412,7 @@ A symbolic link is not opened as an export preview.
 4. Press `t` to open the interactive input test.
 5. Press Esc to return.
 
-**Expected result:** Tower reports terminal and path metadata.
+**Expected result:** Raven reports terminal and path metadata.
 The inspection checks output encoding, terminal type, color hints, and clipboard transports.
 It also reports relevant SSH and tmux context.
 Configuration and state checks inspect path types and access permissions.
@@ -434,14 +441,14 @@ The event list retains the latest 16 observations.
 
 If blocks are misaligned, select a compatible monospace font.
 Use a UTF-8 locale for Unicode output.
-Use `tower --ascii --no-color` when those capabilities are unavailable.
+Use `raven --ascii --no-color` when those capabilities are unavailable.
 
 ### Test clipboard transport
 
 1. Close the input test with Esc.
 2. Enter `:terminaltest clipboard`.
 3. Paste into a suitable local text field.
-4. Check for `Slurm Tower clipboard test`.
+4. Check for `Raven clipboard test`.
 5. Press Esc to close the input test.
 
 The command requests delivery through the configured clipboard transports.
@@ -451,12 +458,14 @@ A sent OSC 52 request does not prove terminal acceptance.
 
 For SSH, check the local terminal's clipboard settings.
 For tmux, also check `set-clipboard` and OSC 52 forwarding.
-Tower does not change those terminal settings automatically.
+Raven does not change those terminal settings automatically.
 See the [runbook](../runbook.md#6-troubleshoot-the-specific-failure) for launch failures.
 
 <a id="feature-48"></a>
 
-## 48. Review the completion inbox
+<a id="48-review-the-completion-inbox"></a>
+
+## Review the completion inbox
 
 1. Enter `:inbox`.
 2. Press `f` to show failed outcomes, or `a` to show all retained completions.
@@ -470,7 +479,7 @@ Use `A` to mark the current filtered list as reviewed.
 Press `/` to filter names, IDs, states, or partitions.
 Press `u` to return to unreviewed records.
 
-**Expected result:** Tower preserves the exact accounting job identity.
+**Expected result:** Raven preserves the exact accounting job identity.
 Successfully opening History or logs marks that record as reviewed.
 A failed open leaves the record unreviewed.
 
@@ -493,7 +502,7 @@ Records loaded from the accounting window can appear unreviewed at startup.
 Review state uses the job ID, timestamps, and terminal state.
 It does not identify a retry by job ID alone.
 
-Tower retains at most 512 reviewed record identities.
+Raven retains at most 512 reviewed record identities.
 Normal state persistence saves these identities for the current user, host, and profile.
 Switching scope does not acknowledge another scope's records.
 Older records can return as unreviewed when the bounded review history expires.
@@ -512,12 +521,14 @@ The inbox does not select another job as a substitute.
 | Historical log paths are unavailable | Select the exact project run and use its declared log index |
 
 An active attempt can reuse a historical job ID.
-Tower refuses an ambiguous direct log action instead of opening the active attempt's logs.
+Raven refuses an ambiguous direct log action instead of opening the active attempt's logs.
 Preserve separate project run identities and exact log declarations for reliable attempt inspection.
 
 <a id="feature-49"></a>
 
-## 49. Snooze alerts and set quiet hours
+<a id="49-snooze-alerts-and-set-quiet-hours"></a>
+
+## Snooze alerts and set quiet hours
 
 **Prerequisite:** Configure an alert rule.
 See the [alert reference](../reference.md#alert-rules) for expressions and delivery actions.
@@ -545,7 +556,7 @@ Durations use seconds.
 A duration must be greater than zero and no more than seven days.
 An omitted job ID snoozes the complete rule.
 An omitted rule in `unsnooze` removes all snoozes.
-Tower retains at most 256 active snooze entries.
+Raven retains at most 256 active snooze entries.
 
 ### Set daily quiet hours
 
@@ -567,12 +578,14 @@ Normal state persistence saves snoozes and quiet hours for the current user, hos
 The active configured time zone controls daylight-saving transitions.
 
 **Expected result:** Quiet hours and snoozes suppress bell, notification, and command delivery.
-Tower continues to evaluate conditions and record alert events.
+Raven continues to evaluate conditions and record alert events.
 Active conditions remain visible.
 Suppressed deliveries are not queued for replay when the quiet period ends.
 The existing rule interval still controls future delivery.
 
-## Module methods
+<a id="module-methods"></a>
+
+## Integration reference
 
 These methods integrate the procedures with the existing controller and worker.
 

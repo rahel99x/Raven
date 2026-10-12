@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A small, reproducible regression experiment using only Python's standard library.
 
-Tower is also dependency-free. Install the checkout with scripts/setup.py first
+Raven is also dependency-free. Install the checkout with scripts/setup.py first
 so this example can import its optional reporter. Each execution creates a new
 output directory and never overwrites another run. Delay is solely for making
 the terminal demo easy to watch; it is not part of the optimization algorithm.
@@ -18,7 +18,7 @@ from pathlib import Path
 import random
 import time
 
-from tower.metrics import write_metric
+from raven.metrics import write_metric
 
 
 def main() -> int:
@@ -82,7 +82,7 @@ def main() -> int:
                          step=step, phase="fit", completed=step, total=args.steps, unit="steps")
             if args.delay:
                 time.sleep(args.delay)
-    summary = {"schema": "tower.research-demo", "version": 1, "seed": args.seed,
+    summary = {"schema": "raven.research-demo", "version": 1, "seed": args.seed,
                "steps": args.steps, "samples": args.samples, "learning_rate": args.learning_rate,
                "final_loss": loss, "rmse": rmse, "coefficients": {"slope": slope, "intercept": intercept},
                "dataset_sha256": hashlib.sha256(dataset_path.read_bytes()).hexdigest()}

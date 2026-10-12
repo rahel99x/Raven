@@ -1,13 +1,14 @@
 # Recorded stacks and distributed trace evidence
 
-Tower can record a prepared Python program, receive cooperative events from a
-native program, reconstruct recorded stacks, inspect explicit causal links, and
-check supported collective signatures. A running local Python process can also
-provide a reviewed, nonblocking snapshot through an installed `py-spy`.
+Use Raven to record a prepared Python program, receive cooperative native
+events, reconstruct recorded stacks, inspect explicit causal links, and audit
+supported collective signatures. A running local Python process can provide a
+reviewed, nonblocking snapshot when `py-spy` is installed and job membership can
+be verified. The table below lists each method's runtime prerequisites.
 
-**This release does not promise complete tracing of an arbitrary program.**
-Checksums and sequence numbers verify the recorded journal. They do not prove
-that an uninstrumented function, device, process, or runtime emitted an event.
+Coverage is limited to the selected instrumentation. Checksums and sequence
+numbers verify journal integrity; they do not establish that an uninstrumented
+function, device, process, or runtime emitted an event.
 Storage exhaustion stops recording and marks the trace incomplete. A crash can
 leave an unknown tail after the last durable checkpoint. Native socket writes
 acknowledge transport acceptance, not per-event durable storage.
@@ -16,11 +17,11 @@ acknowledge transport acceptance, not per-event durable storage.
 
 | Method | Preparation | Recorded scope | Important limit |
 | --- | --- | --- | --- |
-| `tower trace run` | Launch a Python script with Tower under CPython 3.12 or later | Python call, resume, return, yield, throw-resume and unwind events, including observed threads | No native-extension internals, GPU execution or automatic fork-child capture |
-| `tower trace run --legacy-profile` | Explicitly select the legacy adapter | Python profile call/return events on supported Python 3.10 or later | Cannot reliably distinguish generator yields, returns and exception unwinds |
-| `tower trace native` | Compile explicit calls to the cooperative SDK | Events supplied by local C/C++ processes and threads | No automatic native unwinding; private inherited sockets do not cross SSH or `srun` automatically |
+| `raven trace run` | Launch a Python script with Raven under CPython 3.12 or later | Python call, resume, return, yield, throw-resume and unwind events, including observed threads | No native-extension internals, GPU execution or automatic fork-child capture |
+| `raven trace run --legacy-profile` | Explicitly select the legacy adapter | Python profile call/return events on supported Python 3.10 or later | Cannot reliably distinguish generator yields, returns and exception unwinds |
+| `raven trace native` | Compile explicit calls to the cooperative SDK | Events supplied by local C/C++ processes and threads | No automatic native unwinding; private inherited sockets do not cross SSH or `srun` automatically |
 | PMPI source adapter | Compile the optional adapter against the application's MPI runtime | Automatic C-binding WORLD Barrier, scalar Bcast and scalar Allreduce/SUM metadata | At most 256 ranks; no thread-multiple, Fortran, nonblocking or arbitrary communicator coverage |
-| `Trace → Capture current Python stacks` | Install `py-spy`, run Tower on the target process node, and review a verified job/PID | One non-atomic set of observed Python stacks | No previous history; permission or runtime support may prevent capture |
+| `Trace → Capture current Python stacks` | Install `py-spy`, run Raven on the target process node, and review a verified job/PID | One non-atomic set of observed Python stacks | No previous history; permission or runtime support may prevent capture |
 
 Rust, OCaml, MPI and GPU applications can report the same cooperative events
 through an application adapter or C FFI. This is a protocol integration point,
@@ -32,29 +33,29 @@ no debugger, kernel permission change, extra MPI barrier or public TCP listener.
 Use the launch command inside the job's existing allocation:
 
 ```bash
-tower trace run \
+raven trace run \
   --project "$PROJECT_DIR" \
   --job-id "$SLURM_JOB_ID" \
-  --attempt "$TOWER_RUN_ID" \
+  --attempt "$RAVEN_RUN_ID" \
   --max-mib 64 \
   -- train.py --epochs 20
 ```
 
-Set `PROJECT_DIR` to an existing project directory. Use the exact Tower run ID
+Set `PROJECT_DIR` to an existing project directory. Use the exact Raven run ID
 from project reporting, or an explicit scheduler `SubmitTime/StartTime` string
-as `--attempt`. Optional `--slurm-submit` and `--slurm-start` fields let Tower
+as `--attempt`. Optional `--slurm-submit` and `--slurm-start` fields let Raven
 verify the scheduler attempt independently. Array tasks should use their exact
 `array_job_id_array_task_id` identity, not an array parent. Specify `--job-id`
 when the launch environment does not already identify the exact task.
 
-The recorder prints its manifest path. Open Tower, select the matching job, and
-select **Trace** in Details. Tower discovers registered traces under that
+The recorder prints its manifest path. Open Raven, select the matching job, and
+select **Trace** in Details. Raven discovers registered traces under that
 project. Automatic association requires a matching attempt or project run ID.
 An ambiguous old job ID must not attach automatically.
 
 ```text
 :trace
-:trace attach /project/.tower/traces/STREAM/manifest.json
+:trace attach /project/.raven/traces/STREAM/manifest.json
 :trace refresh
 :trace pause
 :trace follow
@@ -63,7 +64,7 @@ An ambiguous old job ID must not attach automatically.
 ```
 
 Explicit attachment displays identity verification status. **Pause** pauses the
-view, not recording. Closing Tower does not stop a separately running recorder.
+view, not recording. Closing Raven does not stop a separately running recorder.
 Do not change the sampling sliders to control this recorder: its input is
 event-driven. Display refresh and event capture are separate.
 
@@ -89,7 +90,7 @@ Open the **Capture current Python stacks** operation, or run:
 ```
 
 Enter the running job ID, its local process PID, and the project directory.
-Inspect the review, then apply it. Tower checks the live scheduler owner and
+Inspect the review, then apply it. Raven checks the live scheduler owner and
 submit/start identity, node-local `scontrol listpids` membership, Unix ownership,
 and `/proc` process start identity. It repeats these checks before capture and
 rejects a process that changes during capture.
@@ -100,11 +101,11 @@ The adapter runs only:
 py-spy dump --pid PID --json --nonblocking
 ```
 
-The command has a five-second timeout and a 1 MiB output bound. Tower neither
+The command has a five-second timeout and a 1 MiB output bound. Raven neither
 requests native unwinding nor changes `ptrace` policy. Nonblocking reads can
 observe inconsistent frames. The saved journal is labeled **snapshot**, with
 incomplete execution coverage. If `py-spy` is unavailable or the node cannot
-verify job membership, Tower reports that limitation instead of attaching to
+verify job membership, Raven reports that limitation instead of attaching to
 an arbitrary process belonging to the same user.
 
 ## Add cooperative application events
@@ -112,7 +113,7 @@ an arbitrary process belonging to the same user.
 The Python SDK uses only the standard library:
 
 ```python
-from tower.trace_recorder import Recorder
+from raven.trace_recorder import Recorder
 
 with Recorder(project_dir, job_id=job_id, attempt=run_id) as trace:
     with trace.span("load input", span_id="load") as load:
@@ -137,20 +138,20 @@ end when recording has not failed.
 Generate the standalone native header:
 
 ```bash
-tower trace native --sdk-header > tower_trace.h
+raven trace native --sdk-header > raven_trace.h
 cc -D_GNU_SOURCE -pthread program.c -o program
-tower trace native --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" \
-  --attempt "$TOWER_RUN_ID" -- ./program
+raven trace native --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" \
+  --attempt "$RAVEN_RUN_ID" -- ./program
 ```
 
 ```c
-#include "tower_trace.h"
+#include "raven_trace.h"
 
 int main(void) {
-    tower_trace_emit("span_start",
+    raven_trace_emit("span_start",
         "{\"span_id\":\"solve\",\"name\":\"solve\"}");
     /* application work */
-    tower_trace_emit("span_end", "{\"span_id\":\"solve\"}");
+    raven_trace_emit("span_end", "{\"span_id\":\"solve\"}");
     return 0;
 }
 ```
@@ -169,7 +170,7 @@ No device memory, MPI payload or tensor data is copied automatically.
 
 For multiple nodes, launch the adapter beside each participating application
 process through the site's ordinary allocation launch method. Use a shared,
-authorized project path if Tower must discover all streams there. Node-local
+authorized project path if Raven must discover all streams there. Node-local
 storage is preferable for heavy recording, but must be staged explicitly before
 another host can inspect it. There is no automatic remote transport service in
 this release.
@@ -182,22 +183,22 @@ used by the application. Existing profilers can also use PMPI or `LD_PRELOAD`;
 check compatibility before combining them.
 
 ```bash
-tower trace native --sdk-header > tower_trace.h
-tower trace mpi --source > tower_mpi.c
-mpicc -std=c11 -D_GNU_SOURCE -fPIC -shared tower_mpi.c -o libtower_mpi.so
+raven trace native --sdk-header > raven_trace.h
+raven trace mpi --source > raven_mpi.c
+mpicc -std=c11 -D_GNU_SOURCE -fPIC -shared raven_mpi.c -o libraven_mpi.so
 ```
 
 Launch the native collector **inside each rank launch**. For example, adapt the
 site's normal `srun` invocation as follows:
 
 ```bash
-srun tower trace native \
-  --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" --attempt "$TOWER_RUN_ID" \
-  -- env LD_PRELOAD="$PROJECT_DIR/libtower_mpi.so" \
-  TOWER_MPI_COMM_GENERATION="$TOWER_RUN_ID" ./mpi_program
+srun raven trace native \
+  --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" --attempt "$RAVEN_RUN_ID" \
+  -- env LD_PRELOAD="$PROJECT_DIR/libraven_mpi.so" \
+  RAVEN_MPI_COMM_GENERATION="$RAVEN_RUN_ID" ./mpi_program
 ```
 
-`TOWER_MPI_COMM_GENERATION` must be the same nonempty identifier on all ranks.
+`RAVEN_MPI_COMM_GENERATION` must be the same nonempty identifier on all ranks.
 Use only letters, digits, `.`, `_` and `-`, with a maximum of 128 characters.
 Do not reuse a generation for distinct MPI worlds in the same job attempt.
 Multiple independent worlds require distinct identifiers.
@@ -238,7 +239,7 @@ edges. It rejects cycles and impossible same-stream finish-before-start edges.
 It calculates a longest chain of recorded leaf-span durations. Nested parents
 remain visible and are not counted twice.
 
-This duration is not global wall-clock makespan or a predicted speedup. Tower
+This duration is not global wall-clock makespan or a predicted speedup. Raven
 does not subtract timestamps from different nodes or infer clock alignment.
 Missing edges, unsupported relationship semantics, gaps and incomplete spans
 remain visible. The default operation budget is 20,000 events and 8 MiB across
@@ -281,7 +282,7 @@ Results never cancel a job or alter a collective.
 
 ```text
 PROJECT/
-  .tower/
+  .raven/
     traces/
       index.json
       STREAM/
@@ -289,14 +290,14 @@ PROJECT/
         events.jsonl
 ```
 
-`index.json` uses `tower.trace-index/v1` and explicitly binds relative manifest
-paths to job, attempt and stream identity. The `tower.trace/v1` manifest contains
+`index.json` uses `raven.trace-index/v1` and explicitly binds relative manifest
+paths to job, attempt and stream identity. The `raven.trace/v1` manifest contains
 cluster, job ID, attempt, node, boot ID, PID, process start, stream, coverage,
 state, committed sequence and committed byte count. It can also include the
 project run ID and scheduler submit/start values. Identity changes require a new
 stream; readers reject replacement or regressed checkpoints.
 
-Each `tower.trace-event/v1` JSONL envelope contains `stream`, `seq`, `prev`,
+Each `raven.trace-event/v1` JSONL envelope contains `stream`, `seq`, `prev`,
 `event`, and `sha256`. The event contains `kind`, `mono_ns`, `thread` and `data`.
 The digest is SHA256 over the canonical sorted-key, compact, ASCII JSON envelope
 without `sha256`. `prev` links to the previous digest. The first sequence is 1
@@ -309,16 +310,15 @@ The recorder fsyncs event bytes before publishing the commit checkpoint through
 an atomic manifest replacement. The default checkpoint interval is 50 ms or 64
 events. UI reads use only this committed prefix. A crash between checkpoints
 can lose later events. Filesystem durability also depends on the storage system.
-The manifest state and `complete` flag describe the declared recording scope,
-not all behavior of the program. **Do not interpret COMPLETE as universal trace
-coverage.**
+The manifest state and `complete` flag describe only the declared recording
+scope. A `COMPLETE` recording does not establish universal execution coverage.
 
 ## Resource and validation limits
 
 Recording every Python frame adds work and data. Import-heavy applications can
 produce tens of thousands of events before useful computation begins. Measure
 overhead on a representative allocation and reserve explicit CPU, memory and
-storage. Tower does not promise a fixed overhead percentage. Cooperative spans
+storage. Raven does not promise a fixed overhead percentage. Cooperative spans
 let an application declare a smaller scope; this is a separate capture choice,
 not a silent fallback from complete frame recording.
 
@@ -348,6 +348,6 @@ all compilers/runtimes, distributed filesystems or site permission policies.
 For installations with development headers, run the actual MPI adapter tests
 with `python -m pytest -q tests/test_trace_mpi.py`. If only the Open MPI runtime
 is installed, a matching development package can be extracted into a user-owned
-directory for validation. Set `TOWER_TEST_MPI_INCLUDE` to its Open MPI include
-directory and, if required, `TOWER_TEST_MPI_LINK` to the matching linker flags.
+directory for validation. Set `RAVEN_TEST_MPI_INCLUDE` to its Open MPI include
+directory and, if required, `RAVEN_TEST_MPI_LINK` to the matching linker flags.
 These test variables do not change application launch configuration.

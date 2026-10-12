@@ -16,7 +16,7 @@ import sys
 
 import pytest
 
-from tower import gpu_collectors
+from raven import gpu_collectors
 
 
 UUIDS = ["GPU-00010203-0405-0607-0809-0a0b0c0d0e0f",
@@ -177,16 +177,16 @@ C_DRIVER = r'''
 #include <string.h>
 #include <unistd.h>
 static int failure(const char *name) {
-    const char *mode = getenv("TOWER_TEST_CUDA_FAIL");
+    const char *mode = getenv("RAVEN_TEST_CUDA_FAIL");
     return mode && strcmp(mode, name) == 0 ? 999 : 0;
 }
 int cuInit(unsigned int flags) {
-    const char *audit = getenv("TOWER_TEST_CUDA_AUDIT");
+    const char *audit = getenv("RAVEN_TEST_CUDA_AUDIT");
     if (audit) {
         FILE *file = fopen(audit, "a");
         if (file) { fputs("init\n", file); fclose(file); }
     }
-    if (getenv("TOWER_TEST_CUDA_DELAY")) usleep(3000000);
+    if (getenv("RAVEN_TEST_CUDA_DELAY")) usleep(3000000);
     return failure("init");
 }
 int cuDeviceGetCount(int *output) { *output = 2; return failure("count"); }
@@ -230,7 +230,7 @@ def native_env(library, **updates):
     # The child must only use this fixture library, even on a CUDA-equipped host.
     env = dict(os.environ, LD_LIBRARY_PATH=str(library), CUDA_VISIBLE_DEVICES="7,3")
     for key in list(env):
-        if key.startswith("TOWER_TEST_CUDA_"):
+        if key.startswith("RAVEN_TEST_CUDA_"):
             del env[key]
     env.update(updates)
     return env
@@ -249,7 +249,7 @@ def test_real_child_uses_cuda_driver_abi_without_toolkit_or_import_hooks(cuda_li
 @pytest.mark.parametrize("failure", ["init", "count", "device", "uuid"])
 def test_real_child_driver_errors_exit_cleanly(cuda_library, failure):
     result = subprocess.run([sys.executable, "-I", "-S", "-c", gpu_collectors.CUDA_VISIBILITY_SOURCE],
-        env=native_env(cuda_library, TOWER_TEST_CUDA_FAIL=failure),
+        env=native_env(cuda_library, RAVEN_TEST_CUDA_FAIL=failure),
         capture_output=True, text=True, timeout=3)
     assert result.returncode != 0 and not result.stdout
     assert "999" in result.stderr and "Traceback" not in result.stderr
@@ -269,7 +269,7 @@ def native_probe(cuda_library):
     env = native_env(cuda_library, PATH=str(cuda_library), SLURM_JOB_ID="506",
         SLURM_JOB_GPUS="0,1", SLURM_STEP_GPUS="", SLURMD_NODENAME="fedora-test",
         ROCR_VISIBLE_DEVICES="", CUDA_DEVICE_ORDER="",
-        TOWER_TEST_CUDA_AUDIT=str(audit))
+        RAVEN_TEST_CUDA_AUDIT=str(audit))
 
     def probe(*, cache=None, budget=4, resolve_visibility=True, require_scope=True, **updates):
         command = [sys.executable] + gpu_collectors.probe_command("auto", budget=budget,
@@ -323,7 +323,7 @@ def test_real_probe_changed_inventory_invalidates_cached_cuda_proof(native_probe
 
 def test_real_probe_cuda_initialization_is_killed_at_shared_deadline(native_probe):
     probe, audit = native_probe
-    (samples, _, errors), payload = probe(budget=1.25, TOWER_TEST_CUDA_DELAY="1")
+    (samples, _, errors), payload = probe(budget=1.25, RAVEN_TEST_CUDA_DELAY="1")
     assert not samples
     assert "timed out" in payload["cuda_visibility_error"]
     assert any("timed out" in error for error in errors)
@@ -332,7 +332,7 @@ def test_real_probe_cuda_initialization_is_killed_at_shared_deadline(native_prob
 
 def test_real_probe_driver_failure_never_becomes_zero_gpu_metrics(native_probe):
     probe, _ = native_probe
-    (samples, cache, errors), payload = probe(TOWER_TEST_CUDA_FAIL="uuid")
+    (samples, cache, errors), payload = probe(RAVEN_TEST_CUDA_FAIL="uuid")
     assert not samples
     assert not cache.get("fedora-test", {}).get("_cuda_visibility")
     assert "999" in payload["cuda_visibility_error"]

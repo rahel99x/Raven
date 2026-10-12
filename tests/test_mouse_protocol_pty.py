@@ -14,12 +14,12 @@ import pytest
 CHILD = r'''
 import curses, json, os, time
 from pathlib import Path
-from tower import screen
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Job, Store
-from tower.views import Views
+from raven import screen
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Job, Store
+from raven.views import Views
 
 def publish_marker(path, text):
     # A visible marker must already contain its complete payload. The parent
@@ -48,20 +48,20 @@ def main(window):
     cache = screen._FrameCache()
     cache.rebuild(app, views, store, None, 160, 40)
     reader = screen._InputReader(window)
-    Path(os.environ["TOWER_PTY_READY"]).touch()
+    Path(os.environ["RAVEN_PTY_READY"]).touch()
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline and not app.quit:
         window.timeout(5 if reader.escape else 100)
         event = reader.read(curses)
         if reader.escape:
-            Path(os.environ["TOWER_PTY_PREFIX"]).touch()
+            Path(os.environ["RAVEN_PTY_PREFIX"]).touch()
         if event is None or event[0] is None:
             continue
         result["events"].append(event[0])
         if event[0] == "mouse":
-            Path(os.environ["TOWER_PTY_WARMUP"]).touch()
+            Path(os.environ["RAVEN_PTY_WARMUP"]).touch()
         elif event[0] == "esc":
-            Path(os.environ["TOWER_PTY_ESCAPED"]).touch()
+            Path(os.environ["RAVEN_PTY_ESCAPED"]).touch()
         screen._apply_input(app, event, cache.hits, curses)
         if app.tab != "jobs":
             raise AssertionError("Mouse bytes activated " + app.tab)
@@ -70,7 +70,7 @@ def main(window):
         app.research.close()
 
 curses.wrapper(main)
-with open(os.environ["TOWER_PTY_RESULT"], "w") as file:
+with open(os.environ["RAVEN_PTY_RESULT"], "w") as file:
     json.dump(result, file)
 '''
 
@@ -90,9 +90,9 @@ def test_fragmented_report_through_real_curses_and_app_keeps_jobs_page(tmp_path,
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 160, 0, 0))
     environment = dict(os.environ, TERM=terminal, LC_ALL="C.UTF-8", PYTHONPATH=str(root),
-                       TOWER_PTY_READY=str(ready), TOWER_PTY_RESULT=str(result),
-                       TOWER_PTY_PREFIX=str(prefix), TOWER_PTY_WARMUP=str(warmup_seen),
-                       TOWER_PTY_ESCAPED=str(escaped))
+                       RAVEN_PTY_READY=str(ready), RAVEN_PTY_RESULT=str(result),
+                       RAVEN_PTY_PREFIX=str(prefix), RAVEN_PTY_WARMUP=str(warmup_seen),
+                       RAVEN_PTY_ESCAPED=str(escaped))
     process = subprocess.Popen([sys.executable, str(script)], cwd=root, env=environment,
                                stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
@@ -162,14 +162,14 @@ WIDE_CHILD = CHILD.replace('result = {"events": []}', 'result = {"events": [], "
     for index in range(30):
         store.record("7", {"k": "live", "t": 180 + index, "cpu": index / 40, "rss": 1024 ** 3})
     cache.rebuild(app, views, store, None, 300, 250)''').replace(
-    'Path(os.environ["TOWER_PTY_READY"]).touch()',
+    'Path(os.environ["RAVEN_PTY_READY"]).touch()',
     '''plots = app.chart_interaction_state.get("plots", [])
     center = next(((p.visible.left + p.visible.right) // 2, (p.visible.top + p.visible.bottom) // 2)
                   for p in plots if p.visible.right - p.visible.left > 5 and p.visible.bottom - p.visible.top > 2)
-    publish_marker(os.environ["TOWER_PTY_READY"], json.dumps({"center": center, "raw": reader.raw}))''').replace(
-    'Path(os.environ["TOWER_PTY_WARMUP"]).touch()',
+    publish_marker(os.environ["RAVEN_PTY_READY"], json.dumps({"center": center, "raw": reader.raw}))''').replace(
+    'Path(os.environ["RAVEN_PTY_WARMUP"]).touch()',
     '''result["pointers"].append(list(event[1]))
-            Path(os.environ["TOWER_PTY_WARMUP"]).touch()''').replace(
+            Path(os.environ["RAVEN_PTY_WARMUP"]).touch()''').replace(
     'result.update(tab=app.tab, selected_id=app.selected_id, quit=app.quit)',
     'result.update(tab=app.tab, selected_id=app.selected_id, quit=app.quit, capture=bool(app.chart_interaction_state.get("capture")))')
 
@@ -189,9 +189,9 @@ def test_wide_utf8_and_raw_mouse_reports_preserve_live_graph_gestures(tmp_path, 
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 250, 300, 0, 0))
     environment = dict(os.environ, TERM=terminal, LC_ALL="C.UTF-8", PYTHONPATH=str(root),
-                       TOWER_PTY_READY=str(ready), TOWER_PTY_RESULT=str(result),
-                       TOWER_PTY_PREFIX=str(prefix), TOWER_PTY_WARMUP=str(warmup),
-                       TOWER_PTY_ESCAPED=str(escaped))
+                       RAVEN_PTY_READY=str(ready), RAVEN_PTY_RESULT=str(result),
+                       RAVEN_PTY_PREFIX=str(prefix), RAVEN_PTY_WARMUP=str(warmup),
+                       RAVEN_PTY_ESCAPED=str(escaped))
     process = subprocess.Popen([sys.executable, str(script)], cwd=root, env=environment,
                                stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
@@ -261,14 +261,14 @@ def test_wide_utf8_and_raw_mouse_reports_preserve_live_graph_gestures(tmp_path, 
 
 
 KEY_CHILD = CHILD.replace('result = {"events": []}', 'result = {"events": [], "payloads": []}').replace(
-    'Path(os.environ["TOWER_PTY_READY"]).touch()',
-    'publish_marker(os.environ["TOWER_PTY_READY"], json.dumps(list(screen._terminal_keys(curses).items())))').replace(
+    'Path(os.environ["RAVEN_PTY_READY"]).touch()',
+    'publish_marker(os.environ["RAVEN_PTY_READY"], json.dumps(list(screen._terminal_keys(curses).items())))').replace(
     'result["events"].append(event[0])',
     '''result["events"].append(event[0])
         result["payloads"].append(event[1])
-        publish_marker(os.environ["TOWER_PTY_WARMUP"], str(len(result["events"])))
+        publish_marker(os.environ["RAVEN_PTY_WARMUP"], str(len(result["events"])))
         if event[0] == "resize":
-            Path(os.environ["TOWER_PTY_PREFIX"]).touch()''').replace(
+            Path(os.environ["RAVEN_PTY_PREFIX"]).touch()''').replace(
     'screen._apply_input(app, event, cache.hits, curses)',
     '''if event[0] in ("mouse", "q"):
             screen._apply_input(app, event, cache.hits, curses)''')
@@ -289,9 +289,9 @@ def test_raw_input_preserves_actual_terminal_keys_unicode_paste_and_resize(tmp_p
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 160, 0, 0))
     environment = dict(os.environ, TERM=terminal, LC_ALL="C.UTF-8", PYTHONPATH=str(root),
-                       TOWER_PTY_READY=str(ready), TOWER_PTY_RESULT=str(result),
-                       TOWER_PTY_PREFIX=str(prefix), TOWER_PTY_WARMUP=str(warmup),
-                       TOWER_PTY_ESCAPED=str(escaped))
+                       RAVEN_PTY_READY=str(ready), RAVEN_PTY_RESULT=str(result),
+                       RAVEN_PTY_PREFIX=str(prefix), RAVEN_PTY_WARMUP=str(warmup),
+                       RAVEN_PTY_ESCAPED=str(escaped))
     process = subprocess.Popen([sys.executable, str(script)], cwd=root, env=environment,
                                stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
@@ -375,10 +375,10 @@ def test_raw_input_preserves_actual_terminal_keys_unicode_paste_and_resize(tmp_p
 
 
 SLOW_CHILD = CHILD.replace(
-    'Path(os.environ["TOWER_PTY_PREFIX"]).touch()',
-    'publish_marker(os.environ["TOWER_PTY_PREFIX"], str(len(result["events"])))').replace(
-    'Path(os.environ["TOWER_PTY_WARMUP"]).touch()',
-    'publish_marker(os.environ["TOWER_PTY_WARMUP"], str(sum(name == "mouse" for name in result["events"])))')
+    'Path(os.environ["RAVEN_PTY_PREFIX"]).touch()',
+    'publish_marker(os.environ["RAVEN_PTY_PREFIX"], str(len(result["events"])))').replace(
+    'Path(os.environ["RAVEN_PTY_WARMUP"]).touch()',
+    'publish_marker(os.environ["RAVEN_PTY_WARMUP"], str(sum(name == "mouse" for name in result["events"])))')
 
 
 @pytest.mark.skipif(os.name != "posix", reason="A POSIX pseudo-terminal is required")
@@ -395,9 +395,9 @@ def test_every_utf8_mouse_byte_boundary_remains_framed_after_300ms(tmp_path, ter
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 160, 0, 0))
     environment = dict(os.environ, TERM=terminal, LC_ALL="C.UTF-8", PYTHONPATH=str(root),
-                       TOWER_PTY_READY=str(ready), TOWER_PTY_RESULT=str(result),
-                       TOWER_PTY_PREFIX=str(prefix), TOWER_PTY_WARMUP=str(warmup),
-                       TOWER_PTY_ESCAPED=str(escaped))
+                       RAVEN_PTY_READY=str(ready), RAVEN_PTY_RESULT=str(result),
+                       RAVEN_PTY_PREFIX=str(prefix), RAVEN_PTY_WARMUP=str(warmup),
+                       RAVEN_PTY_ESCAPED=str(escaped))
     process = subprocess.Popen([sys.executable, str(script)], cwd=root, env=environment,
                                stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)

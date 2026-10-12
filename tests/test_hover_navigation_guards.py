@@ -4,14 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as charts, clock, layout, metric_live, text_selection
-from tower.config import Config
-from tower.controller import App
-from tower.metrics import write_metric
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import TABS, Views
+from raven import chart_interaction as charts, clock, layout, metric_live, text_selection
+from raven.config import Config
+from raven.controller import App
+from raven.metrics import write_metric
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import TABS, Views
 
 
 @pytest.fixture

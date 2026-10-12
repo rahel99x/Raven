@@ -3,10 +3,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import charts, chart_interaction as C, clock, layout as L, metric_live as M
-from tower.config import Config
-from tower.native_series_cache import ObservationIndex
-from tower.views import Views, _metric_edge_signature
+from raven import charts, chart_interaction as C, clock, layout as L, metric_live as M
+from raven.config import Config
+from raven.native_series_cache import ObservationIndex
+from raven.views import Views, _metric_edge_signature
 
 
 @pytest.fixture
@@ -167,7 +167,7 @@ def test_short_forward_replay_seek_forces_exact_new_published_domain(native):
 
 def test_rate_request_change_forces_presentation_even_if_effective_interval_is_capped(native, monkeypatch):
     d = native
-    monkeypatch.setattr("tower.metric_sampling.cadence", lambda *args: 5.)
+    monkeypatch.setattr("raven.metric_sampling.cadence", lambda *args: 5.)
     _, first = d.draw()
     d.timer[0] += .2
     _, still = d.draw()

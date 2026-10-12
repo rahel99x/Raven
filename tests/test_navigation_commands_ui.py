@@ -6,14 +6,14 @@ import shlex
 
 import pytest
 
-from tower import command_ui as commands
-from tower import navigation_ui as navigation
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text, vlen
-from tower.model import Finished, Job, Store
-from tower.remote import RemoteFiles
-from tower.views import Views
+from raven import command_ui as commands
+from raven import navigation_ui as navigation
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text, vlen
+from raven.model import Finished, Job, Store
+from raven.remote import RemoteFiles
+from raven.views import Views
 
 
 @pytest.fixture
@@ -347,7 +347,7 @@ def test_palette_completes_quoted_path_with_spaces(dashboard, tmp_path, monkeypa
 
 def test_palette_local_home_completion_expands_without_shell(dashboard, tmp_path, monkeypatch):
     app, _, _ = dashboard
-    monkeypatch.setattr("tower.command_ui.os.path.expanduser", lambda value: str(tmp_path / value[2:]) if value.startswith("~/") else value)
+    monkeypatch.setattr("raven.command_ui.os.path.expanduser", lambda value: str(tmp_path / value[2:]) if value.startswith("~/") else value)
     (tmp_path / "metric sample.jsonl").write_text("{}\n")
     palette(app, "metrics ~/metric")
     assert commands.complete(app)
@@ -476,12 +476,12 @@ def test_workspace_picker_unicode_query_remains_editable_and_saved(dashboard, as
 
 def test_controller_attaches_unicode_quoted_metric_path_without_escape_conversion(dashboard, tmp_path):
     app, _, _ = dashboard
-    from tower.research import ResearchHub
+    from raven.research import ResearchHub
     app.research = ResearchHub(app.cfg)
     app.files = app.logs.files = app.research.files
     path = tmp_path / "项目 目录" / "训练 日志🧪.jsonl"
     path.parent.mkdir()
-    path.write_text('{"schema":"tower.metric/v1","t":1,"values":{"loss":0.2}}\n')
+    path.write_text('{"schema":"raven.metric/v1","t":1,"values":{"loss":0.2}}\n')
     try:
         app.run_command("metrics " + shlex.quote(str(path)))
         assert app.command_ok
@@ -530,7 +530,7 @@ def test_remote_completion_uses_known_paths_and_never_local_listing(dashboard, m
     app, _, _ = dashboard
     app.files = object.__new__(RemoteFiles)
     app.logs.entries = [{"path": "/remote/my job.log", "label": "known worker"}]
-    monkeypatch.setattr("tower.command_ui.os.scandir", lambda path: pytest.fail("remote completion attempted local listing"))
+    monkeypatch.setattr("raven.command_ui.os.scandir", lambda path: pytest.fail("remote completion attempted local listing"))
     palette(app, "metrics /remote/my")
     assert commands.complete(app)
     assert commands.parse_command_line(app.palette_edit) == ["metrics", "/remote/my job.log"]

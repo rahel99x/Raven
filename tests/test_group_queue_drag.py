@@ -5,13 +5,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import group_queue_drag as D, job_group_drag as M, job_groups as G
-from tower import job_selection as S, layout as L, manual_job_groups as MG, queue_order_ui as Q
-from tower import screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import group_queue_drag as D, job_group_drag as M, job_groups as G
+from raven import job_selection as S, layout as L, manual_job_groups as MG, queue_order_ui as Q
+from raven import screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 from test_job_group_mouse_integration import dispatch
 
 REAL_PREPARE_DROP = Q.prepare_drop
@@ -99,7 +99,8 @@ def test_plain_group_row_drag_selects_while_alt_job_drag_changes_membership(dash
     send(ui, row(ui, "1"), "press", route)
     send(ui, row(ui, "3"), "drag", route)
     send(ui, row(ui, "3"), "release", route)
-    assert app.marks == {"1", "2", "3"} and not ui.calls
+    # Whole-batch sorting puts independent rows 3, 6, 9 before group 1, 2.
+    assert app.marks == {"1", "3", "6", "9"} and not ui.calls
     assert app.table_state["manual_groups"] == original
     app.marks = {"3"}
     S._bind_marks(app, ("3",))
@@ -161,7 +162,7 @@ def test_stale_painted_drag_cancels_and_eats_late_release(dashboard, route, chan
 def test_reused_attempt_without_repaint_reaches_validator_but_not_operations(dashboard, monkeypatch, which):
     ui, app = dashboard, dashboard.app
     # Restore the real last-mile validator. No scheduler adapter should open.
-    from tower import ops_ui
+    from raven import ops_ui
     monkeypatch.setattr(Q, "prepare_drop", REAL_PREPARE_DROP)
     monkeypatch.setattr(ops_ui, "_open", lambda *_a, **_kw: pytest.fail("Stale evidence opened an operation"))
     send(ui, grip(ui, ui.groups[0]), "press")
@@ -182,9 +183,9 @@ def test_repaint_cannot_retarget_a_drop_under_an_unmoved_pointer(dashboard):
     send(ui, grip(ui, source), "press")
     send(ui, target_point, "drag")
     assert D.active(app)
-    # Two unrelated jobs disappear. The source stays put and both frozen
-    # groups stay valid, but the third group now sits beneath the pointer.
-    ui.store.jobs[:] = [job for job in ui.store.jobs if job.id not in ("3", "6")]
+    # One unrelated job disappears. Both frozen groups stay valid, but the
+    # third group now sits beneath the pointer in the sorted batch layout.
+    ui.store.jobs[:] = [job for job in ui.store.jobs if job.id != "3"]
     draw(ui)
     assert grip(ui, ui.groups[-1]) == target_point
     send(ui, target_point, "release")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copyable stdlib producer for the Tower project interchange convention.
+"""Copyable stdlib producer for the Raven project interchange convention.
 
 One coordinator writes each run. This example is instrumentation, not a job
 launcher or a distributed logging service. Unknown measurements stay unknown.
@@ -252,10 +252,10 @@ def _log_path(run_dir, value):
 
 
 def _log_index(run_dir, value, manifest=None):
-    if (not isinstance(value, dict) or value.get("schema") != "tower.logs/v1"
+    if (not isinstance(value, dict) or value.get("schema") != "raven.logs/v1"
             or set(value) - {"schema", "logs", "run_id", "job_id"}
             or not isinstance(value.get("logs"), list) or len(value["logs"]) > MAX_LOGS):
-        raise ValueError("log index must be a bounded tower.logs/v1 object")
+        raise ValueError("log index must be a bounded raven.logs/v1 object")
     if "run_id" in value and value["run_id"] != run_dir.name:
         raise ValueError("log index run_id must describe the selected run")
     if "job_id" in value:
@@ -292,7 +292,7 @@ def register_log(run_dir, id, path, *, label="", group="", description=""):
     """
     run_dir = _directory(run_dir)
     manifest = _read_json(run_dir / "run.json")
-    if (not isinstance(manifest, dict) or manifest.get("schema") != "tower.run/v1"
+    if (not isinstance(manifest, dict) or manifest.get("schema") != "raven.run/v1"
             or manifest.get("run_id") != run_dir.name):
         raise ValueError("run manifest must describe the selected run")
     index_path = run_dir / "logs.json"
@@ -309,9 +309,9 @@ def register_log(run_dir, id, path, *, label="", group="", description=""):
 
 def _summary(row):
     """Check the shared producer profile without adding a schema dependency."""
-    if (not isinstance(row, dict) or row.get("schema") != "tower.summary/v1"
+    if (not isinstance(row, dict) or row.get("schema") != "raven.summary/v1"
             or not isinstance(row.get("state"), str) or row["state"] not in TERMINAL):
-        raise ValueError("each selected run must have a terminal tower.summary/v1 object")
+        raise ValueError("each selected run must have a terminal raven.summary/v1 object")
     if set(row) - SUMMARY_KEYS:
         raise ValueError("unknown summary fields; place project extensions in results or metadata")
     ident = row.get("id")
@@ -407,7 +407,7 @@ def begin_run(root, run_id, *, name, script, experiment_id=None, attempt=1,
         (run_dir / child).mkdir(mode=0o700)
     for filename in ("metrics.jsonl", "logs/stdout.log", "logs/stderr.log"):
         (run_dir / filename).touch(mode=0o600, exist_ok=False)
-    manifest = {"schema": "tower.run/v1", "run_id": run_id, "experiment_id": experiment_id,
+    manifest = {"schema": "raven.run/v1", "run_id": run_id, "experiment_id": experiment_id,
                 "attempt": attempt, "name": name, "state": "RUNNING", "start": time.time(),
                 "parameters": parameters, "resources": resource_data,
                 "provenance": {"script": str(script_path.relative_to(root)), "script_sha256": digest.hexdigest()},
@@ -419,7 +419,7 @@ def begin_run(root, run_id, *, name, script, experiment_id=None, attempt=1,
         manifest["job_id"] = job_id
     if input_size is not None:
         manifest["input_size"] = input_size
-    log_index = {"schema": "tower.logs/v1", "run_id": run_id, "logs": [
+    log_index = {"schema": "raven.logs/v1", "run_id": run_id, "logs": [
         {"id": "application.stdout", "path": "logs/stdout.log", "label": "Application stdout", "group": "Application"},
         {"id": "application.stderr", "path": "logs/stderr.log", "label": "Application stderr", "group": "Application"}]}
     if job_id is not None:
@@ -430,7 +430,7 @@ def begin_run(root, run_id, *, name, script, experiment_id=None, attempt=1,
 
 
 def write_metric(run_dir, metrics, *, step=None, phase=None, progress=None, t=None):
-    """Append one native Tower JSONL row; use one coordinator per run."""
+    """Append one native Raven JSONL row; use one coordinator per run."""
     run_dir = _directory(run_dir)
     if not isinstance(metrics, dict) or len(metrics) > 64:
         raise ValueError("metrics must be an object with at most 64 entries")
@@ -474,12 +474,12 @@ def finish_run(run_dir, *, state, runtime_seconds=None, cpu_seconds=None,
     if not isinstance(state, str) or state not in TERMINAL:
         raise ValueError("finish_run requires an explicit uppercase terminal state")
     manifest = _read_json(run_dir / "run.json")
-    if (not isinstance(manifest, dict) or manifest.get("schema") != "tower.run/v1" or manifest.get("state") != "RUNNING"
+    if (not isinstance(manifest, dict) or manifest.get("schema") != "raven.run/v1" or manifest.get("state") != "RUNNING"
             or not {"run_id", "name", "experiment_id", "attempt", "start", "parameters", "provenance"} <= manifest.keys()
             or not isinstance(manifest.get("provenance"), dict) or "script_sha256" not in manifest["provenance"]
             or manifest.get("run_id") != run_dir.name):
-        raise ValueError("run manifest must describe an unfinished Tower run")
-    summary = {"schema": "tower.summary/v1", "id": manifest["run_id"], "name": manifest["name"],
+        raise ValueError("run manifest must describe an unfinished Raven run")
+    summary = {"schema": "raven.summary/v1", "id": manifest["run_id"], "name": manifest["name"],
                "experiment_id": manifest["experiment_id"], "attempt": manifest["attempt"], "state": state,
                "start": manifest["start"], "end": time.time(), "parameters": manifest["parameters"],
                "script_sha256": manifest["provenance"]["script_sha256"], **_resources(manifest.get("resources", {}))}
@@ -523,7 +523,7 @@ def export_planning(root, run_dirs, *, reference_run=None, output="reports/plann
     """Aggregate at most 256 explicit attempt paths; never scan or launch jobs.
 
     All terminal states are preserved. Reference query identity is explicit;
-    missing resources remain missing and Tower will withhold unsupported fits.
+    missing resources remain missing and Raven will withhold unsupported fits.
     """
     root = _directory(root)
     if isinstance(run_dirs, (str, bytes, Path)):
@@ -536,7 +536,7 @@ def export_planning(root, run_dirs, *, reference_run=None, output="reports/plann
         row = _summary(_read_json(run_dir / "summary.json"))
         manifest = _read_json(run_dir / "run.json")
         ident = row["id"]
-        if (not isinstance(manifest, dict) or manifest.get("schema") != "tower.run/v1"
+        if (not isinstance(manifest, dict) or manifest.get("schema") != "raven.run/v1"
                 or manifest.get("run_id") != ident or ident != run_dir.name or manifest.get("state") != row["state"]):
             raise ValueError("run directory, manifest, and terminal summary must agree")
         if ident in seen:
@@ -549,7 +549,7 @@ def export_planning(root, run_dirs, *, reference_run=None, output="reports/plann
         paths[run_dir] = row
     if not rows:
         raise ValueError("choose at least one explicit run directory")
-    bundle = {"version": 1, "kind": "tower.planning", "history": rows}
+    bundle = {"version": 1, "kind": "raven.planning", "history": rows}
     if reference_run is not None:
         reference = _directory(_under(root, reference_run))
         if reference not in paths:
@@ -562,8 +562,8 @@ def export_planning(root, run_dirs, *, reference_run=None, output="reports/plann
     target = _under(root, output, create_parent=True)
     if target.exists() or target.is_symlink():
         existing = _read_json(target)
-        if not isinstance(existing, dict) or existing.get("version") != 1 or existing.get("kind") != "tower.planning":
-            raise ValueError("refusing to overwrite a file that is not a Tower planning bundle")
+        if not isinstance(existing, dict) or existing.get("version") != 1 or existing.get("kind") != "raven.planning":
+            raise ValueError("refusing to overwrite a file that is not a Raven planning bundle")
     _atomic_json(target, bundle, replace=True)
     return bundle
 
@@ -572,26 +572,26 @@ def publish_research(run_dir, view, document):
     """Publish one actual native source and bind its exact per-run location.
 
     This stdlib helper checks the interchange header, finite bounded JSON and
-    selected job identity. Tower's native analysis performs scientific checks;
+    selected job identity. Raven's native analysis performs scientific checks;
     this helper does not create observations, launch jobs, or execute plans.
-    ``submit`` accepts only an intact native ``tower run prepare`` result and
+    ``submit`` accepts only an intact native ``raven run prepare`` result and
     remains a read-only report in the dashboard. Use one run coordinator.
     """
     if not isinstance(view, str) or view not in REPORT_VIEWS:
         raise ValueError("report view must be planning, predict, forecast, blockers, tradeoffs, scaling, workflow, or submit")
     run_dir = _directory(run_dir)
     manifest = _read_json(run_dir / "run.json")
-    if (not isinstance(manifest, dict) or manifest.get("schema") != "tower.run/v1"
+    if (not isinstance(manifest, dict) or manifest.get("schema") != "raven.run/v1"
             or manifest.get("run_id") != run_dir.name or not isinstance(manifest.get("paths", {}), dict)):
         raise ValueError("run manifest must describe the selected run")
     if not isinstance(document, dict):
         raise ValueError("report must be a native JSON object")
     _encoded(document, MAX_AGGREGATE)
     if view == "submit":
-        if (document.get("schema") != "tower.submission-plan/v1"
+        if (document.get("schema") != "raven.submission-plan/v1"
                 or not set(PLAN_FIELDS) <= document.keys() or not isinstance(document.get("valid"), bool)
                 or not isinstance(document.get("resources"), dict) or not isinstance(document.get("issues"), list)):
-            raise ValueError("submit report must be an intact native tower.submission-plan/v1 preflight")
+            raise ValueError("submit report must be an intact native raven.submission-plan/v1 preflight")
         fields = {key: document[key] for key in PLAN_FIELDS}
         fields.update({key: document[key] for key in PLAN_WORKFLOW_FIELDS if key in document})
         digest = hashlib.sha256(json.dumps(fields, sort_keys=True, ensure_ascii=True,
@@ -599,9 +599,9 @@ def publish_research(run_dir, view, document):
         if document.get("plan_id") != digest:
             raise ValueError("preflight plan_id does not match its captured review fields")
     else:
-        kinds = {"tower.planning"}
+        kinds = {"raven.planning"}
         if view in {"workflow", "scaling"}:
-            kinds.add("tower." + view)
+            kinds.add("raven." + view)
         if (type(document.get("version")) is not int or document["version"] != 1
                 or document.get("kind") not in kinds):
             raise ValueError("planning reports require their native version-1 planning/workflow/scaling header")

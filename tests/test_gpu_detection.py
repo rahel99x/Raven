@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from tower.model import Finished, GpuSample, Job, Store, gres_gpus, gpus_in_tres
-from tower.sampler import Sampler
-from tower.slurm import (CommandError, GPU_ALLOC_FMT, Slurm, parse_gpu_allocations,
+from raven.model import Finished, GpuSample, Job, Store, gres_gpus, gpus_in_tres
+from raven.sampler import Sampler
+from raven.slurm import (CommandError, GPU_ALLOC_FMT, Slurm, parse_gpu_allocations,
                          parse_gpu_trace, parse_nvsmi)
 
 
@@ -74,7 +74,7 @@ def test_per_job_gpu_allocation_is_discovered_without_scontrol_or_cpu_probes():
                 assert cmd == ["squeue", "-u", "alex", "-h", "-O", GPU_ALLOC_FMT]
                 return "7|cpu=8,gres/gpu=1,gres/gpu:rtx4090=1\n8|cpu=8\n7_1|gres/gpu=4\n", 0
             assert cmd[0] == "srun" and cmd[cmd.index("--jobid") + 1] == "7"
-            return json.dumps(dict(tower_gpu=1, node="desktop", job_id="7", gpus="0", vendors={"nvidia": {"metrics": "0, 75, 2000, 24000, NVIDIA RTX 4090"}}), separators=(",", ":")), 0
+            return json.dumps(dict(raven_gpu=1, node="desktop", job_id="7", gpus="0", vendors={"nvidia": {"metrics": "0, 75, 2000, 24000, NVIDIA RTX 4090"}}), separators=(",", ":")), 0
 
     backend = Backend()
     sampler, store = make_sampler(Slurm(backend, "alex"), [
@@ -98,7 +98,7 @@ def test_unsupported_allocation_field_is_probed_once_then_legacy_gpu_still_sampl
             self.calls.append(cmd)
             if cmd[0] == "squeue":
                 raise CommandError("squeue: Invalid job format specification: tres-alloc")
-            return json.dumps(dict(tower_gpu=1, node="desktop", job_id="2", gpus="0", vendors={"nvidia": {"metrics": "0, 50, 512, 1024, GPU"}}), separators=(",", ":")), 0
+            return json.dumps(dict(raven_gpu=1, node="desktop", job_id="2", gpus="0", vendors={"nvidia": {"metrics": "0, 50, 512, 1024, GPU"}}), separators=(",", ":")), 0
 
     backend = Backend()
     sampler, store = make_sampler(Slurm(backend, "alex"), [
@@ -380,7 +380,7 @@ def test_every_gpu_tick_rechecks_cached_allocation_and_applies_corrections(corre
 
 
 def test_allocation_failures_cannot_extend_short_cache_expiry(monkeypatch, tmp_path):
-    from tower import sampler as module
+    from raven import sampler as module
     now = [100.]
     monkeypatch.setattr(module.time, "monotonic", lambda: now[0])
     sampler, store, _, _ = cached_sampler(tmp_path)
@@ -408,7 +408,7 @@ def test_allocation_failures_cannot_extend_short_cache_expiry(monkeypatch, tmp_p
 
 
 def test_cache_expiry_clears_current_inferred_publication_before_gpu_retry(monkeypatch, tmp_path):
-    from tower import sampler as module
+    from raven import sampler as module
     now = [100.]
     monkeypatch.setattr(module.time, "monotonic", lambda: now[0])
     sampler, store, _, _ = cached_sampler(tmp_path)
@@ -472,7 +472,7 @@ def test_authoritative_queue_gpu_change_wins_over_inferred_cache(tmp_path):
 
 
 def test_positive_cache_is_bounded_even_with_more_active_jobs(monkeypatch):
-    from tower import sampler as module
+    from raven import sampler as module
     assert module.GPU_ALLOCATION_CACHE_MAX == 10000
     monkeypatch.setattr(module, "GPU_ALLOCATION_CACHE_MAX", 2)
     factory = lambda jid: Job(jid, "gpu", "gpu", "RUNNING")
@@ -492,7 +492,7 @@ def test_positive_cache_is_bounded_even_with_more_active_jobs(monkeypatch):
 
 
 def test_positive_cache_expiry_uses_bounded_effective_polling(monkeypatch, tmp_path):
-    from tower import sampler as module
+    from raven import sampler as module
     monkeypatch.setattr(module.time, "monotonic", lambda: 100.)
     sampler, _, _, _ = cached_sampler(tmp_path)
     sampler.intervals["gpu"] = 3600

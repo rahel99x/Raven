@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import clock, job_panels, metric_live as M, record
-from tower.model import Job
+from raven import clock, job_panels, metric_live as M, record
+from raven.model import Job
 
 
 KEY = ("resource-series", "42", "cpu-rate", "%", "attempt")

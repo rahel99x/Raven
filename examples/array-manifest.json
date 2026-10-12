@@ -1,5 +1,5 @@
 {
-  "schema": "tower.array-manifest/v1",
+  "schema": "raven.array-manifest/v1",
   "cluster": "",
   "array_id": "12345",
   "entries": [

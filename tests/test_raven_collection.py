@@ -7,14 +7,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.config import Config
-from tower.model import Job, Store
-from tower.platform_session import wrap_backend
-from tower.raven_collection import (DEFAULTS, Deferred, Descriptor, Ledger, classify,
+from raven.config import Config
+from raven.model import Job, Store
+from raven.platform_session import wrap_backend
+from raven.raven_collection import (DEFAULTS, Deferred, Descriptor, Ledger, classify,
                                     admit_allocation_launch, admit_terminal_launch,
-                                    expand_hostlist, make_placement_verifier, wrap_files)
-from tower.shared_collection import SharedQueryCache
-from tower.slurm import CommandError, Slurm
+                                    expand_hostlist, make_placement_verifier, settings, wrap_files)
+from raven.shared_collection import SharedQueryCache
+from raven.slurm import CommandError, Slurm
 
 
 class Timer:
@@ -53,11 +53,11 @@ def ledger(tmp_path, timer=None, **config):
 
 
 def test_legacy_cli_sixty_second_interval_stays_sixty_seconds():
-    from tower import cli
+    from raven import cli
     session = cli.build(cli.parse(["--fake", "--no-state", "--no-plugins", "--interval", "60"]), Config())
     try:
         assert session.sampler.effective_interval("jobs") == 60
-        from tower.refresh_rate import candidate_cadence
+        from raven.refresh_rate import candidate_cadence
         assert candidate_cadence(session.app, "jobs", 1) == 60
     finally:
         session.close()
@@ -98,7 +98,7 @@ def test_allocation_launch_debits_controller_and_step_without_holding_worker_slo
     assert report["rates_last_minute"]["process"] == 2
     assert report["inflight"] == 0
     assert raw.commands == []
-    with pytest.raises(Deferred, match="steps budget"):
+    with pytest.raises(Deferred, match="step launch cooldown"):
         admit_allocation_launch(governed, {"site_kind": "slurm", "ownership": "owned-step-only", "prefix": ["srun", "--jobid=7"]})
     assert governed.ledger.report()["inflight"] == 0
 
@@ -124,9 +124,203 @@ def test_reviewed_terminal_launch_uses_persisted_step_allowance(tmp_path):
     receipt = admit_terminal_launch(governed, ["sattach", "123.0"])
     assert receipt["endpoint"] == "steps"
     assert governed.ledger.report()["inflight"] == 0
-    with pytest.raises(Deferred, match="steps budget"):
+    with pytest.raises(Deferred, match="step launch cooldown"):
         admit_terminal_launch(governed, ["srun", "--jobid=123", "--pty", "bash"])
     assert not raw.commands
+
+
+@pytest.mark.parametrize("validation", [False, True])
+def test_step_cooldown_is_ten_seconds_across_commands_wrappers_and_profiles(tmp_path, validation):
+    timer = Timer()
+    first = ledger(tmp_path, timer)
+    argv = ["srun", "--jobid=7", "--pty", "bash"]
+    with first.admit(classify(argv), argv, validation=validation):
+        pass
+    second = Ledger(first.cache, {"cluster": "test", "user": "researcher", "profile": "Heavy", "mode": "heavy"}, first.config, now=timer)
+    other = ["sattach", "8.0"]
+    timer.value = 1009.5
+    with pytest.raises(Deferred, match="step launch cooldown.*0.50 seconds") as denied:
+        with second.admit(classify(other), other, validation=validation):
+            pytest.fail("A new command or profile must not bypass the step cooldown")
+    assert denied.value.retry_after == .5
+    assert first.report()["rates_last_minute"]["steps"] == 1
+    timer.value = 1010.
+    with second.admit(classify(other), other, validation=validation):
+        pass
+    timer.value = 1020.
+    with second.admit(classify(other), other, validation=validation):
+        pass
+    assert first.report()["rates_last_minute"]["steps"] == 3
+
+
+def test_failed_step_attempt_keeps_the_cooldown_and_rolling_debit(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer)
+    argv = ["srun", "--jobid=7"]
+    with pytest.raises(OSError, match="worker unavailable"):
+        with owner.admit(classify(argv), argv, validation=True):
+            raise OSError("worker unavailable")
+    timer.value = 1009.999
+    other = ["srun", "--jobid=8"]
+    with pytest.raises(Deferred, match="step launch cooldown"):
+        with owner.admit(classify(other), other, validation=True):
+            pytest.fail("Failed attempts must retain admission debits")
+    timer.value = 1010.
+    with owner.admit(classify(other), other, validation=True):
+        pass
+    assert owner.report()["rates_last_minute"]["steps"] == 2
+
+
+def test_step_minute_quota_remains_independent_from_spacing(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer, step_launch_interval_seconds=.1)
+    for index in range(6):
+        timer.value = 1000. + index
+        argv = ["srun", "--jobid=" + str(index)]
+        with owner.admit(classify(argv), argv, validation=True):
+            pass
+    timer.value = 1015.
+    argv = ["srun", "--jobid=7"]
+    with pytest.raises(Deferred, match="rolling steps budget"):
+        with owner.admit(classify(argv), argv, validation=True):
+            pytest.fail("Spacing cannot bypass the rolling six-step allowance")
+    timer.value = 1060.
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+    assert owner.report()["rates_last_minute"]["steps"] == 6
+
+
+def test_explicit_stricter_step_quota_is_preserved(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer, step_launches_per_minute=1)
+    argv = ["srun", "--jobid=7"]
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+    timer.value = 1010.
+    with pytest.raises(Deferred, match="rolling steps budget"):
+        with owner.admit(classify(argv), argv, validation=True):
+            pytest.fail("A strict user or site quota still applies after the cooldown")
+    timer.value = 1060.
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+
+
+def test_step_cooldown_longer_than_minute_survives_request_pruning(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer, step_launch_interval_seconds=120.)
+    argv = ["srun", "--jobid=7"]
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+    timer.value = 1061.
+    # An unrelated endpoint can prune the old rolling request records.
+    queue = ["squeue"]
+    with owner.admit(classify(queue), queue):
+        pass
+    assert "steps" not in owner.report()["rates_last_minute"]
+    second = Ledger(owner.cache, {"cluster": "test", "user": "researcher", "profile": "other"}, owner.config, now=timer)
+    with pytest.raises(Deferred, match="step launch cooldown") as denied:
+        with second.admit(classify(argv), argv, validation=True):
+            pytest.fail("Pruning must not lower a longer configured or mandatory cooldown")
+    assert denied.value.retry_after == 59.
+    timer.value = 1120.
+    with second.admit(classify(argv), argv, validation=True):
+        pass
+
+
+def test_step_cooldown_upgrade_preserves_legacy_debits_before_pruning(tmp_path):
+    from raven import evidence as E
+    timer = Timer()
+    timer.value = 1061.
+    cache = SharedQueryCache(tmp_path / "legacy-ledger")
+    scope = {"cluster": "test", "user": "researcher"}
+    identity = E.digest(scope)
+    with cache._connection() as db:
+        db.executescript("""
+            CREATE TABLE raven_requests (scope TEXT, endpoint TEXT, started REAL);
+            CREATE TABLE raven_endpoints (scope TEXT, endpoint TEXT, failures INTEGER, until REAL, PRIMARY KEY(scope,endpoint));
+        """)
+        db.execute("INSERT INTO raven_requests VALUES (?,?,?)", (identity, "steps", 1000.))
+        db.execute("INSERT INTO raven_endpoints VALUES (?,?,?,?)", (identity, "steps", 2, 0.))
+    owner = Ledger(cache, scope, {"step_launch_interval_seconds": 120.}, now=timer)
+    with cache._connection() as db:
+        assert db.execute("SELECT failures,last_launch FROM raven_endpoints WHERE scope=? AND endpoint='steps'", (identity,)).fetchone() == (2, 1000.)
+        assert "cost" in {row[1] for row in db.execute("PRAGMA table_info(raven_requests)")}
+    argv = ["srun", "--jobid=7"]
+    with pytest.raises(Deferred, match="step launch cooldown"):
+        with owner.admit(classify(argv), argv, validation=True):
+            pytest.fail("An upgrade must not erase a recent launch under a longer site floor")
+    timer.value = 1120.
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+
+
+def test_simultaneous_step_owners_share_one_atomic_cooldown(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    timer = Timer()
+    first = ledger(tmp_path, timer)
+    second = Ledger(first.cache, {"cluster": "test", "user": "researcher", "profile": "other"}, first.config, now=timer)
+    ready = threading.Barrier(2)
+
+    def launch(owner, job):
+        argv = ["srun", "--jobid=" + job]
+        ready.wait()
+        try:
+            with owner.admit(classify(argv), argv, validation=True):
+                return "admitted"
+        except Deferred as exc:
+            assert "step launch cooldown" in str(exc)
+            return "deferred"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        attempts = [pool.submit(launch, first, "7"), pool.submit(launch, second, "8")]
+        assert sorted(item.result() for item in attempts) == ["admitted", "deferred"]
+    assert first.report()["rates_last_minute"]["steps"] == 1
+    assert first.report()["inflight"] == 0
+
+
+def test_simultaneous_ledger_upgrade_adds_step_timestamp_once(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    cache = SharedQueryCache(tmp_path / "legacy-ledger")
+    with cache._connection() as db:
+        db.executescript("""
+            CREATE TABLE raven_requests (scope TEXT, endpoint TEXT, started REAL);
+            CREATE TABLE raven_endpoints (scope TEXT, endpoint TEXT, failures INTEGER, until REAL, PRIMARY KEY(scope,endpoint));
+        """)
+    ready = threading.Barrier(2)
+
+    def upgrade(profile):
+        ready.wait()
+        return Ledger(cache, {"cluster": "test", "user": "researcher", "profile": profile}, {}, now=Timer())
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        attempts = [pool.submit(upgrade, name) for name in ("one", "two")]
+        owners = [item.result() for item in attempts]
+    assert owners[0].scope == owners[1].scope
+    with cache._connection() as db:
+        columns = [row[1] for row in db.execute("PRAGMA table_info(raven_endpoints)")]
+        assert columns.count("last_launch") == 1
+
+
+def test_step_cooldown_does_not_add_a_probe_interval(tmp_path):
+    owner = ledger(tmp_path)
+    step = ["srun", "--jobid=7"]
+    with owner.admit(classify(step), step, validation=True):
+        pass
+    for name in ("one.sh", "two.sh"):
+        argv = ["sbatch", "--test-only", name]
+        with owner.admit(classify(argv), argv, validation=True):
+            pass
+    assert owner.report()["rates_last_minute"]["probes"] == 2
+
+
+@pytest.mark.parametrize("value", [0, .05, float("nan"), float("inf"), True, "10"])
+def test_invalid_step_cooldown_is_rejected(value):
+    with pytest.raises(ValueError, match="step_launch_interval_seconds"):
+        settings({"step_launch_interval_seconds": value})
+
+
+def test_fractional_step_cooldown_is_supported():
+    assert settings({"step_launch_interval_seconds": .5})["step_launch_interval_seconds"] == .5
 
 
 def test_exact_submission_wrapper_classifies_but_shell_injection_does_not():
@@ -150,7 +344,7 @@ def test_cached_equivalent_reads_consume_one_actual_command_allowance(tmp_path):
 
 
 def test_simulations_have_independent_ephemeral_caches_and_do_not_fill_live_owner(tmp_path):
-    from tower.slurm import FakeBackend
+    from raven.slurm import FakeBackend
     raw, real = backend(tmp_path)
     real.run(["squeue"])
     cfg = {"raven": {"collection": {}}, "collection_cache_dir": str(tmp_path / "cache")}
@@ -187,9 +381,9 @@ def test_completed_cache_values_evict_under_pressure_without_resetting_source_qu
 @pytest.mark.parametrize("availability", ["available", "unavailable", "empty", "stale", "invalid", "zero"])
 def test_advised_cli_resubmit_demands_exact_running_job_and_never_silently_loses_advice(
         tmp_path, monkeypatch, capsys, target, availability):
-    from tower import cli
-    from tower.raven_config import resolve, to_tower_config
-    from tower.slurm import FakeBackend
+    from raven import cli
+    from raven.raven_config import resolve, to_raven_config
+    from raven.slurm import FakeBackend
 
     value = resolve(site="slurm", system_policy_paths=[], env={
         "HOME": str(tmp_path), "XDG_CONFIG_HOME": str(tmp_path / "config"),
@@ -230,7 +424,7 @@ def test_advised_cli_resubmit_demands_exact_running_job_and_never_silently_loses
 
         monkeypatch.setattr(cli, "settle", invalid_after_settle)
     args = cli.parse(["--fake", "--no-state", "--no-plugins", "run", "resubmit", target, "--advised", "--yes"])
-    session = cli.build(args, Config(to_tower_config(value)))
+    session = cli.build(args, Config(to_raven_config(value)))
     try:
         code = cli.scripted(args, session)
         output = capsys.readouterr().out
@@ -348,13 +542,13 @@ def test_synthetic_sessions_per_user_startup_and_refresh_flood_has_bounded_comma
 
 
 def test_host_local_cache_rejects_network_mount(tmp_path, monkeypatch):
-    monkeypatch.setattr("tower.shared_collection._network_mount", lambda path: True)
+    monkeypatch.setattr("raven.shared_collection._network_mount", lambda path: True)
     with pytest.raises(ValueError, match="host-local"):
         backend(tmp_path)
 
 
 def test_file_metadata_and_byte_budgets_remain_separate_from_controller(tmp_path):
-    from tower.remote import LocalFiles
+    from raven.remote import LocalFiles
     raw, governed = backend(tmp_path, file_bytes_per_minute=8, filesystem_metadata_per_minute=2)
     files = wrap_files(LocalFiles(), governed)
     path = tmp_path / "data.log"
@@ -386,12 +580,54 @@ def test_placement_verifier_uses_two_fresh_controller_reads_and_no_hostnames_com
     raw, governed = backend(tmp_path)
     def run(argv, timeout=8):
         raw.commands.append(tuple(argv))
-        return ("JobId=7 NodeList=n[1-2]" if argv[2] == "job" else "StepId=7.0 Nodes=n2"), .001
+        return ("JobId=7 NodeList=n[1-2]" if argv[2] == "job" else "StepId=7.0 NodeList=n2 Nodes=1"), .001
     raw.run = run
     value = make_placement_verifier(governed)({"jobid": "7", "stepid": "0", "probe_id": "nonce"})
     assert value["job_nodes"] == ["n1", "n2"] and value["step_nodes"] == ["n2"]
     assert value["probe_id"] == "nonce" and len(raw.commands) == 2
     assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
+
+
+@pytest.mark.parametrize("nodelist,count,nodes", [
+    ("system", "1", ["system"]),
+    ("n[01-02]", "2", ["n01", "n02"]),
+])
+def test_placement_verifier_prefers_step_hostlist_over_slurm_node_count(tmp_path, nodelist, count, nodes):
+    raw, governed = backend(tmp_path)
+    def run(argv, timeout=8):
+        raw.commands.append(tuple(argv))
+        return ("JobId=7 NodeList=" + nodelist if argv[2] == "job" else
+                "StepId=7.0 State=RUNNING NodeList=" + nodelist + " Nodes=" + count + " CPUs=2 Tasks=1"), .001
+    raw.run = run
+    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    assert value["job_nodes"] == value["step_nodes"] == nodes
+    assert value["probe_id"] == "launch"
+    assert raw.commands == [("scontrol", "show", "job", "7", "-o"),
+                            ("scontrol", "show", "step", "7.0", "-o")]
+    assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
+
+
+def test_placement_verifier_retains_legacy_adapter_hostlist_fallback(tmp_path):
+    raw, governed = backend(tmp_path)
+    def run(argv, timeout=8):
+        raw.commands.append(tuple(argv))
+        return ("JobId=7 NodeList=system" if argv[2] == "job" else "StepId=7.0 Nodes=system"), .001
+    raw.run = run
+    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    assert value["job_nodes"] == value["step_nodes"] == ["system"]
+
+
+@pytest.mark.parametrize("nodelist", ["", "(null)", "n[1-2"])
+def test_invalid_step_hostlist_is_not_masked_by_legacy_adapter_field(tmp_path, nodelist):
+    raw, governed = backend(tmp_path)
+    def run(argv, timeout=8):
+        raw.commands.append(tuple(argv))
+        return ("JobId=7 NodeList=system" if argv[2] == "job" else
+                "StepId=7.0 NodeList=" + nodelist + " Nodes=system"), .001
+    raw.run = run
+    with pytest.raises(ValueError):
+        make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    assert len(raw.commands) == 2
 
 
 def test_remote_effective_uid_read_is_exact_and_debits_no_scheduler_rpc(tmp_path):
@@ -408,7 +644,7 @@ def test_only_instrumentation_factory_accepts_special_job_local_steps(tmp_path, 
     raw, governed = backend(tmp_path)
     def run(argv, timeout=8):
         raw.commands.append(tuple(argv))
-        return ("JobId=7 NodeList=n1" if argv[2] == "job" else "StepId=7." + step + " Nodes=n1"), .001
+        return ("JobId=7 NodeList=n1" if argv[2] == "job" else "StepId=7." + step + " NodeList=n1 Nodes=1"), .001
     raw.run = run
     candidate = {"jobid": "7", "stepid": step, "purpose": "instrumentation"}
     with pytest.raises(ValueError, match="unambiguous"):
@@ -432,7 +668,7 @@ def test_batched_sstat_preserves_exact_array_members_and_missing_coverage():
 
 
 def test_managed_node_sampling_batches_and_retains_only_current_exact_hosts():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     raw = Recorder()
     def run(argv, timeout=8):
         raw.commands.append(tuple(argv))
@@ -455,7 +691,7 @@ def test_managed_node_sampling_batches_and_retains_only_current_exact_hosts():
 
 
 def test_managed_sampler_floors_refresh_demand_and_unsolicited_probes(tmp_path):
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     raw = Recorder()
     store = Store(persist=False)
     sampler = Sampler(Slurm(raw, "test"), store, {"jobs": 2, "live": 5}, [], collection={"jitter_fraction": 0})
@@ -484,8 +720,8 @@ def test_managed_sampler_floors_refresh_demand_and_unsolicited_probes(tmp_path):
 
 def test_governed_file_adapter_preserves_confined_local_and_real_remote_project_readers(tmp_path):
     from test_project_remote import IsolatedSSH
-    from tower import projects, project_remote
-    from tower.remote import LocalFiles, RemoteFiles
+    from raven import projects, project_remote
+    from raven.remote import LocalFiles, RemoteFiles
     raw, governed = backend(tmp_path)
     root = tmp_path / "project"
     root.mkdir()
@@ -500,8 +736,8 @@ def test_governed_file_adapter_preserves_confined_local_and_real_remote_project_
 
 
 def test_governed_remote_catalog_keeps_manifest_symlink_rejection(tmp_path):
-    from tower import log_catalog
-    from tower.remote import RemoteFiles
+    from raven import log_catalog
+    from raven.remote import RemoteFiles
     _, governed = backend(tmp_path)
     class LinkStat:
         def run(self, argv, timeout):
@@ -512,14 +748,14 @@ def test_governed_remote_catalog_keeps_manifest_symlink_rejection(tmp_path):
 
 
 def test_explicit_slow_metric_source_is_preserved_without_an_override():
-    from tower.metric_sampling import interval
+    from raven.metric_sampling import interval
     assert interval(60, 1, 1, source="live") == 60
     assert interval(60, 50, 1, source="live") == 6
     assert interval(60, 1, 100, source="live") == .5
 
 
 def test_unchanged_collection_demand_does_not_wake_background_scheduler():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
         sampler.set_collection_demand("analytics", "7")
@@ -532,10 +768,29 @@ def test_unchanged_collection_demand_does_not_wake_background_scheduler():
         sampler.shutdown()
 
 
+@pytest.mark.parametrize("mode", ["off", "existing-telemetry"])
+def test_managed_gpu_setting_controls_existing_trace_reads(mode):
+    from raven.sampler import Sampler
+    reads = []
+    files = SimpleNamespace(exists=lambda path: reads.append(path) or False)
+    raw, store = Recorder(), Store(persist=False)
+    store.jobs = [Job("7", "gpu-job", "local", "RUNNING", gpus=1, workdir="/work")]
+    sampler = Sampler(Slurm(raw, "test"), store, {}, [], files=files,
+                      collection={"gpu": mode})
+    try:
+        sampler.select_trace("7")
+        sampler.set_collection_demand("analytics", "7")
+        sampler.src_trace()
+        assert reads == ([] if mode == "off" else ["/work/logs/gpu-util-7.csv"])
+        assert not raw.commands
+    finally:
+        sampler.shutdown()
+
+
 def test_managed_initial_and_periodic_jitter_never_schedule_below_source_floor(monkeypatch):
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     timer = Timer()
-    monkeypatch.setattr("tower.sampler.time.time", timer)
+    monkeypatch.setattr("raven.sampler.time.time", timer)
     monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 2}, [], collection={})
     try:
@@ -551,9 +806,9 @@ def test_managed_initial_and_periodic_jitter_never_schedule_below_source_floor(m
 
 
 def test_explicit_snapshot_primes_only_first_visible_attempts(monkeypatch):
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     timer = Timer()
-    monkeypatch.setattr("tower.sampler.time.time", timer)
+    monkeypatch.setattr("raven.sampler.time.time", timer)
     monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
@@ -569,6 +824,61 @@ def test_explicit_snapshot_primes_only_first_visible_attempts(monkeypatch):
         sampler.want_detail = "7"
         sampler.prime_collection_snapshot()
         assert sampler._collection_not_before["details"] == 0.
+    finally:
+        sampler.shutdown()
+
+
+def test_new_visible_demand_primes_only_unsampled_sources(monkeypatch):
+    from raven.sampler import Sampler
+    timer = Timer()
+    monkeypatch.setattr("raven.sampler.time.time", timer)
+    monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
+    sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
+    try:
+        sampler.prime_collection_snapshot()
+        sampler.run_source("jobs")
+        queue_deadline = sampler._collection_not_before["jobs"]
+        assert not sampler.due("nodes", timer.value)
+        assert sampler._collection_not_before["partitions"] == 1060.
+
+        sampler.set_collection_demand("nodes")
+        assert sampler.due("nodes", timer.value)
+        assert sampler.due("partitions", timer.value)
+        assert sampler._collection_not_before["jobs"] == queue_deadline == 1072.
+        assert not sampler.due("share", timer.value)
+
+        sampler.kick.clear()
+        sampler.set_collection_demand("nodes")
+        assert not sampler.kick.is_set()
+    finally:
+        sampler.shutdown()
+
+
+@pytest.mark.parametrize("error", [CommandError("scheduler unavailable"), Deferred("command lane occupied")])
+def test_visible_demand_and_refresh_preserve_first_attempt_recovery(monkeypatch, error):
+    from raven.sampler import Sampler
+    timer = Timer()
+    monkeypatch.setattr("raven.sampler.time.time", timer)
+    monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
+    class FailingRecorder(Recorder):
+        def run(self, argv, timeout=8):
+            self.commands.append(tuple(argv))
+            raise error
+    raw = FailingRecorder()
+    sampler = Sampler(Slurm(raw, "test"), Store(persist=False), {"jobs": 60}, [], collection={})
+    try:
+        sampler.prime_collection_snapshot()
+        sampler.run_source("jobs")
+        deadline = sampler._collection_not_before["jobs"]
+        backoff = sampler.health("jobs").backoff
+        assert deadline > timer.value
+        for tab in ("nodes", "jobs", "jobs"):
+            sampler.set_collection_demand(tab, active=True)
+            sampler.refresh_all()
+            assert sampler._collection_not_before["jobs"] == deadline
+            assert sampler.health("jobs").backoff == backoff
+            assert not sampler.due("jobs", timer.value)
+        assert len(raw.commands) == 1
     finally:
         sampler.shutdown()
 
@@ -592,7 +902,7 @@ def test_burst_retry_hint_waits_for_its_window_without_resetting_quotas(tmp_path
 
 
 def test_many_explicit_live_subscriptions_use_bounded_round_robin_batches():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     raw, store = Recorder(), Store(persist=False)
     store.apply_jobs([Job(str(jid), "job", "cpu", "RUNNING", submit="s", start="t") for jid in range(35)])
     sampler = Sampler(Slurm(raw, "test"), store, {"live": 60}, [], collection={"live_batch_jobs": 16})
@@ -610,7 +920,7 @@ def test_many_explicit_live_subscriptions_use_bounded_round_robin_batches():
 
 
 def test_temporary_admission_deferral_does_not_become_source_failure():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
         def occupied():

@@ -9,8 +9,8 @@ import random
 
 import pytest
 
-from tower.forecast import ForecastTracker, MIN_CALIBRATION, forecast
-from tower.model import Finished, Job
+from raven.forecast import ForecastTracker, MIN_CALIBRATION, forecast
+from raven.model import Finished, Job
 
 NOW = 100_000.
 
@@ -314,7 +314,7 @@ def test_consistent_naive_timestamps_are_explicit_local_timezone_assumption():
 
 def test_mixed_aware_naive_timestamps_abstain_instead_of_guessing_offset():
     target = job(submit="2025-01-01T00:00:00", est_start="2025-01-01T01:00:00Z")
-    result = forecast(target, now=datetime.fromisoformat("2025-01-01T00:30:00Z"))
+    result = forecast(target, now=datetime.fromisoformat("2025-01-01T00:30:00+00:00"))
     assert result["status"] == "error"
     assert result["predicted_start"] is None
 

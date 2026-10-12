@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from tower import operations as O, ops_queue_order as Q
+from raven import operations as O, ops_queue_order as Q
 
 
 def job(jid, **changes):
@@ -171,7 +171,7 @@ def test_compressed_array_records_are_rejected_even_after_array_squeue(ctx):
 
 
 def test_maximum_queue_plan_fits_complete_workbench_review(ctx):
-    from tower import ops_ui
+    from raven import ops_ui
     ctx.slurm.b.jobs = {str(i): job(i) for i in range(1, 513)}
     report = O.run("queue-order", params("511,512", "1,2"), ctx)
     state = dict(result=report, review_document=None, review_size=None)

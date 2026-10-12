@@ -7,10 +7,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.investigate import investigate, MAX_TOTAL_LOG_BYTES
-from tower.model import Finished
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven.investigate import investigate, MAX_TOTAL_LOG_BYTES
+from raven.model import Finished
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 def case(hub, path, *, manifest="", jid="77", state="FAILED"):
@@ -31,7 +31,7 @@ def test_manifest_rank_logs_contribute_cited_evidence_with_exact_original_lines(
     other = tmp_path / "slurm-777.err"
     other.write_bytes(b"disk quota exceeded\n")
     manifest = tmp_path / "logs.json"
-    manifest.write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "77", "logs": [
+    manifest.write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "77", "logs": [
         {"id": "rank2", "path": "worker-rank-2/stderr.log", "label": "Rank 2", "group": "Workers"}]}))
     hub = ResearchHub({})
     try:
@@ -75,7 +75,7 @@ def test_wrong_job_manifest_is_rejected_atomically(tmp_path):
     wrong_log = wrong / "99.err"
     wrong_log.write_bytes(b"disk quota exceeded\n")
     manifest = tmp_path / "logs.json"
-    manifest.write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "99", "logs": [{"id": "bad", "path": "not-scanned/99.err"}]}))
+    manifest.write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "99", "logs": [{"id": "bad", "path": "not-scanned/99.err"}]}))
     hub = ResearchHub({})
     try:
         result = hub.request(case(hub, out, manifest=str(manifest)), wait=True)
@@ -95,7 +95,7 @@ def test_combined_byte_budget_is_exact_and_omissions_are_visible(tmp_path):
         path = tmp_path / f"rank{index}.log"
         path.write_bytes(b"debug\n" * 30000)
         entries.append({"id": f"rank{index}", "path": path.name, "group": "Workers"})
-    manifest.write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "77", "logs": entries}))
+    manifest.write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "77", "logs": entries}))
     hub = ResearchHub({})
     try:
         result = hub.request(case(hub, out, manifest=str(manifest)), wait=True)
@@ -114,7 +114,7 @@ def test_unreadable_manifest_log_is_counted_unavailable_not_healthy(tmp_path):
     out = tmp_path / "out.log"
     out.write_bytes(b"progress\n")
     manifest = tmp_path / "logs.json"
-    manifest.write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "77", "logs": [{"id": "missing", "path": "missing.log"}]}))
+    manifest.write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "77", "logs": [{"id": "missing", "path": "missing.log"}]}))
     hub = ResearchHub({})
     try:
         result = hub.request(case(hub, out, manifest=str(manifest)), wait=True)
@@ -185,7 +185,7 @@ def test_large_tail_drops_incomplete_prefix_and_cites_relative_line(tmp_path):
 
 
 def test_project_context_without_scheduler_id_never_borrows_unrelated_job(monkeypatch):
-    from tower import project_ui
+    from raven import project_ui
     monkeypatch.setattr(project_ui, "log_entries", lambda app: [])
     hub = ResearchHub({})
     app = SimpleNamespace(selected_id="99", research_job_id=None, research_view="evidence", cfg={},
@@ -200,8 +200,8 @@ def test_project_context_without_scheduler_id_never_borrows_unrelated_job(monkey
 
 
 def test_bound_project_uses_confined_cached_entries_without_reopening_manifest(monkeypatch, tmp_path):
-    from tower import project_ui
-    from tower import log_catalog
+    from raven import project_ui
+    from raven import log_catalog
     out = tmp_path / "77.out"
     out.write_bytes(b"progress\n")
     allowed = tmp_path / "worker.log"

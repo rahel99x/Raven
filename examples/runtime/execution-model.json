@@ -1,5 +1,5 @@
 {
-  "schema": "tower.execution-model/v1",
+  "schema": "raven.execution-model/v1",
   "workload": "demo-fixed-input-and-iterations-v1",
   "resources": {
     "node0": {"kind": "cpu", "rate": 10},

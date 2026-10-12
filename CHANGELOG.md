@@ -1,6 +1,57 @@
 # Changelog
 
-## 7.0.0 — Project Raven
+## Unreleased
+
+- Retry shared-cache publication after transient SQLite contention within the
+  original collection deadline. Retain cancellation, ownership, and invalidation checks.
+- Restrict scrollbar seeking to the visible track and clear stale drag capture
+  before unrelated clicks. Preserve the Jobs viewport when its selected job
+  completes and remains selected in Recents.
+- Replace truncated error strips with severity counts and a notification panel
+  containing wrapped messages, individual dismissal, and diagnostic guidance.
+- Extend saved grouping and batch-sort controls to History, account jobs, and
+  the shared job browsers beside Research, Analytics, Logs, and Dependencies.
+- Add an internal Setup menu with named Research/Analytics guides and saved
+  Heavy allocation preferences, including connected-user Slurm account discovery.
+  Keep saving preferences separate from requesting an allocation.
+- Keep Jobs batches contiguous with persistent Sort Min and Sort Max controls;
+  pin the current Raven Heavy allocation by identity and preserve exact job selection.
+  Reject conflicting launch evidence and distinguish scripts behind generic launchers.
+- Use down-pointing arrows for expanded groups and right-pointing arrows for
+  collapsed groups, consistently across job lists and Research array cohorts.
+- Add persistent Grouped and Sequential views to Recents. Keep completed batch
+  members contiguous, preserve exact selection as jobs finish, and retain
+  dependency launch evidence after Slurm clears fulfilled dependencies.
+- Derive recognizable group labels from shared job-name prefixes using a
+  bounded linear scan; preserve custom names and stable group identities.
+- Preserve nanosecond log timestamp alignment on Python 3.10 as well as newer
+  Python versions.
+- Keep Cluster text selections valid when background project discovery finishes.
+- Add project reporting V2: a portable application launcher, Linux/CARC/HPC3
+  recipes with lab allocation guidance, exact file-format examples, and a
+  complete Research/Analytics metric and source reference. Retain V1 file
+  compatibility and separate each execution attempt, including reused allocations.
+- Use Raven consistently in documentation, command output, interface labels,
+  and package metadata; update repository links to `rahel99x/Raven`.
+- Rename the distribution, Python package, command, environment variables,
+  project directories, and current evidence schema identifiers to Raven.
+  Require source or built-wheel installation and explicit previous-package
+  replacement; retain private configuration and repoint its worker interpreter.
+- Document pipx installation of `ravenl` and `ravenh`, persistent local Slurm
+  configuration, and updates without shell aliases.
+- Add Bash helpers for reviewed, copy-only configuration migration and rollback.
+- Consolidate documentation around current implementation contracts and
+  distinguish historical measurements from current procedures.
+- Add software citation metadata in `CITATION.cff`.
+- Encode large native file identities losslessly in reviewed worker payloads
+  while retaining signed integer bounds and exact source-verification checks.
+- Read Slurm step hosts from `NodeList` when `Nodes` reports the node count,
+  allowing verified Heavy startup with the standard `scontrol show step` format.
+- Default managed Slurm step launches to a minimum ten-second interval and six
+  attempts per rolling minute, shared across same-user sessions on an endpoint.
+  Count failed attempts and retain stricter site policy and existing configuration.
+
+## 7.0.0 — Raven
 
 - Fix the intermittent extra `D` beside Details and use the same focus marker
   for Details and Terminal. Preserve scroll controls and narrow hit regions.
@@ -208,7 +259,7 @@ a future 5.0 proposal.
 Phase one adds measurement and submission checks while retaining the terminal
 interface and optional-adapter architecture.
 
-- Inspect Tower polling separately from Slurm collection capabilities.
+- Inspect Raven polling separately from Slurm collection capabilities.
 - Select NVIDIA, AMD, or Intel GPU collection where the required vendor tool
   and allocation access are available.
 - Run explicit local shell syntax checks and optional ShellCheck analysis
@@ -275,7 +326,7 @@ Earlier release notes continue below.
 - Jobs Details renders the visible metric bands. Off-screen graphs retain their place in the scrollable document without repeating raster work.
 - Pointer feedback validates visible Live controls. Background maintenance still checks all retained sampling requests.
 - Completed background Research commands preserve the current page, selection, and source when the user leaves their workflow.
-- Use `tower --ui-trace ui-trace.json` to record bounded UI timings and page transitions. Quit normally to save the report. See [the timing guide](docs/guides/ui-performance.md#record-a-desktop-latency-report).
+- Use `raven --ui-trace ui-trace.json` to record bounded UI timings and page transitions. Quit normally to save the report. See [the timing guide](docs/guides/ui-performance.md#record-a-desktop-latency-report).
 
 
 ## 4.8.2
@@ -307,7 +358,7 @@ See [chart controls](docs/guides/charts.md#follow-a-running-metric) for mouse, k
 - GPU detection reads allocation TRES when the per-node queue field omits a `--gpus` request.
 - Analytics finds GPU traces without opening Inspector first and shows sampling errors before the first sample.
 - Unknown NVIDIA counters remain gaps. Trace paths preserve spaces, and missing trace files clear stale readings.
-- Use `tower --gpu-check` to inspect current jobs. Add `--gpu-check-output DIRECTORY` to save allocation, command, trace, and cache evidence.
+- Use `raven --gpu-check` to inspect current jobs. Add `--gpu-check-output DIRECTORY` to save allocation, command, trace, and cache evidence.
 
 See [GPU detection checks](docs/guides/gpu-detection.md) for Fedora instructions and report interpretation.
 

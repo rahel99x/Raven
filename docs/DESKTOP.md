@@ -1,10 +1,10 @@
-# Run Tower on a Fedora desktop
+# Run Raven with local Slurm on Fedora
 
-[README](../README.md) · [Runbook](runbook.md) · [Controls](CONTROLS.md)
+[README](../README.md) · [Installation](INSTALLATION.md) · [Runbook](runbook.md) · [Controls](CONTROLS.md)
 
 Use this guide when Slurm is already installed directly on Fedora.
-Run Tower in a terminal as your normal desktop user.
-Tower uses the existing Slurm controller and command-line tools.
+Run Raven in a terminal as your normal desktop user.
+Raven uses the existing Slurm controller and command-line tools.
 
 ## 1. Check the local environment
 
@@ -31,142 +31,214 @@ The scheduler responds to the read-only checks.
 
 An empty `squeue` result is normal when your user has no jobs.
 A scheduler connection error requires attention to the existing Slurm installation.
-Tower setup does not start or configure Slurm services.
+Raven setup does not start or configure Slurm services.
 
-If Git or Python is missing, install those Fedora packages:
+Install Git, Python, and pipx through Fedora's package manager if needed:
 
 ```bash
-sudo dnf install git python3
+sudo dnf install git python3 pipx
 ```
 
 Use your site's installation process when package installation is managed.
 Continue with your normal user after installing the missing tools.
 Use a Python build with curses and venv support.
-Normal Tower setup does not download runtime packages.
+The offline source setup does not download runtime packages.
 
 ## 2. Get or update the checkout
 
 For a new checkout:
 
 ```bash
-git clone https://github.com/rahel99x/Slurm-Tower.git
-cd Slurm-Tower
+git clone https://github.com/rahel99x/Raven.git
+cd Raven
 ```
 
 For an existing checkout:
 
 ```bash
-cd /path/to/Slurm-Tower
+cd /path/to/Raven
 git pull --ff-only
 ```
 
-Replace `/path/to/Slurm-Tower` with your actual checkout path.
+Replace `/path/to/Raven` with your actual checkout path.
 Resolve local Git changes if the update fails.
 Keep existing configuration and state files.
 
-## 3. Select the desktop profile
+## 3. Choose local Slurm settings
 
-Run setup from the checkout:
+The installed `ravenl` and `ravenh` commands default to local Slurm, with empty
+host, account and partition settings. Use this mode for your existing scheduler.
+Raven's `--site desktop` means standalone execution **without Slurm**; do not
+select it for the setup described here.
+
+The supplied native `desktop` profile in `docs/config.example.json` means local
+Slurm. To validate that source workflow without installing packages, run:
 
 ```bash
 python3 scripts/setup.py --mode local --profile desktop
 ```
 
-**Expected result:** Setup checks local capabilities and prints a desktop launch command.
+**Expected result:** Source setup checks local capabilities and prints a desktop launch command.
 Setup also validates simulated displays and writes its demonstration report.
 The demonstration report does not replace live scheduler data.
 
-The `desktop` profile is defined in `docs/config.example.json`.
+The native `desktop` profile is defined in `docs/config.example.json`.
 It clears configured host, user, account, and partition restrictions.
 It therefore uses local Slurm commands and normal identity detection.
 
-| Setting | Desktop profile |
-| --- | --- |
-| Job sampling | Every 5 seconds at the default update setting |
-| Live resource sampling | Every 5 seconds |
-| Accounting sampling | Every 10 seconds |
-| Partition display | All reported local partitions, including idle CPU-only partitions |
-| Live GPU sampling | Enabled for detected running GPU allocations |
-| Queue forecast probes | Disabled |
-| Allocation-budget queries | Disabled |
-| Display | Unicode preference, with ASCII fallback |
+Raven applies its governed collection limits to installed and source launchers.
+The default queue
+interval is 60 seconds, accounting is 300 seconds, and automatic GPU steps are
+disabled. See [collection and retention](raven/README.md#collection-and-retention).
 
-Use `--profile desktop` explicitly for setup.
+Use `--profile desktop` explicitly for the native source setup.
 The default setup profile remains `carc` for existing CARC installations.
 Profile selection does not create a scheduler account or partition.
 The profile enables `show_all_partitions`.
 A nonempty configured `partitions` list still restricts the displayed partitions.
 
-### Keep desktop state separate
+<a id="keep-desktop-state-separate"></a>
 
-The desktop profile selects `state_namespace = "desktop"`.
-Tower stores desktop preferences, log bookmarks, job tags, and recorded resource samples separately from CARC state.
-Existing CARC state is retained.
+### Desktop state namespaces
 
-The default desktop state path is:
+The native configuration uses `state_namespace = "desktop"` to store desktop
+preferences, log bookmarks, job tags, and recorded resource samples separately
+from CARC state. Keep records from a previous installation at their original paths.
+
+The native desktop state path under the Raven namespace is:
 
 ```text
-~/.local/state/tower/profiles/desktop/<connection_digest>/
+~/.local/state/raven/profiles/desktop/<connection_digest>/
 ```
 
 The digest identifies the connection, scheduler user, local owner, and profile.
 This separation prevents another cluster's saved filters or reused job IDs from affecting desktop records.
 Use the [state configuration reference](reference.md#configuration) for custom namespaces and base paths.
+Installed Raven normally stores its own state under `~/.local/state/raven`.
+Review [migration](raven/README.md#migrate-without-changing-evidence) before
+importing previous state; installing commands does not move or convert existing
+records. Select the previous installation's configuration and state directories
+explicitly when creating a migration plan.
 
-## 4. Install the `tower` alias
+## 4. Install `ravenl` and `ravenh`
+
+From the checkout, install the package and optional embedded terminal:
 
 ```bash
-python3 scripts/install_shell.py --profile desktop --apply
-source ~/.bashrc
-type tower
+pipx install '.[terminal]'
+cd "$HOME"
+command -v ravenl
+command -v ravenh
+ravenl --version
+ravenh --version
 ```
 
-**Expected result:** `tower` uses this checkout's launcher and the desktop profile.
-The helper backs up `.bashrc` before it changes the managed alias block.
-It replaces old `tower`, `dash`, and `dash2` definitions.
-It preserves the rest of the file.
+**Expected result:** Both names resolve to installed executables from outside
+the checkout. No aliases, environment activation, or `.bashrc` edits are needed.
+Use `pipx install .` if you do not need the embedded terminal. Pipx's executable
+directory, normally `~/.local/bin`, must already be on `PATH`; see
+[installation options](INSTALLATION.md#use-an-existing-directory-on-path) for
+an existing writable directory on `PATH` or a machine-wide administrator install.
 
-Use this command to preview the block without changing `.bashrc`:
+For a new persistent local Slurm configuration, run:
 
 ```bash
+ravenl --write-config
+ravenl config explain
+ravenh --plan
+```
+
+The configuration is `~/.config/raven/config.json`, honoring `XDG_CONFIG_HOME`.
+Both commands load it automatically. `--write-config` refuses to replace an
+existing file; inspect and edit your existing configuration when present.
+Set the cluster identity, account, partition, QOS and requested resources for
+your scheduler. An empty account or partition uses Slurm's configured defaults.
+Check the worker Python path is available on your selected compute nodes.
+
+To export supported effective settings from the supplied native local-Slurm
+profile into a **new** Raven configuration instead, use the actual checkout path:
+
+```bash
+ravenl --config /absolute/path/to/Raven/docs/config.example.json --profile desktop --write-config
+```
+
+Use your own native file's path if you customized it. This preserves the original
+file and applies Raven's collection limits. It exports supported Raven settings,
+not every UI or state option, and refuses to overwrite existing Raven
+configuration. Choose one configuration creation route.
+
+After a later `git pull --ff-only`, run `pipx reinstall raven` to update
+the installed package. The [installation guide](INSTALLATION.md#update-the-installed-package)
+covers custom executable directories and administrator updates.
+An installation under a previous distribution name needs the
+[package replacement procedure](INSTALLATION.md#replace-an-installation-with-the-previous-package-name).
+Preserve your configuration, then update `execution.worker_python` to the new
+environment's Python executable before starting Heavy.
+
+<a id="account-and-profile-overrides"></a>
+
+### Account overrides
+
+Use an explicit account for one invocation when your scheduler requires it:
+
+```bash
+ravenl --account YOUR_SLURM_ACCOUNT
+ravenh --account YOUR_SLURM_ACCOUNT --plan
+```
+
+Replace `YOUR_SLURM_ACCOUNT` with a configured Slurm account. Set
+`allocation.account` in Raven's configuration for a persistent default.
+The installed commands do not inject `CARC_ACCOUNT` or `RAVEN_ACCOUNT`.
+
+### Optional source `raven` alias
+
+The installed `raven` command opens Light, like `ravenl`. An optional source
+alias can select the checkout instead. The
+[Bash helper](../scripts/install_shell.py) targets the
+source checkout and edits Bash configuration only when invoked with `--apply`.
+Preview its desktop block without changing shell files:
+
+```bash
+cd /path/to/Raven
 python3 scripts/install_shell.py --profile desktop
 ```
 
 Keep the checkout at its current location.
 Rerun the helper if you move it.
-The launcher uses its own `.venv` when that environment exists.
-
-### Account and profile overrides
+Its launcher uses the checkout's `.venv` when that environment exists.
 
 The desktop alias ignores `CARC_ACCOUNT`.
-Use `SLURM_TOWER_ACCOUNT` for an explicit desktop account override:
+Use `RAVEN_ACCOUNT` for an explicit desktop account override:
 
 ```bash
-export SLURM_TOWER_ACCOUNT=YOUR_SLURM_ACCOUNT
-tower
+export RAVEN_ACCOUNT=YOUR_SLURM_ACCOUNT
+raven
 ```
 
 Replace `YOUR_SLURM_ACCOUNT` with a configured Slurm account.
-Use `unset SLURM_TOWER_ACCOUNT` to restore normal account detection for desktop.
-Use `tower --account ACCOUNT` to override the account for one invocation.
+Use `unset RAVEN_ACCOUNT` to restore normal account detection for desktop.
+Use `raven --account ACCOUNT` to override the account for one invocation.
 
-`SLURM_TOWER_PROFILE` overrides the profile selected during alias installation.
-`SLURM_TOWER_ACCOUNT` applies to any resolved profile.
+`RAVEN_PROFILE` overrides the profile selected during alias installation.
+`RAVEN_ACCOUNT` applies to any resolved profile.
 The CARC alias uses `CARC_ACCOUNT` only when the generic override is unset.
-An explicitly empty `SLURM_TOWER_ACCOUNT` suppresses that legacy account injection.
+An explicitly empty `RAVEN_ACCOUNT` suppresses that legacy account injection.
 
-A custom `TOWER_CONFIG` also overrides the alias's example configuration path.
-That custom file must define the selected profile.
-Use the direct launcher below to check the supplied desktop configuration independently.
+A custom `RAVEN_CONFIG` also overrides the alias's example configuration path.
+Use a versioned Raven file and a named Raven profile for that route. For a native
+unversioned desktop file, use the direct `--config FILE --profile desktop` launcher.
+These overrides belong to the optional alias. Use the direct source launcher
+below to check the supplied desktop configuration independently.
 
 ## 5. Verify real desktop data
 
 ```bash
-tower --version
-tower --doctor
-tower --once --tab jobs
-tower --once --tab sources
-tower
+ravenl --version
+ravenl doctor
+ravenh --plan
+ravenl --once --tab jobs
+ravenl --once --tab sources
+ravenl
 ```
 
 **Expected result:** Jobs reflects `squeue -u "$USER"`.
@@ -174,12 +246,13 @@ Sources reports actual command status, freshness, latency, and errors.
 Press `?` for help.
 Press `q` to exit.
 
-To bypass an alias or custom configuration override, run:
+From the checkout, these source commands explicitly select its supplied
+local-Slurm configuration:
 
 ```bash
-./scripts/tower --config docs/config.example.json --profile desktop --doctor
-./scripts/tower --config docs/config.example.json --profile desktop --once --tab sources
-./scripts/tower --config docs/config.example.json --profile desktop
+./scripts/raven --config docs/config.example.json --profile desktop --doctor
+./scripts/raven --config docs/config.example.json --profile desktop --once --tab sources
+./scripts/raven --config docs/config.example.json --profile desktop
 ```
 
 Do not use `--fake` to verify desktop scheduler data.
@@ -192,7 +265,7 @@ A local Slurm installation can run jobs without an accounting backend.
 In that installation, `sacct` can be present while its queries are unavailable.
 History and completed-job efficiency then remain unavailable or empty.
 Sources reports the accounting error.
-Tower does not manufacture completed jobs to fill History.
+Raven does not manufacture completed jobs to fill History.
 
 If Sources shows `finished: sacct: error: Slurm accounting storage is disabled`,
 the scheduler has no active accounting storage backend.
@@ -200,9 +273,9 @@ Installing the `sacct` command alone does not enable that backend.
 Follow [Enable Slurm accounting on a Fedora desktop](FEDORA_ACCOUNTING.md)
 to add persistent job history with MariaDB and `slurmdbd`.
 
-To stop unavailable accounting queries for the current Tower session,
+To stop unavailable accounting queries for the current Raven session,
 enter `:source finished off` and `:source fin_details off` in the command palette.
-These source toggles do not persist across Tower restarts.
+These source toggles do not persist across Raven restarts.
 They suppress the queries; they do not supply completed-job history.
 
 When accounting is delayed, Recents can show jobs as awaiting accounting.
@@ -216,7 +289,7 @@ Use a UTF-8 locale and a compatible monospace font for block graphics.
 Try the portable display if characters are misaligned:
 
 ```bash
-tower --ascii --no-color
+ravenl --ascii --no-color
 ```
 
 Use `:terminaldoctor` for terminal and path evidence.
@@ -246,7 +319,8 @@ Its labels use `s`, `ms`, or `µs`; ASCII mode uses `us` for microseconds.
 Use `:rate` to inspect the effective Jobs interval.
 Its logarithmic scale spans five seconds to 500 milliseconds.
 Use `:rate N` to select a position from one to 50, or `:rate reset` to restore five seconds.
-The desktop Jobs interval starts at five seconds with the default request.
+Raven enforces its queue and statistics floors even when a slider
+requests a shorter interval; inspect Sources for the admitted cadence.
 GPU polling also spans five seconds to 500 milliseconds. Retry backoff and command duration can delay actual measurements.
 Sources shows the effective cadence.
 Running metric graphs have a separate polling slider next to their display-window slider.
@@ -268,24 +342,25 @@ sudo dnf install wl-clipboard
 ```
 
 For an X11 session, use `sudo dnf install xclip` instead.
-Run Tower as the user who owns that desktop session.
-Tower detects these tools automatically.
+Run Raven as the user who owns that desktop session.
+Raven detects these tools automatically.
 Log selection uses `y`; complete log export uses `Y`.
 If clipboard delivery is unavailable, the private exported file remains available in Activity and the export library.
 
-The supplied desktop profile enables GPU sampling for detected running GPU allocations.
+The native desktop configuration requests GPU sampling for running GPU allocations.
 CPU-only jobs do not trigger GPU sampling.
 Use `:gpuprovider` or **GPU source** on Sources to select Auto, NVIDIA, AMD, or
 Intel. The selected vendor utility and `python3` must be available inside the
 allocation. See [provider setup](guides/phase-one.md#select-a-gpu-provider).
 Live GPU sampling can create short `srun` steps inside an existing allocation.
+Raven disables automatic GPU steps by default with both installed and source launchers.
 Use `:gpu off` or `--no-gpu` to disable it.
 An earlier saved off preference remains off until you enter `:gpu on`.
 
 If GPU graphs are missing, run:
 
 ```bash
-tower --gpu-check --gpu-check-output ./tower-gpu-report
+raven --gpu-check --gpu-check-output ./raven-gpu-report
 ```
 
 The directory must not exist yet.
@@ -293,15 +368,15 @@ Read [GPU detection checks](guides/gpu-detection.md) for the complete procedure.
 
 ## 7. Use another scheduler environment
 
-For Slurm inside a container, run Tower in the same container or scheduler namespace.
+For Slurm inside a container, run Raven in the same container or scheduler namespace.
 That environment must expose the Slurm commands and the referenced log paths.
 Use your existing container entry procedure.
 
 An existing SSH endpoint is another option when it can access the scheduler and logs:
 
 ```bash
-./scripts/tower --config docs/config.example.json --profile desktop --host YOUR_SSH_ALIAS --doctor
-./scripts/tower --config docs/config.example.json --profile desktop --host YOUR_SSH_ALIAS
+./scripts/raven --config docs/config.example.json --profile desktop --host YOUR_SSH_ALIAS --doctor
+./scripts/raven --config docs/config.example.json --profile desktop --host YOUR_SSH_ALIAS
 ```
 
 Replace `YOUR_SSH_ALIAS` with a working alias from your SSH configuration.
@@ -316,16 +391,18 @@ See [SSH transport](runbook.md#optional-ssh-transport) for remote prerequisites.
 
 | Symptom | Action |
 | --- | --- |
-| `tower` still uses the CARC profile | Rerun alias installation with `--profile desktop` and source `.bashrc` |
-| An unexpected profile is selected | Inspect `SLURM_TOWER_PROFILE` |
-| An unexpected account is selected | Inspect `SLURM_TOWER_ACCOUNT` and the invocation's `--account` value |
+| `ravenl` or `ravenh` is not found | Check pipx installation and that its executable directory is already on `PATH` |
+| Installed commands show an older release after pulling | Run `pipx reinstall raven` from the updated installation source |
+| An unexpected profile is selected | Inspect `ravenl config explain`, `RAVEN_CONFIG`, and `RAVEN_PROFILE` |
+| Heavy refers to a removed Python environment | Update `execution.worker_python` after replacing a previous package installation |
+| An unexpected account is selected | Inspect `allocation.account` and the invocation's `--account` value; optional aliases also read `RAVEN_ACCOUNT` |
 | A custom configuration has no desktop profile | Add that profile or use the direct example-config launcher |
 | The scheduler connection fails | Compare `scontrol ping`, `sinfo`, and the error shown in Sources |
 | Jobs is empty | Compare `squeue -u "$USER"` and the current table filters |
 | History is empty or errors | Inspect `sacct` availability and the configured accounting backend |
 | Source commands are unavailable | Use the terminal environment that exposes the existing Slurm installation |
-| Log paths are unavailable | Run Tower where those paths exist or register exact accessible log locations |
-| GPU graphs are missing | Use `:gpu on`, then `tower --gpu-check` to inspect settings, allocation, driver, and sampling evidence |
+| Log paths are unavailable | Run Raven where those paths exist or register exact accessible log locations |
+| GPU graphs are missing | Use `:gpu on`, then `raven --gpu-check` to inspect settings, allocation, driver, and sampling evidence |
 | Unicode characters are misaligned | Use a compatible font or select `--ascii` |
 
 Use the read-only checks in this guide to verify your existing desktop scheduler.

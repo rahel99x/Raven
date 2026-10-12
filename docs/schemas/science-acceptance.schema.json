@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower acceptance v1",
+  "title": "Raven acceptance v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.acceptance/v1"
+      "const": "raven.acceptance/v1"
     },
     "cases": {
       "type": "array",

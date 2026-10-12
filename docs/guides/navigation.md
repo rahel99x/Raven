@@ -1,12 +1,14 @@
 # Navigation and terminal controls
 
-Use these procedures to find data, return to a location, and change terminal preferences.
-All controls operate in the terminal.
-Unicode and ASCII modes use the same commands.
+[README](../../README.md) · [Controls](../CONTROLS.md) · [Pane navigation](pane-navigation.md)
+
+Find cached data, restore inspection locations, and configure Raven's terminal preferences.
+Unicode and ASCII modes use the same commands and key bindings.
+Open the command palette with `:`; type the command text without the leading colon.
 
 <a id="feature-29"></a>
 
-## 29. Find a destination
+## Find a destination
 
 1. Press `Ctrl-G`, or enter `:jump`.
 2. Enter part of a name, job ID, path, or destination type.
@@ -34,7 +36,7 @@ The result list contains at most 512 matches.
 
 <a id="feature-30"></a>
 
-## 30. Use Back and Forward
+## Use Back and Forward
 
 Enter `:back`, or press `Ctrl-B` or Alt-Left, to restore the previous location.
 Enter `:forward`, or press Alt-Right, to return to the location you left with Back.
@@ -44,13 +46,13 @@ It also includes the selected log source and Research workspace.
 Chart sample positions and event pickers return to their saved positions.
 
 A new destination clears the Forward stack.
-Tower retains at most 32 locations in each session stack.
+Raven retains at most 32 locations in each session stack.
 Back and Forward do not repeat scheduler actions.
 These stacks remain local to the current session.
 
 <a id="feature-31"></a>
 
-## 31. Save a complete location
+## Save a complete location
 
 1. Open the required page or log source.
 2. Set the required filters and column sorts.
@@ -71,17 +73,17 @@ Press Enter to open it.
 
 Saved locations survive a restart when state persistence is enabled.
 Each location retains page context, exact source identity, column layout, filters, and reading position.
-Tower stores at most 50 named locations.
+Raven stores at most 50 named locations.
 A location can open only in the cluster profile that saved it.
 Log locations must also match the original source connection.
-Tower revalidates an opened log buffer through its normal source controls.
+Raven revalidates an opened log buffer through its normal source controls.
 Opaque comparison results and file buffers are not stored in the location file.
 Clearing a reopened project run restores the original manual metric, contract, passport, and log-index paths.
 Loaded passport objects remain local to the session.
 
 <a id="feature-32"></a>
 
-## 32. Change settings with a preview
+## Change settings with a preview
 
 1. Enter `:settings`.
 2. Use Up and Down to select a setting.
@@ -107,11 +109,14 @@ The editor provides these settings:
 | GPU sampling | Enable or disable the existing GPU sampler. |
 | Terminal clipboard | Enable or disable OSC 52 clipboard output. |
 | Local clipboard tools | Enable or disable installed clipboard utilities. |
-| Polling interval | Change the global native polling request from five seconds to 500 milliseconds. |
+| Polling interval | Select a global polling request from five seconds to 500 milliseconds, subject to collection policy. |
 | Other source intervals | Change the configured base for sources such as accounting, nodes, and forecast probes. |
 
 The **Polling interval** row selects the nearest position on the top-right control's logarithmic scale.
-It governs Jobs, live CPU and memory probes, GPU probes, and trace reads, subject to source limits.
+It supplies requests for Jobs, live CPU and memory probes, GPU probes, and trace reads.
+Raven applies configured intervals, collection floors, site policy, demand gating, and command budgets before collection.
+Several slider positions can therefore share the same effective interval.
+See [collection policy](../raven/README.md#collection-and-retention) for managed defaults.
 Separate editable rows for live, GPU, and trace intervals are not shown.
 Other source intervals range from 1 to 3,600 seconds.
 Left decreases an interval by 20 percent; Right increases it by 25 percent.
@@ -120,17 +125,18 @@ GPU sampling can use a small job allocation step.
 The editor updates the active sampler when you preview a change.
 Cancel restores its previous settings and exact polling position.
 Unaccepted previews are not saved. Enter accepts the draft and saves its polling preference.
-Positive legacy configuration values in `intervals.jobs`, `intervals.live`, `intervals.gpu`, and `intervals.trace` no longer determine native polling intervals.
+Compatibility configuration values in `intervals.jobs`, `intervals.live`, `intervals.gpu`, and `intervals.trace` remain inputs to the requested cadence.
+Configured intervals slower than five seconds remain slow, and managed collection policy can lengthen them further.
 Use the Polling interval row, `polling_multiplier`, `--rate`, or `--interval` to choose the active native interval.
 Explicit launch options and environment overrides retain priority over saved settings.
 A locked row shows `[launch option]`.
-Restart Tower with different launch options to change that value.
+Restart Raven with different launch options to change that value.
 Other settings can still be previewed and applied.
 Later theme, density, GPU, or bell commands become the current saved preferences.
 
 <a id="feature-33"></a>
 
-## 33. Edit and test keybindings
+## Edit and test keybindings
 
 1. Enter `:keybindings`.
 2. Select an action with Up and Down.
@@ -147,7 +153,7 @@ Those four combinations arrive as Backspace, Tab, or Enter.
 Alt letter names use lowercase letters.
 Ctrl and Alt also support arrows, Home, End, Page Up, Page Down, Delete, and Backspace through their terminal protocols.
 An empty list disables the selected action.
-Tower rejects duplicate assignments and reserved navigation keys.
+Raven rejects duplicate assignments and reserved navigation keys.
 Reserved workspace controls include Ctrl-W, F6, and `z`.
 Resolve each conflict before you apply the draft.
 
@@ -164,7 +170,7 @@ For example, `Ctrl-A` opens Activity on a main page and moves to the start in th
 
 <a id="feature-34"></a>
 
-## 34. Edit a command
+## Edit a command
 
 Press `:` to open the command palette.
 Type a command and use these editing controls:
@@ -185,18 +191,18 @@ Type a command and use these editing controls:
 | Enter | Run the command. |
 | Esc | Cancel editing and return to the originating page or overlay. |
 
-Tower retains at most 100 undo entries for the current edit session.
+Raven retains at most 100 undo entries for the current edit session.
 Quote file arguments that contain spaces.
 Tab completion supplies quotes when required.
 Use Alt controls if the terminal intercepts a Ctrl combination.
 
 <a id="feature-35"></a>
 
-## 35. Paste a command safely
+## Paste a command safely
 
 Use a terminal that supports bracketed paste.
-Paste the command into Tower.
-Tower opens the palette or inserts the text at its editing cursor.
+Paste the command into Raven.
+Raven opens the palette or inserts the text at its editing cursor.
 It does not execute the paste.
 
 Check the text before you press Enter.
@@ -207,13 +213,13 @@ It does not execute a batch of separate lines.
 
 A paste is one undo operation.
 The input limit is 4,096 characters.
-Tower reports a truncated paste.
+Raven reports a truncated paste.
 It rejects terminal control characters in pasted command text.
 Close a review dialog before you paste a command.
 
 <a id="feature-36"></a>
 
-## 36. Read command assistance
+## Read command assistance
 
 Read the status line below the command completions.
 It shows examples, invalid choices, and missing or incomplete command text.
@@ -226,7 +232,7 @@ Command assistance performs no scheduler requests.
 
 <a id="feature-37"></a>
 
-## 37. Explain a field
+## Explain a field
 
 Enter `:explain COLUMN` to explain a column on the current table.
 Enter `:explain TABLE COLUMN` to specify its table.
@@ -252,11 +258,11 @@ Missing-data text explains when a value is unknown.
 Use Up, Down, Page Up, and Page Down to read the explanation.
 Press Esc to return.
 An application metric explanation shows its declared unit, job scope, source, available sample interval, and missing-value count.
-Tower does not infer an application formula or unit.
+Raven does not infer an application formula or unit.
 
 <a id="feature-38"></a>
 
-## 38. Inspect and copy a complete value
+## Inspect and copy a complete value
 
 1. Select the required job, node, partition, or source.
 2. Enter `:peek COLUMN` or `:peek TABLE COLUMN`.
@@ -272,14 +278,14 @@ On an active chart, `:peek` copies the selected sample's original numeric value.
 Use `:peek metric NAME` to inspect an explicitly named metric.
 Outside its active chart, this command uses the latest available sample.
 
-Tower reads the value from the selected record's exact identity.
+Raven reads the value from the selected record's exact identity.
 The copied value does not contain table clipping marks.
 The open preview keeps its source identity if incoming data changes the selected row.
 The display limit is 65,536 characters.
 Copy uses the complete value held by the preview.
 An unknown field displays an explicit missing-value message.
 
-## State and methods
+## Integration methods
 
 The workbench uses these public module entry points:
 
@@ -287,7 +293,7 @@ The workbench uses these public module entry points:
 | --- | --- |
 | `navigation_tools.initialize(app)` | Create bounded session state. |
 | `navigation_tools.restore(app, data)` | Validate saved locations and preferences. |
-| `navigation_tools.save(app)` | Return portable state for Tower persistence. |
+| `navigation_tools.save(app)` | Return portable state for Raven persistence. |
 | `navigation_tools.run_command(app, args)` | Dispatch navigation and preference commands. |
 | `navigation_tools.handle_key(app, key)` | Handle keyboard input for its overlays. |
 | `navigation_tools.handle_mouse(app, y, x, button, shift)` | Select visible overlay rows. |
@@ -300,5 +306,5 @@ The workbench uses these public module entry points:
 | `command_ui.paste(app, text)` | Insert a paste without command execution. |
 | `command_ui.validation(app, text)` | Return local command assistance. |
 
-These methods use the existing Tower controller and event loop.
+These methods use the existing Raven controller and event loop.
 They add no runtime dependencies.

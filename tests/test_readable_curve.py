@@ -5,7 +5,7 @@ import sys
 
 import pytest
 
-from tower import charts, layout as L, palette
+from raven import charts, layout as L, palette
 
 
 def render(values, *, ascii_=False, width=50, height=6, **kwargs):

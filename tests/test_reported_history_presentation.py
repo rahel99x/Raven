@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, clock, layout as L, metric_live as M
-from tower.model import Job
+from raven import analysis_ui as A, chart_interaction as C, clock, layout as L, metric_live as M
+from raven.model import Job
 
 
 @pytest.fixture
@@ -155,7 +155,7 @@ def test_short_forward_replay_or_attempt_change_publishes_current_clock(report, 
 @pytest.mark.parametrize("missing", ["candidate", "source_token"])
 def test_unavailable_presentation_inputs_discard_old_gate(report, monkeypatch, missing):
     draw(report, interactive=True)
-    from tower import metric_playback as P
+    from raven import metric_playback as P
     resets = []
     original = P.reset_presentation
     monkeypatch.setattr(P, "reset_presentation", lambda *args: (resets.append(args[-1]), original(*args))[1])

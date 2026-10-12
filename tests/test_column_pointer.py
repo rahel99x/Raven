@@ -1,11 +1,11 @@
 """Column checkboxes expose only their exact painted, semantic mouse targets."""
 import pytest
 
-from tower import layout as L, table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import layout as L, table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture

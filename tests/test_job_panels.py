@@ -8,13 +8,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_panels as J, layout as L, workspace_layout as W
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Live, Step, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import job_panels as J, layout as L, workspace_layout as W
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Live, Step, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def dashboard(tmp_path):
         err.write_text(f"CD_ERROR_{job.id}: RuntimeError failed\n")
         extra.write_text(f"EXTRA_{job.id}\n")
         manifest = root / "logs.json"
-        manifest.write_text(json.dumps({"schema": "tower.logs/v1", "job_id": job.id,
+        manifest.write_text(json.dumps({"schema": "raven.logs/v1", "job_id": job.id,
             "logs": [{"id": "app", "path": "application.log", "label": "Application"}]}))
         store.details[job.id] = {"StdOut": str(out), "StdErr": str(err), "WorkDir": str(root)}
         paths[job.id] = (out, err, extra)
@@ -154,6 +154,9 @@ def test_inspector_retains_live_rank_diagnostics_dependencies_tags_and_notes(das
     store.steps["900"] = [Step("900.0", name="0", ntasks=8, cpu_time=3000,
         rss=2 * 1024 ** 3, rss_task="3", rss_node="node-b", min_cpu=1200,
         min_cpu_task="3", min_cpu_node="node-b")]
+    dashboard.render(width=150, height=60)
+    dashboard.app.cursor["jobs"] = dashboard.app.visible_ids.index("900")
+    dashboard.app.sync_selection()  # Inspect the running prerequisite's metrics.
     text, _, _ = dashboard.render(width=150, height=60)
     assert "step 0        8 tasks" in text
     assert "peak 2.0 GB on task 3@node-b" in text
@@ -223,15 +226,15 @@ def test_shared_filesystem_logs_do_not_block_frame_or_start_parallel_workers(das
     entered, release = Event(), Event()
     class SlowFiles(LocalFiles):
         def listdir(self, path):
-            assert current_thread().name.startswith("tower-research")
+            assert current_thread().name.startswith("raven-research")
             entered.set()
             assert release.wait(3)
             return super().listdir(path)
         def stat(self, path):
-            assert current_thread().name.startswith("tower-research")
+            assert current_thread().name.startswith("raven-research")
             return super().stat(path)
         def read(self, path, offset, length):
-            assert current_thread().name.startswith("tower-research")
+            assert current_thread().name.startswith("raven-research")
             return super().read(path, offset, length)
     app, files = dashboard.app, SlowFiles()
     app.interactive = True
@@ -287,7 +290,7 @@ def test_real_app_routes_fresh_mouse_hits_and_arrows_to_details_buttons(dashboar
 
 
 def test_requested_rate_reaches_independent_log_readers_without_changing_base(dashboard):
-    from tower.refresh_rate import set_multiplier
+    from raven.refresh_rate import set_multiplier
     app = dashboard.app
     set_multiplier(app, 50)
     J.run_command(app, ["jobpanel", "logs"])
@@ -359,7 +362,7 @@ def published_workspaces(dashboard, monkeypatch):
             {"id": "E1", "source": "scheduler", "text": "Measured state from job 900"}]},
         "artifacts": {"status": "ok", "valid": True, "summary": "Valid outputs", "outputs": [
             {"path": "results/final-output.json", "status": "valid", "checks": [{"name": "shape", "status": "pass", "message": "MATCH"}]}]},
-        "passport": {"status": "ok", "passport": {"schema": "tower.passport/v1", "job_id": "900"}},
+        "passport": {"status": "ok", "passport": {"schema": "raven.passport/v1", "job_id": "900"}},
         "submit": {"status": "ok", "plan": {"valid": True, "command": "sbatch not-executed.sh", "resources": {}, "issues": []}},
         "predict": {"status": "ok", "job_id": "900", "metrics": {"runtime_seconds": {
             "estimate": 42, "lower": 30, "upper": 60, "samples": 5, "unit": "s"}}},
@@ -499,7 +502,7 @@ def test_inline_research_detaches_mismatched_run_files_and_never_exposes_manual_
 
 
 def test_inline_metrics_virtualize_all_sixty_four_cards_and_jump_to_last(published_workspaces, monkeypatch):
-    from tower import analysis_ui
+    from raven import analysis_ui
     dashboard, app = published_workspaces, published_workspaces.app
     dashboard.reports["experiment"]["series"] = {
         f"metric_{index:02}": [{"t": 1, "value": index}, {"t": 2, "value": index + 1}]
@@ -524,7 +527,7 @@ def test_inline_metrics_virtualize_all_sixty_four_cards_and_jump_to_last(publish
 
 
 def test_inline_project_metrics_fill_old_empty_viewport_on_first_publication(published_workspaces, monkeypatch):
-    from tower import analysis_ui, chart_interaction
+    from raven import analysis_ui, chart_interaction
     dashboard, app = published_workspaces, published_workspaces.app
     app.interactive = True
     dashboard.reports["experiment"]["series"] = {}
@@ -823,7 +826,7 @@ def test_history_long_details_scrolls_use_history_viewport_and_sticky_buttons(pu
                                       ("analytics", "job"), ("analytics", "advisor")])
 def test_embedded_documents_use_context_services_without_copying_app_or_views(published_workspaces, monkeypatch, mode, view):
     dashboard, app = published_workspaces, published_workspaces.app
-    from tower.pane_context import PaneContext
+    from raven.pane_context import PaneContext
 
     def forbidden_copy(self):
         raise AssertionError("embedded renderer copied the whole owner")

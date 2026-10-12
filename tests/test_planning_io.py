@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from tower.planning_io import load_json
+from raven.planning_io import load_json
 
 
 def file(tmp_path, data):

@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.performance-investigation/v1"
+      "const": "raven.performance-investigation/v1"
     },
     "unit": {
       "type": "string",

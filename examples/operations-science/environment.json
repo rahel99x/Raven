@@ -1,5 +1,5 @@
 {
-  "schema": "tower.environment/v1",
+  "schema": "raven.environment/v1",
   "python": "3.11.8",
   "platform": "Linux",
   "machine": "x86_64",

@@ -1,13 +1,15 @@
 # Table controls and job inspection
 
-Tower reads scheduler observations in a background task. Table controls use
-those observations. They do not run a scheduler query on each key press.
+[README](../../README.md) · [Controls](../CONTROLS.md) · [Adaptive workspaces](adaptive-workspaces.md)
+
+Configure table columns, filters, sort priorities, and saved views from Raven's published scheduler observations.
+Background tasks collect those observations; table controls do not query the scheduler on each key press.
 
 A **facet** is a filter on a named field. A **sort priority** specifies which
-column Tower uses first to order rows. A **view** stores a table configuration.
+column Raven uses first to order rows. A **view** stores a table configuration.
 
 | Command table name | Page or section |
-|---|---|
+| --- | --- |
 | `jobs` | Active jobs on Jobs |
 | `recent` | Recents on Jobs |
 | `history` | Completed jobs on History |
@@ -17,7 +19,7 @@ column Tower uses first to order rows. A **view** stores a table configuration.
 | `sources` | Data sources on Sources |
 
 Enter commands with `:`. Press Enter to run a command. Press Esc to close an
-overlay. Tower saves column settings, filters, sort priorities, named views,
+overlay. Raven saves column settings, filters, sort priorities, named views,
 History date ranges, and the normal Recents limit in local UI state.
 A freeze and a temporary Recents expansion apply to the current session.
 Use [Automatic launch groups](batch-launches.md) to fold related new or historical jobs, read batch state counts, and mark an explicit launch.
@@ -25,7 +27,7 @@ Closed groups retain one real representative ID. Hidden members do not become ac
 
 <a id="feature-01"></a>
 
-## 1. Edit sort priorities
+## Edit sort priorities
 
 1. Enter `:sorteditor jobs`.
 2. Press Up or Down to select a rule.
@@ -39,12 +41,12 @@ highest priority. The next rule resolves equal values. For example, use
 `name asc`, then `cpus desc` to put names in alphabetical order and put the
 largest CPU allocation first within each name.
 
-Tower retains the selected job ID when the order changes. Pinned jobs remain
+Raven retains the selected job ID when the order changes. Pinned jobs remain
 first. Unknown values remain after known values in both directions.
 
 <a id="feature-02"></a>
 
-## 2. Sort with the keyboard
+## Sort with the keyboard
 
 1. Enter `:headers history`.
 2. Press Up or Down to select a column.
@@ -65,7 +67,7 @@ JOBID uses numeric ordering, including array tasks. Thus, `9` comes before
 
 <a id="feature-03"></a>
 
-## 3. Configure columns
+## Configure columns
 
 1. Enter `:columns nodes`.
 2. Press Up or Down to select a column.
@@ -89,24 +91,24 @@ to sort. Right-click its separator to restore automatic width. Press Esc during
 a drag to restore the previous width. The six-cell Progress column has a fixed
 width and has no resize handle.
 
-The preview stays inside the current pane. Tower saves once on release. A page,
+The preview stays inside the current pane. Raven saves once on release. A page,
 dialog, terminal-size, or incompatible layout change cancels an unfinished
 resize. Moving the pointer over another pane during a captured drag does not
 activate that pane's controls.
 
 Use commands for exact settings:
 
-~~~text
+```text
 :columns jobs order id,cpus,name,part
 :columns jobs width name 24
 :columns jobs width name auto
 :columns jobs hide gpu%,mem%
 :columns jobs show gpu%
 :columns jobs reset
-~~~
+```
 
 A width must be from 2 through 120 terminal cells. Keys omitted from an `order`
-command follow the specified keys in their original order. Tower can clip or
+command follow the specified keys in their original order. Raven can clip or
 omit optional columns when the terminal is too narrow. It measures wide
 characters in terminal cells.
 
@@ -123,20 +125,20 @@ History has its own layout and retains all completed-job columns.
 commands also change this shared layout. Field names map to the matching Jobs
 field, for example `elapsed` to `time`, `state` to `st`, and `gpus` to `gpu`.
 Use `:columns history` for completed-only fields such as `rss`, `start`, or `end`.
-Tower rejects those fields in a Recents layout command instead of saving an
+Raven rejects those fields in a Recents layout command instead of saving an
 unused preference.
 
 <a id="feature-04"></a>
 
-## 4. Filter numeric resources
+## Filter numeric resources
 
-~~~text
+```text
 :where jobs cpus>=8 memory>16GiB cpu_eff<30%
 :where history elapsed>=2h rss>8GiB
 :where nodes cpus>=32 memory>=64GiB
 :where cluster nodes>10
 :where jobs clear
-~~~
+```
 
 Comparisons on the same table use AND. A new comparison replaces an existing
 comparison with the same field and operator. Unknown measurements do not match.
@@ -147,7 +149,7 @@ Job tables accept `cpus`, `gpus`, `memory`, `rss`, `cpu_eff`, `mem_eff`,
 Cluster accepts `nodes`.
 
 | Field | Meaning |
-|---|---|
+| --- | --- |
 | `memory` | Requested job memory; total node memory |
 | `rss` | Reported peak job memory; used node memory |
 | `cpu_eff` | CPU time divided by elapsed time and allocated CPUs |
@@ -157,14 +159,14 @@ Cluster accepts `nodes`.
 
 Use `>`, `>=`, `<`, `<=`, `=`, or `!=`. Memory units use powers of 1024.
 Efficiencies accept `30%` or `0.3`. Durations accept `2h30m`, `01:30:00`, or
-a number of seconds. Tower uses values before display rounding.
+a number of seconds. Raven uses values before display rounding.
 
 A table can have up to 16 numeric rules. A malformed command preserves the
 previous rules.
 
 <a id="feature-05"></a>
 
-## 5. Build and remove filters
+## Build and remove filters
 
 1. Enter `:filters jobs`.
 2. Press Up or Down to select a field.
@@ -188,7 +190,7 @@ Resource pickers show fields available on that resource.
 
 <a id="feature-06"></a>
 
-## 6. Keep separate table filters
+## Keep separate table filters
 
 Each table has its own text filter, facets, and numeric rules. A Jobs search does
 not change History or Recents.
@@ -196,12 +198,12 @@ not change History or Recents.
 Use `/` or `:filter TEXT` for the current page. Specify a table in a field or
 numeric command:
 
-~~~text
+```text
 :facet history state=FAILED,TIMEOUT
 :facet recent name=train
 :where jobs cpus>=8
 :where history cpu_eff<30%
-~~~
+```
 
 Switch pages to restore their previous searches. Use `:facet TABLE clear` and
 `:where TABLE clear` to remove field and numeric rules. Use an empty `:filter`
@@ -209,7 +211,7 @@ command to clear the current page's text search.
 
 <a id="feature-07"></a>
 
-## 7. Save and select views
+## Save and select views
 
 1. Configure filters, columns, and sort priorities.
 2. Enter `:savedview jobs save "GPU training"`.
@@ -224,52 +226,63 @@ A view includes column order and widths, hidden columns, text filters, facets,
 numeric rules, sort priorities, and the History window. A History view also
 includes its exact date range.
 
-~~~text
+```text
 :savedview list
 :savedview load "GPU training"
 :savedview delete "GPU training"
-~~~
+```
 
-Tower supports up to 32 views. Names can contain letters, numbers, spaces, dots,
-and hyphens. A name must have 1 through 64 characters. Tower validates a saved
+Raven supports up to 32 views. Names can contain letters, numbers, spaces, dots,
+and hyphens. A name must have 1 through 64 characters. Raven validates a saved
 view before it changes the page.
 
 <a id="feature-08"></a>
 
-## 8. Select exact History dates
+## Select exact History dates
 
-~~~text
+```text
 :historyrange today
 :historyrange yesterday
 :historyrange week
 :historyrange 2026-10-01 2026-10-05
 :historyrange all
-~~~
+```
 
-Dates use the local timezone of the machine that runs Tower. Both dates are
+Dates use the local timezone of the machine that runs Raven. Both dates are
 included. The range applies to accounting End. Records without a reported End
 timestamp do not match an exact range.
 
-Tower requests a larger accounting window when necessary. Cached matches appear
+Raven requests a larger accounting window when necessary. Cached matches appear
 immediately. Other matches appear after the accounting source refreshes.
 The maximum lookback is 3650 days. `all` removes the exact-date filter. It does
 not request unlimited accounting history. The summary shows the active interval.
 
 <a id="feature-09"></a>
 
-## 9. Adjust Recents
+## Adjust Recents
 
-~~~text
+```text
 :recents 5
 :recents 10
 :recents 25
 :recents window 2h
 :recents window all
-~~~
+:recents grouped
+:recents sequential
+```
 
-Tower selects the latest candidate records before it applies the Recents sort.
+Raven selects the latest candidate records before it applies the Recents sort.
 The Jobs sort does not change Recents. Departed jobs remain visible while
 accounting data is pending.
+
+Choose **Grouped** or **Sequential** on the Recents divider. Grouped, the default,
+keeps batch members contiguous and permits expansion and collapse. Sequential
+shows individual records with no folded members. Switching modes restores
+newest-completion order; a later header sort can select a different order.
+Grouped keeps whole batches together under custom sorts. Raven saves the mode
+without changing the Jobs sort or removing group membership.
+See [Recents grouping](batch-launches.md#choose-grouped-or-sequential-recents)
+for completion updates and exact selection behavior.
 
 Use `:recents auto` to adapt the initial preview when several jobs finish.
 Use `:recents expand` for an initial preview of 25 records.
@@ -281,7 +294,7 @@ A larger section shows more records.
 Use the wheel inside Recents, or click a recent row and use arrow or page keys, to reach older matching jobs.
 Home reaches the first recent job.
 End loads the matching history needed to reach the last job.
-Tower grows the candidate prefix in bounded pages as you navigate.
+Raven grows the candidate prefix in bounded pages as you navigate.
 The `window` filter uses accounting End.
 Pending accounting records remain visible with their explicit status.
 The accounting window and filters determine the available history.
@@ -289,18 +302,18 @@ See [Scrollable Recents](adaptive-workspaces.md#show-more-recent-jobs) for selec
 
 <a id="feature-10"></a>
 
-## 10. Page by the visible row count
+## Page by the visible row count
 
 Press Page Up or Page Down to move by the visible row count minus one.
 The shared row provides context. A one-row viewport moves by one row.
 
-Tower recalculates the page size after a resize or layout change. Jobs includes
+Raven recalculates the page size after a resize or layout change. Jobs includes
 the active and recent rows in the current viewport. Log browsers have their own
 viewport-based paging.
 
 <a id="feature-11"></a>
 
-## 11. Review marked jobs
+## Review marked jobs
 
 Click one job, then Shift-click another job to mark the inclusive range in the
 current list order. Both directions work. Repeated Shift-clicks adjust the range
@@ -340,10 +353,10 @@ confirmations.
 
 ### Group controls in Jobs Main
 
-The five buttons above the Jobs table operate on Tower's shared groups:
+The five buttons above the Jobs table operate on Raven's shared groups:
 
 | Button | Effect |
-|---|---|
+| --- | --- |
 | **Auto Group** | Enable automatic detection and close detected automatic groups. Keep manual groups and their exclusions. |
 | **Undo Auto** | Undo the last Auto Group change in this session. Keep later manual membership changes. |
 | **Ungroup All** | Remove manual groups and disable automatic grouping. Retain the jobs. |
@@ -353,7 +366,7 @@ The five buttons above the Jobs table operate on Tower's shared groups:
 Use `:grouping auto`, `:grouping undo`, `:grouping clear`, `:grouping expand`, or `:grouping collapse`
 for the same actions. `:grouping restore` restores the last Ungroup All change
 if no newer grouping change would be overwritten. Undo records are local to
-the current Tower session. These controls do not change scheduler order.
+the current Raven session. These controls do not change scheduler order.
 
 ### Review a group's queue order
 
@@ -377,7 +390,7 @@ array ranges and heterogeneous IDs are not supported. The review is limited to
 512 exact pending jobs in that scheduling scope. It includes affected peer jobs
 owned by that same user, and retains their relative order.
 
-Tower uses Slurm's native `scontrol top` operation. It does not change another
+Raven uses Slurm's native `scontrol top` operation. It does not change another
 user's jobs or rewrite dependencies. Resources, dependencies, reservations, and
 site policy still determine actual start order. If the queue changes after the
 review, prepare a new review. Use `:ops queue-order` for the equivalent form
@@ -385,20 +398,20 @@ without a mouse.
 
 <a id="feature-12"></a>
 
-## 12. Freeze inspection
+## Freeze inspection
 
 Enter `:freeze on` to hold the current scheduler observation. The sampler
 continues to collect observations. A FROZEN indicator shows elapsed time and
 accumulated queue changes.
 
-Enter `:freeze off` to display current observations. Tower reports accumulated
+Enter `:freeze off` to display current observations. Raven reports accumulated
 queue changes. The observation is copied once and remains private to the
 session. Actions validate the live state. Freezing does not make a completed
 job eligible for an active-job action.
 
 <a id="feature-13"></a>
 
-## 13. Use the job action menu
+## Use the job action menu
 
 Enter `:jobactions` for the selected job, or `:jobactions 123_2` for an exact ID.
 Select an action with Up or Down. Press Enter.
@@ -408,19 +421,19 @@ evidence. It includes scheduler actions when an active job and an action backend
 are available.
 
 Scheduler operations use existing exact-ID checks and confirmations. A filter
-change does not replace the menu's job ID. Before execution, Tower checks every
+change does not replace the menu's job ID. Before execution, Raven checks every
 confirmed ID against the live queue. If any job is unavailable, has a different
-submission identity, or is no longer eligible, Tower aborts the complete action.
+submission identity, or is no longer eligible, Raven aborts the complete action.
 Select the jobs and review a new confirmation.
 
 <a id="feature-14"></a>
 
-## 14. Inspect a node
+## Inspect a node
 
 Click a node table row or resource-matrix row. You can also enter
 `:node NODE_NAME`.
 
-On the cluster map, click the desired node cell. Tower uses its terminal
+On the cluster map, click the desired node cell. Raven uses its terminal
 coordinates, including after a resize or layout change.
 
 The overlay shows state, CPU allocation, load, memory, GPU resources, measurement
@@ -432,17 +445,17 @@ An unknown value is distinct from a measured zero.
 
 <a id="feature-15"></a>
 
-## 15. Open partition and user job lists
+## Open partition and user job lists
 
 Click a partition row on Cluster to open matching jobs. Click a user summary
 row on Group to show that user's jobs.
 
-~~~text
+```text
 :drill partition gpu
 :drill user alex
-~~~
+```
 
-Tower adds a partition or user facet to the target table. Its existing filters
+Raven adds a partition or user facet to the target table. Its existing filters
 remain active. Remove a chip if another filter hides expected jobs.
 
 Use Back to restore the overview, cursor, filters, and sort order.
@@ -453,7 +466,7 @@ A user drill-down on the current Group page also records the previous overview.
 These methods are for extensions and tests. They use the existing event loop.
 
 | Module and method | Purpose |
-|---|---|
+| --- | --- |
 | `table_ui.initialize(app)` | Create table preferences. |
 | `table_ui.restore(app, data)` / `save(app)` | Validate and restore preferences; return JSON-compatible state. |
 | `table_ui.command_names()` / `run_command(app, args)` | List and run column, facet, view, grouping, and sort commands. |

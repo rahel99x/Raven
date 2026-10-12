@@ -11,9 +11,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import operations as O, ops_cluster as C
-from tower.remote import LocalFiles
-from tower.slurm import Backend, CommandError
+from raven import operations as O, ops_cluster as C
+from raven.remote import LocalFiles
+from raven.slurm import Backend, CommandError
 
 
 def job(**changes):

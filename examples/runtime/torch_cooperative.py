@@ -1,8 +1,8 @@
 """Optional real PyTorch training example; supports existing torchrun launches.
 
-No PyTorch import is required by Tower itself. CPU is an explicit valid fallback.
+No PyTorch import is required by Raven itself. CPU is an explicit valid fallback.
 CUDA timing is asynchronous, bounded and labeled as a stream interval. To publish
-into an existing Tower Research run, pass --run-dir from `tower report start`.
+into an existing Raven Research run, pass --run-dir from `raven report start`.
 """
 import argparse
 import json
@@ -10,8 +10,8 @@ import os
 
 import torch
 
-from tower.collective_runtime import CollectiveRuntime, TorchDistributedCommunicator, TorchMetrics
-from tower.runtime_control import RuntimeControl
+from raven.collective_runtime import CollectiveRuntime, TorchDistributedCommunicator, TorchMetrics
+from raven.runtime_control import RuntimeControl
 
 
 def main():
@@ -50,8 +50,8 @@ def main():
     error = None
     if args.initialize and rank == 0:
         try:
-            from tower.runtime_control import initialize
-            from tower.science_files import json_file
+            from raven.runtime_control import initialize
+            from raven.science_files import json_file
             initialize(args.mailbox, json_file(args.initialize)[0])
         except Exception as exc:
             error = str(exc)
@@ -102,7 +102,7 @@ def main():
                 if rank == 0:
                     print(json.dumps({"step": step, "learning_rate": optimizer.param_groups[0]["lr"], "device": str(device), **metrics}), flush=True)
                     if args.run_dir:
-                        from tower.reporting import write_metric
+                        from raven.reporting import write_metric
                         numeric = {key: value for key, value in metrics.items() if isinstance(value, (int, float)) and not isinstance(value, bool)}
                         if metrics.get("gpu_stream_seconds"):
                             numeric["gpu_stream_seconds"] = metrics["gpu_stream_seconds"][-1]

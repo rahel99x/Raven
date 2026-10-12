@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from tower import command_ui as commands
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Store
-from tower.table_sort import TABLE_KEYS
-from tower.views import Views
+from raven import command_ui as commands
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Store
+from raven.table_sort import TABLE_KEYS
+from raven.views import Views
 
 
 @pytest.fixture

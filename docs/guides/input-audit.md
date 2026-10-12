@@ -2,19 +2,19 @@
 
 [README](../../README.md) · [Pointer controls](pointer-navigation.md) · [Display performance](ui-performance.md)
 
-Tower 4.9.0 uses one byte decoder for terminal mouse reports and keyboard input.
-This guide records reproduced faults, tested fixes, and a manual check procedure.
+Version 4.9.0 introduced a shared byte decoder for terminal mouse reports and keyboard input.
+This record documents reproduced faults, their corrections, and a manual validation procedure.
 The audit covers the shared input path and page-specific pointer handlers.
-It does not establish that every terminal or future input sequence is free of faults.
+Its results apply to the tested protocols and sequences; they do not qualify every terminal.
 
 ## Reproduced faults and corrections
 
 | Fault | Cause | Correction |
 | --- | --- | --- |
-| Movement opens Logs at wider coordinates | Ncurses consumed a UTF-8 X10 mouse header and three bytes. At column 120 and row 75, the remaining coordinate byte was `l`, which opened Logs. | Disable ncurses keypad decoding. Read raw bytes and decode the complete report in Tower. Decode UTF-8 incrementally and retain legacy 8-bit coordinate bytes. |
+| Movement opens Logs at wider coordinates | Ncurses consumed a UTF-8 X10 mouse header and three bytes. At column 120 and row 75, the remaining coordinate byte was `l`, which opened Logs. | Disable ncurses keypad decoding. Read raw bytes and decode the complete report in Raven. Decode UTF-8 incrementally and retain legacy 8-bit coordinate bytes. |
 | Movement opens Research | A timeout after the first Escape byte released the delayed report body as keyboard input. `[` selects the previous tab, which takes Jobs to Research; a coordinate `r` forces a refresh. | Recover a delayed mouse prefix after Escape. Decode SGR, X10, and urxvt reports without replaying their contents as shortcuts. |
 | A delayed pointer prefix cancels a drag | The first Escape byte can arrive separately from the rest of a report. | Allow a bounded prefix grace period during recent pointer activity or an active capture. A genuine Escape still cancels the gesture after the timeout. |
-| An inherited mouse encoding leaks a coordinate | Extended X10 or pixel reporting can remain enabled after another application exits. | Clear modes 1005, 1015, and 1016 before enabling cell-based SGR 1006; clear them again on exit. Keep report decoding in Tower when a terminal still sends a legacy format. |
+| An inherited mouse encoding leaks a coordinate | Extended X10 or pixel reporting can remain enabled after another application exits. | Clear modes 1005, 1015, and 1016 before enabling cell-based SGR 1006; clear them again on exit. Keep report decoding in Raven when a terminal still sends a legacy format. |
 | Research opens after leaving a command | A background project command completed after the user changed workspace. | Bind completion to its original workflow. Retain detached results without changing the current page, source, or selection. |
 | Hover stalls while samples are saved | Sampler file operations held the same lock used by foreground job checks. | Complete the atomic data update under the lock, then perform persistence outside it. |
 | Opening or refreshing Analytics blocks | Saved series and their directory inventory were read in the foreground. | Restore saved samples and inventory through the existing background executor. Show restore status in the view. |
@@ -44,7 +44,7 @@ Recognized SS3 and terminal-specific key prefixes survive delayed fragments.
 Unknown parameterized SS3 controls remain one bounded control sequence.
 An invalid suffix does not replay the prefix as a command. Keyboard-only Escape keeps its separate timeout.
 
-Tower requests cell-based SGR reports, whose numeric coordinates have explicit boundaries.
+Raven requests cell-based SGR reports, whose numeric coordinates have explicit boundaries.
 Legacy 8-bit X10 and UTF-8 X10 can assign different meanings to the same byte sequence.
 The decoder handles the tested legacy formats without leaking coordinate bytes into shortcuts;
 it cannot infer every ambiguous legacy coordinate with certainty.
@@ -60,7 +60,7 @@ Recognized partial SGR reports retain their bounded prefix so a delayed packet c
 
 ## Check the update in a terminal
 
-**Prerequisites:** Install Tower 4.9.0 or later.
+**Prerequisites:** Install Raven 4.9.0 or later.
 Use a terminal that reports pointer movement.
 
 1. Open Jobs and select a running job.
@@ -84,7 +84,7 @@ Use `:terminaltest` to inspect missing movement, drag, or release reports.
 Use `:terminaldoctor` to inspect terminal and connection settings.
 Press Esc to leave the test.
 See [display performance](ui-performance.md) for the synthetic benchmark and its limits.
-Use `tower --ui-trace ui-trace.json` when movement still stalls. Reproduce the issue, quit normally,
+Use `raven --ui-trace ui-trace.json` when movement still stalls. Reproduce the issue, quit normally,
 and inspect the saved phase timings and page transitions.
 
 ## Run the regressions

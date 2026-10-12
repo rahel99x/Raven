@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/diagnostic-intent.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/diagnostic-intent.schema.json",
   "title": "diagnostic intent",
   "description": "Approximation keys must name required observations. Runtime fingerprints, admission costs and compatibility are checked against the selected site document.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.diagnostic-intent/v1"
+      "const": "raven.diagnostic-intent/v1"
     },
     "question": {
       "type": "string",

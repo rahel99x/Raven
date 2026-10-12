@@ -5,8 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from tower import ui_state
-from tower.model import Store
+from raven import ui_state
+from raven.model import Store
 
 
 def test_legacy_roundtrip_metadata_and_last_good_recovery(tmp_path):
@@ -42,30 +42,33 @@ def test_detects_checksum_corruption_and_recovers_without_writing(tmp_path):
     assert path.read_bytes() == before
 
 
+@pytest.mark.parametrize("metadata_key", [ui_state.META, "_previous_ui"])
 @pytest.mark.parametrize("metadata", [None, False, [], {}, {"version": True}, {"version": 1}])
-def test_invalid_explicit_metadata_does_not_downgrade_to_legacy(tmp_path, metadata):
+def test_invalid_explicit_metadata_does_not_downgrade_to_legacy(tmp_path, metadata, metadata_key):
     store = Store(str(tmp_path))
     assert store.save_ui({"theme": "default"})
     assert store.save_ui({"theme": "darcula"})
     path = tmp_path / "ui.json"
-    path.write_text(json.dumps({"theme": "unverified", ui_state.META: metadata}))
+    path.write_text(json.dumps({"theme": "unverified", metadata_key: metadata}))
     assert store.load_ui() == {"theme": "default"}
     assert store.ui_state_status["state"] == "recovered"
 
 
-def test_newer_version_is_preserved_and_not_masked_by_backup(tmp_path):
+@pytest.mark.parametrize("metadata_key", [ui_state.META, "_previous_ui"])
+def test_newer_version_is_preserved_and_not_masked_by_backup(tmp_path, metadata_key):
     store = Store(str(tmp_path))
     store.save_ui({"theme": "default"})
     store.save_ui({"theme": "dark"})
     path = tmp_path / "ui.json"
-    raw = json.dumps({"theme": "future", ui_state.META: {"version": 200}}).encode()
+    raw = json.dumps({"theme": "future", metadata_key: {"version": 200}}).encode()
     path.write_bytes(raw)
     assert store.load_ui() == {} and store.ui_state_status["state"] == "newer"
     assert not store.save_ui({"theme": "old"})
     assert path.read_bytes() == raw
 
 
-@pytest.mark.parametrize("bad", [None, [], True, {"x": float("nan")}, {ui_state.META: {}}])
+@pytest.mark.parametrize("bad", [None, [], True, {"x": float("nan")}, {ui_state.META: {}},
+                                 {"_previous_ui": {}}])
 def test_invalid_updates_preserve_last_good_document(tmp_path, bad):
     store = Store(str(tmp_path))
     store.save_ui({"tab": "history"})
@@ -74,6 +77,42 @@ def test_invalid_updates_preserve_last_good_document(tmp_path, bad):
     assert store.ui_state_status["state"] == "error"
     assert (tmp_path / "ui.json").read_bytes() == before
     assert store.load_ui() == {"tab": "history"}
+
+
+def test_imported_metadata_retains_checksum_and_republishes_in_raven_namespace(tmp_path):
+    store = Store(str(tmp_path))
+    preferences = {"theme": "dark", "manual_groups": {"saved": ["17"]}}
+    assert store.save_ui(preferences)
+    path = tmp_path / "ui.json"
+    document = json.loads(path.read_text())
+    document["_previous_ui"] = document.pop(ui_state.META)
+    path.write_text(json.dumps(document))
+    original = path.read_bytes()
+    assert store.load_ui() == preferences
+    assert path.read_bytes() == original
+    assert store.save_ui(preferences)
+    assert "_previous_ui" not in json.loads(path.read_text())
+    assert ui_state.META in json.loads(path.read_text())
+    assert (tmp_path / "ui.json.bak").read_bytes() == original
+
+    document["manual_groups"]["saved"] = ["19"]
+    path.write_text(json.dumps(document))
+    assert store.load_ui() == preferences
+    assert store.ui_state_status["state"] == "recovered"
+    assert "checksum" in store.ui_state_status["message"]
+
+
+def test_conflicting_metadata_never_downgrades_to_unverified_preferences(tmp_path):
+    store = Store(str(tmp_path))
+    assert store.save_ui({"theme": "default"})
+    assert store.save_ui({"theme": "dark"})
+    path = tmp_path / "ui.json"
+    document = json.loads(path.read_text())
+    document["_previous_ui"] = dict(document[ui_state.META])
+    path.write_text(json.dumps(document))
+    assert store.load_ui() == {"theme": "default"}
+    assert store.ui_state_status["state"] == "recovered"
+    assert "conflicting" in store.ui_state_status["message"]
 
 
 def test_failed_primary_replace_keeps_previous_publication_and_cleans_temporary(tmp_path, monkeypatch):
@@ -88,7 +127,7 @@ def test_failed_primary_replace_keeps_previous_publication_and_cleans_temporary(
     assert not store.save_ui({"tab": "jobs"})
     assert store.ui_state_status["state"] == "error"
     assert store.load_ui() == {"tab": "history"}
-    assert not list(tmp_path.glob(".tower-ui-*"))
+    assert not list(tmp_path.glob(".raven-ui-*"))
 
 
 def test_failed_fsync_does_not_publish_partial_file(tmp_path, monkeypatch):
@@ -99,7 +138,7 @@ def test_failed_fsync_does_not_publish_partial_file(tmp_path, monkeypatch):
     monkeypatch.setattr(ui_state.os, "fsync", failed)
     assert not store.save_ui({"tab": "jobs"})
     assert store.load_ui() == {"tab": "history"}
-    assert not list(tmp_path.glob(".tower-ui-*"))
+    assert not list(tmp_path.glob(".raven-ui-*"))
 
 
 def test_bounded_state_and_nonregular_files_do_not_block(tmp_path, monkeypatch):

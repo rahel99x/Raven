@@ -2,12 +2,16 @@
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Live workbench](live-workbench.md)
 
-Use this guide for Tower's mouse feedback, button navigation, scrolling, and startup display.
-All controls remain inside the terminal.
+Use the mouse or directional keyboard focus to select Raven's visible controls.
+This guide covers pointer feedback, graph gestures, selection, scrolling, themes, and the startup display.
+
+**Prerequisites:** Run Raven in an interactive terminal.
+Mouse gestures require the terminal to report their press, movement, and release events.
+Use the keyboard alternatives when those reports are unavailable.
 
 ## Check terminal mouse support
 
-1. Start Tower in an interactive terminal.
+1. Start Raven in an interactive terminal.
 2. Move the pointer over a page label or button.
 3. Check that the control highlights.
 4. Click the control to activate it.
@@ -19,7 +23,7 @@ Hover feedback requires a terminal that reports pointer movement.
 Clicks and drag reports also depend on the terminal's mouse support.
 The `mouse` configuration field must be `true`.
 
-Tower updates cosmetic pointer feedback from the last published page.
+Raven updates pointer feedback from the last published page.
 It paints changed cells while data, actions, and resize still refresh the page.
 Continuous movement does not postpone live results.
 See [Display and input performance](ui-performance.md) for validation and connection limits.
@@ -37,7 +41,7 @@ An ordinary SSH connection can carry supported terminal mouse events.
 
 ## Select controls with the keyboard
 
-Tower builds directional connections between the visible controls in the current display.
+Raven builds directional connections between the visible controls in the current display.
 The connections follow the controls' positions and groups.
 They update when the page, layout, menu, or terminal size changes.
 
@@ -87,8 +91,8 @@ The existing `:timeline seek EVENT_NUMBER` command remains the replay-seeking op
 
 Move the pointer inside a metric plot to show its thin crosshair in the active theme's accent color.
 Press the left button, drag across a time interval, and release inside the plot.
-Tower fits the selected interval across the plot and calculates the vertical scale from its visible curve.
-The guide preserves the graph background.
+Raven fits the selected interval across the plot and calculates the vertical scale from its visible curve.
+The crosshair preserves the graph background.
 Unicode strokes use two horizontal and four vertical Braille positions per cell.
 The crosshair reaches the latest reported cell immediately. Only its dot phase animates, for at most 24 ms.
 Curve and annotation glyphs keep their original styles where the selector intersects them.
@@ -117,11 +121,12 @@ See [Graph interaction](charts.md#zoom-a-time-interval) for keyboard commands, s
 2. Keep the button pressed and move the pointer horizontally.
 3. Release the button at the required interval.
 
-**Expected result:** The label follows the effective Jobs polling interval in `s`, `ms`, or `µs`; ASCII mode uses `us`.
-The logarithmic endpoints are five seconds and 500 milliseconds.
-Dragging changes the requested fetching rate during the session.
-It keeps source minimum intervals and retry backoff.
-Right-click the update control to restore five seconds without clearing the selected job or lines.
+**Expected result:** The slider updates the requested position.
+The label shows the effective Jobs interval in `s`, `ms`, or `µs`; ASCII mode uses `us`.
+The logarithmic request endpoints are five seconds and 500 milliseconds.
+Configured intervals, collection floors, site policy, demand gating, command budgets, and retry backoff determine actual collection.
+The default managed queue floor is 60 seconds, so the label can remain unchanged across several positions.
+Right-click the update control to restore the five-second request without clearing the selected job or lines.
 
 Use a direct track click when the terminal does not report dragging.
 Use the wheel, `[-]` and `[+]`, or `:rate N` for exact one-step or numeric control.
@@ -144,7 +149,7 @@ See [Panel dividers](adaptive-workspaces.md#change-panel-size) for complete comm
 
 ## Use a menu for several changes
 
-1. Click File, Edit, View, or Help.
+1. Click File, Edit, View, Setup, or Help.
 2. Move the pointer over a menu choice.
 3. Click a choice to activate it.
 4. Keep the pointer inside the dropdown to select another available choice.
@@ -249,7 +254,8 @@ Research Evidence uses the shared line-selection state on its main page.
 
 Scrollable panes reserve four header cells for top/bottom arrows and one right-edge cell for the scrollbar.
 Drag the scrollbar thumb to move within that pane.
-Click above or below it to move by one viewport.
+Click anywhere on its track to seek directly to that position, then drag to adjust it.
+The pane moves only while the pointer is on its visible track. Releasing outside the track ends the drag without scrolling.
 Use the header arrows to reach the document endpoints.
 These gestures preserve the selected source and do not activate rows under the rail.
 A changed content count keeps the drag active; changed source or geometry cancels it.
@@ -266,7 +272,7 @@ A slider or directional button focus uses its own keys while active.
 
 Mouse-wheel scrolling moves the viewport toward the latest requested position.
 Successive wheel events update that target.
-Tower does not replay a long queue of old scroll movements after reaching an edge.
+Raven does not replay a long queue of old scroll movements after reaching an edge.
 Changing direction updates the target immediately.
 
 Keyboard arrows, page keys, Home, End, clicks, and copy operations retain immediate, exact positioning.
@@ -277,10 +283,10 @@ Use `:smoothscroll off` to disable viewport interpolation.
 Use `:smoothscroll on` to restore it.
 Use `:smoothscroll` or `:smoothscroll toggle` to change the current preference.
 The View menu provides Enable smooth scrolling or Disable smooth scrolling.
-The top-level `smooth_scrolling` configuration field sets its launch default.
+The compatibility configuration's top-level `smooth_scrolling` field sets its launch default.
 Normal UI state retains the preference for the current profile and connection.
 
-The reader theme and `animations = false` use immediate viewport movement.
+The reader theme and disabled **Interface animations** use immediate viewport movement.
 These settings preserve mouse-wheel scrolling.
 Static operation is useful when a terminal connection has limited display throughput.
 
@@ -307,7 +313,7 @@ The terminal's colour capacity determines the available approximation.
 
 ## Control the startup display
 
-Tower can show a short Unicode welcome animation when an interactive curses session starts.
+Raven can show a short Unicode welcome animation when an interactive curses session starts.
 The ASCII mode uses a compact static welcome.
 One-frame output, JSON, scripts, and ANSI watch output do not show this display.
 
@@ -318,21 +324,22 @@ Use `:startup` to inspect the preference without changing it.
 Use `:startup preview` to view it without changing the saved preference.
 The View menu provides Enable startup animation, Disable startup animation, and Preview startup animation.
 
-The top-level `startup_animation` configuration field sets the launch default.
+The compatibility configuration's top-level `startup_animation` field sets the launch default.
+Managed Raven launches disable the startup display by default.
 Normal UI state retains the enabled preference for the current profile and connection.
-The reader theme and `animations = false` suppress the startup display.
+The reader theme and disabled **Interface animations** suppress the startup display.
 Very small terminals also skip it.
 The Unicode welcome lasts less than one second.
 ASCII mode shows its static welcome for about half a second.
 
 Press a key, click, or use the wheel to dismiss the display immediately.
-Tower then performs that input's normal action.
+Raven then performs that input's normal action.
 Pointer movement alone leaves the display running.
 The welcome does not change sampler intervals or delay job actions behind an animation queue.
 
 ## Selection integration methods
 
-The `tower.job_selection` methods operate on published job identities and terminal display state.
+The `raven.job_selection` methods operate on published job identities and terminal display state.
 They do not read log files or send scheduler actions.
 
 | Method | Purpose and result |

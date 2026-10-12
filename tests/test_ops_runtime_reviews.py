@@ -5,10 +5,10 @@ import shutil
 
 import pytest
 
-from tower.operations import Context
-from tower.operations import digest
-from tower import ops_runtime
-from tower import runtime_control
+from raven.operations import Context
+from raven.operations import digest
+from raven import ops_runtime
+from raven import runtime_control
 
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples" / "runtime"
@@ -106,7 +106,7 @@ def test_io_review_does_not_assert_application_arrivals(runtime_request):
 
 def test_io_read_only_overview(runtime_request):
     path, data, control = runtime_request
-    path.write_text(json.dumps({"schema": "tower.io-request/v1", "mailbox": data["mailbox"], "attempt": data["attempt"]}))
+    path.write_text(json.dumps({"schema": "raven.io-request/v1", "mailbox": data["mailbox"], "attempt": data["attempt"]}))
     result = ops_runtime.run("io-coordination", {"manifest": str(path)}, context())
     assert "plan" not in result
 
@@ -141,12 +141,12 @@ def test_prediction_record_retains_exact_review_and_qualification(tmp_path, qual
     assert json.loads((destination / "scenario.json").read_text()) == scenario
     prediction = json.loads((destination / "prediction.json").read_text())
     assert prediction == result["data"]
-    receipt = json.loads((destination / ".tower-receipt.json").read_text())
+    receipt = json.loads((destination / ".raven-receipt.json").read_text())
     assert receipt == recorded["data"]["receipt"]
     assert receipt["prediction_digest"] == digest(prediction)
     assert receipt["validation"]["status"] == qualification
     assert receipt["prediction_id"] == prediction["prediction_id"]
-    assert not (destination / ".tower-incomplete").exists()
+    assert not (destination / ".raven-incomplete").exists()
     with pytest.raises(ValueError, match="new directory"):
         ops_runtime.apply("execution-simulation", result["plan"], context())
 
