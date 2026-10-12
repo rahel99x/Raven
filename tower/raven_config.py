@@ -41,7 +41,7 @@ DEFAULTS = {
         "gpu": "existing-telemetry", "weather_probes": False, "account_seconds": 900, "log_follow_seconds": 5,
         "idle_after_seconds": 300, "idle_interval_factor": 5, "jitter_fraction": .20, "max_inflight": 2,
         "controller_requests_per_minute": 12, "controller_burst": 2, "accounting_requests_per_minute": 2,
-        "step_launches_per_minute": 1, "statistics_requests_per_minute": 4,
+        "step_launches_per_minute": 6, "step_launch_interval_seconds": 10, "statistics_requests_per_minute": 4,
         "action_validation_requests_per_minute": 6, "max_response_bytes": 4194304,
         "max_response_records": 10000, "live_batch_jobs": 16, "circuit_failures": 3, "circuit_seconds": 120,
         "filesystem_metadata_per_minute": 120, "file_bytes_per_minute": 16777216, "local_processes_per_minute": 60, "service_failure": "cached-only"},
@@ -651,6 +651,8 @@ def schema_document():
                 output[name] = {"enum": sorted(_ENUMS[path])}
             elif isinstance(value, bool):
                 output[name] = {"const": False} if path in _FALSE_ONLY else {"type": "boolean"}
+            elif path == "collection.step_launch_interval_seconds":
+                output[name] = {"type": "number", "minimum": .1, "maximum": 31536000}
             elif isinstance(value, (int, float)):
                 kind = "number" if isinstance(value, float) or path.endswith("_seconds") else "integer"
                 lower = 0 if path == "allocation.gpus" or path.endswith(("_per_minute", "jitter_fraction")) else .001 if kind == "number" else 1

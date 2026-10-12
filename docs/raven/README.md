@@ -199,6 +199,7 @@ uses these intervals and rolling ceilings:
 | Log follow | At least 5 s |
 | Controller attempts | 12/minute, burst 2 |
 | Accounting attempts | 2/minute |
+| Managed Slurm step attempts | At least 10 s apart; 6 per rolling minute |
 | Statistics attempts | 4/minute |
 | Fresh action validation | 6/minute |
 | Concurrent generated commands | 2, with a validation reservation |
@@ -220,6 +221,13 @@ does not become `5 s`. Sampling, display windows, and plot animation are distinc
 Manual refresh, reconnect, and Heavy mode do not reset allowances. Failures count
 as attempts. Jitter, idle intervals, demand gating, and endpoint circuits bound
 startup and recovery traffic.
+
+Step admission uses `collection.step_launch_interval_seconds` and
+`collection.step_launches_per_minute`. The default allows a retry after 10 seconds,
+subject to the rolling ceiling and other admission limits. Same-user sessions
+sharing an endpoint use the same allowance, and failed launches count as attempts.
+Site policy can require a longer interval or a lower ceiling. Updating Raven does
+not replace these settings in an existing configuration.
 
 The private SQLite coordination directory must be host-local and owned by the
 user. It must not be placed on NFS, Lustre, or another shared filesystem.

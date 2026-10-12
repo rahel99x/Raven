@@ -14,6 +14,9 @@
   while retaining signed integer bounds and exact source-verification checks.
 - Read Slurm step hosts from `NodeList` when `Nodes` reports the node count,
   allowing verified Heavy startup with the standard `scontrol show step` format.
+- Default managed Slurm step launches to a minimum ten-second interval and six
+  attempts per rolling minute, shared across same-user sessions on an endpoint.
+  Count failed attempts and retain stricter site policy and existing configuration.
 
 ## 7.0.0 — Raven
 

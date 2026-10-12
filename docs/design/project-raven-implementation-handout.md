@@ -614,7 +614,8 @@ max_inflight = 2
 controller_requests_per_minute = 12
 controller_burst = 2
 accounting_requests_per_minute = 2
-step_launches_per_minute = 1
+step_launches_per_minute = 6
+step_launch_interval_seconds = 10
 service_failure = "cached-only"
 
 [resources.light]
@@ -637,8 +638,12 @@ show_observation_age = true
 
 Budgets are ceilings, not promised refresh service: twelve controller requests/minute must be
 shared by all included families, pending reconciliation, and manual requests. If demand exceeds
-budget, report delayed observations. A declared one-step/minute allowance is reserved for
-explicit launches; it does not re-enable automatic GPU sampling.
+budget, report delayed observations. Managed Slurm step attempts are spaced at least ten
+seconds apart and limited to six per rolling minute. Same-user sessions sharing an endpoint
+use the same allowance, and failed launches count as attempts. A site policy can require a
+longer interval or a lower ceiling. This allowance is reserved for explicit launches; it does
+not re-enable automatic GPU sampling. Existing configurations retain their declared settings
+when Raven is updated.
 
 `auto-host-local` is a typed resolver, not a literal directory name. It checks a private runtime
 directory or site-approved local scratch, ownership, permissions, filesystem type, and host

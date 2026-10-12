@@ -12,7 +12,7 @@ from tower.model import Job, Store
 from tower.platform_session import wrap_backend
 from tower.raven_collection import (DEFAULTS, Deferred, Descriptor, Ledger, classify,
                                     admit_allocation_launch, admit_terminal_launch,
-                                    expand_hostlist, make_placement_verifier, wrap_files)
+                                    expand_hostlist, make_placement_verifier, settings, wrap_files)
 from tower.shared_collection import SharedQueryCache
 from tower.slurm import CommandError, Slurm
 
@@ -98,7 +98,7 @@ def test_allocation_launch_debits_controller_and_step_without_holding_worker_slo
     assert report["rates_last_minute"]["process"] == 2
     assert report["inflight"] == 0
     assert raw.commands == []
-    with pytest.raises(Deferred, match="steps budget"):
+    with pytest.raises(Deferred, match="step launch cooldown"):
         admit_allocation_launch(governed, {"site_kind": "slurm", "ownership": "owned-step-only", "prefix": ["srun", "--jobid=7"]})
     assert governed.ledger.report()["inflight"] == 0
 
@@ -124,9 +124,203 @@ def test_reviewed_terminal_launch_uses_persisted_step_allowance(tmp_path):
     receipt = admit_terminal_launch(governed, ["sattach", "123.0"])
     assert receipt["endpoint"] == "steps"
     assert governed.ledger.report()["inflight"] == 0
-    with pytest.raises(Deferred, match="steps budget"):
+    with pytest.raises(Deferred, match="step launch cooldown"):
         admit_terminal_launch(governed, ["srun", "--jobid=123", "--pty", "bash"])
     assert not raw.commands
+
+
+@pytest.mark.parametrize("validation", [False, True])
+def test_step_cooldown_is_ten_seconds_across_commands_wrappers_and_profiles(tmp_path, validation):
+    timer = Timer()
+    first = ledger(tmp_path, timer)
+    argv = ["srun", "--jobid=7", "--pty", "bash"]
+    with first.admit(classify(argv), argv, validation=validation):
+        pass
+    second = Ledger(first.cache, {"cluster": "test", "user": "researcher", "profile": "Heavy", "mode": "heavy"}, first.config, now=timer)
+    other = ["sattach", "8.0"]
+    timer.value = 1009.5
+    with pytest.raises(Deferred, match="step launch cooldown.*0.50 seconds") as denied:
+        with second.admit(classify(other), other, validation=validation):
+            pytest.fail("A new command or profile must not bypass the step cooldown")
+    assert denied.value.retry_after == .5
+    assert first.report()["rates_last_minute"]["steps"] == 1
+    timer.value = 1010.
+    with second.admit(classify(other), other, validation=validation):
+        pass
+    timer.value = 1020.
+    with second.admit(classify(other), other, validation=validation):
+        pass
+    assert first.report()["rates_last_minute"]["steps"] == 3
+
+
+def test_failed_step_attempt_keeps_the_cooldown_and_rolling_debit(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer)
+    argv = ["srun", "--jobid=7"]
+    with pytest.raises(OSError, match="worker unavailable"):
+        with owner.admit(classify(argv), argv, validation=True):
+            raise OSError("worker unavailable")
+    timer.value = 1009.999
+    other = ["srun", "--jobid=8"]
+    with pytest.raises(Deferred, match="step launch cooldown"):
+        with owner.admit(classify(other), other, validation=True):
+            pytest.fail("Failed attempts must retain admission debits")
+    timer.value = 1010.
+    with owner.admit(classify(other), other, validation=True):
+        pass
+    assert owner.report()["rates_last_minute"]["steps"] == 2
+
+
+def test_step_minute_quota_remains_independent_from_spacing(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer, step_launch_interval_seconds=.1)
+    for index in range(6):
+        timer.value = 1000. + index
+        argv = ["srun", "--jobid=" + str(index)]
+        with owner.admit(classify(argv), argv, validation=True):
+            pass
+    timer.value = 1015.
+    argv = ["srun", "--jobid=7"]
+    with pytest.raises(Deferred, match="rolling steps budget"):
+        with owner.admit(classify(argv), argv, validation=True):
+            pytest.fail("Spacing cannot bypass the rolling six-step allowance")
+    timer.value = 1060.
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+    assert owner.report()["rates_last_minute"]["steps"] == 6
+
+
+def test_explicit_stricter_step_quota_is_preserved(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer, step_launches_per_minute=1)
+    argv = ["srun", "--jobid=7"]
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+    timer.value = 1010.
+    with pytest.raises(Deferred, match="rolling steps budget"):
+        with owner.admit(classify(argv), argv, validation=True):
+            pytest.fail("A strict user or site quota still applies after the cooldown")
+    timer.value = 1060.
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+
+
+def test_step_cooldown_longer_than_minute_survives_request_pruning(tmp_path):
+    timer = Timer()
+    owner = ledger(tmp_path, timer, step_launch_interval_seconds=120.)
+    argv = ["srun", "--jobid=7"]
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+    timer.value = 1061.
+    # An unrelated endpoint can prune the old rolling request records.
+    queue = ["squeue"]
+    with owner.admit(classify(queue), queue):
+        pass
+    assert "steps" not in owner.report()["rates_last_minute"]
+    second = Ledger(owner.cache, {"cluster": "test", "user": "researcher", "profile": "other"}, owner.config, now=timer)
+    with pytest.raises(Deferred, match="step launch cooldown") as denied:
+        with second.admit(classify(argv), argv, validation=True):
+            pytest.fail("Pruning must not lower a longer configured or mandatory cooldown")
+    assert denied.value.retry_after == 59.
+    timer.value = 1120.
+    with second.admit(classify(argv), argv, validation=True):
+        pass
+
+
+def test_step_cooldown_upgrade_preserves_legacy_debits_before_pruning(tmp_path):
+    from tower import evidence as E
+    timer = Timer()
+    timer.value = 1061.
+    cache = SharedQueryCache(tmp_path / "legacy-ledger")
+    scope = {"cluster": "test", "user": "researcher"}
+    identity = E.digest(scope)
+    with cache._connection() as db:
+        db.executescript("""
+            CREATE TABLE raven_requests (scope TEXT, endpoint TEXT, started REAL);
+            CREATE TABLE raven_endpoints (scope TEXT, endpoint TEXT, failures INTEGER, until REAL, PRIMARY KEY(scope,endpoint));
+        """)
+        db.execute("INSERT INTO raven_requests VALUES (?,?,?)", (identity, "steps", 1000.))
+        db.execute("INSERT INTO raven_endpoints VALUES (?,?,?,?)", (identity, "steps", 2, 0.))
+    owner = Ledger(cache, scope, {"step_launch_interval_seconds": 120.}, now=timer)
+    with cache._connection() as db:
+        assert db.execute("SELECT failures,last_launch FROM raven_endpoints WHERE scope=? AND endpoint='steps'", (identity,)).fetchone() == (2, 1000.)
+        assert "cost" in {row[1] for row in db.execute("PRAGMA table_info(raven_requests)")}
+    argv = ["srun", "--jobid=7"]
+    with pytest.raises(Deferred, match="step launch cooldown"):
+        with owner.admit(classify(argv), argv, validation=True):
+            pytest.fail("An upgrade must not erase a recent launch under a longer site floor")
+    timer.value = 1120.
+    with owner.admit(classify(argv), argv, validation=True):
+        pass
+
+
+def test_simultaneous_step_owners_share_one_atomic_cooldown(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    timer = Timer()
+    first = ledger(tmp_path, timer)
+    second = Ledger(first.cache, {"cluster": "test", "user": "researcher", "profile": "other"}, first.config, now=timer)
+    ready = threading.Barrier(2)
+
+    def launch(owner, job):
+        argv = ["srun", "--jobid=" + job]
+        ready.wait()
+        try:
+            with owner.admit(classify(argv), argv, validation=True):
+                return "admitted"
+        except Deferred as exc:
+            assert "step launch cooldown" in str(exc)
+            return "deferred"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        attempts = [pool.submit(launch, first, "7"), pool.submit(launch, second, "8")]
+        assert sorted(item.result() for item in attempts) == ["admitted", "deferred"]
+    assert first.report()["rates_last_minute"]["steps"] == 1
+    assert first.report()["inflight"] == 0
+
+
+def test_simultaneous_ledger_upgrade_adds_step_timestamp_once(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    cache = SharedQueryCache(tmp_path / "legacy-ledger")
+    with cache._connection() as db:
+        db.executescript("""
+            CREATE TABLE raven_requests (scope TEXT, endpoint TEXT, started REAL);
+            CREATE TABLE raven_endpoints (scope TEXT, endpoint TEXT, failures INTEGER, until REAL, PRIMARY KEY(scope,endpoint));
+        """)
+    ready = threading.Barrier(2)
+
+    def upgrade(profile):
+        ready.wait()
+        return Ledger(cache, {"cluster": "test", "user": "researcher", "profile": profile}, {}, now=Timer())
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        attempts = [pool.submit(upgrade, name) for name in ("one", "two")]
+        owners = [item.result() for item in attempts]
+    assert owners[0].scope == owners[1].scope
+    with cache._connection() as db:
+        columns = [row[1] for row in db.execute("PRAGMA table_info(raven_endpoints)")]
+        assert columns.count("last_launch") == 1
+
+
+def test_step_cooldown_does_not_add_a_probe_interval(tmp_path):
+    owner = ledger(tmp_path)
+    step = ["srun", "--jobid=7"]
+    with owner.admit(classify(step), step, validation=True):
+        pass
+    for name in ("one.sh", "two.sh"):
+        argv = ["sbatch", "--test-only", name]
+        with owner.admit(classify(argv), argv, validation=True):
+            pass
+    assert owner.report()["rates_last_minute"]["probes"] == 2
+
+
+@pytest.mark.parametrize("value", [0, .05, float("nan"), float("inf"), True, "10"])
+def test_invalid_step_cooldown_is_rejected(value):
+    with pytest.raises(ValueError, match="step_launch_interval_seconds"):
+        settings({"step_launch_interval_seconds": value})
+
+
+def test_fractional_step_cooldown_is_supported():
+    assert settings({"step_launch_interval_seconds": .5})["step_launch_interval_seconds"] == .5
 
 
 def test_exact_submission_wrapper_classifies_but_shell_injection_does_not():

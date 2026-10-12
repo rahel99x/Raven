@@ -335,6 +335,11 @@
               "minimum": 0,
               "maximum": 100000
             },
+            "step_launch_interval_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
             "statistics_requests_per_minute": {
               "type": "integer",
               "minimum": 0,
@@ -740,6 +745,11 @@
               "maximum": 31536000
             },
             "collection.circuit_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "collection.step_launch_interval_seconds": {
               "type": "number",
               "minimum": 0.1,
               "maximum": 31536000
@@ -1333,6 +1343,11 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 100000
+            },
+            "step_launch_interval_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
             },
             "statistics_requests_per_minute": {
               "type": "integer",

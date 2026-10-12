@@ -29,7 +29,8 @@ DEFAULTS = {
     "idle_interval_factor": 5., "jitter_fraction": .2, "max_inflight": 2,
     "controller_requests_per_minute": 12, "controller_burst": 2,
     "accounting_requests_per_minute": 2, "statistics_requests_per_minute": 4,
-    "action_validation_requests_per_minute": 6, "step_launches_per_minute": 1,
+    "action_validation_requests_per_minute": 6, "step_launches_per_minute": 6,
+    "step_launch_interval_seconds": 10.,
     "filesystem_metadata_per_minute": 120, "file_bytes_per_minute": 16 << 20, "local_processes_per_minute": 60,
     "max_response_bytes": 4 << 20, "max_response_records": 10000,
     "live_batch_jobs": 16, "circuit_failures": 3, "circuit_seconds": 120.,
@@ -50,7 +51,7 @@ def settings(value):
         if isinstance(default, (int, float)) and not isinstance(default, bool):
             number = result[key]
             if (type(number) not in (int, float) or not math.isfinite(number)
-                    or number < (0 if key == "jitter_fraction" else .001)
+                    or number < (0 if key == "jitter_fraction" else .1 if key == "step_launch_interval_seconds" else .001)
                     or type(default) is int and (type(number) is not int or number > (1 << 30))):
                 raise ValueError("Invalid Raven collection setting: " + key)
     result["max_inflight"] = min(2, int(result["max_inflight"]))
@@ -298,10 +299,27 @@ class Ledger:
                 CREATE INDEX IF NOT EXISTS raven_requests_scope ON raven_requests(scope, started);
                 CREATE TABLE IF NOT EXISTS raven_active (token TEXT PRIMARY KEY, scope TEXT, lane TEXT, pid INTEGER, process_start TEXT);
                 CREATE TABLE IF NOT EXISTS raven_sources (scope TEXT, source TEXT, started REAL, failures INTEGER, until REAL, PRIMARY KEY(scope,source));
-                CREATE TABLE IF NOT EXISTS raven_endpoints (scope TEXT, endpoint TEXT, failures INTEGER, until REAL, PRIMARY KEY(scope,endpoint));
+                CREATE TABLE IF NOT EXISTS raven_endpoints (scope TEXT, endpoint TEXT, failures INTEGER, until REAL, last_launch REAL, PRIMARY KEY(scope,endpoint));
             """)
-            if "cost" not in {row[1] for row in db.execute("PRAGMA table_info(raven_requests)")}:
-                db.execute("ALTER TABLE raven_requests ADD COLUMN cost INTEGER NOT NULL DEFAULT 1")
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                if "cost" not in {row[1] for row in db.execute("PRAGMA table_info(raven_requests)")}:
+                    db.execute("ALTER TABLE raven_requests ADD COLUMN cost INTEGER NOT NULL DEFAULT 1")
+                if "last_launch" not in {row[1] for row in db.execute("PRAGMA table_info(raven_endpoints)")}:
+                    db.execute("ALTER TABLE raven_endpoints ADD COLUMN last_launch REAL")
+                # Preserve legacy launches before the rolling request cleanup,
+                # including site cooldowns longer than the minute quota window.
+                db.execute("""
+                    INSERT INTO raven_endpoints(scope,endpoint,failures,until,last_launch)
+                    SELECT scope,endpoint,0,0,max(started) FROM raven_requests
+                    WHERE endpoint='steps' GROUP BY scope,endpoint
+                    ON CONFLICT(scope,endpoint) DO UPDATE SET
+                    last_launch=max(coalesce(raven_endpoints.last_launch,excluded.last_launch),excluded.last_launch)
+                """)
+                db.execute("COMMIT")
+            except BaseException:
+                db.execute("ROLLBACK")
+                raise
 
     def _admit(self, descriptor, argv, validation):
         now, cfg = self.now(), self.config
@@ -326,6 +344,19 @@ class Ledger:
                 for old in db.execute("SELECT token,pid,process_start FROM raven_active").fetchall():
                     if self.cache._dead(old):
                         db.execute("DELETE FROM raven_active WHERE token=?", (old[0],))
+                recovery = db.execute("SELECT until,last_launch FROM raven_endpoints WHERE scope=? AND endpoint=?", (self.scope, endpoint)).fetchone()
+                if endpoint == "steps":
+                    # The endpoint timestamp survives minute-window pruning:
+                    # mandatory site floors may require a longer cooldown.
+                    last_launch = recovery[1] if recovery else None
+                    if last_launch is None:
+                        # Honor recent debits written before this timestamp
+                        # was introduced, including failed launch attempts.
+                        last_launch = db.execute("SELECT max(started) FROM raven_requests WHERE scope=? AND endpoint=?", (self.scope, endpoint)).fetchone()[0]
+                    remaining = 0. if last_launch is None else last_launch + cfg["step_launch_interval_seconds"] - now
+                    if remaining > 0:
+                        retry_after = max(.1, remaining)
+                        raise Deferred("Raven collection deferred: step launch cooldown active; retry in " + format(retry_after, ".2f") + " seconds", retry_after=retry_after)
                 active = db.execute("SELECT lane,count(*) FROM raven_active WHERE scope=? GROUP BY lane", (self.scope,)).fetchall()
                 counts = dict(active)
                 # Preserve one of the starter profile's two command slots for
@@ -343,10 +374,11 @@ class Ledger:
                     if count + cost > ceiling:
                         raise Deferred("Raven collection deferred: rolling " + key + " budget exhausted")
                 previous = db.execute("SELECT started,failures,until FROM raven_sources WHERE scope=? AND source=?", (self.scope, source)).fetchone()
-                recovery = db.execute("SELECT until FROM raven_endpoints WHERE scope=? AND endpoint=?", (self.scope, endpoint)).fetchone()
                 if not validation and recovery and now < recovery[0]:
                     raise Deferred("Raven collection deferred: endpoint circuit is recovering")
-                floor = 0. if validation or endpoint in ("local", "filesystem", "file-bytes") else interval(cfg, descriptor.source, 0)
+                floor = (0. if validation or endpoint in ("local", "filesystem", "file-bytes")
+                         else cfg["step_launch_interval_seconds"] if endpoint == "steps"
+                         else interval(cfg, descriptor.source, 0))
                 if previous and now < max(previous[0] + floor, previous[2]):
                     raise Deferred("Raven collection deferred: source floor or circuit recovery is active")
                 # An endpoint burst limit smooths synchronized different queue
@@ -363,6 +395,8 @@ class Ledger:
                 if descriptor.subprocess:
                     debits.append((self.scope, "process", now, 1))
                 db.executemany("INSERT INTO raven_requests(scope,endpoint,started,cost) VALUES (?,?,?,?)", debits)
+                if endpoint == "steps":
+                    db.execute("INSERT INTO raven_endpoints(scope,endpoint,failures,until,last_launch) VALUES (?,?,0,0,?) ON CONFLICT(scope,endpoint) DO UPDATE SET last_launch=excluded.last_launch", (self.scope, endpoint, now))
                 db.execute("INSERT INTO raven_active VALUES (?,?,?,?,?)", (token, self.scope, lane, *self.cache._owner))
                 db.execute("INSERT OR REPLACE INTO raven_sources VALUES (?,?,?,?,?)", (self.scope, source, now, previous[1] if previous else 0, 0.))
                 db.execute("COMMIT")
@@ -394,10 +428,10 @@ class Ledger:
                     delay = min(900., 2. ** min(9, failures)) if failed else duration if duration >= 5 else 0.
                     if failures >= self.config["circuit_failures"]:
                         delay = max(delay, self.config["circuit_seconds"])
-                    endpoint = db.execute("SELECT failures FROM raven_endpoints WHERE scope=? AND endpoint=?", (self.scope, descriptor.endpoint)).fetchone()
+                    endpoint = db.execute("SELECT failures,last_launch FROM raven_endpoints WHERE scope=? AND endpoint=?", (self.scope, descriptor.endpoint)).fetchone()
                     consecutive = (endpoint[0] if endpoint else 0) + 1 if failed else 0
                     recovery = self.now() + self.config["circuit_seconds"] if consecutive >= self.config["circuit_failures"] else 0.
-                    db.execute("INSERT OR REPLACE INTO raven_endpoints VALUES (?,?,?,?)", (self.scope, descriptor.endpoint, consecutive, recovery))
+                    db.execute("INSERT OR REPLACE INTO raven_endpoints VALUES (?,?,?,?,?)", (self.scope, descriptor.endpoint, consecutive, recovery, endpoint[1] if endpoint else None))
                     db.execute("UPDATE raven_sources SET failures=?,until=? WHERE scope=? AND source=?", (failures, self.now() + delay, self.scope, source))
                     db.execute("DELETE FROM raven_active WHERE token=?", (token,))
                     db.execute("COMMIT")
