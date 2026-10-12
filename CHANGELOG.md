@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Retry shared-cache publication after transient SQLite contention within the
+  original collection deadline. Retain cancellation, ownership, and invalidation checks.
 - Restrict scrollbar seeking to the visible track and clear stale drag capture
   before unrelated clicks. Preserve the Jobs viewport when its selected job
   completes and remains selected in Recents.

@@ -8,6 +8,7 @@ cached or replayed. Shared network filesystems are not a supported deployment.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from collections import OrderedDict
 import copy
 import os
 from pathlib import Path
@@ -20,6 +21,20 @@ import time
 import uuid
 
 from . import evidence as E, site_policy as P
+
+
+_COMPLETED_OWNERS = OrderedDict()
+_COMPLETED_LOCK = threading.Lock()
+_MAX_COMPLETED_OWNERS = 4096
+
+
+def _after_fork():
+    global _COMPLETED_OWNERS, _COMPLETED_LOCK
+    _COMPLETED_OWNERS, _COMPLETED_LOCK = OrderedDict(), threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_after_fork)
 
 
 def _process_start(pid):
@@ -104,7 +119,7 @@ class SharedQueryCache:
         os.chmod(self.path, 0o600)
 
     @contextmanager
-    def _connection(self):
+    def _connection(self, *, timeout=.1):
         try:
             fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0), 0o600)
         except FileExistsError:
@@ -122,10 +137,10 @@ class SharedQueryCache:
                 raise ValueError("Shared cache storage exceeds its bound")
         # The parent is private before SQLite creates its file. No state or
         # cached scheduler output is exposed through a public parent directory.
-        connection = sqlite3.connect(self.path, timeout=.1, isolation_level=None)
+        connection = sqlite3.connect(self.path, timeout=timeout, isolation_level=None)
         try:
             os.chmod(self.path, 0o600)
-            connection.execute("PRAGMA busy_timeout=100")
+            connection.execute("PRAGMA busy_timeout=" + str(max(0, int(timeout * 1000))))
             page_size = connection.execute("PRAGMA page_size").fetchone()[0]
             connection.execute("PRAGMA max_page_count=" + str((2 * self.max_bytes + (4 << 20)) // page_size))
             yield connection
@@ -184,14 +199,20 @@ class SharedQueryCache:
             now = time.monotonic()
             if now >= deadline:
                 raise TimeoutError("Shared collection lease deadline exceeded")
-            owner = False
+            owner = claimed = False
             try:
                 with self._connection() as connection:
                     connection.execute("BEGIN IMMEDIATE")
                     try:
-                        for row in connection.execute("SELECT key,pid,process_start FROM cache WHERE owner IS NOT NULL").fetchall():
-                            if self._dead(row):
+                        completed = []
+                        for row in connection.execute("SELECT key,pid,process_start,owner FROM cache WHERE owner IS NOT NULL").fetchall():
+                            proof = (str(self.path), self.host, row[1], row[2], row[3])
+                            with _COMPLETED_LOCK:
+                                drained = proof in _COMPLETED_OWNERS
+                            if drained or self._dead(row):
                                 connection.execute("DELETE FROM cache WHERE key=?", (row[0],))
+                                if drained:
+                                    completed.append(proof)
                         connection.execute("DELETE FROM cache WHERE owner IS NULL AND expires<=?", (now,))
                         connection.execute("DELETE FROM throttle WHERE expires<=?", (now,))
                         row = connection.execute("SELECT owner,value,started,expires,size FROM cache WHERE key=?", (key,)).fetchone()
@@ -204,6 +225,7 @@ class SharedQueryCache:
                         if row and row[0] is None and row[3] > now:
                             value = E.loads(row[1])
                             connection.execute("COMMIT")
+                            self._forget_completed(completed)
                             return {"value": value, "cached": True, "age": max(0., now - row[2]), "scope_digest": scope_key, "bytes": row[4]}
                         if row is None:
                             last = connection.execute("SELECT expires FROM throttle WHERE key=?", (throttle,)).fetchone()
@@ -234,8 +256,12 @@ class SharedQueryCache:
                                 connection.execute("INSERT INTO cache(key,scope,policy,throttle,started,expires,owner,pid,process_start,reserved) VALUES (?,?,?,?,?,?,?,?,?,?)",
                                                    (key, scope_key, admission["policy_digest"], throttle, now, deadline, token, self._owner[0], self._owner[1], request["max_bytes"]))
                                 connection.execute("INSERT OR REPLACE INTO throttle VALUES (?,?,?)", (throttle, now, now + admission["effective_min_interval"]))
-                                owner = True
+                                claimed = True
                         connection.execute("COMMIT")
+                        self._forget_completed(completed)
+                        # A busy COMMIT can roll back the tentative reservation.
+                        # Only a committed owner may run the external loader.
+                        owner = claimed
                     except BaseException:
                         if connection.in_transaction:
                             connection.execute("ROLLBACK")
@@ -254,19 +280,89 @@ class SharedQueryCache:
             count = len(value.get("records", [])) if isinstance(value, dict) and isinstance(value.get("records"), list) else len(value) if isinstance(value, list) else 1
             if count > request["max_records"]:
                 raise ValueError("Shared collector exceeded its record budget")
-            now = time.monotonic()
-            if stop.is_set() or now >= deadline:
-                raise ValueError("Shared collector cancelled or exceeded its deadline")
-            with self._connection() as connection:
-                changed = connection.execute("UPDATE cache SET owner=NULL,pid=NULL,process_start=NULL,value=?,size=?,reserved=?,expires=? WHERE key=? AND owner=? AND expires>0",
-                                             (raw.decode(), len(raw), len(raw), now + request["interval"], key, token)).rowcount
-                if changed != 1:
-                    raise ValueError("Shared collection lease was invalidated before publication")
+            self._publish(key, token, raw, request["interval"], deadline, stop)
             return {"value": copy.deepcopy(value), "cached": False, "age": 0., "scope_digest": scope_key, "bytes": len(raw)}
-        except BaseException:
-            with self._connection() as connection:
-                connection.execute("DELETE FROM cache WHERE key=? AND owner=?", (key, token))
+        except BaseException as exc:
+            try:
+                self._discard(key, token, deadline)
+            except Exception as cleanup:
+                # An unavailable cache cannot turn a cancelled/invalid read
+                # into a result or replace its original diagnostic. Retaining
+                # the reservation fails closed. Record explicit proof that this
+                # exact owner drained so a later local admission may reclaim it.
+                proof = (str(self.path), self.host, self._owner[0], self._owner[1], token)
+                with _COMPLETED_LOCK:
+                    _COMPLETED_OWNERS[proof] = None
+                    _COMPLETED_OWNERS.move_to_end(proof)
+                    while len(_COMPLETED_OWNERS) > _MAX_COMPLETED_OWNERS:
+                        _COMPLETED_OWNERS.popitem(last=False)
+                add_note = getattr(exc, "add_note", None)
+                if callable(add_note):
+                    add_note("Shared cache lease cleanup deferred until a later admission: " + str(cleanup))
             raise
+
+    @staticmethod
+    def _forget_completed(completed):
+        # A rolled-back deletion must retain its proof for the next admission.
+        with _COMPLETED_LOCK:
+            for proof in completed:
+                _COMPLETED_OWNERS.pop(proof, None)
+
+    @staticmethod
+    def _busy(exc):
+        code = getattr(exc, "sqlite_errorcode", None)
+        if code is not None:
+            return code & 255 in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+        return "locked" in str(exc).lower() or "busy" in str(exc).lower()
+
+    def _publish(self, key, token, raw, interval, deadline, stop):
+        """Retry only publication, retaining the original lease and deadline."""
+        value = raw.decode()
+        while True:
+            if stop.is_set() or time.monotonic() >= deadline:
+                raise ValueError("Shared collector cancelled or exceeded its deadline")
+            try:
+                # Make lock waits cooperative, including connection PRAGMAs.
+                # An exclusive transaction is tiny and prevents a reader from
+                # blocking COMMIT after we checked cancellation and the lease.
+                with self._connection(timeout=0) as connection:
+                    connection.execute("BEGIN EXCLUSIVE")
+                    try:
+                        now = time.monotonic()
+                        if stop.is_set() or now >= deadline:
+                            raise ValueError("Shared collector cancelled or exceeded its deadline")
+                        changed = connection.execute(
+                            "UPDATE cache SET owner=NULL,pid=NULL,process_start=NULL,value=?,size=?,reserved=?,expires=? "
+                            "WHERE key=? AND owner=? AND expires>0",
+                            (value, len(raw), len(raw), now + interval, key, token)).rowcount
+                        if changed != 1:
+                            raise ValueError("Shared collection lease was invalidated before publication")
+                        if stop.is_set() or time.monotonic() >= deadline:
+                            raise ValueError("Shared collector cancelled or exceeded its deadline")
+                        connection.execute("COMMIT")
+                    except BaseException:
+                        if connection.in_transaction:
+                            connection.execute("ROLLBACK")
+                        raise
+                return
+            except sqlite3.OperationalError as exc:
+                if not self._busy(exc):
+                    raise ValueError("Shared cache database publication failed") from exc
+            stop.wait(min(.02, max(0., deadline - time.monotonic())))
+
+    def _discard(self, key, token, deadline):
+        """Bound cleanup contention without delaying cancellation indefinitely."""
+        cleanup_deadline = min(deadline, time.monotonic() + .1)
+        pause = threading.Event()
+        while True:
+            try:
+                with self._connection(timeout=0) as connection:
+                    connection.execute("DELETE FROM cache WHERE key=? AND owner=?", (key, token))
+                return
+            except sqlite3.OperationalError as exc:
+                if not self._busy(exc) or time.monotonic() >= cleanup_deadline:
+                    raise
+            pause.wait(min(.01, max(0., cleanup_deadline - time.monotonic())))
 
     def invalidate(self, scope):
         with self._connection() as connection:
