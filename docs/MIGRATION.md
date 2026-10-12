@@ -16,13 +16,16 @@ Before migrating, export the supported effective settings from your actual
 legacy file into a **new** Raven configuration:
 
 ```bash
-./scripts/ravenl --config /absolute/path/to/legacy/config.json --profile desktop --write-config
+ravenl --config /absolute/path/to/legacy/config.json --profile desktop --write-config
 ```
 
 Use the path to your customized configuration. If you used the repository's
 example unchanged, supply `docs/config.example.json`. Export refuses to replace
 an existing Raven configuration. If one already exists, review it with
-`./scripts/ravenl config explain` before proceeding.
+`ravenl config explain` before proceeding. Use the installed launcher for this
+export so its default worker interpreter belongs to the installed application
+environment. Confirm that interpreter and the same release are available on
+your selected Slurm nodes.
 
 The migration engine converts supported legacy settings but does not select a
 legacy named profile automatically. Exporting the profile first preserves that
