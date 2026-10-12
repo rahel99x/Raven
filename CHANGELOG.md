@@ -12,6 +12,8 @@
 - Add software citation metadata in `CITATION.cff`.
 - Encode large native file identities losslessly in reviewed worker payloads
   while retaining signed integer bounds and exact source-verification checks.
+- Read Slurm step hosts from `NodeList` when `Nodes` reports the node count,
+  allowing verified Heavy startup with the standard `scontrol show step` format.
 
 ## 7.0.0 — Raven
 

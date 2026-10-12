@@ -209,7 +209,9 @@ def make_placement_verifier(backend, *, purpose="worker"):
         job_fields, step_fields = parse_kv(job_record), parse_kv(step_record)
         return {"job_record": job_record, "step_record": step_record,
                 "job_nodes": expand_hostlist(job_fields.get("NodeList", "")),
-                "step_nodes": expand_hostlist(step_fields.get("Nodes", step_fields.get("NodeList", ""))),
+                # Slurm reports the host list in NodeList and the node count
+                # in Nodes. Keep the older adapter spelling only as a fallback.
+                "step_nodes": expand_hostlist(step_fields.get("NodeList", step_fields.get("Nodes", ""))),
                 "probe_id": candidate.get("probe_id", "")}
     return verify
 

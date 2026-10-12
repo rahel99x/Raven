@@ -310,6 +310,58 @@ def test_fake_slurm_grant_verifies_placement_and_release_owns_only_its_lifetime(
     assert all(not item["parent_hints"] for item in commands)
 
 
+@pytest.mark.parametrize("outside_step", [False, True])
+def test_real_slurm_step_fields_admit_only_the_allocated_worker(tmp_path, fake_slurm, outside_step):
+    from tower.platform_session import wrap_backend
+    from tower.raven_collection import make_placement_verifier
+
+    class ControllerRecords:
+        candidate = None
+
+        def __init__(self):
+            self.commands = []
+
+        def run(self, argv, timeout=8):
+            self.commands.append(tuple(argv))
+            probe = self.candidate
+            if argv == ["scontrol", "show", "job", probe["job_id"], "-o"]:
+                return (f"JobId={probe['job_id']} JobState=RUNNING UserId=test({os.getuid()}) "
+                        f"NumCPUs=2 MinMemoryNode=512 NodeList={probe['host']}"), .001
+            assert argv == ["scontrol", "show", "step", probe["job_id"] + "." + probe["step_id"], "-o"]
+            node = "outside-allocation.invalid" if outside_step else probe["host"]
+            return (f"StepId={probe['job_id']}.{probe['step_id']} State=RUNNING "
+                    f"NodeList={node} Nodes=1 CPUs=2"), .001
+
+    raw = ControllerRecords()
+    governed = wrap_backend(raw, {"raven": {"collection": {}},
+                                  "collection_cache_dir": str(tmp_path / "cache")},
+                            {"cluster": "fixture", "user": "test"}, None)
+    read_placement = make_placement_verifier(governed)
+
+    def verify(candidate, cancel=None):
+        raw.candidate = candidate
+        records = read_placement(candidate, cancel=cancel)
+        # The fake scheduler supplies exact task membership in place of a cgroup.
+        records["pids"] = [candidate["pid"]]
+        return records
+
+    with AllocationManager(cluster(), state_dir=tmp_path / "state", placement_verifier=verify) as manager:
+        manager.request()
+        until(manager, lambda: manager.worker.ready or bool(manager.snapshot()["error"]))
+        if outside_step:
+            assert not manager.worker.ready
+            assert "Worker host is outside" in manager.snapshot()["error"]
+        else:
+            assert manager.snapshot()["state"] == "heavy"
+            assert manager.snapshot()["identity"]["verified"]
+            manager.release()
+        drained(manager)
+        assert manager.snapshot()["state"] == "light"
+
+    assert len(raw.commands) == 2
+    assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
+
+
 @pytest.mark.parametrize("mode", ["pending", "deny", "disconnect"])
 def test_fake_slurm_uncertainty_never_falls_back_or_resubmits(tmp_path, fake_slurm, monkeypatch, mode):
     monkeypatch.setenv("RAVEN_FAKE_MODE", mode)

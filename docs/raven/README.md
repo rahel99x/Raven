@@ -149,8 +149,10 @@ Raven's owned lifetime. They do not cancel a job based only on a parsed job ID
 or job name. Unknown cleanup remains Reconciling and blocks automatic retry.
 The worker stops at its time limit or idle deadline; Raven does not auto-renew.
 
-`ravenh` performs the same admission before importing the expensive dashboard.
-`--plan` makes no submission. An interrupted wait drains the owned helper.
+Run `ravenh` from a normal terminal with access to the configured Slurm commands.
+It requests a new allocation with `salloc`, starts the worker through `srun`, and
+verifies placement before opening the dashboard. An existing allocation is not
+required. `--plan` makes no submission. An interrupted wait drains the owned helper.
 `--help` and `--version` never allocate. Use `ravenh --allocation JOBID` for an
 explicit reuse review. This checks current ownership, attempt, resources, and
 placement before starting an owned step. A reuse `--plan` reports an unverified

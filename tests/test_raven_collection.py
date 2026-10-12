@@ -386,12 +386,54 @@ def test_placement_verifier_uses_two_fresh_controller_reads_and_no_hostnames_com
     raw, governed = backend(tmp_path)
     def run(argv, timeout=8):
         raw.commands.append(tuple(argv))
-        return ("JobId=7 NodeList=n[1-2]" if argv[2] == "job" else "StepId=7.0 Nodes=n2"), .001
+        return ("JobId=7 NodeList=n[1-2]" if argv[2] == "job" else "StepId=7.0 NodeList=n2 Nodes=1"), .001
     raw.run = run
     value = make_placement_verifier(governed)({"jobid": "7", "stepid": "0", "probe_id": "nonce"})
     assert value["job_nodes"] == ["n1", "n2"] and value["step_nodes"] == ["n2"]
     assert value["probe_id"] == "nonce" and len(raw.commands) == 2
     assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
+
+
+@pytest.mark.parametrize("nodelist,count,nodes", [
+    ("system", "1", ["system"]),
+    ("n[01-02]", "2", ["n01", "n02"]),
+])
+def test_placement_verifier_prefers_step_hostlist_over_slurm_node_count(tmp_path, nodelist, count, nodes):
+    raw, governed = backend(tmp_path)
+    def run(argv, timeout=8):
+        raw.commands.append(tuple(argv))
+        return ("JobId=7 NodeList=" + nodelist if argv[2] == "job" else
+                "StepId=7.0 State=RUNNING NodeList=" + nodelist + " Nodes=" + count + " CPUs=2 Tasks=1"), .001
+    raw.run = run
+    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    assert value["job_nodes"] == value["step_nodes"] == nodes
+    assert value["probe_id"] == "launch"
+    assert raw.commands == [("scontrol", "show", "job", "7", "-o"),
+                            ("scontrol", "show", "step", "7.0", "-o")]
+    assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
+
+
+def test_placement_verifier_retains_legacy_adapter_hostlist_fallback(tmp_path):
+    raw, governed = backend(tmp_path)
+    def run(argv, timeout=8):
+        raw.commands.append(tuple(argv))
+        return ("JobId=7 NodeList=system" if argv[2] == "job" else "StepId=7.0 Nodes=system"), .001
+    raw.run = run
+    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    assert value["job_nodes"] == value["step_nodes"] == ["system"]
+
+
+@pytest.mark.parametrize("nodelist", ["", "(null)", "n[1-2"])
+def test_invalid_step_hostlist_is_not_masked_by_legacy_adapter_field(tmp_path, nodelist):
+    raw, governed = backend(tmp_path)
+    def run(argv, timeout=8):
+        raw.commands.append(tuple(argv))
+        return ("JobId=7 NodeList=system" if argv[2] == "job" else
+                "StepId=7.0 NodeList=" + nodelist + " Nodes=system"), .001
+    raw.run = run
+    with pytest.raises(ValueError):
+        make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    assert len(raw.commands) == 2
 
 
 def test_remote_effective_uid_read_is_exact_and_debits_no_scheduler_rpc(tmp_path):
@@ -408,7 +450,7 @@ def test_only_instrumentation_factory_accepts_special_job_local_steps(tmp_path, 
     raw, governed = backend(tmp_path)
     def run(argv, timeout=8):
         raw.commands.append(tuple(argv))
-        return ("JobId=7 NodeList=n1" if argv[2] == "job" else "StepId=7." + step + " Nodes=n1"), .001
+        return ("JobId=7 NodeList=n1" if argv[2] == "job" else "StepId=7." + step + " NodeList=n1 Nodes=1"), .001
     raw.run = run
     candidate = {"jobid": "7", "stepid": step, "purpose": "instrumentation"}
     with pytest.raises(ValueError, match="unambiguous"):
