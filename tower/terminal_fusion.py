@@ -656,7 +656,7 @@ def run_command(app, args):
                 raise ValueError("The requested hook shell differs from the selected terminal's known shell (" + actual_shell + ").")
             command = helper_command(rest[0], "hook", "--shell", rest[0])
             text = "source (" + command + " | psub)" if rest[0] == "fish" else "source <(" + command + ")"
-            terminal_ui.prepare_input(app, text, label="Optional local shell hooks; confirm this session is at its shell prompt")
+            terminal_ui.prepare_input(app, text, label="Optional local shell hooks; confirm this session is at its shell prompt", helper_kind="shell-hook")
         elif action == "handoffs":
             _show(app, _rows(list(store.sessions.values())), "Declared project, job and artifact context")
         elif action == "job-link":

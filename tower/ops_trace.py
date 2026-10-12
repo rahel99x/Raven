@@ -207,3 +207,9 @@ def apply(feature, plan, ctx):
         from .trace_snapshot import apply as apply_snapshot
         return apply_snapshot(plan, ctx)
     raise ValueError("Trace operations are read-only; run a prepared command explicitly inside the allocation")
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Source launcher for Project Raven Heavy; placement is resolved before UI import.
+set -eu
+RAVEN_SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+if [ -x "$RAVEN_SOURCE_ROOT/.venv/bin/python" ]; then
+    exec "$RAVEN_SOURCE_ROOT/.venv/bin/python" "$RAVEN_SOURCE_ROOT/scripts/raven_bootstrap.py" heavy "$@"
+fi
+exec python3 "$RAVEN_SOURCE_ROOT/scripts/raven_bootstrap.py" heavy "$@"

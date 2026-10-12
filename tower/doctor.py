@@ -89,6 +89,11 @@ def diagnose(cfg, *, fake=False, host="", ssh_user=""):
         if host:
             connected = bool(shutil.which("ssh"))
             add("SSH client", connected, "OpenSSH must be available locally")
+            if connected and cfg.get("raven", {}).get("managed"):
+                add("Remote tools", True, "Not probed during managed startup; admitted operations verify actual remote capabilities", False)
+                checks.extend(terminal_evidence(cfg))
+                return dict(mode=mode, ready=True, checks=checks, next_step="ravenl --host " + host,
+                            scope="Local prerequisites only; remote scheduler tools and permissions remain unverified.")
             if connected:
                 # Tool names are constants; no host, username, or config enters the shell program.
                 probe = ('for tool in ' + " ".join((*REQUIRED, *OPTIONAL)) + '; do '
@@ -120,7 +125,7 @@ def diagnose(cfg, *, fake=False, host="", ssh_user=""):
 def render(result, *, as_json=False):
     if as_json:
         return json.dumps(result, indent=2)
-    lines = [f"Slurm Tower / {result['mode']} environment", ""]
+    lines = [f"Project Raven / {result['mode']} environment", ""]
     for check in result["checks"]:
         label = {"ok": "OK", "warning": "OPTIONAL", "error": "MISSING"}[check["status"]]
         lines.append(f"  {label:8} {check['name']}: {check['detail']}")

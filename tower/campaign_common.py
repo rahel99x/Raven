@@ -34,11 +34,14 @@ def text(value, name, limit=4096):
 
 
 def file_bytes(path, limit=4 << 20):
+    from .raven_execution import source_limit, source_read
+    limit = source_limit(limit)
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(fd, "rb") as handle:
         before = os.fstat(handle.fileno())
-        if not stat.S_ISREG(before.st_mode):
+        if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
             raise ValueError("campaign input must be a regular file")
+        source_read(before.st_size)
         data = handle.read(limit + 1)
         after = os.fstat(handle.fileno())
         named = os.stat(path, follow_symlinks=False)
@@ -51,11 +54,14 @@ def file_bytes(path, limit=4 << 20):
 
 
 def file_hash(path, cancel=None, limit=1 << 30):
+    from .raven_execution import source_limit, source_read
+    limit = source_limit(limit)
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(fd, "rb") as handle:
         before = os.fstat(handle.fileno())
         if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
             raise ValueError("checkpoint must be a regular file within the 1 GiB verification budget")
+        source_read(before.st_size)
         result, size = hashlib.sha256(), 0
         while True:
             if cancel is not None and cancel.is_set():

@@ -296,6 +296,7 @@ def _metadata_options(script, options):
 def submit(root, *, experiment, script, options=(), name=None, parameters=None,
            resources=None, array_manifest=None, runner=subprocess.run):
     """Submit once; a durable intent prevents an ambiguous failure looking safe to retry."""
+    _managed_driver_admission("submit")
     root = R._directory(root)
     initialize(root)
     R._text(experiment, "experiment")
@@ -356,7 +357,9 @@ def submit(root, *, experiment, script, options=(), name=None, parameters=None,
                        TOWER_SCRIPT=str(script_path.relative_to(root)),
                        TOWER_PARAMETERS=json.dumps(params, separators=(",", ":")),
                        TOWER_RESOURCES=json.dumps(request, separators=(",", ":")), TOWER_SUBMISSION_TOKEN=token)
-            result = runner(intent["argv"], cwd=root, env=env, stdout=stdout, stderr=stderr, timeout=30, check=False)
+            from .raven_execution import reporting_submission
+            with reporting_submission(intent["argv"]):
+                result = runner(intent["argv"], cwd=root, env=env, stdout=stdout, stderr=stderr, timeout=30, check=False)
         except (OSError, subprocess.TimeoutExpired) as exc:
             intent.update(status="unknown", error=str(exc)[:2048])
             R._atomic_json(path, intent, replace=True)
@@ -438,6 +441,7 @@ def finish(run, *, exit_code=0, state=None, runtime_seconds=None, results=None):
 
 def aggregate(root):
     """Publish one shared factual bundle; avoid O(runs) writes after each finish."""
+    _managed_driver_admission("aggregate")
     from .projects import discover_project
     with _lock(root, "aggregate.lock"):
         project = discover_project(str(root))
@@ -458,6 +462,13 @@ def _pairs(values):
             raise ValueError("declarations use NAME=VALUE")
         result.append((key, value))
     return result
+
+
+def _managed_driver_admission(command):
+    from .raven_execution import cli_admission, AdmissionError
+    blocked = cli_admission(["report", command])
+    if blocked is not None:
+        raise AdmissionError(blocked["summary"])
 
 
 def main(argv=None):
@@ -519,6 +530,7 @@ def main(argv=None):
     agg.add_argument("--root", default=os.environ.get("TOWER_PROJECT_ROOT", "."))
     args = parser.parse_args(argv)
     try:
+        _managed_driver_admission(args.command)
         if args.command == "init":
             initialize(args.root, args.name)
             return 0

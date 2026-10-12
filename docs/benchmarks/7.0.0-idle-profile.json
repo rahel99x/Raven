@@ -1,0 +1,25 @@
+{
+  "schema": "raven.profile-evidence/v1",
+  "kind": "instrumented diagnostic, not qualification",
+  "duration_seconds": 30,
+  "timer": "process CPU time",
+  "reported_profile_cpu_seconds": 5.55,
+  "reported_instrumented_mean_cpu_percent": 18.43,
+  "contexts_seconds": {
+    "document_rebuild": 3.34,
+    "compose_included_in_document": 2.55,
+    "differential_paint": 1.15,
+    "feedback": 0.55,
+    "maintenance": 0.29,
+    "vlen_included_in_callers": 1.08,
+    "raster_included_in_callers": 0.94
+  },
+  "document_rebuild_calls": 37,
+  "vlen_calls_approx": 463000,
+  "limitations": [
+    "Profiler overhead changes work and costs. Do not substitute timings or ratios for uninstrumented qualification.",
+    "Process CPU time can include other-thread work while a profiled call is active; this is call-context evidence, not exclusive UI-thread attribution.",
+    "Does not establish the cause of individual uninstrumented CPU samples.",
+    "Earlier concurrent-profiler and thread-clock attempts produced invalid instrumentation and were excluded."
+  ]
+}

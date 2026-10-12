@@ -1,0 +1,112 @@
+{
+  "outside_checkout": true,
+  "core_without_dependencies": true,
+  "checks": [
+    {
+      "launcher": "tower",
+      "args": [
+        "--version"
+      ],
+      "exit": 0
+    },
+    {
+      "launcher": "ravenl",
+      "args": [
+        "--version"
+      ],
+      "exit": 0
+    },
+    {
+      "launcher": "ravenh",
+      "args": [
+        "--version"
+      ],
+      "exit": 0
+    },
+    {
+      "launcher": "ravenl",
+      "args": [
+        "--config",
+        "/tmp/raven-final-smoke-iou8g9dh/config.json",
+        "--site",
+        "desktop",
+        "doctor"
+      ],
+      "exit": 0
+    },
+    {
+      "launcher": "ravenh",
+      "args": [
+        "--config",
+        "/tmp/raven-final-smoke-iou8g9dh/config.json",
+        "--site",
+        "desktop",
+        "--plan"
+      ],
+      "exit": 0
+    },
+    {
+      "launcher": "tower",
+      "args": [
+        "--config",
+        "/tmp/raven-final-smoke-iou8g9dh/config.json",
+        "--fake",
+        "--once",
+        "--no-state",
+        "--no-plugins",
+        "--ascii"
+      ],
+      "exit": 0
+    },
+    {
+      "launcher": "ravenh",
+      "args": [
+        "--config",
+        "/tmp/raven-final-smoke-iou8g9dh/config.json",
+        "--site",
+        "desktop",
+        "--once",
+        "--no-state",
+        "--no-plugins",
+        "--ascii"
+      ],
+      "exit": 0
+    }
+  ],
+  "terminal_selftest": {
+    "schema": "tower.terminal-selftest/v1",
+    "scope": "local PTY and embedded engine",
+    "scheduler_contacted": false,
+    "checks": [
+      {
+        "name": "alternate-buffer",
+        "passed": true
+      },
+      {
+        "name": "tty",
+        "passed": true
+      },
+      {
+        "name": "foreground",
+        "passed": true
+      },
+      {
+        "name": "input",
+        "passed": true
+      },
+      {
+        "name": "resize",
+        "passed": true
+      },
+      {
+        "name": "output-and-exit",
+        "passed": true
+      }
+    ],
+    "status": "passed",
+    "engine": "pyte",
+    "seconds": 0.5164,
+    "limits": "This test does not certify a physical terminal emulator, SSH, or a live allocation."
+  },
+  "runner_note": "Compatibility notice is on stderr. The final runner parses stdout separately; an initial merged-stream diagnostic caused a runner JSON parse error after all commands exited successfully."
+}

@@ -81,8 +81,12 @@ def prepare_venv(path):
     if not (path / "pyvenv.cfg").is_file():
         print(f"Creating isolated Python environment: {path}", flush=True)
         try:
+            # Match `python -m venv` on POSIX: a symlink preserves the real
+            # executable location used by relocatable Python builds to locate
+            # their standard library. Copying such a binary can strand it at
+            # its build-time prefix (for example /install on bundled 3.10).
             # No downloads, ensurepip dependency, or system package changes.
-            venv.EnvBuilder(with_pip=False).create(path)
+            venv.EnvBuilder(with_pip=False, symlinks=os.name == "posix").create(path)
         except (OSError, RuntimeError) as exc:
             raise SetupError(f"Cannot create a venv: {exc}. Install your OS's Python venv package, or run python3 -m tower directly.") from exc
     else:

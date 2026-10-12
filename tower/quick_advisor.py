@@ -136,7 +136,8 @@ def _start(app):
         token, jid, key, event = state["token"], state["job"], state["attempt"], state["cancel"]
 
         def work():
-            payload = capture(app.store, jid, event)
+            payload = (capture(app.store, jid, event, light=True) if hub.execution.managed
+                       else capture(app.store, jid, event))
             if event.is_set():
                 return None
             return analyze(payload, event=event)
@@ -181,7 +182,7 @@ def _sample(item):
     return sample
 
 
-def _recorded_series(store, jid, event):
+def _recorded_series(store, jid, event, *, max_series=MAX_SERIES, max_bytes=MAX_SERIES_BYTES):
     """Read a bounded persistent tail outside the Store lock.
 
     Headless Store.series_of restores retained history synchronously. This
@@ -191,11 +192,11 @@ def _recorded_series(store, jid, event):
     with store.lock:
         source = store.series.get(jid, ())
         source_count = len(source)
-        memory = [_sample(item) for item in reversed(list(islice(reversed(source), MAX_SERIES)))]
+        memory = [_sample(item) for item in reversed(list(islice(reversed(source), max_series)))]
         already_loaded = jid in store._series_loaded
         path = store._series_path(jid) if not already_loaded else None
-    points, warnings = deque(maxlen=MAX_SERIES), []
-    retained = min(MAX_SERIES, store.series_keep)
+    points, warnings = deque(maxlen=max_series), []
+    retained = min(max_series, store.series_keep)
     if source_count > retained:
         warnings.append(f"Analysis uses the latest {retained:,} of {source_count:,} in-memory observations.")
     if path:
@@ -206,12 +207,12 @@ def _recorded_series(store, jid, event):
                 if not stat.S_ISREG(metadata.st_mode):
                     raise OSError("Recorded series must be a regular file.")
                 size = metadata.st_size
-                offset = max(0, size - MAX_SERIES_BYTES)
+                offset = max(0, size - max_bytes)
                 stream.seek(offset)
-                data = stream.read(MAX_SERIES_BYTES)
+                data = stream.read(max_bytes)
             if offset:
                 data = data.partition(b"\n")[2]
-                warnings.append("Persistent series exceeds 8 MiB; only its latest bounded tail was read.")
+                warnings.append(f"Persistent series exceeds the {max_bytes:,}-byte budget; only its latest bounded tail was read.")
             for index, line in enumerate(data.splitlines()):
                 if index % 256 == 0 and event.is_set():
                     return [], warnings
@@ -238,7 +239,7 @@ def _recorded_series(store, jid, event):
     return merged[-retained:], warnings
 
 
-def capture(store, jid, event=None):
+def capture(store, jid, event=None, *, light=False):
     """Capture exact published job evidence on the worker, with fixed bounds."""
     event = event or threading.Event()
     with store.lock:
@@ -247,7 +248,7 @@ def capture(store, jid, event=None):
             raise ValueError("This job is no longer in the scheduler or accounting history.")
         job = copy.deepcopy(job)
         live = copy.deepcopy(store.live.get(jid))
-        history = list(store.finished)
+        history = list(islice(store.finished, 512)) if light else list(store.finished)
         steps = copy.deepcopy((store.steps.get(jid) or store.fin_steps.get(jid) or [])[:MAX_STEPS])
         trace_source = store.trace.get(jid, [])
         trace = [dict(item) for item in trace_source[-MAX_TRACE:] if isinstance(item, dict)]
@@ -263,7 +264,10 @@ def capture(store, jid, event=None):
             matched += 1
             if len(same) < MAX_HISTORY:
                 same.append(copy.deepcopy(record))
-    series, warnings = _recorded_series(store, jid, event)
+    series, warnings = _recorded_series(store, jid, event,
+        max_series=512 if light else MAX_SERIES, max_bytes=256 << 10 if light else MAX_SERIES_BYTES)
+    if light:
+        warnings.append("Light Advisor uses at most 512 retained samples and 512 history records; this is a bounded summary.")
     if matched > MAX_HISTORY:
         warnings.append(f"Same-name history is limited to {MAX_HISTORY} of {matched:,} runs.")
     if trace_count > MAX_TRACE:

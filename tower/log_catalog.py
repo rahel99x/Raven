@@ -83,6 +83,9 @@ def _remote_signature(files, path):
     File adapters used by embedders may expose only stat's size/identity pair;
     those still get an exact-length, before/after identity check.
     """
+    managed = getattr(files, "manifest_signature", None)
+    if callable(managed) and getattr(files, "remote", False):
+        return managed(path)
     if isinstance(files, RemoteFiles):
         try:
             output, _ = files.ssh.run(["stat", "-c", "%f %d %i %s %Y %Z", "--", path], files.timeout)

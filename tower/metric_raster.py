@@ -60,10 +60,15 @@ def _freeze(value, depth=0):
 
 
 class MetricRasterCache:
-    def __init__(self):
-        self.entries = OrderedDict()
+    def __init__(self, *, budget=None):
         self.points = self.cells = 0
-        self.time_points = TimePointCache()
+        from .raven_limits import BudgetCache
+        self.entries = BudgetCache(budget,self._expired) if budget else OrderedDict()
+        self.time_points = TimePointCache(budget=budget)
+
+    def _expired(self, entry):
+        self.points -= entry['points']
+        self.cells -= entry['cells']
 
     def render(self, glyphs, values, width, height, *, filled=False, theme="", compact_rows=False, **options):
         painter = charts.vbar_chart if filled else charts.braille_chart
@@ -113,9 +118,13 @@ class TimePointCache:
     painter receives fresh containers. Only the UI-owned raster cache uses this
     object, just like its existing complete-raster cache.
     """
-    def __init__(self):
-        self.entries = OrderedDict()
+    def __init__(self, *, budget=None):
         self.points = 0
+        from .raven_limits import BudgetCache
+        self.entries = BudgetCache(budget,self._expired) if budget else OrderedDict()
+
+    def _expired(self, entry):
+        self.points -= entry[3]
 
     def bind(self, values, sample_times, frozen_values=_UNCACHEABLE):
         if sample_times is None or frozen_values is _UNCACHEABLE:

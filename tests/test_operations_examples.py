@@ -110,7 +110,8 @@ def cli(tmp_path, feature, params, *, fake=False):
     env = dict(os.environ)
     env.update(XDG_STATE_HOME=str(tmp_path / "state"), XDG_CONFIG_HOME=str(tmp_path / "config"),
                XDG_CACHE_HOME=str(tmp_path / "cache"))
-    argv = [sys.executable, "-m", "tower", "run", "ops", "run", feature,
+    launcher = [sys.executable, "-m", "tower"] if fake else [sys.executable, "-c", "from tower.raven_launch import heavy_main; raise SystemExit(heavy_main())", "--site", "desktop"]
+    argv = [*launcher, "run", "ops", "run", feature,
             *(f"{key}={value}" for key, value in params.items()), "--json", "--no-state"]
     if fake:
         argv.append("--fake")

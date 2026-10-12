@@ -43,6 +43,18 @@ def test_initialization_and_render_do_not_start_shell(tmp_path,monkeypatch):
     assert state.service is None
 
 
+def test_raven_scrollback_policy_caps_session_launch_options(tmp_path, monkeypatch):
+    a = app(tmp_path)
+    a.cfg['raven'] = {'managed': True, 'resources': {'light': {'terminal_scrollback_bytes': 2 * 1024 * 1024}}}
+    opened = []
+    service = a.terminal_state.service
+    monkeypatch.setattr(service, 'open', lambda **kw: opened.append(kw) or 'one', raising=False)
+    assert T.open_session(a, argv=['/bin/sh'], history_bytes=4 * 1024 * 1024) == 'one'
+    assert opened[-1]['history_bytes'] == 2 * 1024 * 1024
+    assert T.open_session(a, argv=['/bin/sh'], history_bytes=128) == 'one'
+    assert opened[-1]['history_bytes'] == 128
+
+
 @pytest.mark.parametrize('key',['q','y','g','u',':','esc','ctrl-c','ctrl-z','tab','f6','up'])
 def test_shell_owns_tower_bindings(tmp_path,key):
     a=app(tmp_path); s=a.terminal_state
@@ -277,6 +289,18 @@ def test_ascii_chrome_is_ascii_but_child_unicode_is_preserved(tmp_path):
     assert 'λ' in L.to_text(rows,50)
 
 
+@pytest.mark.parametrize('mode',['reader','configured','renderer'])
+def test_real_app_plain_mode_controls_terminal_chrome(tmp_path,mode):
+    a=app(tmp_path)
+    if mode=='reader': a.theme='reader'
+    elif mode=='configured': a._ascii_cfg=True
+    else: a.views_ref=SimpleNamespace(g=L.Glyphs(True))
+    a.layout_state=SimpleNamespace(focus='details')
+    title,_=T.header(a,40)
+    assert ' > ' in L.row_text(title) and L.row_text(title).isascii()
+    assert T._plain_chrome(a)
+
+
 def test_resize_during_capture_drops_capture_and_consumes_release(tmp_path):
     a=app(tmp_path); s=a.terminal_state; r=s.body_rect
     T.handle_mouse(a,r.y,r.x,'left')
@@ -409,3 +433,83 @@ def test_restart_cannot_reuse_reviewed_allocation_launch(tmp_path,monkeypatch,ki
     assert s.active=='one' and 'one' in s.service.sessions
     assert s.launches['one']['argv']==argv
     assert 'fresh review' in a.messages[-1]
+
+
+@pytest.mark.parametrize('ascii_', [False, True])
+@pytest.mark.parametrize('count', [1, 60])
+@pytest.mark.parametrize('mode', ['details', 'terminal'])
+@pytest.mark.parametrize('pane_focus', ['main', 'details'])
+def test_host_header_replaces_old_title_and_uses_same_focus_gutter(
+        tmp_path, ascii_, count, mode, pane_focus):
+    from tower import scrollbars
+    a=app(tmp_path); a.width=160; a.ascii=ascii_
+    s=a.terminal_state; s.modes['jobs']=mode
+    W.initialize(a).focus=pane_focus
+    groups={'main':{'rows':[[('Job1','text')]],'hits':[(0,'job','1')]},
+            'details':{'rows':[[(f'detail {i}','text')] for i in range(count)],'hits':[]}}
+    scrollbars.begin_frame(a); T.begin_frame(a)
+    rows,hits=W.transform_body(a,[],[],160,20,ascii_=ascii_,groups=groups)
+    controls=[(y,value) for y,kind,value in hits if kind=='control' and value['id'] in ('terminal:details','terminal:show')]
+    assert len(controls)==2
+    y,details=controls[0]; terminal=controls[1][1]
+    left=details['left']-7
+    text=L.row_text(rows[y])
+    expected='    '+(' > ' if ascii_ else ' ▸ ') if pane_focus=='details' else '       '
+    assert text[left:details['left']]==expected
+    assert text[details['left']:details['right']]=='[Details]'
+    assert text[terminal['left']:terminal['right']]=='[Terminal]'
+    assert terminal['left']==details['right']+1
+    # Scroll controls retain their own cells, even with a long Details source.
+    for pane in a.scrollbar_state['staged']:
+        if pane.header and pane.key=='workspace:jobs:details':
+            assert pane.header[1]+4<=details['left']
+    assert any(cy==a.body_origin+y and x==details['left'] and right==details['right']
+               for cy,x,right,args in s.controls if args==('terminal','details'))
+
+
+@pytest.mark.parametrize('width', [6, 13, 20, 24, 26, 27, 28, 40])
+def test_header_buttons_do_not_overlap_scroll_gutter(tmp_path,width):
+    a=app(tmp_path)
+    row,hits=T.header(a,width)
+    assert L.vlen(L.row_text(row))==width
+    assert all(4<=value['left']<value['right']<=width for _,_,value in hits)
+    assert L.row_text(row).startswith('    ')
+
+
+def test_click_details_assigns_pane_focus_without_sending_child_input(tmp_path):
+    a=app(tmp_path); s=a.terminal_state
+    W.initialize(a).focus='main'; s.service.events.clear()
+    details=next(control for control in s.controls if control[-1]==('terminal','details'))
+    assert T.handle_mouse(a,details[0],details[1],'left')
+    assert W.initialize(a).focus=='details' and not T.focused(a)
+    assert all(event['type']=='focus' for _,event in s.service.events)
+
+
+def test_terminal_feedback_erases_hover_without_mutating_cached_paint(tmp_path):
+    from tower import interaction
+    a=app(tmp_path); a.animations_enabled=False
+    rows,hits=T.render(a,40,12,x=55,y=6)
+    base=[[(' '*100,'text')] for _ in range(30)]
+    for index,row in enumerate(rows):
+        base[6+index]=[(' '*55,'text')]+row+[(' '*5,'text')]
+    absolute=[(y+6,kind,{**value,'left':value['left']+55,'right':value['right']+55}) for y,kind,value in hits]
+    interaction.publish(a,base,absolute,100,30)
+    details=next(value for _,_,value in absolute if value['id']=='terminal:details')
+    interaction.handle_mouse(a,6,details['left'],'move')
+    hovered=T.feedback(a,base)
+    assert any('under' in style for _,style in hovered[6])
+    assert not any('under' in style for _,style in a.terminal_state.painted[0])
+    interaction.handle_mouse(a,0,0,'move')
+    cleared=T.feedback(a,base)
+    assert not any('under' in style for _,style in cleared[6])
+    assert L.row_text(cleared[6])==L.row_text(hovered[6])
+
+
+def test_terminal_feedback_updates_focus_marker_when_pane_focus_changes(tmp_path):
+    a=app(tmp_path); a.animations_enabled=False
+    base=[[(' '*100,'text')] for _ in range(30)]
+    focused=T.feedback(a,base)
+    assert '▸' in L.row_text(focused[6])
+    W.initialize(a).focus='main'
+    unfocused=T.feedback(a,base)
+    assert '▸' not in L.row_text(unfocused[6])

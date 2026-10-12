@@ -175,7 +175,8 @@ def context(app, cancel=None):
         cfg=copy.deepcopy(getattr(app.cfg, "data", app.cfg)), jobs=jobs, finished=finished,
         selected=str(getattr(app, "selected_id", "") or ""), scope=scope, cancel=cancel,
         state_dir=str(getattr(app, "state_dir", "") or ""), replay=bool(getattr(app, "replay", None)),
-        ui_state_status=copy.deepcopy(getattr(app.store, "ui_state_status", {})))
+        ui_state_status=copy.deepcopy(getattr(app.store, "ui_state_status", {})),
+        execution=getattr(app, "raven_execution", None))
 
 
 def _reset(state, view):
@@ -337,7 +338,7 @@ def _background(app, callback, completion, *, applying=False, source_context=Non
             value = exc
         done(value)
         app.research_result = state["result"] or O.report(state["feature"], state["error"], status="error")
-        app.command_ok = app.research_result.get("status") not in ("error", "unavailable", "blocked", "failed")
+        app.command_ok = app.research_result.get("status") not in ("error", "unavailable", "blocked", "failed", "deferred")
 
 
 def _inspect(app, *, source_context=None):
@@ -384,6 +385,10 @@ def _apply(app):
         if isinstance(value, dict) and feature == "allocation-shell" and value.get("data", {}).get("terminal_identity"):
             from .ops_cluster import revalidate_terminal
             value["data"]["terminal_argv"] = revalidate_terminal(worker_ctx, value["data"]["terminal_identity"])
+            from .raven_execution import router_for
+            if router_for(worker_ctx).managed:
+                from .raven_collection import admit_terminal_launch
+                value["data"]["terminal_admission"] = admit_terminal_launch(worker_ctx.slurm.b, value["data"]["terminal_argv"])
             value["data"]["terminal_checked_at"] = time.monotonic()
         return value
     def publish(value):

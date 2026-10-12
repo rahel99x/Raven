@@ -215,6 +215,13 @@ class Inspector:
                 intervals=None, health=None, **observations):
         job_id = validate_job_id(job_id)
         now, errors = self.clock(), []
+        def observe(argv):
+            # This inspector is an explicit selected-job read. Use the same
+            # collection owner and its finite fresh-validation lane; routine
+            # sampler burst exhaustion must not bypass or replace that owner.
+            if getattr(backend, "ledger", None) is not None:
+                return backend.command(argv, TIMEOUT, MAX_OUTPUT, None)
+            return backend.run(argv, timeout=TIMEOUT)[0]
         cached = self.cache.get(scope)
         use_cache = bool(not refresh and cached and 0 <= now - cached[0] < self.ttl)
         if use_cache:
@@ -225,7 +232,7 @@ class Inspector:
         else:
             config, config_at, error = {}, time.time(), ""
             try:
-                output, _ = backend.run(["scontrol", "show", "config"], timeout=TIMEOUT)
+                output = observe(["scontrol", "show", "config"])
                 config = parse_config(output)
                 if not config:
                     raise ValueError("No telemetry configuration fields were exposed.")
@@ -239,7 +246,7 @@ class Inspector:
         job = {}
         if job_id:
             try:
-                output, _ = backend.run(["scontrol", "show", "job", "-o", job_id], timeout=TIMEOUT)
+                output = observe(["scontrol", "show", "job", "-o", job_id])
                 job = parse_job(output)
                 if not matches_job(job, job_id, expected):
                     raise ValueError("The scheduler returned another job attempt; refresh the job list before inspecting again.")

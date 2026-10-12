@@ -388,3 +388,9 @@ def apply(feature, plan, ctx):
     from .research_reporting import initialize
     result = initialize(value["root"])
     return O.report(feature, "Project descriptor is ready; existing data was preserved.", data=result)
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

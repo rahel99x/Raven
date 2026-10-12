@@ -76,6 +76,26 @@ def test_history_is_bounded_with_stable_eviction_boundary_and_clear():
     assert engine.history_start == 9
 
 
+def test_explicit_history_byte_limit_counts_utf8_and_preserves_newest_rows():
+    engine = TerminalEngine(2, 10, history_limit=100, history_bytes=12)
+    engine.feed(("界界\r\n" * 10).encode())
+    snapshot = engine.snapshot()
+    assert snapshot["history"] == ["界界", "界界"]
+    assert snapshot["history_bytes"] == snapshot["history_bytes_limit"] == 12
+    assert snapshot["history_start"] == 7
+    engine.clear_history()
+    assert engine.snapshot()["history_bytes"] == 0
+
+
+def test_history_byte_limit_cannot_exceed_legacy_ceiling_or_go_negative():
+    from tower.terminal_emulator import MAX_HISTORY_BYTES
+    assert TerminalEngine(history_bytes=10**9).history_bytes_limit == MAX_HISTORY_BYTES
+    engine = TerminalEngine(2, 8, history_bytes=-1)
+    engine.feed(b"line\r\n" * 10)
+    assert engine.history_text() == []
+    assert engine.history_bytes_limit == 0
+
+
 @pytest.mark.parametrize("sequence", [b"\x1b]52;c;secret\x07", b"\x1bPqgraphics\x1b\\", b"\x1b_private\x1b\\", b"\x1b^private\x1b\\"])
 def test_untrusted_strings_never_reach_screen_or_outer_control(sequence):
     engine = TerminalEngine(2, 20)

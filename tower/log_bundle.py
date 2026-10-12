@@ -470,6 +470,8 @@ def _stream(entry, files, output, cancel, progress):
         if initial is not None:
             _check_snapshot(initial, before, initial["size"])
         last_size = before["size"]
+        from .raven_execution import source_read
+        source_read(before["size"])
         _check_snapshot(before, _snapshot(files, entry["path"]), last_size)
         offset, digest, utf8_valid, last = 0, hashlib.sha256(), True, b""
         import codecs
@@ -535,6 +537,29 @@ def export_logs(report, destination=None, *, root=None, state_dir=None, clipboar
     try:
         _cancel(cancel)
         entries = report.get("entries", ())
+        from .raven_execution import router_for, large_log_export
+        router = router_for()
+        if router.managed and (len(entries) > 128 or sum(entry.get("snapshot", {}).get("size", 0) for entry in entries) > 2 << 20):
+            if getattr(files, "remote", False):
+                raise ValueError("Large remote log export needs an explicit worker-visible artifact mapping")
+            exported = large_log_export(router, {"report": report, "destination": destination, "root": root,
+                "state_dir": state_dir, "clipboard": clipboard}, cancel)
+            # Workers publish bytes only. Clipboard/editor/terminal delivery
+            # belongs to the original interface and its explicit destination.
+            if clipboard and exported.get("clipboard_path"):
+                try:
+                    exported["clipboard"] = clipboard_io.copy_file(exported["clipboard_path"], tty_path=tty_path,
+                        use_osc52=use_osc52, use_tools=use_tools, destination=copy_destination,
+                        editor_context=editor_context,
+                        cancel=(lambda: cancel() if callable(cancel) else cancel.is_set()) if cancel is not None else None)
+                except Exception as exc:
+                    exported["clipboard"] = {"methods": [], "warnings": ["Clipboard delivery failed: " + _clean(exc)]}
+                exported.setdefault("warnings", []).extend(exported["clipboard"].get("warnings", ()))
+                exported["status"] = "partial" if exported.get("missing") or exported["warnings"] else "ready"
+                message = exported.get("message", "").replace("; clipboard delivery unavailable; complete bundle preserved", "")
+                methods = exported["clipboard"].get("methods", ())
+                exported["message"] = message + "; " + (", ".join(methods) if methods else "clipboard delivery unavailable; complete bundle preserved")
+            return exported
         if report.get("status") in ("error", "cancelled") and not entries:
             raise ValueError(report.get("message") or "No available log outputs were found")
         if not entries:

@@ -4,8 +4,8 @@ import sys
 
 if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from tower.cli import main
+    from tower.raven_launch import legacy_main as main
 else:
-    from .cli import main
+    from .raven_launch import legacy_main as main
 
 sys.exit(main())

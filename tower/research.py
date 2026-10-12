@@ -58,6 +58,8 @@ def detach_manual_source(app):
 
 class ResearchHub:
     def __init__(self, cfg, files=None, *, demo=False, settings=None, slurm=None, worker_scheduler=None):
+        from .raven_execution import router_for
+        self.execution = router_for(cfg)
         self.files = files or LocalFiles()
         self.slurm = slurm
         self.demo = demo
@@ -179,11 +181,14 @@ class ResearchHub:
 
     def start_task(self, fn, completion):
         """Explicit UI commands share the single worker, without an unbounded queue."""
+        from .raven_execution import background_allowed, bounded_background
+        if not background_allowed(self.execution, fn):
+            return False
         with self.lock:
             if self.closed or self.pending:
                 return False
             try:
-                self.future = self.pool.submit(fn)
+                self.future = self.pool.submit(bounded_background(self.execution, fn))
             except RuntimeError:
                 return False
             self.pending = (self.future, completion)
@@ -265,7 +270,8 @@ class ResearchHub:
                     return entry[1]
                 if self.future is None or self.future.done():
                     try:
-                        self.future = self.pool.submit(self._publish, context)
+                        from .raven_execution import bounded_background
+                        self.future = self.pool.submit(bounded_background(self.execution, lambda: self._publish(context)))
                     except RuntimeError:
                         return {"status": "loading", "summary": "The background queue is busy; this view will retry."}
                 future = self.future
@@ -494,6 +500,10 @@ class ResearchHub:
         from .planning import analyze, demo_source, record, select_job
         from .planning_io import load_json
         settings, snap, view = context["settings"], context["snap"], context["view"]
+        if self.execution.managed:
+            blocked = self.execution.require("research:"+view, worker_operation="planning")
+            if blocked is not None:
+                return blocked
         source, job = None, context["job"]
         selected_file_id = None
         overrides = dict(settings.get("planning_overrides", {}).get(view, {}))
@@ -548,7 +558,16 @@ class ResearchHub:
                 source = dict(source, query=dict(record(job), **scientific))
         if selected_file_id is not None:
             overrides["job_id"] = selected_file_id
-        result = analyze(view, source, snap=snap, job=job, observations=observations, overrides=overrides)
+        if self.execution.managed:
+            from .raven_execution import planning_inputs
+            receipt = self.execution.dispatch("planning", planning_inputs(view, source, snap=snap,
+                job=job, observations=observations, overrides=overrides),
+                {"job_id": context.get("jid"), "run_id": context.get("run_id")})
+            if receipt.get("status") == "deferred":
+                return receipt
+            result = receipt["result"]
+        else:
+            result = analyze(view, source, snap=snap, job=job, observations=observations, overrides=overrides)
         if view == "forecast" and getattr(self, "forecast_restore_warning", ""):
             result.setdefault("limitations", []).append(self.forecast_restore_warning)
         simulated = isinstance(source, dict) and source.get("simulated") is True

@@ -1,0 +1,165 @@
+{
+  "schema": "raven.regression-evidence/v1",
+  "version": "7.0.0",
+  "full_suite": {
+    "python": "3.12.14",
+    "command": ".venv/bin/python -m pytest -q -ra",
+    "passed": 15639,
+    "skipped": 8,
+    "warnings": 3,
+    "seconds": 587.47,
+    "scope": "Initial Raven application implementation before quiet-Jobs document-cache optimization; followed by setup portability validation. Final optimization validation is recorded separately when complete."
+  },
+  "boundary_tests": [
+    {
+      "python": "3.10",
+      "initial_passed": 1884,
+      "initial_failed": 3,
+      "skipped": 1,
+      "seconds": 163.54,
+      "failure": "Setup copied a relocatable Python executable, which then could not locate its standard library.",
+      "resolution": "Use POSIX symlinks when creating a venv. The three failures and one new nested-environment regression pass in the follow-up setup suite.",
+      "followup_setup_passed": 10,
+      "followup_setup_seconds": 141.57,
+      "unresolved_failures": 0
+    },
+    {
+      "python": "3.12.14",
+      "scope": "Complete setup suite after portability fix",
+      "passed": 10,
+      "seconds": 142.14
+    },
+    {
+      "python": "3.14",
+      "passed": 1888,
+      "skipped": 1,
+      "seconds": 330.98,
+      "scope": "Changed/new component modules, including corrected setup."
+    }
+  ],
+  "boundary_test_files": [
+    "tests/test_benchmark_raven_resources.py",
+    "tests/test_desktop_local.py",
+    "tests/test_gpu_detection.py",
+    "tests/test_metric_sampling_backend.py",
+    "tests/test_metric_sampling_integration.py",
+    "tests/test_operations_examples.py",
+    "tests/test_project_guide_validation.py",
+    "tests/test_qol_navigation.py",
+    "tests/test_raven_allocation.py",
+    "tests/test_raven_cli_integration.py",
+    "tests/test_raven_collection.py",
+    "tests/test_raven_config.py",
+    "tests/test_raven_diagnostics.py",
+    "tests/test_raven_execution.py",
+    "tests/test_raven_launch.py",
+    "tests/test_raven_limits.py",
+    "tests/test_raven_migration.py",
+    "tests/test_raven_qualification.py",
+    "tests/test_raven_ui.py",
+    "tests/test_raven_worker_runtime.py",
+    "tests/test_refresh_rate.py",
+    "tests/test_setup.py",
+    "tests/test_shell_install.py",
+    "tests/test_sustained_pointer_benchmark.py",
+    "tests/test_terminal_emulator.py",
+    "tests/test_terminal_service.py",
+    "tests/test_terminal_ui.py",
+    "tests/test_terminal_workflows.py",
+    "tests/test_toolbar.py",
+    "tests/test_tower.py",
+    "tests/test_worker_aggregate.py",
+    "tests/test_worker_ui.py"
+  ],
+  "full_suite_skips": [
+    "Optional dask_jobqueue dependency absent (1)",
+    "Optional ShellCheck executable absent (1)",
+    "Optional shell absent (1)",
+    "MPI development headers/libraries absent (5)"
+  ],
+  "warnings": "Three Python multiprocessing fork deprecation warnings in an existing deliberate cross-process crash/recovery test; not an application worker launch.",
+  "packaging": {
+    "wheel_runtime_modules_match_source": 233,
+    "sdist_contains_source_launchers_and_toml": true,
+    "all_three_installed_launchers": true,
+    "outside_checkout_core_without_dependencies": true,
+    "installed_desktop_heavy": true,
+    "optional_terminal_selftest": true,
+    "final_wheel_sha256": "2535498c095622096a1e68a3d41ac28366a01832d0d11086894b4f3d282b3f75",
+    "final_installed_smoke": "docs/benchmarks/7.0.0-installed-smoke.json",
+    "final_local_qualification": "docs/benchmarks/7.0.0-local-qualification.json"
+  },
+  "schemas": 51,
+  "examples": 38,
+  "generated_operation_reference_matches": true,
+  "capability_ledger_matches": true,
+  "production_qualified": false,
+  "measurement_harness_followup": {
+    "python": "3.12.14",
+    "command": ".venv/bin/python -m pytest -q tests/test_sustained_pointer_benchmark.py tests/test_benchmark_raven_resources.py",
+    "passed": 64,
+    "seconds": 0.95,
+    "scope": "After adding exact six/100-job pointer fixtures; run between resource variants, with no measurement active."
+  },
+  "optimized_full_suite": {
+    "python": "3.12.14",
+    "command": ".venv/bin/python -m pytest -q -ra",
+    "passed": 15663,
+    "failed": 1,
+    "skipped": 8,
+    "warnings": 3,
+    "seconds": 598.31,
+    "failure": "tests/test_tower.py::test_curses_screen_through_a_pseudo_terminal",
+    "observation": "No clipboard file in the failed fixed-sleep journey. The original test passed alone; its exact missed intermediate state could not be reconstructed. No production copy defect was reproduced.",
+    "resolution": "Replace blind timed input and stripped-ANSI matching with bounded native PTY state waits, reconstructed screen assertions, isolated clipboard tools/cache, and mandatory two-line clipboard payload. Production source unchanged after the sweep.",
+    "followup": {
+      "command": ".venv/bin/python -m pytest tests/test_tower.py -q --disable-warnings --maxfail=1",
+      "passed": 35,
+      "seconds": 41.78,
+      "journey_repetitions": [
+        {
+          "passed": 1,
+          "seconds": 1.65
+        },
+        {
+          "passed": 1,
+          "seconds": 1.77
+        }
+      ],
+      "unresolved_failures": 0
+    }
+  },
+  "quiet_cache_tests": {
+    "passed": 22,
+    "seconds": 0.59,
+    "scope": "Unknown source state, exact snapshot publication identity, input/theme/layout invalidation, source updates, callback revisions, and housekeeping/clock boundaries; included in the optimized full suite."
+  },
+  "final_ui_compatibility": {
+    "files": [
+      "tests/test_responsive_input.py",
+      "tests/test_progress_animation.py",
+      "tests/test_selector_feedback.py",
+      "tests/test_slider_plot_playback.py",
+      "tests/test_screen_details_wheel.py",
+      "tests/test_terminal_ui.py",
+      "tests/test_quiet_jobs_frames.py",
+      "tests/test_live_completion_ui.py",
+      "tests/test_completion_sync.py",
+      "tests/test_completion_left_margin.py",
+      "tests/test_tower.py"
+    ],
+    "results": [
+      {
+        "python": "3.10",
+        "passed": 481,
+        "seconds": 56.76
+      },
+      {
+        "python": "3.14",
+        "passed": 481,
+        "seconds": 52.43
+      }
+    ],
+    "scope": "Final production source and corrected state-aware PTY test; no failures or skips."
+  }
+}

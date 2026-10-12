@@ -15,7 +15,7 @@ spec.loader.exec_module(installer)
 def shell_env(**values):
     """Do not let an inherited user profile/account affect alias tests."""
     env = dict(os.environ)
-    for key in ("TOWER_CONFIG", "SLURM_TOWER_PROFILE", "SLURM_TOWER_ACCOUNT", "CARC_ACCOUNT"):
+    for key in ("TOWER_CONFIG", "RAVEN_CONFIG", "RAVEN_PROFILE", "SLURM_TOWER_PROFILE", "SLURM_TOWER_ACCOUNT", "CARC_ACCOUNT"):
         env.pop(key, None)
     env.update(values)
     return env
@@ -223,3 +223,13 @@ def test_cli_prints_selected_profile_without_modifying_configuration(tmp_path, m
     assert run_alias(block, shell_env(CARC_ACCOUNT="must not leak"))[3] == "desktop"
     assert path.read_text() == "export KEEP=yes\n"
     assert not list(tmp_path.glob("*.bak"))
+
+
+def test_new_config_has_precedence_without_implicit_legacy_profile_or_account(tmp_path):
+    root = recording_checkout(tmp_path)
+    block = tmp_path / "alias.bash"
+    block.write_text(installer.shell_block(root))
+    env = shell_env(RAVEN_CONFIG="/new/raven.json", TOWER_CONFIG="/old/tower.json", CARC_ACCOUNT="old-account")
+    assert run_alias(block, env, "--once") == ["--config", "/new/raven.json", "--unicode", "--once"]
+    env["RAVEN_PROFILE"] = "lab"
+    assert run_alias(block, env) == ["--config", "/new/raven.json", "--site", "lab", "--unicode"]

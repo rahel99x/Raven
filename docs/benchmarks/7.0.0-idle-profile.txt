@@ -1,0 +1,78 @@
+Mon Oct 12 00:45:57 2026    /tmp/raven-idle-diagnostic-process-clock.pstats
+
+         4090631 function calls (4057610 primitive calls) in 5.549 seconds
+
+   Ordered by: cumulative time
+   List reduced from 1183 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+  940/760    0.008    0.000    5.391    0.007 ui_trace.py:136(timed)
+       37    0.005    0.000    3.341    0.090 screen.py:1534(rebuild)
+       37    0.001    0.000    2.605    0.070 benchmark_raven_idle_profile.py:103(compose)
+       37    0.004    0.000    2.551    0.069 views.py:3181(compose)
+       37    0.016    0.000    2.413    0.065 views.py:3189(_compose)
+       37    0.000    0.000    1.808    0.049 history_browser.py:380(wrap_render)
+       37    0.000    0.000    1.808    0.049 views.py:3248(<lambda>)
+       37    0.004    0.000    1.806    0.049 workspace_layout.py:902(render_body)
+       37    0.005    0.000    1.800    0.049 workspace_layout.py:912(_render_body)
+      143    0.079    0.001    1.145    0.008 screen.py:1344(draw)
+   463072    0.692    0.000    1.083    0.000 layout.py:38(vlen)
+     3373    0.341    0.000    0.944    0.000 screen.py:1266(_raster)
+       37    0.000    0.000    0.933    0.025 views.py:3237(default_renderer)
+       37    0.000    0.000    0.932    0.025 views.py:3238(<lambda>)
+       37    0.003    0.000    0.911    0.025 views.py:3232(jobs_renderer)
+       37    0.037    0.001    0.756    0.020 workspace_layout.py:641(transform_body)
+       37    0.012    0.000    0.630    0.017 views.py:1402(jobs_tab)
+      143    0.016    0.000    0.551    0.004 screen.py:1596(feedback)
+       38    0.052    0.001    0.535    0.014 interaction.py:644(publish)
+    13135    0.189    0.000    0.476    0.000 layout.py:305(_clip_row)
+       74    0.050    0.001    0.428    0.006 layout.py:130(table)
+     9990    0.011    0.000    0.424    0.000 layout.py:320(clip_row)
+820754/820740    0.338    0.000    0.338    0.000 {built-in method builtins.len}
+     1998    0.026    0.000    0.299    0.000 pane_drag.py:378(_replace)
+      142    0.004    0.000    0.294    0.002 screen.py:1521(maintain)
+       37    0.011    0.000    0.288    0.008 views.py:849(header)
+       37    0.001    0.000    0.273    0.007 views.py:3506(_table_job_rows)
+       37    0.018    0.000    0.272    0.007 views.py:1114(job_rows)
+       37    0.007    0.000    0.269    0.007 pane_drag.py:421(paint)
+    25616    0.077    0.000    0.269    0.000 {method 'join' of 'str' objects}
+     6169    0.009    0.000    0.268    0.000 {method 'extend' of 'list' objects}
+       74    0.002    0.000    0.240    0.003 job_panels.py:1009(render)
+        9    0.000    0.000    0.234    0.026 thread.py:54(run)
+   374982    0.230    0.000    0.230    0.000 {method 'get' of 'dict' objects}
+        9    0.001    0.000    0.229    0.025 worker_scheduler.py:280(_execute)
+
+
+Mon Oct 12 00:45:57 2026    /tmp/raven-idle-diagnostic-process-clock.pstats
+
+         4090631 function calls (4057610 primitive calls) in 5.549 seconds
+
+   Ordered by: internal time
+   List reduced from 1183 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+   463072    0.692    0.000    1.083    0.000 layout.py:38(vlen)
+     3373    0.341    0.000    0.944    0.000 screen.py:1266(_raster)
+820754/820740    0.338    0.000    0.338    0.000 {built-in method builtins.len}
+   374982    0.230    0.000    0.230    0.000 {method 'get' of 'dict' objects}
+   489376    0.204    0.000    0.204    0.000 {method 'isascii' of 'str' objects}
+    13135    0.189    0.000    0.476    0.000 layout.py:305(_clip_row)
+187245/185369    0.137    0.000    0.153    0.000 {built-in method builtins.getattr}
+   250192    0.124    0.000    0.131    0.000 {built-in method builtins.isinstance}
+   235756    0.119    0.000    0.119    0.000 {method 'append' of 'list' objects}
+     3560    0.110    0.000    0.156    0.000 views.py:1081(flags_of)
+      143    0.079    0.001    1.145    0.008 screen.py:1344(draw)
+    25616    0.077    0.000    0.269    0.000 {method 'join' of 'str' objects}
+     3402    0.074    0.000    0.080    0.000 screen.py:1308(_changed_runs)
+    88530    0.068    0.000    0.144    0.000 {built-in method builtins.max}
+    24366    0.054    0.000    0.087    0.000 layout.py:291(truncate)
+       38    0.052    0.001    0.535    0.014 interaction.py:644(publish)
+       37    0.051    0.001    0.109    0.003 job_row_cache.py:60(lookup)
+       74    0.050    0.001    0.428    0.006 layout.py:130(table)
+21470/2698    0.047    0.000    0.086    0.000 interaction.py:206(freeze)
+     4625    0.046    0.000    0.090    0.000 job_groups.py:343(_input)
+    54131    0.042    0.000    0.064    0.000 research.py:24(<genexpr>)
+    12100    0.042    0.000    0.101    0.000 layout.py:52(cut)
+     4796    0.038    0.000    0.129    0.000 job_progress.py:421(_glyph_at)
+       37    0.037    0.001    0.756    0.020 workspace_layout.py:641(transform_body)
+     3146    0.035    0.000    0.097    0.000 job_progress.py:435(_replace_glyph)

@@ -35,8 +35,8 @@ DEFAULTS: Dict[str, Any] = {
     "terminal": {"shell": "", "login": False, "history_lines": 2000,
                  "max_sessions": 8, "paste_limit_bytes": 1048576, "paste_preview": True},
     "intervals": {                       # base seconds for other sources; native polls use polling_multiplier
-        "jobs": 2.0, "starts": 10.0, "live": 10.0, "gpu": 5.0, "nodes": 15.0, "partitions": 60.0, "finished": 60.0,
-        "share": 120.0, "account": 30.0, "details": 20.0, "weather": 120.0, "budget": 600.0, "trace": 60.0, "fin_details": 5.0,
+        "jobs": 2.0, "starts": 10.0, "live": 5.0, "gpu": 5.0, "nodes": 15.0, "partitions": 60.0, "finished": 60.0,
+        "share": 120.0, "account": 30.0, "details": 20.0, "weather": 120.0, "budget": 600.0, "trace": 5.0, "fin_details": 5.0,
     },
     "timeouts": {"command": 8.0, "gpu": 12.0, "action": 15.0},
     "thresholds": {                      # a running job older than warn_after_minutes below these fractions gets a flag
@@ -146,7 +146,7 @@ interval = 5.0                  # bounded background inspections, minimum 1 seco
 [intervals]                     # base seconds; jobs/live/gpu/trace use the polling slider's 5s..500ms range
 jobs = 2.0
 starts = 10.0
-live = 10.0
+live = 5.0
 gpu = 5.0
 nodes = 15.0
 partitions = 60.0
@@ -156,7 +156,7 @@ account = 30.0
 details = 20.0
 weather = 120.0
 budget = 600.0
-trace = 60.0
+trace = 5.0
 
 [timeouts]
 command = 8.0

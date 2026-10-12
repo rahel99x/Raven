@@ -831,6 +831,9 @@ class Slurm:
         return parse_starts(out)
 
     def hostnames(self, nodelist: str) -> List[str]:
+        if getattr(self.b, "collection", None) is not None:
+            from .raven_collection import expand_hostlist
+            return expand_hostlist(nodelist)
         if nodelist not in self._hosts:
             try:
                 out, _ = self.b.run(["scontrol", "show", "hostnames", nodelist], self.timeout)
@@ -842,6 +845,26 @@ class Slurm:
     def live(self, job: Job, prev: Optional[tuple], now: float) -> Tuple[Live, Optional[tuple], List[Step]]:
         """sstat of one running job -> (Live, the (t, cpu) pair to remember for the next rate, the steps)."""
         out, _ = self.b.run(["sstat", "-j", job.id, "-a", "-n", "-P", "-o", SSTAT_FIELDS], self.timeout)
+        return self._live_result(job, prev, now, out)
+
+    def live_batch(self, jobs, previous, now):
+        """One bounded sstat read; split exact array/component IDs before rates."""
+        jobs = list(jobs)
+        if not jobs:
+            return {}
+        if len(jobs) > 64 or any(not re.fullmatch(r"[0-9]+(?:_[0-9]+)?(?:\+[0-9]+)?", job.id) for job in jobs):
+            raise CommandError("Live statistics batch requires at most 64 exact job IDs")
+        ids = {job.id for job in jobs}
+        out, _ = self.b.run(["sstat", "-j", ",".join(job.id for job in jobs), "-a", "-n", "-P", "-o", SSTAT_FIELDS], self.timeout)
+        lines = {jid: [] for jid in ids}
+        for line in out.splitlines():
+            jid = line.split("|", 1)[0].split(".", 1)[0]
+            if jid in lines:
+                lines[jid].append(line)
+        return {job.id: self._live_result(job, previous.get(job.id), now, "\n".join(lines[job.id])) for job in jobs}
+
+    @staticmethod
+    def _live_result(job, prev, now, out):
         cpu, rss = parse_sstat(out)
         steps = parse_steps(out, job.id)
         el = job.elapsed_s or 0
@@ -948,6 +971,21 @@ class Slurm:
     def node(self, name: str) -> Optional[Node]:
         out, _ = self.b.run(["scontrol", "show", "node", name, "-o"], self.timeout)
         return parse_node(out)
+
+    def nodes_batch(self, names):
+        """Read at most 64 exact hostnames in one bounded scheduler command."""
+        names = list(names)
+        if (not names or len(names) > 64 or len(set(names)) != len(names)
+                or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,252}", name) for name in names)):
+            raise ValueError("Node sampling requires 1..64 distinct exact hostnames")
+        output, _ = self.b.run(["scontrol", "show", "node", ",".join(names), "-o"], self.timeout)
+        allowed = set(names)
+        result = {}
+        for line in output.splitlines():
+            node = parse_node(line)
+            if node is not None and node.name in allowed:
+                result[node.name] = node
+        return result
 
     def details(self, jid: str) -> Dict[str, str]:
         out, _ = self.b.run(["scontrol", "show", "job", "-o", jid], self.timeout)

@@ -590,3 +590,9 @@ def apply(feature, plan, ctx):
         raise ValueError("unknown campaign feature")
     status = "ok" if result.get("state") not in {"unknown", "rejected", "not_submitted", "partial"} else "warning"
     return O.report(feature, "Campaign action recorded", status=status, rows=[json.dumps(result, sort_keys=True)], data=result)
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

@@ -195,6 +195,11 @@ def collect(command, *, project, job_id, attempt=None, cluster=None,
 
 
 def main(argv=None):
+    from .raven_execution import cli_admission
+    blocked = cli_admission(["trace", "native", *(sys.argv[1:] if argv is None else argv)])
+    if blocked is not None:
+        print(json.dumps(blocked, indent=2))
+        return 3
     parser = argparse.ArgumentParser(prog="tower trace native")
     parser.add_argument("--sdk-header", action="store_true", help="Print the standalone C/C++ cooperative SDK header")
     parser.add_argument("--project", default=os.getcwd())

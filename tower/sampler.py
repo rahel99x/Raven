@@ -28,14 +28,28 @@ class Sampler(threading.Thread):
     def __init__(self, slurm: Slurm, store: Store, intervals: Dict[str, float], gpu_types: List[str], history_days: float = 2.0,
                  account: str = "", gpu_sampling: bool = True, workers: int = 4, on_event: Optional[Callable[[dict], None]] = None,
                  weather: bool = True, probes: Optional[List[dict]] = None, budget: bool = True, files=None, polling_multiplier: int = 1,
-                 worker_scheduler=None):
+                 worker_scheduler=None, collection=None):
         super().__init__(daemon=True, name="tower-sampler")
         self.polling_multiplier = validate_multiplier(polling_multiplier)
         self.slurm, self.store, self.intervals = slurm, store, dict(intervals)
+        from .raven_collection import settings as collection_settings
+        self.collection = collection_settings(collection) if collection is not None else None
+        self._collection_demand = {"tab": "jobs", "selected": None, "sources": frozenset()}
+        self._collection_activity = time.monotonic()
+        self._collection_not_before = {}
+        self._collection_failures = {}
+        self._collection_deferred = set()
+        self._live_offset = 0
+        self._node_offset = 0
         self.gpu_types, self.history_days, self.account = list(gpu_types), history_days, account
-        self.gpu_sampling = gpu_sampling
+        self.gpu_sampling = gpu_sampling and self.collection is None
         self.on_event = on_event
         self.weather, self.probes, self.budget = weather, list(probes or []), budget
+        if self.collection is not None:
+            # Existing job/site telemetry remains available through trace and
+            # research readers. Monitoring never creates an unsolicited step
+            # or test-only submission in either Raven execution mode.
+            self.weather, self.probes = False, []
         from .remote import LocalFiles
         self.files = files or LocalFiles()
         self.want_fin: Optional[str] = None                # a finished job whose steps the details overlay wants
@@ -80,6 +94,12 @@ class Sampler(threading.Thread):
             "weather": ("jobs", "partitions", "share"),
         }
         self.last_run: Dict[str, float] = {name: 0.0 for name in self.sources}
+        if self.collection is not None:
+            import random
+            start = time.time()
+            jitter = min(1., self.collection["jitter_fraction"])
+            self._collection_not_before = {name: start + random.SystemRandom().uniform(0., self._collection_interval(name, 0.) * jitter)
+                                           for name in self.sources}
         # A generation counter retains a departure that races an in-flight sacct.
         # Expedited retries are bounded and never reset a failing source's backoff.
         self._finished_requested = 0
@@ -95,6 +115,8 @@ class Sampler(threading.Thread):
 
     def add_source(self, name: str, interval: float, fn: Callable[[Slurm, Store], None]) -> None:
         """A plugin source: ``fn(slurm, store)`` every ``interval`` seconds, with health and backoff like the others."""
+        if self.collection is not None:
+            raise ValueError("Raven managed collectors require an admitted source descriptor; arbitrary plugin collectors are disabled")
         with self._schedule_lock:
             self.sources[name] = lambda: fn(self.slurm, self.store)
             self.intervals[name] = float(interval)
@@ -115,14 +137,84 @@ class Sampler(threading.Thread):
         from .metric_sampling import interval
         with self._schedule_lock:
             rate = max(self._active_metric_rates_locked(name).values(), default=1)
-            return interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
-                            file=name == "trace", remote=bool(getattr(self.files, "remote", False)))
+            requested = interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
+                                 file=name == "trace", remote=bool(getattr(self.files, "remote", False)))
+            return self._collection_interval(name, requested)
+
+    def _collection_interval(self, name, requested):
+        if self.collection is None:
+            return requested
+        from .raven_collection import interval
+        result = interval(self.collection, name, requested)
+        if time.monotonic() - self._collection_activity >= self.collection["idle_after_seconds"]:
+            result *= max(1., self.collection["idle_interval_factor"])
+        return result
+
+    def set_collection_demand(self, tab, selected_job=None, *, active=False, sources=()):
+        """Publish visible subscriptions; no source IO and no quota resets.
+
+        active means an actual input gesture, not a periodic UI tick. Explicit
+        metric views may add live/trace to sources while viewing Jobs Details.
+        """
+        if self.collection is None:
+            return
+        with self._schedule_lock:
+            demand = {"tab": str(tab), "selected": str(selected_job) if selected_job else None,
+                      "sources": frozenset(str(s) for s in tuple(sources)[:32])}
+            changed = demand != self._collection_demand
+            self._collection_demand = demand
+            if active:
+                self._collection_activity = time.monotonic()
+        if changed or active:
+            self.kick.set()
+
+    def prime_collection_snapshot(self, sources=None):
+        """Make a first explicit snapshot eligible without background jitter.
+
+        This changes only never-attempted sources in the current visible
+        demand. Existing source deadlines, failed attempts, endpoint budgets,
+        and producer admission remain authoritative across repeated requests.
+        """
+        if self.collection is None:
+            return
+        allowed = set(self.sources if sources is None else sources)
+        with self._schedule_lock:
+            for name in self.sources:
+                health = self.health(name)
+                if (name in allowed and self._collection_needed(name) and not health.calls
+                        and not health.inflight and not self.last_run[name]):
+                    self._collection_not_before[name] = 0.
+
+    def _collection_needed(self, name):
+        if self.collection is None:
+            return True
+        if not self.collection.get("slurm_enabled", True) and name != "trace":
+            return False
+        demand = self._collection_demand
+        tab, selected = demand["tab"], demand["selected"]
+        if name in ("gpu", "weather"):
+            return False
+        if name == "live":
+            return (self.collection["live_statistics"] != "off" and bool(selected or self._metric_requests)
+                    and (tab == "analytics" or "live" in demand["sources"]))
+        if name == "trace":
+            return bool(selected or self.want_trace) and (tab in ("analytics", "research") or "trace" in demand["sources"])
+        if name == "details":
+            return bool(self.want_detail)
+        if name == "fin_details":
+            return bool(self.want_fin)
+        if name in demand["sources"] or name == "jobs":
+            return True
+        subscriptions = {"starts": ("jobs", "group"), "finished": ("jobs", "history", "analytics", "log", "research"),
+                         "nodes": ("nodes", "cluster"), "partitions": ("nodes", "cluster"),
+                         "share": ("cluster", "group"), "account": ("group",), "budget": ("cluster", "research")}
+        return tab in subscriptions.get(name, ())
 
     def _baseline_interval(self, name):
         """Use the same source bounds for scheduling and displayed cadences."""
         from .metric_sampling import interval
-        return interval(self.intervals.get(name, 30.0), self.polling_multiplier, 1, source=name,
-                        file=name == "trace", remote=bool(getattr(self.files, "remote", False)))
+        return self._collection_interval(name, interval(self.intervals.get(name, 30.0), self.polling_multiplier, 1, source=name,
+                        file=name == "trace", remote=bool(getattr(self.files, "remote", False))))
 
     @staticmethod
     def _metric_attempt(job):
@@ -208,8 +300,8 @@ class Sampler(threading.Thread):
             rate = self._metric_rate_locked(name, jid)
             if attempt is not None and (record is None or attempt not in (record[1], "scheduler:" + record[1], record[2])):
                 rate = 1
-            return interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
-                            file=name == "trace", remote=bool(getattr(self.files, "remote", False)))
+            return self._collection_interval(name, interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
+                            file=name == "trace", remote=bool(getattr(self.files, "remote", False))))
 
     def _sampling_targets(self, name, jobs):
         """Gate scheduled probes; direct source calls retain their old behavior."""
@@ -289,6 +381,9 @@ class Sampler(threading.Thread):
 
     def due(self, name: str, now: float) -> bool:
         h = self.health(name)
+        if self.collection is not None:
+            if not self._collection_needed(name) or now < self._collection_not_before.get(name, 0.):
+                return False
         if not h.enabled or h.inflight:
             return False
         if h.calls == 0:
@@ -308,9 +403,13 @@ class Sampler(threading.Thread):
             return False
         if name == "fin_details" and not self.want_fin:
             return False
+        if self.collection is not None and name in self._collection_deferred:
+            return now >= self._collection_not_before.get(name, 0.)
         regular = now - self.last_run[name] >= self.effective_interval(name) + h.backoff
         if name in self._metric_scheduled_sources and h.calls and not h.backoff:
             regular = self._metric_source_due(name)
+        if self.collection is not None:
+            return regular
         if name == "details" and not regular:
             request = self._details_refresh
             return bool(request and request[0] == self.want_detail and not h.backoff and
@@ -335,6 +434,7 @@ class Sampler(threading.Thread):
         self.kick.set()
 
     def run_source(self, name: str):
+        from .raven_collection import Deferred
         h = self.health(name)
         previous_context = getattr(self._sampling_context, "current", None)
         context = {"source": name, "targets": {}, "baseline": False}
@@ -354,6 +454,14 @@ class Sampler(threading.Thread):
                 h.last_ok = time.time()
                 h.error = ""
                 h.backoff = 0.0
+        except Deferred as e:
+            # Admission deferral is observable but is not a failed scheduler
+            # command and must not trip the source's failure circuit.
+            context["deferred"] = True
+            context["retry_after"] = e.retry_after
+            with self.store.lock:
+                h.calls += 1
+                h.error = str(e)
         except CommandError as e:
             with self.store.lock:
                 if (name == "gpu" and context["provider_generation"]
@@ -373,7 +481,21 @@ class Sampler(threading.Thread):
                 h.error = f"{type(e).__name__}: {e}"
                 h.backoff = min(300.0, max(self.intervals.get(name, 30.0), 2 * h.backoff))
         finally:
-            if context["baseline"] and name in ("live", "gpu", "trace"):
+            if self.collection is not None:
+                import random
+                failed = bool(h.error) and not context.get("deferred")
+                failures = self._collection_failures.get(name, 0) + 1 if failed else 0
+                self._collection_failures[name] = failures
+                if context.get("deferred"):
+                    self._collection_deferred.add(name)
+                else:
+                    self._collection_deferred.discard(name)
+                if failures >= self.collection["circuit_failures"]:
+                    h.backoff = max(h.backoff, self.collection["circuit_seconds"])
+                cadence = self.effective_interval(name)
+                jitter = random.SystemRandom().uniform(0., cadence * min(1., self.collection["jitter_fraction"]))
+                self._collection_not_before[name] = time.time() + (context.get("retry_after", 5.) if context.get("deferred") else cadence + jitter + h.backoff)
+            if context["baseline"] and not context.get("deferred") and name in ("live", "gpu", "trace"):
                 with self._schedule_lock:
                     if (name != "gpu" or context["provider_generation"]
                             == getattr(self.slurm, "gpu_provider_generation", 0)):
@@ -392,6 +514,8 @@ class Sampler(threading.Thread):
                 if self.stop.is_set():
                     break
                 for name in self.sources:
+                    if self.collection is not None and sum(self.health(source).inflight for source in self.sources) >= max(1, self.collection["max_inflight"] - 1):
+                        break
                     if name not in submitted and self.due(name, now):
                         previous = self.last_run[name]
                         health = self.health(name)
@@ -423,6 +547,11 @@ class Sampler(threading.Thread):
             self.kick.clear()
 
     def refresh_all(self):
+        if self.collection is not None:
+            # Manual refresh requests the next admitted publication. It cannot
+            # erase source clocks, failure recovery, per-job floors or quotas.
+            self.kick.set()
+            return
         with self._schedule_lock:
             self._metric_completed.clear()
             self._baseline_completed.clear()
@@ -535,6 +664,8 @@ class Sampler(threading.Thread):
             self.observe_jobs()
 
     def src_live(self):
+        if self.collection is not None and not self._collection_needed("live"):
+            return
         now = clock.now()
         with self.store.lock:
             jobs = [j for j in self.store.jobs if not j.pending]
@@ -542,12 +673,22 @@ class Sampler(threading.Thread):
             identities = {j.id: self._gpu_identity(j) for j in jobs}
             previous = {j.id: self.store.prev_cpu.get(j.id) for j in jobs}
         jobs = self._sampling_targets("live", jobs)
+        batched = None
+        if self.collection is not None:
+            requested = {self._collection_demand["selected"]} | set(self._active_metric_rates_locked("live"))
+            jobs = [job for job in jobs if job.id in requested]
+            if jobs:
+                start = self._live_offset % len(jobs)
+                bound = self.collection["live_batch_jobs"]
+                jobs = (jobs[start:] + jobs[:start])[:bound]
+                self._live_offset = start + len(jobs)
+                batched = self.slurm.live_batch(jobs, previous, now)
         failures = []
         for job in jobs:
             if self.stop.is_set():
                 break
             try:
-                lv, keep, steps = self.slurm.live(job, previous[job.id], now)
+                lv, keep, steps = batched[job.id] if batched is not None else self.slurm.live(job, previous[job.id], now)
             except CommandError as exc:
                 failures.append(str(exc))
                 continue
@@ -621,6 +762,8 @@ class Sampler(threading.Thread):
         return True
 
     def src_gpu(self):
+        if self.collection is not None:
+            return
         with self.store.lock:
             provider_generation = getattr(self.slurm, "gpu_provider_generation", 0)
             self._gpu_cache_reapply_locked(time.monotonic())
@@ -717,6 +860,19 @@ class Sampler(threading.Thread):
 
     def src_nodes(self):
         names = sorted({h for j in self.store.jobs if not j.pending for h in j.hosts})
+        if self.collection is not None:
+            if names:
+                start = self._node_offset % len(names)
+                selected = (names[start:] + names[:start])[:self.collection["live_batch_jobs"]]
+                nodes = self.slurm.nodes_batch(selected)
+                self._node_offset = start + len(selected)
+            else:
+                nodes = {}
+            with self.store.lock:
+                current = {host for job in self.store.jobs if not job.pending for host in job.hosts}
+                self.store.nodes = {name: node for name, node in self.store.nodes.items() if name in current}
+                self.store.nodes.update({name: node for name, node in nodes.items() if name in current})
+            return
         nodes = {}
         for n in names:
             node = self.slurm.node(n)
@@ -781,6 +937,8 @@ class Sampler(threading.Thread):
 
     def src_weather(self):
         """Pending work ahead per partition cluster-wide, and sbatch --test-only for a few typical jobs."""
+        if self.collection is not None:
+            return
         ahead = self.slurm.pending_ahead()
         probes = self.probes or self.default_probes()
         results = []
@@ -813,10 +971,15 @@ class Sampler(threading.Thread):
     def src_trace(self):
         """The nvidia-smi CSV the job writes itself (timestamp, index, utilization.gpu, memory.used; one line per GPU per minute; the README says how a job writes it) for every
         running GPU job and the job the analytics view shows."""
+        if self.collection is not None and not self._collection_needed("trace"):
+            return
         with self.store.lock:
             want = [j.id for j in self.store.jobs if not j.pending and j.gpus]
         if self.want_trace and self.want_trace not in want:
             want.append(self.want_trace)
+        if self.collection is not None:
+            subscribed = {self.want_trace, self._collection_demand["selected"]}
+            want = [jid for jid in want if jid in subscribed][:2]
         selected = self._sampling_targets("trace", want)
         with self.store.lock:
             contexts = {jid: self._trace_context_locked(jid) for jid in selected}

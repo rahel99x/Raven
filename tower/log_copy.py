@@ -90,6 +90,10 @@ def copy_full_log(path, state_dir=None, *, files=None, use_osc52=True, use_tools
         else:
             before = _snapshot(files, path)
         result["snapshot_bytes"] = before["size"]
+        from .raven_execution import source_read, router_for
+        if router_for().managed and before["size"] > 2 << 20:
+            raise ValueError("Full-log clipboard export exceeds Light's 2 MiB window; use the reviewed Heavy log-bundle export")
+        source_read(before["size"])
         if progress:
             progress(0, before["size"])
         export_base = os.path.abspath(os.path.join(state_dir, "exports") if state_dir else os.path.join(os.getcwd(), "tower-exports"))

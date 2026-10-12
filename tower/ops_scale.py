@@ -148,3 +148,9 @@ def run(feature, params, ctx):
 
 def apply(feature, plan, ctx):
     raise ValueError("Scale diagnostics are read-only; they do not change jobs or cluster connections")
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

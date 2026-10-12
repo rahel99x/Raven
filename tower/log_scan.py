@@ -236,6 +236,24 @@ def search_source(files, source, query, *, regex=False, case=False, word=False,
     matcher = compile_search(query, regex=regex, case=case, word=word)
     path = source["path"]
     before = snapshot(files, path)
+    from .raven_execution import router_for, AdmissionError
+    router = router_for()
+    if router.managed and before["size"] > 2 << 20:
+        blocked = router.require("large-log-search", worker_operation="log-search-files")
+        if blocked is not None:
+            raise AdmissionError(blocked["summary"])
+        if getattr(files, "remote", False):
+            raise AdmissionError("Large remote search needs a worker-visible source mapping")
+        receipt = router.dispatch("log-search-files", {"sources": [source], "query": query,
+            "options": {"regex": regex, "case": case, "word": word, "context": context, "max_results": max_results}})
+        if receipt.get("status") == "deferred":
+            raise AdmissionError(receipt["summary"])
+        result = receipt["result"]
+        if not result.get("reports") or result["reports"][0].get("error"):
+            raise ValueError((result.get("reports") or [{}])[0].get("error", "Worker did not return source coverage"))
+        return dict(result["reports"][0], matches=result["matches"])
+    if router.managed:
+        max_bytes = min(max_bytes, 2 << 20)
     results, previous, waiting = [], deque(maxlen=max(0, min(4, int(context)))), []
     scanned, continued, carry, current_line, current_match = 0, False, "", None, None
     long_regex_lines = 0
@@ -293,6 +311,23 @@ def search_sources(files, sources, query, **options):
     """Search bounded catalog declarations. Errors remain tied to their source."""
     compile_search(query, **{key: options.get(key, False) for key in ("regex", "case", "word")})
     sources = list(sources)
+    from .raven_execution import router_for, AdmissionError
+    router = router_for()
+    if router.managed:
+        if len(sources) > 32:
+            raise AdmissionError("Choose at most 32 log sources per request")
+        total = sum(snapshot(files, source["path"])["size"] for source in sources)
+        if total > 2 << 20:
+            blocked = router.require("large-log-search", worker_operation="log-search-files")
+            if blocked is not None:
+                raise AdmissionError(blocked["summary"])
+            if getattr(files, "remote", False):
+                raise AdmissionError("Large remote search needs a worker-visible source mapping")
+            supplied = {key: options[key] for key in ("regex", "case", "word", "context", "max_results") if key in options}
+            receipt = router.dispatch("log-search-files", {"sources": sources, "query": query, "options": supplied})
+            if receipt.get("status") == "deferred":
+                raise AdmissionError(receipt["summary"])
+            return receipt["result"]
     results, reports, seen = [], [], set()
     deadline = time.monotonic() + MAX_SECONDS
     max_results = max(1, min(MAX_RESULTS, int(options.pop("max_results", MAX_RESULTS))))
@@ -321,6 +356,9 @@ def locate(files, source, kind, value, *, cancel=None, progress=None):
     """Resolve an absolute source location without using tail-relative indices."""
     path = source["path"]
     before = snapshot(files, path)
+    from .raven_execution import router_for, AdmissionError
+    if router_for().managed and kind in {"line", "time"} and before["size"] > 2 << 20:
+        raise AdmissionError("Absolute line/time lookup exceeds Light's 2 MiB scan; use a byte/percentage window or Heavy search")
     if kind == "byte":
         offset = int(value)
         if offset < 0:

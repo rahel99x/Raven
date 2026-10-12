@@ -189,6 +189,10 @@ class SeriesArchive:
                 else:
                     source.append_owned(sample)
             self.store.series[jid] = source
+            if self.store.raven_limits:
+                self.store.raven_limits.retain_series(self.store,jid)
+                if len(source)<len(retained):
+                    status=dict(status,status='limited',message='Light series byte budget reached; retained history is partial.')
             self.store._series_loaded.add(jid)
             if status.get("status") == "limited":
                 self.limited.add(jid)
@@ -200,6 +204,8 @@ class SeriesArchive:
         def published():
             from .series_publication import SeriesDeque
             source = self.store.series[jid]
+            if self.store.raven_limits and jid not in self.store.raven_limits.series:
+                self.store.raven_limits.retain_series(self.store,jid)
             return source.publication() if publication and type(source) is SeriesDeque else list(source)
         with self.store.lock:
             if jid in self.store._series_loaded and (background or jid not in self.limited):
@@ -212,7 +218,10 @@ class SeriesArchive:
         if background:
             self._schedule(jid, identity)
             return memory
-        old, status = read_tail(path, self.store.series_keep)
+        limits=self.store.raven_limits
+        old, status = read_tail(path, self.store.series_keep,
+                               max_bytes=limits.values['series_bytes'] if limits else None,
+                               max_line=min(1<<20,limits.values['series_bytes']) if limits else None)
         self._merge(jid, identity, old, status)
         with self.store.lock:
             return published()
@@ -223,7 +232,7 @@ class SeriesArchive:
                 ids = set(self.store.series)
             if self.store.persist:
                 try:
-                    ids.update(name[:-6] for name in os.listdir(os.path.join(self.store.state_dir, "series")) if name.endswith(".jsonl"))
+                    ids.update(self._disk_inventory())
                 except OSError:
                     pass
             return sorted(ids)
@@ -234,6 +243,20 @@ class SeriesArchive:
         if requested:
             self._schedule(_INDEX, None)
         return sorted(ids)
+
+    def _disk_inventory(self):
+        ids=set()
+        limits=self.store.raven_limits
+        cap=limits.values['storage_files'] if limits else None
+        with os.scandir(os.path.join(self.store.state_dir,'series')) as entries:
+            for index,entry in enumerate(entries):
+                if cap and (index>=cap*2 or len(ids)>=cap):
+                    limits.coverage['archive_inventory']={'limited':True,'retained':len(ids),
+                        'reason':'saved history inventory scan budget reached'}
+                    break
+                if entry.name.endswith('.jsonl'):
+                    ids.add(entry.name[:-6])
+        return ids
 
     def status(self, jid):
         with self.store.lock:
@@ -254,8 +277,7 @@ class SeriesArchive:
                 path = self.store._series_path(key) if key is not _INDEX else None
             try:
                 if key is _INDEX:
-                    with os.scandir(os.path.join(self.store.state_dir, "series")) as entries:
-                        ids = {entry.name[:-6] for entry in entries if entry.name.endswith(".jsonl")}
+                    ids=self._disk_inventory()
                     status = dict(status="ready", message="Saved metric inventory restored.")
                     with self.store.lock:
                         if epoch == self.epoch:
@@ -263,8 +285,10 @@ class SeriesArchive:
                             self.index_at = time.monotonic()
                             self._status(_INDEX, status)
                 else:
+                    limits=self.store.raven_limits
                     old, status = read_tail(path, self.store.series_keep,
-                                            max_bytes=COLD_READ_BYTES, max_line=COLD_LINE_BYTES) if path else ([], {})
+                                            max_bytes=min(COLD_READ_BYTES,limits.values['series_bytes']) if limits else COLD_READ_BYTES,
+                                            max_line=min(COLD_LINE_BYTES,limits.values['series_bytes'],1<<20) if limits else COLD_LINE_BYTES) if path else ([], {})
                     self._merge(key, identity, old, status, epoch=epoch)
             except Exception as exc:
                 # A corrupt saved record or disappearing directory cannot leave

@@ -498,9 +498,9 @@ def test_positive_cache_expiry_uses_bounded_effective_polling(monkeypatch, tmp_p
     sampler.intervals["gpu"] = 3600
     try:
         sampler.src_gpu()
-        # A legacy slow base cannot move native polling outside the slider's
-        # domain. Allocation metadata still survives multiple GPU polls.
-        assert sampler.effective_interval("gpu") == 5
-        assert sampler._gpu_allocation_cache["7"]["expires"] == 110
+        # Explicit slow polling is preserved; cached allocation identity still
+        # expires at the bounded metadata TTL rather than living for hours.
+        assert sampler.effective_interval("gpu") == 3600
+        assert sampler._gpu_allocation_cache["7"]["expires"] == 220
     finally:
         sampler.shutdown()

@@ -1,0 +1,4041 @@
+{
+  "background": {
+    "bounded_read_or_gated_dispatch": [
+      "activity_ui",
+      "analysis_ui",
+      "array_manifest_ui",
+      "controller",
+      "execution_ui",
+      "history_log_export",
+      "job_progress",
+      "log_catalog",
+      "log_tools",
+      "log_workbench",
+      "logs",
+      "ops_ui",
+      "planning_commands",
+      "project_ui",
+      "quick_advisor",
+      "research_commands",
+      "session_tools",
+      "shell_checks_ui",
+      "telemetry_ui",
+      "terminal_fusion",
+      "terminal_workflows",
+      "trace_ui",
+      "views"
+    ],
+    "unknown": "rejected",
+    "worker_required": [
+      "analysis_ui",
+      "history_log_export",
+      "log_tools",
+      "log_workbench",
+      "quick_advisor"
+    ]
+  },
+  "deferred_paths": {
+    "absolute log line/time seek above 2 MiB": "Use byte/percent windows or admitted Heavy search.",
+    "adapter:apply": "Plugin execution needs an explicit declared adapter.",
+    "checkpoint/search/packing/dask/heterogeneous:apply": "Campaign submissions need a reviewed worker-to-scheduler handoff.",
+    "clusters": "Live multi-cluster collection needs a governed shared source adapter.",
+    "diagnostic-campaign/minimize-reproducer/regression-sweep/investigation-workflow:apply": "External drivers need an owned, bounded execution adapter.",
+    "diagnostic-campaign/minimize-reproducer/regression-sweep:status/cancel": "Driver control belongs to the original execution host.",
+    "diagnostic/diagnostic-trials CLI": "External experiments need a reviewed owned execution target.",
+    "direct whole-file copy above 2 MiB": "Use the admitted Heavy log-bundle export.",
+    "environment:apply": "Environment publication needs a reviewed bounded worker artifact adapter.",
+    "environment:probe_job_id": "Compute-host probes need a governed target adapter; artifact-only inspection works.",
+    "large remote artifacts": "No implicit mapping between interface, SSH, and worker paths.",
+    "passport capture outside a verified job-local target": "Repository/input capture needs an explicit owned job-local execution target.",
+    "report exec/passport/aggregate outside a verified job-local target": "These run inside a verified owned Slurm job/step. Report submit uses the governed scheduler ledger without requiring Heavy; bounded metadata reports remain Light.",
+    "site-telemetry:query": "Network telemetry needs its own request/response ledger.",
+    "staging:apply": "Transfers need a reviewed worker I/O budget and destination handoff.",
+    "supervisor:start": "A detached collector needs its own governed source owner.",
+    "terminal generated helpers": "Arbitrary generated shell commands cannot substitute for named worker operations; user input and local hooks remain available.",
+    "trace recorder outside a verified job-local target": "Python/native capture needs fresh owned job/step and current process membership. Inspect reads a bounded prefix; register and SDK output remain Light."
+  },
+  "limits": [
+    "A registered contract is not site qualification.",
+    "Legacy pure libraries outside a managed Raven runtime are not sandboxed.",
+    "A Heavy worker never grants additional scheduler query or mutation entitlement."
+  ],
+  "operations": [
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "storage",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "pending-edit",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "array-throttle",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "reservations",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "licenses",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "slurm-doctor",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "batch-script",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "rerun-job",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "allocation-shell",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "environment",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "environment"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "placement",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "acceptance",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F24"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "statistics",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "reviewed worker publication",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "reuse",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "reuse"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "dependency-repair",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "checkpoint",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "checkpoint"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "search",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "search"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "packing",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "packing"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "dask",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "dask"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "heterogeneous",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "heterogeneous"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "supervisor",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "staging",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "staging"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "workflow-engine",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "workflow-engine"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "bottlenecks",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "bottlenecks"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "prepared/deferred; governed live collector unavailable",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "clusters",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "incidents",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "incidents"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "energy",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "energy"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "queue-order",
+      "profile": "light",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "project-guide",
+      "profile": "light",
+      "proposal_ids": [
+        "F04"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "investigation-timeline",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F05"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "investigation-timeline"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "investigation-workflow",
+      "profile": "heavy",
+      "proposal_ids": [],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "investigation-workflow"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "recommendation",
+      "profile": "heavy",
+      "proposal_ids": [
+        "R1"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "investigation-plan",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-10",
+        "F26",
+        "R2"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "scientific-impact",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-09",
+        "F27",
+        "R3"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "numerical-stability",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-04",
+        "F24"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "regression-investigation",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-06",
+        "F23"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "diagnostic-campaign",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F23"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "diagnostic-campaign"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "minimize-reproducer",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-05",
+        "F23"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "minimize-reproducer"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "regression-sweep",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-06",
+        "F23"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "regression-sweep"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "site-telemetry",
+      "profile": "light",
+      "proposal_ids": [
+        "F19"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "evidence",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F15"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "evidence"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "site-policy",
+      "profile": "light",
+      "proposal_ids": [
+        "F16",
+        "F29"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "adapter",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F16",
+        "F18"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "adapter"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "reviewed worker publication",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "research-portable",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F20"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "research-portable"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "qualification",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F34",
+        "F39"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "qualification"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "reviewed worker publication",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "support-bundle",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F32"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "support-bundle"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "reviewed worker publication",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "execution-simulation",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-03",
+        "F25"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "diagnostic-recipe",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F17",
+        "R4"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "information-query",
+      "profile": "heavy",
+      "proposal_ids": [
+        "R5"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "scientific-field",
+      "profile": "heavy",
+      "proposal_ids": [
+        "F06",
+        "F28"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "scientific-inspection"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "runtime-steering",
+      "profile": "light",
+      "proposal_ids": [
+        "V6-08",
+        "F28"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "io-coordination",
+      "profile": "light",
+      "proposal_ids": [
+        "V6-07",
+        "F28"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "trace-inspect",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V5-TRACE"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "trace-file"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "causal-delay",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-01",
+        "F22"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "trace-file"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "read-only or deferred until target adapter is registered",
+      "availability": "worker-adapter",
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "collective-audit",
+      "profile": "heavy",
+      "proposal_ids": [
+        "V6-02",
+        "F22"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1,
+      "worker_operation": "trace-file"
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "trace-capture",
+      "profile": "light",
+      "proposal_ids": [
+        "V5-TRACE"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "apply": "existing exact-attempt reviewed target",
+      "availability": "light-reviewed",
+      "budget": {
+        "concurrency": 2,
+        "input_bytes": 262144,
+        "output_bytes": 524288,
+        "wall_seconds": 120
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": false,
+      "network_bytes": 0,
+      "operation": "trace-snapshot",
+      "profile": "light",
+      "proposal_ids": [
+        "V5-TRACE"
+      ],
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never replay a mutation",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "adapter review and exact-attempt revalidation required for apply",
+      "target": "bounded-source-or-reviewed-target",
+      "targets": [
+        "interface",
+        "reviewed-job-target"
+      ],
+      "version": 1,
+      "worker_operation": null
+    }
+  ],
+  "proposals": [
+    {
+      "area": "collection-integrations",
+      "boundary": "Not a universal lossless tracer: no GPU-device stacks, retrospective unprepared history, automatic global MPI launch, or per-event durable acknowledgement. Budget exhaustion is partial and crashes may leave uncommitted tails.",
+      "id": "V5-TRACE",
+      "operations": [
+        "trace-inspect",
+        "trace-capture",
+        "trace-snapshot"
+      ]
+    },
+    {
+      "area": "investigation",
+      "boundary": "Unsupported relations and missing evidence remain gaps; no whole-program proof of causality.",
+      "id": "V6-01",
+      "operations": [
+        "causal-delay"
+      ]
+    },
+    {
+      "area": "investigation",
+      "boundary": "Missing ranks, unsupported callbacks and loss prevent a complete audit.",
+      "id": "V6-02",
+      "operations": [
+        "collective-audit"
+      ]
+    },
+    {
+      "area": "experiments",
+      "boundary": "The fixed-workload model requires calibration and held-out acceptance; arbitrary scheduler/program prediction is unsupported.",
+      "id": "V6-03",
+      "operations": [
+        "execution-simulation"
+      ]
+    },
+    {
+      "area": "experiments",
+      "boundary": "Scientific tolerances must be supplied; no universal numerical-error guarantee.",
+      "id": "V6-04",
+      "operations": [
+        "numerical-stability"
+      ]
+    },
+    {
+      "area": "experiments",
+      "boundary": "Requires an explicit repeated failure oracle; no universal input/rank/language minimizer.",
+      "id": "V6-05",
+      "operations": [
+        "minimize-reproducer"
+      ]
+    },
+    {
+      "area": "experiments",
+      "boundary": "Repeated measured trials preserve uncertainty; no automatic attribution to one changed line.",
+      "id": "V6-06",
+      "operations": [
+        "regression-investigation",
+        "regression-sweep"
+      ]
+    },
+    {
+      "area": "controlled-actions",
+      "boundary": "Applications must declare safe points and handle deadlines and uncertain outcomes.",
+      "id": "V6-07",
+      "operations": [
+        "io-coordination"
+      ]
+    },
+    {
+      "area": "controlled-actions",
+      "boundary": "Application-owned safe points and existing communication groups are required; partial commits are uncertain.",
+      "id": "V6-08",
+      "operations": [
+        "runtime-steering"
+      ]
+    },
+    {
+      "area": "evidence-results",
+      "boundary": "Missing lineage stays uncertain; proposed revalidation does not prove a scientific claim.",
+      "id": "V6-09",
+      "operations": [
+        "scientific-impact"
+      ]
+    },
+    {
+      "area": "investigation",
+      "boundary": "Deterministic greedy planning over supplied action models; not an optimal learned investigator.",
+      "id": "V6-10",
+      "operations": [
+        "investigation-plan"
+      ]
+    },
+    {
+      "area": "terminal-workspace",
+      "boundary": "**External gate:** newcomer task study; no measured usability improvement claimed.",
+      "id": "F01",
+      "operations": []
+    },
+    {
+      "area": "terminal-workspace",
+      "boundary": "Session back stacks remain transient; narrow screens omit optional context before hiding the current page/job.",
+      "id": "F02",
+      "operations": []
+    },
+    {
+      "area": "terminal-workspace",
+      "boundary": "**Partial:** contextual input handlers, raw-key dispatch and specialist controls remain module-owned with their own validation; trusted plugins keep their separate dispatch contract.",
+      "id": "F03",
+      "operations": []
+    },
+    {
+      "area": "collection-integrations",
+      "boundary": "Sample coverage is bounded and source-specific; native Research analyses still establish scientific applicability.",
+      "id": "F04",
+      "operations": [
+        "project-guide"
+      ]
+    },
+    {
+      "area": "investigation",
+      "boundary": "Original text, source order and unknown clock domains remain distinct; no automatic universal log parser or cross-clock causal order.",
+      "id": "F05",
+      "operations": [
+        "investigation-timeline"
+      ]
+    },
+    {
+      "area": "evidence-results",
+      "boundary": "Full arbitrary-volume scientific visualization remains outside the terminal core.",
+      "id": "F06",
+      "operations": [
+        "scientific-field"
+      ]
+    },
+    {
+      "area": "terminal-workspace",
+      "boundary": "**External gate:** real emulator, multiplexer, font and assistive-technology qualification.",
+      "id": "F07",
+      "operations": []
+    },
+    {
+      "area": "terminal-workspace",
+      "boundary": "**Partial:** geometry, attempt checks, previews, rollback and validation remain in the existing per-control state machines; terminal byte decoding retains its established protocol.",
+      "id": "F08",
+      "operations": []
+    },
+    {
+      "area": "execution-state",
+      "boundary": "**Partial:** unmanaged extension writes retain exact content checking or uncached fallback; other Store fields and full document composition are not universally incremental.",
+      "id": "F09",
+      "operations": []
+    },
+    {
+      "area": "terminal-workspace",
+      "boundary": "Bounded documents may recompose to establish valid geometry after a first publication or scrolled resize. Other panes retain specialized renderers; no unbounded or universally incremental document promise.",
+      "id": "F10",
+      "operations": []
+    },
+    {
+      "area": "execution-state",
+      "boundary": "Adapter/service processes retain their explicit resource contracts; not every external tool obeys Python worker counts.",
+      "id": "F11",
+      "operations": []
+    },
+    {
+      "area": "execution-state",
+      "boundary": "**External gate:** release-target performance on actual terminals and SSH; targets are not results.",
+      "id": "F12",
+      "operations": []
+    },
+    {
+      "area": "execution-state",
+      "boundary": "Filesystem/node failure can still lose uncommitted state; external transports have separate replay contracts.",
+      "id": "F13",
+      "operations": []
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "**Partial:** no deterministic recording of every OS scheduling event or arbitrary external application.",
+      "id": "F14",
+      "operations": []
+    },
+    {
+      "area": "evidence-results",
+      "boundary": "A valid schema checks supplied evidence; it cannot prove a producer measured correctly.",
+      "id": "F15",
+      "operations": [
+        "evidence"
+      ]
+    },
+    {
+      "area": "collection-integrations",
+      "boundary": "Claims must be qualified against the installed runtime, build and site.",
+      "id": "F16",
+      "operations": [
+        "adapter",
+        "site-policy"
+      ]
+    },
+    {
+      "area": "collection-integrations",
+      "boundary": "**Partial:** no universal Caliper/OMPT/Kokkos/GPU injector. PMPI supports its declared C signatures/rank limit; unsupported operations produce gaps.",
+      "id": "F17",
+      "operations": [
+        "diagnostic-recipe"
+      ]
+    },
+    {
+      "area": "collection-integrations",
+      "boundary": "Installed code remains trusted; isolation is not a security sandbox.",
+      "id": "F18",
+      "operations": [
+        "adapter"
+      ]
+    },
+    {
+      "area": "collection-integrations",
+      "boundary": "**External gate:** target-site authentication, deployment and label mappings; no blanket Jobstats, ClusterCockpit, LLview or slurmrestd client certification.",
+      "id": "F19",
+      "operations": [
+        "site-telemetry"
+      ]
+    },
+    {
+      "area": "evidence-results",
+      "boundary": "Binary Perfetto/protobuf, arbitrary Caliper formats and general JSON-LD expansion are not implied.",
+      "id": "F20",
+      "operations": [
+        "research-portable"
+      ]
+    },
+    {
+      "area": "collection-integrations",
+      "boundary": "A user-scoped broker is not an institution-wide authenticated monitoring service.",
+      "id": "F21",
+      "operations": []
+    },
+    {
+      "area": "investigation",
+      "boundary": "**Partial:** abstain on loss, missing ranks or unsupported callbacks; no whole-program proof of causality.",
+      "id": "F22",
+      "operations": [
+        "causal-delay",
+        "collective-audit"
+      ]
+    },
+    {
+      "area": "experiments",
+      "boundary": "Line-deletion minimization needs an explicit repeated failure oracle; no universal input/rank/language minimizer or automatic attribution to one changed line.",
+      "id": "F23",
+      "operations": [
+        "diagnostic-campaign",
+        "minimize-reproducer",
+        "regression-sweep",
+        "regression-investigation"
+      ]
+    },
+    {
+      "area": "experiments",
+      "boundary": "No invented scientific threshold; no universal numerical-error bound or automatic perturbation of arbitrary binaries.",
+      "id": "F24",
+      "operations": [
+        "numerical-stability",
+        "acceptance"
+      ]
+    },
+    {
+      "area": "experiments",
+      "boundary": "**Research gate:** limited fixed-workload model; missing policy/evidence stays unqualified. No arbitrary-program or scheduler prediction.",
+      "id": "F25",
+      "operations": [
+        "execution-simulation"
+      ]
+    },
+    {
+      "area": "investigation",
+      "boundary": "Deterministic greedy planning over supplied models; not a learned optimal Bayesian investigator.",
+      "id": "F26",
+      "operations": [
+        "investigation-plan"
+      ]
+    },
+    {
+      "area": "evidence-results",
+      "boundary": "Missing lineage remains uncertain; proposed checks do not prove a scientific claim.",
+      "id": "F27",
+      "operations": [
+        "scientific-impact"
+      ]
+    },
+    {
+      "area": "controlled-actions",
+      "boundary": "Private leader-local mailbox; existing MPI/PyTorch process group is required. Partial commits become uncertain, not rolled back or automatically retried.",
+      "id": "F28",
+      "operations": [
+        "runtime-steering",
+        "io-coordination",
+        "scientific-field"
+      ]
+    },
+    {
+      "area": "controlled-actions",
+      "boundary": "Cooperative policy is not OS-enforced privilege isolation.",
+      "id": "F29",
+      "operations": [
+        "site-policy"
+      ]
+    },
+    {
+      "area": "collection-integrations",
+      "boundary": "Estimated cost requires target-system measurement; strict completeness is never inferred from interval alone.",
+      "id": "F30",
+      "operations": []
+    },
+    {
+      "area": "controlled-actions",
+      "boundary": "Multi-step scheduler/filesystem effects are not a distributed transaction; uncertain outcomes require reconciliation.",
+      "id": "F31",
+      "operations": []
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "**Partial:** no unauthenticated shared session, universal redactor or automatic upload. Review before sharing.",
+      "id": "F32",
+      "operations": [
+        "support-bundle"
+      ]
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "Hashes detect changes, not publisher authenticity. Signing and separately installed external runtime/tool inventories remain release/site responsibilities.",
+      "id": "F33",
+      "operations": []
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "**External gate:** real GPU, multi-node, production SSH and site policy tests remain explicit untested entries.",
+      "id": "F34",
+      "operations": [
+        "qualification"
+      ]
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "Schema and control changes require reference regeneration and compatibility review.",
+      "id": "F35",
+      "operations": []
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "**External gate:** multi-node/PyTorch/CUDA/NCCL and site qualification; CUDA metric tests use fake events and do not certify hardware sampling.",
+      "id": "F36",
+      "operations": []
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "**External gate:** publish target-system tail latency, memory/RPC cost and real workload outcomes.",
+      "id": "F37",
+      "operations": []
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "Maintainer capacity and long-term compatibility depend on actual maintained releases.",
+      "id": "F38",
+      "operations": []
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "**External gate:** independent labs/operators have not been recruited or evaluated by this implementation.",
+      "id": "F39",
+      "operations": [
+        "qualification"
+      ]
+    },
+    {
+      "area": "delivery-qualification",
+      "boundary": "**External gate:** no scientific study, superiority result or world-first claim has been established.",
+      "id": "F40",
+      "operations": []
+    },
+    {
+      "area": "investigation",
+      "boundary": "Compare incorrect endorsement and resource cost with expert/rule baselines; a predicate checker is not a proof of universal validity.",
+      "id": "R1",
+      "operations": [
+        "recommendation"
+      ]
+    },
+    {
+      "area": "investigation",
+      "boundary": "Evaluate information utility, calibration, noise and regret. Current planner is deterministic greedy, not optimal learning.",
+      "id": "R2",
+      "operations": [
+        "investigation-plan"
+      ]
+    },
+    {
+      "area": "evidence-results",
+      "boundary": "Compare against full recomputation with seeded parser/input/policy changes; no unjustified minimality claim.",
+      "id": "R3",
+      "operations": [
+        "scientific-impact"
+      ]
+    },
+    {
+      "area": "investigation",
+      "boundary": "Execute reviewed recipes on independently configured sites; portability of JSON alone is not diagnostic equivalence.",
+      "id": "R4",
+      "operations": [
+        "diagnostic-recipe"
+      ]
+    },
+    {
+      "area": "evidence-results",
+      "boundary": "Validate query families against complete reference data and rare events; cannot answer arbitrary discarded-history queries.",
+      "id": "R5",
+      "operations": [
+        "information-query"
+      ]
+    }
+  ],
+  "schema": "raven.capability-ledger/v1",
+  "worker_operations": [
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "acceptance",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "adapter",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "artifact-publish",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "never automatic; reconcile receipt before a new review",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "reviewed no-clobber artifact publication",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "bottlenecks",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "causal-delay",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "checkpoint",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "collective-audit",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "dask",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "diagnostic-campaign",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "diagnostic-recipe",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "energy",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "environment",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "evidence",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "execution-simulation",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "heterogeneous",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "incidents",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "information-query",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "investigation-plan",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "investigation-timeline",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "investigation-workflow",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "log-search",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "log-search-files",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "minimize-reproducer",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "numerical-stability",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "packing",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "planning",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "planning-command",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "qualification",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "recommendation",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "regression-investigation",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "regression-sweep",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "research-command",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "research-portable",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "reuse",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "scientific-field",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "scientific-impact",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "scientific-inspection",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "search",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "simulation-review",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "staging",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 1048576,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "statistics",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "support-bundle",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 20000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "input-declared coverage; no missing records inferred complete",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "trace-file",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    },
+    {
+      "acceptance": "finite bounded result with input/context digests and declared limits",
+      "additional_gpu": false,
+      "additional_job": false,
+      "budget": {
+        "cpu_seconds": 30,
+        "cpus": 1,
+        "input_bytes": 8388608,
+        "max_records": 100000,
+        "memory_mib": 256,
+        "output_bytes": 524288,
+        "scratch_mib": 64,
+        "wall_seconds": 60
+      },
+      "cancellation": "cooperative checkpoints and owned task-process termination",
+      "checkpoint": "none; completed immutable results only",
+      "concurrency": 1,
+      "coverage": "Explicit stable artifact snapshots; unavailable host mappings remain unavailable",
+      "implemented_worker_adapter": true,
+      "network_bytes": 0,
+      "operation": "workflow-engine",
+      "profile": "heavy",
+      "result_schema": "raven.execution-result/v1",
+      "retry": "explicit pure retry",
+      "schema": "raven.execution-contract/v1",
+      "side_effects": "none",
+      "target": "allocated-compute-or-desktop",
+      "targets": [
+        "desktop",
+        "allocated-compute"
+      ],
+      "version": 1
+    }
+  ]
+}

@@ -215,8 +215,20 @@ class SharedQueryCache:
                             else:
                                 count, reserved = connection.execute("SELECT count(*), coalesce(sum(reserved),0) FROM cache").fetchone()
                                 active = connection.execute("SELECT count(*) FROM cache WHERE owner IS NOT NULL AND policy=?", (admission["policy_digest"],)).fetchone()[0]
-                                if count >= self.capacity or reserved + request["max_bytes"] > self.max_bytes or active >= admission["max_inflight"]:
+                                if active >= admission["max_inflight"]:
                                     raise ValueError("Shared collection admission capacity reached")
+                                if count >= self.capacity or reserved + request["max_bytes"] > self.max_bytes:
+                                    # Cached values are replaceable; live ownership
+                                    # and source throttle records are not. Retain
+                                    # quotas while evicting only completed values.
+                                    victims = connection.execute("SELECT key,reserved FROM cache WHERE owner IS NULL ORDER BY started LIMIT ?", (self.capacity,)).fetchall()
+                                    for victim, size in victims:
+                                        connection.execute("DELETE FROM cache WHERE key=? AND owner IS NULL", (victim,))
+                                        count, reserved = count - 1, reserved - size
+                                        if count < self.capacity and reserved + request["max_bytes"] <= self.max_bytes:
+                                            break
+                                    if count >= self.capacity or reserved + request["max_bytes"] > self.max_bytes:
+                                        raise ValueError("Shared collection admission capacity reached")
                                 if connection.execute("SELECT count(*) FROM throttle").fetchone()[0] >= self.capacity * 4:
                                     raise ValueError("Shared collection throttle capacity reached")
                                 connection.execute("INSERT INTO cache(key,scope,policy,throttle,started,expires,owner,pid,process_start,reserved) VALUES (?,?,?,?,?,?,?,?,?,?)",

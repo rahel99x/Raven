@@ -33,7 +33,7 @@ def dashboard(monkeypatch):
             store.record(job.id, {"k": "live", "t": 180.0 + index,
                                   "cpu": (index + 1) / 25, "rss": (1 + index / 20) * 1024**3})
     slurm = SimpleNamespace()
-    sampler = Sampler(slurm, store, {"live": 30.0, "gpu": 5.0, "trace": 5.0, "jobs": 2.0}, [])
+    sampler = Sampler(slurm, store, {"live": 5.0, "gpu": 5.0, "trace": 5.0, "jobs": 2.0}, [])
     # The real scheduler is used for demands and labels without admitting
     # automatic background commands while rendering a test dashboard.
     for health in store.health.values():
@@ -158,7 +158,7 @@ def test_shared_cpu_memory_labels_follow_effective_collector_and_global_rate(das
         assert not re.search(r"\b\d+x\b", text)
         if metric_sampling.source(control.key) == "live":
             assert metric_sampling.format_interval(global_cadence) in text
-    assert d.sampler.intervals["live"] == 30.0
+    assert d.sampler.intervals["live"] == 5.0
 
 
 def test_restarted_attempt_drops_demands_and_old_published_input_cannot_reactivate(dashboard):
@@ -272,7 +272,7 @@ def test_global_and_metric_fastest_endpoints_cannot_compound_below_stack_floor(d
     assert d.sampler.sampling_interval("live", "7", control.key[4]) == .5
     assert d.sampler.sampling_interval("live", "8") == .5
     assert metric_sampling.cadence(app, control.key) == .5
-    assert d.sampler.intervals["live"] == 30.0
+    assert d.sampler.intervals["live"] == 5.0
 
 
 @pytest.mark.parametrize("metric,collector", [

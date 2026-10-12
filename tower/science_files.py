@@ -31,11 +31,14 @@ def signature(value):
 def snapshot(path, *, cancel=None, limit=DATA_LIMIT, keep=False):
     """Open one regular file without following a final symlink, hash and verify stability."""
     cancelled(cancel)
+    from .raven_execution import source_limit, source_read
+    limit = source_limit(limit)
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     try:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
             raise ValueError(f"Expected a regular file of at most {limit} bytes: {path}")
+        source_read(before.st_size)
         digest, chunks, size = hashlib.sha256(), [], 0
         while True:
             cancelled(cancel)

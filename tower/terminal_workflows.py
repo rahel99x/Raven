@@ -364,6 +364,10 @@ def deliver_broadcast(app, preview):
     if preview.get("attempted"):
         raise ValueError("This broadcast was already attempted; inspect each session before retrying")
     text = _text(preview.get("text"), "Broadcast input", MAX_COMMAND)
+    from .raven_execution import helper_admission
+    blocked = helper_admission(app, text, {"helper_kind": "generated", "targets": targets})
+    if blocked is not None:
+        raise ValueError(blocked["summary"])
     for frozen in targets:
         current = state.sessions.get(frozen["id"], {})
         if (current.get("status") != "running" or current.get("metadata") != frozen["metadata"]

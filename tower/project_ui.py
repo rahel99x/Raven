@@ -429,7 +429,7 @@ def tick(app, snap=None, *, force=False):
         return False
     hub = _hub(app)
     from .project_remote import supported as remote_supported
-    if type(hub.files) is not projects.LocalFiles and not remote_supported(hub.files):
+    if not projects.local_supported(hub.files) and not remote_supported(hub.files):
         state.update(auto_status="unavailable", auto_summary="Automatic project binding requires Tower on the machine that owns the project files")
         return False
     backend = _backend_token(hub)

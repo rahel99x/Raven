@@ -69,7 +69,7 @@ def prepared_series(app, jid, key, build, *, memory_only=False):
     if cache is None:
         cache = getattr(owner, "_series_preparations", None)
         if cache is None:
-            cache = owner._series_preparations = NativeSeriesCache()
+            cache = owner._series_preparations = NativeSeriesCache(budget=getattr(owner,'raven_cache_budget',None))
     store = app.store
     attempt = store.job_attempt(jid) if callable(getattr(store, "job_attempt", None)) else None
     scope = (getattr(store, "_series_scope", id(store)),
@@ -860,7 +860,9 @@ class Views:
         who = app.user + (f"@{app.host_label}" if getattr(app, "host_label", "") else "") + (f" [{app.profile_name}]" if getattr(app, "profile_name", "") else "")
         if getattr(app, "demo", False):
             who += " [DEMO]"
-        r1: Row = [(f" tower {self.g.dot} {who} {self.g.dot} {time.strftime('%H:%M:%S', time.localtime(clock.now()))}", "bold"),
+        from .raven_ui import headline as compute_headline
+        coverage_note = ' [partial]' if any(value.get('limited') for value in snap.get('coverage',{}).values()) else ''
+        r1: Row = [(f" Raven {compute_headline(app)}{coverage_note} {self.g.dot} {who} {self.g.dot} {time.strftime('%H:%M:%S', time.localtime(clock.now()))}", "bold"),
                    ("   running ", ""), (str(len(running)), "green"), (f" ({tot_cpu} cpus, {tot_gpu} gpus)   pending ", ""), (str(len(pending)), "yellow")]
         rp = getattr(app, "replay", None)
         if rp is not None:
@@ -900,6 +902,12 @@ class Views:
         r2 = self.page_metrics(snap, app, width) or r2
         if budget_hint and width - vlen(L.row_text(r2)) >= vlen(budget_hint):
             r2.append((budget_hint, "dim"))
+        from .raven_ui import observation_notice
+        notice=observation_notice(app,snap)
+        if notice:
+            # Preserve header height and all pane coordinates while making an
+            # unobserved queue distinct from a successful empty observation.
+            r2=[(' '+cut(notice,max(0,width-1),self.g.ascii),'yellow')]
         tabs, tab_hits = self.tab_bar(snap, app, width)
         from .toolbar import render_bar
         app.tab_hits = [(4 if rp is not None else 3, x0, x1, key) for x0, x1, key in tab_hits]

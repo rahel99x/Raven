@@ -962,3 +962,9 @@ def revalidate_terminal(ctx, identity):
     if identity.get("task"):
         _attachment_task(ctx, identity["step_id"], identity["task"])
     return list(identity["argv"])
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

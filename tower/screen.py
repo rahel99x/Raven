@@ -27,6 +27,8 @@ INPUT_BATCH_SECONDS = .008
 POINTER_BATCH_LIMIT = 256
 POINTER_BATCH_SECONDS = .012
 MAINTENANCE_SECONDS = .2
+QUIET_DOCUMENT_SECONDS = 1.0
+_UNREAD_PUBLICATION = object()
 _NAVIGATION_ACTIONS = frozenset(("up", "down", "page_up", "page_down", "home", "end"))
 _INPUT_READERS = {}
 _ESCAPE_KEYS = {"\x1b[1;5D": "ctrl-left", "\x1b[1;5C": "ctrl-right",
@@ -867,6 +869,12 @@ def _apply_input(app, event, hits, curses):
     name, mouse = event
     if name is None or name == "resize":
         return
+    demand = getattr(getattr(app, "sampler", None), "set_collection_demand", None)
+    if demand is not None and (name != "mouse" or mouse is not None and not _motion_report(mouse[4], curses)):
+        panel = getattr(app, "job_panel_state", {})
+        inline = app.tab in ("jobs", "history") and panel.get("mode") == "analytics"
+        demand(app.tab, getattr(app, "selected_id", None), active=True,
+               sources=("live", "trace") if inline else ())
     from . import terminal_ui
     identity = terminal_ui.input_identity(app)
     if name != "mouse":
@@ -1373,9 +1381,10 @@ class _DifferentialPainter:
 def _toolbar_feedback_token(app):
     state = getattr(app, "toolbar_state", {}) or {}
     from .worker_ui import token as worker_token
+    from .raven_ui import token as allocation_token
     return tuple(state.get(key) for key in ("menu", "cursor", "top", "panel", "panel_scroll", "focus")) + (
         getattr(app, 'cfg', {}).get('clipboard', {}).get('destination', 'copy'),
-        worker_token(app))
+        worker_token(app), allocation_token(app))
 
 
 def _group_menu_feedback_token(app):
@@ -1423,6 +1432,56 @@ def _drain_prepaint_motion(app, stdscr, curses, hits, pending_input=None):
     return pending_input
 
 
+def _quiet_jobs_token(app, *, publication=_UNREAD_PUBLICATION):
+    """Permit slower composition only for a known, quiescent managed Jobs view.
+
+    Housekeeping and feedback keep their original cadence. Unknown producers,
+    pending readers, active animations/gestures, and other pages fall back to
+    the ordinary document deadline rather than guessing at their publications.
+    """
+    config=getattr(app,'cfg',{}).get('raven')
+    if (not isinstance(config,dict) or not config.get('managed') or
+            getattr(app,'tab',None)!='jobs' or getattr(app,'mode',None)!='main' or
+            getattr(app,'plugins',None) is not None or getattr(app,'replay',None) is not None or
+            getattr(app,'job_panel_state',{}).get('mode') not in ('inspector','off')):
+        return None
+    from .model import Store
+    store=getattr(app,'store',None)
+    if type(store) is not Store or store.raven_limits is None:
+        return None
+    from . import startup,scrolling,metric_live,pointer_routing,terminal_ui,raven_ui
+    if (startup.active(app) or getattr(getattr(app,'completion',None),'active',False) or
+            scrolling.active(app) or pointer_routing.active(app) or terminal_ui.showing(app) or
+            metric_live.document_interval(app) is not None or
+            getattr(app,'toolbar_state',{}).get('panel') or
+            getattr(app,'ops_state',{}).get('running')):
+        return None
+    views=getattr(app,'views_ref',None)
+    if getattr(views,'_preview_pending',None) or store._series_archive.worker:
+        return None
+    hub=getattr(app,'research',None)
+    research=None
+    if hub is not None:
+        from .research import ResearchHub
+        if type(hub) is not ResearchHub:
+            return None
+        with hub.lock:
+            if hub.pending is not None or hub.future is not None and not hub.future.done():
+                return None
+            research=(hub.generation,id(hub.future),hub.closed)
+    activity=getattr(app,'activity',None)
+    if activity is not None:
+        with activity.lock:
+            if activity.task and activity.task.get('status')=='running':
+                return None
+    published=store.ui_publication_token() if publication is _UNREAD_PUBLICATION else publication
+    if published is None:
+        return None
+    return (published,getattr(app,'ui_publication_revision',0),research,
+            getattr(app,'message',''),getattr(app,'message_t',0),getattr(app,'selected_id',None),
+            getattr(app,'inbox_unread',0),getattr(app,'freeze_label',''),raven_ui.token(app))
+
+
 class _FrameCache:
     """Retain a published document while cosmetic pointer feedback changes.
 
@@ -1438,6 +1497,8 @@ class _FrameCache:
         self.bar = []
         self.geometry = None
         self.next_maintenance = self.next_animation = 0.0
+        self.next_document = float('inf')
+        self.document_token = None
         self.next_live = float("inf")
         self.next_selector = float("inf")
         self.live_revision = 0
@@ -1455,14 +1516,28 @@ class _FrameCache:
         self.next_preview = self.preview_ready if preview else float("inf")
         live_changed = revision_changed and (not preview or now >= self.preview_ready)
         return (self.dirty or live_changed or needs_frame(app) or getattr(app, "text_selection_state", {}).get("frame_required") or self.geometry != (width, height) or
-                now >= self.next_maintenance or now >= self.next_animation or now >= self.next_live)
+                now >= self.next_maintenance or now >= self.next_animation or now >= self.next_live or now >= self.next_document)
 
-    def rebuild(self, app, views, store, actions, width, height):
+    def maintain(self, app, width, height, now=None):
+        """Run the usual housekeeping without rebuilding unchanged Jobs rows."""
+        now=time.monotonic() if now is None else now
+        if (self.dirty or self.geometry!=(width,height) or now<self.next_maintenance or
+                self.document_token is None or _quiet_jobs_token(app) is None):
+            return False
+        _timed_ui(app,'maintenance',app.tick)
+        self.next_maintenance=now+MAINTENANCE_SECONDS
+        current=_quiet_jobs_token(app)
+        if current is None or current!=self.document_token:
+            self.dirty=True
+        return True
+
+    def rebuild(self, app, views, store, actions, width, height, *, maintained=False):
         from . import startup, toolbar
         from .scrolling import begin_frame, finish_frame, timeout_ms
         from . import scrollbars
         from .interaction import publish
-        _timed_ui(app, "maintenance", app.tick)
+        if not maintained:
+            _timed_ui(app, "maintenance", app.tick)
         snap = _timed_ui(app, "snapshot", getattr(store, "render_snapshot", store.snapshot))
         app.width = width
         begin_frame(app)
@@ -1497,6 +1572,12 @@ class _FrameCache:
         self.group_menu_token = _group_menu_feedback_token(app)
         now = time.monotonic()
         self.next_maintenance = now + MAINTENANCE_SECONDS
+        self.document_token=_quiet_jobs_token(app,publication=snap.get('_ui_publication_token'))
+        # Visible elapsed/clock labels use whole seconds. Keep their refresh
+        # boundary even when no source or asynchronous callback publishes.
+        from . import clock
+        self.next_document=(now+max(.001,min(QUIET_DOCUMENT_SECONDS,1.0-clock.now()%1.0))
+                            if self.document_token is not None else float('inf'))
         idle = 100 if app.animations_enabled and app.completion.active else 200
         if startup.active(app):
             idle = min(idle, int(startup.FRAME_INTERVAL * 1000))
@@ -1575,7 +1656,7 @@ class _FrameCache:
     def wait_ms(self, now=None):
         now = time.monotonic() if now is None else now
         return max(1, min(200, round(1000 * (min(self.next_maintenance, self.next_animation,
-                                              self.next_live, self.next_selector, self.next_preview) - now))))
+                                              self.next_live, self.next_selector, self.next_preview, self.next_document) - now))))
 
 
 def _mouse_reporting(enabled):
@@ -1646,10 +1727,13 @@ def run_curses(app, views, sampler, store, actions, cfg):
         from . import startup
         from .ops_ui import defer_quit as defer_operation_quit
         startup.begin(app)
-        from . import terminal_ui
+        from . import terminal_ui, raven_ui, raven_diagnostics
         _bind_input(stdscr, app)
         while not app.quit or defer_operation_quit(app):
             terminal_ui.tick(app)
+            diagnostics_changed = raven_diagnostics.tick(app)
+            if (raven_ui.tick(app) or diagnostics_changed) and app.mode == "raven":
+                cache.dirty = True
             if painted_theme != app.theme:
                 painted_theme = app.theme
                 # The whole screen is invalidated before pairs are reseeded.
@@ -1672,8 +1756,9 @@ def run_curses(app, views, sampler, store, actions, cfg):
                 mouse_enabled = current_mouse
                 _mouse_reporting(mouse_enabled)
             height, width = stdscr.getmaxyx()
+            maintained=cache.maintain(app,width,height)
             if cache.due(app, width, height):
-                _timed_ui(app, "document", cache.rebuild, app, views, store, actions, width, height)
+                _timed_ui(app, "document", cache.rebuild, app, views, store, actions, width, height,maintained=maintained)
                 pending_input = _timed_ui(app, "prepaint_input", _drain_prepaint_motion,
                                          app, stdscr, curses, cache.hits, pending_input)
             if _operation_terminal(app, stdscr, curses, mouse_enabled):

@@ -457,7 +457,9 @@ def terminal_state(state: str) -> str:
 class Store:
     """Everything the screen reads; updated by the sampler under a lock.  ``snapshot()`` is a shallow copy."""
 
-    def __init__(self, state_dir: Optional[str] = None, persist: bool = True, max_events: int = 200, series_keep: int = 4000):
+    def __init__(self, state_dir: Optional[str] = None, persist: bool = True, max_events: int = 200, series_keep: int = 4000, *, raven_limits=None):
+        self.raven_limits = raven_limits
+        self._ui_revision = 0
         self.lock = threading.RLock()
         self.jobs: List[Job] = []
         self.live: Dict[str, Live] = {}
@@ -506,6 +508,8 @@ class Store:
         self.tags: Dict[str, dict] = {}                   # job id -> {"tags": [...], "pinned": bool, "note": ""}
         self.alerts = None                                 # the AlertEngine (set by the cli)
         self.state_dir = state_dir
+        if self.raven_limits is not None and self.raven_limits.state_dir is None:
+            self.raven_limits.state_dir = state_dir
         self.persist = persist and bool(state_dir)
         self._ui_io_lock = threading.Lock()
         self.ui_state_status = {"state": "unread", "message": ""}
@@ -527,7 +531,7 @@ class Store:
     def _load_tags(self):
         try:
             with open(os.path.join(self.state_dir, "tags.json")) as f:
-                data = json.load(f)
+                data = json.loads(f.read(2<<20)) if self.raven_limits else json.load(f)
             if isinstance(data, dict):
                 self.tags = {k: v for k, v in data.items() if isinstance(v, dict)}
         except (OSError, ValueError):
@@ -544,6 +548,7 @@ class Store:
 
     def tag(self, jid: str, *tags: str, remove: bool = False) -> List[str]:
         with self.lock:
+            self._ui_revision += 1
             rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
             for t in tags:
                 t = t.lstrip("#").strip()
@@ -561,6 +566,7 @@ class Store:
 
     def pin(self, jid: str, value: Optional[bool] = None) -> bool:
         with self.lock:
+            self._ui_revision += 1
             rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
             rec["pinned"] = (not rec["pinned"]) if value is None else bool(value)
             out = rec["pinned"]
@@ -571,6 +577,7 @@ class Store:
 
     def note(self, jid: str, text: str) -> str:
         with self.lock:
+            self._ui_revision += 1
             rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
             rec["note"] = text.strip()
             if not rec["tags"] and not rec["pinned"] and not rec["note"]:
@@ -593,6 +600,7 @@ class Store:
                   name=(job.name if job else extra.pop("name", "")), **extra)
         with self.lock:
             self.events.append(ev)
+            self._ui_revision += 1
             self._queue_persistence(os.path.join(self.state_dir, "events.jsonl") if self.persist else None, ev)
         if _persist:
             self.flush_persistence(_events_only=True)
@@ -600,6 +608,12 @@ class Store:
 
     def _load_events(self):
         path = os.path.join(self.state_dir, "events.jsonl")
+        if self.raven_limits:
+            from .series_archive import read_tail
+            events,status=read_tail(path,self.events.maxlen,max_bytes=2<<20,max_line=64<<10)
+            self.events.extend(dict(event,old=True) for event in events)
+            if status.get('status')=='limited': self.raven_limits.coverage['events']=status
+            return
         try:
             with open(path) as f:
                 lines = collections.deque(f, maxlen=self.events.maxlen)
@@ -620,6 +634,10 @@ class Store:
         """Store a fresh squeue listing; returns the transition events (queued, started, finished, held, released)."""
         out = []
         with self.lock:
+            self._ui_revision += 1
+            limited = False
+            if self.raven_limits:
+                jobs, limited = self.raven_limits.rows(jobs, 'jobs')
             now = {j.id: j for j in jobs}
             first = not self._jobs_loaded
             previous_jobs = {j.id: j for j in self.jobs}
@@ -658,6 +676,10 @@ class Store:
                 if ":" in jid:
                     continue
                 if jid not in now:
+                    if limited:
+                        # A truncated observation cannot establish departure.
+                        self.seen.pop(jid,None); self.seen.pop(jid+':held',None)
+                        continue
                     kind = "finished" if st != "PENDING" else "left"
                     # Keep the historic event kind for plugins, but mark absence
                     # unconfirmed and never describe it as successful completion.
@@ -697,6 +719,18 @@ class Store:
             retained_attempts = set(now) | set(self.departed_jobs) | set(self._recent_finished)
             for jid in self._job_attempts.keys() - retained_attempts:
                 del self._job_attempts[jid]
+            if self.raven_limits:
+                retained=retained_attempts | set(self.series) | {job.id for job in self.finished}
+                for mapping in (self.names,self.live,self.gpu,self.steps,self.prev_cpu,
+                                self.hist_cpu,self.trace,self.details,self.fin_steps):
+                    for jid in mapping.keys()-retained:
+                        del mapping[jid]
+                # GPU histories use JOBID:DEVICE keys; preserve the device
+                # identity while checking the owning job's retained lifetime.
+                for mapping in (self.gpu_mean,self.hist_gpu):
+                    for key in list(mapping):
+                        if key.split(':',1)[0] not in retained:
+                            del mapping[key]
             self.t_jobs = clock.now()
         if _persist:
             self.flush_persistence(_events_only=True)
@@ -761,6 +795,8 @@ class Store:
         combined.update(self._accounting_jobs)
         self.finished = sorted((job for jid, job in combined.items() if jid not in active),
                                key=lambda job: job.end, reverse=True)
+        if self.raven_limits:
+            self.finished=self.finished[:self.raven_limits.values['max_history_rows']]
 
     def apply_finished(self, jobs: Sequence[Finished], history_days: Optional[float] = None) -> None:
         """Reconcile an accounting snapshot with observed departures under one lock.
@@ -770,6 +806,9 @@ class Store:
         confirmations survive temporarily incomplete accounting snapshots.
         """
         with self.lock:
+            self._ui_revision += 1
+            if self.raven_limits:
+                jobs, _ = self.raven_limits.rows(jobs, 'history')
             active = {job.id: job for job in self.jobs}
             incoming = {}
             for job in jobs:
@@ -807,6 +846,7 @@ class Store:
 
     def apply_starts(self, starts: Dict[str, str]):
         with self.lock:
+            self._ui_revision += 1
             for j in self.jobs:
                 if j.id in starts:
                     j.est_start = starts[j.id]
@@ -822,7 +862,10 @@ class Store:
         if path is not None:
             with self._persist_queue_lock:
                 queue = self._persist_event_queue if path == self._events_path else self._persist_queue
-                queue.append((path, sample))
+                if self.raven_limits:
+                    self.raven_limits.enqueue(queue,path,sample)
+                else:
+                    queue.append((path, sample))
 
     def flush_persistence(self, *, _events_only=False, _series_only=False):
         """Write queued observations in publication order without Store.lock.
@@ -840,6 +883,8 @@ class Store:
             self._drain_persistence(self._persist_queue, self._persist_io_lock)
 
     def _drain_persistence(self, queue, io_lock):
+        if self.raven_limits:
+            return self.raven_limits.drain(self,queue,io_lock)
         with io_lock:
             while True:
                 with self._persist_queue_lock:
@@ -862,10 +907,14 @@ class Store:
     def record(self, jid: str, sample: dict, *, _persist: bool = True):
         """Append a captured sample; defer IO when inside a larger publication."""
         with self.lock:
+            self._ui_revision += 1
             series = self.series[jid]
             captured = series.append_owned(sample) if type(series) is SeriesDeque else None
             if type(series) is not SeriesDeque:
                 series.append(sample)
+            if self.raven_limits:
+                from .raven_limits import retained_size
+                self.raven_limits.retain_series(self,jid,retained_size(sample,self.raven_limits.values['series_bytes']))
             self._queue_persistence(self._series_path(jid), captured if captured is not None else sample)
         if _persist:
             self.flush_persistence(_series_only=True)
@@ -921,6 +970,7 @@ class Store:
 
     def apply_live(self, jid: str, lv: Live, *, _persist: bool = True):
         with self.lock:
+            self._ui_revision += 1
             self.live[jid] = lv
             value = lv.rate if lv.rate is not None else lv.avg
             if value is not None:
@@ -934,6 +984,7 @@ class Store:
 
     def apply_gpu(self, jid: str, samples: Optional[List[GpuSample]], *, _persist: bool = True):
         with self.lock:
+            self._ui_revision += 1
             self.gpu[jid] = samples
             for s in samples or []:
                 key = f"{jid}:{s.device_key}"
@@ -985,7 +1036,32 @@ class Store:
 
     def render_snapshot(self) -> dict:
         """Reuse immutable native scalar histories; other snapshot rules remain."""
-        return self.snapshot(_immutable_history=True)
+        with self.lock:
+            snapshot=self.snapshot(_immutable_history=True)
+            if self.raven_limits is not None:
+                snapshot['_ui_publication_token']=self.ui_publication_token()
+            return snapshot
+
+    def ui_publication_token(self):
+        """Bounded metadata only; no job/series walk, copy, hash, or file read.
+
+        Source health covers collectors which publish directly under Store.lock.
+        Native mutation methods carry an explicit revision; container identity
+        and size also detect replacing lists in embedding fixtures. Unmanaged
+        and unknown producer setups retain the original refresh fallback.
+        """
+        with self.lock:
+            if (self.raven_limits is None or len(self.health)>32 or
+                    any(type(value) is not Health for value in self.health.values())):
+                return None
+            health=tuple((name,h.calls,h.errors,h.enabled,h.inflight,h.last_ok,h.error,h.backoff)
+                         for name,h in self.health.items())
+            collections=(self.jobs,self.finished,self.details,self.live,self.gpu,self.steps,self.fin_steps,
+                         self.trace,self.nodes,self.partitions,self.tags,self.events)
+            return (self._ui_revision,self.t_jobs,self.history_revision,health,
+                    tuple((id(value),len(value)) for value in collections),
+                    bool(self._series_archive.worker),
+                    tuple((key,value.get('limited')) for key,value in self.raven_limits.coverage.copy().items()))
 
     def snapshot(self, *, _immutable_history=False) -> dict:
         with self.lock:
@@ -993,6 +1069,7 @@ class Store:
                         gpu_inventory=dict(self.gpu_inventory), finished=list(self.finished), share=list(self.share), account=dict(self.account),
                         departed_jobs=dict(self.departed_jobs), job_transitions=[dict(e) for e in self.job_transitions],
                         history_revision=self.history_revision,
+                        coverage={key:dict(value) for key,value in self.raven_limits.coverage.copy().items()} if self.raven_limits else {},
                         details=dict(self.details), health={k: replace(v) for k, v in self.health.items()}, events=list(self.events),
                         group=list(self.group), weather=list(self.weather), pending_ahead=dict(self.pending_ahead), budget=dict(self.budget),
                         nodemap=dict(self.nodemap), steps=dict(self.steps), fin_steps=dict(self.fin_steps), trace=dict(self.trace),
@@ -1007,6 +1084,10 @@ class Store:
             return {}
         with self._ui_io_lock:
             value, self.ui_state_status = ui_state.read(os.path.join(self.state_dir, "ui.json"))
+            migrated = getattr(self, "raven_ui_import", None)
+            if self.ui_state_status["state"] == "missing" and migrated is not None:
+                import copy
+                value, self.ui_state_status = copy.deepcopy(migrated)
             return value
 
     def save_ui(self, data: dict):

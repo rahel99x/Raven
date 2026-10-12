@@ -1,77 +1,83 @@
-# Slurm Tower
+# Project Raven
 
-**Inspect jobs, understand failures, and connect results to evidence—in your terminal.**
+**Monitor jobs, inspect evidence, and run admitted analysis in your terminal.**
 
-Slurm Tower brings queue and history views, logs, resource graphs, research
-reports, and reviewed operations into one terminal workspace. Use it on a Slurm
-workstation or through your cluster's normal SSH access. The core uses Python's
-standard library. Unicode and ASCII modes are available.
+Project Raven is the next release of Slurm Tower. It retains the terminal
+workspaces, job groups, resource graphs, logs, research reports, and embedded
+shell. It adds governed collection and explicit ownership of analysis compute.
+Unicode and ASCII modes remain available. Python 3.10 or later is required.
 
-[Install and operate](docs/runbook.md) · [Controls](docs/CONTROLS.md) ·
-[Operation fields](docs/reference/operations.md) ·
-[Project integration](docs/PROJECT_STANDARD.md) · [Implementation scope](docs/FLAGSHIP_IMPLEMENTATION.md) ·
-[Capability ownership](docs/reference/capabilities.md) ·
-[Release history](CHANGELOG.md)
+- **`ravenl` starts Light.** It opens the interface without requesting compute.
+- **`ravenh` requests Heavy.** It waits for a verified worker before loading the
+  dashboard. On Slurm, the worker must run in the requested allocation.
+- **`tower` remains a compatibility command.** It starts the governed Light
+  interface. Existing project files and `tower.*` evidence schemas keep their IDs.
 
-The optional **Details | Terminal** pane keeps an interactive shell beside jobs,
-graphs, logs and research. It includes named sessions, explicit SSH and allocation
-connections, command evidence, and read-only recording playback. See the
-[terminal guide](docs/guides/terminal-fusion.md) for installation, controls and
-compatibility limits, and the [delivery matrix](docs/reference/terminal-fusion.md)
-for the scope of the 100 design entries.
+The Python distribution remains **`slurm-tower`**. Install or upgrade that one
+package. The public product name is Project Raven; the Python import is `tower`.
 
-## Start with a safe demonstration
+[Raven runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
+[Delivery and qualification](docs/raven/implementation.md) ·
+[Project integration](docs/PROJECT_STANDARD.md) · [Release history](CHANGELOG.md)
 
-Use Python 3.10 or later with curses and venv support:
+## Install and try the interface
 
 ```bash
 git clone https://github.com/rahel99x/Slurm-Tower.git
 cd Slurm-Tower
 python3 scripts/setup.py --mode demo
-./scripts/tower --fake
+./scripts/ravenl --fake --no-state --no-plugins
 ```
 
-Demo mode uses simulated Slurm data. The setup smoke checks disable plugins and
-state. Use `./scripts/tower --fake --no-plugins --no-state` for the same isolated
-application configuration.
+The demonstration uses simulated Slurm data. It does not submit jobs. To install
+console commands in a virtual environment, use `python -m pip install .`.
+Add `[terminal]` to install the optional embedded-terminal dependencies:
+`python -m pip install '.[terminal]'`.
 
-## Connect to Slurm
+## Select the execution environment
 
-On your cluster login node:
+For a cluster or a workstation with Slurm installed:
 
 ```bash
-python3 scripts/setup.py --mode local --profile carc
-./scripts/tower --config docs/config.example.json --profile carc
+./scripts/ravenl --config docs/examples/raven/slurm.json
+./scripts/ravenl --config docs/examples/raven/slurm.json config explain
+./scripts/ravenh --config docs/examples/raven/slurm.json --plan
 ```
 
-For a Fedora workstation with Slurm installed directly, select `--profile desktop`
-in both commands. The CARC example uses more conservative optional collectors;
-it is a starting profile, not institutional authorization. Follow your site's
-polling and allocation policies.
+Copy and edit the example first. Set the account, partition, time limit, cluster
+identity, and worker Python path for your site. `--plan` prints the request and
+makes no allocation. Remove `--plan` to request the reviewed configuration.
+A profile is a starting configuration, not a site's approval or qualification.
 
-To install the optional Bash alias, use the appropriate profile:
+For a standalone Linux desktop **without Slurm**, select it explicitly:
 
 ```bash
-python3 scripts/install_shell.py --profile carc --apply
-source ~/.bashrc
-tower
+./scripts/ravenl --site desktop
+./scripts/ravenh --site desktop --plan
+./scripts/ravenh --site desktop
 ```
 
-The alias helper backs up `.bashrc` and preserves unrelated settings. See the
-[runbook](docs/runbook.md) for SSH, offline installation, upgrades and recovery,
-and the [Fedora guide](docs/DESKTOP.md) for desktop configuration.
+A missing `squeue` command never changes a cluster profile into desktop Heavy.
+The portable desktop adapter reports its process limits. A policy that requires
+hard aggregate cgroup limits is rejected if those limits cannot be enforced.
 
-To enable the embedded terminal after a pull:
+## Use compute and terminals
 
-```bash
-python3 scripts/setup.py --mode demo --terminal
-./scripts/tower terminal selftest
-```
+Open the **Light/Heavy** toolbar control or **View → Compute allocation** to
+inspect, request, cancel, or release compute. Pending and draining workers do
+not count as Heavy. **Single/Multi** remains a separate background-worker
+concurrency control. More compute does not grant faster scheduler polling.
 
-This installs the optional terminal dependencies into `.venv` and validates
-simulated data. It does not change your Slurm profile or shell alias. Start Tower
-normally, then select **Terminal** in a supported secondary pane. Press
-**Ctrl-]**, then **t**, to return keyboard control to Tower.
+The **Details | Terminal** buttons select the secondary pane. Both use the same
+focus indicator, including narrow layouts and panes with scroll controls.
+Press **Ctrl-]**, then **t**, to return terminal input to the dashboard.
+Allocation changes do not move an existing shell or redirect queued paste.
+See the [terminal guide](docs/guides/terminal-fusion.md).
+
+The starter Slurm policy uses a 60-second queue interval and a 300-second history
+interval. The refresh control reports actual requested and admitted intervals.
+Automatic GPU steps and weather probes are disabled. Existing telemetry and
+project metric files remain available. Read [collection and limits](docs/raven/README.md#collection-and-retention).
 
 ## Choose a task
 
@@ -125,6 +131,9 @@ These features consume explicit contracts and supported formats. They do not
 infer missing scientific thresholds or replace arbitrary workflow engines.
 Use the [platform starter guide](examples/platform/README.md) for telemetry,
 portable evidence, adapters and private support bundles.
+Several managed Apply actions and external drivers remain deferred even with
+Heavy. Check the [execution contracts and supported paths](docs/raven/execution-contracts.md)
+before choosing a workflow.
 
 Prepared stack recording supports declared Python events and explicit native
 instrumentation. Late attachment provides only the supported current snapshot
@@ -142,6 +151,8 @@ tower --ui-trace /tmp/tower-ui-trace.json
 python3 scripts/qualify_flagship.py --output /tmp/tower-qualification.json
 ```
 
+The [Raven 7.0 validation record](docs/raven/validation.md) records current
+regression, compatibility, packaging, and local qualification results.
 The [6.1 consolidation guide](docs/guides/consolidation.md) describes the shared
 components, compatibility rules, and measured validation. The
 [6.1 validation record](docs/guides/consolidation-validation.md) records the

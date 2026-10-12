@@ -550,3 +550,26 @@ def test_broadcast_never_accepts_multiline_or_unknown_repl(broadcast):
     broadcast.terminal.sessions["s2"]["metadata"]["shell"] = "python"
     with pytest.raises(ValueError, match="known shell"):
         W.prepare_broadcast(broadcast, "hostname", ["s1", "s2"])
+
+
+@pytest.mark.parametrize("allowed", [True, False])
+def test_managed_allocation_terminal_requires_collection_admission_after_revalidation(operation_dashboard, monkeypatch, allowed):
+    from tower import terminal_ui, raven_collection, raven_execution
+    app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
+    app.raven_execution = raven_execution.ExecutionRouter({"managed": True})
+    launches, admissions = [], []
+    def admit(backend, argv):
+        assert len(validations) == 1
+        admissions.append((backend, argv))
+        if not allowed:
+            raise ValueError("Step launch budget exhausted")
+        return {"family": "step", "scope": "user-host-connection"}
+    monkeypatch.setattr(raven_collection, "admit_terminal_launch", admit)
+    monkeypatch.setattr(terminal_ui, "open_session", lambda app, **spec: launches.append(spec) or "sid")
+    app.run_command("ops apply")
+    assert len(admissions) == 1
+    assert len(launches) == int(allowed)
+    if allowed:
+        assert app.ops_state["result"]["data"]["terminal_admission"]["family"] == "step"
+    else:
+        assert "Step launch budget exhausted" in str(app.ops_state["result"])

@@ -307,7 +307,7 @@ class LogSession:
         buf = self.buffers.get(path)
         if buf is None or buf.files is not self.files or buf.max_bytes != max(1, int(self.max_bytes)):
             buf = self.buffers[path] = LogBuffer(path, self.max_bytes, self.files)
-            if len(self.buffers) > 8:                      # keep a few; drop the oldest
+            if len(self.buffers) > getattr(self, 'max_buffers', 8):
                 oldest = next(iter(self.buffers))
                 if oldest != path:
                     del self.buffers[oldest]

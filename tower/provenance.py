@@ -366,11 +366,14 @@ def load(path: str | os.PathLike) -> dict:
     """Load a regular file, rejecting symlinks, duplicate keys, and tampering."""
     fd = _regular_fd(Path(path))
     try:
-        if os.fstat(fd).st_size > MAX_PASSPORT_BYTES:
+        from .raven_execution import source_limit, source_read
+        limit = source_limit(MAX_PASSPORT_BYTES)
+        if os.fstat(fd).st_size > limit:
             raise ValidationError("passport exceeds the 1 MiB limit")
+        source_read(os.fstat(fd).st_size)
         with os.fdopen(fd, "rb", closefd=False) as stream:
-            data = stream.read(MAX_PASSPORT_BYTES + 1)
-        if len(data) > MAX_PASSPORT_BYTES:
+            data = stream.read(limit + 1)
+        if len(data) > limit:
             raise ValidationError("passport exceeds the 1 MiB limit")
         try:
             passport = json.loads(data.decode("utf-8"), object_pairs_hook=_unique_pairs,

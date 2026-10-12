@@ -192,7 +192,9 @@ class Broker:
         master = slave = -1
         try:
             from .terminal_emulator import TerminalEngine
-            session.engine = TerminalEngine(rows, cols, history_limit=max(1, min(10000, int(message.get("history_lines", 2000)))))
+            session.engine = TerminalEngine(rows, cols,
+                history_limit=max(1, min(10000, int(message.get("history_lines", 2000)))),
+                history_bytes=max(0, min(4 * 1024 * 1024, int(message.get("history_bytes", 4 * 1024 * 1024)))))
             argv = message.get("argv")
             if not isinstance(argv, list) or not argv or not all(isinstance(v, str) and v and "\0" not in v for v in argv):
                 raise ValueError("Terminal command must be a nonempty argument list")

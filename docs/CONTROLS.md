@@ -1,5 +1,20 @@
 # Tower controls
 
+## Raven execution controls
+
+`ravenl` opens Light; `ravenh` requests an admitted worker before loading the UI.
+`tower` remains a compatibility route to Light. Open the Light/Heavy toolbar
+control or enter `:raven inspect` for mode, target, collection rates, queues, and
+retention coverage. Request, Cancel, and Release use a current identity-bound
+review. `:raven reuse JOBID` starts a fresh ownership/resource review; it does not
+trust a job number alone. Single/Multi controls background concurrency separately.
+
+Details and Terminal share one focus indicator. Switching execution modes does
+not change the selected job, active terminal, or destination of queued paste.
+See the [Raven runbook](raven/README.md) for profiles, limits, migration, and site
+qualification boundaries.
+
+
 Press Ctrl-C to exit Tower when Tower owns keyboard input. A configured Ctrl-C binding takes precedence.
 When an embedded terminal owns input, Ctrl-C goes to its foreground program.
 Press Ctrl-], then t, to return input to Tower.

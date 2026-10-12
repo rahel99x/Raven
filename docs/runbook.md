@@ -1,4 +1,10 @@
-# The Slurm Tower runbook
+# Project Raven: compatibility runbook
+
+Use the [Raven runbook](raven/README.md) for release 7.0 launchers, execution
+profiles, allocation controls, collection limits, migration, and rollback.
+The `tower` commands below remain compatibility examples. Their effective
+polling and execution limits now follow the Raven policy. Use `--site` with
+new Raven configuration files; retain `--profile` only with old Tower files.
 
 [README](../README.md) · [Controls](CONTROLS.md) ·
 [Desktop setup](DESKTOP.md) · [Tower 4.0 guides](QUALITY_OF_LIFE.md) ·

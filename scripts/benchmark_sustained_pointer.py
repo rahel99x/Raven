@@ -32,6 +32,31 @@ def quantiles(values):
             "max_ms": ordered[-1]}
 
 
+def latest_pointer_age(events, dispatched, sent):
+    """Age of the latest dispatched pointer at a paint/flush completion.
+
+    Coalesced motion is not a one-to-one input acknowledgment. Multiple frames
+    can carry the same latest position, and undispatched motion is not included.
+    """
+    ages, position, previous = [], 0, None
+    for event in events:
+        while position < len(dispatched) and dispatched[position]["at"] <= event["start"]:
+            previous = dispatched[position]
+            position += 1
+        if previous is not None:
+            ages.append((event["start"] + event["ms"] / 1000 - sent[previous["seq"]]) * 1000)
+    return ages
+
+
+def fixture_specs(count):
+    """Exact stable queue size shared with the resource harness definition."""
+    return [dict(id=str(8000000 + index), name='benchmark-%03d' % index, part='main',
+                 submit=-7200-index, start=-600-index if index % 5 else None, dur=86400,
+                 cpus=4, gt='', gn=0, nodes=1, mem='4G', limit='1-00:00:00',
+                 node='n%03d' % (index % 8), prio=10000-index,
+                 reason='Priority' if index % 5 == 0 else 'None') for index in range(count)]
+
+
 def publish_marker(path, value):
     """Publish complete child metadata before its existence signals readiness."""
     temporary = path.with_name(path.name + ".tmp")
@@ -153,7 +178,7 @@ def worker(args):
         source_digest.update(path.read_bytes())
     from tower import chart_interaction, clock, metric_live, palette, screen
     from tower.cli import main
-    from tower.slurm import Slurm
+    from tower.slurm import FakeBackend, Slurm
     from tower.views import Views
 
     events, inputs, decoded, counts, totals = [], [], [], Counter(), Counter()
@@ -220,11 +245,19 @@ def worker(args):
     signal.signal(signal.SIGUSR1, diagnostic)
     original_compose = Views.compose
     original_jobs = Slurm.jobs
+    original_backend_init = FakeBackend.__init__
+    def backend_init(self, *values, **kwargs):
+        original_backend_init(self, *values, **kwargs)
+        self.spec = fixture_specs(args.jobs)
+        self.others = []
+    FakeBackend.__init__ = backend_init
     Slurm.jobs = lambda self: original_jobs(self)[:args.jobs]
 
     def compose(self, snap, app, *positional, **kwargs):
         nonlocal initialized, producer, app_ref, observed_deltas, fixture_job
         app_ref = app
+        if bool(app.cfg.get("raven", {}).get("managed")) != args.managed:
+            raise ValueError("Pointer fixture did not activate its requested managed/legacy variant")
         if not initialized and snap.get("jobs"):
             initialized = True
             selected = prepare_fixture_job(
@@ -344,7 +377,11 @@ def worker(args):
         arguments = ["--fake", "--no-state", "--config", str(args.config)]
         if args.workers is not None:
             arguments.extend(("--workers", args.workers))
-        result = main(arguments)
+        if args.managed:
+            from tower.raven_launch import light_main
+            result = light_main(arguments)
+        else:
+            result = main(arguments)
         exit_code = result or 0
     except BaseException as error:
         import traceback
@@ -362,12 +399,15 @@ def worker(args):
                   "error_frames": error_frames,
                   "counts": dict(counts), "cpu_total_ms": dict(totals), "tab": getattr(app_ref, "tab", None),
                   "source_hash": source_digest.hexdigest(),
+                  "managed": bool(getattr(app_ref, "cfg", {}).get("raven", {}).get("managed")),
                   "live_delta": (args.delta if args.delta is not None else metric_live.MAX_DELTA) if args.live else None,
                   "observed_live_deltas": sorted(set(observed_deltas)),
                   "visible_plots": len(chart_interaction.initialize(app_ref)["plots"]) if app_ref else 0}
         report["input_state"] = input_state(app_ref, screen._INPUT_READERS.get(id(window_ref)))
         records = getattr(getattr(app_ref, "store", None), "series", {}).get(fixture_job, ())
         report["fixture"] = {
+            "retained_jobs": len(getattr(getattr(app_ref, "store", None), "jobs", ())),
+            "queue_fixture": "deterministic job specs; same definition as Raven resource harness",
             "selected": bool(app_ref is not None and app_ref.selected_id == fixture_job),
             "records": dict(Counter(record.get("k") for record in records)),
             "visible_plots": sum(plot.key[1] == fixture_job for plot in
@@ -405,6 +445,8 @@ def run(args, rate):
                    ["--delta", str(args.delta)] if args.delta is not None else [])
     if args.workers is not None:
         command.extend(("--workers", args.workers))
+    if args.managed:
+        command.append("--managed")
     if args.switch_workers:
         command.append("--switch-workers")
         command.extend(("--switch-control", args.switch_control))
@@ -463,8 +505,11 @@ def run(args, rate):
             raise RuntimeError("PTY fixture exited " + str(process.returncode)
                                + (" (" + error_type + ")" if error_type else ""))
         data = json.loads(report.read_text())
+        if data.get("managed", False) != args.managed:
+            raise RuntimeError("Pointer worker variant differs from its requested measurement")
         fixture = data.get("fixture", {})
         if (not fixture.get("selected") or not fixture.get("visible_plots")
+                or fixture.get("retained_jobs") != args.jobs
                 or any(fixture.get("records", {}).get(kind, 0) < args.points for kind in ("live", "gpu"))):
             raise RuntimeError("fixture did not retain the requested source history in its visible selected job")
         if args.switch_workers:
@@ -492,17 +537,13 @@ def run(args, rate):
                 position += 1
             if batch:
                 oldest_latency.append((item["at"]-min(sent[report["seq"]] for report in batch))*1000)
-        painted_age, position = [], 0
-        previous = None
-        for event in paints:
-            while position < len(dispatched) and dispatched[position]["at"] <= event["start"]:
-                previous = dispatched[position]
-                position += 1
-            if previous is not None:
-                painted_age.append((event["start"]+event["ms"]/1000-sent[previous["seq"]])*1000)
+        painted_age = latest_pointer_age(paints, dispatched, sent)
+        flushed_age = latest_pointer_age([event for event in measured if event["phase"] == "terminal_flush"], dispatched, sent)
         return {"rate_hz": rate, "seconds": args.seconds, "points": args.points,
                 "source_root": str(args.source_root), "live": args.live, "jobs": args.jobs,
                 "source_hash": data["source_hash"], "live_delta": data["live_delta"],
+                "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                "managed": data.get("managed", False),
                 "observed_live_deltas": data["observed_live_deltas"],
                 "prepaint_drain": args.prepaint_drain,
                 "initial_workers": args.workers, "switch_workers": args.switch_workers,
@@ -511,6 +552,8 @@ def run(args, rate):
                 "sent_reports": len(sent), "dispatched_reports": len(latency),
                 "input_latency": quantiles(latency), "decoded_report_latency": quantiles(decoded_latency),
                 "oldest_batch_latency": quantiles(oldest_latency), "painted_pointer_age": quantiles(painted_age),
+                "flushed_pointer_age": quantiles(flushed_age),
+                "latency_scope": "Parent PTY write to local decode/dispatch/paint/curses flush. Latest dispatched motion may be coalesced; no outer emulator pixels, SSH or monitor latency.",
                 "phases": phases, "cpu_phases": cpu_phases,
                 "paint_gaps": quantiles([(after["start"]-before["start"])*1000
                                           for before, after in zip(paints, paints[1:])]),
@@ -541,6 +584,7 @@ def main(argv=None):
     parser.add_argument("--points", type=int, default=1000)
     parser.add_argument("--jobs", type=int, default=3)
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--managed", action="store_true", help="Measure actual managed Raven Light; legacy direct-CLI mode remains the default")
     parser.add_argument("--delta", type=float, help="explicit Live window shared by compared versions")
     parser.add_argument("--workers", choices=("single", "multi"), help="initial mode for sources that support --workers")
     parser.add_argument("--switch-workers", action="store_true",
@@ -570,8 +614,8 @@ def main(argv=None):
         parser.error("--seconds must be between 0.1 and 10")
     if not 1 <= args.points <= 10000:
         parser.error("--points must be between 1 and 10000")
-    if not 3 <= args.jobs <= 6:
-        parser.error("--jobs must be between 3 and 6 for this fake-job fixture")
+    if not 3 <= args.jobs <= 1000:
+        parser.error("--jobs must be between 3 and 1000 for this bounded simulated queue")
     if args.delta is not None and (not math.isfinite(args.delta) or not 1 <= args.delta <= 30):
         parser.error("--delta must be between 1 and 30 seconds; use 5 for pre-4.8 comparisons")
     if args.switch_workers and (args.seconds < 1 or any(rate * args.seconds < 6 for rate in rates)):
@@ -580,6 +624,8 @@ def main(argv=None):
         parser.error("--switch-control toolbar requires --switch-workers")
     if not (args.source_root / "tower" / "__init__.py").is_file():
         parser.error("--source-root must contain a Tower source package")
+    if args.managed and not (args.source_root / "tower" / "raven_launch.py").is_file():
+        parser.error("--managed requires a source package with the Raven Light launcher")
     if not args.output.parent.is_dir():
         parser.error("the --output parent directory must already exist")
     if args.output.exists() and not args.output.is_file():

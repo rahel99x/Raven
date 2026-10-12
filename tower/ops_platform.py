@@ -305,3 +305,9 @@ def apply(feature, plan, ctx):
                                  final_check=lambda: _verify(ctx, payload["sources"]))
         return O.report(feature, "Private support bundle saved; no data was transmitted.", rows=[destination], data={"destination": destination})
     raise ValueError("This platform inspection has no write action")
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

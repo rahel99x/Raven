@@ -242,11 +242,13 @@ class TerminalEngine:
     shift/alt/ctrl names or corresponding booleans. SGR mouse is used only when
     the child enabled it. Unsupported input protocols are never advertised.
     """
-    def __init__(self, rows: int = 24, cols: int = 80, history_limit: int = 2000):
+    def __init__(self, rows: int = 24, cols: int = 80, history_limit: int = 2000,
+                 history_bytes: int = MAX_HISTORY_BYTES):
         if pyte is None:
             raise RuntimeError("Embedded terminal requires: pip install 'slurm-tower[terminal]'")
         self.rows, self.cols = _geometry(rows, cols)
         self.history_limit = max(0, min(int(history_limit), 10000))
+        self.history_bytes_limit = max(0, min(int(history_bytes), MAX_HISTORY_BYTES))
         self._history: deque[tuple[str, int, bool]] = deque()
         self._history_bytes = 0
         self.history_start = 0
@@ -296,7 +298,7 @@ class TerminalEngine:
         size = len(text.encode("utf-8"))
         self._history.append((text, size, wrapped))
         self._history_bytes += size
-        while self._history and (len(self._history) > self.history_limit or self._history_bytes > MAX_HISTORY_BYTES):
+        while self._history and (len(self._history) > self.history_limit or self._history_bytes > self.history_bytes_limit):
             _, removed, _ = self._history.popleft()
             self._history_bytes -= removed
             self.history_start += 1
@@ -601,6 +603,7 @@ class TerminalEngine:
                 "title": self.title, "links": links, "clipboard_requests": [dict(item) for item in self._clipboard_requests],
                 "clipboard_denied": self.clipboard_denied, "history": self.history_text() if include_history else [],
                 "history_count": len(self._history), "history_start": self.history_start,
+                "history_bytes": self._history_bytes, "history_bytes_limit": self.history_bytes_limit,
                 "line_wrapped": [bool(getattr(self.screen.buffer[row], "wrapped", False)) for row in range(self.rows)],
                 "history_wrapped": self.history_wrapped() if include_history else [],
                 "unsupported": self.unsupported, "bells": self.bells,

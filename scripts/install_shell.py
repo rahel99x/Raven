@@ -27,18 +27,25 @@ unset -f tower dash dash2 2>/dev/null || :
 _slurm_tower() {{
   local root="$SLURM_TOWER_ROOT"
   local profile={default_profile}
-  profile="${{SLURM_TOWER_PROFILE:-$profile}}"
+  profile="${{RAVEN_PROFILE:-${{SLURM_TOWER_PROFILE:-$profile}}}}"
   local account="${{SLURM_TOWER_ACCOUNT-}}"
-  if [ "$profile" = carc ] && [ "${{SLURM_TOWER_ACCOUNT+x}}" != x ]; then
+  if [ "$profile" = carc ] && [ -z "${{RAVEN_CONFIG-}}" ] && [ "${{SLURM_TOWER_ACCOUNT+x}}" != x ]; then
     account="${{CARC_ACCOUNT:-}}"
   fi
   if [ ! -x "$root/scripts/tower" ]; then
     printf 'tower: checkout not found at %s; set SLURM_TOWER_ROOT to your Slurm-Tower directory.\\n' "$root" >&2
     return 127
   fi
-  local -a command=("$root/scripts/tower"
-    --config "${{TOWER_CONFIG:-$root/docs/config.example.json}}"
-    --profile "$profile" --unicode)
+  local -a command=("$root/scripts/tower")
+  if [ -n "${{RAVEN_CONFIG-}}" ]; then
+    command+=(--config "$RAVEN_CONFIG")
+    if [ -n "${{RAVEN_PROFILE-}}" ]; then
+      command+=(--site "$RAVEN_PROFILE")
+    fi
+  else
+    command+=(--config "${{TOWER_CONFIG:-$root/docs/config.example.json}}" --profile "$profile")
+  fi
+  command+=(--unicode)
   if [ -n "$account" ]; then
     command+=(--account "$account")
   fi

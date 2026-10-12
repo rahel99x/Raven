@@ -188,3 +188,9 @@ def apply(feature, plan, ctx):
     output = O.command(ctx, payload["argv"], timeout=10)
     return O.report("queue-order", "Slurm accepted the own-job queue preference", data={"order": proposed, "output": output},
                     warnings=["Actual start order remains subject to dependencies, available resources and scheduler policy."])
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

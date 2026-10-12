@@ -379,6 +379,11 @@ class PythonCapture:
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
+    from .raven_execution import cli_admission
+    blocked = cli_admission(["trace", *argv])
+    if blocked is not None:
+        print(json.dumps(blocked, indent=2))
+        return 3
     if argv is not None and argv and argv[0] == "native":
         from .trace_native import main as native_main
         return native_main(argv[1:])
@@ -405,7 +410,9 @@ def main(argv=None):
     register.add_argument("path")
     args = parser.parse_args(argv)
     if args.action == "inspect":
-        value = protocol.read_trace(args.path)
+        from .raven_execution import router_for
+        value = (protocol.read_trace(args.path, max_events=512, max_bytes=256 << 10)
+                 if router_for().managed else protocol.read_trace(args.path))
         print(json.dumps(value, indent=2) if args.json else "\n".join(value["rows"] + value["warnings"]))
         return 0 if value["status"] != "INVALID" else 2
     if args.action == "register":

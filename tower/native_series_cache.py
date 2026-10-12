@@ -99,9 +99,14 @@ def owned_snapshot(value, memo=None):
 
 
 class NativeSeriesCache:
-    def __init__(self):
-        self.entries = OrderedDict()
+    def __init__(self, *, budget=None):
+        self.budget = budget
         self.bytes = 0
+        from .raven_limits import BudgetCache
+        self.entries = BudgetCache(budget, self._expired) if budget else OrderedDict()
+
+    def _expired(self, entry):
+        self.bytes -= len(entry[0]) if isinstance(entry[0],bytes) else entry[2]
 
     def remember(self, key, samples, build):
         from .series_publication import PublishedSeries

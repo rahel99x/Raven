@@ -59,7 +59,7 @@ def test_local_setup_checks_and_prints_selected_profile_without_running_slurm(tm
         command += ["--profile", requested]
     result = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "Slurm Tower / local environment" in result.stdout and "Ready (local)" in result.stdout
+    assert "Project Raven / local environment" in result.stdout and "Ready (local)" in result.stdout
     launch = next(line.strip() for line in result.stdout.splitlines() if line.startswith("  ") and "--profile " in line)
     args = shlex.split(launch)
     assert args[args.index("--profile") + 1] == expected and "--fake" not in args
@@ -84,6 +84,25 @@ def test_setup_preserves_unrelated_paths(tmp_path):
     assert sentinel.read_text() == "keep this"
     with pytest.raises(setup.SetupError, match="dedicated"):
         setup.prepare_venv(ROOT)
+
+
+def test_nested_venv_keeps_standard_library_and_reuses_existing_environment(tmp_path):
+    """Exercise actual startup, including relocatable Python installations."""
+    environment = tmp_path / "nested environment with spaces"
+    python = setup.prepare_venv(environment)
+    probe = subprocess.run([str(python), "-I", "-c",
+        "import encodings, json, pathlib, sys; "
+        "print(json.dumps({'prefix': sys.prefix, 'base': sys.base_prefix, "
+        "'codec': encodings.__file__, 'isolation': sys.prefix != sys.base_prefix}))"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=15)
+    assert probe.returncode == 0, probe.stderr
+    data = json.loads(probe.stdout)
+    assert Path(data['prefix']).resolve() == environment.resolve()
+    assert Path(data['base']).resolve() == Path(sys.base_prefix).resolve()
+    assert data['isolation'] and Path(data['codec']).is_file()
+    config = (environment / 'pyvenv.cfg').read_bytes()
+    assert setup.prepare_venv(environment) == python
+    assert (environment / 'pyvenv.cfg').read_bytes() == config
 
 
 def test_setup_preserves_existing_report_and_symlink(tmp_path):

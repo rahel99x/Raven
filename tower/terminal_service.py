@@ -139,7 +139,7 @@ class TerminalService:
                 self._out.popleft()
 
     def open(self, argv=None, cwd=None, label=None, env=None, kind="local", metadata=None, rows=24, cols=80,
-             session_id=None, env_factory=None, history_lines=2000):
+             session_id=None, env_factory=None, history_lines=2000, history_bytes=4 * 1024 * 1024):
         if len(self.sessions) >= MAX_SESSIONS:
             raise ValueError("Close a terminal session before opening another (limit: 8)")
         rows, cols = dimensions(rows, cols)
@@ -160,7 +160,8 @@ class TerminalService:
         command = {"op": "open", "id": sid, "argv": list(argv), "cwd": os.fspath(cwd) if cwd is not None else None,
                    "label": str(label or os.path.basename(argv[0]))[:120], "env": env,
                    "kind": str(kind)[:40], "metadata": metadata or {}, "rows": rows, "cols": cols,
-                   "history_lines": max(1, min(10000, int(history_lines)))}
+                   "history_lines": max(1, min(10000, int(history_lines))),
+                   "history_bytes": max(0, min(4 * 1024 * 1024, int(history_bytes)))}
         # Validate before spawning, and avoid retaining argv/environment in snapshots.
         frame(command)
         self._start()

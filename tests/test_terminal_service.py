@@ -99,6 +99,16 @@ def test_child_has_real_controlling_terminal_and_correct_session(service):
     assert service.snapshot(sid)["exit_code"] == 0
 
 
+def test_history_byte_policy_reaches_real_broker_and_engine(service):
+    sid = service.open([sys.executable, "-c", "for i in range(100): print('record-%03d'%i)"],
+                       rows=3, history_lines=1000, history_bytes=64)
+    wait_for(service, lambda: service.snapshot(sid).get("status") == "exited")
+    snapshot = service.snapshot(sid)
+    assert snapshot["history_bytes_limit"] == 64
+    assert 0 < snapshot["history_bytes"] <= 64
+    assert snapshot["history_count"] == 6
+
+
 def test_source_checkout_launcher_and_child_work_from_unrelated_cwd(service, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     sid = service.open([sys.executable, "-c", "import os; print('CWD',os.getcwd())"], cwd=tmp_path, cols=160)

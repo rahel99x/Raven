@@ -74,7 +74,7 @@ def test_profiling_drain_preserves_pending_event_and_respects_report_budget(benc
     ("--seconds", "0"), ("--seconds", "-1"), ("--seconds", "nan"),
     ("--seconds", "inf"), ("--seconds", "11"),
     ("--points", "0"), ("--points", "10001"),
-    ("--jobs", "2"), ("--jobs", "7"),
+    ("--jobs", "2"), ("--jobs", "1001"),
     ("--delta", "0"), ("--delta", "31"), ("--delta", "nan"),
 ])
 def test_public_arguments_fail_before_opening_a_pty(benchmark, monkeypatch, tmp_path, option, value):
@@ -248,3 +248,32 @@ def test_toolbar_metadata_marker_is_complete_before_visible(benchmark, tmp_path,
         assert json.loads(marker.read_text()) == value
     assert observations == [previous]
     assert not marker.with_name(marker.name + ".tmp").exists()
+
+
+def test_paint_and_flush_age_use_latest_dispatched_pointer_not_unconsumed_input(benchmark):
+    sent = {1: 1., 2: 1.01, 3: 1.02}
+    dispatched = [{'seq': 1, 'at': 1.005}, {'seq': 3, 'at': 1.025}]
+    paints = [{'start': 1.004, 'ms': 1}, {'start': 1.015, 'ms': 5}, {'start': 1.03, 'ms': 2}]
+    flushes = [{'start': 1.02, 'ms': 4}, {'start': 1.033, 'ms': 3}]
+    assert benchmark.latest_pointer_age(paints, dispatched, sent) == pytest.approx([20, 12])
+    assert benchmark.latest_pointer_age(flushes, dispatched, sent) == pytest.approx([24, 16])
+
+
+def test_managed_variant_is_forwarded_to_measurement(benchmark, monkeypatch, tmp_path):
+    called = []
+    monkeypatch.setattr(benchmark, 'run', lambda args, rate: called.append(args.managed) or {'rate_hz': rate})
+    source = Path(__file__).resolve().parents[1]
+    assert benchmark.main(['--source-root', str(source), '--output', str(tmp_path / 'managed.json'),
+                           '--managed', '--rates', '50']) == 0
+    assert called == [True]
+
+
+@pytest.mark.parametrize('count', [6, 100])
+def test_queue_fixture_preserves_exact_requested_retained_count(benchmark, count):
+    from tower.slurm import FakeBackend, Slurm
+    backend = FakeBackend()
+    backend.spec = benchmark.fixture_specs(count)
+    jobs = Slurm(backend, backend.user).jobs()
+    assert len(jobs) == count
+    assert len({job.id for job in jobs}) == count
+    assert sum(not job.pending for job in jobs) == count - (count + 4) // 5

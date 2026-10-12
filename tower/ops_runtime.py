@@ -189,3 +189,9 @@ def apply(feature, plan, ctx):
         result = control.permit(document["request_id"], participants=document["participants"], arrived=[],
                                 lease_seconds=document["lease_seconds"], wait_seconds=document["wait_seconds"], fallback=document["fallback"])
     return report(feature, "Request durably queued; inspect its application acknowledgment", rows=[json.dumps(result, sort_keys=True)], data=result)
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

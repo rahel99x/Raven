@@ -1,0 +1,1206 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "raven.config/v1",
+  "title": "Project Raven configuration",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.config/v1"
+    },
+    "profile": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[^\\u0000\\r\\n]*$"
+    },
+    "site": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "desktop",
+            "slurm"
+          ]
+        },
+        "cluster_id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "policy_file": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        }
+      }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "transport": {
+          "enum": [
+            "local",
+            "none",
+            "ssh"
+          ]
+        },
+        "host": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "user": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "credential_reference": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "ssh_options": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "maxItems": 64
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "startup": {
+          "enum": [
+            "heavy",
+            "light"
+          ]
+        },
+        "heavy_target": {
+          "enum": [
+            "local",
+            "slurm"
+          ]
+        },
+        "heavy_requires_allocation": {
+          "type": "boolean"
+        },
+        "desktop_execution": {
+          "enum": [
+            "disabled",
+            "explicit"
+          ]
+        },
+        "allow_login_heavy": {
+          "const": false
+        },
+        "on_allocation_end": {
+          "enum": [
+            "light"
+          ]
+        },
+        "worker_python": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "view",
+              "scheduler-read",
+              "scheduler-action",
+              "local-files",
+              "terminal",
+              "heavy-analysis",
+              "instrumentation"
+            ]
+          },
+          "maxItems": 64
+        }
+      }
+    },
+    "allocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "enum": [
+            "desktop",
+            "slurm-cli"
+          ]
+        },
+        "account": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "partition": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "qos": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "tasks": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "cpus_per_task": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "memory_mib": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "gpus": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "walltime_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "pending_timeout_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "idle_release_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "reuse": {
+          "enum": [
+            "explicit"
+          ]
+        },
+        "auto_request_on_light_start": {
+          "const": false
+        },
+        "auto_renew": {
+          "const": false
+        },
+        "disconnect_policy": {
+          "enum": [
+            "stop-owned-worker"
+          ]
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "enum": [
+            "user-host"
+          ]
+        },
+        "slurm_enabled": {
+          "type": "boolean"
+        },
+        "remote_connections": {
+          "enum": [
+            "explicit"
+          ]
+        },
+        "queue_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "starts_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "history_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "inventory_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "details_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "live_statistics": {
+          "enum": [
+            "off",
+            "selected-on-demand"
+          ]
+        },
+        "live_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "gpu": {
+          "enum": [
+            "existing-telemetry",
+            "off"
+          ]
+        },
+        "weather_probes": {
+          "const": false
+        },
+        "account_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "log_follow_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "idle_after_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "idle_interval_factor": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "jitter_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "max_inflight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "controller_requests_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "controller_burst": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "accounting_requests_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "step_launches_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "statistics_requests_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "action_validation_requests_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "max_response_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "max_response_records": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "live_batch_jobs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "circuit_failures": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "circuit_seconds": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1099511627776
+        },
+        "filesystem_metadata_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "file_bytes_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "local_processes_per_minute": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "service_failure": {
+          "enum": [
+            "cached-only"
+          ]
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "log_window_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "prepared_cache_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "pending_result_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_terminal_sessions": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "terminal_scrollback_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "memory_mib": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_workers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_history_jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_job_rows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_history_rows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_series_jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "series_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_log_buffers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "persistence_queue_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "storage_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "storage_files": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_worker_queue": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_source_commands": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            }
+          }
+        },
+        "heavy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "max_workers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "memory_mib": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "scratch_mib": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_tasks": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "enforcement": {
+              "enum": [
+                "best-available",
+                "hard-required"
+              ]
+            },
+            "cpu_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "wall_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "input_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "output_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state_dir": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "coordination_dir": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "durable_results": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "theme": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "show_execution_target": {
+          "type": "boolean"
+        },
+        "show_observation_age": {
+          "type": "boolean"
+        },
+        "ascii": {
+          "type": "boolean"
+        },
+        "animations": {
+          "type": "boolean"
+        },
+        "density": {
+          "enum": [
+            "comfortable",
+            "compact",
+            "focused"
+          ]
+        },
+        "worker_mode": {
+          "enum": [
+            "multi",
+            "single"
+          ]
+        }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": {
+        "$ref": "#/$defs/profile"
+      }
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema": {
+          "const": "raven.config/v1"
+        },
+        "profile": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "site": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "desktop",
+                "slurm"
+              ]
+            },
+            "cluster_id": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "policy_file": {
+              "type": "string",
+              "maxLength": 4096,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            }
+          }
+        },
+        "connection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "transport": {
+              "enum": [
+                "local",
+                "none",
+                "ssh"
+              ]
+            },
+            "host": {
+              "type": "string",
+              "maxLength": 256,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "user": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "credential_reference": {
+              "type": "string",
+              "maxLength": 512,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "ssh_options": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 512
+              },
+              "maxItems": 64
+            }
+          }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "startup": {
+              "enum": [
+                "heavy",
+                "light"
+              ]
+            },
+            "heavy_target": {
+              "enum": [
+                "local",
+                "slurm"
+              ]
+            },
+            "heavy_requires_allocation": {
+              "type": "boolean"
+            },
+            "desktop_execution": {
+              "enum": [
+                "disabled",
+                "explicit"
+              ]
+            },
+            "allow_login_heavy": {
+              "const": false
+            },
+            "on_allocation_end": {
+              "enum": [
+                "light"
+              ]
+            },
+            "worker_python": {
+              "type": "string",
+              "maxLength": 4096,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "view",
+                  "scheduler-read",
+                  "scheduler-action",
+                  "local-files",
+                  "terminal",
+                  "heavy-analysis",
+                  "instrumentation"
+                ]
+              },
+              "maxItems": 64
+            }
+          }
+        },
+        "allocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "adapter": {
+              "enum": [
+                "desktop",
+                "slurm-cli"
+              ]
+            },
+            "account": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "partition": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "qos": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "nodes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "tasks": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "cpus_per_task": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "memory_mib": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "gpus": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "walltime_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "pending_timeout_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "idle_release_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "reuse": {
+              "enum": [
+                "explicit"
+              ]
+            },
+            "auto_request_on_light_start": {
+              "const": false
+            },
+            "auto_renew": {
+              "const": false
+            },
+            "disconnect_policy": {
+              "enum": [
+                "stop-owned-worker"
+              ]
+            }
+          }
+        },
+        "collection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "owner": {
+              "enum": [
+                "user-host"
+              ]
+            },
+            "slurm_enabled": {
+              "type": "boolean"
+            },
+            "remote_connections": {
+              "enum": [
+                "explicit"
+              ]
+            },
+            "queue_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "starts_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "history_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "inventory_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "details_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "live_statistics": {
+              "enum": [
+                "off",
+                "selected-on-demand"
+              ]
+            },
+            "live_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "gpu": {
+              "enum": [
+                "existing-telemetry",
+                "off"
+              ]
+            },
+            "weather_probes": {
+              "const": false
+            },
+            "account_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "log_follow_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "idle_after_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "idle_interval_factor": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "jitter_fraction": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "max_inflight": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "controller_requests_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "controller_burst": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "accounting_requests_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "step_launches_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "statistics_requests_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "action_validation_requests_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "max_response_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "max_response_records": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "live_batch_jobs": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "circuit_failures": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1099511627776
+            },
+            "circuit_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "filesystem_metadata_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "file_bytes_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "local_processes_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "service_failure": {
+              "enum": [
+                "cached-only"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "light": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "log_window_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "prepared_cache_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "pending_result_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_terminal_sessions": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "terminal_scrollback_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "memory_mib": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_workers": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_jobs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_history_jobs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_job_rows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_history_rows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_series_jobs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "series_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_log_buffers": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "persistence_queue_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "storage_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "storage_files": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_worker_queue": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_source_commands": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                }
+              }
+            },
+            "heavy": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "max_workers": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "memory_mib": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "scratch_mib": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "max_tasks": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "enforcement": {
+                  "enum": [
+                    "best-available",
+                    "hard-required"
+                  ]
+                },
+                "cpu_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "wall_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "input_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                },
+                "output_bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1099511627776
+                }
+              }
+            }
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "state_dir": {
+              "type": "string",
+              "maxLength": 4096,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "coordination_dir": {
+              "type": "string",
+              "maxLength": 4096,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "durable_results": {
+              "type": "string",
+              "maxLength": 4096,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            }
+          }
+        },
+        "ui": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "theme": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "show_execution_target": {
+              "type": "boolean"
+            },
+            "show_observation_age": {
+              "type": "boolean"
+            },
+            "ascii": {
+              "type": "boolean"
+            },
+            "animations": {
+              "type": "boolean"
+            },
+            "density": {
+              "enum": [
+                "comfortable",
+                "compact",
+                "focused"
+              ]
+            },
+            "worker_mode": {
+              "enum": [
+                "multi",
+                "single"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "$comment": "Runtime validation also enforces placement, units, policy intersection and available adapters before admission."
+}

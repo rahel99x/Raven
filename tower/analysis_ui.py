@@ -427,7 +427,10 @@ def _prepared_card_source(app, content):
     immutable scalar records are retained; interactive step metadata keeps its
     original path and cannot be mistaken for a card's reduced observations.
     """
-    cache = initialize(app).setdefault("chart_source_cache", OrderedDict())
+    from .raven_limits import cache as bounded_cache
+    state = initialize(app)
+    if 'chart_source_cache' not in state: state['chart_source_cache']=bounded_cache(app,'chart_source_cache')
+    cache = state['chart_source_cache']
     source = cache.get(content)
     if source is None:
         points = sorted(({"t": timestamp, "value": -0.0 if value is _NEGATIVE_ZERO else value, "step": None}
@@ -445,16 +448,22 @@ def _prepared_card_source(app, content):
 
 def _source_cadence(app, times, limit):
     """Cache cadence by exact sorted timestamps and admitted prefix length."""
-    cache = initialize(app).setdefault("chart_cadence_cache", OrderedDict())
+    from .raven_limits import cache as bounded_cache
+    state = initialize(app)
+    if 'chart_cadence_cache' not in state: state['chart_cadence_cache']=bounded_cache(app,'chart_cadence_cache')
+    cache = state['chart_cadence_cache']
     key = (times, limit)
     if key not in cache:
         deltas = [b - a for a, b in zip(times[:max(0, limit - 1)], times[1:limit])
                   if 0 < b - a < math.inf]
-        cache[key] = statistics.median(deltas) if deltas else None
+        result = statistics.median(deltas) if deltas else None
+        cache[key] = result
+    else:
+        result = cache[key]
     cache.move_to_end(key)
     while len(cache) > MAX_SOURCE_CACHE:
         cache.popitem(last=False)
-    return cache[key]
+    return result
 
 
 def _published_chart_job(app, jid):
@@ -649,7 +658,9 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
            (box["x"], box["y"], auto_fit) if box else None, live_window,
            (live_now is not None, display_end if not box and not captured else None, newest),
            (captured["x"], captured["y"]) if captured else None)
-    cache = state.setdefault("chart_card_cache", OrderedDict())
+    from .raven_limits import cache as bounded_cache
+    if 'chart_card_cache' not in state: state['chart_card_cache']=bounded_cache(app,'chart_card_cache')
+    cache = state['chart_card_cache']
     entry = cache.get(key)
     if entry is not None:
         cache.move_to_end(key)

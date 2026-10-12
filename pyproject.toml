@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slurm-tower"
-version = "6.3.0"
-description = "A terminal Slurm research workbench with live job tracing, evidence and reviewed diagnostics"
+version = "7.0.0"
+description = "Project Raven: a terminal research workbench with governed collection and explicit compute ownership"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -37,7 +37,9 @@ Repository = "https://github.com/rahel99x/Slurm-Tower"
 Issues = "https://github.com/rahel99x/Slurm-Tower/issues"
 
 [project.scripts]
-tower = "tower.cli:main"
+tower = "tower.raven_launch:legacy_main"
+ravenl = "tower.raven_launch:light_main"
+ravenh = "tower.raven_launch:heavy_main"
 
 [tool.setuptools]
 packages = ["tower"]

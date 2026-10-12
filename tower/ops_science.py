@@ -612,3 +612,9 @@ def apply(feature, plan, ctx):
     if feature not in functions:
         raise ValueError("This scientific operation is read-only")
     return functions[feature](payload, ctx)
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

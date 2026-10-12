@@ -221,14 +221,17 @@ def test_polling_settings_apply_survives_restart_using_actual_cadence(native_pol
             fresh.research.close()
 
 
-def test_legacy_source_settings_do_not_override_restored_polling_preference(native_polling):
+def test_slow_source_settings_keep_their_base_with_restored_polling_preference(native_polling):
     app, worker = native_polling
     R.set_multiplier(app, 33)
     actual = worker.effective_interval("jobs")
     N.restore(app, {"settings": {"intervals.jobs": 2, "intervals.live": 60}})
     assert R.multiplier(app) == 33 and worker.effective_interval("jobs") == actual
     assert worker.intervals["jobs"] == 2 and worker.intervals["live"] == 60
-    assert worker.effective_interval("live") == actual
+    assert worker.effective_interval("live") == pytest.approx(60 * actual / 5)
+    R.set_multiplier(app, 1)
+    assert worker.effective_interval("live") == 60
+    R.set_multiplier(app, 33)
     assert N.save(app)["settings"]["intervals.jobs"] == actual
 
 

@@ -4,7 +4,6 @@ JSON output, and the curses screen through a pseudo-terminal."""
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -253,25 +252,109 @@ def test_cli_once_json_and_watch_from_the_simulated_cluster():
     env = dict(os.environ, COLUMNS="150", USER="alex")
     r = subprocess.run([sys.executable, DASH, "--fake", "--once", "--ascii", "--no-color", "--no-state", "--width", "150"], env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    assert "tower - alex" in r.stdout and "running 2 (40 cpus, 1 gpus)" in r.stdout and "-- selected" in r.stdout and "Sources" in r.stdout
+    assert "Raven Light/slurm - alex" in r.stdout and "running 2 (40 cpus, 1 gpus)" in r.stdout and "-- selected" in r.stdout and "Sources" in r.stdout
     r = subprocess.run([sys.executable, DASH, "--fake", "--json", "--no-state"], env=env, capture_output=True, text=True)
     assert r.returncode == 0 and json.loads(r.stdout)["account"]["account"] == "lab_01"
     r = subprocess.run(["timeout", "-s", "INT", "2", sys.executable, DASH, "--fake", "--watch", "--ascii", "--no-state", "--interval", "0.5"], env=env, capture_output=True, text=True)
-    assert r.stdout.count("tower - alex") >= 2 and "\x1b" not in r.stdout and "Traceback" not in r.stderr
+    assert r.stdout.count("Raven Light/slurm - alex") >= 2 and "\x1b" not in r.stdout and "Traceback" not in r.stderr
 
 
-@pytest.mark.skipif(shutil.which("script") is None, reason="needs util-linux script for a pseudo-terminal")
+@pytest.mark.skipif(os.name != "posix", reason="needs a POSIX pseudo-terminal")
 def test_curses_screen_through_a_pseudo_terminal(tmp_path):
-    keys = ("sleep 1.5; printf j; sleep 0.3; printf ' '; sleep 0.3; printf c; sleep 0.4; printf y; sleep 0.8; printf '?'; sleep 0.4; printf '\\033'; sleep 0.3; printf 2; sleep 0.4; "
-            "printf v; sleep 0.3; printf j; sleep 0.3; printf y; sleep 0.5; printf ':tab history'; sleep 0.3; printf '\\n'; sleep 0.5; printf 7; sleep 0.5; printf q")
-    cmd = f"({keys}) | timeout 30 script -qfec '{sys.executable} {DASH} --fake --no-state --ascii --interval 0.5' /dev/null"
-    env = dict(os.environ, COLUMNS="150", LINES="45", TERM="xterm-256color", USER="alex")
-    r = subprocess.run(["bash", "-c", cmd], env=env, capture_output=True, cwd=tmp_path)
-    txt = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b[()][A-Za-z0-9]|\x1b[=>]|\r", "", r.stdout.decode("utf-8", "replace"))
-    assert r.returncode == 0, txt[-3000:]
-    assert "Cancel 1 job?" in txt and "12477369" in txt and "CANCELLING" in txt and "keys" in txt and "partitions" in txt and "Traceback" not in txt
-    assert "copied 2 lines" in txt and (tmp_path / "tower-exports" / "clipboard.txt").read_text().count("\n") == 2    # v, j, y on the cluster tab
-    assert "core-hours" in txt and "job series" in txt                                                                  # :tab history, then 7
+    import codecs
+    import select
+    import signal
+    import struct
+
+    pty = pytest.importorskip("pty")
+    fcntl = pytest.importorskip("fcntl")
+    termios = pytest.importorskip("termios")
+    pyte = pytest.importorskip("pyte")
+    config = tmp_path / "config.json"
+    # Check the exported payload independently of the host's clipboard tools.
+    config.write_text(json.dumps({"clipboard": {"osc52": False, "tools": False}}))
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 45, 150, 0, 0))
+    env = dict(os.environ, COLUMNS="150", LINES="45", TERM="xterm-256color", USER="alex",
+               XDG_CACHE_HOME=str(tmp_path / "cache"))
+    process = subprocess.Popen(
+        [sys.executable, DASH, "--fake", "--no-state", "--ascii", "--interval", "0.5",
+         "--config", str(config)],
+        env=env, cwd=tmp_path, stdin=slave, stdout=slave, stderr=slave,
+        start_new_session=True,
+    )
+    os.close(slave)
+    display = pyte.Screen(150, 45)
+    stream = pyte.Stream(display)
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
+    output = bytearray()
+    deadline = time.monotonic() + 30
+
+    def rendered():
+        return "\n".join(display.display)
+
+    def until(predicate, label, *, allow_exit=False):
+        while time.monotonic() < deadline:
+            if predicate():
+                return
+            if not allow_exit:
+                assert process.poll() is None, (label, process.returncode, rendered(), output[-3000:])
+            if select.select([master], [], [], .02)[0]:
+                try:
+                    data = os.read(master, 65536)
+                except OSError:
+                    continue
+                output.extend(data)
+                del output[:-512 * 1024]
+                stream.feed(decoder.decode(data))
+        pytest.fail(label + " timed out\n" + rendered() + "\n" + repr(output[-3000:]))
+
+    try:
+        # A page transition must be painted before its next action. Fixed
+        # sleeps did not establish that v/j/y followed the Cluster frame under
+        # suite load; stripping ANSI also loses cursor-addressed text.
+        until(lambda: "12477369" in rendered(), "Initial populated Jobs frame")
+        os.write(master, b"j c")
+        until(lambda: "Cancel 1 job?" in rendered(), "Cancellation confirmation")
+        assert "12477369" in rendered()
+        os.write(master, b"y")
+        until(lambda: "CANCELLING" in rendered(), "Cancellation feedback")
+        os.write(master, b"?")
+        until(lambda: "keys" in rendered(), "Keys help")
+        os.write(master, b"\x1b")
+        until(lambda: "Cancel 1 job?" not in rendered() and "keys" not in rendered(), "Help closed")
+        os.write(master, b"2")
+        until(lambda: "partitions" in rendered(), "Cluster frame")
+        os.write(master, b"v")
+        until(lambda: "Select rendered lines" in rendered(), "Rendered-line selection")
+        os.write(master, b"jy")
+        copied = tmp_path / "tower-exports" / "clipboard.txt"
+        until(lambda: copied.exists() and "copied 2 lines" in rendered(), "Two-line copy receipt")
+        assert copied.read_text().count("\n") == 2
+        os.write(master, b":tab history\r")
+        until(lambda: "core-hours" in rendered().lower(), "History summary")
+        os.write(master, b"7")
+        until(lambda: "job series" in rendered(), "Analytics frame")
+        os.write(master, b"q")
+        until(lambda: process.poll() is not None, "Normal shutdown", allow_exit=True)
+        assert process.returncode == 0, output[-3000:]
+        assert b"Traceback" not in output
+    finally:
+        if process.poll() is None:
+            try:
+                os.write(master, b"q")
+                process.wait(timeout=2)
+            except (OSError, subprocess.TimeoutExpired):
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=2)
+        os.close(master)
 
 
 # ------------------------------------------------------------------------------------------------ charts, selection, exports, palette, analytics
@@ -371,7 +454,7 @@ def test_selection_copy_and_exports(tmp_path):
     app.handle("space"); app.handle("J"); path_j = app.message.split()[-1]
     exported = Path(path_t).read_text()
     assert exported.splitlines()[0].startswith(" x  File  Edit  View  Help")
-    assert exported.splitlines()[1].startswith(" tower - alex") and "-- selected" in exported
+    assert exported.splitlines()[1].startswith(" Raven Light/unconfigured - alex") and "-- selected" in exported
     assert Path(path_c).read_text().splitlines()[0].startswith("id,name,part") and "12477369" in Path(path_c).read_text()
     js = json.loads(Path(path_j).read_text())
     assert js[0]["id"] == "12480001" and js[0]["job"]["name"] == "rb1-allrank" and len(js[0]["series"]) >= 3 and "live" in js[0]
@@ -652,7 +735,7 @@ def test_recording_and_replay_reproduce_the_session(tmp_path):
     env = dict(os.environ, COLUMNS="150", USER="nobody")
     r = subprocess.run([sys.executable, DASH, "--replay", p, "--paused", "--once", "--ascii", "--no-color", "--width", "150"], env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    assert "tower - alex" in r.stdout and "REPLAY" in r.stdout and "paused" in r.stdout and "12480001" in r.stdout
+    assert "Raven Light/slurm - alex" in r.stdout and "REPLAY" in r.stdout and "paused" in r.stdout and "12480001" in r.stdout
     assert time.strftime("%H:%M", time.localtime(rp.t0)) in r.stdout
     assert clock.now() == pytest.approx(time.time(), abs=2)          # the replay clock never leaks into the test process
 
@@ -764,7 +847,10 @@ def test_plugins_add_commands_flags_tabs_hooks_and_sources(tmp_path):
     assert r.returncode == 2 or r.returncode == 1                             # a missing --config is an error, as before
     cfgj = tmp_path / "c.json"
     cfgj.write_text(json.dumps({"plugins": [str(d)]}))
-    r = subprocess.run([sys.executable, DASH, "--fake", "--no-state", "--once", "--ascii", "--no-color", "--width", "160", "--config", str(cfgj)],
+    # Arbitrary in-process plugins belong to the explicit legacy library API.
+    # Public Raven launchers reject them until they have admission contracts.
+    legacy_entry = "from tower.cli import main; raise SystemExit(main())"
+    r = subprocess.run([sys.executable, "-c", legacy_entry, "--fake", "--no-state", "--once", "--ascii", "--no-color", "--width", "160", "--config", str(cfgj)],
                        env=dict(os.environ, USER="alex"), capture_output=True, text=True)
     assert r.returncode == 0 and "Hello" in r.stdout and "big" in r.stdout and "plugin broken failed" in r.stdout
 
@@ -946,7 +1032,8 @@ def test_cli_group_csv_and_cluster_once():
     r = subprocess.run([sys.executable, DASH, "--fake", "--csv", "--no-state", "--tab", "group"], env=env, capture_output=True, text=True)
     assert r.returncode == 0 and r.stdout.splitlines()[0].startswith("id,user,name") and "carol" in r.stdout and r.stdout.count("\n") == 11
     r = subprocess.run([sys.executable, DASH, "--fake", "--once", "--ascii", "--no-color", "--no-state", "--width", "170", "--tab", "cluster"], env=env, capture_output=True, text=True)
-    assert r.returncode == 0 and "queue weather" in r.stdout and "allocation of lab_01" in r.stdout
+    assert r.returncode == 0 and "partitions" in r.stdout and "fair share" in r.stdout
+    assert "queue weather" not in r.stdout and "would start in" not in r.stdout
     r = subprocess.run([sys.executable, DASH, "--fake", "--no-state", "--eval", "len(set(j.name for j in jobs))"], env=env, capture_output=True, text=True)
     assert r.stdout.strip() == "5"
 

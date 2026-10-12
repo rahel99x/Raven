@@ -129,10 +129,12 @@ def test_generated_batch_hook_executes_report_lifecycle_and_preserves_actual_fai
     hook.write_text("\n".join(result["data"]["hooks"]["batch"]) + "\n")
     binary = tmp_path / "bin"
     binary.mkdir()
-    # The generated hook uses the installed command contract, not a shell alias.
+    # Exercise the reporting library contract in an explicitly local test
+    # process. Managed tower additionally requires real job placement; an
+    # environment-only JobID fixture must not authorize that execution.
     import shlex
     executable = binary / "tower"
-    executable.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + ' -m tower "$@"\n')
+    executable.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " -c " + shlex.quote("from tower.cli import main; raise SystemExit(main())") + ' "$@"\n')
     executable.chmod(0o700)
     env = {key: value for key, value in os.environ.items() if not key.startswith(("SLURM_", "TOWER_"))}
     env.update(PATH=str(binary) + os.pathsep + env.get("PATH", ""), PYTHONPATH=str(Path(__file__).resolve().parents[1]), SLURM_JOB_ID="82")

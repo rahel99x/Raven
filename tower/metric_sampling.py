@@ -39,7 +39,8 @@ def interval(base, global_rate=1, metric_rate=1, *, source="", remote=False, fil
     if base == 0:
         return 0.0
     if source in NATIVE_SOURCES:
-        requested = min(poll_interval(global_rate), poll_interval(metric_rate, MAX_RATE))
+        baseline = source_interval(base, global_rate, source=source)
+        requested = baseline if metric_rate == 1 else min(baseline, poll_interval(metric_rate, MAX_RATE))
         floor = REMOTE_FILE_FLOOR if file and remote else SOURCE_FLOOR
         return max(floor, requested)
     baseline = (file_interval(base, global_rate, remote=remote) if file
@@ -192,9 +193,14 @@ def cadence(app, identity, rate=None):
             rate = max((entry.get("rate", 1) for key, entry in state["entries"].items()
                         if source(key) == collector and key[1] == identity[1] and key[4] == identity[4]
                         and entry.get("running")), default=1)
-        return interval(base, global_rate, rate, source=collector,
-                        file=collector == "trace",
-                        remote=bool(getattr(getattr(sampler, "files", None), "remote", False)))
+        value = interval(base, global_rate, rate, source=collector,
+                         file=collector == "trace",
+                         remote=bool(getattr(getattr(sampler, "files", None), "remote", False)))
+        collection = getattr(sampler, "collection", None) or cfg.get("raven", {}).get("collection")
+        if collection is not None:
+            from .raven_collection import interval as collection_interval
+            value = collection_interval(collection, collector, value)
+        return value
     hub = getattr(owner, "research", None)
     if rate is None:
         reader = getattr(hub, "sampling_interval", None)

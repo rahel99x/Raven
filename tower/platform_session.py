@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import threading
 import time
+import tempfile
 
 from . import evidence as E, site_policy as P
 from .shared_collection import SharedQueryCache
@@ -39,7 +40,7 @@ def read_operation(argv):
 
 
 class GovernedBackend:
-    def __init__(self, backend, policy, cache, scope, *, interval=None):
+    def __init__(self, backend, policy, cache, scope, *, interval=None, collection=None):
         self.inner = backend
         self.policy = P.validate(policy)
         self.cache = cache
@@ -52,6 +53,15 @@ class GovernedBackend:
                 "min_interval": .5, "status": "available",
                 "reason": "Tower backend supports these read commands; controller connectivity and site permissions remain command results."})
         self._last = threading.local()
+        self.collection = collection
+        self._temporary_cache = None
+        self.ledger = None
+        if collection is not None:
+            from .raven_collection import Ledger
+            self.ledger = Ledger(cache, scope, collection)
+            self.capabilities = P.capabilities({"schema": P.CAPABILITIES, "source": "slurm-cli",
+                "version": "raven-managed-cli/v1", "operations": list(self.policy["operations"]),
+                "min_interval": .001, "status": "available"})
 
     def __getattr__(self, name):
         return getattr(self.inner, name)
@@ -70,7 +80,30 @@ class GovernedBackend:
         return raw
 
     def _query(self, cmd, timeout, limit, cancel, *, fresh):
+        descriptor = None
+        if self.ledger is not None:
+            from .raven_collection import classify
+            descriptor = classify(cmd)
+            if descriptor is None:
+                raise CommandError("Raven collection: unclassified generated command is unavailable")
+            if not self.ledger.config.get("slurm_enabled", True) and descriptor.endpoint != "local":
+                raise CommandError("Raven collection: Slurm is unavailable in this site profile")
+            if not descriptor.read_only:
+                if not fresh:
+                    raise CommandError("Raven collection: generated step/probe/mutation requires an explicit reviewed action")
+                try:
+                    with self.ledger.admit(descriptor, cmd, validation=True):
+                        return self._execute(cmd, timeout, limit, cancel)
+                except RuntimeError as exc:
+                    from .raven_collection import Deferred
+                    if isinstance(exc, Deferred):
+                        raise
+                    raise CommandError(str(exc)) from exc
+                finally:
+                    self.acquisition.invalidate(self.scope)
         operation = read_operation(cmd)
+        if descriptor is not None:
+            operation = descriptor.family
         if operation is None:
             try:
                 return self._execute(cmd, timeout, limit, cancel)
@@ -86,14 +119,24 @@ class GovernedBackend:
         duration = min(timeout + 1., limits["max_duration"])
         if duration <= .1:
             raise CommandError("Site collection duration is too short for a scheduler read")
-        request = {"source": "slurm-cli", "operation": operation, "interval": max(self.interval, .5), "duration": duration,
+        requested_interval = max(self.interval, .5)
+        if descriptor is not None:
+            from .raven_collection import interval as collection_interval
+            requested_interval = .001 if fresh else collection_interval(self.ledger.config, descriptor.source, 0)
+            if descriptor.endpoint == "local":
+                requested_interval = 900.
+        request = {"source": "slurm-cli", "operation": operation, "interval": max(requested_interval, limits["min_interval"]), "duration": duration,
                    "max_bytes": min(limits["max_bytes"], 4 << 20), "max_records": limits["max_records"],
                    "allocation": None, "intrusive": False}
         query = {"request": request, "parameters": {"argv": list(cmd), "timeout": timeout, "output_limit": limit}}
         def load(stop):
             # Reuse native bounded local/SSH command handling. This runs on the
             # existing sampler/operation worker, never in an extra executor.
-            raw = self._execute(cmd, max(.01, duration - .1), min(limit, request["max_bytes"]), stop)
+            if self.ledger is not None:
+                with self.ledger.admit(descriptor, cmd, validation=fresh):
+                    raw = self._execute(cmd, max(.01, duration - .1), min(limit, request["max_bytes"]), stop)
+            else:
+                raw = self._execute(cmd, max(.01, duration - .1), min(limit, request["max_bytes"]), stop)
             if len(raw.splitlines()) > request["max_records"]:
                 raise ValueError("Scheduler read exceeded the site record budget")
             # Evidence strings are individually bounded to 64 KiB. Preserve
@@ -103,9 +146,18 @@ class GovernedBackend:
         try:
             result = self.acquisition.query(self.scope, query, load, self.policy, self.capabilities,
                                       read_only=True, cancel=cancel, fresh=fresh)
-        except (ValueError, TimeoutError, OSError) as exc:
+        except (ValueError, TimeoutError, OSError, RuntimeError) as exc:
+            if self.ledger is not None:
+                from .raven_collection import Deferred
+                if isinstance(exc, Deferred):
+                    raise
             raise CommandError("Governed collection: " + str(exc)) from exc
         self._last.receipt = {key: value for key, value in result.items() if key != "value"}
+        if descriptor is not None:
+            self._last.receipt["descriptor"] = {"endpoint": descriptor.endpoint, "family": descriptor.family,
+                "scope": self.scope, "freshness": "post-review" if fresh else "observation", "cost": descriptor.cost,
+                "max_response_bytes": request["max_bytes"], "deadline_seconds": duration, "cancellable": True,
+                "side_effect": "read-only"}
         raw = "".join(result["value"]["stdout_chunks"])
         if len(raw) > limit or len(raw.encode("utf-8")) > limit:
             raise CommandError("Command output exceeded the inspection limit")
@@ -123,12 +175,56 @@ class GovernedBackend:
         # Mutations always execute once through the actual connection and
         # invalidate cached observations, even if the action reports failure.
         try:
+            if self.ledger is not None:
+                from .raven_collection import classify
+                descriptor = classify(cmd)
+                if descriptor is None:
+                    return False, "Raven collection: unclassified generated action is unavailable"
+                if not self.ledger.config.get("slurm_enabled", True) and descriptor.endpoint != "local":
+                    return False, "Raven collection: Slurm is unavailable in this site profile"
+                try:
+                    with self.ledger.admit(descriptor, cmd, validation=True):
+                        from .slurm import Backend
+                        from .remote import SshBackend
+                        transport = self.inner
+                        seen = set()
+                        while getattr(transport, "inner", None) is not None and id(transport) not in seen:
+                            seen.add(id(transport))
+                            transport = transport.inner
+                        limit = min(4 << 20, self.ledger.config["max_response_bytes"])
+                        if type(transport) is Backend or type(transport) is SshBackend and transport.runner is SshBackend._run:
+                            result = True, self._execute(cmd, timeout, limit, None)
+                        else:
+                            result = self.inner.call(cmd, timeout)
+                        if len(str(result[1]).encode("utf-8")) > limit:
+                            raise CommandError("Action reply exceeded the admitted output budget")
+                        if not result[0]:
+                            raise CommandError(str(result[1]))
+                        return result
+                except (RuntimeError, CommandError) as exc:
+                    return False, str(exc)
             return self.inner.call(cmd, timeout)
         finally:
             self.acquisition.invalidate(self.scope)
 
     def invalidate(self):
         self.acquisition.invalidate(self.scope)
+
+    def close(self):
+        """Release synthetic state without closing another real subscriber."""
+        try:
+            close = getattr(self.inner, "close", None)
+            if callable(close):
+                close()
+        finally:
+            temporary = self._temporary_cache
+            if temporary is not None:
+                self.acquisition.broker.close(wait=False)
+                # A still-running fixture producer keeps the directory alive
+                # through its loader reference; its finalizer cleans up later.
+                if not self.acquisition.stats()["active"]:
+                    temporary.cleanup()
+                    self._temporary_cache = None
 
 
 def wrap_backend(backend, cfg, scope, state_dir):
@@ -138,22 +234,49 @@ def wrap_backend(backend, cfg, scope, state_dir):
     selects a private host-local cache directory. No network setup or packages
     are installed. An invalid explicitly configured policy fails visibly.
     """
-    if not cfg.get("site_policy"):
+    raven = cfg.get("raven", {}) or {}
+    collection = raven.get("collection") if isinstance(raven, dict) else None
+    if not cfg.get("site_policy") and collection is None:
         return backend
-    current, seen = backend, set()
+    from .record import ReplayBackend
+    current, seen, simulated = backend, set(), False
     while current is not None and id(current) not in seen:
         seen.add(id(current))
-        if isinstance(current, FakeBackend):
+        if isinstance(current, FakeBackend) and collection is None:
             return backend
+        simulated = simulated or isinstance(current, (FakeBackend, ReplayBackend))
         current = getattr(current, "inner", None)
     if isinstance(backend, GovernedBackend):
         return backend
     if not isinstance(scope, dict) or not scope:
         raise ValueError("Governed collection requires explicit connection identity")
-    policy = P.validate(_read(cfg["site_policy"]))
-    if not state_dir and not cfg.get("collection_cache_dir"):
+    if cfg.get("site_policy"):
+        policy = P.validate(_read(cfg["site_policy"]))
+    else:
+        from .raven_collection import settings
+        collection = settings(collection)
+        policy = P.validate({"schema": P.SCHEMA, "id": "raven-managed-user-host", "revision": "1",
+            "sources": ["slurm-cli"], "operations": ["queue", "accounting", "nodes", "statistics", "job-detail",
+            "hostnames", "configuration", "shares", "budget-report", "associations"],
+            "limits": {"min_interval": .001, "max_duration": 30., "max_bytes": collection["max_response_bytes"],
+                       "max_records": collection["max_response_records"], "max_inflight": 2},
+            "allocation_required": False, "allow_intrusive": False})
+    if collection is None and not state_dir and not cfg.get("collection_cache_dir"):
         raise ValueError("Governed collection requires a private host-local cache directory")
     from .shared_collection import _host
-    directory = cfg.get("collection_cache_dir") or str(Path(state_dir) / "collection-cache" / _host()[:24])
-    cache = SharedQueryCache(directory, max_bytes=min(64 << 20, max(policy["limits"]["max_bytes"], 16 << 20)))
-    return GovernedBackend(backend, policy, cache, scope, interval=cfg.get("collection_interval"))
+    if collection is not None:
+        from .raven_collection import cache_directory
+        directory = cache_directory(cfg.get("collection_cache_dir", ""))
+    else:
+        directory = cfg.get("collection_cache_dir") or str(Path(state_dir) / "collection-cache" / _host()[:24])
+    temporary = tempfile.TemporaryDirectory(prefix="raven-simulation-", dir="/tmp") if simulated and collection is not None else None
+    try:
+        cache = SharedQueryCache(temporary.name if temporary else directory,
+                                 max_bytes=min(64 << 20, max(policy["limits"]["max_bytes"], 16 << 20)))
+        governed = GovernedBackend(backend, policy, cache, scope, interval=cfg.get("collection_interval"), collection=collection)
+        governed._temporary_cache = temporary
+        return governed
+    except BaseException:
+        if temporary is not None:
+            temporary.cleanup()
+        raise

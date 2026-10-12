@@ -508,7 +508,7 @@ def _modal_controls(app, rows, width, height, spans):
                    "execution": "execution_state", "columns": "table_state",
                    "telemetry": "telemetry_state", "shell_checks": "shell_checks_state",
                    "arraymap": "array_manifest_state", "gpu_provider": "gpu_provider_state",
-                   "operations": "ops_state"}
+                   "operations": "ops_state", "raven": "raven_ui_state"}
     # The log workbench uses additional mode names; only current modal data may
     # contribute controls, never a previous hidden panel's registries.
     state_name = state_names.get(mode)

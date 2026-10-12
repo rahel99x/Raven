@@ -1,0 +1,175 @@
+{
+  "schema": "raven.benchmark-harness/v1",
+  "harness": "/workspace/Slurm-Tower/scripts/benchmark_raven_resources.py",
+  "sha256": "cdc61a99b4d2664507d663065dc6f11a7eb0f4b8909df4d99a01debf72227a65",
+  "resource_runs": [
+    {
+      "path": "/tmp/raven-resources-baseline-monitor-final.json",
+      "stage": "baseline",
+      "sha256": "03b632f30fe04691296d06e411ed39e3d2d5048c3584d4d6eda7b64e2168ee6f",
+      "source_sha256": "97624c49a5e2e19543b523685ed63bcd3a8a866a3c719605a799437483a7c1b8"
+    },
+    {
+      "path": "/tmp/raven-resources-baseline-idle-final.json",
+      "stage": "baseline",
+      "sha256": "2d11ab35f760541b7310bc866a6a8a1ce1c581d2325b7b33f6eec094ae8f6773",
+      "source_sha256": "97624c49a5e2e19543b523685ed63bcd3a8a866a3c719605a799437483a7c1b8"
+    },
+    {
+      "path": "/tmp/raven-resources-light-monitor-final.json",
+      "stage": "pre-optimization",
+      "sha256": "51a122c5162f3cf58b8ae8940277af4e538d9ebaa4ab34c41c2f56531b121079",
+      "source_sha256": "f27f5661b24e069663371fbaf55162b878b0ee572258bb1708f3f7b7066f8a64"
+    },
+    {
+      "path": "/tmp/raven-resources-light-monitor-quiet-check.json",
+      "stage": "post-quiet-cache-short-diagnostic",
+      "qualification": false,
+      "sha256": "794cc94563ead1d8ac66548eb881130890a8f7b0c0de707b4e7d5a27a610060f",
+      "source_sha256": "c45af5e2adfa244dd82ece5db8d2abb5232abc936d177263ea53bc272c25e9d9"
+    },
+    {
+      "path": "/tmp/raven-resources-light-idle-quiet-check.json",
+      "stage": "post-quiet-cache-short-diagnostic",
+      "qualification": false,
+      "sha256": "425a84105d6c6288eb62eeaa7406094825a06ef3add384b544ccc998bff48f40",
+      "source_sha256": "c45af5e2adfa244dd82ece5db8d2abb5232abc936d177263ea53bc272c25e9d9"
+    },
+    {
+      "path": "/tmp/raven-resources-light-monitor-final-optimized.json",
+      "stage": "post-quiet-cache-final",
+      "sha256": "1b38c2a0e7a387a3079db44d2d67b59a228362c0f00fbc57adb9c43f558d2651",
+      "source_sha256": "6ed9768c4bb8e0f9d2b6b1282aa2ea221e9048ff066ca388a81cd9a762a80270"
+    },
+    {
+      "path": "/tmp/raven-resources-light-idle-final-optimized.json",
+      "stage": "post-quiet-cache-final",
+      "sha256": "2f49d0ac1d3328652490d6e4324ca949dff8b2bdb47fe9f54a4a1af1f051d3a6",
+      "source_sha256": "6ed9768c4bb8e0f9d2b6b1282aa2ea221e9048ff066ca388a81cd9a762a80270"
+    }
+  ],
+  "pointer_harness": {
+    "path": "/workspace/Slurm-Tower/scripts/benchmark_sustained_pointer.py",
+    "sha256": "f8a46f022e1b7e5589fbab2798febdf735c3d3cbfcfdecf1ee055d4a9201e98f",
+    "fixture": "exact deterministic six- or 100-job queue, verified by retained count"
+  },
+  "pointer_runs": [
+    {
+      "path": "/tmp/raven-pointer-managed-6.json",
+      "sha256": "67721db37e906ebf277417b25c9583b0c8cc73dafbf404840f42657f2489edf0",
+      "source_hash": "7b567550cdf8c657ce64704ed74bbf5df8b99fd2278b0515c477c60ba904f3e9",
+      "stage": "final-managed",
+      "mode": "multi",
+      "switch": false
+    },
+    {
+      "path": "/tmp/raven-pointer-managed-100.json",
+      "sha256": "191dde026da3ac486aa6ef235eebd6a1c323b3c3636aed0a18cb95124bb06e64",
+      "source_hash": "7b567550cdf8c657ce64704ed74bbf5df8b99fd2278b0515c477c60ba904f3e9",
+      "stage": "final-managed",
+      "mode": "multi",
+      "switch": false
+    },
+    {
+      "path": "/tmp/raven-pointer-managed-single-6.json",
+      "sha256": "0f20722660cf03d014bb216be24090105e73e6a8ce52a09dbfccbfe3096360ff",
+      "source_hash": "7b567550cdf8c657ce64704ed74bbf5df8b99fd2278b0515c477c60ba904f3e9",
+      "stage": "final-managed",
+      "mode": "single",
+      "switch": false
+    },
+    {
+      "path": "/tmp/raven-pointer-managed-single-100.json",
+      "sha256": "e396c288fe0b84c921227de25162595a7ccdf0ef80fac0b531d9d675229b38fa",
+      "source_hash": "7b567550cdf8c657ce64704ed74bbf5df8b99fd2278b0515c477c60ba904f3e9",
+      "stage": "final-managed",
+      "mode": "single",
+      "switch": false
+    },
+    {
+      "path": "/tmp/raven-pointer-managed-switch-100.json",
+      "sha256": "862a5760013b001a22e327ed3ab7b7451f3b16c09de13a135465d012572d45c1",
+      "source_hash": "7b567550cdf8c657ce64704ed74bbf5df8b99fd2278b0515c477c60ba904f3e9",
+      "stage": "final-managed",
+      "mode": "multi",
+      "switch": true
+    }
+  ],
+  "diagnostics": [
+    {
+      "path": "/tmp/raven-idle-cprofile-process-clock-diagnostic.json",
+      "profile": "/tmp/raven-idle-diagnostic-process-clock.pstats",
+      "summary": "/tmp/raven-idle-cprofile-process-clock-summary.txt",
+      "qualification": false,
+      "scope": "Instrumented process CPU timer; startup excluded, background overlap possible. Call times include profiler overhead."
+    }
+  ],
+  "harness_tests": {
+    "python": "3.12.14",
+    "command": ".venv/bin/python -m pytest -q tests/test_sustained_pointer_benchmark.py tests/test_benchmark_raven_resources.py",
+    "result": "64 passed in 0.95s"
+  },
+  "published_artifacts": [
+    {
+      "path": "docs/benchmarks/7.0.0-baseline-idle.json",
+      "sha256": "2d11ab35f760541b7310bc866a6a8a1ce1c581d2325b7b33f6eec094ae8f6773"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-baseline-monitor.json",
+      "sha256": "03b632f30fe04691296d06e411ed39e3d2d5048c3584d4d6eda7b64e2168ee6f"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-idle-profile-raw.json",
+      "sha256": "c28f0cc5697bb1c6915146445669ba4e41a075780eb1893d30c16f8c4e8143a5"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-idle-profile.json",
+      "sha256": "f3d769221d9edbfc935b7e1a3d6a4702f660532b29e7272e6db798eaa686de2b"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-light-idle-short-diagnostic.json",
+      "sha256": "425a84105d6c6288eb62eeaa7406094825a06ef3add384b544ccc998bff48f40"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-light-idle.json",
+      "sha256": "2f49d0ac1d3328652490d6e4324ca949dff8b2bdb47fe9f54a4a1af1f051d3a6"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-light-monitor-before-cache-fix.json",
+      "sha256": "51a122c5162f3cf58b8ae8940277af4e538d9ebaa4ab34c41c2f56531b121079"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-light-monitor-short-diagnostic.json",
+      "sha256": "794cc94563ead1d8ac66548eb881130890a8f7b0c0de707b4e7d5a27a610060f"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-light-monitor.json",
+      "sha256": "1b38c2a0e7a387a3079db44d2d67b59a228362c0f00fbc57adb9c43f558d2651"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-pointer-multi-100.json",
+      "sha256": "191dde026da3ac486aa6ef235eebd6a1c323b3c3636aed0a18cb95124bb06e64"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-pointer-multi-6.json",
+      "sha256": "67721db37e906ebf277417b25c9583b0c8cc73dafbf404840f42657f2489edf0"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-pointer-single-100.json",
+      "sha256": "e396c288fe0b84c921227de25162595a7ccdf0ef80fac0b531d9d675229b38fa"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-pointer-single-6.json",
+      "sha256": "0f20722660cf03d014bb216be24090105e73e6a8ce52a09dbfccbfe3096360ff"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-pointer-switch-100.json",
+      "sha256": "862a5760013b001a22e327ed3ab7b7451f3b16c09de13a135465d012572d45c1"
+    },
+    {
+      "path": "docs/benchmarks/7.0.0-idle-profile.txt",
+      "sha256": "5f15dd02b5f054ac9e12b917b5cb81da5201a39dad65a3d7217a8eef6b9c2fe3"
+    }
+  ],
+  "source_hash_note": "Resource and pointer harnesses use different filename delimiters when hashing the same application modules; their digest strings are not directly comparable."
+}

@@ -1,5 +1,28 @@
 # Changelog
 
+## 7.0.0 — Project Raven
+
+- Fix the intermittent extra `D` beside Details and use the same focus marker
+  for Details and Terminal. Preserve scroll controls and narrow hit regions.
+- Add minimal `ravenl` and `ravenh` launchers, explicit desktop/Slurm profiles,
+  versioned policy resolution, explain/doctor commands, and legacy adaptation.
+- Add a persistent Light interface with reviewed allocation controls, an isolated
+  allocation helper, verified worker placement, cancellation and ownership receipts.
+- Add bounded worker messages, task admission, result receipts and acknowledgements,
+  explicit resource enforcement, and execution contracts for advanced workflows.
+- Govern generated collection through source floors, rolling endpoint budgets,
+  private host-local sharing, jitter, demand, idle backoff, and recovery limits.
+  Keep compute capacity separate from polling permission.
+- Bound retained logs, job/history rows, series, preparation caches, persistence
+  queues, and owned archive storage. Report partial coverage instead of fabricating
+  departures or silently removing evidence.
+- Add restartable configuration migration and rollback, low-frequency diagnostics,
+  offline cohort qualification, deployment guides, and explicit site-test gaps.
+- Fix virtual-environment creation for relocatable Python installations on POSIX.
+- Reuse unchanged Jobs documents between publications and whole-second label
+  updates. Preserve input feedback, progress animation, and completion processing.
+
+
 ## 6.3.0
 
 - Add optional Details/Terminal panes to Jobs, History, Analytics, Dependencies,

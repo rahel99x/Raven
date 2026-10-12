@@ -54,6 +54,7 @@ class App:
         self.gpu = bool(cfg["gpu_sampling"])
         self.bell = bool(cfg["bell"])
         self.message, self.message_t = "", 0.0
+        self.ui_publication_revision = 0
         self.command_ok = True
         self.selected_id: Optional[str] = None
         self.visible_ids: List[str] = []
@@ -225,7 +226,12 @@ class App:
         if self.message and time.time() - self.message_t > 6:
             self.message = ""
         if self.research:
+            pending=getattr(self.research,'pending',None)
             self.research.poll_task()
+            if pending is not None and getattr(self.research,'pending',None) is not pending:
+                # A command callback can publish pane state without a message
+                # or scheduler update. Retained documents must still refresh.
+                self.ui_publication_revision += 1
         if self.sampler:
             inspector = self.mode == "analysis" and getattr(self, "analysis_state", {}).get("modal") == "inspect"
             detail_mode = self.mode == "details" or inspector
@@ -245,6 +251,10 @@ class App:
                             and panel.get("analytics_view", "job") == "job")
             self.sampler.select_trace(self.selected_id if inline_trace else
                                       self.analytics_job if (self.tab == "analytics" and self.analytics_view == "job") else None)
+            demand = getattr(self.sampler, "set_collection_demand", None)
+            if demand is not None:
+                demand(self.tab, self.analytics_job if self.tab == "analytics" else jid,
+                       sources=("live", "trace") if inline_trace else ())
         workbench.tick(self)
 
     @property

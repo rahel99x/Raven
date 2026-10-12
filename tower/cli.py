@@ -50,6 +50,8 @@ class Session:
         self.backend, self.files, self.api = backend, files, api
 
     def close(self):
+        from .raven_diagnostics import close as close_diagnostics
+        close_diagnostics(self.app)
         from .terminal_ui import shutdown as shutdown_terminal
         shutdown_terminal(self.app)
         from .trace_ui import cancel as cancel_trace
@@ -70,6 +72,8 @@ class Session:
         if self.app.logs.catalog:
             self.app.logs.catalog.close()
         self.sampler.shutdown()
+        from .raven_ui import shutdown as shutdown_allocation
+        shutdown_allocation(self.app)
         for consumer in (getattr(self.sampler, "on_event", None), getattr(self.store, "alerts", None)):
             close = getattr(consumer, "close", None)
             if callable(close):
@@ -129,7 +133,7 @@ def forecast_scope(backend, cfg: Config, user: str):
     """Separate queue evidence by the actual connection, profile, and owner."""
     import hashlib
     import socket
-    from .record import RecordingBackend
+    from .record import RecordingBackend, ReplayBackend
     from .platform_session import GovernedBackend
     while isinstance(backend, (RecordingBackend, GovernedBackend)):
         backend = backend.inner
@@ -144,8 +148,16 @@ def forecast_scope(backend, cfg: Config, user: str):
         host, kind, ssh_user, options = socket.gethostname(), "local", "", ""
     if not host:
         return None
-    return dict(backend=kind, host=host, profile=cfg.profile_name, uid=uid,
-                user=user, ssh_user=ssh_user, ssh_options_sha256=options)
+    scope = dict(backend=kind, host=host, profile=cfg.profile_name, uid=uid,
+                 user=user, ssh_user=ssh_user, ssh_options_sha256=options)
+    if cfg.get("raven", {}).get("managed") and isinstance(backend, (FakeBackend, ReplayBackend)):
+        # Simulations must never publish into the real connection's cache.
+        # Each independent fixture/replay owns its clock and mutable answers.
+        if not hasattr(backend, "_raven_fixture_identity"):
+            backend._raven_fixture_identity = f"{os.getpid()}:{id(backend)}:{time.monotonic_ns()}"
+        scope.update(backend="demo" if isinstance(backend, FakeBackend) else "replay",
+                     fixture=backend._raven_fixture_identity)
+    return scope
 
 
 def state_namespace(cfg: Config) -> str:
@@ -159,7 +171,7 @@ def state_namespace(cfg: Config) -> str:
 def scoped_state_dir(backend, cfg: Config, user: str) -> str:
     """Keep opt-in connection state separate without querying the scheduler."""
     namespace = state_namespace(cfg)
-    base = state_dir()
+    base = cfg.get("raven", {}).get("storage", {}).get("state_dir") or state_dir()
     if not namespace:
         return base
     context = forecast_scope(backend, cfg, user)
@@ -171,8 +183,10 @@ def scoped_state_dir(backend, cfg: Config, user: str) -> str:
     return os.path.join(base, "profiles", namespace, digest)
 
 
-def build(args, cfg: Config) -> Session:
+def build(args, cfg: Config, *, raven_allocation=None) -> Session:
     state_namespace(cfg)
+    raven = cfg.get("raven", {})
+    managed = raven.get("managed") is True
     worker_mode = getattr(args, "workers", None) or cfg.get("worker_mode", "multi")
     if worker_mode not in ("single", "multi"):
         raise ValueError("worker_mode must be single or multi")
@@ -189,27 +203,61 @@ def build(args, cfg: Config) -> Session:
     user = args.user or cfg["user"] or os.environ.get("USER", "")
     if args.fake and not user:
         user = "alex"
-    backend, files, replay, user = make_backend(args, cfg, user)
+    shared_backend = None if args.fake or args.replay else getattr(raven_allocation, "collection_backend", None)
+    if shared_backend is not None and not (args.fake or args.replay):
+        backend, replay = shared_backend, None
+        transport = backend
+        while getattr(transport, "inner", None) is not None:
+            transport = transport.inner
+        files = RemoteFiles(transport, timeout=cfg["timeouts"]["command"]) if isinstance(transport, SshBackend) else LocalFiles()
+        record = args.record or cfg["record"]
+        if record:
+            from .record import RecordingBackend
+            # Record at the transport, below the existing owner. This retains
+            # exact admission and does not create a second connection/cache.
+            shared_backend.inner = RecordingBackend(shared_backend.inner, os.path.expanduser(record),
+                                                    meta=dict(user=user, host=cfg["host"], profile=cfg.profile_name))
+    else:
+        backend, files, replay, user = make_backend(args, cfg, user)
     sdir = None if (args.no_state or args.fake or args.replay) else scoped_state_dir(backend, cfg, user)
-    if not (args.fake or args.replay):
+    if (managed or not (args.fake or args.replay)) and shared_backend is None:
         from .platform_session import wrap_backend
         backend = wrap_backend(backend, cfg, forecast_scope(backend, cfg, user), sdir)
+    if managed:
+        from .raven_collection import wrap_files, make_placement_verifier
+        files = wrap_files(files, backend)
+        if raven_allocation is None:
+            from .raven_allocation import AllocationManager
+            policy = {key: value for key, value in raven.items() if key != "managed"}
+            raven_allocation = AllocationManager(policy)
+        if getattr(backend, "ledger", None) is not None:
+            raven_allocation.collection_backend = backend
+            raven_allocation.set_placement_verifier(make_placement_verifier(backend))
     slurm = Slurm(backend, user, timeout=cfg["timeouts"]["command"], gpu_timeout=cfg["timeouts"]["gpu"], action_timeout=cfg["timeouts"]["action"],
                   gpu_provider=cfg.get("gpu_provider", "auto"))
-    store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]))
+    if managed:
+        from .raven_limits import LightLimits
+        light_limits = LightLimits(raven["resources"]["light"], sdir)
+        store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]), raven_limits=light_limits)
+    else:
+        store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]))
     if args.interval:
         cfg.set("intervals.jobs", args.interval)
         cfg.ui_locked_settings = set(getattr(cfg, "ui_locked_settings", ())) | {"intervals.jobs"}
     intervals = dict(cfg["intervals"])
     bell_fn = (lambda: sys.stdout.write("\a")) if args.watch else None
     from .worker_scheduler import WorkerScheduler
-    governor = WorkerScheduler(mode=worker_mode)
+    limits = raven.get("resources", {}).get("light", {}) if managed else {}
+    governor = WorkerScheduler(mode=worker_mode, workers=limits.get("max_workers", 4),
+                               max_queue=limits.get("max_worker_queue", 512),
+                               aggregate_limit=limits.get("max_workers") if managed else None)
     notifier = Notifier(cfg["notify"]["command"], cfg["notify"]["events"], bell=bell_fn, bell_kinds=("started",) if (args.bell or cfg["bell"]) else (), worker_scheduler=governor)
     sampler = Sampler(slurm, store, intervals, cfg["gpu_types"], history_days=args.days or cfg["history_days"], account=args.account or cfg["account"],
                       gpu_sampling=not args.no_gpu and cfg["gpu_sampling"], on_event=notifier, weather=bool(cfg["weather"]), probes=cfg["weather_probes"],
-                      budget=bool(cfg["budget"]), files=files, worker_scheduler=governor)
+                      budget=bool(cfg["budget"]), files=files, worker_scheduler=governor,
+                      collection=({**raven["collection"], "jitter_fraction": 0.} if args.fake or args.replay else raven["collection"]) if managed else None)
     api = None
-    if not args.no_plugins:
+    if not args.no_plugins and not managed:
         api = plugins.load(plugins.discover(cfg.path, cfg["plugins"]))
         for name, interval, fn in api.sources:
             sampler.add_source(name, interval, fn)
@@ -222,6 +270,9 @@ def build(args, cfg: Config) -> Session:
     for i, expr in enumerate(args.alert or []):
         rules.append(dict(name=f"alert {i + 1}", when=expr, actions=["bell", "event"], every=600))
     store.alerts = AlertEngine(rules, store, user=user, notify=notifier, bell=bell_fn, worker_scheduler=governor)
+    if managed and sdir is not None and not any(os.path.lexists(os.path.join(sdir, name)) for name in ("ui.json", "ui.json.bak")):
+        from .raven_migration import import_ui
+        store.raven_ui_import = import_ui(raven["storage"]["state_dir"], forecast_scope(backend, cfg, user))
     ascii_ = ascii_mode(args, cfg)
     views = Views(Glyphs(ascii_), cfg, files=files, plugins=api)
     app = App(store, sampler, actions, cfg, user, ascii_=ascii_, interactive=not (args.once or args.json or args.csv or args.watch or args.run or args.eval or args.wait_for or args.report))
@@ -239,6 +290,16 @@ def build(args, cfg: Config) -> Session:
     from .research import ResearchHub
     app.research = ResearchHub(cfg, files, demo=args.fake, slurm=slurm, worker_scheduler=governor,
                               settings={k: getattr(args, k) for k in ("metrics_file", "contract", "workdir", "passport", "planning_file")})
+    if managed:
+        from .raven_ui import bind as bind_allocation
+        from .raven_execution import bind as bind_execution
+        bind_allocation(app, raven_allocation)
+        bind_execution(app, raven_allocation)
+        from .raven_limits import bind as bind_limits
+        app.raven_limits = light_limits
+        bind_limits(app, store=store, views=views, logs=app.logs)
+        from .raven_diagnostics import bind as bind_diagnostics
+        bind_diagnostics(app)
     if args.rate is not None or args.interval:
         from .refresh_rate import set_multiplier
         set_multiplier(app, requested_rate)
@@ -285,15 +346,38 @@ def build(args, cfg: Config) -> Session:
     return Session(user, store, sampler, actions, views, app, backend, files, api)
 
 
-def settle(s: Session, tab: str = None):
+def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selected_job=None):
     """One sampling round plus the details of the selected job: what a non-interactive run needs before it renders."""
+    demand = getattr(s.sampler, "set_collection_demand", None)
+    managed = getattr(s.sampler, "collection", None) is not None
+    sources = tuple(dict.fromkeys((*sources, *(("nodes", "partitions", "share", "account", "live") if full else ()))))
+    deadline = time.monotonic() + 6.0
+    if demand is not None:
+        demand(tab or s.app.tab, selected_job or s.app.selected_id, sources=sources)
+    if managed:
+        s.sampler.prime_collection_snapshot()
     s.sampler.round(wait=True)
     s.app.tab = "jobs"
     s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)     # settles the selected job
     if s.app.selected_id:
         s.sampler.want_detail = s.app.selected_id
-    s.sampler.last_run["details"] = s.sampler.last_run["account"] = 0.0
+    if managed:
+        demand(tab or "jobs", selected_job or s.app.selected_id, sources=sources)
+        s.sampler.prime_collection_snapshot()
+    else:
+        s.sampler.last_run["details"] = s.sampler.last_run["account"] = 0.0
     s.sampler.round(wait=True)
+    if managed:
+        # Honor short admission retry hints within the snapshot's wait budget.
+        # Never reset source clocks, endpoint quotas or circuit state.
+        while (pending := tuple(s.sampler._collection_deferred)):
+            due = min(s.sampler._collection_not_before.get(name, 0.) for name in pending)
+            delay = max(0., due - time.time()) + .02
+            if time.monotonic() + delay <= deadline:
+                time.sleep(delay)
+                s.sampler.round(wait=True)
+            else:
+                break
     from .project_ui import settle as settle_project
     settle_project(s.app, s.store.snapshot())
     if tab:
@@ -306,7 +390,30 @@ def scripted(args, s: Session) -> int:
     """--run, --eval and --wait-for: no screen, an exit code."""
     app = s.app
     if args.run:
-        settle(s, args.tab)
+        advised, target = False, None
+        try:
+            words = shlex.split(args.run)
+            matches = [command for command in app.commands() if words and command.startswith(words[0])]
+            if words and (words[0] == "resubmit" or matches == ["resubmit"]):
+                from .resubmit import parse_override_args
+                _, identifiers, switches = parse_override_args(words[1:])
+                advised = "advised" in switches
+                target = identifiers[0] if identifiers else None
+        except ValueError:
+            pass  # The normal command handler presents its parsing error.
+        settle(s, args.tab, sources=("live",) if advised else (), selected_job=target if advised else None)
+        if advised:
+            target = target or app.selected_id
+            job = s.store.job(target) if target else None
+            if job is not None and not job.pending:
+                live = s.store.snapshot()["live"].get(target)
+                maximum_age = max(5., s.sampler.effective_interval("live") * 2)
+                measured = live is not None and any(
+                    value is not None and math.isfinite(value) and value >= 0
+                    for value in (live.cpu_time, live.rss, live.avg, live.rate))
+                if not measured or not 0 <= clock.now() - live.t <= maximum_age:
+                    print(f"resubmit: current live advice is unavailable for {target}; no submission was sent.")
+                    return 1
         app.tick()
         jobs = []
         app.run_command(args.run)
@@ -513,6 +620,11 @@ def gpu_check(args, cfg):
         user = args.user or cfg["user"] or os.environ.get("USER", "")
         backend, files, replay, user = make_backend(diagnostic_args, diagnostic_cfg, user)
         location = "" if args.no_state or args.fake or args.replay else scoped_state_dir(backend, cfg, user)
+        if cfg.get("raven", {}).get("managed"):
+            from .platform_session import wrap_backend
+            from .raven_collection import wrap_files
+            backend = wrap_backend(backend, cfg, forecast_scope(backend, cfg, user), location)
+            files = wrap_files(files, backend)
         result = diagnose(cfg, backend, files, user=user, job_id=args.gpu_check,
                           no_gpu=args.no_gpu, state_path=location, no_state=args.no_state)
         if args.fake:
@@ -537,7 +649,46 @@ def gpu_check(args, cfg):
         clock.reset()
 
 
-def main(argv=None):
+def main(argv=None, *, raven=None, raven_allocation=None):
+    if raven is None:
+        return _dispatch_main(argv)
+    from .raven_execution import configure_process, process_router, reset_process, cli_admission, needs_job_local
+    previous = process_router()
+    from .raven_config import to_tower_config
+    owned_manager = raven_allocation is None
+    if owned_manager:
+        from .raven_allocation import AllocationManager
+        raven_allocation = AllocationManager(raven)
+    router = configure_process(to_tower_config(raven)["raven"], raven_allocation)
+    driver_backend = None
+    try:
+        arguments = list(sys.argv[1:] if argv is None else argv)
+        if needs_job_local(arguments):
+            if getattr(raven_allocation, "collection_backend", None) is None:
+                from .raven_launch import configure_placement
+                configure_placement(raven, raven_allocation)
+                driver_backend = raven_allocation.collection_backend
+            router.source_backend = raven_allocation.collection_backend
+        unavailable = cli_admission(arguments)
+        if unavailable is not None:
+            print(json.dumps(unavailable, indent=2, allow_nan=False))
+            return 3
+        return _dispatch_main(arguments, raven=raven, raven_allocation=raven_allocation)
+    finally:
+        try:
+            if owned_manager:
+                raven_allocation.shutdown()
+        finally:
+            try:
+                if driver_backend is not None:
+                    close = getattr(driver_backend, "close", None)
+                    if close is not None:
+                        close()
+            finally:
+                reset_process(previous)
+
+
+def _dispatch_main(argv=None, *, raven=None, raven_allocation=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "terminal":
         if argv[1:2] == ["selftest"]:
@@ -562,14 +713,14 @@ def main(argv=None):
         from .ui_trace import capture, TraceError
         try:
             with capture(args.ui_trace) as trace:
-                return _main(args, trace)
+                return _main(args, trace) if raven is None else _main(args, trace, raven=raven, raven_allocation=raven_allocation)
         except TraceError as exc:
             print(f"tower: {exc}", file=sys.stderr)
             return 1
-    return _main(args)
+    return _main(args) if raven is None else _main(args, raven=raven, raven_allocation=raven_allocation)
 
 
-def _main(args, ui_trace=None):
+def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
     if args.write_config:
         path = default_path() if sys.version_info >= (3, 11) else default_path()[:-5] + ".json"
         try:
@@ -579,7 +730,38 @@ def _main(args, ui_trace=None):
             return 1
         return 0
     try:
-        cfg0 = Config.load(args.config)
+        if raven is None:
+            cfg0 = Config.load(args.config)
+        else:
+            from .raven_config import to_tower_config, merge as merge_raven_preferences
+            legacy = {}
+            if raven.legacy_source:
+                original = Config.load(raven.legacy_source)
+                if raven.legacy_profile:
+                    original = original.profile(raven.legacy_profile)
+                state_namespace(original)
+                legacy = original.data
+            cfg0 = Config(legacy)
+            for key, value in to_tower_config(raven).items():
+                # These are partial preference overlays, not replacements for
+                # shell argv, scrollback, or layout settings from the source.
+                # Governed caps win; unrelated native preferences survive.
+                if key in ("terminal", "workspace") and isinstance(cfg0.get(key), dict):
+                    if key == "terminal":
+                        requested = cfg0.get(key).get("max_sessions")
+                        if type(requested) is int and requested >= 1:
+                            value = {**value, "max_sessions": min(requested, value["max_sessions"])}
+                    value = merge_raven_preferences(cfg0.get(key), value)
+                cfg0.set(key, value)
+            cfg0.set("raven.managed", True)
+            cfg0.path = raven.source or ""
+            cfg0.profile_name = raven.data["profile"]
+            if args.host and args.host != cfg0["host"]:
+                raise ValueError("Select the Raven connection with --site/--config before startup; --host cannot retarget an admitted session.")
+            if args.ssh_user and args.ssh_user != cfg0["ssh_user"]:
+                raise ValueError("The SSH user must match the selected Raven connection.")
+            if args.profile:
+                raise ValueError("Use --site for Raven profiles; legacy --profile cannot override governed settings.")
     except (OSError, ValueError, RuntimeError, TypeError) as exc:
         print(f"tower: configuration: {exc}", file=sys.stderr)
         return 1
@@ -594,6 +776,14 @@ def _main(args, ui_trace=None):
             cfg.set("color", False)
             cfg.ui_locked_settings = set(getattr(cfg, "ui_locked_settings", ())) | {"color"}
         if args.doctor:
+            if raven is not None and raven.data["site"]["kind"] == "desktop" and not args.fake:
+                from .raven_config import doctor as raven_doctor
+                result = raven_doctor(raven)
+                if args.json:
+                    print(json.dumps(result, indent=2, allow_nan=False))
+                else:
+                    print("Project Raven / standalone desktop environment\nPrerequisites ready. Slurm is not required.\n" + result["qualification"])
+                return 0
             from .doctor import diagnose, render
             result = diagnose(cfg, fake=args.fake, host=args.host, ssh_user=args.ssh_user)
             print(render(result, as_json=args.json))
@@ -606,7 +796,7 @@ def _main(args, ui_trace=None):
             if code is not None:
                 return code
         try:
-            s = build(args, cfg)
+            s = build(args, cfg) if raven is None else build(args, cfg, raven_allocation=raven_allocation)
         except (ValueError, OSError, TypeError) as exc:
             print(f"tower: {exc}", file=sys.stderr)
             return 1
@@ -619,7 +809,7 @@ def _main(args, ui_trace=None):
             if args.run or args.eval or args.wait_for:
                 return scripted(args, s)
             if args.once or args.json or args.csv or args.report:
-                settle(s, args.tab)
+                settle(s, args.tab, full=bool(args.json))
                 if args.report:
                     from . import report
                     app.tick()
@@ -646,13 +836,18 @@ def _main(args, ui_trace=None):
             sampler.start()
             try:
                 if args.watch or not sys.stdout.isatty():
-                    screen.run_watch(app, views, sampler, store, actions, cfg, interval=max(0.5, sampler.effective_interval("jobs")), color=color)
+                    # Painting a clock/status snapshot does not fetch Slurm.
+                    # Keep watch readable even under a slow collection floor.
+                    screen.run_watch(app, views, sampler, store, actions, cfg, interval=max(0.5, min(1., sampler.effective_interval("jobs"))), color=color)
                 else:
                     screen.run_curses(app, views, sampler, store, actions, cfg)
             except KeyboardInterrupt:
                 pass
         finally:
             s.close()
+        if app.switch_profile and raven is not None:
+            print("Raven: session closed; select the new connection with --site before launching again.", file=sys.stderr)
+            return 0
         if app.switch_profile:                              # :profile <name>: the same screen on another cluster
             profile = app.switch_profile
             continue

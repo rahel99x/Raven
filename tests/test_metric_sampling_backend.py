@@ -46,7 +46,9 @@ def worker(monkeypatch):
 
     slurm = SimpleNamespace(live=live, gpu=gpu, gpu_allocations=allocations, gpu_trace=trace,
                             jobs=lambda: list(store.jobs))
-    sampler = Sampler(slurm, store, {"live": 20, "gpu": 10, "trace": 5}, [], workers=1,
+    # This fixture explicitly exercises the fast five-second slider domain.
+    # Slow configured cadences now remain slow instead of being discarded.
+    sampler = Sampler(slurm, store, {"live": 5, "gpu": 5, "trace": 5}, [], workers=1,
                       files=SimpleNamespace(remote=False, exists=lambda path: True))
     for health in store.health.values():
         health.enabled = False
@@ -62,7 +64,7 @@ def test_exact_job_rate_uses_complete_polling_domain(worker, rate, expected):
     assert sampler.sampling_interval("live", "1", "submit|start") == pytest.approx(expected)
     assert sampler.sampling_interval("live", "2", "submit|start") == 5
     assert sampler.effective_interval("live") == pytest.approx(expected)
-    assert sampler.intervals["live"] == 20
+    assert sampler.intervals["live"] == 5
 
 
 @pytest.mark.parametrize("source,metric", [("live", "cpu:rate"), ("gpu", "gpu:util"),
@@ -145,7 +147,7 @@ def test_shared_collector_uses_fastest_metric_and_reset_restores_global_request(
     assert sampler.effective_interval("live") == pytest.approx(2.0185086292982772)
     sampler.set_metric_sampling({})
     assert sampler.effective_interval("live") == 5
-    assert sampler.intervals["live"] == 20
+    assert sampler.intervals["live"] == 5
 
 
 def test_demand_updates_wake_once_without_force_refresh_or_backoff_reset(worker):
@@ -349,12 +351,12 @@ def test_failure_preserves_source_backoff_and_completion_deadline(worker):
 
     sampler.slurm.live = unavailable
     sampler.round(now=100, wait=True)
-    assert sampler.health("live").backoff == 20
+    assert sampler.health("live").backoff == 5
     assert sampler._metric_completed[("live", "1", "submit|start", 0)] == 100
     sampler.set_metric_sampling({identity(): 50})
-    assert sampler.health("live").backoff == 20
-    assert not sampler.due("live", 121.59)
-    assert sampler.due("live", 121.6)
+    assert sampler.health("live").backoff == 5
+    assert not sampler.due("live", 106.59)
+    assert sampler.due("live", 106.6)
 
 
 def test_inflight_and_disabled_sources_do_not_overlap_or_enable(worker):

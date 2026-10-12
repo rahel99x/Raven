@@ -38,14 +38,16 @@ def _polling_label(app, value=None, *, ascii_=None):
         cfg = getattr(app, "cfg", None)
         ascii_ = initialize(app).get("ascii", cfg.get("ascii", False) if cfg else False)
     seconds = (refresh_rate.cadence(app, "jobs") if value is None else
-               refresh_rate.poll_interval(value))
+               refresh_rate.candidate_cadence(app, "jobs", value))
     return format_interval(seconds, ascii_=ascii_)
 
 
 def _polling_field_width(app, ascii_):
     """Keep capture geometry stable as interval labels change their units."""
     state = initialize(app)
-    token = bool(ascii_)
+    from . import refresh_rate
+    token = (bool(ascii_), refresh_rate.candidate_cadence(app, 'jobs', 1),
+             refresh_rate.candidate_cadence(app, 'jobs', 50))
     cached = state.get("polling_label_width")
     if cached is None or cached[0] != token:
         # Compute only when character mode changes. Labels
@@ -219,7 +221,7 @@ def _activate(app, item):
 
 def render_bar(views, app, width, y=0):
     """One topmost row; x bounds are exact even in a one-cell terminal."""
-    from . import refresh_rate, worker_ui
+    from . import refresh_rate, worker_ui, raven_ui
     state = initialize(app)
     width = max(0, int(width))
     if state["width"] != width or state["bar_y"] != y:
@@ -263,13 +265,22 @@ def render_bar(views, app, width, y=0):
     # Reserve the widest effective interval before choosing a menu form.
     # Changing the requested rate must never move menu labels or the track.
     minimum_slider = field_width + 1 + (9 if width >= 44 else 0)
-    worker_space = 5 if worker_ui.status(app) is not None and width >= minimum_slider + 7 else 0
-    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space), forms[-1])
+    if width >= 80:
+        minimum_slider=max(minimum_slider,27)  # Retain the Updates label.
+    has_workers=worker_ui.status(app) is not None
+    worker_space = (11 if width >= 80 else 5) if has_workers and width >= minimum_slider + 7 else 0
+    managed=isinstance(getattr(app,'cfg',{}).get('raven'),dict) or getattr(app,'raven_allocation_manager',None) is not None
+    compute_space = 10 if managed and width >= minimum_slider + worker_space + 12 else 0
+    copy_space=4 if width >= 80 else 0
+    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space), forms[-1])
     append(quit_label, "danger+bold+bg:surface-raised", "quit")
     for index, label in enumerate(labels):
         selected = state["menu"] == index if len(labels) == 4 else state["menu"] is not None
         append(label, "accent+bold+bg:surface-sunken" if selected else BAR_STYLE, "menu", index)
-    worker_button = worker_ui.button(app, width - x - minimum_slider, ascii_=views.g.ascii)
+    compute_button = raven_ui.button(app, width-x-minimum_slider-worker_space-copy_space) if managed else None
+    if compute_button is not None:
+        append(*compute_button, 'raven')
+    worker_button = worker_ui.button(app, width - x - minimum_slider-copy_space, ascii_=views.g.ascii)
     if worker_button is not None:
         append(*worker_button, "workers")
     from .editor_yank import mode as copy_mode
@@ -483,6 +494,10 @@ def handle_mouse(app, y, x, button="left", shift=False):
         elif kind == "workers":
             from .worker_ui import run_command
             run_command(app, ["workers", "toggle"])
+        elif kind == 'raven':
+            _close(app)
+            from .raven_ui import run_command
+            run_command(app, ['raven', 'status'])
         else:
             _close(app)
             state["focus"] = "rate"
@@ -541,6 +556,9 @@ def control_descriptors(app):
     if any(hit[3] == "workers" for hit in state["hits"]):
         from .worker_ui import summary
         labels["workers"] = summary(app)
+    if any(hit[3] == 'raven' for hit in state['hits']):
+        from .raven_ui import summary
+        labels['raven'] = summary(app)
     for y, left, right, kind, key in state["hits"]:
         if kind == "track":
             track.append((y, left, right))
@@ -572,7 +590,7 @@ def control_descriptors(app):
 def _about_lines(app):
     from . import __version__, refresh_rate
     return [
-        [(" Slurm Tower " + __version__, "accent+bold")],
+        [(" Project Raven " + __version__, "accent+bold")],
         [(" Terminal workspace for Slurm, project runs, and research evidence.", "text")],
         [(" Menus: F10; Left/Right changes menu; Up/Down chooses; Enter opens.", "text")],
         [(" Mouse menus stay open for repeated choices; move outside or Esc closes.", "text")],
@@ -601,7 +619,7 @@ def overlay(views, snap, app, width, height):
     about = bool(state["panel"])
     entries = [] if about else menu_items(app, state["menu"])
     lines = _about_lines(app) if about else None
-    title = "About Tower" if about else MENUS[state["menu"]]
+    title = "About Raven" if about else MENUS[state["menu"]]
     desired = max(36, max((L.vlen(item.label) + 5 for item in entries), default=68))
     box_width = min(width, desired)
     menu_hits = [hit for hit in state["hits"] if hit[3] == "menu" and hit[4] == state["menu"]]

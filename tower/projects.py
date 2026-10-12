@@ -34,8 +34,15 @@ _PATHS = set("metrics summary outputs logs passports stdout stderr log_index pla
 PLANNING_PATHS = ("predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow")
 
 
+def local_supported(files):
+    if files is None or type(files) is LocalFiles:
+        return True
+    from .raven_collection import GovernedFiles
+    return type(files) is GovernedFiles and type(files.inner) is LocalFiles
+
+
 def _local(files):
-    if files is not None and type(files) is not LocalFiles:
+    if not local_supported(files):
         raise ValueError("Project discovery requires Tower running locally on CARC; this file backend cannot prove confined directory reads")
 
 

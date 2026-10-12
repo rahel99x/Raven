@@ -61,7 +61,21 @@ def _finished(output, opts, source):
     return output, opts
 
 
-def result(cmd, args, *, snap=None, job=None, observations=(), choices=None):
+def result(cmd, args, *, snap=None, job=None, observations=(), choices=None, execution=None):
+    from .raven_execution import router_for, planning_inputs
+    router = execution or router_for()
+    if router.managed:
+        opts = options(cmd, args)
+        blocked = router.require(cmd, worker_operation="planning-command")
+        if blocked is not None:
+            return blocked, opts
+        captured = planning_inputs(cmd, None, snap=snap, job=job, observations=observations)
+        receipt = router.dispatch("planning-command", dict(command=cmd, args=list(args),
+            snap=captured["snap"], job=captured["job"], observations=captured["observations"], choices=choices))
+        if receipt.get("status") == "deferred":
+            return receipt, opts
+        from argparse import Namespace
+        return receipt["result"]["output"], Namespace(**receipt["result"]["options"])
     opts = options(cmd, args)
     if cmd == "scaling":
         from .scaling import MAX_BYTES
@@ -132,7 +146,7 @@ def result(cmd, args, *, snap=None, job=None, observations=(), choices=None):
 def success(output):
     if output.get("prepared_plan"):
         return bool(output["prepared_plan"].get("valid"))
-    return output.get("status") not in ("error", "invalid", "blocked") and output.get("valid") is not False
+    return output.get("status") not in ("error", "invalid", "blocked", "deferred") and output.get("valid") is not False
 
 
 def execute(app, cmd, args, *, ready=None):
@@ -152,7 +166,7 @@ def execute(app, cmd, args, *, ready=None):
             context = hub.context(snap, app)
             observations = hub.forecasts.observations() if hub.forecasts else ()
             choices = hub.planning_choices
-            fn = lambda: result(cmd, args, snap=snap, job=context["job"], observations=observations, choices=choices)
+            fn = lambda: result(cmd, args, snap=snap, job=context["job"], observations=observations, choices=choices, execution=hub.execution)
             if app.interactive:
                 if not hub.start_task(fn, lambda value: execute(app, cmd, args, ready=value)):
                     raise ValueError("a research operation is still running; try after it completes")

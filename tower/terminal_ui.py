@@ -257,6 +257,12 @@ def open_session(app, *, argv=None, cwd=None, label=None, kind='local', metadata
         if cwd is not None:
             options['cwd'] = cwd
         options.update(spec)
+        raven = getattr(app, 'cfg', {}).get('raven', {})
+        if raven.get('managed'):
+            budget = raven.get('resources', {}).get('light', {}).get('terminal_scrollback_bytes', 2 * 1024 * 1024)
+            # Enforce after launch options: reconnect/review specs cannot raise
+            # the resolved Light policy's per-session retention ceiling.
+            options['history_bytes'] = min(max(0, int(budget)), max(0, int(options.get('history_bytes', budget))))
         try:
             from .terminal_fusion import register_session
             def env_factory(sid):
@@ -283,7 +289,7 @@ def open_session(app, *, argv=None, cwd=None, label=None, kind='local', metadata
         return None
 
 
-def prepare_input(app, text, label='Prepared command'):
+def prepare_input(app, text, label='Prepared command', *, helper_kind='generated'):
     state = initialize(app)
     if not isinstance(text, str) or len(text.encode('utf-8')) > MAX_SELECTION_BYTES or '\x00' in text:
         _say(app, 'Prepared command is invalid or too large', True)
@@ -291,7 +297,8 @@ def prepare_input(app, text, label='Prepared command'):
     if not state.active:
         _say(app, 'Open a terminal session before preparing input', True)
         return False
-    state.preview = {'text': text, 'label': str(label)[:100], 'session': state.active, 'top':0}
+    state.preview = {'text': text, 'label': str(label)[:100], 'session': state.active, 'top':0,
+                     'helper_kind': helper_kind}
     state.dialog = state.report = None
     state.modes[getattr(app, 'tab', 'jobs')] = 'terminal'
     state.focus_generation += 1
@@ -373,7 +380,7 @@ def handle_event(app, event):
     if (event.get('type')=='paste' and isinstance(event.get('text'),str)
             and ('\n' in event['text'] or '\r' in event['text'])
             and getattr(app,'cfg',{}).get('terminal',{}).get('paste_preview',True)):
-        prepare_input(app,event['text'],'Multiline paste — review before Insert')
+        prepare_input(app,event['text'],'Multiline paste — review before Insert',helper_kind='user-paste')
         return True
     _send(app, event)
     return True
@@ -492,6 +499,8 @@ def run_command(app, args):
                 _focus(app, True)
         else:
             blur(app)
+            from .workspace_layout import initialize as layout_state
+            layout_state(app).focus = 'details'
         _bump(state)
     elif action == 'maximize':
         from .workspace_layout import run_command as workspace_command
@@ -630,13 +639,14 @@ def run_command(app, args):
             state.service.request(state.active,'diagnostics')
     elif action == 'insert':
         preview = state.preview
-        if preview and preview.get('targets'):
+        allowed = _prepared_allowed(app, preview)
+        if allowed and preview and preview.get('targets'):
             from .terminal_workflows import deliver_broadcast
             try:
                 _say(app, deliver_broadcast(app, preview))
             except (ValueError, OSError, RuntimeError) as exc:
                 _say(app, str(exc), True)
-        elif preview and preview['session'] == state.active:
+        elif allowed and preview and preview['session'] == state.active:
             # Confirmed insertion is a paste, deliberately without Enter.
             _send(app, {'type': 'paste', 'text': preview['text']})
         state.preview = None
@@ -667,6 +677,26 @@ def run_command(app, args):
             if module.run_command(app, args):
                 return True
         _say(app, 'terminal show|details|new|next|close|copy-mode|copy|search|menu|health', True)
+    return True
+
+
+def _prepared_allowed(app, preview):
+    """Generated helpers retain execution admission; typed paste is shell input."""
+    if not preview or preview.get('helper_kind') == 'user-paste' or not getattr(app,'cfg',{}).get('raven'):
+        return True
+    try:
+        from .raven_execution import helper_admission
+        snapshot = _snapshot(app)
+        metadata = dict(snapshot.get('metadata') or {})
+        metadata.update(session_kind=snapshot.get('kind'), helper_kind=preview.get('helper_kind','generated'),
+                        targets=preview.get('targets',()))
+        decision = helper_admission(app,preview['text'],metadata)
+        if decision:
+            _say(app,str(decision.get('reason') or decision.get('message') or 'Generated helper deferred by the active execution policy.'),True)
+            return False
+    except (ImportError, ValueError, RuntimeError, OSError, TypeError) as exc:
+        _say(app,'Generated helper unavailable: '+str(exc)[:256],True)
+        return False
     return True
 
 
@@ -971,9 +1001,16 @@ def shutdown(app):
         state.focus_generation += 1
 
 
+def _plain_chrome(app):
+    """Follow the actual renderer/Reader mode, including real App settings."""
+    return bool(getattr(app,'ascii',False) or getattr(app,'_ascii_cfg',False)
+                or getattr(app,'theme',None)=='reader'
+                or getattr(getattr(getattr(app,'views_ref',None),'g',None),'ascii',False))
+
+
 def _control(app, row, x, label, args, width, *, active=False):
     state = initialize(app)
-    if getattr(app,'ascii',False):
+    if _plain_chrome(app):
         label = label.translate(str.maketrans({'‹':'<','›':'>','↑':'^','↓':'v','·':'.','▏':'|','…':'...'}))
     text = '[' + label + ']'
     text = L.clip_row([(text, 'cyan+bold' if active else 'heading')], max(0, width))
@@ -984,8 +1021,20 @@ def _control(app, row, x, label, args, width, *, active=False):
 
 
 def header(app, width, *, x=0, y=0):
+    """Paint the whole host title, including its navigation-focus gutter.
+
+    Four blank cells belong to optional scroll-to-end controls.
+    Never recover that space by slicing a previous title: a short Details
+    document has no scroll gutter and its fourth cell is the letter ``D``.
+    """
     state = initialize(app)
-    row, hits, column = [], [], 0
+    width = max(0, width)
+    focused_pane = getattr(getattr(app, 'layout_state', None), 'focus', 'main') == 'details'
+    gutter = 4 if width >= 6 else 0
+    marker = ('>' if _plain_chrome(app) else '▸') if focused_pane else ' '
+    prefix = ' ' * gutter + (' ' + marker + ' ' if width >= 27 else '')
+    style = 'accent+bold+bg:surface-raised' if focused_pane else 'secondary+bg:surface'
+    row, hits, column = ([(prefix, style)] if prefix else []), [], len(prefix)
     for label, action in (('Details','details'),('Terminal','show')):
         segment, count = _control(app, y, x+column, label, ['terminal', action], max(0,width-column),
                                   active=(action == 'show') == showing(app))
@@ -1139,7 +1188,7 @@ def _render(app, width, height, x, y):
             rows.append(L.fill_row(part,width))
         else:
             rows.append(L.fill_row([(hint,'cyan' if focused(app) else 'dim')],width))
-    if getattr(app,'ascii',False):
+    if _plain_chrome(app):
         translation=str.maketrans({'‹':'<','›':'>','↑':'^','↓':'v','·':'.','▏':'|','…':'...','×':'x'})
         chrome=set(range(body_y))|{height-1}
         if state.dialog or state.preview or state.report or state.menu: chrome.update(range(height))
@@ -1199,7 +1248,6 @@ def feedback(app,rows=None):
         if not 0<=target<len(rows): continue
         # Preserve outside panes exactly, including their style segments.
         rows[target]=_slice_row(rows[target],0,rect.x)+line+_slice_row(rows[target],rect.x+rect.width,10**8)
-    state.painted=terminal
     return rows
 
 
@@ -1332,7 +1380,8 @@ def _paint_key(app):
               and getattr(app,'animations_enabled',True) and not state.copy_mode and state.follow
               and not (state.report or state.dialog or state.preview or state.menu))
     return (state.generation,state.focus_generation,state.rect,state.active,
-            int(time.monotonic()*2)%2 if blinking else 0, bool(getattr(app,'ascii',False)))
+            getattr(getattr(app,'layout_state',None),'focus',None),
+            int(time.monotonic()*2)%2 if blinking else 0, _plain_chrome(app))
 
 
 def finalize_frame(app):
@@ -1372,7 +1421,7 @@ def _rail_rows(app,page):
     top=state.menu_top if state.menu else state.report['top'] if state.report else max(0,total-page) if state.follow else state.top
     size=max(1,min(page,round(page*page/max(1,total))))
     start=round((page-size)*min(max(0,total-page),max(0,top))/max(1,total-page))
-    return [[(('|' if getattr(app,'ascii',False) else '▐') if start<=index<start+size else ('|' if getattr(app,'ascii',False) else '│'),
+    return [[(('|' if _plain_chrome(app) else '▐') if start<=index<start+size else ('|' if _plain_chrome(app) else '│'),
               'cyan' if start<=index<start+size else 'dim')] for index in range(page)]
 
 

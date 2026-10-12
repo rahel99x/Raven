@@ -1,0 +1,29 @@
+{
+  "schema": "raven.site-policy/v1",
+  "name": "example-login-node",
+  "recommendations": {
+    "collection": {
+      "queue_seconds": 60
+    }
+  },
+  "restrictions": {
+    "allow_desktop": false,
+    "allowed_site_kinds": [
+      "slurm"
+    ],
+    "allowed_targets": [
+      "slurm"
+    ],
+    "require_allocation": true,
+    "require_account": true,
+    "floors": {
+      "collection.queue_seconds": 60,
+      "collection.history_seconds": 300
+    },
+    "ceilings": {
+      "collection.max_inflight": 2,
+      "resources.heavy.max_workers": 4,
+      "resources.heavy.memory_mib": 8192
+    }
+  }
+}

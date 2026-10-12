@@ -160,7 +160,11 @@ def prepare_args(args):
     return plan, opts
 
 
-def offline_result(cmd, args):
+def offline_result(cmd, args, *, execution=None):
+    from .raven_execution import research_command_route
+    routed = research_command_route(cmd, args, execution)
+    if routed is not None:
+        return routed
     if cmd == "metric":
         from .metrics import write_metric
         p = parser("metric FILE --value NAME=NUMBER")
@@ -277,7 +281,8 @@ def execute(app, cmd, args, *, ready=None):
             from .project_ui import cancel_automatic
             cancel_automatic(app)
             if cmd in OFFLINE:
-                fn = lambda: offline_result(cmd, args)
+                execution = getattr(hub, "execution", None)
+                fn = (lambda: offline_result(cmd, args, execution=execution)) if getattr(execution, "managed", False) else (lambda: offline_result(cmd, args))
             elif cmd == "submit":
                 fn = lambda: prepare_args(args)
             else:
@@ -316,7 +321,9 @@ def execute(app, cmd, args, *, ready=None):
         if cmd in OFFLINE:
             if getattr(app.files, "remote", False) or getattr(app, "replay", None):
                 raise ValueError("this research command requires local files on the cluster")
-            result, code = ready if ready is not None else offline_result(cmd, args)
+            execution = getattr(hub, "execution", None)
+            result, code = ready if ready is not None else (offline_result(cmd, args, execution=execution)
+                if getattr(execution, "managed", False) else offline_result(cmd, args))
             app.research_result = result
             if cmd == "prepare":
                 from .research import detach_manual_source

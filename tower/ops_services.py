@@ -148,3 +148,9 @@ def apply(feature, plan, ctx):
                       status="partial" if failed else "ok", data={"entries": results, "receipts": payload["receipts"]},
                       rows=[f"{item['id']}: {item['status']} {item.get('reason', '')}" for item in results])
     raise ValueError("This workflow connector is read-only; the native engine retains execution ownership")
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

@@ -357,3 +357,9 @@ def apply(feature, plan, ctx):
                     status="ok" if result.get("state") in {"completed", "reduced", "accepted", "started"} else "warning",
                     rows=["Workspace: " + str(root), "Use action=status to view outcomes; result.json and trials/* retain the evidence.",
                           "A submitted Slurm job is not a completed diagnostic result."], data={"workspace": str(root), "result": result})
+
+
+# Managed Raven entry points also protect direct adapter callers.
+from .operations import managed_run as _managed_run, managed_apply as _managed_apply
+run = _managed_run(run)
+apply = _managed_apply(apply)

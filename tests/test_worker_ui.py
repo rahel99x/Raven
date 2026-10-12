@@ -275,3 +275,20 @@ def test_real_published_toolbar_supports_mouse_and_arrow_navigation(ascii_):
     assert app.worker_scheduler.requests == ["single", "multi"]
     assert app.tab == "jobs" and app.job_panel_state["mode"] == "inspector"
     assert toolbar.control_descriptors(app)[5]["id"] == "toolbar:workers"
+
+
+@pytest.mark.parametrize('ascii_',[False,True])
+@pytest.mark.parametrize('managed',[False,True])
+def test_eighty_column_toolbar_retains_readable_refresh_and_worker_controls(ascii_,managed):
+    app=instance()
+    if managed:
+        app.cfg.data['raven']={'managed':True,'execution':{'heavy_target':'slurm'}}
+    row=toolbar.render_bar(ui(ascii_),app,80)
+    text=layout.row_text(row)
+    assert 'Updates' in text and 'Multi' in text
+    assert 'File' in text and 'Help' in text
+    kinds={hit[3] for hit in app.toolbar_state['hits']}
+    assert {'workers','copy-mode','rate','minus','plus','track'}<=kinds
+    assert ('raven' in kinds)==managed
+    assert ('Light' in text)==managed
+    assert layout.vlen(text)==80

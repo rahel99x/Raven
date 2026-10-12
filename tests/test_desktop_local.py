@@ -85,7 +85,7 @@ def test_native_desktop_automatically_links_and_refreshes_actual_project_reports
 @pytest.mark.parametrize('flags,interval', [
     (('--interval', '5'), 5.0),
     (('--interval', '.5'), .5),
-    (('--interval', '60'), 5.0),
+    (('--interval', '60'), 60.0),
     (('--interval', '.01'), .5),
     (('--interval', '5', '--rate', '50'), .5),
     (('--interval', '.5', '--rate', '1'), 5.0),
@@ -94,8 +94,11 @@ def test_explicit_interval_selects_bounded_polling_and_rate_takes_precedence(nat
     session = native_desktop.build('--no-state', *flags)
     try:
         assert session.sampler.effective_interval('jobs') == interval
-        assert session.sampler.effective_interval('live') == interval
-        assert session.sampler.effective_interval('gpu') == interval
+        # --interval controls the queue. A separately configured native source
+        # retains its own base instead of inheriting an unrelated slow queue.
+        native_interval = 5.0 if flags == ('--interval', '60') else interval
+        assert session.sampler.effective_interval('live') == native_interval
+        assert session.sampler.effective_interval('gpu') == native_interval
         assert native_desktop.calls() == []
     finally:
         session.close()
@@ -157,9 +160,12 @@ def native_desktop(tmp_path, monkeypatch):
         'profiles': {'desktop': {'host': '', 'user': '', 'account': '', 'partitions': [],
             'gpu_sampling': False, 'weather': False, 'weather_probes': [], 'budget': False,
             'show_all_partitions': True, 'state_namespace': 'desktop'}}}))
+    runtime = tmp_path / 'runtime'
+    runtime.mkdir(mode=0o700)
     for key, value in {'PATH': str(commands) + os.pathsep + os.environ.get('PATH', ''),
         'USER': 'desktop-user', 'TOWER_ACCOUNT': 'CARC_ENV_ACCOUNT', 'CARC_ACCOUNT': 'CARC_ENV_ACCOUNT',
         'XDG_STATE_HOME': str(tmp_path / 'state'), 'XDG_CONFIG_HOME': str(tmp_path / 'personal-config'),
+        'XDG_RUNTIME_DIR': str(runtime),
         'TERM': 'xterm', 'TOWER_DESKTOP_CALLS': str(calls), 'TOWER_DESKTOP_SCENARIO': str(scenario),
         'TOWER_DESKTOP_ROOT': str(tmp_path), 'TOWER_DESKTOP_STDOUT': str(stdout),
         'TOWER_DESKTOP_STDERR': str(stderr)}.items():

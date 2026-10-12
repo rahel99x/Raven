@@ -673,7 +673,7 @@ def test_rate_crossing_ten_keeps_capture_and_drag_bounds_in_place():
 @pytest.mark.parametrize("base,rate,label", [(2.0, 1, "5s"), (2.0, 3, "4.55s"),
     (2.0, 25, "1.62s"), (2.0, 49, "524ms"), (2.0, 50, "500ms"),
     (.0005, 1, "5s"), (.0005, 50, "500ms"), (.005, 1, "5s"),
-    (0.0, 50, "0s"), (30.0, 1, "5s"), (30.0, 50, "500ms")])
+    (0.0, 50, "0s"), (30.0, 1, "30s"), (30.0, 50, "3s")])
 @pytest.mark.parametrize("ascii_", [False, True])
 def test_global_slider_displays_actual_safe_cadence_and_character_mode(base, rate, label, ascii_):
     app = instance()
@@ -736,9 +736,9 @@ def test_toolbar_uses_live_sampler_queue_cadence_not_stale_configuration():
     text = L.row_text(T.render_bar(views(), app, 100))
     assert "750ms" in text
     reset = next(item for item in T.menu_items(app, "View") if item.key == "rate-reset")
-    assert reset.label == "Reset queue polling to 5s"
+    assert reset.label == "Reset queue polling to 10s"
     help_text = T._rate_help(app)
-    assert "Home 5s" in help_text and "End 500ms" in help_text
+    assert "Home 10s" in help_text and "End 1s" in help_text
     assert "1x" not in help_text and "50x" not in help_text
 
 
@@ -789,6 +789,7 @@ def test_interval_units_keep_captured_slider_geometry_fixed(base, ascii_):
 
 def test_actual_curses_paint_keeps_global_bar_visible_above_tiny_confirmation(terminal_dashboard, monkeypatch):
     app, painter, store = terminal_dashboard
+    app.cfg.data['raven']={'managed':True}
     app.mode = "confirm"
     app.confirm = {"action": "cancel", "jobs": store.jobs[:1]}
     for name in ("curs_set", "mousemask", "mouseinterval", "doupdate", "set_escdelay"):
@@ -837,6 +838,7 @@ def test_actual_curses_paint_keeps_global_bar_visible_above_tiny_confirmation(te
     # a two-row terminal. The renderer must repaint the actual global controls
     # last; this verifies the final cells, rather than only renderer call order.
     top = "".join(window.rows[0])
-    assert "File" in top and "Edit" in top and "5s" in top
+    assert ("File" in top and "Edit" in top) or (" F " in top and " E " in top)
+    assert "5s" in top and "Light" in top
     assert top.lstrip().startswith("x")
     assert not app.command_state["confirm_controls_visible"]

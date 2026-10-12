@@ -93,7 +93,13 @@ def source_interval(base, value, *, source=""):
     base = _base_interval(base)
     if source in NATIVE_SOURCES:
         # Zero is an explicit one-shot/testing request, not a live slider.
-        return 0.0 if base == 0 else poll_interval(rate)
+        if base == 0:
+            return 0.0
+        # An explicit slow cadence is not a slider position. In particular,
+        # --interval 60 must not round-trip through position 1 into five seconds.
+        if base > MAX_POLL_INTERVAL:
+            return _interval(base, rate, SOURCE_FLOOR)
+        return poll_interval(rate)
     return _interval(base, rate, SOURCE_FLOORS.get(source, SOURCE_FLOOR))
 
 
@@ -199,6 +205,22 @@ def cadence_summary(app):
     from .metric_sampling import format_interval
     return (f"Jobs poll every {format_interval(cadence(app, 'jobs'), ascii_=True)}; "
             "source floors and error backoff still apply")
+
+
+def candidate_cadence(app, source, value):
+    """Slider labels use the same configured cadence and policy as collection."""
+    sampler = getattr(app, "sampler", None)
+    cfg = getattr(app, "cfg", {}) or {}
+    intervals = getattr(sampler, "intervals", cfg.get("intervals", {}))
+    result = source_interval(intervals.get(source, 0.), value, source=source)
+    enforced = getattr(sampler, "_collection_interval", None)
+    if callable(enforced):
+        return enforced(source, result)
+    collection = cfg.get("raven", {}).get("collection")
+    if collection is not None:
+        from .raven_collection import interval
+        result = interval(collection, source, result)
+    return result
 
 
 def command_names():

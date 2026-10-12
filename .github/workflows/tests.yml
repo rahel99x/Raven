@@ -38,6 +38,9 @@ jobs:
           /tmp/tower-wheel-venv/bin/python -m pip install --no-deps dist/*.whl
           cd /tmp
           /tmp/tower-wheel-venv/bin/tower --doctor --fake
+          /tmp/tower-wheel-venv/bin/ravenl --site desktop doctor
+          /tmp/tower-wheel-venv/bin/ravenh --site desktop --plan
+          /tmp/tower-wheel-venv/bin/ravenl qualify --offline > /tmp/raven-offline-qualification.json
           /tmp/tower-wheel-venv/bin/tower --fake --no-state --no-plugins --report /tmp/tower-wheel.txt
       - name: Qualify local CLI, documentation and terminal boundaries
         shell: bash
@@ -63,3 +66,4 @@ jobs:
             dist/*
             /tmp/tower-demo.txt
             /tmp/tower-qualification.json
+            /tmp/raven-offline-qualification.json

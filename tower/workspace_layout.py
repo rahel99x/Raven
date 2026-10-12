@@ -854,15 +854,13 @@ def transform_body(app, body, hits, width: int, height: int, *, ascii_: bool = F
     if terminal_ui.enabled(app) and not terminal_ui.showing(app) and "details" in rendered:
         rect = rects["details"]
         origin_x, origin_y = _content_origin(app, width, height)
-        offset = 4 if rect.width >= 28 else 0
-        host, host_hits = terminal_ui.header(app, max(0, rect.width - offset),
-            x=origin_x + rect.x + offset, y=origin_y + rect.y)
-        previous = rendered["details"][0]
-        rendered["details"][0] = terminal_ui._slice_row(previous, 0, offset) + host
+        host, host_hits = terminal_ui.header(app, rect.width,
+            x=origin_x + rect.x, y=origin_y + rect.y)
+        rendered["details"][0] = host
         initialize_terminal = terminal_ui.initialize(app)
         initialize_terminal.geometry = (getattr(app, "width", None), getattr(app, "height", None))
         output_hits.extend((y + rect.y, kind,
-            {**value, "left": value["left"] + rect.x + offset, "right": value["right"] + rect.x + offset})
+            {**value, "left": value["left"] + rect.x, "right": value["right"] + rect.x})
             for y, kind, value in host_hits)
     for y in range(height):
         spans = []

@@ -58,11 +58,15 @@ print(json.dumps(response, ensure_ascii=True, allow_nan=False, separators=(",", 
 
 
 def supported(files):
-    return type(files) is RemoteFiles
+    delegate = getattr(files, "project_delegate", None)
+    return type(files) is RemoteFiles or type(delegate) is RemoteFiles
 
 
 def identity(files):
     """An in-process connection identity; reconnecting requires a fresh binding."""
+    delegate = getattr(files, "project_delegate", None)
+    if type(delegate) is RemoteFiles:
+        return identity(delegate)
     if not supported(files):
         raise ValueError("This file adapter cannot prove confined SSH project reads")
     nonce = getattr(files, "_project_reader_nonce", None)
@@ -111,7 +115,8 @@ def request(files, operation, *args, **kwargs):
     if sum(map(len, payload)) + len(encoded) * 2 + len(_BOOTSTRAP) > 120000:
         raise ValueError("project reader command exceeds the SSH argument budget")
     try:
-        output, _ = ssh.run(["python3", "-I", "-S", "-c", _BOOTSTRAP, encoded, *payload], files.timeout)
+        runner = getattr(files, "project_command", ssh.run)
+        output, _ = runner(["python3", "-I", "-S", "-c", _BOOTSTRAP, encoded, *payload], files.timeout)
     except Exception as exc:
         raise OSError("SSH project reader: " + str(exc)[:512]) from exc
     if files.ssh is not ssh or identity(files) != request_identity:

@@ -67,11 +67,14 @@ def test_polling_helpers_reject_bad_slider_maximum(bad):
 
 
 @pytest.mark.parametrize("source", ["jobs", "live", "gpu", "trace"])
-def test_native_global_polling_is_independent_of_old_configured_base(source):
-    for base in (.01, .5, 2, 30, 600):
+def test_native_fast_polling_domain_and_explicit_slow_intervals(source):
+    for base in (.01, .5, 2, 5):
         assert rate.source_interval(base, 1, source=source) == 5
         assert rate.source_interval(base, 50, source=source) == .5
         assert rate.source_interval(base, 25, source=source) == pytest.approx(1.618728771408822)
+    for base in (30, 60, 600):
+        assert rate.source_interval(base, 1, source=source) == base
+        assert rate.source_interval(base, 50, source=source) == base / 10
     assert rate.source_interval(0, 50, source=source) == 0
 
 
@@ -92,7 +95,7 @@ def test_default_preserves_non_native_configured_intervals(base, source):
 
 
 @pytest.mark.parametrize("source,base,expected", [("jobs", 2, .5), ("plugin.source", 100, 10),
-                                                 ("gpu", 5, .5), ("gpu", 600, .5),
+                                                 ("gpu", 5, .5), ("gpu", 600, 60),
                                                  ("weather", 120, 30), ("budget", 600, 60),
                                                  ("gpu", 2, .5), ("jobs", .1, .5), ("jobs", 0, 0)])
 def test_fastest_polling_respects_native_range_and_other_source_cost_floors(source, base, expected):
@@ -292,14 +295,14 @@ def test_command_query_reset_and_clamped_adjustments_with_no_workers():
     assert rate.overlay(None, {}, model, 80, 24) is None
 
 
-def test_native_ui_cadence_is_absolute_without_sampler():
+def test_native_ui_cadence_preserves_explicit_slow_intervals_without_sampler():
     model = app()
     rate.set_multiplier(model, 5)
     assert rate.cadence(model, "jobs") == pytest.approx(4.143213864273422)
     model.cfg.set("intervals.jobs", 100)
-    assert rate.cadence(model, "jobs") == pytest.approx(4.143213864273422)
+    assert rate.cadence(model, "jobs") == pytest.approx(82.86427728546845)
     rate.set_multiplier(model, 1)
-    assert rate.cadence(model, "jobs") == 5
+    assert rate.cadence(model, "jobs") == 100
 
 
 def test_bad_configured_rate_does_not_initialize_application_state():

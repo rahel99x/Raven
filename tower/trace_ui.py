@@ -47,7 +47,9 @@ def _context(app):
     # This uses only published metadata; no filesystem or scheduler calls.
     key = (str(jid), str(getattr(record, "submit", "") or ""), str(getattr(record, "start", "") or ""),
            app.store.job_attempt(jid), root, cluster, binding.get("run_id", ""), repr(scope))
+    from .raven_execution import router_for
     return dict(key=key, job_id=str(jid), submit=key[1], start=key[2], root=root, cluster=cluster,
+                light=router_for(app).managed,
                 run_id=binding.get("run_id", ""), remote=bool(getattr(getattr(app, "files", None), "remote", False)))
 
 
@@ -154,7 +156,9 @@ def _read(context, explicit, index, previous_path, reader, event, source_cache=N
         return dict(sources=[], snapshot=None, reader=None, path="", verified=False, discovered=source_cache is None)
     path = sources[max(0, min(index, len(sources) - 1))]
     reader = reader if reader is not None and path == previous_path else TraceReader(path)
-    snapshot = reader.refresh(max_events=4096, max_bytes=2 << 20, max_seconds=.015, cancel=event)
+    snapshot = reader.refresh(max_events=512 if context.get("light") else 4096,
+                              max_bytes=256 << 10 if context.get("light") else 2 << 20,
+                              max_seconds=.015, cancel=event)
     verified = _matches(snapshot["identity"], context)
     if not verified and not explicit:
         raise ValueError("Trace attempt cannot be verified against the current job.")

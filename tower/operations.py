@@ -46,6 +46,7 @@ class Context:
     state_dir: str = ""
     replay: bool = False
     ui_state_status: dict = field(default_factory=dict)
+    execution: object = None
 
 
 def cancelled(ctx):
@@ -252,6 +253,8 @@ def command(ctx, argv, timeout=8, limit=1 << 20):
 
 def read_bytes(ctx, path, limit=MAX_DOCUMENT):
     checkpoint(ctx)
+    from .raven_execution import source_limit, source_read
+    limit = source_limit(limit)
     if not isinstance(path, (str, os.PathLike)) or not str(path) or any(c in str(path) for c in ("\x00", "\r", "\n")):
         raise ValueError("Choose an explicit file path without control characters.")
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 64 << 20:
@@ -260,6 +263,7 @@ def read_bytes(ctx, path, limit=MAX_DOCUMENT):
         before = ctx.files.snapshot_stat(str(path))
         if before["size"] > limit:
             raise ValueError("File exceeds the inspection limit.")
+        source_read(before["size"])
         data = ctx.files.read(str(path), 0, limit + 1)
         after = ctx.files.snapshot_stat(str(path))
         if before != after or len(data) != before["size"]:
@@ -270,6 +274,7 @@ def read_bytes(ctx, path, limit=MAX_DOCUMENT):
             before = os.fstat(stream.fileno())
             if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
                 raise ValueError("Choose a regular file within the inspection limit.")
+            source_read(before.st_size)
             data = stream.read(limit + 1)
             after = os.fstat(stream.fileno())
             identity = lambda value: (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
@@ -377,10 +382,40 @@ def parameters(feature, supplied):
 def run(feature, params, ctx):
     checkpoint(ctx)
     values = parameters(feature, params)
+    from .raven_execution import operation_route
+    routed = operation_route(feature, values, ctx)
+    if routed is not None:
+        return routed
     return _registry()[feature][0].run(feature, values, ctx)
 
 
 def apply(feature, plan, ctx):
     from .action_lifecycle import execute
-    callback = getattr(_registry()[feature][0], "apply", None)
+    from .raven_execution import apply_admission
+    routed = apply_admission(feature, plan, ctx)
+    callback = routed or getattr(_registry()[feature][0], "apply", None)
     return execute(feature, plan, ctx, callback)
+
+
+def managed_run(function):
+    """Protect direct managed adapter entry points as well as the UI registry."""
+    from functools import wraps
+    @wraps(function)
+    def guarded(feature, params, ctx):
+        from .raven_execution import operation_route
+        routed = operation_route(feature, params, ctx)
+        return routed if routed is not None else function(feature, params, ctx)
+    return guarded
+
+
+def managed_apply(function):
+    from functools import wraps
+    @wraps(function)
+    def guarded(feature, plan, ctx):
+        from .raven_execution import apply_admission
+        routed = apply_admission(feature, plan, ctx)
+        if routed is not None:
+            from .action_lifecycle import execute
+            return execute(feature, plan, ctx, routed)
+        return function(feature, plan, ctx)
+    return guarded

@@ -113,19 +113,23 @@ class _OwnerQueue:
 class WorkerScheduler:
     current = staticmethod(current_scheduler)
 
-    def __init__(self, workers=4, mode="multi", *, max_queue=512, lanes=None):
+    def __init__(self, workers=4, mode="multi", *, max_queue=512, lanes=None, aggregate_limit=None):
         if type(workers) is not int or not 1 <= workers <= 32:
             raise ValueError("workers must be an integer from 1 to 32")
         if mode not in ("single", "multi"):
             raise ValueError("worker mode must be single or multi")
         if type(max_queue) is not int or max_queue < 1:
             raise ValueError("worker queue must have a positive integer limit")
+        if aggregate_limit is not None and (type(aggregate_limit) is not int or aggregate_limit < 1):
+            raise ValueError("aggregate worker limit must be a positive integer")
         self._limits = dict(source=workers, gpu=min(workers, 4), research=1, notification=1)
         if lanes is not None:
             if not lanes or any(name not in self._limits for name in lanes):
                 raise ValueError("choose one or more known worker lanes")
             self._limits = {name: self._limits[name] for name in dict.fromkeys(lanes)}
         self.multi_limit = sum(self._limits.values())
+        if aggregate_limit is not None:
+            self.multi_limit = min(self.multi_limit,aggregate_limit)
         self._executor = ThreadPoolExecutor(max_workers=self.multi_limit, thread_name_prefix="tower-worker")
         self._lock = threading.RLock()
         self._condition = threading.Condition(self._lock)
