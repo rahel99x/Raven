@@ -3,8 +3,8 @@ from dataclasses import replace
 
 import pytest
 
-from tower import chart_interaction as C, metric_live as M
-from tower.pane_context import PaneContext
+from raven import chart_interaction as C, metric_live as M
+from raven.pane_context import PaneContext
 from test_chart_interaction import app, metadata, publish
 from test_metric_live import palette_dashboard, palette_frame
 
@@ -88,7 +88,7 @@ def test_actual_jobs_details_and_analytics_keep_distinct_boxes(palette_dashboard
 
 @pytest.mark.parametrize("surface", ["research", "fullscreen"])
 def test_headless_legacy_plot_uses_current_presentation_without_global_zoom_leak(app, surface):
-    from tower.interaction import Rect
+    from raven.interaction import Rect
     if surface == "research":
         app.tab, app.research_view = "research", "experiment"
     else:

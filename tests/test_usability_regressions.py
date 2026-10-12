@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 class Dashboard:
@@ -261,7 +261,7 @@ def test_recent_rows_show_current_tags_without_visiting_history(dashboard, heigh
 
 
 def test_full_report_from_log_browser_exports_selected_content_without_mutating_ui(dashboard):
-    from tower.report import build
+    from raven.report import build
 
     app = dashboard.app
     custom = dashboard.paths["700"].parent / "custom-700.log"

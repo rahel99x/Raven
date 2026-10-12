@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from tower.logs import LogBuffer, LogSession
+from raven.logs import LogBuffer, LogSession
 
 
 def log_session(tmp_path, content=None, max_bytes=4096, page=5):

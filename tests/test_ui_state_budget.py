@@ -8,10 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import model, project_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Health, Job, Store
+from raven import model, project_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Health, Job, Store
 
 
 def app_for(store):

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import pointer_routing as P, job_selection, toolbar
+from raven import pointer_routing as P, job_selection, toolbar
 from test_pointer_integration import dashboard, MOUSE
 
 
@@ -95,7 +95,7 @@ def test_proxy_uses_root_owner_and_control_validators_without_document_reads(das
 def test_all_control_adapters_join_common_protocol():
     from importlib import import_module
     for owner in P.OWNERS:
-        handler = import_module("tower." + owner.name).handle_mouse
+        handler = import_module("raven." + owner.name).handle_mouse
         assert hasattr(handler, "__wrapped__"), owner.name
 
 

@@ -8,10 +8,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.model import GpuSample, Job, Live, Store
-from tower.report import _ReportStore
-from tower.sampler import Sampler
-from tower import series_archive as archive
+from raven.model import GpuSample, Job, Live, Store
+from raven.report import _ReportStore
+from raven.sampler import Sampler
+from raven import series_archive as archive
 
 
 def write_series(directory, jid, samples):

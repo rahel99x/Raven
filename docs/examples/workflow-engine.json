@@ -1,5 +1,5 @@
 {
-  "schema": "tower.workflow-engine/v1",
+  "schema": "raven.workflow-engine/v1",
   "engine": "snakemake",
   "workflow_id": "experiment-42-run-1",
   "nodes": [

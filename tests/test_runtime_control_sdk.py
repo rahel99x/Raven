@@ -9,11 +9,11 @@ import time
 
 import pytest
 
-from tower import runtime_control as runtime
+from raven import runtime_control as runtime
 
 
 def configuration():
-    return {"schema": "tower.runtime-control/v1", "attempts": ["job123:attempt1", "job124:attempt1"],
+    return {"schema": "raven.runtime-control/v1", "attempts": ["job123:attempt1", "job124:attempt1"],
             "commands": {"learning-rate": {"safe_point": "epoch", "parameters": {"value": {"type": "number", "minimum": 0, "maximum": 1}}}},
             "io": {"capacity": 1, "max_lease_seconds": 60}}
 
@@ -179,7 +179,7 @@ def test_subprocess_application_reads_and_acknowledges_durable_command(tmp_path)
     control = runtime.RuntimeControl(path, "job123:attempt1")
     control.submit("actual", "learning-rate", {"value": .25}, expected_epoch=0)
     code = """import sys
-from tower.runtime_control import RuntimeControl
+from raven.runtime_control import RuntimeControl
 c=RuntimeControl(sys.argv[1], 'job123:attempt1')
 c.safe_point('epoch', lambda command, params, request: {'observed':params['value']})
 """
@@ -188,7 +188,7 @@ c.safe_point('epoch', lambda command, params, request: {'observed':params['value
     status = control.status()
     assert status["requests"][0]["result"]["result"] == {"observed": .25}
     assert status["epochs"][control.attempt] == 1
-    inspected = subprocess.run([sys.executable, "-m", "tower.runtime_control", "--mailbox", str(path), "--attempt", control.attempt, "status"], capture_output=True, text=True, timeout=10)
+    inspected = subprocess.run([sys.executable, "-m", "raven.runtime_control", "--mailbox", str(path), "--attempt", control.attempt, "status"], capture_output=True, text=True, timeout=10)
     assert inspected.returncode == 0, inspected.stderr
     assert json.loads(inspected.stdout)["requests"][0]["status"] == "applied"
 

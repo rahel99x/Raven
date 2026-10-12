@@ -5,12 +5,12 @@ from dataclasses import replace
 
 import pytest
 
-from tower import job_progress as P, layout as L, project_ui, table_sort
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store, stamp
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import job_progress as P, layout as L, project_ui, table_sort
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store, stamp
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def linked(tmp_path):
     app.views_ref = Views(L.Glyphs(False), cfg)
     app.job_panel_state["mode"] = "off"
     root, run_id = str(tmp_path), "run7"
-    inventory = {"schema": "tower.run/v1", "run_id": run_id, "experiment_id": "example",
+    inventory = {"schema": "raven.run/v1", "run_id": run_id, "experiment_id": "example",
                  "attempt": 1, "state": "RUNNING", "job_id": "7", "paths": {"metrics": "metrics.jsonl"},
                  "start": stamp(start), "submit": stamp(submit)}
     project_ui.initialize(app).update(root=root, runs=[{"run_id": run_id, "job_id": "7", "inventory": inventory}])

@@ -13,7 +13,7 @@ Use Python 3.10 or later on Linux. From the checkout, run:
 
 ```bash
 python3 scripts/setup.py --mode demo --terminal
-./scripts/tower terminal selftest
+./scripts/raven terminal selftest
 ```
 
 The setup installs `pyte` and `wcwidth` in `.venv`. It validates simulated data
@@ -35,7 +35,7 @@ python -m pip install '.[terminal]'
 
 For an offline host, transfer the Raven wheel and compatible `pyte` and
 `wcwidth` wheels, then run
-`python -m pip install --no-index --find-links DIR 'slurm-tower[terminal]'`.
+`python -m pip install --no-index --find-links DIR 'raven[terminal]'`.
 The core application still works without these packages.
 
 The shell runs on the machine that runs Raven. An SSH Slurm data connection does
@@ -112,7 +112,7 @@ Links do not launch a browser or execute a command automatically.
 
 ## Configure the shell
 
-The following keys belong to the compatibility `tower` configuration.
+The following keys belong to the compatibility `raven` configuration.
 Managed Raven profiles apply terminal budgets through `resources.light`.
 TOML requires Python 3.11 or later; use JSON on Python 3.10.
 
@@ -159,28 +159,28 @@ one of these generated scripts deliberately:
 
 ```bash
 # Bash
-eval "$(tower terminal hook --shell bash)"
+eval "$(raven terminal hook --shell bash)"
 
 # Zsh
-eval "$(tower terminal hook --shell zsh)"
+eval "$(raven terminal hook --shell zsh)"
 ```
 
-For Fish, use `tower terminal hook --shell fish | source`. The Tools hook action
+For Fish, use `raven terminal hook --shell fish | source`. The Tools hook action
 prepares the appropriate command for a matching local shell. Generated hooks
 call the current interpreter and reporting helper by absolute path, so a Bash
-alias or a missing `tower` entry on `PATH` does not break reporting. Hooks publish prompt boundaries,
+alias or a missing `raven` entry on `PATH` does not break reporting. Hooks publish prompt boundaries,
 cwd, timing and exit status through a private same-user socket. They do not
 dump the environment. Command-text capture is off by default. Zsh and Fish can
-opt in with `TOWER_CAPTURE_COMMANDS=1`; the Bash integration records command
+opt in with `RAVEN_CAPTURE_COMMANDS=1`; the Bash integration records command
 boundaries without capturing command text.
 
 Report exact observations from the shell or launcher:
 
 ```bash
-tower terminal report submission --job 1234
-tower terminal report project --project /project/example
-tower terminal report artifact --artifact /project/example/runs/1234/output.log
-tower terminal report environment --label before
+raven terminal report submission --job 1234
+raven terminal report project --project /project/example
+raven terminal report artifact --artifact /project/example/runs/1234/output.log
+raven terminal report environment --label before
 ```
 
 Use the exact `sbatch --parsable` result for submission reporting. These reports
@@ -225,7 +225,7 @@ Reports preserve unknown clock skew and missing metadata. A nonzero status alone
 does not establish a scientific failure cause.
 
 The palette's environment capture reads Raven's process environment. To capture
-changes in a child shell, run `tower terminal report environment --label NAME`
+changes in a child shell, run `raven terminal report environment --label NAME`
 from that shell. Both routes use an allowlist. Module/package versions are
 unavailable unless an explicit report supplies them.
 
@@ -260,7 +260,7 @@ recorded output as terminal data and never executes recorded commands.
 | j / k | Move through a tall recorded screen |
 | q | Close the player |
 
-`tower terminal inspect FILE` reports recording metadata. `tower terminal replay
+`raven terminal inspect FILE` reports recording metadata. `raven terminal replay
 FILE` uses the player on a TTY and an inert text summary when redirected.
 Seeking rebuilds terminal state in bounded slices; large recordings can take
 time to catch up. Playback processing is separate from Raven's UI.
@@ -271,13 +271,13 @@ Cross-user live streaming and remote control are outside the supported scope.
 
 ## Diagnose compatibility and performance
 
-Run `tower terminal selftest --json`, or choose **Capability self-test** in Tools.
+Run `raven terminal selftest --json`, or choose **Capability self-test** in Tools.
 The finite local probe checks the controlling TTY, foreground process group,
 input, resize, alternate-screen restoration, final output and exit. It does not
-contact Slurm. Use `tower terminal selftest --help` for profile export and comparison.
+contact Slurm. Use `raven terminal selftest --help` for profile export and comparison.
 
-`tower terminal selftest --save-profile NEW_FILE` writes a private compatibility
-profile. `tower terminal selftest --profile FILE` compares that profile with a
+`raven terminal selftest --save-profile NEW_FILE` writes a private compatibility
+profile. `raven terminal selftest --profile FILE` compares that profile with a
 fresh probe and current runtime metadata. Matching metadata does not certify an
 application or physical terminal. The profile distinguishes available tools
 from tools actually tested.

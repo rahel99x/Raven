@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.numerical-stability/v1"
+      "const": "raven.numerical-stability/v1"
     },
     "metrics": {
       "type": "array",

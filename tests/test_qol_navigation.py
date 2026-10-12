@@ -8,13 +8,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import command_ui, navigation_tools as N, navigation_ui, refresh_rate as R, workbench
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text, vlen
-from tower.model import Finished, GpuSample, Health, Job, Live, Node, NodeCell, Partition, Store
-from tower.sampler import Sampler
-from tower.views import Views
+from raven import command_ui, navigation_tools as N, navigation_ui, refresh_rate as R, workbench
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text, vlen
+from raven.model import Finished, GpuSample, Health, Job, Live, Node, NodeCell, Partition, Store
+from raven.sampler import Sampler
+from raven.views import Views
 
 
 @pytest.fixture
@@ -401,7 +401,7 @@ def test_peek_uses_exact_record_and_raw_observations(dashboard, column, expected
 
 def test_peek_copy_uses_full_raw_value_and_fixed_identity(dashboard, monkeypatch):
     app, views, _ = dashboard
-    from tower import clipboard
+    from raven import clipboard
     copied = []
     monkeypatch.setattr(clipboard, "copy", lambda text, *_args, **_kwargs: copied.append(text) or "copied")
     app.run_command("peek name")
@@ -446,7 +446,7 @@ def test_source_polling_peek_and_explanation_use_effective_native_interval(nativ
 
 
 def test_saved_location_captures_all_independent_table_settings(dashboard):
-    from tower.table_tools import parse_rule
+    from raven.table_tools import parse_rule
     app, _, _ = dashboard
     app.table_state["filters"] = {"jobs": "training", "history": "failed"}
     app.table_state["order"]["jobs"] = ["name", "id"]
@@ -465,16 +465,16 @@ def test_saved_location_captures_all_independent_table_settings(dashboard):
 
 
 def test_saved_run_location_restores_original_manual_sources_after_restart_and_clear(dashboard, tmp_path):
-    from tower.research import ResearchHub
+    from raven.research import ResearchHub
     app, _, store = dashboard
     root = tmp_path / "portable project"
     run = root / "runs" / "attempt-a"
     (run / "logs").mkdir(parents=True)
-    (root / ".tower" / "contracts").mkdir(parents=True)
-    (root / ".tower" / "contracts" / "outputs.v1.json").write_text(json.dumps({"version": 1, "outputs": [{"path": "run.json", "format": "json"}]}))
-    (run / "run.json").write_text(json.dumps({"schema": "tower.run/v1", "run_id": "attempt-a", "experiment_id": "experiment", "attempt": 1, "state": "COMPLETED",
+    (root / ".raven" / "contracts").mkdir(parents=True)
+    (root / ".raven" / "contracts" / "outputs.v1.json").write_text(json.dumps({"version": 1, "outputs": [{"path": "run.json", "format": "json"}]}))
+    (run / "run.json").write_text(json.dumps({"schema": "raven.run/v1", "run_id": "attempt-a", "experiment_id": "experiment", "attempt": 1, "state": "COMPLETED",
                                              "paths": {"metrics": "metrics.jsonl", "stdout": "logs/stdout.log"}}))
-    (run / "metrics.jsonl").write_text('{"schema":"tower.metric/v1","t":1,"values":{"loss":0.2}}\n')
+    (run / "metrics.jsonl").write_text('{"schema":"raven.metric/v1","t":1,"values":{"loss":0.2}}\n')
     (run / "logs" / "stdout.log").write_text("exact declared run output\n")
     app.research = ResearchHub(app.cfg)
     original = {"metrics_file": str(tmp_path / "manual metrics.jsonl"), "contract": str(tmp_path / "manual contract.json"),
@@ -520,7 +520,7 @@ def test_back_and_forward_restore_published_log_source_page(dashboard):
 
 
 def test_named_log_page_stores_descriptor_and_reloads_guarded_identity(dashboard, monkeypatch):
-    from tower import log_tools
+    from raven import log_tools
     app, _, _ = dashboard
     app.tab, app.mode = "log", "log_tools_page"
     app.log_tools_state.update(page={"rows": [{"raw": b"actual\n", "offset": 128, "line": 14}], "start": 128, "snapshot": {"ident": (1, 2)}},
@@ -631,7 +631,7 @@ def test_explicit_launch_settings_survive_restore_and_editor_defaults(dashboard)
 
 
 def test_every_accepted_key_name_can_be_reported_by_the_decoder():
-    from tower import screen
+    from raven import screen
     reported = set(screen._ESCAPE_KEYS.values())
     codes = list(range(128)) + list(range(curses.KEY_F0 + 1, curses.KEY_F0 + 25))
     codes += [curses.KEY_UP, curses.KEY_DOWN, curses.KEY_LEFT, curses.KEY_RIGHT, curses.KEY_NPAGE, curses.KEY_PPAGE,

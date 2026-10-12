@@ -4,14 +4,14 @@ import curses
 
 import pytest
 
-from tower import (analytics_document as D, chart_interaction as C, history_browser as H,
+from raven import (analytics_document as D, chart_interaction as C, history_browser as H,
                    interaction as I, job_panels as J, metric_live as M,
                    recent_history as R, screen, toolbar as T)
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture

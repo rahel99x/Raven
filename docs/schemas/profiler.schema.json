@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower distributed profiler evidence",
+  "title": "Raven distributed profiler evidence",
   "type": "object",
   "required": ["schema", "cluster", "job_id", "attempt", "records"],
   "properties": {
-    "schema": {"const": "tower.profiler/v1"},
+    "schema": {"const": "raven.profiler/v1"},
     "cluster": {"$ref": "#/$defs/identity"},
     "job_id": {"$ref": "#/$defs/identity"},
     "attempt": {"$ref": "#/$defs/identity", "description": "Exact Slurm SubmitTime/StartTime for a started job, or SubmitTime only when StartTime is unknown. Required to verify a selected job and distinguish requeues."},

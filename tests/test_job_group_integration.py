@@ -1,12 +1,12 @@
 """Collapsed sorting must retain the exact allocation selected for actions."""
 import pytest
 
-from tower import job_groups
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import job_groups
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def dashboard(tmp_path):
     store.apply_finished(finished)
     store.group = jobs
     for record in jobs[:2] + finished:
-        store.details[record.id] = {"TowerLaunchId": "live" if isinstance(record, Job) else "finished",
+        store.details[record.id] = {"RavenLaunchId": "live" if isinstance(record, Job) else "finished",
                                     "UserId": "alex(1000)", "Account": "lab", "WorkDir": "/project"}
     app = App(store, None, None, cfg, "alex")
     views = Views(Glyphs(False), cfg)
@@ -71,7 +71,7 @@ def test_frozen_render_reports_changes_from_live_queue(dashboard):
 
 
 def test_dependency_render_does_not_rebuild_related_set_per_job(dashboard, monkeypatch):
-    from tower.deps import DepGraph
+    from raven.deps import DepGraph
     app, views, store = dashboard
     records = [Job("1", "parent", "main", "RUNNING")]
     records += [Job(str(number), "child", "main", "PENDING", dependency="afterok:1")
@@ -92,7 +92,7 @@ def test_dependency_render_does_not_rebuild_related_set_per_job(dashboard, monke
 
 
 def test_deep_dependency_row_keeps_exact_job_id_within_terminal_width(dashboard):
-    from tower import layout as L
+    from raven import layout as L
     app, views, store = dashboard
     records = [Job("1", "root", "main", "RUNNING")]
     records += [Job(str(number), "child", "main", "PENDING", dependency=f"afterok:{number - 1}")
@@ -106,7 +106,7 @@ def test_deep_dependency_row_keeps_exact_job_id_within_terminal_width(dashboard)
 
 
 def test_repeated_dependency_group_fold_controls_have_distinct_semantic_ids(dashboard):
-    from tower import interaction
+    from raven import interaction
     app, views, store = dashboard
     records = [Job("1", "first root", "main", "RUNNING"), Job("2", "second root", "main", "RUNNING"),
                Job("12_0", "array", "main", "PENDING", dependency="afterok:1:2"),
@@ -138,7 +138,7 @@ def test_frozen_group_controls_use_displayed_snapshot_after_live_metadata_change
 
 
 def test_dependency_group_fold_button_preserves_real_mark_indicator(dashboard):
-    from tower import layout as L
+    from raven import layout as L
     app, views, store = dashboard
     records = [Job("1", "root", "main", "RUNNING"),
                Job("12_0", "array", "main", "PENDING", dependency="afterok:1"),

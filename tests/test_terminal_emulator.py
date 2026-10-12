@@ -7,7 +7,7 @@ import random
 import pytest
 
 pytest.importorskip("pyte")
-from tower.terminal_emulator import MAX_INPUT, MAX_REPLY, TerminalEngine
+from raven.terminal_emulator import MAX_INPUT, MAX_REPLY, TerminalEngine
 
 
 def text(engine):
@@ -88,7 +88,7 @@ def test_explicit_history_byte_limit_counts_utf8_and_preserves_newest_rows():
 
 
 def test_history_byte_limit_cannot_exceed_legacy_ceiling_or_go_negative():
-    from tower.terminal_emulator import MAX_HISTORY_BYTES
+    from raven.terminal_emulator import MAX_HISTORY_BYTES
     assert TerminalEngine(history_bytes=10**9).history_bytes_limit == MAX_HISTORY_BYTES
     engine = TerminalEngine(2, 8, history_bytes=-1)
     engine.feed(b"line\r\n" * 10)
@@ -419,7 +419,7 @@ def test_real_vim_pty_edit_exit_restores_shell(tmp_path):
     import shutil
     import subprocess
     import time
-    from tower.terminal_service import TerminalService
+    from raven.terminal_service import TerminalService
 
     editor = shutil.which("vim") or shutil.which("vi")
     if not editor or not shutil.which("bash"):
@@ -435,7 +435,7 @@ def test_real_vim_pty_edit_exit_restores_shell(tmp_path):
 
     with TerminalService() as service:
         sid = service.open(argv=[shutil.which("bash"), "--noprofile", "--norc", "-i"],
-                           env={"PS1": "TOWER_VT_TEST> "}, rows=12, cols=60)
+                           env={"PS1": "RAVEN_VT_TEST> "}, rows=12, cols=60)
 
         def wait(predicate):
             deadline = time.monotonic() + 8
@@ -447,7 +447,7 @@ def test_real_vim_pty_edit_exit_restores_shell(tmp_path):
                 time.sleep(.01)
             pytest.fail("Editor PTY did not reach expected state: " + repr(service.snapshot(sid)))
 
-        wait(lambda state: "TOWER_VT_TEST>" in plain(state))
+        wait(lambda state: "RAVEN_VT_TEST>" in plain(state))
         # --clean depends on a defaults.vim missing in some minimal Vim packages.
         # Explicit -u/-U/-i disables dotfiles without requiring those runtime files.
         import shlex
@@ -457,7 +457,7 @@ def test_real_vim_pty_edit_exit_restores_shell(tmp_path):
         assert service.send(sid, {"type": "text", "text": "iEdited "})
         assert service.send(sid, {"type": "key", "key": "esc"})
         assert service.send(sid, {"type": "text", "text": ":wq\r"})
-        wait(lambda state: not state.get("modes", {}).get("alternate") and "TOWER_VT_TEST>" in plain(state))
+        wait(lambda state: not state.get("modes", {}).get("alternate") and "RAVEN_VT_TEST>" in plain(state))
         assert path.read_text() == "Edited alpha\nbeta\n"
 
 

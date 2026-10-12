@@ -4,12 +4,12 @@ import curses
 
 import pytest
 
-from tower import activity_ui, log_copy, screen, table_ui, workbench
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import activity_ui, log_copy, screen, table_ui, workbench
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ def test_activity_retains_result_paths_and_copy_is_exact(dashboard, monkeypatch)
     notices, _ = app.activity.snapshot()
     assert notices[-1]['path'] == path
     seen = []
-    monkeypatch.setattr('tower.clipboard.copy', lambda text, *args, **kwargs: seen.append(text) or 'copied')
+    monkeypatch.setattr('raven.clipboard.copy', lambda text, *args, **kwargs: seen.append(text) or 'copied')
     app.handle('y')
     assert seen == [path]
     app.handle('esc')
@@ -143,7 +143,7 @@ def test_f6_decoder_reaches_panel_focus():
 
 
 def test_every_feature_module_is_required_and_registered():
-    assert {module.__name__.removeprefix('tower.') for module in workbench.modules()} == set(workbench.FEATURES)
+    assert {module.__name__.removeprefix('raven.') for module in workbench.modules()} == set(workbench.FEATURES)
     assert {'dashboard', 'preflight', 'orchestrate', 'project', 'savedview', 'logview', 'workspaces'} <= set(workbench.command_names())
 
 

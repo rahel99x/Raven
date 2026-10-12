@@ -4,15 +4,15 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, clock, layout as L, scrollbars as S
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import chart_interaction as C, clock, layout as L, scrollbars as S
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 def test_cancelled_scroll_peek_matches_next_viewport_after_motion_is_rearmed():
-    from tower import scrolling as S
+    from raven import scrolling as S
     app = SimpleNamespace(cfg={}, animations_enabled=True, theme="default")
     key, context = "workspace:jobs:details", ("7", 160, 43, "analytics", "job")
     assert S.viewport(app, key, 0, 201, 43, context=context, now=10.) == 0
@@ -60,7 +60,7 @@ def test_inline_virtual_series_matches_complete_render_after_scroll_resize_and_d
         for app, views in dashboards:
             app.layout_state.density = density
             if action is not None:
-                from tower import workspace_layout as W
+                from raven import workspace_layout as W
                 old_focus = app.layout_state.focus
                 app.layout_state.focus = "details"
                 W._scroll(app, action)

@@ -13,9 +13,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import diagnostic_trials as driver
-from tower import ops_investigation as ops
-from tower.operations import Context
+from raven import diagnostic_trials as driver
+from raven import ops_investigation as ops
+from raven.operations import Context
 
 
 def write(path, value):
@@ -29,7 +29,7 @@ def recipe(tmp_path, program=None, kind="minimize"):
     input_file = tmp_path/"input.txt"
     input_file.write_text("first\nsecond\nneedle\nthird\nfourth\n")
     files = [{"name": p.name, "path": str(p), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in (code, input_file)]
-    result = {"schema": "tower.diagnostic-campaign/v1", "id": "diagnosis", "kind": kind, "mode": "local-diagnostic",
+    result = {"schema": "raven.diagnostic-campaign/v1", "id": "diagnosis", "kind": kind, "mode": "local-diagnostic",
               "command": [str(Path(sys.executable).resolve()), "{file:oracle.py}", "{input}"], "files": files,
               "limits": {"max_trials": 40, "trial_seconds": 2, "total_seconds": 20, "cpus": 1, "memory_mb": 256, "output_bytes": 8192, "repeats": 2},
               "oracle": {"exit_code": 7, "contains": "TARGET"}}
@@ -135,7 +135,7 @@ def test_campaign_executes_each_case_and_persists_measured_result(tmp_path, ctx)
     assert json.loads((Path(params["destination"])/"trials"/"0004"/"result.json").read_text())["metric"] == 4
 
 
-def test_real_standalone_driver_does_not_require_importable_tower(tmp_path, ctx):
+def test_real_standalone_driver_does_not_require_importable_raven(tmp_path, ctx):
     doc = recipe(tmp_path, "print('TARGET')\nraise SystemExit(7)\n", kind="campaign")
     reviewed, params = prepare(tmp_path, doc, ctx)
     # Normal apply stages and executes; reuse the staged driver in an independently staged workspace.

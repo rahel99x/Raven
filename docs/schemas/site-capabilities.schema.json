@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/site-capabilities.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/site-capabilities.schema.json",
   "title": "site capabilities",
   "description": "Native compilation checks unique adapter IDs, known conflict IDs and executable recipe applicability; this schema does not authorize or execute argv.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.site-capabilities/v1"
+      "const": "raven.site-capabilities/v1"
     },
     "identity": {
       "type": "string",

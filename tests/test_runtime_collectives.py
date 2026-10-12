@@ -5,8 +5,8 @@ import queue
 
 import pytest
 
-from tower.collective_runtime import CollectiveControlError, CollectiveRuntime, TorchMetrics, TorchDistributedCommunicator
-from tower.runtime_control import RuntimeControl, initialize
+from raven.collective_runtime import CollectiveControlError, CollectiveRuntime, TorchMetrics, TorchDistributedCommunicator
+from raven.runtime_control import RuntimeControl, initialize
 
 
 class ProcessCommunicator:

@@ -15,7 +15,7 @@ def prepare(destination):
     repo = root/"synthetic-project"
     repo.mkdir()
     def git(*argv):
-        return subprocess.check_output(["git", "-c", "user.name=Tower example", "-c", "user.email=tower@example.invalid", "-C", str(repo), *argv], text=True, timeout=10).strip()
+        return subprocess.check_output(["git", "-c", "user.name=Raven example", "-c", "user.email=raven@example.invalid", "-C", str(repo), *argv], text=True, timeout=10).strip()
     git("init", "-q")
     revisions = []
     for name, delay in (("baseline", .005), ("regression", .1), ("recovery", .005)):
@@ -28,7 +28,7 @@ def prepare(destination):
         git("add", "measure.py")
         git("commit", "-qm", "Synthetic " + name)
         revisions.append({"id": name, "commit": git("rev-parse", "HEAD")})
-    recipe = {"schema": "tower.diagnostic-campaign/v1", "id": "synthetic-git-regression", "mode": "local-diagnostic", "kind": "regression",
+    recipe = {"schema": "raven.diagnostic-campaign/v1", "id": "synthetic-git-regression", "mode": "local-diagnostic", "kind": "regression",
               "command": [str(Path(sys.executable).resolve()), "{repo:measure.py}", "{result}"], "files": [],
               "limits": {"max_trials": 30, "trial_seconds": 3, "total_seconds": 45, "cpus": 1, "memory_mb": 256, "output_bytes": 16384, "repeats": 5},
               "oracle": {"exit_code": 0, "contains": "SCIENTIFIC_CHECK_OK"},

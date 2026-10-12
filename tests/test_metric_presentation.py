@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import metric_playback as P
+from raven import metric_playback as P
 
 
 @pytest.fixture

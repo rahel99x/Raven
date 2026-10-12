@@ -8,10 +8,10 @@ import stat
 
 import pytest
 
-from tower import clipboard, log_copy
-from tower.log_copy import copy_full_log
-from tower.logs import LogBuffer
-from tower.remote import LocalFiles, RemoteFiles
+from raven import clipboard, log_copy
+from raven.log_copy import copy_full_log
+from raven.logs import LogBuffer
+from raven.remote import LocalFiles, RemoteFiles
 
 
 def exported(result):

@@ -4,13 +4,13 @@ import threading
 
 import pytest
 
-from tower import project_ui
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Job, Store
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import project_ui
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Job, Store
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 @pytest.fixture
@@ -18,14 +18,14 @@ def project_dashboard(tmp_path):
     root = tmp_path / "actual project"
     run = root / "runs" / "observed-a1"
     (run / "logs").mkdir(parents=True)
-    (root / ".tower/contracts").mkdir(parents=True)
-    (root / ".tower/contracts/outputs.v1.json").write_text(json.dumps({"version": 1, "outputs": [{"path": "run.json", "format": "json"}]}))
+    (root / ".raven/contracts").mkdir(parents=True)
+    (root / ".raven/contracts/outputs.v1.json").write_text(json.dumps({"version": 1, "outputs": [{"path": "run.json", "format": "json"}]}))
     (run / "logs/stdout.log").write_bytes(b"first\tline\r\nsecond line\r\nthird line\r\n")
     (run / "logs/worker.log").write_bytes(b"worker\tactual\r\n")
     (run / "logs/stderr.log").write_text("actual stderr\n")
-    (run / "metrics.jsonl").write_text('{"schema":"tower.metric/v1","t":1,"values":{"loss":0.2}}\n')
-    (run / "run.json").write_text(json.dumps({"schema": "tower.run/v1", "run_id": "observed-a1", "experiment_id": "actual", "attempt": 1, "state": "COMPLETED", "paths": {"metrics": "metrics.jsonl", "log_index": "logs.json", "stdout": "logs/stdout.log", "stderr": "logs/stderr.log"}}))
-    (run / "logs.json").write_text(json.dumps({"schema": "tower.logs/v1", "run_id": "observed-a1", "logs": [{"id": "worker", "path": "logs/worker.log", "label": "Worker output", "group": "Application"}]}))
+    (run / "metrics.jsonl").write_text('{"schema":"raven.metric/v1","t":1,"values":{"loss":0.2}}\n')
+    (run / "run.json").write_text(json.dumps({"schema": "raven.run/v1", "run_id": "observed-a1", "experiment_id": "actual", "attempt": 1, "state": "COMPLETED", "paths": {"metrics": "metrics.jsonl", "log_index": "logs.json", "stdout": "logs/stdout.log", "stderr": "logs/stderr.log"}}))
+    (run / "logs.json").write_text(json.dumps({"schema": "raven.logs/v1", "run_id": "observed-a1", "logs": [{"id": "worker", "path": "logs/worker.log", "label": "Worker output", "group": "Application"}]}))
     cfg = Config({"clipboard": {"osc52": False, "tools": False}, "log_lines": 0})
     store = Store(persist=False)
     first = Job("11", "unrelated live job", "main", "RUNNING")
@@ -218,7 +218,7 @@ def test_cancel_copy_from_activity_cleans_partial_export(project_dashboard, monk
     app.enter_tab("log")
     render(app, views)
     (run / "logs/stdout.log").write_bytes(b"x" * (3 * 1024 * 1024))
-    import tower.log_copy as log_copy
+    import raven.log_copy as log_copy
     reached, release = threading.Event(), threading.Event()
     original = log_copy.os.read
 

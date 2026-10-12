@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import raven_protocol as protocol, science_files as science
+from raven import raven_protocol as protocol, science_files as science
 
 
 UNSIGNED_INODE = (1 << 64) - 1

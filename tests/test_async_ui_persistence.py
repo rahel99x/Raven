@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import ui_persistence as P
-from tower.model import Store
-from tower.worker_scheduler import WorkerScheduler
+from raven import ui_persistence as P
+from raven.model import Store
+from raven.worker_scheduler import WorkerScheduler
 
 
 def test_coalesces_latest_settings_and_flushes_after_live_mode_changes(tmp_path, monkeypatch):

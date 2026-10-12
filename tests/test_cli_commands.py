@@ -4,13 +4,13 @@ import sys
 
 import pytest
 
-from tower.cli import build, parse, scripted
-from tower.config import Config
+from raven.cli import build, parse, scripted
+from raven.config import Config
 
 
 def test_resubmit_preview_preserves_script_paths_and_job_names_with_spaces():
     result = subprocess.run(
-        [sys.executable, "-m", "tower", "--fake", "--no-state", "--no-plugins",
+        [sys.executable, "-m", "raven", "--fake", "--no-state", "--no-plugins",
          "run", "resubmit", "12480001", "--script", "jobs/train model.sbatch", "--job-name", "training model"],
         capture_output=True, text=True, timeout=20,
     )
@@ -45,7 +45,7 @@ def test_resubmit_account_override_belongs_to_submission():
     assert args.account == "monitor-account"
     assert args.run == "resubmit 12480001 --account submit-account"
     result = subprocess.run(
-        [sys.executable, "-m", "tower", "--fake", "--no-state", "--no-plugins",
+        [sys.executable, "-m", "raven", "--fake", "--no-state", "--no-plugins",
          "run", "resubmit", "12480001", "--account", "submit-account"],
         capture_output=True, text=True, timeout=20,
     )

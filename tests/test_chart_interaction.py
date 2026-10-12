@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, layout as L
-from tower.interaction import Rect
+from raven import analysis_ui as A, chart_interaction as C, layout as L
+from raven.interaction import Rect
 
 
 @pytest.fixture
@@ -330,7 +330,7 @@ def test_modal_and_startup_allow_only_the_visible_chart_layer(app,monkeypatch):
     assert C.publish(app,120,40)==()
     app.mode="main"
     app.startup_state={"running":True}
-    from tower import startup
+    from raven import startup
     monkeypatch.setattr(startup,"active",lambda app:True)
     assert C.publish(app,120,40)==()
 
@@ -419,7 +419,7 @@ def test_inspector_records_exact_modal_box_and_keyboard_samples_follow_box_zoom(
 
 
 def test_comparison_elapsed_curves_publish_in_the_visible_modal_with_exact_jobs(app):
-    from tower.model import Job
+    from raven.model import Job
     app.mode="analysis"
     app.analysis_state.update(modal="diff",diff_ids=["101","102"],shared_scale=True)
     jobs={jid:Job(jid,"same name","cpu","RUNNING",cpus=2) for jid in ("101","102")}

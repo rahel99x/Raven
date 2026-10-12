@@ -1,9 +1,9 @@
 """Right-click group headers retain the exact painted pane and job attempts."""
 import pytest
 
-from tower import history_browser, job_group_drag, job_group_menu, job_groups, job_selection
-from tower import manual_job_groups
-from tower.model import Finished, Job
+from raven import history_browser, job_group_drag, job_group_menu, job_groups, job_selection
+from raven import manual_job_groups
+from raven.model import Finished, Job
 from test_job_group_mouse_integration import (
     dashboard, dispatch, frame, index, labels, mark, menu_point, point,
 )
@@ -21,7 +21,7 @@ def prepare(dashboard, scope, kind, collapsed):
     if kind == "smart":
         # A launch marker creates one automatic group across active/history
         # sources; the menu must still restrict each pane to its own records.
-        store.details.update({jid: {"TowerLaunchId": "header-batch"}
+        store.details.update({jid: {"RavenLaunchId": "header-batch"}
                               for jid in ("1", "2", "3", "21", "22", "23")})
         manual_job_groups.detach(app, store.snapshot(), group_ids=(index(dashboard).for_job("1").id,))
         app.table_state["manual_groups"] = {}
@@ -155,7 +155,7 @@ def test_header_actions_reject_stale_hidden_jobs_and_changed_group(dashboard, ch
     elif change == "membership":
         manual_job_groups.add(app, store.snapshot(), gid, ("4",))
     else:
-        store.details["4"] = {"TowerLaunchId": "header-batch"}
+        store.details["4"] = {"RavenLaunchId": "header-batch"}
     if repaint:
         _, hits = frame(dashboard)
     before = app.table_state.get("manual_groups")

@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from tower import shell_checks as S
+from raven import shell_checks as S
 
 
 @pytest.fixture(autouse=True)

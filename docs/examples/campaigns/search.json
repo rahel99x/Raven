@@ -1,5 +1,5 @@
 {
-  "schema": "tower.parameter-search/v1",
+  "schema": "raven.parameter-search/v1",
   "id": "example-search-01",
   "script": "trial.sbatch",
   "workdir": ".",

@@ -6,7 +6,7 @@ produce these files without importing or installing Raven.
 
 For Bash launchers, use the
 [automated Research reporting guide](guides/research-automation.md).
-`tower report` creates the standard files and links them to actual Slurm job
+`raven report` creates the standard files and links them to actual Slurm job
 attempts. The copyable Python reporter supports projects without a Raven
 installation.
 
@@ -36,7 +36,7 @@ my-project/
 ├── configs/                     scientific parameters and input declarations
 ├── jobs/
 │   └── run.sbatch                batch entry point
-├── .tower/                      reusable, versioned Raven integration
+├── .raven/                      reusable, versioned Raven integration
 │   ├── config.json
 │   ├── contracts/
 │   │   └── outputs.v1.json
@@ -82,7 +82,7 @@ code in Git. Keep generated run directories, reports, scheduler logs, and
 private passports out of Git by default. Share a selected, reviewed run bundle
 when someone needs to reproduce or inspect its results.
 
-Raven's normal submission receipt may store passports under `.tower/passports/`
+Raven's normal submission receipt may store passports under `.raven/passports/`
 in the batch workdir. Ignore that generated subdirectory. An explicit
 `--passport-dir` can associate the passport with a particular run directory.
 
@@ -112,7 +112,7 @@ snapshots are not independent experiments.
 
 For a submitted array, publish an optional
 `reports/arrays/<cluster>-<array_id>.json` using
-[`tower.array-manifest/v1`](schemas/array-manifest.schema.json). The
+[`raven.array-manifest/v1`](schemas/array-manifest.schema.json). The
 [example](../examples/array-manifest.json) shows the required structure.
 This file maps actual array indices to scientific IDs, labels, scalar
 parameters, and declared input/output paths.
@@ -209,7 +209,7 @@ Under a candidate root, publish this exact identity before emitting metrics:
 
 ```json
 {
-  "schema": "tower.run/v1",
+  "schema": "raven.run/v1",
   "run_id": "fit-a1-task7",
   "experiment_id": "fit",
   "attempt": 1,
@@ -272,21 +272,21 @@ not recursive search rules. The inventory binds them to the job's exact identity
 | Experiment / `experiment` | `RUN/metrics.jsonl` | `paths.metrics` | Complete JSONL `t` and finite `metrics`; optional `step`, `phase`, `progress`. Appends update graphs, values, progress, and conditional ETA. |
 | Arrays / `arrays` | Each task's separate `RUN/run.json`, `metrics.jsonl`, and `summary.json` | Exact `job_id` such as `12345_7`; actual scheduler array records | The grid uses live/accounting task identities and states. No `arrays.json` reader exists; task reports attach when that exact task is selected. |
 | Evidence / `evidence` | `RUN/logs.json`, its exact log files, and `RUN/metrics.jsonl` | `paths.log_index`, optional `paths.stdout` / `stderr`, `paths.metrics` | Actual job/details observations and bounded cited log excerpts. Updated indexes and logs are reread; no separate diagnosis JSON is consumed. |
-| Artifacts / `artifacts` | `PROJECT/.tower/contracts/outputs.v1.json`, files under `RUN/outputs/` | Standard project contract and the selected run root | Required/optional exact output paths, formats, bounds, keys, rows, columns, or hashes. Atomic result publication updates validation; final outputs may be missing while running. |
+| Artifacts / `artifacts` | `PROJECT/.raven/contracts/outputs.v1.json`, files under `RUN/outputs/` | Standard project contract and the selected run root | Required/optional exact output paths, formats, bounds, keys, rows, columns, or hashes. Atomic result publication updates validation; final outputs may be missing while running. |
 | Passport / `passport` | `RUN/passports/<native-content-id>.json` | `paths.passports`, or an explicitly selected passport | Genuine immutable Raven provenance records. One verified record can bind automatically; choose explicitly when multiple records exist. Do not synthesize a passport from `run.json`. |
-| Submit / `submit` | `RUN/reports/submit.json` | `paths.submit` | Intact `tower.submission-plan/v1` output from `tower run prepare`, including `plan_id`. Replacement updates read-only preflight display; it does not arm `:submit`. |
-| Resources / `predict` | `RUN/reports/predict.json` | `paths.predict`, otherwise `paths.planning` | Native `tower.planning` object with `history` and an explicit comparable `query`. Measured summaries, including failures, support resource intervals only when evidence permits. |
+| Submit / `submit` | `RUN/reports/submit.json` | `paths.submit` | Intact `raven.submission-plan/v1` output from `raven run prepare`, including `plan_id`. Replacement updates read-only preflight display; it does not arm `:submit`. |
+| Resources / `predict` | `RUN/reports/predict.json` | `paths.predict`, otherwise `paths.planning` | Native `raven.planning` object with `history` and an explicit comparable `query`. Measured summaries, including failures, support resource intervals only when evidence permits. |
 | Forecast / `forecast` | `RUN/reports/forecast.json` | `paths.forecast`, otherwise `paths.planning` | Actual pending `jobs`, selected `job_id`, and optional real pre-start `observations` / historical outcomes. Updated source changes the analysis; recorded `now` keeps a historical snapshot frozen. |
 | Blockers / `blockers` | `RUN/reports/blockers.json` | `paths.blockers`, otherwise `paths.planning` | Actual `jobs`, `job_id`, and matching `details`, `partitions`, `nodes`, `share`, `health` when known. Omitted snapshot facts remain unknown. |
 | Tradeoffs / `tradeoffs` | `RUN/reports/tradeoffs.json` | `paths.tradeoffs`, otherwise `paths.planning` | Explicit `candidates`, comparable observed `history`, optional actual `queue_history`, and `coverage`. Unknown runtime or queue behavior stays unestimated. |
-| Scaling / `scaling` | `RUN/reports/scaling.json` | `paths.scaling`, otherwise `paths.planning` | `tower.planning` `scaling` records with actual worker/repeat controls, or a native `tower.scaling` recipe. Report replacement updates analysis or reviewable plans without execution. |
-| Workflow / `workflow` | `RUN/reports/workflow.json` | `paths.workflow`, otherwise `paths.planning` | Native `tower.workflow` recipe, or a planning bundle's `workflow`: node IDs, real dependencies, and measured timing intervals when known. Missing durations stay unknown; no automatic orchestration. |
+| Scaling / `scaling` | `RUN/reports/scaling.json` | `paths.scaling`, otherwise `paths.planning` | `raven.planning` `scaling` records with actual worker/repeat controls, or a native `raven.scaling` recipe. Report replacement updates analysis or reviewable plans without execution. |
+| Workflow / `workflow` | `RUN/reports/workflow.json` | `paths.workflow`, otherwise `paths.planning` | Native `raven.workflow` recipe, or a planning bundle's `workflow`: node IDs, real dependencies, and measured timing intervals when known. Missing durations stay unknown; no automatic orchestration. |
 
 The following sections specify measurements, final summaries, contracts, and
 planning fields. [The planning guide](WAVE_TWO.md) covers native interpretation,
 confidence, limits, and offline commands for the last six views.
 
-<a id="publish-a-per-view-source-without-a-tower-dependency"></a>
+<a id="publish-a-per-view-source-without-a-raven-dependency"></a>
 
 ### Publish a per-view source without a Raven dependency
 
@@ -313,11 +313,11 @@ Publish an existing actual source through the same interface:
 
 ```bash
 python3 reporting.py report forecast captured-forecast.json --run runs/my-run
-python3 reporting.py report workflow .tower/definitions/workflow.json --run runs/my-run
+python3 reporting.py report workflow .raven/definitions/workflow.json --run runs/my-run
 ```
 
 Forecast and blocker files contain native input observations, not the analyzed
-JSON output printed by `tower run forecast` or `tower run blockers`. Never label
+JSON output printed by `raven run forecast` or `raven run blockers`. Never label
 those analysis results as fresh scheduler observations.
 
 Create a per-run aggregate with explicit attempts:
@@ -339,14 +339,14 @@ Use the actual local preparation command and publish its result through the repo
 
 ```bash
 preflight_file=$(mktemp)
-tower run prepare jobs/run.sbatch --workdir "$PWD" > "$preflight_file"
+raven run prepare jobs/run.sbatch --workdir "$PWD" > "$preflight_file"
 python3 reporting.py report submit "$preflight_file" --run runs/my-run
 rm "$preflight_file"
 ```
 
 Review the command's exit status and output: a blocked native preflight is still
 useful evidence, while a non-JSON command error is refused by the reporter.
-The native marker is `tower.submission-plan/v1`; `plan_id` protects its exact
+The native marker is `raven.submission-plan/v1`; `plan_id` protects its exact
 review fields. Retain captured paths and arguments intact. Source relocation
 does not make a historical plan executable on the new machine. Use `:prepare`
 again for a current interactive submission review; discovered files never
@@ -356,9 +356,9 @@ populate an executable plan or authorize a scheduler action.
 
 | File | Producer | How Raven uses it |
 | --- | --- | --- |
-| `.tower/config.json` | Project author | `--config` attaches explicit report paths and preferences |
+| `.raven/config.json` | Project author | `--config` attaches explicit report paths and preferences |
 | `metrics.jsonl` | Application | Experiment graphs, latest values, progress, and conditional ETA |
-| `.tower/contracts/outputs.v1.json` | Project author | Artifacts checks exact declared result files |
+| `.raven/contracts/outputs.v1.json` | Project author | Artifacts checks exact declared result files |
 | `summary.json` | Application, then optionally scheduler reconciliation | Exported records become prediction/scaling evidence |
 | `reports/planning.json` | Explicit aggregation step | Project-level offline analysis or a per-run shared planning source |
 | `runs/<run_id>/reports/<view>.json` | Project coordinator | Exact job-bound source for one planning view or captured read-only Submit evidence |
@@ -382,32 +382,32 @@ arm an action, or start a service. Set its exact path in the operation form and
 select **Inspect / prepare**. See the [complete operation catalog](guides/operations.md).
 
 Keep reusable policies and recipes in
-`PROJECT/.tower/definitions/operations/`. Keep measurements for one attempt in
+`PROJECT/.raven/definitions/operations/`. Keep measurements for one attempt in
 `PROJECT/runs/<run_id>/reports/operations/`. Keep an explicitly selected cohort
 or campaign in `PROJECT/reports/operations/`. The names below are conventions;
 the schema and exact path supplied to a form determine the reader.
 
 | Source | Suggested filename | Form / contract |
 | --- | --- | --- |
-| Python, native-library, and optional container requirements | `.tower/definitions/operations/environment.json` | `environment`; [tower.environment/v1](schemas/science-environment.schema.json) |
-| Scientific acceptance rules | `.tower/definitions/operations/acceptance.json` | `acceptance`; [tower.acceptance/v1](schemas/science-acceptance.schema.json) |
+| Python, native-library, and optional container requirements | `.raven/definitions/operations/environment.json` | `environment`; [raven.environment/v1](schemas/science-environment.schema.json) |
+| Scientific acceptance rules | `.raven/definitions/operations/acceptance.json` | `acceptance`; [raven.acceptance/v1](schemas/science-acceptance.schema.json) |
 | Actual scientific measurements | `RUN/reports/operations/results.json` | `acceptance`; [result contract](schemas/science-results.schema.json) |
 | Declared independent units or exact pairs | `reports/operations/statistics.json` | `statistics`; [comparison contract](schemas/science-statistics.schema.json) |
-| Exact requested code, environment, and parameter identity | `.tower/definitions/operations/identity.json` | `reuse`; [identity contract](schemas/science-identity.schema.json) |
+| Exact requested code, environment, and parameter identity | `.raven/definitions/operations/identity.json` | `reuse`; [identity contract](schemas/science-identity.schema.json) |
 | Verified inputs, outputs, identity, and acceptance evidence | `RUN/reports/operations/reuse.json` | `reuse`; [reuse contract](schemas/science-reuse.schema.json) |
 | Exact pending-job dependency repair recipe | `reports/operations/dependency-repair.json` | `dependency-repair`; [repair contract](schemas/science-dependency-repair.schema.json) |
-| Checkpoint path/hash, completed source attempt, compatible restart recipe | `RUN/reports/operations/checkpoint.json` | `checkpoint`; `tower.checkpoint-restart/v1`, [example and rules](guides/operations-campaigns.md#checkpoint-recovery) |
-| Discrete search space, budget, trial script, and observations | `reports/operations/search.json` | `search`; `tower.parameter-search/v1`, [example and rules](guides/operations-campaigns.md#adaptive-parameter-search) |
-| Logical tasks and resource budgets | `.tower/definitions/operations/packing.json` | `packing`; `tower.packed-tasks/v1`, [example and rules](guides/operations-campaigns.md#short-task-packing) |
-| Owned pool and scaling bounds | `.tower/definitions/operations/dask.json` | `dask`; `tower.dask-pool/v1`, [example and rules](guides/operations-campaigns.md#elastic-dask-pool) |
-| Distinct Slurm components and coupled launch | `.tower/definitions/operations/heterogeneous.json` | `heterogeneous`; `tower.heterogeneous-allocation/v1`, [example and rules](guides/operations-campaigns.md#heterogeneous-allocation) |
-| Declared input/output transfer paths, sizes, and hashes | `reports/operations/staging.json` | `staging`; [tower.staging/v1](schemas/staging.schema.json), [example](examples/staging-manifest.json) |
+| Checkpoint path/hash, completed source attempt, compatible restart recipe | `RUN/reports/operations/checkpoint.json` | `checkpoint`; `raven.checkpoint-restart/v1`, [example and rules](guides/operations-campaigns.md#checkpoint-recovery) |
+| Discrete search space, budget, trial script, and observations | `reports/operations/search.json` | `search`; `raven.parameter-search/v1`, [example and rules](guides/operations-campaigns.md#adaptive-parameter-search) |
+| Logical tasks and resource budgets | `.raven/definitions/operations/packing.json` | `packing`; `raven.packed-tasks/v1`, [example and rules](guides/operations-campaigns.md#short-task-packing) |
+| Owned pool and scaling bounds | `.raven/definitions/operations/dask.json` | `dask`; `raven.dask-pool/v1`, [example and rules](guides/operations-campaigns.md#elastic-dask-pool) |
+| Distinct Slurm components and coupled launch | `.raven/definitions/operations/heterogeneous.json` | `heterogeneous`; `raven.heterogeneous-allocation/v1`, [example and rules](guides/operations-campaigns.md#heterogeneous-allocation) |
+| Declared input/output transfer paths, sizes, and hashes | `reports/operations/staging.json` | `staging`; [raven.staging/v1](schemas/staging.schema.json), [example](examples/staging-manifest.json) |
 | Native Nextflow trace | `RUN/reports/operations/trace.tsv` | `workflow-engine`; [native TSV fields](guides/operations-services.md#nextflow) |
 | Native Snakemake DAG or runtime plugin snapshot | `RUN/reports/operations/workflow-engine.json` | `workflow-engine`; [snapshot contract](schemas/workflow-engine.schema.json), [example](examples/workflow-engine.json) |
-| Exclusive profiler rank/phase observations | `RUN/reports/operations/profiler.json` | `bottlenecks`; [tower.profiler/v1](schemas/profiler.schema.json), [example](../examples/scale-profiler.json) |
-| Explicit cluster endpoints or profile references | `.tower/definitions/operations/clusters.json` | `clusters`; [workspace contract](schemas/cluster-workspace.schema.json), [example](../examples/scale-clusters.json) |
-| Permitted node-event intervals and reasons | `reports/operations/incidents.json` | `incidents`; [tower.incidents/v1](schemas/incidents.schema.json), [example](../examples/scale-incidents.json) |
-| Attempt energy, attribution, coverage, and accepted work | `reports/operations/energy.json` | `energy`; [tower.energy/v1](schemas/energy.schema.json), [example](../examples/scale-energy.json) |
+| Exclusive profiler rank/phase observations | `RUN/reports/operations/profiler.json` | `bottlenecks`; [raven.profiler/v1](schemas/profiler.schema.json), [example](../examples/scale-profiler.json) |
+| Explicit cluster endpoints or profile references | `.raven/definitions/operations/clusters.json` | `clusters`; [workspace contract](schemas/cluster-workspace.schema.json), [example](../examples/scale-clusters.json) |
+| Permitted node-event intervals and reasons | `reports/operations/incidents.json` | `incidents`; [raven.incidents/v1](schemas/incidents.schema.json), [example](../examples/scale-incidents.json) |
+| Attempt energy, attribution, coverage, and accepted work | `reports/operations/energy.json` | `energy`; [raven.energy/v1](schemas/energy.schema.json), [example](../examples/scale-energy.json) |
 
 `RUN` means `PROJECT/runs/<run_id>`. Read the
 [science guide](guides/operations-science.md) before adapting the
@@ -424,7 +424,7 @@ not a complete workflow history.
 
 Operation plans and service state are Raven-owned outputs. Do not synthesize
 an action plan or copy one between connections. Common action receipts use
-`tower.operation-receipt/v1` under Raven's state directory in
+`raven.operation-receipt/v1` under Raven's state directory in
 `operations-receipts/`; transfer, campaign, and service adapters also retain
 their own durable records. Keep this private operational state out of project
 Git history. Share a reviewed structured report when another researcher needs
@@ -443,7 +443,7 @@ locations rather than copying or merging their contents. For example:
 
 ```json
 {
-  "schema": "tower.logs/v1",
+  "schema": "raven.logs/v1",
   "run_id": "fit-20261004T120000Z-a1",
   "job_id": "12345",
   "logs": [
@@ -476,7 +476,7 @@ directory rather than relying on the shell's current directory.
 
 | Index field | Rule |
 | --- | --- |
-| `schema` | Exactly `tower.logs/v1` |
+| `schema` | Exactly `raven.logs/v1` |
 | `logs` | Required array, at most 256 exact file entries |
 | Entry `id` | Unique stable ASCII ID, 1–128 letters/digits/`.`/`_`/`-`, starting with a letter or digit |
 | Entry `path` | Required nonempty printable path, at most 4,096 characters; no globs or backslashes |
@@ -525,19 +525,19 @@ worker. Those copies pin the selected exact bytes and save a private
 `state/exports/log-selected-<uuid>.log` file before clipboard delivery. Invalid
 UTF-8 skips text clipboard transport instead of replacing bytes.
 Small valid UTF-8 ranges keep the immediate atomic `clipboard.txt` fallback.
-With `--no-state`, exports use `./tower-exports/`. If rotation, truncation, or
+With `--no-state`, exports use `./raven-exports/`. If rotation, truncation, or
 retained-tail eviction invalidates a selection, `y` asks for reselection rather
 than silently copying a whole file; stale mouse targets are rejected too.
 
 `V` then `y`, `Y`, `:copy all`, or `y` without a line selection reads the whole
 exact selected log through the shared worker rather than copying the retained
 tail. Raven streams its initial byte range in 1 MiB chunks to a unique private
-`state/exports/log-full-<uuid>.log` file (mode `0600`), or `./tower-exports/` with
+`state/exports/log-full-<uuid>.log` file (mode `0600`), or `./raven-exports/` with
 `--no-state`. Later appends are excluded and reported. Detected rotation,
 replacement, truncation, in-place change, or short reads fail without publishing
 a partial copy. This does not lock the producer or establish an application
 checkpoint. Treat exports as generated private evidence, outside public Git;
-ignore `tower-exports/` if using the no-state fallback within your project.
+ignore `raven-exports/` if using the no-state fallback within your project.
 
 The complete raw export survives clipboard limitations. OSC 52 is requested
 only for complete UTF-8 text that fits its limit; no prefix is silently copied.
@@ -635,7 +635,7 @@ for the display and sorting controls.
 If Raven is installed in the application's Python environment:
 
 ```python
-from tower.metrics import write_metric
+from raven.metrics import write_metric
 
 write_metric("metrics.jsonl", {"loss": 0.032}, step=12, phase="fit",
              completed=12, total=100, unit="steps")
@@ -650,7 +650,7 @@ The inventory's minimum fields are:
 
 ```json
 {
-  "schema": "tower.run/v1",
+  "schema": "raven.run/v1",
   "run_id": "fit-20261004T120000Z-a1",
   "experiment_id": "regression-v3",
   "attempt": 1,
@@ -682,7 +682,7 @@ look like this:
 
 ```json
 {
-  "schema": "tower.summary/v1",
+  "schema": "raven.summary/v1",
   "id": "fit-20261004T120000Z-a1",
   "job_id": "12345",
   "name": "my-project/regression-v3",
@@ -778,7 +778,7 @@ hardware identity in cohort parameters and select comparable runs explicitly.
 Keep a worker's CPU time separate from a measured sum across an allocation;
 record its source and scope in report metadata.
 
-## Output declaration: `.tower/contracts/outputs.v1.json`
+## Output declaration: `.raven/contracts/outputs.v1.json`
 
 Example contract:
 
@@ -819,7 +819,7 @@ Export explicitly selected run summaries to the native planning format:
 ```json
 {
   "version": 1,
-  "kind": "tower.planning",
+  "kind": "raven.planning",
   "coverage": 0.8,
   "query": {"name": "my-project/regression-v3", "partition": "main",
             "cpus": 4, "nodes": 1, "gpus": 0},
@@ -894,9 +894,9 @@ For the explicit configuration workflow, from the project root after creating a 
 
 ```bash
 RUN_DIR="$PWD/runs/my-run"
-tower --config .tower/config.json --workdir "$RUN_DIR" \
+raven --config .raven/config.json --workdir "$RUN_DIR" \
   --tab research --research-view experiment
-tower run validate .tower/contracts/outputs.v1.json "$RUN_DIR"
+raven run validate .raven/contracts/outputs.v1.json "$RUN_DIR"
 ```
 
 On a development machine without Slurm, add `--fake --no-state --no-plugins`
@@ -907,20 +907,20 @@ your account, partition, and polling preferences from the [runbook](runbook.md).
 After exporting a planning bundle:
 
 ```bash
-tower run predict --file reports/planning.json
-tower run scaling analyze reports/planning.json --mode strong --baseline 1
-tower --config .tower/config.json --workdir "$RUN_DIR" \
+raven run predict --file reports/planning.json
+raven run scaling analyze reports/planning.json --mode strong --baseline 1
+raven --config .raven/config.json --workdir "$RUN_DIR" \
   --tab research --research-view predict
 ```
 
-The two `tower run` analyses above are offline. Missing allocation or repetition
+The two `raven run` analyses above are offline. Missing allocation or repetition
 metadata produces an explicit insufficient/partial result. Supply real metadata
 when it is known; keep local development reports honest when it is unavailable.
 
 For provenance, use Raven's API or command to create a genuine passport:
 
 ```bash
-tower run passport capture jobs/run.sbatch --workdir "$PWD" \
+raven run passport capture jobs/run.sbatch --workdir "$PWD" \
   --input experiment.py --input reporting.py \
   --output-dir "$RUN_DIR/passports"
 ```

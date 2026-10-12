@@ -5,7 +5,7 @@
 python3 - <<'PY'
 import json
 import os
-values = json.loads(os.environ["TOWER_TRIAL_PARAMETERS"])
-print(json.dumps({"trial": os.environ["TOWER_TRIAL_ID"],
+values = json.loads(os.environ["RAVEN_TRIAL_PARAMETERS"])
+print(json.dumps({"trial": os.environ["RAVEN_TRIAL_ID"],
                   "status": "success", "metric": (values["x"] - 2) ** 2}))
 PY

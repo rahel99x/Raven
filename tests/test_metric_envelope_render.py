@@ -6,9 +6,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import charts, chart_interaction as C, layout as L, metric_envelope as E, palette
-from tower.interaction import Rect
-from tower.metric_raster import MetricRasterCache
+from raven import charts, chart_interaction as C, layout as L, metric_envelope as E, palette
+from raven.interaction import Rect
+from raven.metric_raster import MetricRasterCache
 
 
 def draw(values, *, ascii_=False, width=90, height=8, title="CPU", **options):

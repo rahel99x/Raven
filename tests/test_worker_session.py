@@ -8,9 +8,9 @@ import sys
 
 import pytest
 
-from tower import cli
-from tower.config import Config
-from tower.model import Store
+from raven import cli
+from raven.config import Config
+from raven.model import Store
 
 
 @pytest.mark.parametrize("bad", [None, True, 1, "", "parallel", [], {}])
@@ -51,7 +51,7 @@ def test_headless_mode_samples_and_exits_without_nested_gpu_wait(mode, tmp_path)
     env = os.environ.copy()
     env["XDG_CONFIG_HOME"] = str(tmp_path / "config")
     env["XDG_STATE_HOME"] = str(tmp_path / "state")
-    result = subprocess.run([sys.executable, "-m", "tower", "--fake", "--no-state",
+    result = subprocess.run([sys.executable, "-m", "raven", "--fake", "--no-state",
                              "--no-plugins", "--workers", mode, "--json"],
                             capture_output=True, text=True, timeout=20, env=env)
     assert result.returncode == 0, result.stderr

@@ -7,12 +7,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L
-from tower import log_workbench as workbench
-from tower.logs import LogBuffer, LogSession
-from tower.model import Finished
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven import layout as L
+from raven import log_workbench as workbench
+from raven.logs import LogBuffer, LogSession
+from raven.model import Finished
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 def app_for(files=None):
@@ -126,7 +126,7 @@ def test_render_metadata_and_preview_reads_worker_only_and_reuses_snapshot(tmp_p
         for _ in range(20):
             rows, hits = workbench.render_browser(views, {}, app, 80, 20, [], [])
         assert count == len(files.threads)
-        assert all(name.startswith("tower-research") for name in files.threads)
+        assert all(name.startswith("raven-research") for name in files.threads)
         text = "\n".join(L.row_text(row) for row in rows)
         assert "14 B" in text and "three" in text
         assert any(kind == "log_group" for _, kind, _ in hits)
@@ -372,10 +372,10 @@ def test_browser_keeps_manifest_errors_visible_with_new_metadata_layout(tmp_path
 
 
 def real_dashboard(tmp_path):
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Store
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Store
+    from raven.views import Views
     out, err = tmp_path / "stdout-77.log", tmp_path / "stderr-77.log"
     out.write_bytes(b"first\twide column\r\nsecond\r\nthird\n")
     err.write_bytes(b"CUDA out of memory\n")
@@ -396,7 +396,7 @@ def real_dashboard(tmp_path):
 
 
 def test_real_app_horizontal_pan_keeps_yanked_source_bytes(tmp_path, monkeypatch):
-    from tower import clipboard
+    from raven import clipboard
     app, views, out, err = real_dashboard(tmp_path)
     copied = []
     monkeypatch.setattr(clipboard, "copy", lambda value, state_dir=None, **kwargs: copied.append(value.encode()) or "copied")
@@ -450,7 +450,7 @@ def test_real_app_follows_proven_citation_job_after_other_selection(tmp_path):
 @pytest.mark.parametrize("placeholder", [None, "", " ", "(null)", "N/A", "UNKNOWN", "None"])
 def test_cached_log_catalog_never_probes_missing_scheduler_paths_on_redraw(monkeypatch, placeholder):
     import os
-    from tower.model import Job
+    from raven.model import Job
     app = app_for()
     catalog = [dict(id="manifest.worker", path="/declared/worker.log", label="Worker", group="Application")]
     app.logs.entries = catalog
@@ -468,7 +468,7 @@ def test_cached_log_catalog_never_probes_missing_scheduler_paths_on_redraw(monke
 
 def test_known_scheduler_paths_expand_without_filesystem_probes(monkeypatch):
     import os
-    from tower.model import Job
+    from raven.model import Job
     app = app_for()
     job = Job(id="77_2", name="training", state="RUNNING", partition="cpu")
     snap = {"jobs": [job], "details": {job.id: {"StdOut": "logs/%A-%a.out", "StdErr": "(null)", "WorkDir": "/project", "LogPathSource": "sacct"}}}

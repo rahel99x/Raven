@@ -1,12 +1,12 @@
-# Raven research strategy: archived Slurm Tower 4.16.1 proposal
+# Raven research strategy: archived Raven 4.16.1 proposal
 
 Research snapshot: 10 October 2026, America/Los_Angeles. Repository baseline: **4.16.1**, commit `fd1c68304e3adbf5c11d715bb9851d0d2b187510`.
 
 This archived strategy proposes product and research work from the 4.16.1
 baseline. At that baseline, the 5.0 tracer and the ten previously discussed 6.0
 capabilities were proposals. The findings, priorities, and acceptance targets
-below retain that historical scope. In this document, **Tower** refers to the
-application under review, then named Slurm Tower.
+below retain that historical scope. In this document, **Raven** refers to the
+application under review, then named Raven.
 
 Supported subsets have since been delivered. Read the
 [implementation ledger](../FLAGSHIP_IMPLEMENTATION.md) for their scope and
@@ -20,7 +20,7 @@ tests were rerun for that study.
 
 ## 1. The product thesis
 
-**Tower should help a researcher determine what happened, what evidence supports an explanation, what to measure or change next, and which scientific results remain trustworthy.**
+**Raven should help a researcher determine what happened, what evidence supports an explanation, what to measure or change next, and which scientific results remain trustworthy.**
 
 The terminal supports ordinary SSH, keyboard operation, and access from a
 workstation or cluster with limited deployment requirements. The proposed
@@ -51,19 +51,19 @@ The cited primary sources confirm the capabilities below. A feature omitted
 from this review may still exist in a tool; the table is a selected source
 review rather than a comparative test.
 
-| Ecosystem | Established capabilities | Implication for Tower |
+| Ecosystem | Established capabilities | Implication for Raven |
 | --- | --- | --- |
 | LLview | Per-job CPU/GPU/power/I/O reports, node timelines, array and dependency-chain recognition, site collectors and reporting server. [S01] | Integrate permitted reports. Do not claim invention of workflow-aware job monitoring. |
-| Princeton Jobstats | Terminal efficiency reports, allocation advice, GPU measurements, Prometheus/Grafana and Open OnDemand integration. [S02] | A terminal interface and efficiency advice alone do not distinguish Tower. |
+| Princeton Jobstats | Terminal efficiency reports, allocation advice, GPU measurements, Prometheus/Grafana and Open OnDemand integration. [S02] | A terminal interface and efficiency advice alone do not distinguish Raven. |
 | Rackslab Slurm-web | Scheduler UI, multiple clusters, topology, accounts/QOS/reservations, authentication, authorization and caching. [S03] | Complement institutional services; preserve user-space operation and authorized API access. |
-| Open OnDemand | Browser shell, files, batch jobs, interactive applications and cluster access. [S04] | Tower can operate inside an existing access platform rather than trying to replace it. |
+| Open OnDemand | Browser shell, files, batch jobs, interactive applications and cluster access. [S04] | Raven can operate inside an existing access platform rather than trying to replace it. |
 | ClusterCockpit | Job performance archives, comparisons, roofline views, aggregate statistics, APIs and support workflows. [S05] | Existing site telemetry can be a stronger starting point than another collector. |
 | HPCToolkit, Caliper, Score-P, STAT | Source-correlated profiles, runtime instrumentation, scalable event collection and stack aggregation, with backend-specific limits. [S06–S09] | Build supported adapters and analysis workflows; do not promise a universal replacement. |
 | Thicket and Hatchet | Cross-run and hierarchical performance analysis. [S10] | Multi-run comparison is established; connected scientific interpretation is a possible product opportunity. |
 | AiiDA and Workflow Run RO-Crate | Scientific provenance, graph queries, caching/invalidation, and portable execution records. [S11–S12] | A provenance graph is not a new research contribution by itself. |
 | GPTune, ReFrame, Coz | Constrained and multi-fidelity tuning; HPC testing; causal profiling and optimization assistance. [S13–S15] | Generic tuning, correctness checks, or AI profiler explanations are weak novelty claims. |
 | Verificarlo and FLiT | Numerical sensitivity and floating-point variability analysis. [S16] | Integrate this expertise; do not rebrand numerical robustness as a new invention. |
-| lnav | Merged chronological logs, structured parsing, error navigation, histograms and SQL queries in a terminal. [S17] | Tower can learn from mature log investigation workflows and connect their results to exact jobs. |
+| lnav | Merged chronological logs, structured parsing, error navigation, histograms and SQL queries in a terminal. [S17] | Raven can learn from mature log investigation workflows and connect their results to exact jobs. |
 | SENSEI and openPMD | In-situ analysis infrastructure and scientific data access conventions. [S18] | Rich scientific field inspection should consume bounded derived data rather than pull entire datasets into the UI. |
 
 The proposed opportunity is a connected, portable research workflow that retains
@@ -88,10 +88,10 @@ revisions preserve these foundations while improving their boundaries.
 
 Code anchors at the inspected revision:
 
-- [Store snapshot and settings](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/model.py#L951).
-- [Frame rebuild](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/screen.py#L1321).
-- [Screen event routing](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/screen.py#L838) and [controller routing](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/controller.py#L1950).
-- [Multi-cluster collection](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/scale_clusters.py#L121) and [plugin API](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/plugins.py#L21).
+- [Store snapshot and settings](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/raven/model.py#L951).
+- [Frame rebuild](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/raven/screen.py#L1321).
+- [Screen event routing](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/raven/screen.py#L838) and [controller routing](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/raven/controller.py#L1950).
+- [Multi-cluster collection](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/raven/scale_clusters.py#L121) and [plugin API](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/raven/plugins.py#L21).
 
 The recorded 4.16 validation reports 12,516 passing tests and two skips. It
 does not exercise a live Slurm controller or production SSH host. Its changing-UI
@@ -110,7 +110,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 | 01 | Task-oriented home and workspaces | Offer Run, Investigate, Compare and Results entry points. Keep expert tools searchable and pinnable. Validate five core tasks with unfamiliar users. | A |
 | 02 | Persistent context and navigation | Show cluster → project → run attempt → job/task → source. Back/forward navigation restores the intended view, not a stale job. Context changes invalidate gestures and actions. | A |
 | 03 | Unified command model | Define commands once for menus, palette, buttons and keyboard activation. Generate control help from these definitions. Separate selection, focus and activation. | A |
-| 04 | In-terminal project connection guide | Detect existing reports, show the minimum Bash hook, validate a sample run, and explain exactly which missing files/fields would populate an empty Research view. Extend `tower report`. | A |
+| 04 | In-terminal project connection guide | Detect existing reports, show the minimum Bash hook, validate a sample run, and explain exactly which missing files/fields would populate an empty Research view. Extend `raven report`. | A |
 | 05 | One investigation timeline | Join permitted logs, scheduler transitions, scientific phases, GPU events and user annotations with visible clock uncertainty. Preserve original bytes and source links. | B |
 | 06 | Semantic chart and data inspection | Expose raw value, unit, aggregation, source age, display lag, interpolation and uncertainty. Display fitted trends as derived layers. Add bounded matrix, field-slice and distribution views where useful. | B |
 | 07 | Accessibility and terminal consistency | Complete keyboard parity, color-independent state markers, ASCII and reduced-motion modes, explicit focus, scalable density and readable help. Qualify real terminals and multiplexers. | A |
@@ -136,7 +136,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 | 17 | Runtime instrumentation federation | Supported Caliper, PMPI, OMPT, Kokkos and GPU recipes; negotiate wrapper/tool conflicts and supported callbacks. Reuse runtime interfaces instead of inventing universal hooks. | B |
 | 18 | Isolated adapter SDK | Versioned describe/validate/run/cancel/result protocol, bounded messages, explicit activation, pinned optional environments and compatibility fixtures. Keep core installation small. | A |
 | 19 | Site telemetry connectors | Read authorized Jobstats/Prometheus, ClusterCockpit, LLview or Slurm REST data where available. Preserve exact attempt/device attribution and permission boundaries. | B |
-| 20 | Portable research records | Bidirectional Workflow Run RO-Crate integration and preserved native workflow evidence. Tower exports remain useful to people who do not install Tower. | B |
+| 20 | Portable research records | Bidirectional Workflow Run RO-Crate integration and preserved native workflow evidence. Raven exports remain useful to people who do not install Raven. | B |
 | 21 | Shared queries and stable automation API | Extend current CLI/query capabilities with stable structured outputs and a user-scoped collection broker. Deduplicate subscriptions across windows, cache by identity and expose freshness. | A |
 
 ### D. Turn observation into scientific investigation
@@ -235,9 +235,9 @@ guarantee scoped to explicit assumptions.
 
 Represent a recommendation as a structured record containing exact attempts/builds/inputs, source queries, coverage and loss, competing explanations, the proposed intervention, predicted effect, scientific acceptance rules, refuting observations and expiry conditions. Present a short **Claim → Evidence → Test → Result** chain.
 
-Example: fewer MPI ranks may reduce communication overhead but also alter numerical convergence. Tower prepares a bounded matched experiment and withholds endorsement until the declared scientific checks and performance evidence support it. A changed input, compiler or missing trace invalidates the old conclusion where relevant.
+Example: fewer MPI ranks may reduce communication overhead but also alter numerical convergence. Raven prepares a bounded matched experiment and withholds endorsement until the declared scientific checks and performance evidence support it. A changed input, compiler or missing trace invalidates the old conclusion where relevant.
 
-**Closest prior art:** Coz, GPTune, ReFrame, Thicket, provenance systems, and Tower's existing reviewed action identities. A portable lifecycle connecting all of these is a possible contribution; a generic AI recommendation is not.
+**Closest prior art:** Coz, GPTune, ReFrame, Thicket, provenance systems, and Raven's existing reviewed action identities. A portable lifecycle connecting all of these is a possible contribution; a generic AI recommendation is not.
 
 **Evaluation:** Compare with fixed advisor rules and expert profiler workflows. Measure incorrect recommendations, accepted scientifically invalid changes, calibration, diagnosis time and total node-hours. Ablate intervention verification and scientific checks. A structured record verifies stated predicates and evidence, not universal correctness or optimality.
 
@@ -261,7 +261,7 @@ Extend provenance entities with claims, policies, measured checks, assumptions a
 
 Example: a parser reported incorrect units. Retained raw simulation outputs may allow corrected parsing and downstream analysis without repeating the numerical solve. A branch that used the wrong value as a new simulation input requires further review or recomputation.
 
-**Closest prior art:** AiiDA graph queries and cache invalidation, incremental computation/build systems, RO-Crate and Tower's verified reuse. The proposed increment is claim-level scientific validity and conservative evidence propagation, not another DAG.
+**Closest prior art:** AiiDA graph queries and cache invalidation, incremental computation/build systems, RO-Crate and Raven's verified reuse. The proposed increment is claim-level scientific validity and conservative evidence propagation, not another DAG.
 
 **Evaluation:** Seed input, parser, environment and policy changes. Compare decisions with full recomputation. Measure false-unaffected conclusions, validation agreement, saved compute and planning cost. Missing lineage must force uncertainty. Approximate equivalence is not automatically transitive, and minimality should be claimed only for an algorithm/model that establishes it.
 
@@ -293,7 +293,7 @@ This is not a substitute for a strict full-event recording. It is a separate mod
 
 ### Demonstration A: a distributed stall explained
 
-A supported MPI/GPU application has a seeded delayed rank or protocol mismatch. Tower opens the exact attempt, shows the supported causal chain or first confirmed mismatch, identifies missing evidence, and exports a reproducible investigation. Compare correctness and user diagnosis time with the existing expert workflow. Do not present a timeout alone as deadlock proof.
+A supported MPI/GPU application has a seeded delayed rank or protocol mismatch. Raven opens the exact attempt, shows the supported causal chain or first confirmed mismatch, identifies missing evidence, and exports a reproducible investigation. Compare correctness and user diagnosis time with the existing expert workflow. Do not present a timeout alone as deadlock proof.
 
 ### Demonstration B: an expensive failure made reproducible
 
@@ -301,7 +301,7 @@ A failed campaign becomes a smaller input/configuration witness through bounded 
 
 ### Demonstration C: a result change investigated and revalidated
 
-A scientific output changes after a software or parser revision. Tower connects the result to its exact evidence, compares candidates, proposes a test, and prepares only the justified revalidation work. Show cases where the correct answer is to retain uncertainty.
+A scientific output changes after a software or parser revision. Raven connects the result to its exact evidence, compares candidates, proposes a test, and prepares only the justified revalidation work. Show cases where the correct answer is to retain uncertainty.
 
 Each demonstration joins existing and proposed mechanisms into an observable
 user outcome. Evaluate the complete investigation, including unresolved cases,
@@ -347,7 +347,7 @@ Release numbers should follow these gates; they should not imply maturity merely
 
 For each research candidate, write a one-sentence claim naming the mechanism, assumptions and measurable outcome. Search scientific literature and tool manuals for that exact problem, including adaptive profiling, active experimental design, scientific workflow validity, trace compression and measurement perturbation. Request review from relevant maintainers and HPC researchers. Compare against the strongest reasonable baseline, not an artificially weak one.
 
-Keep three labels in the roadmap: **established technique**, **new Tower integration**, and **research hypothesis**. Promote a hypothesis only after evaluation; a useful negative result is still progress.
+Keep three labels in the roadmap: **established technique**, **new Raven integration**, and **research hypothesis**. Promote a hypothesis only after evaluation; a useful negative result is still progress.
 
 The primary-source review identifies relevant building blocks and evaluation
 baselines. It does not establish priority of invention. Evaluate whether the
@@ -356,7 +356,7 @@ scientifically reliable at a disclosed cluster cost.
 
 ## Primary-source ledger
 
-Sources were inspected through public upstream documentation/source. Most links track development branches; implementations must pin and qualify supported releases. The links establish the stated building blocks, not superiority of Tower or novelty of the proposed combinations.
+Sources were inspected through public upstream documentation/source. Most links track development branches; implementations must pin and qualify supported releases. The links establish the stated building blocks, not superiority of Raven or novelty of the proposed combinations.
 
 - **S01 — LLview:** [overview](https://github.com/FZJ-JSC/LLview/blob/master/README.md), [workflow recognition](https://github.com/FZJ-JSC/LLview/blob/master/docs/docs/workflow/index.md), [metrics](https://github.com/FZJ-JSC/LLview/blob/master/docs/docs/jobreport/metrics_list.md).
 - **S02 — Jobstats:** [overview and CLI examples](https://github.com/PrincetonUniversity/jobstats/blob/master/README.md), [architecture](https://github.com/PrincetonUniversity/jobstats/blob/master/docs/index.md), [deployment](https://github.com/PrincetonUniversity/jobstats/blob/master/docs/setup/overview.md).

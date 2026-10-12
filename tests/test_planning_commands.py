@@ -5,9 +5,9 @@ import math
 
 import pytest
 
-from tower import cli, clock, planning, planning_commands, tradeoffs
-from tower.config import Config
-from tower.model import Finished, Job
+from raven import cli, clock, planning, planning_commands, tradeoffs
+from raven.config import Config
+from raven.model import Finished, Job
 
 
 def save_json(tmp_path, value, name="planning.json"):
@@ -30,7 +30,7 @@ def bundle(tmp_path):
                for i in range(40)]
     script = tmp_path / "safe's script.sh"
     script.write_text("#!/bin/bash\ntrue\n")
-    workflow = {"version": 1, "kind": "tower.workflow", "nodes": [
+    workflow = {"version": 1, "kind": "raven.workflow", "nodes": [
         {"id": "a", "script": str(script), "duration": {"lower": 10, "estimate": 10, "upper": 10}, "resources": {"cpus_per_task": 1}},
         {"id": "b", "script": str(script), "depends_on": ["a"],
          "duration": {"lower": 20, "estimate": 20, "upper": 20}, "resources": {"cpus_per_task": 1}}]}
@@ -150,14 +150,14 @@ def test_workflow_plan_action_and_workdir_survive_ui_refresh(dashboard, bundle, 
 
 def test_scaling_recipe_analyze_action_does_not_refresh_into_plan(dashboard, tmp_path, bundle):
     _, _, script = bundle
-    recipe = {"version": 1, "kind": "tower.scaling", "script": str(script), "problem_size": 100,
+    recipe = {"version": 1, "kind": "raven.scaling", "script": str(script), "problem_size": 100,
               "mode": "strong", "repeats": 3, "configurations": [{"workers": 1, "cpus_per_task": 1}]}
     path = save_json(tmp_path, recipe)
     app, hub = dashboard.app, dashboard.app.research
     planning_commands.execute(app, "scaling", ["analyze", str(path), "--mode", "weak", "--baseline", "1"])
     initial = app.research_result
     refreshed = hub.request(hub.context(dashboard.store.snapshot(), app), wait=True, force=True)
-    assert initial["schema"] == refreshed["schema"] == "tower.scaling-analysis/v1"
+    assert initial["schema"] == refreshed["schema"] == "raven.scaling-analysis/v1"
     assert initial["mode"] == refreshed["mode"] == "weak"
     assert hub.settings["planning_overrides"]["scaling"] == {"action": "analyze", "mode": "weak", "baseline": 1}
 
@@ -165,7 +165,7 @@ def test_scaling_recipe_analyze_action_does_not_refresh_into_plan(dashboard, tmp
 def test_scaling_load_uses_its_bounded_eight_mib_limit(tmp_path):
     path = save_json(tmp_path, {"records": [], "description": "x" * (2 << 20)})
     output, _ = planning_commands.result("scaling", ["analyze", str(path)])
-    assert output["schema"] == "tower.scaling-analysis/v1"
+    assert output["schema"] == "raven.scaling-analysis/v1"
 
 
 @pytest.mark.parametrize("cmd,args", [
@@ -192,9 +192,9 @@ def test_workdir_on_read_only_analysis_is_rejected(cmd, bundle):
 
 
 def test_file_jobs_cannot_borrow_live_blocker_metadata(monkeypatch):
-    import tower.blockers
+    import raven.blockers
     captured = []
-    monkeypatch.setattr(tower.blockers, "explain", lambda job, **kwargs: captured.append(kwargs) or {"status": "unknown"})
+    monkeypatch.setattr(raven.blockers, "explain", lambda job, **kwargs: captured.append(kwargs) or {"status": "unknown"})
     job = {"id": "901", "state": "PENDING", "reason": "Resources"}
     live = {"finished": [{"id": "upstream", "state": "COMPLETED"}], "details": {"901": {"Dependency": "afterok:upstream"}},
             "partitions": ["unrelated"], "nodemap": {"other": {}}, "share": [{"Priority": 1}], "health": {"jobs": {"stale": False}}}
@@ -209,9 +209,9 @@ def test_file_jobs_cannot_borrow_live_blocker_metadata(monkeypatch):
 
 
 def test_file_jobs_cannot_borrow_live_forecast_observations(monkeypatch):
-    import tower.forecast
+    import raven.forecast
     captured = []
-    monkeypatch.setattr(tower.forecast, "forecast", lambda job, history, **kwargs: captured.append((history, kwargs)) or {"status": "unknown"})
+    monkeypatch.setattr(raven.forecast, "forecast", lambda job, history, **kwargs: captured.append((history, kwargs)) or {"status": "unknown"})
     planning.analyze("forecast", {"jobs": [{"id": "901", "state": "PENDING"}], "now": 1000},
                      snap={"finished": [{"id": "other", "state": "COMPLETED"}]}, observations=[{"job_id": "901", "actual_start": 950}])
     assert captured[0][0] == []
@@ -323,9 +323,9 @@ def test_bare_file_job_array_is_supported_by_command_and_analyze(tmp_path):
 
 def test_explicit_bundle_now_reaches_workflow_and_blockers(bundle, monkeypatch):
     _, source, _ = bundle
-    import tower.blockers
+    import raven.blockers
     seen = []
-    monkeypatch.setattr(tower.blockers, "explain", lambda job, **kwargs: seen.append(kwargs["now"]) or {"status": "unknown"})
+    monkeypatch.setattr(raven.blockers, "explain", lambda job, **kwargs: seen.append(kwargs["now"]) or {"status": "unknown"})
     planning.analyze("blockers", source, now=2000)
     output = planning.analyze("workflow", source, now=2000)
     assert seen == [1000]

@@ -1,5 +1,5 @@
 {
-  "schema": "tower.site-capabilities/v1",
+  "schema": "raven.site-capabilities/v1",
   "identity": "example-site-not-live-certified",
   "runtime": {"mpi": "openmpi-5", "gpu": "cuda"},
   "adapters": [

@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import clock, table_tools, table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Live, Store, stamp
+from raven import clock, table_tools, table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Live, Store, stamp
 
 
 TABLES = ("jobs", "recent", "history", "group", "nodes", "cluster", "sources")

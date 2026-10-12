@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import operations as O
+from raven import operations as O
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,7 +44,7 @@ EXAMPLES = [
 def test_published_examples_use_native_readers_without_scheduler_or_mutation(context, tmp_path, feature, params):
     before = set(tmp_path.rglob("*"))
     report = O.run(feature, params, context)
-    assert report["schema"] == "tower.operation/v1"
+    assert report["schema"] == "raven.operation/v1"
     assert report["feature"] == feature
     assert report["status"] not in {"error", "failed", "blocked", "unavailable"}
     assert report["rows"]
@@ -79,7 +79,7 @@ def test_staging_example_with_real_sources_is_readonly(context, tmp_path):
 
 
 def test_remaining_readonly_schema_examples_use_native_parsers(context):
-    from tower import scale_clusters, scale_incidents, ops_science
+    from raven import scale_clusters, scale_incidents, ops_science
     sources = scale_clusters.configuration(json.loads((ROOT / "examples/scale-clusters.json").read_text()))
     events = scale_incidents.normalize(json.loads((ROOT / "examples/scale-incidents.json").read_text()))
     identity = ops_science._identity(json.loads((SCIENCE / "identity.json").read_text()))
@@ -110,7 +110,7 @@ def cli(tmp_path, feature, params, *, fake=False):
     env = dict(os.environ)
     env.update(XDG_STATE_HOME=str(tmp_path / "state"), XDG_CONFIG_HOME=str(tmp_path / "config"),
                XDG_CACHE_HOME=str(tmp_path / "cache"))
-    launcher = [sys.executable, "-m", "tower"] if fake else [sys.executable, "-c", "from tower.raven_launch import heavy_main; raise SystemExit(heavy_main())", "--site", "desktop"]
+    launcher = [sys.executable, "-m", "raven"] if fake else [sys.executable, "-c", "from raven.raven_launch import heavy_main; raise SystemExit(heavy_main())", "--site", "desktop"]
     argv = [*launcher, "run", "ops", "run", feature,
             *(f"{key}={value}" for key, value in params.items()), "--json", "--no-state"]
     if fake:
@@ -125,14 +125,14 @@ def cli(tmp_path, feature, params, *, fake=False):
 def test_real_headless_cli_reads_examples_without_fake_cluster(tmp_path, feature, params):
     process, report = cli(tmp_path, feature, params)
     assert process.returncode == 0, (report, process.stderr)
-    assert report["schema"] == "tower.operation/v1"
+    assert report["schema"] == "raven.operation/v1"
     assert report["feature"] == feature
     assert "plan" not in report
 
 
 def test_cli_malformed_scientific_evidence_returns_error_json_and_failure(tmp_path):
     bad = tmp_path / "bad.json"
-    bad.write_text('{"schema":"tower.statistics/v1","design":"made-up"}')
+    bad.write_text('{"schema":"raven.statistics/v1","design":"made-up"}')
     process, report = cli(tmp_path, "statistics", {"manifest": str(bad)})
     assert process.returncode != 0
     assert report["status"] == "error"

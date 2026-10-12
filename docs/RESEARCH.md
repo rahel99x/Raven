@@ -8,7 +8,7 @@ CPU or GPU utilization.
 
 Use Light to inspect bounded job and run evidence. Request Heavy in the same
 interface before using supported scientific-analysis adapters. The shell
-examples below retain native compatibility syntax; bare `tower` starts Light,
+examples below retain native compatibility syntax; bare `raven` starts Light,
 so computational commands can return a deferred result. Provenance capture
 requires a verified job-local target in managed Raven. See the
 [execution contracts](raven/execution-contracts.md) for supported and deferred
@@ -56,7 +56,7 @@ planning sources under that attempt's `reports/`. The copied reporter publishes
 and binds native sources without importing Raven:
 
 ```bash
-python3 reporting.py report workflow .tower/definitions/workflow.json --run runs/my-run
+python3 reporting.py report workflow .raven/definitions/workflow.json --run runs/my-run
 python3 reporting.py export runs/prior-run runs/my-run --reference runs/my-run \
   --output runs/my-run/reports/planning.json
 ```
@@ -73,11 +73,11 @@ From an installed checkout, create a fresh output location and run the included
 regression experiment:
 
 ```bash
-demo_dir=$(mktemp -d /tmp/tower-research.XXXXXX)
+demo_dir=$(mktemp -d /tmp/raven-research.XXXXXX)
 .venv/bin/python examples/research/experiment.py \
   --output "$demo_dir/run" --steps 120 --delay 0.1 &
 experiment_pid=$!
-scripts/tower --fake --tab research --research-view experiment \
+scripts/raven --fake --tab research --research-view experiment \
   --metrics-file "$demo_dir/run/metrics.jsonl" --workdir "$demo_dir/run"
 wait "$experiment_pid"
 ```
@@ -95,12 +95,12 @@ requires the verified job-local target described above. File-view and preparatio
 commands do not themselves authorize submission:
 
 ```bash
-scripts/tower run validate examples/research/contract.json "$demo_dir/run"
-scripts/tower --fake --tab research --research-view artifacts \
+scripts/raven run validate examples/research/contract.json "$demo_dir/run"
+scripts/raven --fake --tab research --research-view artifacts \
   --contract examples/research/contract.json --workdir "$demo_dir/run" --once
-scripts/tower run passport capture examples/research/sample.sbatch \
+scripts/raven run passport capture examples/research/sample.sbatch \
   --workdir "$PWD" --output-dir "$demo_dir/passports"
-scripts/tower --fake run prepare examples/research/sample.sbatch --workdir "$PWD"
+scripts/raven --fake run prepare examples/research/sample.sbatch --workdir "$PWD"
 ```
 
 `--fake` explicitly identifies simulated scheduler data. Attached metric files
@@ -129,7 +129,7 @@ ever-growing file on every terminal frame.
 Python applications can use the optional reporter:
 
 ```python
-from tower.metrics import MetricReader, write_metric
+from raven.metrics import MetricReader, write_metric
 
 write_metric("metrics.jsonl", {"loss": 0.4}, step=1, phase="fit",
              completed=1, total=100, unit="steps")
@@ -140,9 +140,9 @@ print(snapshot["latest"], snapshot["progress"])
 Other applications can write the same format, or append through the CLI:
 
 ```bash
-tower run metric metrics.jsonl --value loss=0.4 --step 1 \
+raven run metric metrics.jsonl --value loss=0.4 --step 1 \
   --completed 1 --total 100 --unit steps
-tower --metrics-file metrics.jsonl --workdir "$PWD" \
+raven --metrics-file metrics.jsonl --workdir "$PWD" \
   --tab research --research-view experiment
 ```
 
@@ -161,10 +161,10 @@ application progress rather than a scheduler finish guarantee.
 ## Reproducible run passports
 
 ```bash
-tower run passport capture examples/research/sample.sbatch \
+raven run passport capture examples/research/sample.sbatch \
   --workdir "$PWD" --output-dir ./passports
-tower run passport show /absolute/path/to/printed-passport.json
-tower run passport compare /absolute/path/to/first-passport.json \
+raven run passport show /absolute/path/to/printed-passport.json
+raven run passport compare /absolute/path/to/first-passport.json \
   /absolute/path/to/second-passport.json
 ```
 
@@ -178,7 +178,7 @@ environment. The actual batch script is never executed by capture.
 The Python API supports more explicit declarations:
 
 ```python
-from tower.provenance import capture, diff, load, save
+from raven.provenance import capture, diff, load, save
 
 passport = capture(
     "/absolute/path/to/workdir", script="run.sbatch",
@@ -220,7 +220,7 @@ missing fields from explicit `null` and different JSON types.
 Prepare and review a batch file before submitting:
 
 ```bash
-tower run prepare examples/research/sample.sbatch --workdir "$PWD" \
+raven run prepare examples/research/sample.sbatch --workdir "$PWD" \
   --account "$CARC_ACCOUNT"
 ```
 
@@ -237,8 +237,8 @@ On a CARC login node, set the checkout path for the supplied example and confirm
 a reviewed submission:
 
 ```bash
-export SLURM_TOWER_ROOT="$PWD"
-tower run submit examples/research/sample.sbatch --workdir "$PWD" \
+export RAVEN_ROOT="$PWD"
+raven run submit examples/research/sample.sbatch --workdir "$PWD" \
   --account "$CARC_ACCOUNT" --yes
 ```
 
@@ -253,7 +253,7 @@ view; `:submit` starts its confirmation flow. Preparation never submits a job.
 Submitting rechecks the script and plan, captures a passport before contacting
 Slurm, and links the returned job ID without changing that immutable passport.
 Confirmed CLI and interactive submissions save private passports under the batch
-workdir's `.tower/passports` by default. Use `--passport-dir DIR` on `submit` to
+workdir's `.raven/passports` by default. Use `--passport-dir DIR` on `submit` to
 choose another directory. Passports are explicit run artifacts, independent of
 the dashboard's `--no-state` option. Heavy palette preparation, capture and
 validation run on the single Research worker; results appear on the next UI tick.
@@ -263,13 +263,13 @@ queue inspection before retrying; Raven does not automatically repeat it.
 Programmatic callers use the same separation:
 
 ```python
-from tower.submission import prepare, preview, submit
+from raven.submission import prepare, preview, submit
 
 plan = prepare("run.sbatch", workdir="/absolute/workdir",
                overrides=["--cpus-per-task=8", "--mem=32G"],
                parameters={"seed": 7}, inputs=["dataset.csv"],
                outputs=["result.json"])
-# `slurm` is an existing tower.slurm.Slurm instance for the selected cluster.
+# `slurm` is an existing raven.slurm.Slurm instance for the selected cluster.
 # preview(plan, slurm) runs the scheduler's test-only probe when requested.
 # Only call submit(plan, slurm, passport_directory="/absolute/passports")
 # after the user has reviewed and explicitly confirmed this exact plan.
@@ -289,7 +289,7 @@ command.
 ## Array operations
 
 ```bash
-tower --tab research --research-view arrays
+raven --tab research --research-view arrays
 ```
 
 The Arrays view merges current and historical task records, gives individual
@@ -327,7 +327,7 @@ layout distinguishes original attempts from retries.
 The API also supports a bounded subset and concurrency limit:
 
 ```python
-from tower.arrays import summarize, tasks, select_failed, retry_plan
+from raven.arrays import summarize, tasks, select_failed, retry_plan
 
 groups = summarize(current_job_records, accounting_records)
 group = groups[0]
@@ -363,7 +363,7 @@ completed job does not change its recorded scheduler state.
 The pure analysis API does not open files or run commands:
 
 ```python
-from tower.investigate import investigate
+from raven.investigate import investigate
 
 case = investigate(
     {"id": "12345", "state": "OUT_OF_MEMORY", "exitcode": "0:125"},
@@ -398,15 +398,15 @@ a CSV with specified columns and at least ten data rows, plus a JSON summary:
 ```
 
 ```bash
-tower run validate contract.json /absolute/output-root
-tower --contract contract.json --workdir /absolute/output-root \
+raven run validate contract.json /absolute/output-root
+raven --contract contract.json --workdir /absolute/output-root \
   --tab research --research-view artifacts
 ```
 
 Interactive `:artifacts CONTRACT ROOT` attaches the same checks. The API is:
 
 ```python
-from tower.artifacts import load_contract, validate_contract
+from raven.artifacts import load_contract, validate_contract
 
 result = validate_contract(load_contract("contract.json"), "/absolute/output-root")
 print(result["status"], result["summary"])

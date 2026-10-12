@@ -6,9 +6,9 @@ import concurrent.futures
 
 import pytest
 
-from tower.model import GpuSample, Job, Live, Store
-from tower.sampler import Sampler
-from tower.slurm import CommandError
+from raven.model import GpuSample, Job, Live, Store
+from raven.sampler import Sampler
+from raven.slurm import CommandError
 
 
 def identity(jid="1", metric="cpu:rate", attempt="submit|start", scope="resource-series"):
@@ -22,7 +22,7 @@ class Clock:
 @pytest.fixture
 def worker(monkeypatch):
     timer = Clock()
-    monkeypatch.setattr("tower.sampler.time.monotonic", lambda: timer.value)
+    monkeypatch.setattr("raven.sampler.time.monotonic", lambda: timer.value)
     store = Store(persist=False)
     store.apply_jobs([Job(jid, "job", "local", "RUNNING", submit="submit", start="start", gpus=1,
                           workdir="/project") for jid in ("1", "2")])
@@ -102,7 +102,7 @@ def test_global_poll_slider_does_not_bypass_remote_trace_floor(worker):
 
 
 def test_trace_cadence_fallback_keeps_remote_floor_at_default_metric_position():
-    from tower.metric_sampling import cadence
+    from raven.metric_sampling import cadence
     model = SimpleNamespace(cfg={"polling_multiplier": 50},
                             sampler=SimpleNamespace(intervals={"trace": 5}, files=SimpleNamespace(remote=True)))
     assert cadence(model, identity(metric="gpu-trace:util"), rate=1) == 1.5
@@ -283,7 +283,7 @@ def test_missing_wrong_or_unsupported_identity_is_ignored(worker, key):
 
 def test_scheduler_reported_metric_alias_can_request_same_source(worker):
     sampler, _, _, _ = worker
-    key = ("reported-metric", "1", "CPU per core (%)", "Tower session resource samples",
+    key = ("reported-metric", "1", "CPU per core (%)", "Raven session resource samples",
            "scheduler:submit|start", None, None, None)
     sampler.set_metric_sampling({key: 100})
     assert sampler.effective_interval("live") == .5

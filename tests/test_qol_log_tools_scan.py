@@ -5,8 +5,8 @@ import re
 
 import pytest
 
-from tower import log_scan as scan
-from tower.remote import LocalFiles
+from raven import log_scan as scan
+from raven.remote import LocalFiles
 
 
 def test_pages_keep_exact_bytes_absolute_lines_crlf_and_invalid_utf8(tmp_path):
@@ -72,7 +72,7 @@ def test_literal_regex_and_context_preserve_exact_sources(tmp_path):
 def test_full_source_search_finds_prefix_outside_small_tail(tmp_path):
     p = tmp_path / 'job.out'
     p.write_bytes(b'FAILED at first line\n' + b'.' * 200000 + b'\nlast line\n')
-    from tower.logs import LogBuffer
+    from raven.logs import LogBuffer
     buf = LogBuffer(str(p), max_bytes=1024)
     buf.refresh()
     assert not any('FAILED' in s for s in buf.all_lines())

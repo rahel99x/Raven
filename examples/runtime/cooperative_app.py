@@ -1,12 +1,12 @@
 """Run with an initialized mailbox, then submit a learning-rate command.
 
-python examples/runtime/cooperative_app.py /tmp/tower-runtime-demo
+python examples/runtime/cooperative_app.py /tmp/raven-runtime-demo
 """
 import argparse
 import json
 import time
 
-from tower.runtime_control import RuntimeControl
+from raven.runtime_control import RuntimeControl
 
 
 def main():

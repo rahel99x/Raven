@@ -10,7 +10,7 @@ without extracting them, executing package code, or contacting a service.
 Use a development installation with the `build` package. Confirm the release
 version in `pyproject.toml` and select the exact qualified wheel and source
 archive. The examples below use Raven 7.0.0. Distribution filenames retain the
-compatible `slurm-tower` package name.
+compatible `raven` package name.
 
 ## Generate the metadata
 
@@ -20,10 +20,10 @@ From the repository root, run:
 python3 -m build
 python3 scripts/release_inventory.py create \
   --output dist/release-inventory.json \
-  --spdx dist/slurm-tower.spdx.json \
+  --spdx dist/raven.spdx.json \
   --checksums dist/SHA256SUMS \
-  dist/slurm_tower-7.0.0-py3-none-any.whl \
-  dist/slurm_tower-7.0.0.tar.gz
+  dist/raven-7.0.0-py3-none-any.whl \
+  dist/raven-7.0.0.tar.gz
 ```
 
 Use the exact filenames for the release. Do not include old versions with a
@@ -38,7 +38,7 @@ This does not make the build itself reproducible.
 - `release-inventory.json`: SHA-256 and size for each artifact and each regular
   archive member, package version, Python requirement, declared optional
   dependencies, core MIT license path and checksum, and wheel build metadata.
-- `slurm-tower.spdx.json`: a minimal SPDX 2.3 document with one package entry per
+- `raven.spdx.json`: a minimal SPDX 2.3 document with one package entry per
   distribution artifact. It declares MIT from package metadata and records the
   artifact SHA-256. It does not claim an independent license audit. Member hashes
   remain in the companion inventory; SPDX `filesAnalyzed` is `false`.
@@ -57,8 +57,8 @@ Validate the files again before publication:
 
 ```bash
 python3 scripts/release_inventory.py verify dist/release-inventory.json \
-  dist/slurm_tower-7.0.0-py3-none-any.whl \
-  dist/slurm_tower-7.0.0.tar.gz
+  dist/raven-7.0.0-py3-none-any.whl \
+  dist/raven-7.0.0.tar.gz
 ```
 
 Verification recomputes both the archive hashes and the member inventory. It

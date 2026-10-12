@@ -1,5 +1,5 @@
 {
-  "schema": "tower.timeline/v1",
+  "schema": "raven.timeline/v1",
   "events": [
     {
       "id": "phase-1",

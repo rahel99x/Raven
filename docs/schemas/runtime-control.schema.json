@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/runtime-control.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/runtime-control.schema.json",
   "title": "runtime control",
   "description": "Native validation additionally enforces minimum <= maximum; mailbox ownership, machine/boot identity and filesystem policy are runtime checks.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.runtime-control/v1"
+      "const": "raven.runtime-control/v1"
     },
     "attempts": {
       "type": "array",

@@ -12,9 +12,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import diagnostic_trials as D
-from tower import operations as O
-from tower.slurm import CommandError
+from raven import diagnostic_trials as D
+from raven import operations as O
+from raven.slurm import CommandError
 
 
 @pytest.fixture

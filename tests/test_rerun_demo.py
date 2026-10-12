@@ -7,8 +7,8 @@ import threading
 
 import pytest
 
-from tower import operations as O, ops_cluster as C
-from tower.slurm import CommandError, FakeBackend, Slurm
+from raven import operations as O, ops_cluster as C
+from raven.slurm import CommandError, FakeBackend, Slurm
 
 
 def context(tmp_path, job_id, *, array=False):

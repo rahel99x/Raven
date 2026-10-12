@@ -3,8 +3,8 @@ from collections import deque
 
 import pytest
 
-from tower.history_snapshots import HistoryDeque
-from tower.model import Store
+from raven.history_snapshots import HistoryDeque
+from raven.model import Store
 
 
 def test_render_snapshot_reuses_immutable_values_and_isolates_mapping():

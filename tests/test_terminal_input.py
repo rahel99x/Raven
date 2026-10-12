@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import screen
+from raven import screen
 
 
 class Window:
@@ -69,7 +69,7 @@ def test_every_fragment_keeps_its_original_session(sequence, expected):
 
 @pytest.mark.parametrize("sequence", [b"\x1b]qyrg\x07", b"\x1bPqyrg\x1b\\", b"\x1b_qyrg\x1b\\",
                                       b"\x1b^qyrg\x1b\\", b"\x1bXqyrg\x1b\\"])
-def test_control_string_payloads_never_become_tower_commands(sequence):
+def test_control_string_payloads_never_become_raven_commands(sequence):
     assert drain(screen._InputReader(Window(sequence + b"x"))) == [("x", None)]
 
 
@@ -121,10 +121,10 @@ def test_partial_input_resize_preserves_session_ownership():
 
 
 def fake_terminal(monkeypatch, identity=("shell-a", 1)):
-    from tower import terminal_ui
-    app = SimpleNamespace(identity=identity, keys=[], events=[], errors=[], tower=[], mode="main", tab="jobs")
+    from raven import terminal_ui
+    app = SimpleNamespace(identity=identity, keys=[], events=[], errors=[], raven=[], mode="main", tab="jobs")
     app.fail = app.errors.append
-    app.handle = app.tower.append
+    app.handle = app.raven.append
     monkeypatch.setattr(terminal_ui, "input_identity", lambda value: value.identity)
     monkeypatch.setattr(terminal_ui, "handle_key", lambda value, key: value.keys.append(key) or True)
     monkeypatch.setattr(terminal_ui, "handle_event", lambda value, event: value.events.append(event) or True)
@@ -133,12 +133,12 @@ def fake_terminal(monkeypatch, identity=("shell-a", 1)):
 
 
 @pytest.mark.parametrize("key", ["q", "y", "g", "u", ":", "esc", "ctrl-c", "up", "tab", "f10"])
-def test_shell_owns_all_normal_tower_commands(monkeypatch, key):
+def test_shell_owns_all_normal_raven_commands(monkeypatch, key):
     app = fake_terminal(monkeypatch)
     event = screen.InputEvent((key, None), origin=app.identity)
     screen._apply_input(app, event, [], curses)
     assert app.keys == [key]
-    assert not app.tower
+    assert not app.raven
 
 
 @pytest.mark.parametrize("value", [("q", None), ("paste", "dangerous\n"), ("terminal-raw", "\x1b[97u"),
@@ -148,7 +148,7 @@ def test_shell_owns_all_normal_tower_commands(monkeypatch, key):
 def test_queued_events_are_never_redirected_after_focus_switch(monkeypatch, value, old, current):
     app = fake_terminal(monkeypatch, current)
     screen._apply_input(app, screen.InputEvent(value, origin=old), [], curses)
-    assert not app.keys and not app.events and not app.tower
+    assert not app.keys and not app.events and not app.raven
 
 
 @pytest.mark.parametrize("kind,value,semantic", [
@@ -178,7 +178,7 @@ def test_terminal_key_burst_does_not_invalidate_graph_document(monkeypatch):
 
 @pytest.fixture
 def pane_app(tmp_path):
-    from tower import terminal_ui
+    from raven import terminal_ui
 
     class Service:
         def __init__(self):
@@ -217,7 +217,7 @@ def pane_app(tmp_path):
     (32, "M", "move", 0), (33, "M", "move", 1), (34, "M", "move", 2),
 ])
 def test_all_child_mouse_buttons_survive_screen_dispatch(pane_app, code, ending, action, button):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app = pane_app
     rect = app.terminal_state.body_rect
     mouse = screen._mouse_report(code | 16, rect.x + 3, rect.y + 4, ending, curses)
@@ -231,7 +231,7 @@ def test_all_child_mouse_buttons_survive_screen_dispatch(pane_app, code, ending,
 
 
 def test_terminal_mouse_samples_bypass_prepaint_endpoint_coalescing(pane_app):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app = pane_app
     rect = app.terminal_state.body_rect
     report = f"\x1b[<35;{rect.x+2};{rect.y+2}M".encode()
@@ -247,8 +247,8 @@ def test_terminal_mouse_samples_bypass_prepaint_endpoint_coalescing(pane_app):
         screen._INPUT_READERS.pop(id(window), None)
 
 
-def test_terminal_capture_release_outside_cannot_activate_tower(pane_app):
-    from tower import terminal_ui
+def test_terminal_capture_release_outside_cannot_activate_raven(pane_app):
+    from raven import terminal_ui
     app = pane_app
     rect = app.terminal_state.body_rect
     press = screen._mouse_report(0, rect.x + 2, rect.y + 2, "M", curses)
@@ -262,7 +262,7 @@ def test_terminal_capture_release_outside_cannot_activate_tower(pane_app):
 
 
 def test_mouse_resize_rejects_old_coordinates_without_dropping_shell_keys(pane_app):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app = pane_app
     rect = app.terminal_state.body_rect
     old_geometry = screen._terminal_geometry(app)
@@ -277,11 +277,11 @@ def test_mouse_resize_rejects_old_coordinates_without_dropping_shell_keys(pane_a
 
 
 def test_pty_screen_updates_use_cached_document_and_leave_jobs_unchanged(pane_app, monkeypatch):
-    from tower import terminal_ui, layout
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Store, Job
-    from tower.views import Views
+    from raven import terminal_ui, layout
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Store, Job
+    from raven.views import Views
 
     cfg = Config({"animations": False, "startup_animation": False, "gpu_sampling": False})
     store = Store(persist=False)

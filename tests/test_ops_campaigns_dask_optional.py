@@ -6,8 +6,8 @@ import pytest
 pytest.importorskip("dask_jobqueue")
 from dask_jobqueue.slurm import SLURMJob
 
-from tower.campaign_common import atomic
-from tower.campaign_dask import controller
+from raven.campaign_common import atomic
+from raven.campaign_dask import controller
 
 
 def test_real_dask_jobqueue_creates_and_closes_owned_slurm_workers(tmp_path, monkeypatch):
@@ -21,7 +21,7 @@ def test_real_dask_jobqueue_creates_and_closes_owned_slurm_workers(tmp_path, mon
     monkeypatch.setattr(SLURMJob, "_close_job", staticmethod(close))
     atomic(tmp_path / "config.json", {
         "owner": "adapter-test", "scope": {"cluster": "offline"}, "target": 2,
-        "recipe": {"schema": "tower.dask-pool/v1", "cores": 2, "memory_mb": 256,
+        "recipe": {"schema": "raven.dask-pool/v1", "cores": 2, "memory_mb": 256,
                    "max_jobs": 3, "adaptive": False}})
     state = controller(tmp_path, max_cycles=3)
     assert state["state"] == "stopped"

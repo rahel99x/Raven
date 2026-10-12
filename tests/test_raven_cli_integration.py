@@ -3,16 +3,16 @@ from unittest.mock import Mock
 
 import pytest
 
-from tower import cli
-from tower.config import Config
-from tower.raven_config import resolve, to_tower_config
-from tower.raven_execution import process_router, configure_process, reset_process
+from raven import cli
+from raven.config import Config
+from raven.raven_config import resolve, to_raven_config
+from raven.raven_execution import process_router, configure_process, reset_process
 
 
 def resolved(tmp_path, monkeypatch, site="desktop"):
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
-    monkeypatch.delenv("TOWER_CONFIG", raising=False)
+    monkeypatch.delenv("RAVEN_CONFIG", raising=False)
     monkeypatch.delenv("RAVEN_CONFIG", raising=False)
     return resolve(site=site, system_policy_paths=[])
 
@@ -56,7 +56,7 @@ def test_managed_legacy_profile_cannot_override_policy(tmp_path, monkeypatch, ca
 
 def test_raven_state_uses_separate_root(tmp_path, monkeypatch):
     value = resolved(tmp_path, monkeypatch)
-    cfg = Config(to_tower_config(value))
+    cfg = Config(to_raven_config(value))
     path = cli.scoped_state_dir(cli.Backend(), cfg, "alice")
     assert path.startswith(str(tmp_path / "state" / "raven"))
     assert "/profiles/raven/" in path
@@ -64,7 +64,7 @@ def test_raven_state_uses_separate_root(tmp_path, monkeypatch):
 
 def test_light_builder_has_no_allocator_start_and_no_plugins(tmp_path, monkeypatch):
     value = resolved(tmp_path, monkeypatch)
-    cfg = Config(to_tower_config(value))
+    cfg = Config(to_raven_config(value))
     cfg.set("raven.managed", True)
     cfg.set("collection_cache_dir", str(tmp_path / "host-cache"))
     discover = Mock(side_effect=AssertionError("managed plugins cannot import arbitrary code"))
@@ -76,7 +76,7 @@ def test_light_builder_has_no_allocator_start_and_no_plugins(tmp_path, monkeypat
         assert session.app.raven_execution.managed
         assert session.sampler.collection["slurm_enabled"] is False
         assert session.backend.ledger is not None
-        from tower.raven_diagnostics import collect
+        from raven.raven_diagnostics import collect
         assert collect(session.app)["collection"]["scope"] == "user-host-connection"
         assert session.app.worker_scheduler.max_queue == cfg["raven"]["resources"]["light"]["max_worker_queue"]
         assert session.app.worker_scheduler.multi_limit == cfg["raven"]["resources"]["light"]["max_workers"]

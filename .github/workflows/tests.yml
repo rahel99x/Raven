@@ -28,35 +28,35 @@ jobs:
       - name: Validate reporting schemas and published examples
         run: python scripts/validate_operation_schemas.py
       - name: Exercise offline setup
-        run: python scripts/setup.py --mode demo --venv /tmp/tower-offline-venv --report /tmp/tower-demo.txt
+        run: python scripts/setup.py --mode demo --venv /tmp/raven-offline-venv --report /tmp/raven-demo.txt
       - name: Build source and wheel distributions
         run: python -m build
       - name: Smoke-test the installed wheel outside the checkout
         shell: bash
         run: |
-          python -m venv /tmp/tower-wheel-venv
-          /tmp/tower-wheel-venv/bin/python -m pip install --no-deps dist/*.whl
+          python -m venv /tmp/raven-wheel-venv
+          /tmp/raven-wheel-venv/bin/python -m pip install --no-deps dist/*.whl
           cd /tmp
-          /tmp/tower-wheel-venv/bin/tower --doctor --fake
-          /tmp/tower-wheel-venv/bin/ravenl --site desktop doctor
-          /tmp/tower-wheel-venv/bin/ravenh --site desktop --plan
-          /tmp/tower-wheel-venv/bin/ravenl qualify --offline > /tmp/raven-offline-qualification.json
-          /tmp/tower-wheel-venv/bin/tower --fake --no-state --no-plugins --report /tmp/tower-wheel.txt
+          /tmp/raven-wheel-venv/bin/raven --doctor --fake
+          /tmp/raven-wheel-venv/bin/ravenl --site desktop doctor
+          /tmp/raven-wheel-venv/bin/ravenh --site desktop --plan
+          /tmp/raven-wheel-venv/bin/ravenl qualify --offline > /tmp/raven-offline-qualification.json
+          /tmp/raven-wheel-venv/bin/raven --fake --no-state --no-plugins --report /tmp/raven-wheel.txt
       - name: Qualify local CLI, documentation and terminal boundaries
         shell: bash
         run: |
           wheel=(dist/*.whl)
-          python scripts/qualify_flagship.py --wheel "${wheel[0]}" --output /tmp/tower-qualification.json
+          python scripts/qualify_flagship.py --wheel "${wheel[0]}" --output /tmp/raven-qualification.json
       - name: Verify the optional terminal engine from the installed wheel
         shell: bash
         run: |
           wheel=(dist/*.whl)
-          /tmp/tower-wheel-venv/bin/python -m pip install "${wheel[0]}[terminal]"
+          /tmp/raven-wheel-venv/bin/python -m pip install "${wheel[0]}[terminal]"
           cd /tmp
-          /tmp/tower-wheel-venv/bin/tower terminal selftest --json
+          /tmp/raven-wheel-venv/bin/raven terminal selftest --json
       - name: Record and verify release contents and checksums
         run: |
-          python scripts/release_inventory.py create --output dist/release-inventory.json --spdx dist/slurm-tower.spdx.json --checksums dist/SHA256SUMS --source-commit "$GITHUB_SHA" dist/*.whl dist/*.tar.gz
+          python scripts/release_inventory.py create --output dist/release-inventory.json --spdx dist/raven.spdx.json --checksums dist/SHA256SUMS --source-commit "$GITHUB_SHA" dist/*.whl dist/*.tar.gz
           python scripts/release_inventory.py verify dist/release-inventory.json dist/*.whl dist/*.tar.gz
       - uses: actions/upload-artifact@v4
         if: matrix.python == '3.12'
@@ -64,6 +64,6 @@ jobs:
           name: distributions-and-demo
           path: |
             dist/*
-            /tmp/tower-demo.txt
-            /tmp/tower-qualification.json
+            /tmp/raven-demo.txt
+            /tmp/raven-qualification.json
             /tmp/raven-offline-qualification.json

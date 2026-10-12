@@ -1,6 +1,6 @@
 from types import SimpleNamespace
-from tower import scrollbars as S, scrolling
-from tower.interaction import Rect, publish as publish_graph
+from raven import scrollbars as S, scrolling
+from raven.interaction import Rect, publish as publish_graph
 
 
 def app():

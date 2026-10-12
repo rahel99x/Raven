@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower native output contract v1",
+  "title": "Raven native output contract v1",
   "description": "Native declarative artifact contract. Contract paths resolve relative to the explicit --workdir/artifacts root, normally the selected run directory. No shell commands, recursive scans, globs, or interpolation.",
   "type": "object",
   "required": [

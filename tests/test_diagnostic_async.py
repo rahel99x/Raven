@@ -11,8 +11,8 @@ import time
 
 import pytest
 
-from tower import ops_investigation as ops
-from tower.operations import Context
+from raven import ops_investigation as ops
+from raven.operations import Context
 
 
 def wait_until(callback, timeout=12):
@@ -37,7 +37,7 @@ def alive(pid):
 def campaign(tmp_path):
     program = tmp_path/"program.py"
     program.write_text("from pathlib import Path\nimport os,subprocess,sys,time,json\np=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)'])\nPath(sys.argv[1]).write_text(json.dumps({'worker':os.getpid(),'child':p.pid}))\nprint('STARTED',flush=True)\ntime.sleep(60)\n")
-    recipe = {"schema": "tower.diagnostic-campaign/v1", "id": "async-check", "mode": "local-diagnostic", "kind": "campaign",
+    recipe = {"schema": "raven.diagnostic-campaign/v1", "id": "async-check", "mode": "local-diagnostic", "kind": "campaign",
               "command": [str(Path(sys.executable).resolve()), "{file:program.py}"],
               "files": [{"name": "program.py", "path": str(program), "sha256": hashlib.sha256(program.read_bytes()).hexdigest()}],
               "cases": [{"id": "slow", "arguments": ["{result}"]}],

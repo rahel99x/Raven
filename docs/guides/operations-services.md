@@ -46,10 +46,10 @@ SSH profile cannot start a substitute service on your workstation.
 Command-line access uses the same service:
 
 ```bash
-python -m tower.supervisor start "$HOME/.local/state/tower-monitor" \
+python -m raven.supervisor start "$HOME/.local/state/raven-monitor" \
   --user "$USER" --interval 5 --max-records 1000
-python -m tower.supervisor status "$HOME/.local/state/tower-monitor"
-python -m tower.supervisor stop "$HOME/.local/state/tower-monitor"
+python -m raven.supervisor status "$HOME/.local/state/raven-monitor"
+python -m raven.supervisor stop "$HOME/.local/state/raven-monitor"
 ```
 
 Add `--cluster CLUSTER` to Start for an explicit Slurm cluster. The interval
@@ -87,7 +87,7 @@ direction** to `input`, `output`, or `all`. Inspect the exact paths, byte count,
 and manifest revision. Select **Review action**, check the plan, then select
 **Confirm apply** to perform the declared transfers.
 
-Use [`tower.staging/v1`](../schemas/staging.schema.json). The
+Use [`raven.staging/v1`](../schemas/staging.schema.json). The
 [example](../examples/staging-manifest.json) has input and output entries. Set
 each file's absolute source and destination path, byte size, SHA-256 checksum,
 and direction. Create destination parent directories before review. Raven does
@@ -95,7 +95,7 @@ not walk directories or infer extra files.
 
 ```json
 {
-  "schema": "tower.staging/v1",
+  "schema": "raven.staging/v1",
   "id": "experiment-42-input",
   "retention": "keep-source",
   "entries": [
@@ -182,7 +182,7 @@ Select engine `snakemake` and source `dag.json`. Raven accepts the native
 state or scheduler IDs. Those fields remain unknown.
 
 For live state, an executor or project adapter can atomically publish
-[`tower.workflow-engine/v1`](../schemas/workflow-engine.schema.json). Use the
+[`raven.workflow-engine/v1`](../schemas/workflow-engine.schema.json). Use the
 [example](../examples/workflow-engine.json). Each node declares its native
 logical ID, rule, optional scheduler ID, state, attempt, and dependency IDs.
 Keep the engine's run identity in `workflow_id`. Do not mix different runs in

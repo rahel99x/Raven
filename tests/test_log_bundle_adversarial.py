@@ -11,9 +11,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import history_log_export, log_bundle
-from tower.cli import Session
-from tower.model import Finished
+from raven import history_log_export, log_bundle
+from raven.cli import Session
+from raven.model import Finished
 
 
 @pytest.fixture

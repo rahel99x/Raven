@@ -7,14 +7,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.config import Config
-from tower.model import Job, Store
-from tower.platform_session import wrap_backend
-from tower.raven_collection import (DEFAULTS, Deferred, Descriptor, Ledger, classify,
+from raven.config import Config
+from raven.model import Job, Store
+from raven.platform_session import wrap_backend
+from raven.raven_collection import (DEFAULTS, Deferred, Descriptor, Ledger, classify,
                                     admit_allocation_launch, admit_terminal_launch,
                                     expand_hostlist, make_placement_verifier, settings, wrap_files)
-from tower.shared_collection import SharedQueryCache
-from tower.slurm import CommandError, Slurm
+from raven.shared_collection import SharedQueryCache
+from raven.slurm import CommandError, Slurm
 
 
 class Timer:
@@ -53,11 +53,11 @@ def ledger(tmp_path, timer=None, **config):
 
 
 def test_legacy_cli_sixty_second_interval_stays_sixty_seconds():
-    from tower import cli
+    from raven import cli
     session = cli.build(cli.parse(["--fake", "--no-state", "--no-plugins", "--interval", "60"]), Config())
     try:
         assert session.sampler.effective_interval("jobs") == 60
-        from tower.refresh_rate import candidate_cadence
+        from raven.refresh_rate import candidate_cadence
         assert candidate_cadence(session.app, "jobs", 1) == 60
     finally:
         session.close()
@@ -228,7 +228,7 @@ def test_step_cooldown_longer_than_minute_survives_request_pruning(tmp_path):
 
 
 def test_step_cooldown_upgrade_preserves_legacy_debits_before_pruning(tmp_path):
-    from tower import evidence as E
+    from raven import evidence as E
     timer = Timer()
     timer.value = 1061.
     cache = SharedQueryCache(tmp_path / "legacy-ledger")
@@ -344,7 +344,7 @@ def test_cached_equivalent_reads_consume_one_actual_command_allowance(tmp_path):
 
 
 def test_simulations_have_independent_ephemeral_caches_and_do_not_fill_live_owner(tmp_path):
-    from tower.slurm import FakeBackend
+    from raven.slurm import FakeBackend
     raw, real = backend(tmp_path)
     real.run(["squeue"])
     cfg = {"raven": {"collection": {}}, "collection_cache_dir": str(tmp_path / "cache")}
@@ -381,9 +381,9 @@ def test_completed_cache_values_evict_under_pressure_without_resetting_source_qu
 @pytest.mark.parametrize("availability", ["available", "unavailable", "empty", "stale", "invalid", "zero"])
 def test_advised_cli_resubmit_demands_exact_running_job_and_never_silently_loses_advice(
         tmp_path, monkeypatch, capsys, target, availability):
-    from tower import cli
-    from tower.raven_config import resolve, to_tower_config
-    from tower.slurm import FakeBackend
+    from raven import cli
+    from raven.raven_config import resolve, to_raven_config
+    from raven.slurm import FakeBackend
 
     value = resolve(site="slurm", system_policy_paths=[], env={
         "HOME": str(tmp_path), "XDG_CONFIG_HOME": str(tmp_path / "config"),
@@ -424,7 +424,7 @@ def test_advised_cli_resubmit_demands_exact_running_job_and_never_silently_loses
 
         monkeypatch.setattr(cli, "settle", invalid_after_settle)
     args = cli.parse(["--fake", "--no-state", "--no-plugins", "run", "resubmit", target, "--advised", "--yes"])
-    session = cli.build(args, Config(to_tower_config(value)))
+    session = cli.build(args, Config(to_raven_config(value)))
     try:
         code = cli.scripted(args, session)
         output = capsys.readouterr().out
@@ -542,13 +542,13 @@ def test_synthetic_sessions_per_user_startup_and_refresh_flood_has_bounded_comma
 
 
 def test_host_local_cache_rejects_network_mount(tmp_path, monkeypatch):
-    monkeypatch.setattr("tower.shared_collection._network_mount", lambda path: True)
+    monkeypatch.setattr("raven.shared_collection._network_mount", lambda path: True)
     with pytest.raises(ValueError, match="host-local"):
         backend(tmp_path)
 
 
 def test_file_metadata_and_byte_budgets_remain_separate_from_controller(tmp_path):
-    from tower.remote import LocalFiles
+    from raven.remote import LocalFiles
     raw, governed = backend(tmp_path, file_bytes_per_minute=8, filesystem_metadata_per_minute=2)
     files = wrap_files(LocalFiles(), governed)
     path = tmp_path / "data.log"
@@ -668,7 +668,7 @@ def test_batched_sstat_preserves_exact_array_members_and_missing_coverage():
 
 
 def test_managed_node_sampling_batches_and_retains_only_current_exact_hosts():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     raw = Recorder()
     def run(argv, timeout=8):
         raw.commands.append(tuple(argv))
@@ -691,7 +691,7 @@ def test_managed_node_sampling_batches_and_retains_only_current_exact_hosts():
 
 
 def test_managed_sampler_floors_refresh_demand_and_unsolicited_probes(tmp_path):
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     raw = Recorder()
     store = Store(persist=False)
     sampler = Sampler(Slurm(raw, "test"), store, {"jobs": 2, "live": 5}, [], collection={"jitter_fraction": 0})
@@ -720,8 +720,8 @@ def test_managed_sampler_floors_refresh_demand_and_unsolicited_probes(tmp_path):
 
 def test_governed_file_adapter_preserves_confined_local_and_real_remote_project_readers(tmp_path):
     from test_project_remote import IsolatedSSH
-    from tower import projects, project_remote
-    from tower.remote import LocalFiles, RemoteFiles
+    from raven import projects, project_remote
+    from raven.remote import LocalFiles, RemoteFiles
     raw, governed = backend(tmp_path)
     root = tmp_path / "project"
     root.mkdir()
@@ -736,8 +736,8 @@ def test_governed_file_adapter_preserves_confined_local_and_real_remote_project_
 
 
 def test_governed_remote_catalog_keeps_manifest_symlink_rejection(tmp_path):
-    from tower import log_catalog
-    from tower.remote import RemoteFiles
+    from raven import log_catalog
+    from raven.remote import RemoteFiles
     _, governed = backend(tmp_path)
     class LinkStat:
         def run(self, argv, timeout):
@@ -748,14 +748,14 @@ def test_governed_remote_catalog_keeps_manifest_symlink_rejection(tmp_path):
 
 
 def test_explicit_slow_metric_source_is_preserved_without_an_override():
-    from tower.metric_sampling import interval
+    from raven.metric_sampling import interval
     assert interval(60, 1, 1, source="live") == 60
     assert interval(60, 50, 1, source="live") == 6
     assert interval(60, 1, 100, source="live") == .5
 
 
 def test_unchanged_collection_demand_does_not_wake_background_scheduler():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
         sampler.set_collection_demand("analytics", "7")
@@ -769,9 +769,9 @@ def test_unchanged_collection_demand_does_not_wake_background_scheduler():
 
 
 def test_managed_initial_and_periodic_jitter_never_schedule_below_source_floor(monkeypatch):
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     timer = Timer()
-    monkeypatch.setattr("tower.sampler.time.time", timer)
+    monkeypatch.setattr("raven.sampler.time.time", timer)
     monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 2}, [], collection={})
     try:
@@ -787,9 +787,9 @@ def test_managed_initial_and_periodic_jitter_never_schedule_below_source_floor(m
 
 
 def test_explicit_snapshot_primes_only_first_visible_attempts(monkeypatch):
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     timer = Timer()
-    monkeypatch.setattr("tower.sampler.time.time", timer)
+    monkeypatch.setattr("raven.sampler.time.time", timer)
     monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
@@ -828,7 +828,7 @@ def test_burst_retry_hint_waits_for_its_window_without_resetting_quotas(tmp_path
 
 
 def test_many_explicit_live_subscriptions_use_bounded_round_robin_batches():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     raw, store = Recorder(), Store(persist=False)
     store.apply_jobs([Job(str(jid), "job", "cpu", "RUNNING", submit="s", start="t") for jid in range(35)])
     sampler = Sampler(Slurm(raw, "test"), store, {"live": 60}, [], collection={"live_batch_jobs": 16})
@@ -846,7 +846,7 @@ def test_many_explicit_live_subscriptions_use_bounded_round_robin_batches():
 
 
 def test_temporary_admission_deferral_does_not_become_source_failure():
-    from tower.sampler import Sampler
+    from raven.sampler import Sampler
     sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
         def occupied():

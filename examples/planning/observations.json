@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "kind": "tower.planning",
+  "kind": "raven.planning",
   "simulated": true,
   "query": {
     "name": "demo-simulation",
@@ -2020,7 +2020,7 @@
   ],
   "workflow": {
     "version": 1,
-    "kind": "tower.workflow",
+    "kind": "raven.workflow",
     "nodes": [
       {
         "id": "prepare",

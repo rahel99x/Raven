@@ -1,7 +1,7 @@
 """A stationary terminal cell must not jitter into a neighboring Braille slot."""
 from types import SimpleNamespace
 
-from tower import chart_interaction as C, selector_glyphs as G
+from raven import chart_interaction as C, selector_glyphs as G
 
 
 def test_identical_visual_endpoints_remain_exact_at_every_animation_fraction():

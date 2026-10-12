@@ -8,9 +8,9 @@ import time
 
 import pytest
 
-from tower.logs import LogSession
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven.logs import LogSession
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 class Remote:
@@ -26,7 +26,7 @@ class Remote:
         self.after_read = None
     def _call(self, name):
         thread = current_thread().name
-        assert thread.startswith("tower-research"), "SSH cannot run on the terminal thread"
+        assert thread.startswith("raven-research"), "SSH cannot run on the terminal thread"
         self.calls.append((name, thread))
         if self.error:
             raise OSError(self.error)
@@ -311,12 +311,12 @@ def test_cache_replacement_cannot_reuse_selection_snapshot_token():
 
 
 def test_real_controller_frames_and_keyboard_never_wait_for_remote_io(tmp_path, monkeypatch):
-    from tower import clipboard
-    from tower.config import Config
-    from tower.controller import App
-    from tower.layout import Glyphs, row_text
-    from tower.model import Finished, Store
-    from tower.views import Views
+    from raven import clipboard
+    from raven.config import Config
+    from raven.controller import App
+    from raven.layout import Glyphs, row_text
+    from raven.model import Finished, Store
+    from raven.views import Views
     files = Remote()
     files.block = True
     cfg = Config({"log_lines": 0, "clipboard": {"osc52": False, "tools": False}})
@@ -354,7 +354,7 @@ def test_real_controller_frames_and_keyboard_never_wait_for_remote_io(tmp_path, 
         app.handle("down")
         app.handle("y")
         assert copied == [b"first\tcolumn\r\nsecond\n"]
-        assert all(name.startswith("tower-research") for _, name in files.calls)
+        assert all(name.startswith("raven-research") for _, name in files.calls)
         assert len(files.calls) == 3
     finally:
         files.release.set()
@@ -391,7 +391,7 @@ def test_same_size_remote_rewrite_reloads_and_invalidates_selection():
         assert latest.ident == original.ident and latest.size == original.size
         assert latest.reloads == original.reloads + 1
         assert not session.selection_active and session.cursor is None
-        assert all(thread.startswith('tower-research') for operation, thread in files.calls)
+        assert all(thread.startswith('raven-research') for operation, thread in files.calls)
     finally: hub.close()
 
 

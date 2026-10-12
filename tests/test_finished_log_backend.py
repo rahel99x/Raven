@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.model import Finished, Job, Store
-from tower.sampler import Sampler
-from tower.slurm import CommandError, FakeBackend, MAX_LOG_DETAIL_BYTES, SACCT_FIELDS, SACCT_LOG_FIELDS, Slurm
+from raven.model import Finished, Job, Store
+from raven.sampler import Sampler
+from raven.slurm import CommandError, FakeBackend, MAX_LOG_DETAIL_BYTES, SACCT_FIELDS, SACCT_LOG_FIELDS, Slurm
 
 
 class AccountingBackend:

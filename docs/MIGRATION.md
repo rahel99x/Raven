@@ -34,18 +34,21 @@ the legacy files. Raven's collection limits still apply.
 
 ## Preview and apply
 
-From the checkout, inspect a configuration-only preview:
+From the checkout, select the previous configuration directory and inspect a
+configuration-only preview:
 
 ```bash
-./scripts/migrate-config.sh
+./scripts/migrate-config.sh --source-config "/absolute/path/to/previous/config"
 ```
 
-The default locations follow the XDG Base Directory convention:
+Source directories must be supplied explicitly. Raven does not discover another
+application's files or treat its own directories as migration sources. The
+destination defaults follow the XDG Base Directory convention:
 
 | Purpose | Default path |
 | --- | --- |
-| Legacy configuration | `${XDG_CONFIG_HOME:-$HOME/.config}/tower` |
-| Legacy state, when requested | `${XDG_STATE_HOME:-$HOME/.local/state}/tower` |
+| Previous configuration | Explicit `--source-config DIR` |
+| Previous state, when requested | Explicit `--source-state DIR` |
 | Raven configuration | `${XDG_CONFIG_HOME:-$HOME/.config}/raven/config.json` |
 | Raven state and archives | `${XDG_STATE_HOME:-$HOME/.local/state}/raven` |
 
@@ -59,7 +62,9 @@ Save, inspect, and apply one plan:
 
 ```bash
 raven_migration_dir="$(mktemp -d)"
-./scripts/migrate-config.sh --save-plan "$raven_migration_dir/plan.json"
+./scripts/migrate-config.sh \
+  --source-config "/absolute/path/to/previous/config" \
+  --save-plan "$raven_migration_dir/plan.json"
 cat -- "$raven_migration_dir/plan.json"
 ./scripts/migrate-config.sh --apply --plan-file "$raven_migration_dir/plan.json"
 ```
@@ -69,15 +74,17 @@ configuration conflict. Review those fields before applying. Stop processes
 that write the selected legacy files between planning and application. Keep the
 saved plan and the journal path returned by application for recovery.
 
-To include state, add `--include-state` when preparing the plan. History requires
-the additional `--include-history` opt-in:
+To include state, supply its source directory and add `--include-state` when
+preparing the plan. History requires the additional `--include-history` opt-in:
 
 ```bash
 ./scripts/migrate-config.sh --include-state --include-history \
+  --source-config "/absolute/path/to/previous/config" \
+  --source-state "/absolute/path/to/previous/state" \
   --save-plan "$raven_migration_dir/state-plan.json"
 ```
 
-Use explicit paths for nonstandard locations; quote paths containing spaces:
+Override the destination paths when needed; quote paths containing spaces:
 
 ```bash
 ./scripts/migrate-config.sh --include-state \
@@ -107,8 +114,8 @@ Migration excludes the named runtime, service, cache, terminal, and SSH stores,
 along with socket/PID/lock files and databases. It does not adopt live tasks or
 configure authentication. Review the selected roots and plan: eligible regular
 files are archived verbatim, and arbitrary credential files within those roots
-are not automatically redacted. Project evidence is not selected by the default
-user-level roots.
+are not automatically redacted. Project evidence is selected only when it lies
+within an explicitly chosen source root.
 
 Completed state migrations can restore bounded appearance and column preferences
 when new scoped UI state is absent. Manual group identities additionally require
@@ -140,3 +147,7 @@ Successful rollback reports `rolled-back`; repeating it is harmless. The journal
 saved plan, legacy sources, and any pre-existing Raven configuration are retained.
 Empty archive directories and the migration lock may remain. Rollback does not
 change the installed package or undo later configuration exports.
+
+Saved plans and journals created by an earlier release remain usable. Their
+recorded source paths and hashes are fixed; applying or rolling them back does
+not require generating a new plan or renaming the original directories.

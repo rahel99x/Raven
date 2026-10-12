@@ -1,6 +1,6 @@
 # Install the Raven commands
 
-Install the `slurm-tower` distribution to get real `ravenl`, `ravenh`, and `tower`
+Install the `raven` distribution to get real `ravenl`, `ravenh`, and `raven`
 executables. The installed commands run from any working directory without
 aliases, virtual-environment activation, or changes to `.bashrc`. They use the
 installed package, so launching them does not require the source checkout.
@@ -27,8 +27,10 @@ pipx install '.[terminal]'
 
 Use `pipx install .` instead if you do not need the embedded terminal. Pipx
 creates an isolated application environment and exposes the package's console
-commands. Install only the `slurm-tower` distribution; do not co-install another
-distribution that owns the Python `tower` package in that environment.
+commands. Install only the `raven` distribution; do not co-install another
+distribution that owns the Python `raven` package in that environment.
+Use this checkout or its built wheel as the installation source. Do not install
+by the bare package-index name: that name can identify unrelated software.
 
 Check the installed commands from outside the checkout:
 
@@ -90,12 +92,12 @@ ravenh --plan
 `$XDG_CONFIG_HOME/raven/config.json` when `XDG_CONFIG_HOME` is set. It refuses to
 replace an existing file. If you already have configuration, inspect and edit
 that file instead. Both launchers load it automatically. Explicit `--config`
-and existing `RAVEN_CONFIG` or `TOWER_CONFIG` bindings take precedence.
+and an existing `RAVEN_CONFIG` binding take precedence.
 
-For existing Tower configuration files, use the Bash preview, apply, and rollback
-helpers in the [migration guide](MIGRATION.md). Review the migration plan before
-applying it. The migration retains originals and preserves an existing Raven
-configuration.
+For configuration from a previous installation, use the Bash preview, apply,
+and rollback helpers in the [migration guide](MIGRATION.md). Select the source
+directories explicitly and review the saved plan before applying it. Migration
+retains originals and preserves an existing Raven configuration.
 
 Review the cluster identity, account, partition, QOS, resource request, and
 worker Python path for your scheduler. Empty account and partition values use
@@ -106,24 +108,23 @@ the [Raven runbook](raven/README.md#choose-a-site) for site requirements.
 `ravenl` opens Light without allocating compute. After reviewing the plan,
 `ravenh` requests a Slurm allocation and starts Heavy only after the worker is
 verified. On a machine **without Slurm**, select `--site desktop` explicitly;
-that mode means standalone local execution. It is different from the legacy
-Tower `--profile desktop`, which means local Slurm.
+that mode means standalone local execution. The supplied native configuration's
+`--profile desktop` instead selects local Slurm.
 
-### Retain a legacy local-Slurm profile
+### Import a native local-Slurm profile
 
-An existing `tower` alias can remain as an optional compatibility route. The
-installed Raven commands use their own configuration discovery. To export the
-supported effective settings from the supplied legacy local-Slurm profile into
+The installed commands use Raven configuration discovery. To export the
+supported effective settings from the supplied native local-Slurm profile into
 a **new** default Raven configuration, use the actual absolute checkout path:
 
 ```bash
 ravenl --config /absolute/path/to/Raven/docs/config.example.json --profile desktop --write-config
 ```
 
-For a customized legacy file, use that file's path instead. This command refuses
+For a customized native file, use that file's path instead. This command refuses
 to replace existing Raven configuration. It exports the settings supported by
-Raven and applies Raven's collection limits; it does not copy every legacy UI
-or state setting. The original legacy configuration remains available. See
+Raven and applies Raven's collection limits; it does not copy every UI
+or state setting. The original configuration remains available. See
 [migration](raven/README.md#migrate-without-changing-evidence) before importing
 legacy state.
 
@@ -145,16 +146,53 @@ reinstall the application:
 ```bash
 cd /path/to/Raven
 git pull --ff-only
-pipx reinstall slurm-tower
+pipx reinstall raven
 ```
 
 Pipx retains the original installation source and extras. Use the same
 `PIPX_BIN_DIR` override if you selected one. For an administrator installation,
-use `sudo pipx reinstall --global slurm-tower`.
+use `sudo pipx reinstall --global raven`.
 
 Pulling source alone does not update a normally installed package. Reinstallation
 preserves user configuration and state; it needs the recorded source checkout.
 Repeat the version, doctor, and plan checks from outside the checkout afterward.
+
+### Replace an installation with the previous package name
+
+The distribution and Python package are now both `raven`. An installation made
+under a previous distribution name needs replacement before normal
+`pipx reinstall raven` updates apply. Close its dashboards and release any owned
+Heavy worker. Identify the previous distribution with `pipx list`, replace
+`PREVIOUS_DISTRIBUTION` below with that name, and install Raven from its checkout:
+
+```bash
+pipx list
+pipx uninstall PREVIOUS_DISTRIBUTION
+cd /path/to/Raven
+pipx install '.[terminal]'
+hash -r
+```
+
+For a global installation, use `sudo pipx uninstall --global PREVIOUS_DISTRIBUTION`
+and `sudo pipx install --global '.[terminal]'` instead.
+Package removal preserves your application configuration and state. It does
+remove the previous environment, so an existing `execution.worker_python`
+value can refer to a Python executable that no longer exists.
+
+For a standard user pipx installation, obtain the new worker executable with:
+
+```bash
+raven_worker_python="$(pipx environment --value PIPX_LOCAL_VENVS)/raven/bin/python"
+"$raven_worker_python" -c 'import raven; print(raven.__version__)'
+printf '%s\n' "$raven_worker_python"
+```
+
+Back up your Raven configuration and set `execution.worker_python` to that
+printed path. A custom or global pipx environment needs its own executable path.
+For Slurm, verify that the selected compute nodes can access the interpreter
+and installed package. Run `ravenl --show-paths config explain`, `ravenl doctor`,
+and `ravenh --plan` afterward. Configuration files are retained rather than
+rewritten during a package update.
 
 ## Develop or install offline
 
@@ -176,7 +214,8 @@ dependencies on an approved connected machine, then install into an existing
 virtual environment:
 
 ```bash
-python -m pip install --no-index --find-links DIR 'slurm-tower[terminal]'
+python -m pip install --no-index --find-links DIR \
+  '/path/to/raven-7.0.0-py3-none-any.whl[terminal]'
 ```
 
 Its commands are in that environment's `bin` directory; that directory must be

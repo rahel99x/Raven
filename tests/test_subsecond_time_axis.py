@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from tower import charts, layout as L
+from raven import charts, layout as L
 
 
 def labels(start, end, width=80, **kwargs):

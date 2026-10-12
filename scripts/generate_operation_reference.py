@@ -11,8 +11,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tower.flagship_commands import command_rows
-from tower.operations import catalog
+from raven.flagship_commands import command_rows
+from raven.operations import catalog
 
 DEFAULT_OUTPUT = ROOT / "docs" / "reference" / "operations.md"
 

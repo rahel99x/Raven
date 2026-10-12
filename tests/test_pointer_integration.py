@@ -5,12 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import execution_ui, interaction, job_selection, layout as L, screen, toolbar
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven import execution_ui, interaction, job_selection, layout as L, screen, toolbar
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,
@@ -242,7 +242,7 @@ def test_actual_modal_graph_contains_only_visible_clipped_controls(dashboard, wi
                and 0 <= control.rect.left < control.rect.right <= width for control in controls)
     assert not any(control.id.startswith(("sort:", "job_panel", "tab:")) for control in controls)
     visible_modal_ids = {value["id"] for _, _, value in app.analysis_state.get("control_hits", [])}
-    from tower.scrollbars import descriptors as scrollbar_descriptors
+    from raven.scrollbars import descriptors as scrollbar_descriptors
     visible_modal_ids.update(value['id'] for value in scrollbar_descriptors(app))
     assert all(control.id in visible_modal_ids or control.id.startswith("toolbar:") for control in controls)
     if width <= 2 or height <= 3:
@@ -310,8 +310,8 @@ def test_actual_execution_review_ignores_old_controls_after_pending_review_ident
 
 def test_each_wrapped_inline_link_fragment_is_mouse_hoverable_and_native_clickable(dashboard, monkeypatch):
     app = dashboard.app
-    from tower import job_panels
-    from tower.workspace_layout import _reflow
+    from raven import job_panels
+    from raven.workspace_layout import _reflow
     citation = {"id": "long-path", "job": app.selected_id, "path": "/very/long/diagnostic/path/for/the/selected/job.log"}
     source = [[(" Diagnostic " + citation["path"], "cyan")]]
     source_hits = [(0, "job_panel_action", (("inline_log", citation), 0, 28))]

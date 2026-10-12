@@ -57,7 +57,7 @@ Publish replacement JSON reports atomically after the complete file is ready.
 The copied reporter can publish and declare a native per-view source:
 
 ```bash
-python3 reporting.py report workflow .tower/definitions/workflow.json --run runs/my-run
+python3 reporting.py report workflow .raven/definitions/workflow.json --run runs/my-run
 ```
 
 Run that command from the copied project's root.
@@ -342,8 +342,8 @@ The preference persists with normal UI state and follows the selected state name
 Use the top-level `polling_multiplier` configuration field to set a launch default.
 A valid saved position overrides that default.
 The configuration field keeps its existing name for compatibility and now stores a position from one to 50.
-Use `tower --rate N` to override the saved position at launch.
-Use `tower --interval SECONDS` to set a compatibility launch interval.
+Use `raven --rate N` to override the saved position at launch.
+Use `raven --interval SECONDS` to set a compatibility launch interval.
 Intervals slower than five seconds retain their configured cadence instead of becoming a faster slider request.
 An explicit `--rate N` takes precedence over `--interval`.
 Use `:rate reset` to restore the default request in the active session.

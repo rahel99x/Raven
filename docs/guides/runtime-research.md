@@ -118,18 +118,18 @@ sends a stop signal, or changes application memory externally.
 Initialize a new mailbox on node-local storage:
 
 ```bash
-tower runtime --mailbox /tmp/tower-runtime-demo init examples/runtime/control-config.json
-python examples/runtime/cooperative_app.py /tmp/tower-runtime-demo
+raven runtime --mailbox /tmp/raven-runtime-demo init examples/runtime/control-config.json
+python examples/runtime/cooperative_app.py /tmp/raven-runtime-demo
 ```
 
 In another terminal on the same host:
 
 ```bash
-tower runtime --mailbox /tmp/tower-runtime-demo --attempt job123:attempt1 submit learning-rate-change-1 learning-rate '{"value":0.025}' --epoch 0
-tower runtime --mailbox /tmp/tower-runtime-demo --attempt job123:attempt1 status
+raven runtime --mailbox /tmp/raven-runtime-demo --attempt job123:attempt1 submit learning-rate-change-1 learning-rate '{"value":0.025}' --epoch 0
+raven runtime --mailbox /tmp/raven-runtime-demo --attempt job123:attempt1 status
 ```
 
-The same interfaces are available as `python -m tower.runtime_control`. Replace
+The same interfaces are available as `python -m raven.runtime_control`. Replace
 the example identity with an exact cluster/job/array/requeue attempt identity.
 The configuration lists every authorized attempt. A job ID alone is insufficient
 when a job can restart. The mailbox belongs to one host and boot. Use a new
@@ -143,7 +143,7 @@ application acknowledgment, not successful queueing, confirms application.
 The Python SDK is:
 
 ```python
-from tower.runtime_control import RuntimeControl
+from raven.runtime_control import RuntimeControl
 control = RuntimeControl(mailbox_path, exact_attempt)
 control.safe_point("epoch", apply_declared_command)
 # handler(command, parameters, request_id) returns a bounded JSON result.
@@ -213,7 +213,7 @@ arbitrary manifest command or shell string is executed by these helpers.
 
 ## MPI, multi-process and multi-GPU applications
 
-`tower.collective_runtime.CollectiveRuntime` is a working application-side
+`raven.collective_runtime.CollectiveRuntime` is a working application-side
 coordinator. Pass an existing mpi4py-compatible communicator. Only communicator
 rank zero accesses the local mailbox. It sends requests and outcomes through the
 application's own gather and broadcast operations; no extra Slurm queries,
@@ -221,7 +221,7 @@ listeners, ranks, or background threads are created.
 
 ```python
 from mpi4py import MPI
-from tower.collective_runtime import CollectiveRuntime
+from raven.collective_runtime import CollectiveRuntime
 
 control = CollectiveRuntime(MPI.COMM_WORLD, node_local_mailbox, exact_attempt,
                             initial_epoch=restored_parameter_epoch)

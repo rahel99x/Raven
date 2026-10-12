@@ -9,8 +9,8 @@ import random
 
 import pytest
 
-from tower.forecast import ForecastTracker, MIN_CALIBRATION, forecast
-from tower.model import Finished, Job
+from raven.forecast import ForecastTracker, MIN_CALIBRATION, forecast
+from raven.model import Finished, Job
 
 NOW = 100_000.
 

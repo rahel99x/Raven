@@ -11,10 +11,10 @@ import sys
 
 import pytest
 
-from tower import projects
-from tower.planning import analyze
-from tower.research import ResearchHub
-from tower.submission import prepare, _digest
+from raven import projects
+from raven.planning import analyze
+from raven.research import ResearchHub
+from raven.submission import prepare, _digest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,7 +33,7 @@ def project(tmp_path):
 
 
 def bundle():
-    return {"version": 1, "kind": "tower.planning", "history": [], "job_id": "12345_7",
+    return {"version": 1, "kind": "raven.planning", "history": [], "job_id": "12345_7",
             "jobs": [{"id": "12345_7", "name": "pi-series", "state": "PENDING",
                       "partition": "main", "cpus": 1, "nodes": 1, "gpus": 0,
                       "submit": 1700000000, "reason": "Dependency"}], "now": 1700000010}
@@ -57,7 +57,7 @@ def test_per_view_sources_round_trip_without_fabricating_analysis(project, view)
     root, producer, run = project
     document = bundle()
     if view == "workflow":
-        document = json.loads((root / ".tower/definitions/workflow.json").read_text())
+        document = json.loads((root / ".raven/definitions/workflow.json").read_text())
     path = producer.publish_research(run, view, document)
     selected = projects.select_run(str(root), run.name)
     assert selected["binding"]["planning_files"][view] == str(path)
@@ -87,7 +87,7 @@ def test_shared_aggregate_and_view_override_are_distinct_exact_files(project):
 def test_actual_native_preflight_is_preserved_as_read_only_report(project, monkeypatch):
     root, producer, run = project
     plan = prepare("jobs/run.sbatch", workdir=str(root))
-    assert plan["schema"] == "tower.submission-plan/v1" and plan["plan_id"] == _digest(plan)
+    assert plan["schema"] == "raven.submission-plan/v1" and plan["plan_id"] == _digest(plan)
     monkeypatch.setattr(subprocess, "run", lambda *a, **kw: pytest.fail("report publisher ran a command"))
     path = producer.publish_research(run, "submit", plan)
     selected = projects.select_run(str(root), run.name)
@@ -119,14 +119,14 @@ def test_changed_preflight_is_refused_before_existing_report_or_inventory_change
 
 
 @pytest.mark.parametrize("view, document", [
-    ("../forecast", {"version": 1, "kind": "tower.planning"}),
-    ("arrays", {"version": 1, "kind": "tower.planning"}),
-    ("predict", {"version": True, "kind": "tower.planning"}),
-    ("predict", {"version": 1, "kind": "tower.workflow", "nodes": []}),
-    ("forecast", {"version": 1, "kind": "tower.planning", "job_id": "12345"}),
-    ("forecast", {"version": 1, "kind": "tower.planning", "now": float("inf")}),
-    ("forecast", {"version": 1, "kind": "tower.planning", "description": "x" * (1 << 20)}),
-    ("submit", {"schema": "tower.submission-plan/v1", "valid": True}),
+    ("../forecast", {"version": 1, "kind": "raven.planning"}),
+    ("arrays", {"version": 1, "kind": "raven.planning"}),
+    ("predict", {"version": True, "kind": "raven.planning"}),
+    ("predict", {"version": 1, "kind": "raven.workflow", "nodes": []}),
+    ("forecast", {"version": 1, "kind": "raven.planning", "job_id": "12345"}),
+    ("forecast", {"version": 1, "kind": "raven.planning", "now": float("inf")}),
+    ("forecast", {"version": 1, "kind": "raven.planning", "description": "x" * (1 << 20)}),
+    ("submit", {"schema": "raven.submission-plan/v1", "valid": True}),
     ("predict", []),
 ])
 def test_invalid_reports_leave_existing_evidence_untouched(project, view, document):
@@ -162,7 +162,7 @@ def test_report_publication_refuses_special_files_and_symlink_directories(projec
         assert external.read_text() == "retained external evidence"
 
 
-def test_cli_publication_runs_without_site_packages_or_tower_import(project):
+def test_cli_publication_runs_without_site_packages_or_raven_import(project):
     root, _, run = project
     source = root / "observed-source.json"
     source.write_text(json.dumps(bundle()))
@@ -180,7 +180,7 @@ def test_cli_publication_runs_without_site_packages_or_tower_import(project):
 def test_old_minimum_v1_inventories_and_explicit_report_apis_remain_valid(tmp_path):
     run = tmp_path / "runs/old"
     run.mkdir(parents=True)
-    old = {"schema": "tower.run/v1", "run_id": "old", "experiment_id": "old-work", "attempt": 1,
+    old = {"schema": "raven.run/v1", "run_id": "old", "experiment_id": "old-work", "attempt": 1,
            "state": "RUNNING", "paths": {"metrics": "metrics.jsonl"}}
     (run / "run.json").write_text(json.dumps(old))
     selected = projects.select_run(str(tmp_path), "old")

@@ -4,12 +4,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from tower import job_groups, layout as L, pane_drag, recent_history, workspace_layout
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven import job_groups, layout as L, pane_drag, recent_history, workspace_layout
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 @pytest.fixture

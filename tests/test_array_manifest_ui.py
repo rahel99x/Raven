@@ -4,13 +4,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import array_manifest as M, array_manifest_ui as UI, arrays, job_panels, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Finished, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import array_manifest as M, array_manifest_ui as UI, arrays, job_panels, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Finished, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 def document(label="Sample A"):
@@ -280,7 +280,7 @@ def test_ambiguous_attempt_attachment_fails_instead_of_freezing_wrong_labels(das
 
 
 def test_repeated_detail_frames_reuse_wrapped_rows(dashboard, monkeypatch):
-    from tower import execution_ui
+    from raven import execution_ui
     d = dashboard
     d.attach()
     d.app.run_command("arraymap inspect")

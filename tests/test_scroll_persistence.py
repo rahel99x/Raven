@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 @pytest.mark.parametrize("tab", ["jobs", "history", "log"])

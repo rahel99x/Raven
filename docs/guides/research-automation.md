@@ -1,6 +1,6 @@
 # Automate Research reporting from Bash
 
-Use `tower report` in the launcher and batch script to publish native Research
+Use `raven report` in the launcher and batch script to publish native Research
 records. The reporter retains the actual Slurm job ID, experiment, dependencies,
 array identity, and restart attempt. Research refreshes these records while
 Raven is open. Reporting requires Python 3.10 or later and an installed Raven
@@ -17,17 +17,17 @@ real sample and copy a quoted Bash hook without executing it from the interface.
 
 Keep the source and the batch script in a project directory. Use an absolute
 project path on storage that the submission host and compute nodes can access.
-The `tower` command must be on `PATH` in both environments.
+The `raven` command must be on `PATH` in both environments.
 
 Create `launch.sh`:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-export TOWER_PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-export TOWER_EXPERIMENT="solver-comparison"
-tower report init --name "Solver comparison"
-job_id=$(tower report submit --script batch.sh -- --job-name=solver --cpus-per-task=4)
+export RAVEN_PROJECT_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export RAVEN_EXPERIMENT="solver-comparison"
+raven report init --name "Solver comparison"
+job_id=$(raven report submit --script batch.sh -- --job-name=solver --cpus-per-task=4)
 printf 'Submitted %s\n' "$job_id"
 ```
 
@@ -38,12 +38,12 @@ Create `batch.sh`:
 #SBATCH --time=00:10:00
 #SBATCH --output=slurm-%j.out
 
-# Inherit TOWER_PROJECT_ROOT, TOWER_EXPERIMENT, and TOWER_SCRIPT from submit.
+# Inherit RAVEN_PROJECT_ROOT, RAVEN_EXPERIMENT, and RAVEN_SCRIPT from submit.
 # This command records start, stdout, stderr, wall time, and the process result.
-tower report exec -- python3 solve.py
+raven report exec -- python3 solve.py
 ```
 
-The application receives `TOWER_RUN_DIR`. Write scientific files there.
+The application receives `RAVEN_RUN_DIR`. Write scientific files there.
 This fragment assumes the application has computed `residual`:
 
 ```python
@@ -51,7 +51,7 @@ import json
 import os
 from pathlib import Path
 
-run = Path(os.environ["TOWER_RUN_DIR"])
+run = Path(os.environ["RAVEN_RUN_DIR"])
 (run / "outputs" / "result.json").write_text(json.dumps({"residual": residual}))
 ```
 
@@ -67,20 +67,20 @@ every MPI rank. Use one coordinator per job or array task.
 
 ## Use Bash functions
 
-Optionally source `scripts/tower-report.sh` from your Raven checkout:
+Optionally source `scripts/raven-report.sh` from your Raven checkout:
 
 ```bash
-source "$HOME/Raven/scripts/tower-report.sh"
+source "$HOME/Raven/scripts/raven-report.sh"
 # If only the interactive alias exists, use the checkout executable explicitly:
-export TOWER_BIN="$HOME/Raven/scripts/tower"
-first=$(tower_submit preprocess.sbatch --job-name=prepare)
-second=$(tower_submit train.sbatch --dependency="afterok:${first%%;*}")
-last=$(tower_submit summarize.sbatch --dependency="afterany:${second%%;*}")
+export RAVEN_BIN="$HOME/Raven/scripts/raven"
+first=$(raven_submit preprocess.sbatch --job-name=prepare)
+second=$(raven_submit train.sbatch --dependency="afterok:${first%%;*}")
+last=$(raven_submit summarize.sbatch --dependency="afterany:${second%%;*}")
 ```
 
-The helper provides `tower_submit SCRIPT [SBATCH_OPTIONS]`, `tower_run COMMAND
-[ARGS]`, `tower_metric`, and `tower_artifact`. It changes no shell options or
-traps. Set `TOWER_BIN` to an exact `tower` executable path if needed. An interactive
+The helper provides `raven_submit SCRIPT [SBATCH_OPTIONS]`, `raven_run COMMAND
+[ARGS]`, `raven_metric`, and `raven_artifact`. It changes no shell options or
+traps. Set `RAVEN_BIN` to an exact `raven` executable path if needed. An interactive
 shell alias alone is not available inside batch scripts.
 
 Submission options use `--option=value` syntax. Use the root and script options
@@ -97,10 +97,10 @@ Requeues use `SLURM_RESTART_COUNT + 1`. A run never overwrites a finished attemp
 Array tasks write separate directories and can report concurrently.
 
 To map task indices to scientific inputs, supply a
-[`tower.array-manifest/v1`](../schemas/array-manifest.schema.json) document:
+[`raven.array-manifest/v1`](../schemas/array-manifest.schema.json) document:
 
 ```bash
-array_id=$(tower report submit --script train.sbatch \
+array_id=$(raven report submit --script train.sbatch \
   --array-manifest array-manifest.json -- --array=2,19,44%3)
 ```
 
@@ -117,7 +117,7 @@ types as successful-completion dependencies. Use the Deps view for the actual
 scheduler graph.
 
 If `sbatch` times out or returns ambiguous output, the command writes an
-`unknown` intent under `.tower/launches/` and stops. Check Slurm and the intent
+`unknown` intent under `.raven/launches/` and stops. Check Slurm and the intent
 before submitting again. There is no automatic submission retry. If receipt
 publication fails after acceptance, the error includes the accepted job ID.
 
@@ -128,10 +128,10 @@ publication fails after acceptance, the error includes the accepted job ID.
 | Experiment | `run.json`, `metrics.jsonl`, `summary.json`, experiment parameters, and actual results. `start`/`exec`/`finish` manage lifecycle files. |
 | Arrays | `--array-manifest` on `submit`; actual task IDs and indices are attached automatically. |
 | Evidence | Actual per-run metrics and scheduler measurements. Missing samples remain unknown. |
-| Artifacts | `tower report artifact outputs/result.json --format=json` declares exact outputs and required checks. |
-| Passport | `tower report passport --input=data.csv --environment=OMP_NUM_THREADS` captures selected evidence. Secrets are excluded. |
-| Submit | `tower report research submit prepared-plan.json` attaches an intact `tower.submission-plan/v1` preflight. It remains read-only until the user explicitly reviews a submission action. |
-| Predict, Forecast, Blockers, Tradeoffs | `tower report aggregate` builds `tower.planning` history from actual terminal summaries. Use `research VIEW FILE` for an explicit native per-view source with extra required inputs. |
+| Artifacts | `raven report artifact outputs/result.json --format=json` declares exact outputs and required checks. |
+| Passport | `raven report passport --input=data.csv --environment=OMP_NUM_THREADS` captures selected evidence. Secrets are excluded. |
+| Submit | `raven report research submit prepared-plan.json` attaches an intact `raven.submission-plan/v1` preflight. It remains read-only until the user explicitly reviews a submission action. |
+| Predict, Forecast, Blockers, Tradeoffs | `raven report aggregate` builds `raven.planning` history from actual terminal summaries. Use `research VIEW FILE` for an explicit native per-view source with extra required inputs. |
 | Scaling | Publish real scaling observations with `research scaling FILE`; worker counts, problem size, repeats, and measured runtime are required for meaningful scaling comparisons. |
 | Workflow | `research workflow FILE` attaches an explicit native workflow recipe with estimates. Actual scheduler dependency text is also retained in launch metadata. |
 | Operations | The existing operation-specific manifests remain explicit, reviewed inputs. Place them in the project and use the contextual Operations controls; reporting never auto-applies cluster or workflow changes. |
@@ -139,14 +139,14 @@ publication fails after acceptance, the error includes the accepted job ID.
 Within a coordinated shell application:
 
 ```bash
-tower report metric --value loss=0.24 --value throughput=480 \
+raven report metric --value loss=0.24 --value throughput=480 \
   --step 10 --completed 10 --total 100 --unit epochs
-tower report artifact outputs/result.json --format=json
-tower report log worker.stderr /scratch/my-project/logs/worker-17.err
-tower report passport --input=data.csv
+raven report artifact outputs/result.json --format=json
+raven report log worker.stderr /scratch/my-project/logs/worker-17.err
+raven report passport --input=data.csv
 ```
 
-These commands use `TOWER_RUN_DIR`, or accept `--run /exact/attempt/path`.
+These commands use `RAVEN_RUN_DIR`, or accept `--run /exact/attempt/path`.
 Logs may have explicit external paths. Artifact and Research source bindings
 remain inside the run directory. Unknown node/rank substitutions such as `%N`
 and `%t` require explicit log declarations; Raven does not guess the files.
@@ -157,7 +157,7 @@ Slurm's requests; the `#SBATCH` directives and actual `sbatch` options control
 the allocation. No complete environment is stored in a report.
 
 For an existing JSONL producer, use `start --metrics relative/path.jsonl` to bind
-its native metric file instead. `tower report metric` refuses that custom binding
+its native metric file instead. `raven report metric` refuses that custom binding
 so it cannot append to an unrelated default stream. Use the
 [project standard](../PROJECT_STANDARD.md) for the exact JSONL schema.
 
@@ -166,14 +166,14 @@ so it cannot append to an unrelated default stream. Use the
 You can keep an existing launcher and call `start` from the batch script:
 
 ```bash
-export TOWER_PROJECT_ROOT=/shared/project
-export TOWER_EXPERIMENT=solver-comparison
-export TOWER_SCRIPT=batch.sh
-export TOWER_RUN_DIR
-TOWER_RUN_DIR=$(tower report start)
+export RAVEN_PROJECT_ROOT=/shared/project
+export RAVEN_EXPERIMENT=solver-comparison
+export RAVEN_SCRIPT=batch.sh
+export RAVEN_RUN_DIR
+RAVEN_RUN_DIR=$(raven report start)
 
 # Keep your existing application and EXIT trap. Record its actual result there:
-# tower report finish --exit-code "$status" --results '{"residual":0.002}'
+# raven report finish --exit-code "$status" --results '{"residual":0.002}'
 ```
 
 Use `exec` for automatic start/finish handling when it can own the command.
@@ -182,10 +182,10 @@ or distributed execution. `finish` is idempotent for the same result and refuses
 a conflicting second result. `exec` refreshes the bounded comparison history
 after completion; manual coordinators call `aggregate` when appropriate.
 
-Tracked submissions require Slurm to export the six `TOWER_*` handshake variables
+Tracked submissions require Slurm to export the six `RAVEN_*` handshake variables
 so even a job that starts before `sbatch` returns keeps its correct identity.
 The default `--export=ALL` works. An isolated export list must contain the names
-`TOWER_PROJECT_ROOT,TOWER_EXPERIMENT,TOWER_SCRIPT,TOWER_PARAMETERS,TOWER_RESOURCES,TOWER_SUBMISSION_TOKEN`
+`RAVEN_PROJECT_ROOT,RAVEN_EXPERIMENT,RAVEN_SCRIPT,RAVEN_PARAMETERS,RAVEN_RESOURCES,RAVEN_SUBMISSION_TOKEN`
 without assigning different values. Incompatible `NONE`, `NIL`, and export-file
 policies are refused before submission. For an existing, untracked launcher with
 `--export=NONE`, set the three project/experiment/script declarations explicitly
@@ -196,10 +196,10 @@ All declared paths must be visible on the machine that runs Raven.
 
 ```text
 PROJECT/
-  .tower/project.json                 optional descriptive metadata
-  .tower/report.lock                  short metadata publication lock
-  .tower/launches/TOKEN.json           durable single-submit intent/result
-  .tower/submissions/CLUSTER-JOB.json  exact scheduler receipt
+  .raven/project.json                 optional descriptive metadata
+  .raven/report.lock                  short metadata publication lock
+  .raven/launches/TOKEN.json           durable single-submit intent/result
+  .raven/submissions/CLUSTER-JOB.json  exact scheduler receipt
   reports/planning.json               bounded comparison bundle
   runs/JOB-ATTEMPT/
     run.json                         exact job/array task/attempt identity
@@ -210,7 +210,7 @@ PROJECT/
     logs/stderr.log
     outputs/
     passports/
-    .tower/contracts/outputs.v1.json  optional per-attempt artifact checks
+    .raven/contracts/outputs.v1.json  optional per-attempt artifact checks
     reports/                         declared native Research sources
 ```
 
@@ -244,7 +244,7 @@ cluster collision, incomplete index, or changed identity produces a notice;
 Raven does not guess a run. A known scheduler restart count selects the matching
 restart. Otherwise use `:runs` to select the exact attempt explicitly.
 
-The same automatic reads work with `tower --host HOST`. The selected host needs
+The same automatic reads work with `raven --host HOST`. The selected host needs
 Python 3.10 or later. Raven sends its read-only stdlib helper through the existing SSH
 connection; a remote Raven installation is not required. The helper installs
 nothing and does not execute project code. It uses the same confined file

@@ -1,7 +1,0 @@
-{
-  "version": 1,
-  "kind": "tower.workflow",
-  "name": "pi-series",
-  "description": "One real batch step. Add actual dependencies and measured duration estimates for your own project. An omitted duration remains unknown.",
-  "nodes": [{"id": "experiment", "label": "Pi series", "script": "jobs/run.sbatch"}]
-}

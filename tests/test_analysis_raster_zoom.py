@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, charts, layout as L
-from tower.interaction import Rect
+from raven import analysis_ui as A, chart_interaction as C, charts, layout as L
+from raven.interaction import Rect
 
 
 def app_and_key(axis="linear"):
@@ -129,7 +129,7 @@ def test_cached_card_detects_bracketing_neighbor_correction_and_true_gap(ascii_,
 
 @pytest.mark.parametrize("ascii_",[False,True])
 def test_elapsed_comparison_keeps_crossing_neighbors_but_exact_job_headers_remain_empty(ascii_):
-    from tower.model import Job
+    from raven.model import Job
     app,_=app_and_key()
     app.mode="analysis"
     app.analysis_state.update(modal="diff",diff_ids=["101","102"])
@@ -137,7 +137,7 @@ def test_elapsed_comparison_keeps_crossing_neighbors_but_exact_job_headers_remai
     app.job_record=lambda jid,snap:jobs[jid]
     app.store=SimpleNamespace(series={jid:[{"t":100.+t,"k":"live","cpu":t/100}
                                           for t in (0,10,20,30)] for jid in jobs})
-    key=C.key(app,"CPU per core (%)","Tower session resource samples","101",
+    key=C.key(app,"CPU per core (%)","Raven session resource samples","101",
               scope="comparison-elapsed",attempt=100.)
     box(app,key,(3.,7.),(0.,10.))
     C.begin_frame(app,100,40)

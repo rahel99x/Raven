@@ -90,9 +90,9 @@ Artifact inspection is read-only. Column visibility, sorting, and tree expansion
 
 ## Integration methods
 
-The `tower.artifact_pages.read_page(root, specification, ...)` method reads one stable declared output page. Its keyword controls are `files`, `offset`, `row`, `columns`, `sort`, and `collapsed`. Column indexes start at zero in this API. A sort is `(column_index, "asc"|"desc")`; `None` retains original order. The result includes source identity, byte coverage, original record indexes, next-page positions, and presentation rows. Run this method on the background worker.
+The `raven.artifact_pages.read_page(root, specification, ...)` method reads one stable declared output page. Its keyword controls are `files`, `offset`, `row`, `columns`, `sort`, and `collapsed`. Column indexes start at zero in this API. A sort is `(column_index, "asc"|"desc")`; `None` retains original order. The result includes source identity, byte coverage, original record indexes, next-page positions, and presentation rows. Run this method on the background worker.
 
-The `tower.project_ui` methods connect inventories and pages to the terminal UI.
+The `raven.project_ui` methods connect inventories and pages to the terminal UI.
 
 | Method | Function |
 | --- | --- |

@@ -16,14 +16,14 @@ import threading
 
 import pytest
 
-from tower import analysis_ui, layout as L, log_copy, log_scan, log_tools, navigation_tools, screen, session_tools, table_sort, table_tools
-from tower.logs import LogBuffer
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Health, Job, Live, Node, Partition, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import analysis_ui, layout as L, log_copy, log_scan, log_tools, navigation_tools, screen, session_tools, table_sort, table_tools
+from raven.logs import LogBuffer
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Health, Job, Live, Node, Partition, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 @pytest.fixture

@@ -4,10 +4,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import log_workbench, project_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Store
+from raven import log_workbench, project_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Store
 
 
 class PublishedHub:

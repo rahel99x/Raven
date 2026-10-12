@@ -8,8 +8,8 @@ import sys
 
 import pytest
 
-from tower import capabilities as C
-from tower.operations import catalog
+from raven import capabilities as C
+from raven.operations import catalog
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -95,12 +95,12 @@ def test_catalog_is_immutable_and_runtime_lookup_imports_no_operations():
         C.lookup("F01").area = "other"
     result = subprocess.run([sys.executable, "-c", "\n".join((
         "import sys",
-        "from tower.capabilities import lookup, for_area, for_operation",
+        "from raven.capabilities import lookup, for_area, for_operation",
         "assert lookup('01').id == 'F01'",
         "assert for_area('experiments')",
         "assert for_operation('causal-delay')",
-        "assert 'tower.operations' not in sys.modules",
-        "assert not any(name.startswith('tower.ops_') for name in sys.modules)",
+        "assert 'raven.operations' not in sys.modules",
+        "assert not any(name.startswith('raven.ops_') for name in sys.modules)",
     ))], cwd=ROOT, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
 

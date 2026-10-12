@@ -8,9 +8,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.worker_scheduler import WorkerQueueFull, WorkerScheduler
-from tower.model import GpuSample, Job, Store
-from tower.sampler import Sampler
+from raven.worker_scheduler import WorkerQueueFull, WorkerScheduler
+from raven.model import GpuSample, Job, Store
+from raven.sampler import Sampler
 
 
 @pytest.fixture
@@ -441,7 +441,7 @@ def test_native_all_completed_deadline_allows_one_opaque_overrun_not_every_child
     w = workers
     w.scheduler.request_mode("single")
     timer = [10.]
-    monkeypatch.setattr("tower.worker_scheduler.time.monotonic", lambda: timer[0])
+    monkeypatch.setattr("raven.worker_scheduler.time.monotonic", lambda: timer[0])
     def parent():
         def child(value):
             timer[0] += 1.

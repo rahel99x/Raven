@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://slurm-tower.local/schemas/investigation-timeline.schema.json",
-  "title": "Tower investigation timeline",
+  "$id": "https://raven.local/schemas/investigation-timeline.schema.json",
+  "title": "Raven investigation timeline",
   "type": "object",
   "required": ["schema", "events"],
   "properties": {
-    "schema": {"const": "tower.timeline/v1"},
+    "schema": {"const": "raven.timeline/v1"},
     "cluster": {"type": "string", "minLength": 1, "maxLength": 512},
     "events": {
       "type": "array",

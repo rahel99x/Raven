@@ -1,12 +1,12 @@
 """Real pane traversal remains current as scheduler tables admit new rows."""
 import pytest
 
-from tower import interaction as ui, layout as L, table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven import interaction as ui, layout as L, table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 def control(identity, y, left, right, group="buttons", *, button=True, enabled=True):

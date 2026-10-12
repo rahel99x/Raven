@@ -8,9 +8,9 @@ import threading
 
 import pytest
 
-from tower import ops_workspace, projects, reporting, research_reporting
-from tower.operations import Context
-from tower.remote import LocalFiles, RemoteFiles
+from raven import ops_workspace, projects, reporting, research_reporting
+from raven.operations import Context
+from raven.remote import LocalFiles, RemoteFiles
 from test_project_remote import IsolatedSSH
 
 
@@ -124,21 +124,21 @@ def test_cancellation_stops_sample_reads(project, monkeypatch):
 def test_generated_batch_hook_executes_report_lifecycle_and_preserves_actual_failure(tmp_path):
     root = tmp_path / "project $(not-a-command) ' quoted"
     root.mkdir()
-    result = ops_workspace.run("project-guide", {"root": str(root), "experiment": "test ' experiment", "script": "tower-batch.sh"}, Context())
-    hook = root / "tower-batch.sh"
+    result = ops_workspace.run("project-guide", {"root": str(root), "experiment": "test ' experiment", "script": "raven-batch.sh"}, Context())
+    hook = root / "raven-batch.sh"
     hook.write_text("\n".join(result["data"]["hooks"]["batch"]) + "\n")
     binary = tmp_path / "bin"
     binary.mkdir()
     # Exercise the reporting library contract in an explicitly local test
-    # process. Managed tower additionally requires real job placement; an
+    # process. Managed raven additionally requires real job placement; an
     # environment-only JobID fixture must not authorize that execution.
     import shlex
-    executable = binary / "tower"
-    executable.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " -c " + shlex.quote("from tower.cli import main; raise SystemExit(main())") + ' "$@"\n')
+    executable = binary / "raven"
+    executable.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " -c " + shlex.quote("from raven.cli import main; raise SystemExit(main())") + ' "$@"\n')
     executable.chmod(0o700)
-    env = {key: value for key, value in os.environ.items() if not key.startswith(("SLURM_", "TOWER_"))}
+    env = {key: value for key, value in os.environ.items() if not key.startswith(("SLURM_", "RAVEN_"))}
     env.update(PATH=str(binary) + os.pathsep + env.get("PATH", ""), PYTHONPATH=str(Path(__file__).resolve().parents[1]), SLURM_JOB_ID="82")
-    payload = 'import os,subprocess; subprocess.run(["tower","report","metric","--run",os.environ["TOWER_RUN_DIR"],"--value","loss=0.25"],check=True); print("actual output"); raise SystemExit(7)'
+    payload = 'import os,subprocess; subprocess.run(["raven","report","metric","--run",os.environ["RAVEN_RUN_DIR"],"--value","loss=0.25"],check=True); print("actual output"); raise SystemExit(7)'
     completed = subprocess.run(["bash", str(hook), sys.executable, "-c", payload], env=env, cwd=root, capture_output=True, timeout=20)
     assert completed.returncode == 7, completed.stderr.decode()
     run = root / "runs/job-82-a1"

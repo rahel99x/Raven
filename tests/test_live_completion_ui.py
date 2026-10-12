@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Job, Store
-from tower.transitions import CompletionFeedback
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Job, Store
+from raven.transitions import CompletionFeedback
+from raven.views import Views
 
 
 class MonotonicClock:
@@ -22,7 +22,7 @@ class MonotonicClock:
 @pytest.fixture
 def clock(monkeypatch):
     clock = MonotonicClock()
-    monkeypatch.setattr("tower.transitions.time.monotonic", clock)
+    monkeypatch.setattr("raven.transitions.time.monotonic", clock)
     return clock
 
 

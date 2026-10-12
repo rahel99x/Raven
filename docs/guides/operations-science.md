@@ -19,7 +19,7 @@ a new review. Do not reuse an uncertain scheduler action without inspection.
 
 ## Recreate an environment: `:ops environment`
 
-Set **Environment manifest** to a `tower.environment/v1` JSON file. The manifest
+Set **Environment manifest** to a `raven.environment/v1` JSON file. The manifest
 declares the exact Python patch version, operating system, machine architecture,
 package versions, and a SHA256-verified requirements lockfile. The lockfile
 accepts exact `name==version --hash=sha256:DIGEST` entries. Include every
@@ -120,7 +120,7 @@ Examples: [policy](../../examples/operations-science/acceptance.json),
 
 ## Statistical comparison: `:ops statistics`
 
-Set **Comparison manifest** to a `tower.statistics/v1` document. Name the
+Set **Comparison manifest** to a `raven.statistics/v1` document. Name the
 independent experimental unit. Use `independent` for disjoint unit IDs, or
 `paired` for exactly matching unit IDs. Repeated samples from one trajectory
 are not independent experiments merely because they have different timestamps.
@@ -161,7 +161,7 @@ rechecks dependencies before writing the completion receipt. Output names
 cannot escape the destination, overlap one another, or replace Raven metadata.
 An existing destination is never overwritten. Cancellation or a detected
 source change removes this operation's incomplete destination. A process crash
-can leave `.tower-incomplete`; that directory is not a verified result.
+can leave `.raven-incomplete`; that directory is not a verified result.
 
 This operation copies files; it does not hard-link mutable source files.
 Inspection supports regular files up to 64 GiB each and metadata up to 4 MiB.

@@ -3,11 +3,11 @@ import math
 
 import pytest
 
-from tower import science_stats as stats
+from raven import science_stats as stats
 
 
 def comparison(design="independent", a=(1, 2, 3), b=(4, 5, 6)):
-    return {"schema": "tower.statistics/v1", "design": design, "unit": "independently seeded experiment",
+    return {"schema": "raven.statistics/v1", "design": design, "unit": "independently seeded experiment",
             "control": [{"id": str(i), "value": v} for i, v in enumerate(a)],
             "treatment": [{"id": str(i if design == "paired" else i+100), "value": v} for i, v in enumerate(b)]}
 
@@ -95,13 +95,13 @@ def test_large_valid_values_keep_finite_welch_results():
 
 
 def policy():
-    return {"schema": "tower.acceptance/v1", "cases": [{"id": "experiment-a", "expected": {
+    return {"schema": "raven.acceptance/v1", "cases": [{"id": "experiment-a", "expected": {
         "energy": {"value": 100, "absolute": .1, "relative": .01},
         "residual": {"value": 0, "absolute": .001, "relative": .1}}}]}
 
 
 def results(energy=101, residual=.001):
-    return {"schema": "tower.results/v1", "runs": [{"id": "experiment-a", "metrics": {"energy": energy, "residual": residual}}]}
+    return {"schema": "raven.results/v1", "runs": [{"id": "experiment-a", "metrics": {"energy": energy, "residual": residual}}]}
 
 
 def test_acceptance_boundary_inclusive_and_absolute_for_zero():
@@ -119,7 +119,7 @@ def test_missing_or_invalid_cannot_pass_or_leak_nonfinite_json(value):
 
 
 def test_missing_case_and_metric_are_explicit_failures():
-    assert stats.acceptance(policy(), {"schema": "tower.results/v1", "runs": []})["passed"] == 0
+    assert stats.acceptance(policy(), {"schema": "raven.results/v1", "runs": []})["passed"] == 0
     doc = results()
     del doc["runs"][0]["metrics"]["energy"]
     assert stats.acceptance(policy(), doc)["passed"] == 1
@@ -144,4 +144,4 @@ def test_duplicate_case_or_result_cannot_shadow_previous_failure(target):
 
 def test_empty_policy_cannot_pass_vacuously():
     with pytest.raises(ValueError):
-        stats.acceptance({"schema": "tower.acceptance/v1", "cases": []}, results())
+        stats.acceptance({"schema": "raven.acceptance/v1", "cases": []}, results())

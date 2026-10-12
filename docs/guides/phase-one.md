@@ -23,11 +23,11 @@ From a clean checkout, run:
 ```bash
 git pull --ff-only
 python3 scripts/setup.py --mode local --profile desktop
-./scripts/tower --version
+./scripts/raven --version
 ```
 
 Use `--profile carc` for the supplied CARC profile. Retain your site's existing
-profile and operating rules. Existing managed `tower` aliases continue to use
+profile and operating rules. Existing managed `raven` aliases continue to use
 the checkout. A package installation must also be updated through the method
 used to install that package.
 
@@ -53,7 +53,7 @@ copies the clicked or keyboard-selected line, the selected range, or the full re
 Right-click clears the selection. `Y` or **Copy** copies the complete report.
 Esc or **Close** returns without changing pages.
 `:telemetry copy` and `:telemetry close` perform the same actions.
-For a machine-readable report, use `tower --run 'telemetry JOBID'`.
+For a machine-readable report, use `raven --run 'telemetry JOBID'`.
 
 The inspector separates:
 
@@ -204,7 +204,7 @@ output is limited to 256 KiB. Results retain at most 512 findings. Eligible
 results are cached by captured content, interpreter, tool identity, and analysis
 policy. A cached result always describes those captured bytes.
 The dialog renders at most 8,192 wrapped rows. Widen the terminal, or use
-`tower --run 'shellcheck /absolute/path/to/run.sbatch'` for structured JSON
+`raven --run 'shellcheck /absolute/path/to/run.sbatch'` for structured JSON
 results when findings require more display space.
 
 ## Attach a scientific array manifest
@@ -217,7 +217,7 @@ Use one document for one cluster and array parent. For example:
 
 ```json
 {
-  "schema": "tower.array-manifest/v1",
+  "schema": "raven.array-manifest/v1",
   "cluster": "desktop",
   "array_id": "12345",
   "entries": [

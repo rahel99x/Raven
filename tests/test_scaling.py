@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-from tower import scaling
+from raven import scaling
 
 
 HASH = "a" * 64
@@ -196,7 +196,7 @@ def clear_sbatch_environment(monkeypatch):
 def recipe(tmp_path):
     script = tmp_path / "scaling's script.sh"
     script.write_text("#!/bin/bash\n#SBATCH --time=00:10:00\nsrun ./solver\n")
-    return {"version": 1, "kind": "tower.scaling", "script": script.name, "workdir": str(tmp_path),
+    return {"version": 1, "kind": "raven.scaling", "script": script.name, "workdir": str(tmp_path),
             "mode": "strong", "problem_size": 1000, "seed": 42, "repeats": 3,
             "parameters": {"batch_size": 32, "solver": "cg"},
             "configurations": [{"label": "small", "workers": 2, "cpus_per_task": 4, "nodes": 1, "gpus": 0},
@@ -214,8 +214,8 @@ def test_plan_exact_repeated_unique_jobs_no_execution(recipe, monkeypatch):
     first = result["runs"][0]["submission"]
     assert first["resources"]["ntasks"] == "2"
     assert first["resources"]["cpus_per_task"] == "4"
-    assert "TOWER_PARAM_BATCH_SIZE=32" in first["resources"]["export"]
-    assert "TOWER_SCALING_WORKERS=2" in first["resources"]["export"]
+    assert "RAVEN_PARAM_BATCH_SIZE=32" in first["resources"]["export"]
+    assert "RAVEN_SCALING_WORKERS=2" in first["resources"]["export"]
     assert [run["seed"] for run in result["runs"]] == [42, 43, 44, 42, 43, 44]
     assert shlex.split(first["command"]) == ["sbatch", *first["argv"]]
     assert "array" not in first["resources"]
@@ -228,7 +228,7 @@ def test_script_controls_are_parameters_not_shell_arguments(recipe):
     result = scaling.plan(recipe)
     assert result["valid"]
     plan = result["runs"][0]["submission"]
-    assert "TOWER_PARAM_DANGER=$(touch NEVER); 'quoted'" in plan["resources"]["export"]
+    assert "RAVEN_PARAM_DANGER=$(touch NEVER); 'quoted'" in plan["resources"]["export"]
     assert shlex.split(plan["command"]) == ["sbatch", *plan["argv"]]
     assert not (os.path.join(recipe["workdir"], "NEVER") and os.path.exists(os.path.join(recipe["workdir"], "NEVER")))
 
@@ -287,7 +287,7 @@ def test_script_inspection_budget_stops_large_repeated_reads(recipe):
 
 
 def test_changed_script_during_preparation_stops_remaining_runs(recipe, monkeypatch):
-    from tower import submission
+    from raven import submission
     original = submission.prepare
     calls = []
     def mutation(*args, **kwargs):
@@ -387,7 +387,7 @@ def test_shipped_recipe_prepares_real_controls_without_scheduler():
     result = scaling.plan(scaling.load(root / "examples/planning/scaling.json"), workdir=root)
     assert result["valid"], result
     assert result["run_count"] == 9
-    assert all("TOWER_PARAM_KERNEL_TERMS=8" in run["submission"]["resources"]["export"] for run in result["runs"])
+    assert all("RAVEN_PARAM_KERNEL_TERMS=8" in run["submission"]["resources"]["export"] for run in result["runs"])
 
 
 def test_actual_local_scaling_measurements_and_explicit_collection(tmp_path):
@@ -445,11 +445,11 @@ def test_example_consumes_reviewed_controls_in_simulated_slurm_environment(tmp_p
     output = tmp_path / "record.json"
     environment = dict(os.environ)
     for name in list(environment):
-        if name.startswith(("TOWER_PARAM_", "TOWER_SCALING_", "SLURM_")):
+        if name.startswith(("RAVEN_PARAM_", "RAVEN_SCALING_", "SLURM_")):
             environment.pop(name)
-    environment.update({"TOWER_SCALING_WORKERS": "1", "TOWER_SCALING_REPEAT": "2", "TOWER_SCALING_SEED": "9",
-                        "TOWER_SCALING_PROBLEM_SIZE": "100.0", "TOWER_SCALING_EXPERIMENT_ID": "c" * 64,
-                        "TOWER_PARAM_KERNEL_TERMS": "2", "TOWER_PARAM_SCALE": "0.005",
+    environment.update({"RAVEN_SCALING_WORKERS": "1", "RAVEN_SCALING_REPEAT": "2", "RAVEN_SCALING_SEED": "9",
+                        "RAVEN_SCALING_PROBLEM_SIZE": "100.0", "RAVEN_SCALING_EXPERIMENT_ID": "c" * 64,
+                        "RAVEN_PARAM_KERNEL_TERMS": "2", "RAVEN_PARAM_SCALE": "0.005",
                         "SLURM_JOB_ID": "10001", "SLURM_JOB_NUM_NODES": "1", "SLURM_JOB_CPUS_PER_NODE": "1", "SLURM_GPUS_ON_NODE": "0"})
     completed = subprocess.run([sys.executable, str(root / "examples/planning/scaling_workload.py"), "run",
                                 "--script", str(root / "examples/planning/scaling.sbatch"), "--output", str(output)],
@@ -467,7 +467,7 @@ def test_example_missing_controls_and_remote_node_topology_fail_before_work(tmp_
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     for number_nodes in ("1", "2"):
-        environment = {name: value for name, value in os.environ.items() if not name.startswith(("TOWER_PARAM_", "TOWER_SCALING_", "SLURM_"))}
+        environment = {name: value for name, value in os.environ.items() if not name.startswith(("RAVEN_PARAM_", "RAVEN_SCALING_", "SLURM_"))}
         environment["SLURM_JOB_NUM_NODES"] = number_nodes
         output = tmp_path / f"invalid-{number_nodes}.json"
         failed = subprocess.run([sys.executable, str(root / "examples/planning/scaling_workload.py"), "run", "--output", str(output)],

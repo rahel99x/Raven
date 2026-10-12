@@ -1,14 +1,14 @@
 """The rich terminal pages keep accurate instruments, responsive layouts and cursor targets."""
 import pytest
 
-from tower import charts, layout as L
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Live, Store
-from tower.sampler import Sampler
-from tower.slurm import FakeBackend, Slurm
-from tower.views import TABS, Views
+from raven import charts, layout as L
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Live, Store
+from raven.sampler import Sampler
+from raven.slurm import FakeBackend, Slurm
+from raven.views import TABS, Views
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def test_rich_pages_fit_and_preserve_mouse_selection(visual_dashboard, width, he
                 assert 0 <= left < right <= width
                 assert L.row_text(rows[y])[left:right].strip()
                 if kind == "job_panel_tab":
-                    from tower.job_panels import TABS as panel_tabs
+                    from raven.job_panels import TABS as panel_tabs
                     assert dict(panel_tabs)[identifier].casefold() in L.row_text(rows[y])[left:right].casefold()
             elif kind == "control":
                 assert key["id"] and key["action"]

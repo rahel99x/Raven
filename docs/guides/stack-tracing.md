@@ -17,9 +17,9 @@ acknowledge transport acceptance, not per-event durable storage.
 
 | Method | Preparation | Recorded scope | Important limit |
 | --- | --- | --- | --- |
-| `tower trace run` | Launch a Python script with Raven under CPython 3.12 or later | Python call, resume, return, yield, throw-resume and unwind events, including observed threads | No native-extension internals, GPU execution or automatic fork-child capture |
-| `tower trace run --legacy-profile` | Explicitly select the legacy adapter | Python profile call/return events on supported Python 3.10 or later | Cannot reliably distinguish generator yields, returns and exception unwinds |
-| `tower trace native` | Compile explicit calls to the cooperative SDK | Events supplied by local C/C++ processes and threads | No automatic native unwinding; private inherited sockets do not cross SSH or `srun` automatically |
+| `raven trace run` | Launch a Python script with Raven under CPython 3.12 or later | Python call, resume, return, yield, throw-resume and unwind events, including observed threads | No native-extension internals, GPU execution or automatic fork-child capture |
+| `raven trace run --legacy-profile` | Explicitly select the legacy adapter | Python profile call/return events on supported Python 3.10 or later | Cannot reliably distinguish generator yields, returns and exception unwinds |
+| `raven trace native` | Compile explicit calls to the cooperative SDK | Events supplied by local C/C++ processes and threads | No automatic native unwinding; private inherited sockets do not cross SSH or `srun` automatically |
 | PMPI source adapter | Compile the optional adapter against the application's MPI runtime | Automatic C-binding WORLD Barrier, scalar Bcast and scalar Allreduce/SUM metadata | At most 256 ranks; no thread-multiple, Fortran, nonblocking or arbitrary communicator coverage |
 | `Trace → Capture current Python stacks` | Install `py-spy`, run Raven on the target process node, and review a verified job/PID | One non-atomic set of observed Python stacks | No previous history; permission or runtime support may prevent capture |
 
@@ -33,10 +33,10 @@ no debugger, kernel permission change, extra MPI barrier or public TCP listener.
 Use the launch command inside the job's existing allocation:
 
 ```bash
-tower trace run \
+raven trace run \
   --project "$PROJECT_DIR" \
   --job-id "$SLURM_JOB_ID" \
-  --attempt "$TOWER_RUN_ID" \
+  --attempt "$RAVEN_RUN_ID" \
   --max-mib 64 \
   -- train.py --epochs 20
 ```
@@ -55,7 +55,7 @@ An ambiguous old job ID must not attach automatically.
 
 ```text
 :trace
-:trace attach /project/.tower/traces/STREAM/manifest.json
+:trace attach /project/.raven/traces/STREAM/manifest.json
 :trace refresh
 :trace pause
 :trace follow
@@ -113,7 +113,7 @@ an arbitrary process belonging to the same user.
 The Python SDK uses only the standard library:
 
 ```python
-from tower.trace_recorder import Recorder
+from raven.trace_recorder import Recorder
 
 with Recorder(project_dir, job_id=job_id, attempt=run_id) as trace:
     with trace.span("load input", span_id="load") as load:
@@ -138,20 +138,20 @@ end when recording has not failed.
 Generate the standalone native header:
 
 ```bash
-tower trace native --sdk-header > tower_trace.h
+raven trace native --sdk-header > raven_trace.h
 cc -D_GNU_SOURCE -pthread program.c -o program
-tower trace native --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" \
-  --attempt "$TOWER_RUN_ID" -- ./program
+raven trace native --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" \
+  --attempt "$RAVEN_RUN_ID" -- ./program
 ```
 
 ```c
-#include "tower_trace.h"
+#include "raven_trace.h"
 
 int main(void) {
-    tower_trace_emit("span_start",
+    raven_trace_emit("span_start",
         "{\"span_id\":\"solve\",\"name\":\"solve\"}");
     /* application work */
-    tower_trace_emit("span_end", "{\"span_id\":\"solve\"}");
+    raven_trace_emit("span_end", "{\"span_id\":\"solve\"}");
     return 0;
 }
 ```
@@ -183,22 +183,22 @@ used by the application. Existing profilers can also use PMPI or `LD_PRELOAD`;
 check compatibility before combining them.
 
 ```bash
-tower trace native --sdk-header > tower_trace.h
-tower trace mpi --source > tower_mpi.c
-mpicc -std=c11 -D_GNU_SOURCE -fPIC -shared tower_mpi.c -o libtower_mpi.so
+raven trace native --sdk-header > raven_trace.h
+raven trace mpi --source > raven_mpi.c
+mpicc -std=c11 -D_GNU_SOURCE -fPIC -shared raven_mpi.c -o libraven_mpi.so
 ```
 
 Launch the native collector **inside each rank launch**. For example, adapt the
 site's normal `srun` invocation as follows:
 
 ```bash
-srun tower trace native \
-  --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" --attempt "$TOWER_RUN_ID" \
-  -- env LD_PRELOAD="$PROJECT_DIR/libtower_mpi.so" \
-  TOWER_MPI_COMM_GENERATION="$TOWER_RUN_ID" ./mpi_program
+srun raven trace native \
+  --project "$PROJECT_DIR" --job-id "$SLURM_JOB_ID" --attempt "$RAVEN_RUN_ID" \
+  -- env LD_PRELOAD="$PROJECT_DIR/libraven_mpi.so" \
+  RAVEN_MPI_COMM_GENERATION="$RAVEN_RUN_ID" ./mpi_program
 ```
 
-`TOWER_MPI_COMM_GENERATION` must be the same nonempty identifier on all ranks.
+`RAVEN_MPI_COMM_GENERATION` must be the same nonempty identifier on all ranks.
 Use only letters, digits, `.`, `_` and `-`, with a maximum of 128 characters.
 Do not reuse a generation for distinct MPI worlds in the same job attempt.
 Multiple independent worlds require distinct identifiers.
@@ -282,7 +282,7 @@ Results never cancel a job or alter a collective.
 
 ```text
 PROJECT/
-  .tower/
+  .raven/
     traces/
       index.json
       STREAM/
@@ -290,14 +290,14 @@ PROJECT/
         events.jsonl
 ```
 
-`index.json` uses `tower.trace-index/v1` and explicitly binds relative manifest
-paths to job, attempt and stream identity. The `tower.trace/v1` manifest contains
+`index.json` uses `raven.trace-index/v1` and explicitly binds relative manifest
+paths to job, attempt and stream identity. The `raven.trace/v1` manifest contains
 cluster, job ID, attempt, node, boot ID, PID, process start, stream, coverage,
 state, committed sequence and committed byte count. It can also include the
 project run ID and scheduler submit/start values. Identity changes require a new
 stream; readers reject replacement or regressed checkpoints.
 
-Each `tower.trace-event/v1` JSONL envelope contains `stream`, `seq`, `prev`,
+Each `raven.trace-event/v1` JSONL envelope contains `stream`, `seq`, `prev`,
 `event`, and `sha256`. The event contains `kind`, `mono_ns`, `thread` and `data`.
 The digest is SHA256 over the canonical sorted-key, compact, ASCII JSON envelope
 without `sha256`. `prev` links to the previous digest. The first sequence is 1
@@ -348,6 +348,6 @@ all compilers/runtimes, distributed filesystems or site permission policies.
 For installations with development headers, run the actual MPI adapter tests
 with `python -m pytest -q tests/test_trace_mpi.py`. If only the Open MPI runtime
 is installed, a matching development package can be extracted into a user-owned
-directory for validation. Set `TOWER_TEST_MPI_INCLUDE` to its Open MPI include
-directory and, if required, `TOWER_TEST_MPI_LINK` to the matching linker flags.
+directory for validation. Set `RAVEN_TEST_MPI_INCLUDE` to its Open MPI include
+directory and, if required, `RAVEN_TEST_MPI_LINK` to the matching linker flags.
 These test variables do not change application launch configuration.

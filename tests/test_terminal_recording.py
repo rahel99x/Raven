@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from tower.terminal_recording import Recorder, read_recording, replay, MAX_FILE, SCHEMA
-from tower.terminal_fusion import recording_text
+from raven.terminal_recording import Recorder, read_recording, replay, MAX_FILE, SCHEMA
+from raven.terminal_fusion import recording_text
 
 
 def private(path, data):

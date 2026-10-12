@@ -1,5 +1,5 @@
 {
-  "schema": "tower.cluster-workspace/v1",
+  "schema": "raven.cluster-workspace/v1",
   "clusters": [
     {"name": "workstation", "host": "", "cluster": "desktop", "user": "researcher"},
     {"name": "cluster", "host": "login.example.edu", "ssh_user": "researcher", "user": "researcher"}

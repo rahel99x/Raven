@@ -1,4 +1,4 @@
-# Tower 6.1.0 validation record
+# Raven 6.1.0 validation record
 
 Recorded on 11 October 2026 on a shared Linux cloud host. The changes consolidate
 the mechanisms described in the [6.1 guide](consolidation.md). The
@@ -145,8 +145,8 @@ python3 scripts/generate_capability_reference.py --check
 .venv/bin/python scripts/validate_operation_schemas.py
 .venv/bin/python -m build --no-isolation
 .venv/bin/python scripts/qualify_flagship.py \
-  --wheel dist/slurm_tower-6.1.0-py3-none-any.whl \
-  --output /tmp/tower-6.1-qualification.json
+  --wheel dist/raven-6.1.0-py3-none-any.whl \
+  --output /tmp/raven-6.1-qualification.json
 ```
 
 The qualification output path must not already exist. `--no-isolation` requires
@@ -159,11 +159,11 @@ For the UI measurement, use an unchanged checkout as the comparison source:
 ```bash
 python3 -S scripts/benchmark_changing_ui.py \
   --source-root /path/to/comparison-source \
-  --output /tmp/tower-changing-ui.json \
+  --output /tmp/raven-changing-ui.json \
   --jobs 1000 --history 3000 --points 4000 --repeats 100 \
   --cases static,live30,live1,switch,resize,scroll-end --glyphs both
 python3 -S scripts/benchmark_sustained_pointer.py \
-  --source-root "$PWD" --output /tmp/tower-pointer.json \
+  --source-root "$PWD" --output /tmp/raven-pointer.json \
   --rates 50,250,1000 --seconds 4 --points 1000 --jobs 6 \
   --live --delta 1 --workers single --switch-workers --switch-control toolbar
 ```

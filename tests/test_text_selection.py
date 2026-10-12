@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from tower import clipboard, interaction, layout as L, scrollbars as S, text_selection as T
+from raven import clipboard, interaction, layout as L, scrollbars as S, text_selection as T
 
 
 def instance(**kw):
@@ -401,11 +401,11 @@ def test_selected_feedback_renders_same_pinned_text_that_copy_delivers():
 
 
 def test_default_keyboard_job_selection_prefers_main_not_one_row_recents():
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.screen import _FrameCache
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Job, Store
+    from raven.screen import _FrameCache
+    from raven.views import Views
     cfg = Config({"animations": False, "gpu_sampling": False})
     store = Store(persist=False)
     store.apply_jobs([Job("41", "one", "cpu", "RUNNING"), Job("42", "two", "cpu", "RUNNING")])

@@ -319,8 +319,8 @@ A short job can have sparse usage samples.
 From the Raven checkout, run:
 
 ```bash
-./scripts/tower --config docs/config.example.json --profile desktop --once --tab sources
-./scripts/tower --config docs/config.example.json --profile desktop
+./scripts/raven --config docs/config.example.json --profile desktop --once --tab sources
+./scripts/raven --config docs/config.example.json --profile desktop
 ```
 
 **Expected result:** The `finished` source succeeds and History contains the new job.

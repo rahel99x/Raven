@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import flagship_commands, job_panels, layout as L, operations, ops_ui, ops_workspace, trace_ui
-from tower.trace_recorder import Recorder
+from raven import flagship_commands, job_panels, layout as L, operations, ops_ui, ops_workspace, trace_ui
+from raven.trace_recorder import Recorder
 from test_job_panels import dashboard
 from test_operations_sequences import operation_context, operation_dashboard
 
@@ -14,7 +14,7 @@ from test_operations_sequences import operation_context, operation_dashboard
 @pytest.fixture(autouse=True)
 def connected_dashboard(request):
     if "dashboard" in request.fixturenames:
-        from tower.slurm import FakeBackend, Slurm
+        from raven.slurm import FakeBackend, Slurm
         app = request.getfixturevalue("dashboard").app
         app.actions = SimpleNamespace(slurm=Slurm(FakeBackend(), "test"))
 
@@ -153,7 +153,7 @@ def test_project_guide_initializes_only_after_review_and_preserves_existing_data
     user_file = project / "research.txt"
     user_file.write_text("user results")
     result = operations.run("project-guide", {"root": str(project), "initialize": "yes"}, operation_context)
-    assert not (project / "tower-project.json").exists()
+    assert not (project / "raven-project.json").exists()
     applied = operations.apply("project-guide", result["plan"], operation_context)
     assert applied["status"] == "ok" and user_file.read_text() == "user results"
     result = operations.run("project-guide", {"root": str(project), "initialize": "no"}, operation_context)
@@ -162,7 +162,7 @@ def test_project_guide_initializes_only_after_review_and_preserves_existing_data
 
 def test_timeline_never_implies_cross_clock_causality_or_combines_attempts():
     base = dict(id="1", source="application", clock="node-a", kind="metric", message="start", job_id="81", attempt="a", cluster="test", timestamp=10)
-    doc = {"schema": "tower.timeline/v1", "events": [base, dict(base, id="2", clock="node-b", timestamp=1)]}
+    doc = {"schema": "raven.timeline/v1", "events": [base, dict(base, id="2", clock="node-b", timestamp=1)]}
     result = ops_workspace.timeline(doc, "81")
     assert len(result["warnings"]) == 2
     changed = deepcopy(doc)

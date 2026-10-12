@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/runtime-common.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/runtime-common.schema.json",
   "title": "runtime common",
   "description": "Shared structural limits. Native readers additionally enforce Python printable Unicode, finite JSON, duplicate-key refusal, total input budgets and relational checks.",
   "$defs": {

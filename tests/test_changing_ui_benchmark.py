@@ -9,7 +9,7 @@ import pytest
 @pytest.fixture(scope="module")
 def benchmark():
     path = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_changing_ui.py"
-    spec = importlib.util.spec_from_file_location("tower_changing_ui_benchmark", path)
+    spec = importlib.util.spec_from_file_location("raven_changing_ui_benchmark", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

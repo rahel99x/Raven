@@ -1,5 +1,5 @@
 {
-  "schema": "tower.summary-query/v1",
+  "schema": "raven.summary-query/v1",
   "fields": ["duration_s"],
   "operations": ["count", "sum", "min", "max"]
 }

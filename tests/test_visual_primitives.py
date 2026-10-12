@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-from tower import charts, layout as L
+from raven import charts, layout as L
 
 
 def test_fractional_meters_have_eighth_cell_precision_and_clamp():
@@ -21,7 +21,7 @@ def test_fractional_meters_have_eighth_cell_precision_and_clamp():
 def test_gradients_preserve_fractional_shape_without_ansi_in_text():
     row = L.gradient_bar(L.Glyphs(False), 0.5625, 2)
     assert L.row_text(row) == "█▏"
-    from tower import palette as P
+    from raven import palette as P
     assert all(P.resolve(style).foreground is not None for _, style in row)
     assert P.resolve(row[0][1], "darcula").foreground != P.resolve(row[0][1]).foreground
     assert row[0][1] != row[1][1]

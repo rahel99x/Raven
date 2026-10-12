@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower dependency-repair v1",
+  "title": "Raven dependency-repair v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.dependency-repair/v1"
+      "const": "raven.dependency-repair/v1"
     },
     "repairs": {
       "type": "array",

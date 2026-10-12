@@ -3,9 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import navigation_ui
-from tower.layout import row_text, vlen
-from tower.model import Job, Store
+from raven import navigation_ui
+from raven.layout import row_text, vlen
+from raven.model import Job, Store
 
 
 def setup():

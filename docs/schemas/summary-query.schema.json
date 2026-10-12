@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/summary-query.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/summary-query.schema.json",
   "title": "summary query",
   "description": "Only count, sum, min and max are supported. The paired source and native reader establish selected-column validity and coverage.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.summary-query/v1"
+      "const": "raven.summary-query/v1"
     },
     "fields": {
       "type": "array",

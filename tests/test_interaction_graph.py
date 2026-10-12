@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import interaction as ui, layout as L
+from raven import interaction as ui, layout as L
 
 
 class App:
@@ -460,18 +460,18 @@ def test_graph_publish_and_traversal_never_schedule_or_read_research_services():
                                                ("analytics", "analytics-view:", "analytics_view"),
                                                ("research", "research-view:", "research_view")])
 def test_actual_controller_all_secondary_view_buttons_mouse_activate_and_keep_focus(ascii_, width, tab, prefix, attribute):
-    from tower.config import Config
-    from tower.controller import App as TowerApp
-    from tower.model import Job, Store
-    from tower.remote import LocalFiles
-    from tower.views import Views
-    from tower.controller import ANALYTICS_VIEWS, NODES_VIEWS
-    from tower.research import RESEARCH_VIEWS
+    from raven.config import Config
+    from raven.controller import App as RavenApp
+    from raven.model import Job, Store
+    from raven.remote import LocalFiles
+    from raven.views import Views
+    from raven.controller import ANALYTICS_VIEWS, NODES_VIEWS
+    from raven.research import RESEARCH_VIEWS
 
     cfg = Config()
     store = Store(persist=False)
     store.jobs = [Job("7", "sample", "cpu", "RUNNING")]
-    app = TowerApp(store, None, None, cfg, "test", interactive=False)
+    app = RavenApp(store, None, None, cfg, "test", interactive=False)
     views = Views(L.Glyphs(ascii_), cfg, files=LocalFiles())
     app.views_ref = views
     app.enter_tab(tab)
@@ -492,15 +492,15 @@ def test_actual_controller_all_secondary_view_buttons_mouse_activate_and_keep_fo
 
 
 def test_actual_command_palette_focus_request_enters_next_frame_without_second_gesture():
-    from tower.config import Config
-    from tower.controller import App as TowerApp
-    from tower.model import Store
-    from tower.remote import LocalFiles
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App as RavenApp
+    from raven.model import Store
+    from raven.remote import LocalFiles
+    from raven.views import Views
 
     cfg = Config()
     store = Store(persist=False)
-    app = TowerApp(store, None, None, cfg, "test", interactive=False)
+    app = RavenApp(store, None, None, cfg, "test", interactive=False)
     views = Views(L.Glyphs(False), cfg, files=LocalFiles())
     app.views_ref = views
     views.compose(store.snapshot(), app, 120, 32)

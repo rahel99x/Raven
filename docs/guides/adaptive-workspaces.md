@@ -169,7 +169,7 @@ Normal UI state retains grouping and closed-group preferences.
 | --- | --- |
 | Slurm array task IDs | Shared parent allocation; the task suffix identifies each real child |
 | Slurm heterogeneous component IDs | Shared parent allocation; the component suffix identifies each real child |
-| One explicit launch marker | Matching `launch:ID` or `group:ID` scheduler comments or local job tags, or a published `TowerLaunchId`, `LaunchId`, `LaunchGroup`, or `JobGroup` scheduler detail |
+| One explicit launch marker | Matching `launch:ID` or `group:ID` scheduler comments or local job tags, or a published `RavenLaunchId`, `LaunchId`, `LaunchGroup`, or `JobGroup` scheduler detail |
 | Dependency-connected launch | Matching owner, account, and WorkDir with direct dependency links; at most 60 seconds and a numeric ID span of 256 |
 | At least three ordinary jobs | Matching owner, account, WorkDir, and name family within 30 seconds; bounded gaps and density in numeric job IDs; no conflicting known script paths |
 | Two ordinary jobs | Adjacent numeric IDs within ten seconds; matching nonempty owner, account, WorkDir, exact Command, and name |

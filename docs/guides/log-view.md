@@ -121,7 +121,7 @@ Use **Back to export menu** to choose another destination, or **Cancel** to retu
 Files that were never declared cannot be identified as missing expected outputs.
 Declare every worker or external log in the [project log inventory](../PROJECT_STANDARD.md#log-locations-logsjson).
 
-Raven gives each export a unique `tower-logs-...` directory.
+Raven gives each export a unique `raven-logs-...` directory.
 It stores each raw source beneath a job and source directory, with the original basename.
 `manifest.json` records job IDs, source paths, byte counts, SHA-256 digests, aliases, missing outputs, and warnings.
 Identical source files shared by several selected jobs are copied once and keep all associated job IDs.
@@ -239,7 +239,7 @@ Structured records have bounded nesting and collection sizes. Invalid or oversiz
 
 ## Integration methods
 
-The `tower.log_workbench` methods use the existing terminal event loop and the shared background reader.
+The `raven.log_workbench` methods use the existing terminal event loop and the shared background reader.
 
 | Method | Function |
 | --- | --- |
@@ -258,7 +258,7 @@ The `tower.log_workbench` methods use the existing terminal event loop and the s
 | `open_citation(app, citation)` | Choose a cited exact source. |
 | `apply_citation(app, buf)` | Check source identity and locate the citation in a published buffer. |
 
-The `tower.log_presentation` methods perform no file reads.
+The `raven.log_presentation` methods perform no file reads.
 
 | Method | Function |
 | --- | --- |
@@ -272,7 +272,7 @@ The `tower.log_presentation` methods perform no file reads.
 | `structured_rows(lines, collapsed, field, query)` | Produce source-indexed structured rows and a filtered-line count. |
 | `folded_rows(lines, expanded)` | Produce reversible repeated-message groups with exact source ranges. |
 
-The `tower.log_bundle` methods implement full-source History exports.
+The `raven.log_bundle` methods implement full-source History exports.
 Run discovery, directory operations, and copying on a background worker.
 
 | Method | Function |
@@ -283,7 +283,7 @@ Run discovery, directory operations, and copying on a background worker.
 | `mkdir_directory(root, current, name, ...)` | Create one private child without overwrite or symlink traversal. |
 | `export_logs(report, destination=None, ...)` | Stream complete raw sources into a unique manifest bundle and optionally deliver the labelled clipboard text. |
 
-The `tower.history_log_export` methods connect these tasks to the terminal UI.
+The `raven.history_log_export` methods connect these tasks to the terminal UI.
 
 | Method | Function |
 | --- | --- |

@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from tower import operations, ops_ui, screen
+from raven import operations, ops_ui, screen
 from test_operations_sequences import operation_dashboard, _ui_action
 
 
@@ -237,7 +237,7 @@ def test_regular_command_paste_still_uses_the_command_palette(operation_dashboar
 @pytest.mark.parametrize("ascii_mode", [False, True])
 @pytest.mark.parametrize("width", [1, 6, 20, 60])
 def test_field_caret_window_tracks_long_ascii_and_unicode_paths(ascii_mode, width):
-    from tower import layout as L
+    from raven import layout as L
     value = "/many/" * 200 + "界界a\u0301/end.json"
     for cursor in (0, 1, 600, len(value) - 1, len(value)):
         row = ops_ui._field_editor_row("Manifest pathname", value, cursor, width, ascii_mode)

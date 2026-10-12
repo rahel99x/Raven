@@ -115,7 +115,7 @@ Reproduce the bounded probe separately from test suites:
 
 ```bash
 .venv/bin/python scripts/benchmark_embedded_terminal.py \
-  --source-root "$PWD" --output /tmp/tower-terminal-benchmark.json
+  --source-root "$PWD" --output /tmp/raven-terminal-benchmark.json
 ```
 
 The existing sustained-pointer probe also passed at **50, 250 and 1,000 mouse
@@ -128,7 +128,7 @@ so this is a bounded regression probe, not a long-duration stability claim.
 
 ```bash
 .venv/bin/python -S scripts/benchmark_sustained_pointer.py \
-  --source-root "$PWD" --output /tmp/tower-pointer.json \
+  --source-root "$PWD" --output /tmp/raven-pointer.json \
   --rates 50,250,1000 --seconds 1 --points 1000 --jobs 6 \
   --live --workers single --switch-workers --switch-control toolbar
 ```

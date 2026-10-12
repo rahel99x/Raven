@@ -1,9 +1,9 @@
-# Tower 4.14.0 validation
+# Raven 4.14.0 validation
 
 [Phase one guide](phase-one.md) · [Performance guide](ui-performance.md) ·
 [Roadmap](../ROADMAP.md)
 
-Validation date: 2026-10-10. The comparison baseline is Tower 4.13.0,
+Validation date: 2026-10-10. The comparison baseline is Raven 4.13.0,
 commit `b636f23d31af8ee1e18e52fb263104c15a521299`.
 
 This is a historical release record. Test totals and performance measurements
@@ -87,7 +87,7 @@ To repeat the 4.14.0 candidate measurement, run from that release's source:
 
 ```bash
 python3 -S scripts/benchmark_changing_ui.py \
-  --glyphs both --repeats 100 --output /tmp/tower-4.14-ui.json
+  --glyphs both --repeats 100 --output /tmp/raven-4.14-ui.json
 ```
 
 ## Site checks

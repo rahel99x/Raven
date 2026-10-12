@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower portable run summary v1",
-  "description": "One flat project-owned JSON object per run. Append these objects to reports/planning.json.history for native prediction/forecast/tradeoff analysis, and to .scaling when scaling metadata is explicit. A summary.json file alone is not auto-discovered by Tower.",
+  "title": "Raven portable run summary v1",
+  "description": "One flat project-owned JSON object per run. Append these objects to reports/planning.json.history for native prediction/forecast/tradeoff analysis, and to .scaling when scaling metadata is explicit. A summary.json file alone is not auto-discovered by Raven.",
   "type": "object",
   "required": [
     "schema",
@@ -12,7 +12,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.summary/v1"
+      "const": "raven.summary/v1"
     },
     "id": {
       "type": "string",
@@ -252,7 +252,7 @@
       "additionalProperties": {
         "$ref": "#/$defs/parameter1"
       },
-      "description": "Stable scientific workload identity, excluding repeat IDs, run IDs, paths, timestamps, and resource requests. At most four nesting levels and 128 total JSON values; Tower additionally enforces the total-value budget."
+      "description": "Stable scientific workload identity, excluding repeat IDs, run IDs, paths, timestamps, and resource requests. At most four nesting levels and 128 total JSON values; Raven additionally enforces the total-value budget."
     },
     "input_size": {
       "anyOf": [
@@ -412,7 +412,7 @@
     },
     "results": {
       "type": "object",
-      "description": "Scientific outputs, with measurement names and units documented by the project. Tower's native prediction/scaling readers do not interpret this object."
+      "description": "Scientific outputs, with measurement names and units documented by the project. Raven's native prediction/scaling readers do not interpret this object."
     },
     "metadata": {
       "type": "object",

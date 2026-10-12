@@ -8,9 +8,9 @@ import pytest
 
 pytest.importorskip("pyte")
 
-from tower.terminal_playback import Playback, render
-from tower.terminal_recording import Recorder
-from tower.terminal_service import TerminalService
+from raven.terminal_playback import Playback, render
+from raven.terminal_recording import Recorder
+from raven.terminal_service import TerminalService
 
 
 def text(player):
@@ -84,7 +84,7 @@ def test_real_pty_player_displays_recording_and_q_exits_without_execution(tmp_pa
     recorder.close()
     service = TerminalService()
     try:
-        player = Path(__file__).resolve().parents[1] / "tower" / "terminal_playback.py"
+        player = Path(__file__).resolve().parents[1] / "raven" / "terminal_playback.py"
         sid = service.open(argv=[sys.executable, str(player), str(recording)], rows=16, cols=120)
         deadline = time.monotonic()+5
         while time.monotonic() < deadline:
@@ -113,7 +113,7 @@ def test_noninteractive_replay_prints_text_without_terminal_controls(tmp_path):
     with_recorder = Recorder(recording, "fixture")
     with_recorder.output(b"\x1b[31mhello\x1b[0m\r\n")
     with_recorder.close()
-    source = Path(__file__).resolve().parents[1] / "tower" / "terminal_playback.py"
+    source = Path(__file__).resolve().parents[1] / "raven" / "terminal_playback.py"
     result = subprocess.run([sys.executable, str(source), str(recording)], cwd=tmp_path,
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
@@ -147,7 +147,7 @@ def test_timeline_shows_advancing_playhead_between_sparse_events():
 
 @pytest.mark.parametrize("chunk", [1, 2, 7, 1024])
 def test_control_frames_and_pastes_never_become_replay_hotkeys(chunk):
-    from tower.terminal_playback import PlaybackInput
+    from raven.terminal_playback import PlaybackInput
     controls = PlaybackInput()
     payload = (b"\x1b]0;qgGhljk\x07\x1bPqgGhljk\x1b\\"
                b"\x1b[200~qgGhljk +-\x1b[201~"
@@ -160,7 +160,7 @@ def test_control_frames_and_pastes_never_become_replay_hotkeys(chunk):
 
 
 def test_hostile_input_frame_state_is_bounded_and_can_recover():
-    from tower.terminal_playback import PlaybackInput
+    from raven.terminal_playback import PlaybackInput
     controls = PlaybackInput()
     assert controls.feed(b"\x1b[" + b"1" * 100000) == []
     assert len(controls.value) <= 64
@@ -174,7 +174,7 @@ def test_hostile_input_frame_state_is_bounded_and_can_recover():
 
 
 def test_recording_caps_reject_invalid_events_before_playback():
-    from tower.terminal_recording import MAX_EVENT, MAX_EVENTS
+    from raven.terminal_recording import MAX_EVENT, MAX_EVENTS
     header = {"rows": 2, "cols": 10}
     for events in (
         ({"event": "command", "t": 0, "data": b"touch example"},),
@@ -191,7 +191,7 @@ def test_recording_caps_reject_invalid_events_before_playback():
 
 
 def test_replay_total_decoded_output_budget_and_immutable_event_entries():
-    from tower.terminal_recording import MAX_EVENT, MAX_FILE
+    from raven.terminal_recording import MAX_EVENT, MAX_FILE
     header = {"rows": 2, "cols": 10}
     event = {"event": "output", "t": 0, "data": b"safe"}
     player = Playback(header, [event])
@@ -237,10 +237,10 @@ def test_tick_rejects_nonfinite_clocks_and_never_has_negative_playhead():
 
 
 def test_loader_errors_cannot_emit_controls_from_hostile_filename(tmp_path):
-    source = Path(__file__).resolve().parents[1] / "tower" / "terminal_playback.py"
+    source = Path(__file__).resolve().parents[1] / "raven" / "terminal_playback.py"
     missing = tmp_path / "\x1b]52;c;c2VjcmV0\x07.jsonl"
     result = subprocess.run([sys.executable, str(source), str(missing)], cwd=tmp_path,
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 1
-    assert "Tower replay:" in result.stderr
+    assert "Raven replay:" in result.stderr
     assert "\x1b" not in result.stderr and "\x07" not in result.stderr

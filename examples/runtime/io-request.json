@@ -1,6 +1,6 @@
 {
-  "schema": "tower.io-request/v1",
-  "mailbox": "/tmp/tower-runtime-demo",
+  "schema": "raven.io-request/v1",
+  "mailbox": "/tmp/raven-runtime-demo",
   "attempt": "job123:attempt1",
   "request_id": "checkpoint-100",
   "participants": ["rank0", "rank1"],

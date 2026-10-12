@@ -8,13 +8,13 @@ import time
 
 import pytest
 
-from tower import analysis_ui, layout as L, log_workbench, workbench
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Live, Store
-from tower.research import ResearchHub
-from tower.slurm import FakeBackend, Slurm
-from tower.views import Views
+from raven import analysis_ui, layout as L, log_workbench, workbench
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Live, Store
+from raven.research import ResearchHub
+from raven.slurm import FakeBackend, Slurm
+from raven.views import Views
 
 
 @pytest.fixture

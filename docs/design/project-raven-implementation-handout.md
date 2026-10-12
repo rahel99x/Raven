@@ -1,6 +1,6 @@
 # Raven architecture and deployment specification
 
-**Release scope:** 7.0.0. **Public launchers:** `ravenl` for Light and `ravenh` for Heavy.
+**Release scope:** 7.0.0 and Unreleased updates. **Public launchers:** `ravenl` for Light and `ravenh` for Heavy.
 **Audience:** maintainers, cluster administrators, testers, and release engineers.
 
 This specification defines execution ownership, Light and Heavy profiles, allocation control,
@@ -19,7 +19,7 @@ evidence certifies universal Slurm compatibility or negligible overhead.
 
 | Design area | Release 7.0.0 scope | Evidence or remaining work |
 | --- | --- | --- |
-| Launchers, configuration, and packaging | Implemented `ravenl`, `ravenh`, and compatibility `tower` commands; accepted `raven.config/v1`; one `slurm-tower` distribution | [Implementation map](../raven/implementation.md) and [installed-package validation](../raven/validation.md#distribution-and-terminal-checks) |
+| Launchers, configuration, and packaging | Implemented `ravenl`, `ravenh`, and Light `raven` commands; accepted `raven.config/v1`; one `raven` distribution and import namespace | [Implementation map](../raven/implementation.md) and [installed-package validation](../raven/validation.md#distribution-and-terminal-checks) |
 | Light ownership and resource admission | Implemented collection and retention limits; numerical performance goals assessed separately | Monitoring CPU and RSS goals pass the local fixture; the 1% idle CPU goal remains unmet |
 | Heavy placement and allocation lifecycle | Implemented desktop process and Slurm CLI adapters with verification and owned cleanup | Real desktop and synthetic fault evidence; real Slurm placement remains untested |
 | Advanced workflows | Named worker handlers and explicit execution contracts | External drivers, instrumentation, and mutation adapters retain their declared prerequisites |
@@ -34,7 +34,7 @@ gates. Section 19 maps the requirement identifiers.
 
 | Decision | Required behavior |
 | --- | --- |
-| Product name | Use **Raven** in product identity and interface labels. Preserve historical names and public compatibility identifiers. |
+| Product name | Use **Raven** in product identity, distribution, imports, commands, configuration paths, and current evidence schema identifiers. |
 | Light launcher | `ravenl` starts the bounded Light experience without requesting an allocation. |
 | Heavy launcher on a cluster | `ravenh` obtains or explicitly reuses a compatible allocation and starts heavy execution there. Waiting remains lightweight. |
 | Heavy launcher on a desktop | `ravenh --site desktop` starts a bounded local worker under an explicit desktop policy. No Slurm installation is required. |
@@ -45,7 +45,7 @@ gates. Section 19 maps the requirement identifiers.
 | Collection ownership | One logical owner for each source scope. Starting Heavy must not duplicate the interface's scheduler collectors. |
 | Scheduler protection | Collection budgets apply in Light and Heavy, on login nodes, desktops, and compute nodes. |
 | Failure | Expiry, rejection, or disconnection never moves heavy work onto a login node. |
-| Compatibility | Preserve projects, evidence, selected-job identity, aliases during a documented transition, and readable historical records. |
+| Migration | Preserve original configuration and evidence bytes; use explicit configuration/state import and separately reviewed conversion of external project contracts. |
 | Support claim | Portable architecture with capability discovery and qualified site adapters. Unsupported features explain their limits while supported features remain usable. |
 
 Portability requires configurable host, partition, account, QOS, transport, paths, launch
@@ -644,6 +644,8 @@ use the same allowance, and failed launches count as attempts. A site policy can
 longer interval or a lower ceiling. This allowance is reserved for explicit launches; it does
 not re-enable automatic GPU sampling. Existing configurations retain their declared settings
 when Raven is updated.
+Explicit submission-test probes use the same configured per-minute ceiling in a separate
+budget; automatic weather probes remain disabled.
 
 `auto-host-local` is a typed resolver, not a literal directory name. It checks a private runtime
 directory or site-approved local scratch, ownership, permissions, filesystem type, and host
@@ -728,8 +730,8 @@ explain, doctor, offline qualification, and plan operations do not request an al
 | `ravenl --write-config NEW_JSON` | Create a new persistent JSON configuration in a private directory; preserve existing files |
 | `ravenl doctor` | Bounded local capability checks; no implicit allocation |
 | `ravenl qualify --offline` | Offline collection, protocol, and desktop-plan fixtures; no live site qualification |
-| `ravenl migrate --plan` | Inventory existing Tower settings/state and show the migration plan |
-| `ravenl migrate --apply` | Apply explicit, journaled, restart-safe migration |
+| `ravenl migrate --plan --source-config DIR --source-state DIR` | Inventory explicit previous settings/state roots and show the migration plan |
+| `ravenl migrate --apply --plan-file FILE` | Apply the reviewed, journaled, restart-safe migration |
 
 `ravenh --interface compute` is rejected in 7.0.0 because full-interface transfer is
 unavailable. The supported path keeps the interface on its original host and starts an admitted
@@ -775,14 +777,14 @@ programmatic adapters as well as visible toolbar buttons. An unavailable Heavy w
 prepared/deferred task, never execution through an older local handler. Migration tests should
 invoke each route directly to expose bypasses hidden by a disabled button.
 
-## 13. Rebrand and backward compatibility
+## 13. Naming, packaging, and migration
 
 ### 13.1 Names and visual identity
 
 Use **Raven** for active product titles, release notes, descriptions, documentation, and support
 bundles. Use `ravenl` and `ravenh` in installation examples and shell completions. Keep mode and
 execution-target labels visible in narrow layouts. Retain historical release names, legal
-attribution, and compatibility identifiers.
+attribution, and citation information in release records.
 
 Use a restrained text/character identity compatible with monochrome, ASCII, screen readers,
 light/dark terminals, and no-animation preferences. An optional raven motif must not reduce
@@ -791,45 +793,48 @@ a special font. No splash delay is required to communicate the brand.
 
 ### 13.2 Packaging strategy
 
-Release 7.0.0 keeps one source tree, the `slurm-tower` distribution, and the `tower` Python
-package. The earlier candidate distribution name `project-raven` was not adopted. Product
-identity does not rename the installed distribution, import path, or historical schema
-identifiers.
+The current source tree uses the `raven` distribution and `raven` Python package. Console
+commands, environment variables, project directories, and current evidence schema identifiers
+use the same Raven namespace. This changes the previous package and external contracts;
+previous import paths and schema identifiers are not runtime aliases.
 
-`tower.raven_launch:light_main` and `tower.raven_launch:heavy_main` provide the `ravenl` and
-`ravenh` console scripts. The same wheel supplies the `tower` compatibility alias. The
+`raven.raven_launch:light_main` and `raven.raven_launch:heavy_main` provide the `ravenl` and
+`ravenh` console scripts. The same wheel supplies `raven`, which opens Light like `ravenl`. The
 [installation guide](../INSTALLATION.md) documents installation and updates; [distribution
 validation](../raven/validation.md#distribution-and-terminal-checks) records clean
 installed-artifact checks.
 
-Do not co-install a second distribution that owns the same `tower/` files: uninstalling either
-could remove the other's modules. A future distribution rename would require registry and
-collision checks plus tested replacement, upgrade, downgrade, and rollback procedures.
+Install from this repository or a wheel built from it. A bare package-index name can identify
+unrelated software. Do not co-install a second distribution that owns the same `raven/` files:
+uninstalling either could remove the other's modules. Replace an installation recorded under a
+previous distribution name explicitly; preserve its private configuration and update
+`execution.worker_python` to the new environment's interpreter. Compute nodes must be able to
+access that interpreter and this release.
 
-The compatibility alias routes to Light and preserves machine-readable stdout. No removal date
-is declared here; removal requires an explicit release policy. Existing report, trace, and
-runtime subcommands retain their argument and output contracts through adapters. Each legacy
-execution route remains subject to its declared placement and authority.
+The `raven` command preserves machine-readable stdout. Report, trace, and runtime subcommands
+use their current Raven contracts and remain subject to declared placement and authority.
+Any import of previous scientific artifacts requires explicit conversion, with original bytes
+and hashes retained for comparison.
 
 ### 13.3 Persistence and contracts
 
 Inventory before changing:
 
-- `~/.config/tower`, XDG overrides, named profiles, environment variables, saved UI state.
-- `~/.local/state/tower`, event journals, metric histories, pinned tools, group identities, job attempts and connection namespaces.
-- Per-project `.tower` files, reporting scripts, schemas, notebooks and workflow manifests.
+- `~/.config/raven`, XDG overrides, named profiles, environment variables, saved UI state.
+- `~/.local/state/raven`, event journals, metric histories, pinned tools, group identities, job attempts and connection namespaces.
+- Per-project `.raven` files, reporting scripts, schemas, notebooks and workflow manifests.
 - SSH ControlPath names, cache databases, runtime sockets, PID files, supervised services and terminal persistence.
 - Imports, plugin APIs, command completions, packaging metadata, URLs, CI names and release assets.
 
 Migration rules:
 
-1. Prefer new Raven config when present; otherwise offer a read-only legacy import view and explicit migration. Never silently merge contradictory files.
+1. Prefer Raven config when present. Select previous configuration and state source directories explicitly for migration; never silently merge contradictory files or use the destination as its own source.
 2. Bound the initial inventory. Large journals/histories migrate on explicit request or lazily; rebranding must not trigger a recursive home-directory scan.
 3. Preserve original files, checksums and a migration journal. Make migration restartable and rollbackable. Never rewrite active journals or sockets held by the old application.
 4. Map semantic settings, not just names. Old fast polling preferences cannot override Raven's collection floors. Single/Multi does not map to Light/Heavy.
-5. Preserve original `tower.*` evidence/schema identifiers and content hashes in historical artifacts. Use versioned readers and explicit derived exports; do not globally replace strings in scientific evidence.
-6. Existing `.tower` projects remain readable. If `.raven` is introduced, use a versioned project migration with clear precedence and no duplicate writes.
-7. Support documented legacy environment-variable aliases temporarily; new names take precedence, and warnings omit secrets.
+5. Preserve external scientific artifacts at their original paths with their original bytes and hashes. Current contracts use `raven.*`; conversion creates separately reviewed derived artifacts rather than rewriting originals.
+6. Current projects use `.raven`. A project created under previous directory or schema names needs explicit contract conversion; configuration/state migration alone does not perform it.
+7. Use documented `RAVEN_*` environment variables. Previous variable names are not aliases; remove stale bindings when validating a fresh installation.
 8. New runtime sockets/cache leases use new identities. Never rename an active socket, adopt a stale PID, or reuse an SSH master owned by another process without a compatible lifecycle.
 9. Existing terminal sessions keep their destination and ownership. A product rename cannot migrate a live PTY between hosts.
 10. Preserve attribution, copyright, licenses, citations, and historical release names. A brand rename does not change scientific provenance.
@@ -846,27 +851,27 @@ and boundaries.
 
 | Area | Released responsibility or extension boundary |
 | --- | --- |
-| `pyproject.toml`, `tower/raven_launch.py`, `tower/cli.py` | One distribution, Light/Heavy bootstrap, compatibility alias, and admitted dashboard startup |
-| `tower/raven_config.py`, `tower/config.py` | Validated connection/execution/collection/resource profiles, precedence, policy restrictions, and explain output |
-| `tower/refresh_rate.py`, `tower/metric_sampling.py` | Preserve slow configured bases; separate source budgets from display and local-file rates |
-| `tower/sampler.py` | Demand subscriptions, bounded job coverage, jitter, idle behavior, budgeted reconciliation |
-| `tower/slurm.py`, `tower/remote.py` | Classified command adapters, combined queue fields where supported, explicit endpoint/host context |
-| `tower/raven_collection.py`, `tower/platform_session.py`, `tower/site_policy.py` | Managed admission, generated-operation classifications, bounded placement validation, no ungoverned collector fallback |
-| `tower/read_acquisition.py`, `tower/collection_broker.py`, `tower/shared_collection.py` | Private host-local request ledger, freshness, cancellation reservation, and metrics |
-| `tower/worker_scheduler.py` | Mode-specific concurrency and task admission, separate worker lifetime from task permits |
-| `tower/raven_ui.py`, `tower/raven_allocation_reuse.py`, `tower/operations.py` | Reviewed request/reuse/release controls, ownership receipts, and exact-attempt validation |
-| `tower/raven_allocation.py`, `tower/raven_allocation_helper.py`, `tower/raven_allocation_adapters.py` | Owned desktop/Slurm lifetimes, allocation state machine, bounded cleanup, and visible uncertainty |
-| `tower/raven_execution.py`, `tower/raven_worker*.py`, `tower/raven_protocol.py`, `tower/raven_resources.py` | Named handlers, placement verification, task admission, process limits, and versioned bounded protocol |
-| `tower/raven_limits.py`, `tower/model.py`, series preparation and cache modules | Accounted byte/job limits, small publications, bounded persistence, and eviction coverage |
-| Terminal modules and `tower/terminal_ui.py` | Allocation-aware explicit sessions, stable focus/destination, resource budgets |
+| `pyproject.toml`, `raven/raven_launch.py`, `raven/cli.py` | One Raven distribution and import namespace, Light/Heavy bootstrap, Light `raven` command, and admitted dashboard startup |
+| `raven/raven_config.py`, `raven/config.py` | Validated connection/execution/collection/resource profiles, precedence, policy restrictions, and explain output |
+| `raven/refresh_rate.py`, `raven/metric_sampling.py` | Preserve slow configured bases; separate source budgets from display and local-file rates |
+| `raven/sampler.py` | Demand subscriptions, bounded job coverage, jitter, idle behavior, budgeted reconciliation |
+| `raven/slurm.py`, `raven/remote.py` | Classified command adapters, combined queue fields where supported, explicit endpoint/host context |
+| `raven/raven_collection.py`, `raven/platform_session.py`, `raven/site_policy.py` | Managed admission, generated-operation classifications, bounded placement validation, no ungoverned collector fallback |
+| `raven/read_acquisition.py`, `raven/collection_broker.py`, `raven/shared_collection.py` | Private host-local request ledger, freshness, cancellation reservation, and metrics |
+| `raven/worker_scheduler.py` | Mode-specific concurrency and task admission, separate worker lifetime from task permits |
+| `raven/raven_ui.py`, `raven/raven_allocation_reuse.py`, `raven/operations.py` | Reviewed request/reuse/release controls, ownership receipts, and exact-attempt validation |
+| `raven/raven_allocation.py`, `raven/raven_allocation_helper.py`, `raven/raven_allocation_adapters.py` | Owned desktop/Slurm lifetimes, allocation state machine, bounded cleanup, and visible uncertainty |
+| `raven/raven_execution.py`, `raven/raven_worker*.py`, `raven/raven_protocol.py`, `raven/raven_resources.py` | Named handlers, placement verification, task admission, process limits, and versioned bounded protocol |
+| `raven/raven_limits.py`, `raven/model.py`, series preparation and cache modules | Accounted byte/job limits, small publications, bounded persistence, and eviction coverage |
+| Terminal modules and `raven/terminal_ui.py` | Allocation-aware explicit sessions, stable focus/destination, resource budgets |
 | Existing command/capability registry and workspace layout | Shared mode/compute controls, keyboard help and consistent availability |
-| `tower/raven_migration.py`, scientific operations, evidence and trial modules | Journaled migration, preserved identities, workflow placement, and result contracts; external adapters retain explicit prerequisites |
-| `tower/raven_qualification.py`, `scripts/qualify_flagship.py`, benchmark scripts, CI | Offline load simulation, process-tree accounting, installed-artifact checks, and scoped release evidence |
+| `raven/raven_migration.py`, scientific operations, evidence and trial modules | Journaled migration, preserved identities, workflow placement, and result contracts; external adapters retain explicit prerequisites |
+| `raven/raven_qualification.py`, `scripts/qualify_flagship.py`, benchmark scripts, CI | Offline load simulation, process-tree accounting, installed-artifact checks, and scoped release evidence |
 | README, controls, installation/runbook, and design documents | Active Raven naming, profiles, operational procedures, limitations, and migration instructions |
 
 Changes to these owners must preserve mouse, copy, group identity, and terminal regressions.
-Internal package renaming is a separate compatibility decision from execution ownership and
-scheduling changes.
+Package and external-contract replacement must be verified separately from execution ownership
+and scheduling changes.
 
 ## 15. Implementation stages and acceptance gates
 
@@ -879,7 +884,7 @@ configuration field alone does not establish completion.
 | Stage | Work and concrete output | Dependencies | Exit evidence |
 | --- | --- | --- | --- |
 | P0: Baseline and contracts | Inventory every collector, operation, process, storage path and public contract; record default rates and process-tree resource measurements | None | Reproducible baseline; current limitations; capability ownership ledger |
-| P1: Brand and public commands | Raven metadata, retained `slurm-tower` package, `ravenl`/`ravenh` bootstrap, compatibility alias, migration plan command | P0 | Offline install and help tests; `ravenh` cannot run Heavy work before verified backend admission |
+| P1: Brand and public commands | Raven distribution, import namespace, metadata, `ravenl`/`ravenh` bootstrap, Light `raven` command, migration plan command | P0 | Offline install and help tests; `ravenh` cannot run Heavy work before verified backend admission |
 | P2: Policy/configuration | Versioned schemas, site/user/CLI precedence, desktop/Slurm profiles, capability discovery, explain output | P0–P1 | Valid/invalid examples and restriction tests; explicit desktop works without Slurm; changed connections require restart |
 | P3: Collection governance | Full descriptor registry, source/endpoint budgets, slow intervals, coalescing, jitter, backoff, demand and idle rules | P2 | Command recorder demonstrates ceilings and no bypass through refresh, mode switches or failures |
 | P4: Light bounds | Scoped retention/input limits, viewport work, bounded logs/history, no default GPU steps/weather probes | P3 | Fixed fixture reports CPU/RSS and retention results; unmet goals remain visible rather than becoming hard-limit claims |
@@ -888,7 +893,7 @@ configuration field alone does not establish completion.
 | P7: End-to-end toolbar and startup | Mode/compute controls, `ravenh` waiting, exact target labels, focus preservation and Light fallback | P6 | Complete Light → pending → Heavy → release → Light journey via mouse and keyboard |
 | P8: Feature routing | Assign scientific, terminal, log, trace, export, and adapter tasks to declared execution contracts | P7 | Named-handler evidence and representative real tasks; deferred external adapters stay explicit; no hidden local Heavy fallback or duplicate collectors |
 | P9: Optional site service | Authorized shared observations, aggregate admission, availability policy and staged failure recovery | P3–P8 | Multi-user permission tests and measured collection sharing; optional standalone mode remains usable |
-| P10: Migration and distribution | Apply/rollback migration, old project/schema readers, one-distribution updates, docs and release inventories | P1–P8; P9 only if a service is deployed | Legacy-fixture and installed update/rollback evidence; preserved original files and evidence hashes |
+| P10: Migration and distribution | Apply/rollback configuration and state migration, explicit project-contract conversion, package replacement, updates, docs and release inventories | P1–P8; P9 only if a service is deployed | Previous-config fixtures and installed replacement/rollback evidence; preserved original files and evidence hashes |
 | P11: Scale qualification | Soak, process-tree resource accounting, 1/10/50/200+ synthetic clients, administrator-approved site pilots | P4–P10 | Scope-specific report with site thresholds, measured impact and unresolved gaps |
 | P12: Release | Final source freeze, targeted/full supported suites, wheels, offline installation, signed/checksummed artifacts as supported, rollout record | All required earlier gates | Claims match evidence; install, migration, rollback and support instructions verified |
 
@@ -917,8 +922,8 @@ existence of a future service would not certify capacity.
 | Copy/selection | Single/multi rows, offscreen marks, expired text ranges, raw log bytes, explicit copy-all, terminal copy-mode ownership |
 | Terminal | Shell job control, alternate screen, Unicode, resize storms, large paste, output floods, hidden sessions and shutdown |
 | Worker controls | Single/Multi while waiting, collecting, running Heavy, cancelling, or closing a terminal; no abandoned executor or permit |
-| Persistence | Long session, migration interruption, duplicate launch, active old Tower process, evidence hashes, rollback and connection isolation |
-| Packaging | Clean offline install, optional extras missing, entry points, legacy alias, distribution replacement and no import collisions |
+| Persistence | Long session, migration interruption, duplicate launch, active old Raven process, evidence hashes, rollback and connection isolation |
+| Packaging | Clean offline install, optional extras missing, all three entry points, distribution replacement and no import collisions |
 
 Use deterministic fakes for fault paths, real local subprocesses/PTYs for OS semantics, and
 site-authorized disposable jobs for Slurm qualification. Mocked success is never reported as
@@ -1094,17 +1099,17 @@ Repository integration references:
 - [Release implementation map](../raven/implementation.md)
 - [Release validation record](../raven/validation.md)
 - [Execution contracts](../raven/execution-contracts.md)
-- [Raven configuration](../../tower/raven_config.py)
-- [Legacy configuration adapter](../../tower/config.py)
-- [Polling model](../../tower/refresh_rate.py)
-- [Collection admission](../../tower/raven_collection.py)
-- [Collection backend](../../tower/platform_session.py)
-- [Private host-local cache](../../tower/shared_collection.py)
-- [Background worker ownership](../../tower/worker_scheduler.py)
-- [Allocation lifecycle](../../tower/raven_allocation.py)
-- [Allocation adapters](../../tower/raven_allocation_adapters.py)
-- [Worker protocol](../../tower/raven_protocol.py)
-- [Existing allocation-shell operations](../../tower/ops_cluster.py)
+- [Raven configuration](../../raven/raven_config.py)
+- [Legacy configuration adapter](../../raven/config.py)
+- [Polling model](../../raven/refresh_rate.py)
+- [Collection admission](../../raven/raven_collection.py)
+- [Collection backend](../../raven/platform_session.py)
+- [Private host-local cache](../../raven/shared_collection.py)
+- [Background worker ownership](../../raven/worker_scheduler.py)
+- [Allocation lifecycle](../../raven/raven_allocation.py)
+- [Allocation adapters](../../raven/raven_allocation_adapters.py)
+- [Worker protocol](../../raven/raven_protocol.py)
+- [Existing allocation-shell operations](../../raven/ops_cluster.py)
 - [Terminal integration design](terminal-fusion.md)
 - [Consolidation validation scope](../guides/consolidation-validation.md)
 - [Site qualification guide](../QUALIFICATION.md)

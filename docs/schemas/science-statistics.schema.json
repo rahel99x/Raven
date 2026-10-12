@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower statistics v1",
+  "title": "Raven statistics v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.statistics/v1"
+      "const": "raven.statistics/v1"
     },
     "design": {
       "enum": [

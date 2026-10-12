@@ -5,13 +5,13 @@ import threading
 
 import pytest
 
-from tower import diagnostic_recipes as recipes
-from tower import execution_simulator as simulator
-from tower import science_fields
+from raven import diagnostic_recipes as recipes
+from raven import execution_simulator as simulator
+from raven import science_fields
 
 
 def model():
-    return {"schema": "tower.execution-model/v1", "workload": "sha256:fixed-input",
+    return {"schema": "raven.execution-model/v1", "workload": "sha256:fixed-input",
             "resources": {"cpu0": {"kind": "cpu", "rate": 10}, "cpu1": {"kind": "cpu", "rate": 10},
                           "link": {"kind": "network", "rate": 5, "latency": 1}},
             "placement": {"r0": "cpu0", "r1": "cpu1"}, "routes": {"cpu0->cpu1": "link", "cpu1->cpu0": "link"},
@@ -133,8 +133,8 @@ def cost(cpu=.1, memory=100, disk=100, seconds=1):
 
 
 def intent_site():
-    intent = {"schema": "tower.diagnostic-intent/v1", "question": "What delayed this phase?", "required": ["mpi", "gpu"], "budget": cost(1, 1000, 1000, 60)}
-    site = {"schema": "tower.site-capabilities/v1", "identity": "siteA", "runtime": {"mpi": "openmpi-5"},
+    intent = {"schema": "raven.diagnostic-intent/v1", "question": "What delayed this phase?", "required": ["mpi", "gpu"], "budget": cost(1, 1000, 1000, 60)}
+    site = {"schema": "raven.site-capabilities/v1", "identity": "siteA", "runtime": {"mpi": "openmpi-5"},
             "adapters": [{"id": "mpi-tool", "provides": ["mpi"], "requires": {"mpi": "openmpi-5"}, "conflicts": [], "cost": cost(), "permitted": True, "argv": ["collector", "mpi"]},
                          {"id": "gpu-tool", "provides": ["gpu"], "requires": {}, "conflicts": [], "cost": cost(), "permitted": True, "argv": ["collector", "gpu"]}]}
     return intent, site
@@ -176,10 +176,10 @@ def test_only_explicit_approximation_and_exact_preferred():
 
 
 def test_exact_summary_retains_gaps_and_references():
-    source = {"schema": "tower.query-source/v1", "identity": "run-1", "coverage": {"complete": False, "reason": "rank 3 absent"},
+    source = {"schema": "raven.query-source/v1", "identity": "run-1", "coverage": {"complete": False, "reason": "rank 3 absent"},
               "rows": [{"ref": "chunk:0", "values": {"x": 1e16}}, {"ref": "chunk:1", "values": {"x": 1}},
                        {"ref": "chunk:2", "values": {"x": -1e16}}, {"ref": "chunk:3", "values": {"x": None}}]}
-    query = {"schema": "tower.summary-query/v1", "fields": ["x"], "operations": ["count", "sum", "min", "max"]}
+    query = {"schema": "raven.summary-query/v1", "fields": ["x"], "operations": ["count", "sum", "min", "max"]}
     result = recipes.summarize_query(source, query)
     assert result["summaries"]["x"] == {"count": 3, "sum": 1, "min": -1e16, "max": 1e16}
     assert result["null_or_missing"]["x"] == 1
@@ -190,7 +190,7 @@ def test_exact_summary_retains_gaps_and_references():
 
 
 def field(shape, values):
-    return {"schema": "tower.scientific-field/v1", "identity": "density", "shape": shape, "values": values, "units": "kg/m3"}
+    return {"schema": "raven.scientific-field/v1", "identity": "density", "shape": shape, "values": values, "units": "kg/m3"}
 
 
 def test_field_extrema_and_mixed_gaps_survive_downsampling():

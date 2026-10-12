@@ -6,5 +6,5 @@
 python3 - <<'PY'
 import os
 from pathlib import Path
-print(Path(os.environ["TOWER_CHECKPOINT"]).read_text())
+print(Path(os.environ["RAVEN_CHECKPOINT"]).read_text())
 PY

@@ -15,15 +15,15 @@ outside rendering. Diagnostic execution requires a separate action review.
 
 | Operation | Manifest schema | Result |
 | --- | --- | --- |
-| `:ops investigation-workflow` | `tower.investigation-workflow/v1` | One staged report from evidence and existing analyzers through reviewed diagnostics to measured findings |
-| `:ops recommendation` | `tower.recommendation-review/v1` | Applicable hypothesis, supported/refuted experiment, stale, expired or inconclusive evidence |
-| `:ops investigation-plan` | `tower.investigation-plan/v1` | Ordered information actions within declared budgets |
-| `:ops scientific-impact` | `tower.scientific-lineage/v1` | Affected claims, missing lineage and proposed revalidation actions |
-| `:ops numerical-stability` | `tower.numerical-stability/v1` | Measured ranges, variation and tolerance violations by configuration |
-| `:ops regression-investigation` | `tower.performance-investigation/v1` | Ordered version comparisons with noise and scientific validity checks |
-| `:ops regression-sweep` | `tower.diagnostic-campaign/v1`, kind `regression` | Real repeated measurements of reviewed immutable Git snapshots |
-| `:ops diagnostic-campaign` | `tower.diagnostic-campaign/v1`, kind `campaign` | Reviewed configuration trials and persistent measurement files |
-| `:ops minimize-reproducer` | `tower.diagnostic-campaign/v1`, kind `minimize` | A reduced input that retains the declared failure signature |
+| `:ops investigation-workflow` | `raven.investigation-workflow/v1` | One staged report from evidence and existing analyzers through reviewed diagnostics to measured findings |
+| `:ops recommendation` | `raven.recommendation-review/v1` | Applicable hypothesis, supported/refuted experiment, stale, expired or inconclusive evidence |
+| `:ops investigation-plan` | `raven.investigation-plan/v1` | Ordered information actions within declared budgets |
+| `:ops scientific-impact` | `raven.scientific-lineage/v1` | Affected claims, missing lineage and proposed revalidation actions |
+| `:ops numerical-stability` | `raven.numerical-stability/v1` | Measured ranges, variation and tolerance violations by configuration |
+| `:ops regression-investigation` | `raven.performance-investigation/v1` | Ordered version comparisons with noise and scientific validity checks |
+| `:ops regression-sweep` | `raven.diagnostic-campaign/v1`, kind `regression` | Real repeated measurements of reviewed immutable Git snapshots |
+| `:ops diagnostic-campaign` | `raven.diagnostic-campaign/v1`, kind `campaign` | Reviewed configuration trials and persistent measurement files |
+| `:ops minimize-reproducer` | `raven.diagnostic-campaign/v1`, kind `minimize` | A reduced input that retains the declared failure signature |
 
 The five analysis operations are read-only. Enter **Investigation manifest** and select
 **Inspect / prepare**. The three execution operations also require a new
@@ -339,22 +339,22 @@ duplicate experiments but does not provide automatic crash resumption.
 Create a new example directory; no work is executed by this step:
 
 ```sh
-python3 examples/scientific-investigation/prepare_demo.py /tmp/tower-science-demo
+python3 examples/scientific-investigation/prepare_demo.py /tmp/raven-science-demo
 ```
 
-Open `:ops minimize-reproducer`. Use `/tmp/tower-science-demo/minimize.json`, a
-new destination such as `/tmp/tower-minimum`, and **Action: launch**. Review and
+Open `:ops minimize-reproducer`. Use `/tmp/raven-science-demo/minimize.json`, a
+new destination such as `/tmp/raven-minimum`, and **Action: launch**. Review and
 apply. `minimal-input.txt` should contain only `needle`.
 Select **Action: status** until the driver reports `reduced` before reading it.
 
 Open `:ops diagnostic-campaign`. Use `campaign.json` and a different new
-destination such as `/tmp/tower-numerical`. Review and apply. The program computes
+destination such as `/tmp/raven-numerical`. Review and apply. The program computes
 an actual order-sensitive sum and a compensated sum. Wait for **Action: status**
 to report `completed`, then convert measured outputs:
 
 ```sh
 python3 examples/scientific-investigation/collect_numerical.py \
-  /tmp/tower-numerical > /tmp/tower-science-demo/numerical.json
+  /tmp/raven-numerical > /tmp/raven-science-demo/numerical.json
 ```
 
 Inspect that file with `:ops numerical-stability`. The naive sum fails the
@@ -365,7 +365,7 @@ To create a separate real-execution regression example:
 
 ```sh
 python3 examples/scientific-investigation/prepare_regression_demo.py \
-  /tmp/tower-regression-demo
+  /tmp/raven-regression-demo
 ```
 
 This creates a new synthetic Git repository only in that directory. Open

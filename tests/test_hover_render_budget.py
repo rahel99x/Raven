@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import interaction as ui, layout as L
+from raven import interaction as ui, layout as L
 
 
 def application(width=180, height=80):

@@ -34,6 +34,9 @@ import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from benchmark_source import load_module
+
 CASES = ("static", "live30", "live1", "switch", "resize", "scroll-end")
 
 
@@ -81,14 +84,20 @@ class Clock:
 
 
 def run_case(args, kind, ascii_):
-    from tower import charts, clock, interaction, layout as L, metric_live
-    from tower import screen, chart_interaction
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Finished, Job, Live, Store
-    from tower.research import ResearchHub
-    from tower.slurm import FakeBackend, Slurm
-    from tower.views import Views
+    source = getattr(args, "source_root", Path(__file__).resolve().parents[1])
+    charts, clock, interaction, L, metric_live, screen, chart_interaction = (
+        load_module(source, suffix) for suffix in
+        ("charts", "clock", "interaction", "layout", "metric_live", "screen", "chart_interaction"))
+    Config = load_module(source, "config").Config
+    App = load_module(source, "controller").App
+    model = load_module(source, "model")
+    Finished, Job, Live, Store = model.Finished, model.Job, model.Live, model.Store
+    ResearchHub = load_module(source, "research").ResearchHub
+    slurm_module = load_module(source, "slurm")
+    FakeBackend, Slurm = slurm_module.FakeBackend, slurm_module.Slurm
+    Views = load_module(source, "views").Views
+    layout_state = (load_module(source, "workspace_layout").initialize
+                    if kind == "scroll-end" else None)
 
     simulated = Clock()
     cfg = Config({"log_lines": 0, "startup_animation": False,
@@ -205,7 +214,6 @@ def run_case(args, kind, ascii_):
             if not plots:
                 if kind != "scroll-end":
                     raise RuntimeError("No visible graph in Jobs Details")
-                from tower.workspace_layout import initialize as layout_state
                 meter.counts["missing_visible_graphs"] += 1
                 if len(geometry_failures) < 4:
                     geometry_failures.append({"iteration": iteration,
@@ -278,7 +286,6 @@ def run_case(args, kind, ascii_):
             "phases_ms": {key: value*1000 for key, value in meter.times.items()},
             "counts": dict(meter.counts)}
         if kind == "scroll-end":
-            from tower.workspace_layout import initialize as layout_state
             result["visible_metrics"] = sorted({plot.key[2]
                 for plot in chart_interaction.initialize(app)["plots"]})
             result["details_scroll"] = layout_state(app).scroll.get("jobs:details", 0)
@@ -348,7 +355,7 @@ def run_case(args, kind, ascii_):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, default=Path(__file__).resolve().parents[1],
-        help="checkout or extracted git archive that contains tower/__init__.py")
+        help="checkout or extracted git archive containing the selected source package")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--label", default="")
     parser.add_argument("--cases", default="static,live30,live1,switch,resize",
@@ -376,17 +383,14 @@ def main():
     if args.profile and not 0 <= args.profile_iteration < args.repeats:
         parser.error("--profile-iteration must identify a measured frame")
     source = args.source_root.resolve()
-    if not (source / "tower" / "__init__.py").is_file():
-        parser.error("--source-root must contain tower/__init__.py")
-    sys.path.insert(0, str(source))
-    # Normally -S removes editable finders; reject an accidental wrong import.
-    import tower
-    if Path(tower.__file__).resolve().parent != source/"tower":
-        raise RuntimeError(f"Wrong source import: {tower.__file__}")
+    try:
+        package = load_module(source)
+    except (OSError, ValueError, RuntimeError, ImportError) as exc:
+        parser.error(str(exc))
     cases = [run_case(args, kind, ascii_) for kind in cases
         for ascii_ in ([False, True] if args.glyphs == "both" else [args.glyphs == "ascii"])]
     report = {"metadata": {"label": args.label, "source_root": str(source),
-        "module_path": tower.__file__, "version": tower.__version__,
+        "module_path": package.__file__, "version": package.__version__,
         "python": sys.version, "platform": platform.platform(),
         "measurement": "Elapsed UI work with a counting paint sink; deterministic 50 Hz pointer events, 10 Hz Live window redraws, native publication every 500 ms; terminal transport and external producer I/O excluded",
         "timer": "perf_counter; includes operating-system scheduling variation",

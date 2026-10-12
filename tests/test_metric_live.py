@@ -6,18 +6,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import (
+from raven import (
     chart_interaction as C,
     clock,
     interaction as I,
     layout as L,
     metric_live as M,
 )
-from tower.model import Job
-from tower.config import Config
-from tower.controller import App
-from tower.model import Store
-from tower.views import Views
+from raven.model import Job
+from raven.config import Config
+from raven.controller import App
+from raven.model import Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -1033,8 +1033,8 @@ def test_feedback_and_actual_interval_labels_preserve_geometry_during_rate_chang
 @pytest.mark.parametrize("ascii_", [False, True])
 @pytest.mark.parametrize("width", [24, 36, 64, 68, 120])
 def test_requested_polling_remains_readable_when_effective_cadence_is_shared(app, ascii_, width):
-    from tower.metric_sampling import format_interval
-    from tower.refresh_rate import poll_interval
+    from raven.metric_sampling import format_interval
+    from raven.refresh_rate import poll_interval
 
     app.sampler = SimpleNamespace(sampling_interval=lambda *_: .5)
     draw(app, width=width, column=0, ascii_=ascii_)
@@ -1072,7 +1072,7 @@ def test_sampling_palette_focus_and_rate_restore_exact_main_or_modal(palette_das
 @pytest.mark.parametrize("kind", ["window", "sampling"])
 @pytest.mark.parametrize("modal", [False, True])
 def test_actual_app_right_reset_does_not_clear_selected_jobs_or_text(palette_dashboard, kind, modal):
-    from tower import text_selection
+    from raven import text_selection
     dashboard = palette_dashboard
     if modal:
         control = open_reported_modal(dashboard)

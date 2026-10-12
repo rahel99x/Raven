@@ -9,12 +9,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.logs import LogBuffer
-from tower.model import GpuSample, Job, Live, Store, secs
-from tower.record import RecordingBackend, ReplayBackend, ReplayClock
-from tower.remote import LocalFiles, RemoteFiles, SshBackend
-from tower.sampler import Sampler
-from tower.slurm import CommandError, FakeBackend, Slurm
+from raven.logs import LogBuffer
+from raven.model import GpuSample, Job, Live, Store, secs
+from raven.record import RecordingBackend, ReplayBackend, ReplayClock
+from raven.remote import LocalFiles, RemoteFiles, SshBackend
+from raven.sampler import Sampler
+from raven.slurm import CommandError, FakeBackend, Slurm
 
 
 def job(jid="1"):
@@ -174,7 +174,7 @@ def test_replay_keeps_argument_boundaries_and_latest_equal_timestamp(tmp_path):
 
 
 def test_replay_playback_uses_monotonic_elapsed_time(monkeypatch):
-    from tower import record
+    from raven import record
     now = [10.0]
     monkeypatch.setattr(record.time, "monotonic", lambda: now[0])
     monkeypatch.setattr(record.time, "time", lambda: 1_000_000)
@@ -233,7 +233,7 @@ def test_invalid_day_duration_is_unknown():
 
 
 def test_initial_weather_waits_for_jobs_partitions_and_discovered_account():
-    from tower.model import Partition
+    from raven.model import Partition
 
     ready = {"jobs": False, "partitions": False, "share": False}
 

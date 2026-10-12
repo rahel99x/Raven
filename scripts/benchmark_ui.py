@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure Tower UI CPU work with synthetic, published, in-memory data.
+"""Measure Raven UI CPU work with synthetic, published, in-memory data.
 
 No Slurm connection, personal configuration, persistent state, report reader,
 or terminal is required. Times exclude terminal transport and are diagnostics,
@@ -22,6 +22,9 @@ import sys
 import time
 from types import SimpleNamespace
 from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from benchmark_source import load_module
 
 
 def positive(value):
@@ -67,14 +70,23 @@ class Measurements:
 
 
 def run_case(args, ascii_):
-    from tower import advisor, analysis_ui, charts, clock, interaction, layout as L
-    from tower import screen, scrolling, startup, toolbar
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Finished, Job, Live, Store
-    from tower.research import ResearchHub
-    from tower.slurm import FakeBackend, Slurm
-    from tower.views import Views
+    source = getattr(args, "source_root", Path(__file__).resolve().parents[1])
+    advisor, analysis_ui, charts, clock, interaction, L = (
+        load_module(source, suffix) for suffix in
+        ("advisor", "analysis_ui", "charts", "clock", "interaction", "layout"))
+    screen, scrolling, startup, toolbar = (
+        load_module(source, suffix) for suffix in
+        ("screen", "scrolling", "startup", "toolbar"))
+    Config = load_module(source, "config").Config
+    App = load_module(source, "controller").App
+    model = load_module(source, "model")
+    Finished, Job, Live, Store = model.Finished, model.Job, model.Live, model.Store
+    ResearchHub = load_module(source, "research").ResearchHub
+    slurm_module = load_module(source, "slurm")
+    FakeBackend, Slurm = slurm_module.FakeBackend, slurm_module.Slurm
+    Views = load_module(source, "views").Views
+    initialize_charts = (load_module(source, "chart_interaction").initialize
+                         if args.gesture == "chart-hover" else None)
 
     cfg = Config({"log_lines": 0, "startup_animation": False,
                   "workspace": {"density": "compact", "split": 50}})
@@ -155,8 +167,7 @@ def run_case(args, ascii_):
         if args.gesture == "render" or not app.last_hits:
             return
         if args.gesture == "chart-hover" and (app.tab != "jobs" or iteration % 3):
-            from tower.chart_interaction import initialize
-            plots = initialize(app)["plots"]
+            plots = initialize_charts(app)["plots"]
             target = plots[iteration % len(plots)] if plots else None
             if target is None:
                 raise RuntimeError("Chart hover requires a visible published graph; increase width or height")
@@ -257,7 +268,7 @@ def run_case(args, ascii_):
             # under an older --source-root package. Inspect the actual row
             # builder before choosing its corresponding diagnostic hook.
             if "job_row_cache" in Views.job_rows.__code__.co_names:
-                from tower import job_row_cache
+                job_row_cache = load_module(source, "job_row_cache")
             else:
                 job_row_cache = None
             if job_row_cache is None:
@@ -332,7 +343,7 @@ def main():
     parser.add_argument("--metrics", type=positive, default=8)
     parser.add_argument("--points", type=positive, default=1000)
     parser.add_argument("--source-root", type=Path, default=Path(__file__).resolve().parents[1],
-                        help="checkout or extracted archive that contains the tower package")
+                        help="checkout or extracted archive containing the selected source package")
     parser.add_argument("--label", default="", help="optional commit or comparison label")
     parser.add_argument("--output", type=Path, help="save the full JSON report")
     parser.add_argument("--json", action="store_true", help="print JSON instead of a short report")
@@ -346,13 +357,13 @@ def main():
     if args.width < 40 or args.height < 16:
         parser.error("use at least --width 40 --height 16")
     source = args.source_root.resolve()
-    if not (source / "tower" / "__init__.py").is_file():
-        parser.error("--source-root must contain tower/__init__.py")
-    sys.path.insert(0, str(source))
-    from tower import __version__
+    try:
+        package = load_module(source)
+    except (OSError, ValueError, RuntimeError, ImportError) as exc:
+        parser.error(str(exc))
     cases = [run_case(args, ascii_) for ascii_ in
              ([False, True] if args.glyphs == "both" else [args.glyphs == "ascii"])]
-    report = {"metadata": {"label": args.label, "source_root": str(source), "version": __version__,
+    report = {"metadata": {"label": args.label, "source_root": str(source), "version": package.__version__,
         "python": sys.version, "platform": platform.platform(), "interactive": True, "headless": False,
         "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "measurement": "CPU with a counting paint sink; excludes terminal transport and wait times",

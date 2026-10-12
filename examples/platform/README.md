@@ -36,13 +36,13 @@ In **Portable research evidence**, set the source format, source path, exact
 cluster, job ID and attempt. Set an export format and a **new** destination
 directory. Inspect the result, review the action, and apply it. Raven verifies
 that the source did not change and writes a private bundle containing
-`tower-evidence.json` plus the selected export. Existing destinations are
+`raven-evidence.json` plus the selected export. Existing destinations are
 refused. Original external artifacts are referenced; they are not copied or
 fetched automatically.
 
 | Format | Supported input | Boundary |
 | --- | --- | --- |
-| `tower-evidence` | `tower.evidence/v1` | Unknown coverage/loss stays unknown; a digest checks integrity, not truth |
+| `raven-evidence` | `raven.evidence/v1` | Unknown coverage/loss stays unknown; a digest checks integrity, not truth |
 | `perfetto-json` | Chrome/Perfetto `traceEvents` JSON | Duration, counter and flow observations; other phases retained without invented meaning; no binary protobuf importer |
 | `caliper-json-records` | Caliper `FORMAT json` records or object layout | Original records/attributes retained; no `.cali` or `json-split` parser; units are not guessed |
 | `workflow-run-ro-crate` | Literal-key `@context`/`@graph`, root, metadata and CreateAction entities | No network JSON-LD expansion or full profile certification |
@@ -65,7 +65,7 @@ Copy and review [site-policy.json](site-policy.json). In the Raven configuration
 
 ```toml
 site_policy = "/absolute/path/to/site-policy.json"
-collection_cache_dir = "/private/host-local/path/tower-collection"
+collection_cache_dir = "/private/host-local/path/raven-collection"
 ```
 
 The cache directory must be owned by the current user with mode `0700`, on a
@@ -159,15 +159,15 @@ Prepare a host-specific manifest with hashes of the actual Python executable
 and example script:
 
 ```sh
-python examples/platform/make_adapter_manifest.py > /tmp/tower-adapter.json
+python examples/platform/make_adapter_manifest.py > /tmp/raven-adapter.json
 ```
 
 Then enter these commands in the Raven palette:
 
 ```text
-:ops run adapter manifest=/tmp/tower-adapter.json action=inspect
-:ops run adapter manifest=/tmp/tower-adapter.json action=describe
-:ops run adapter manifest=/tmp/tower-adapter.json action=run request=examples/platform/adapter-request.json
+:ops run adapter manifest=/tmp/raven-adapter.json action=inspect
+:ops run adapter manifest=/tmp/raven-adapter.json action=describe
+:ops run adapter manifest=/tmp/raven-adapter.json action=run request=examples/platform/adapter-request.json
 ```
 
 The native Describe, Validate, and Run contract prepares an action for review

@@ -3,8 +3,8 @@ from threading import Event, get_ident
 
 import pytest
 
-from tower import layout, ops_ui, ui_persistence, workbench
-from tower.model import Store
+from raven import layout, ops_ui, ui_persistence, workbench
+from raven.model import Store
 from test_operations_sequences import operation_dashboard
 
 

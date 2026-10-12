@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L, operations as O, ops_ui
+from raven import layout as L, operations as O, ops_ui
 
 
 @pytest.mark.parametrize("ascii_mode", [False, True])
@@ -59,11 +59,11 @@ def test_review_wrap_bound_cached_and_invalidates_on_width_and_plan(monkeypatch)
 @pytest.mark.parametrize("ascii_mode", [False, True])
 @pytest.mark.parametrize("width", [70, 150])
 def test_standalone_analytics_retains_tools_inline_does_not_build_discarded_controls(monkeypatch, ascii_mode, width):
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.views import Views
-    from tower import job_panels
+    from raven.config import Config
+    from raven.controller import App
+    from raven.model import Job, Store
+    from raven.views import Views
+    from raven import job_panels
 
     cfg = Config({"log_lines": 0, "animations": False, "startup_animation": False})
     store = Store(persist=False)

@@ -3,9 +3,9 @@ from dataclasses import replace
 
 import pytest
 
-from tower import job_groups as G
-from tower.model import Finished, Job
-from tower.slurm import (CommandError, GROUP_FMT, GROUP_WIRE_MARKER, JOB_FMT, SACCT_FIELDS,
+from raven import job_groups as G
+from raven.model import Finished, Job
+from raven.slurm import (CommandError, GROUP_FMT, GROUP_WIRE_MARKER, JOB_FMT, SACCT_FIELDS,
                          SACCT_LEGACY_FIELDS, Slurm, parse_group, parse_jobs, parse_sacct)
 
 

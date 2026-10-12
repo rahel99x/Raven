@@ -2,12 +2,12 @@
 from types import SimpleNamespace
 import threading
 
-from tower import layout as L
-from tower.raven_limits import CacheBudget, BudgetCache, LightLimits, bind, retained_size
-from tower.model import Store, Job, Finished
-from tower.native_series_cache import NativeSeriesCache
-from tower.metric_raster import MetricRasterCache
-from tower.logs import LogSession
+from raven import layout as L
+from raven.raven_limits import CacheBudget, BudgetCache, LightLimits, bind, retained_size
+from raven.model import Store, Job, Finished
+from raven.native_series_cache import NativeSeriesCache
+from raven.metric_raster import MetricRasterCache
+from raven.logs import LogSession
 
 
 def test_shared_cache_budget_evicts_across_owners_and_never_calls_back_under_lock():
@@ -190,14 +190,14 @@ def test_archive_inventory_bounds_non_history_entries(tmp_path,monkeypatch):
             for index in range(1000):
                 visited.append(index)
                 yield SimpleNamespace(name='unrelated-'+str(index))
-    monkeypatch.setattr('tower.series_archive.os.scandir',lambda path:Entries())
+    monkeypatch.setattr('raven.series_archive.os.scandir',lambda path:Entries())
     assert store.series_jobs()==[]
     assert len(visited)==5 and limits.coverage['archive_inventory']['limited']
 
 
 def test_oversized_persistence_record_refused_before_serialization(monkeypatch):
     limits=LightLimits({'persistence_queue_bytes':100})
-    monkeypatch.setattr('tower.raven_limits.json.dumps',lambda *a,**kw:(_ for _ in ()).throw(AssertionError('serialized')))
+    monkeypatch.setattr('raven.raven_limits.json.dumps',lambda *a,**kw:(_ for _ in ()).throw(AssertionError('serialized')))
     queue=[]
     limits.enqueue(queue,'owned.jsonl',{'payload':'x'*2000})
     assert not queue and limits.coverage['persistence']['limited']

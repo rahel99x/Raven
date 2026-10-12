@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/prometheus-query.schema.json",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/prometheus-query.schema.json",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.prometheus-query/v1"
+      "const": "raven.prometheus-query/v1"
     },
     "id": {
       "type": "string",
@@ -223,7 +223,7 @@
       "type": "object",
       "properties": {
         "schema": {
-          "const": "tower.site-policy/v1"
+          "const": "raven.collection-policy/v1"
         },
         "id": {
           "type": "string",

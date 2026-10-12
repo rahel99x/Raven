@@ -5,15 +5,15 @@ import threading
 
 import pytest
 
-from tower import report
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Job, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views
+from raven import report
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Job, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 @pytest.fixture

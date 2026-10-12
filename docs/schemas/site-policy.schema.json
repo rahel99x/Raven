@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/site-policy.schema.json",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/site-policy.schema.json",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.site-policy/v1"
+      "const": "raven.collection-policy/v1"
     },
     "id": {
       "type": "string",

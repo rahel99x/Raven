@@ -3,16 +3,16 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import (analysis_ui as A, analytics_document as D, chart_interaction as C,
+from raven import (analysis_ui as A, analytics_document as D, chart_interaction as C,
                    layout as L, log_tools as T, log_workbench as W,
                    research_views as R, scrollbars as S, scrolling)
-from tower.config import Config
-from tower.controller import App
-from tower.logs import LogSession
-from tower.model import Job, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views
+from raven.config import Config
+from raven.controller import App
+from raven.logs import LogSession
+from raven.model import Job, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views
 
 
 @pytest.fixture
@@ -122,7 +122,7 @@ def test_research_metrics_reserve_rail_and_keep_navigation_and_cached_hits(app, 
 
 
 def test_fitting_24_cell_research_metric_keeps_live_controls_and_full_width(app, monkeypatch):
-    from tower import metric_live
+    from raven import metric_live
     application, views = app
     application.tab, application.research_job_id = "research", "77"
     application.width, application.height = 24, 60
@@ -259,7 +259,7 @@ def test_nonoverflow_log_tools_still_publish_cached_text_region_without_scroll_c
 
 @pytest.mark.parametrize("all_file", [False, True])
 def test_log_tools_copy_captures_toolbar_destination_before_worker_runs(monkeypatch, all_file):
-    from tower import log_copy
+    from raven import log_copy
     application = log_app()
     application.mode = "log_tools_page"
     application.cfg["clipboard"] = {"destination": "yank", "osc52": False, "tools": False}

@@ -3,10 +3,10 @@ from copy import deepcopy
 
 import pytest
 
-from tower import chart_interaction as Charts, column_resize as Columns, group_queue_drag as Queue
-from tower import job_groups as Groups, job_group_drag as Membership, job_selection as Selection
-from tower import table_ui
-from tower.model import Job
+from raven import chart_interaction as Charts, column_resize as Columns, group_queue_drag as Queue
+from raven import job_groups as Groups, job_group_drag as Membership, job_selection as Selection
+from raven import table_ui
+from raven.model import Job
 from test_group_queue_drag import dashboard, draw, grip, row, send
 
 

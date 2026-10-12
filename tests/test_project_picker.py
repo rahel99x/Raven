@@ -6,17 +6,17 @@ import shutil
 
 import pytest
 
-from tower import projects, project_ui, provenance
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text, vlen
-from tower.model import Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven import projects, project_ui, provenance
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text, vlen
+from raven.model import Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 def inventory(run_id="fit-a1", **values):
-    return {"schema": "tower.run/v1", "run_id": run_id, "experiment_id": "fit", "attempt": 1, "state": "RUNNING", **values}
+    return {"schema": "raven.run/v1", "run_id": run_id, "experiment_id": "fit", "attempt": 1, "state": "RUNNING", **values}
 
 
 def make_run(root, run_id="fit-a1", **values):
@@ -27,7 +27,7 @@ def make_run(root, run_id="fit-a1", **values):
 
 
 def contract(root, outputs):
-    path = root / ".tower" / "contracts" / "outputs.v1.json"
+    path = root / ".raven" / "contracts" / "outputs.v1.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"version": 1, "outputs": outputs}))
     return path
@@ -113,7 +113,7 @@ def test_empty_project_is_valid_and_explicit(tmp_path):
 def test_invalid_attempt_does_not_hide_others(tmp_path):
     good = make_run(tmp_path, "good")
     bad = make_run(tmp_path, "bad")
-    (bad / "run.json").write_text('{"schema":"tower.run/v1","run_id":"bad","run_id":"other"}')
+    (bad / "run.json").write_text('{"schema":"raven.run/v1","run_id":"bad","run_id":"other"}')
     mismatch = make_run(tmp_path, "mismatch")
     (mismatch / "run.json").write_text(json.dumps(inventory("different")))
     result = projects.discover_project(str(tmp_path))
@@ -227,13 +227,13 @@ def test_run_binding_matches_inventory_and_exact_sources(tmp_path):
     (run / "logs").mkdir()
     (run / "logs" / "stdout.log").write_text("observed output\n")
     (run / "metrics.jsonl").write_text("{}\n")
-    (run / "logs.json").write_text(json.dumps({"schema": "tower.logs/v1", "run_id": "fit-a1", "job_id": "123_4", "logs": [{"id": "worker", "path": "logs/worker.log"}]}))
+    (run / "logs.json").write_text(json.dumps({"schema": "raven.logs/v1", "run_id": "fit-a1", "job_id": "123_4", "logs": [{"id": "worker", "path": "logs/worker.log"}]}))
     contract(tmp_path, [{"path": "run.json", "format": "json"}])
     result = projects.select_run(str(tmp_path), "fit-a1")
     assert result["binding"]["job_id"] == "123_4"
     assert result["binding"]["run_root"] == str(run)
     assert result["binding"]["metrics_file"] == str(run / "metrics.jsonl")
-    assert result["binding"]["contract"] == str(tmp_path / ".tower" / "contracts" / "outputs.v1.json")
+    assert result["binding"]["contract"] == str(tmp_path / ".raven" / "contracts" / "outputs.v1.json")
     assert [entry["path"] for entry in result["logs"]] == [str(run / "logs/stdout.log"), str(run / "logs/worker.log")]
     assert result["binding"]["passport"] == ""
 
@@ -249,7 +249,7 @@ def test_run_does_not_guess_undeclared_paths_or_job_identity(tmp_path):
 @pytest.mark.parametrize("claimed", [{"run_id": "different"}, {"job_id": "999"}])
 def test_mismatched_log_inventory_cannot_bind(tmp_path, claimed):
     run = make_run(tmp_path, job_id="123", paths={"log_index": "logs.json"})
-    (run / "logs.json").write_text(json.dumps({"schema": "tower.logs/v1", "logs": [{"id": "x", "path": "x.log"}], **claimed}))
+    (run / "logs.json").write_text(json.dumps({"schema": "raven.logs/v1", "logs": [{"id": "x", "path": "x.log"}], **claimed}))
     result = projects.select_run(str(tmp_path), "fit-a1")
     assert result["binding"]["log_manifest"] == "" and not result["logs"]
     assert any("does not match" in message for message in result["warnings"])
@@ -261,7 +261,7 @@ def test_native_external_logs_preserve_explicit_locations_and_symlinks_refused(t
     outside.write_text("private\n")
     run = make_run(root, paths={"log_index": "logs.json", "metrics": "linked"})
     (run / "linked").symlink_to(outside)
-    (run / "logs.json").write_text(json.dumps({"schema": "tower.logs/v1", "logs": [{"id": "outside", "path": str(outside)}, {"id": "link", "path": "linked"}]}))
+    (run / "logs.json").write_text(json.dumps({"schema": "raven.logs/v1", "logs": [{"id": "outside", "path": str(outside)}, {"id": "link", "path": "linked"}]}))
     result = projects.select_run(str(root), "fit-a1")
     assert [entry["path"] for entry in result["logs"]] == [str(outside)]
     assert result["logs"][0]["external"] is True
@@ -275,7 +275,7 @@ def test_native_sibling_log_declaration_is_preserved(tmp_path):
     shared = run.parent / "shared"
     shared.mkdir()
     (shared / "driver.log").write_text("actual shared output")
-    (run / "logs.json").write_text(json.dumps({"schema": "tower.logs/v1", "logs": [{"id": "driver", "path": "../shared/driver.log"}]}))
+    (run / "logs.json").write_text(json.dumps({"schema": "raven.logs/v1", "logs": [{"id": "driver", "path": "../shared/driver.log"}]}))
     result = projects.select_run(str(tmp_path), "fit-a1")
     assert [entry["path"] for entry in result["logs"]] == [str(shared / "driver.log")]
     assert result["logs"][0]["external"]

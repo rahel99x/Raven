@@ -1,5 +1,5 @@
 {
-  "schema": "tower.runtime-control/v1",
+  "schema": "raven.runtime-control/v1",
   "attempts": [
     "job123:attempt1"
   ],

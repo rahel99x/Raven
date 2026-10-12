@@ -184,7 +184,7 @@ Include narrow and wide terminals, Unicode and ASCII, and tmux-compatible termin
 Use this procedure when a normal terminal and an SSH client both show pauses.
 The recorder measures Raven's foreground phases. It does not increase source polling.
 
-1. Start `tower --ui-trace ui-trace.json`. Use a new file name for each run.
+1. Start `raven --ui-trace ui-trace.json`. Use a new file name for each run.
 2. Open the affected job and graph view.
 3. Move and drag the pointer across the job list and plots for 20–30 seconds.
 4. Include a few source updates and a scroll through the Details graphs.
@@ -220,16 +220,16 @@ The recorder retains at most 32 phases, 64 slow events, and 128 page transitions
 
 ## Implementation history
 
-Tower 4.3.1 introduced the cached pointer display and bounded long inline views.
-Tower 4.4.0 extended that path for draggable workspaces, shared launch groups, history browsers, and Quick Advisor.
-Tower 4.5.0 extended it to current-viewport directional focus and metric crosshair feedback.
-Tower 4.7.0 added pane scrollbars, pinned rendered-line selections, and finer continuous Braille curves.
-Tower 4.8.2 separated protocol-safe pointer input from keyboard shortcuts and repainted changed cells.
-Tower 4.8.3 restored saved metrics in the background, released the data lock before persistence,
+Raven 4.3.1 introduced the cached pointer display and bounded long inline views.
+Raven 4.4.0 extended that path for draggable workspaces, shared launch groups, history browsers, and Quick Advisor.
+Raven 4.5.0 extended it to current-viewport directional focus and metric crosshair feedback.
+Raven 4.7.0 added pane scrollbars, pinned rendered-line selections, and finer continuous Braille curves.
+Raven 4.8.2 separated protocol-safe pointer input from keyboard shortcuts and repainted changed cells.
+Raven 4.8.3 restored saved metrics in the background, released the data lock before persistence,
 and limited inline Job series raster work to the visible metric bands.
-Tower 4.9.0 added one byte decoder, reusable native metric preparations, indexed
+Raven 4.9.0 added one byte decoder, reusable native metric preparations, indexed
 Live windows, shorter observer critical sections, and a bounded pointer check before paint.
-Tower 4.11.0 added buffering for the display time of running metric graphs.
+Raven 4.11.0 added buffering for the display time of running metric graphs.
 This reduces visible edge jumps when measurements arrive in batches; it does not increase source sampling or make a delayed measurement current.
 See [Buffered running graphs](charts.md#read-buffered-running-graphs) for delay and outage behavior.
 Theme changes repaint the document with the selected canvas and surfaces.
@@ -237,7 +237,7 @@ Live metric windows use display deadlines while source sampling retains its own 
 Hover, smooth scrolling, drag selection, menus, and live job updates remain available.
 The display changes do not increase Slurm sampling rates.
 
-Tower 6.1 introduced shared revisioned metric publications across source consumers, copied
+Raven 6.1 introduced shared revisioned metric publications across source consumers, copied
 only visible cached job rows, and deferred hidden telemetry heatmaps. An additional
 bounded cache reuses exact time buckets when chart presentation changes. The
 Advisor working set can retain more small sources under the same byte budget.
@@ -246,9 +246,9 @@ Pane geometry and pointer capture ownership use shared contracts. Read the
 [6.1 measurements](consolidation-validation.md) for the implemented scope,
 regression checks, and remaining latency limits.
 
-## Tower 4.3.1 release measurements
+## Raven 4.3.1 release measurements
 
-The release comparison used Tower 4.3.0 at `98b2d86` and the final 4.3.1 source.
+The release comparison used Raven 4.3.0 at `98b2d86` and the final 4.3.1 source.
 Both revisions used Python 3.12 on the same Linux cloud runner.
 Each pair ran sequentially with the same fixtures and options.
 
@@ -288,9 +288,9 @@ They checked drag release, resize, reversed scrolling, and keyboard input.
 Actual fixture job completion and new metric publication remained visible during continuous pointer movement.
 No scheduler-changing command ran in the tests.
 
-## Tower 4.4.0 workspace measurements
+## Raven 4.4.0 workspace measurements
 
-The workspace comparison used Tower 4.3.1 at `f873717` and the final 4.4.0 source.
+The workspace comparison used Raven 4.3.1 at `f873717` and the final 4.4.0 source.
 Each pair ran sequentially on the same runner with Python 3.12.
 The public benchmark used a 120-column by 36-row Unicode display, 500 jobs, 2,000 accounting records, and 20 measured frames.
 The Research fixture contained 64 metrics and 256 records.
@@ -324,9 +324,9 @@ Adaptive controls also passed terminal checks at 40, 80, 120, and 180 columns in
 Those checks covered buffered divider capture, drag cancellation, resize, older Recents, shared folds, exact historical job selection, four history docking orientations, asynchronous Quick Advisor, and six-cell progress sorting.
 The scheduler fixtures allowed only read commands.
 
-## Tower 4.5.0 metric and input measurements
+## Raven 4.5.0 metric and input measurements
 
-The metric comparison used Tower 4.4.0 at `de94c7b` and the final 4.5.0 display and input paths.
+The metric comparison used Raven 4.4.0 at `de94c7b` and the final 4.5.0 display and input paths.
 Both revisions used Python 3.12 on the same runner and ran sequentially.
 The counting-paint benchmark used 120 columns, 36 rows, 500 jobs, 2,000 accounting records, and 20 measured frames.
 The Research fixture contained 64 metrics and 256 records.
@@ -360,9 +360,9 @@ The hover result is a three-burst median; each other row describes one observed 
 These observations include queued input and exclude SSH transport and terminal-emulator presentation.
 They show bounded cached feedback and fewer wheel updates in this fixture, not a universal improvement for every workload.
 
-## Tower 4.8.2 pointer measurements
+## Raven 4.8.2 pointer measurements
 
-The comparison used Tower 4.8.1 at `f5c2a3e` and the final 4.8.2 source on the same Python 3.12 Linux runner.
+The comparison used Raven 4.8.1 at `f5c2a3e` and the final 4.8.2 source on the same Python 3.12 Linux runner.
 Each revision processed 300 movements across the selected job row and its Details graphs.
 The fixture contained 1,000 jobs, 3,000 history records, and 4,000 native samples in a 200-column by 60-row display.
 Both revisions used the same benchmark and a counting paint sink.
@@ -389,7 +389,7 @@ Changing only the old cache bounds to the release bounds reduced unchanged raste
 Observed maintenance composition decreased from 138.73 ms to 46.70 ms in that fixture.
 The source values, chart cards, live controls, and graph geometry remained available.
 
-## Tower 4.8.3 spike audit
+## Raven 4.8.3 spike audit
 
 The earlier warm-cache hover benchmark did not exercise all periodic update work.
 The follow-up audit also tested cold saved histories, delayed file I/O, fresh samples,
@@ -418,7 +418,7 @@ from 2,560 to 40. Job completion and requeue validation remain active.
 Use the [changing-data benchmark](../../scripts/benchmark_changing_ui.py) to reproduce this class of workload:
 
 ```bash
-python3 -S scripts/benchmark_changing_ui.py --output /tmp/tower-changing-ui.json
+python3 -S scripts/benchmark_changing_ui.py --output /tmp/raven-changing-ui.json
 ```
 
 The default fixture has 1,000 queue records, 3,000 accounting records, and 4,000 observations per source.
@@ -453,7 +453,7 @@ No measured frame attempted source I/O. Timing varies with host scheduling, reta
 visible controls, and terminal size. These results do not establish a universal frame-time limit.
 A separate 120-frame End/Home case retained visible graph controls in every frame, including the lower GPU trace cards.
 
-## Tower 4.9.0 latency audit
+## Raven 4.9.0 latency audit
 
 The audit reproduced a mouse report that opened Logs. Ncurses consumed a legacy
 mouse header and part of a UTF-8 coordinate. The remaining coordinate byte was `l`.
@@ -485,7 +485,7 @@ CPU/GPU data, Live graphs, and continuous pointer reports:
 
 ```bash
 python3 -S scripts/benchmark_sustained_pointer.py \
-  --source-root . --output /tmp/tower-pointer.json \
+  --source-root . --output /tmp/raven-pointer.json \
   --live --delta 5 --points 4000 --jobs 3 \
   --rates 50,250,1000 --seconds 4
 ```
@@ -655,4 +655,4 @@ python3 -m pytest -q tests/test_job_group_drag.py \
 
 The measured 4.13 runtime digest was
 `3a7bdadcdf7d0320a648fbc0dfd9c74e28534b52c4d29147cf2deb56038709d5`.
-It is the SHA-256 of the concatenated `tower/*.py` contents in filename order.
+It is the SHA-256 of the concatenated `raven/*.py` contents in filename order.

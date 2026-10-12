@@ -5,13 +5,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, charts, clock, layout as L
-from tower import metric_live as M, metric_sampling as S, screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.text_selection import _slice
-from tower.views import Views
+from raven import analysis_ui as A, chart_interaction as C, charts, clock, layout as L
+from raven import metric_live as M, metric_sampling as S, screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.text_selection import _slice
+from raven.views import Views
 
 
 @pytest.fixture(params=["analytics", "jobs", "modal"])

@@ -20,7 +20,7 @@ The separate interactive `:orchestrate` command opens a complete execution
 review; only explicit confirmation of that review submits a batch.
 
 These examples preserve native planning formats and compatibility syntax.
-In managed Raven, bare `tower` starts Light. Scientific planning requires a
+In managed Raven, bare `raven` starts Light. Scientific planning requires a
 supported admitted worker, and some execution handoffs remain deferred even
 after admission. Use the [execution contracts](raven/execution-contracts.md)
 to distinguish supported analysis, verified job-local work, and deferred actions.
@@ -30,16 +30,16 @@ outside a managed session.
 ## Try the terminal views
 
 Install Raven or complete the source setup before running these commands.
-The examples use the `tower` compatibility entry point; `ravenl` also opens the
+The examples use the `raven` compatibility entry point; `ravenl` also opens the
 Light interface. Installed entry points do not require a shell alias.
 
 ```bash
-tower --fake --tab research --research-view predict
-tower --fake --tab research --research-view forecast
-tower --fake --tab research --research-view blockers
-tower --fake --tab research --research-view tradeoffs
-tower --fake --tab research --research-view scaling
-tower --fake --tab research --research-view workflow
+raven --fake --tab research --research-view predict
+raven --fake --tab research --research-view forecast
+raven --fake --tab research --research-view blockers
+raven --fake --tab research --research-view tradeoffs
+raven --fake --tab research --research-view scaling
+raven --fake --tab research --research-view workflow
 ```
 
 The demo is explicitly simulated. Solid block ranges, comparison bars, scaling
@@ -51,9 +51,9 @@ Resources, Forecast, and Blockers; PgUp/PgDn scrolls long results.
 Attach an explicit planning file with:
 
 ```bash
-tower --tab research --research-view predict \
+raven --tab research --research-view predict \
   --planning-file examples/planning/observations.json
-tower --fake --tab research --research-view workflow \
+raven --fake --tab research --research-view workflow \
   --planning-file examples/planning/workflow.json
 ```
 
@@ -64,7 +64,7 @@ asking an SSH viewer to inspect a different machine's files.
 
 ## Commands and result files
 
-`tower run` prints a JSON result suitable for inspection or redirection. The
+`raven run` prints a JSON result suitable for inspection or redirection. The
 file-backed analyses below use explicit observations or recipes rather than
 collecting scheduler data. Managed execution admission still applies. A result
 can legitimately contain `null`, `insufficient`, `partial`, or
@@ -74,18 +74,18 @@ JSON evidence; a blocked job report does not mean Raven attempted a job action.
 
 | Command | What it does |
 | --- | --- |
-| `tower run predict [JOBID]` | Predicts measurements from the current history snapshot. |
-| `tower run forecast [JOBID]` | Examines the selected queued job and recorded forecast outcomes. |
-| `tower run blockers [JOBID]` | Explains observed scheduler reasons and dependency evidence. |
-| `tower run predict --file FILE` | Predicts from an explicit history or planning bundle. |
-| `tower run forecast --file FILE` | Forecasts from a bundle containing the queued job and observations. |
-| `tower run blockers --file FILE` | Explains the bundle's job, details, dependencies, and placement evidence. |
-| `tower run tradeoffs FILE` | Compares explicitly declared requests for the same scientific work. |
-| `tower run tradeoffs FILE --choose 0 --script SCRIPT --workdir DIR` | Prepares candidate index 0 for review; does not submit. |
-| `tower run scaling analyze FILE --mode strong --baseline 1` | Summarizes comparable measured repeats. |
-| `tower run scaling plan RECIPE --workdir DIR` | Prepares bounded repeated-job plans and their forwarded controls. |
-| `tower run workflow analyze RECIPE` | Computes conditional times, critical paths, slack, and resource envelopes. |
-| `tower run workflow plan RECIPE --workdir DIR` | Adds individual script preflights with symbolic dependencies. |
+| `raven run predict [JOBID]` | Predicts measurements from the current history snapshot. |
+| `raven run forecast [JOBID]` | Examines the selected queued job and recorded forecast outcomes. |
+| `raven run blockers [JOBID]` | Explains observed scheduler reasons and dependency evidence. |
+| `raven run predict --file FILE` | Predicts from an explicit history or planning bundle. |
+| `raven run forecast --file FILE` | Forecasts from a bundle containing the queued job and observations. |
+| `raven run blockers --file FILE` | Explains the bundle's job, details, dependencies, and placement evidence. |
+| `raven run tradeoffs FILE` | Compares explicitly declared requests for the same scientific work. |
+| `raven run tradeoffs FILE --choose 0 --script SCRIPT --workdir DIR` | Prepares candidate index 0 for review; does not submit. |
+| `raven run scaling analyze FILE --mode strong --baseline 1` | Summarizes comparable measured repeats. |
+| `raven run scaling plan RECIPE --workdir DIR` | Prepares bounded repeated-job plans and their forwarded controls. |
+| `raven run workflow analyze RECIPE` | Computes conditional times, critical paths, slack, and resource envelopes. |
+| `raven run workflow plan RECIPE --workdir DIR` | Adds individual script preflights with symbolic dependencies. |
 
 Candidate indices are **zero based** and retain their original positions even
 when another candidate is invalid. In the interactive command palette, type:
@@ -102,12 +102,12 @@ authorize or trigger submission.
 
 ## Planning bundle
 
-A `tower.planning` bundle can supply several views from one frozen snapshot:
+A `raven.planning` bundle can supply several views from one frozen snapshot:
 
 ```json
 {
   "version": 1,
-  "kind": "tower.planning",
+  "kind": "raven.planning",
   "simulated": false,
   "coverage": 0.8,
   "query": {
@@ -124,7 +124,7 @@ A `tower.planning` bundle can supply several views from one frozen snapshot:
   "scaling": [],
   "workflow": {
     "version": 1,
-    "kind": "tower.workflow",
+    "kind": "raven.workflow",
     "nodes": [{"id": "analysis", "runtime_seconds": 120}]
   }
 }
@@ -190,8 +190,8 @@ Raven withholds a memory interval when scopes are unknown or mixed and does
 not turn task RSS into a safe `--mem` recommendation.
 
 ```bash
-tower run predict --file examples/planning/observations.json --coverage 0.8
-tower run predict --file history.json --name my-analysis --partition main \
+raven run predict --file examples/planning/observations.json --coverage 0.8
+raven run predict --file history.json --name my-analysis --partition main \
   --cpus 4 --nodes 1 --gpus 0 --account my_account --qos normal
 ```
 
@@ -252,8 +252,8 @@ calibrate a forecast. Repeated snapshots and job steps do not become independent
 outcomes. A job ID plus submission timestamp identifies a scheduling episode.
 
 ```bash
-tower run forecast --file examples/planning/observations.json --coverage 0.8
-tower run forecast 23456
+raven run forecast --file examples/planning/observations.json --coverage 0.8
+raven run forecast 23456
 ```
 
 Scheduler calibration requires at least **20 independent submitted-job
@@ -303,8 +303,8 @@ to evidence IDs. It can show dependency clauses and predecessor states, partial
 placement screening, source freshness, and matched fairshare information.
 
 ```bash
-tower run blockers 23456
-tower run blockers --file examples/planning/observations.json
+raven run blockers 23456
+raven run blockers --file examples/planning/observations.json
 ```
 
 Dependencies support documented AND/OR forms and common Slurm kinds including
@@ -344,8 +344,8 @@ CPUs or GPUs do not imply an inverse-linear speedup. Optional
 its point bounds have no empirical coverage.
 
 ```bash
-tower run tradeoffs examples/planning/observations.json
-tower run tradeoffs examples/planning/observations.json --choose 0 \
+raven run tradeoffs examples/planning/observations.json
+raven run tradeoffs examples/planning/observations.json --choose 0 \
   --script examples/research/sample.sbatch --workdir "$PWD"
 ```
 
@@ -377,11 +377,11 @@ configuration. The plan contains exact resource flags, unique log paths, and
 the controls the workload must consume.
 
 ```bash
-tower run scaling plan examples/planning/scaling.json --workdir "$PWD"
-tower run scaling analyze examples/planning/observations.json --mode strong --baseline 1
+raven run scaling plan examples/planning/scaling.json --workdir "$PWD"
+raven run scaling analyze examples/planning/observations.json --mode strong --baseline 1
 ```
 
-A recipe has `version: 1`, `kind: "tower.scaling"`, `script`, `mode`,
+A recipe has `version: 1`, `kind: "raven.scaling"`, `script`, `mode`,
 `configurations`, and a positive `problem_size`. Optional fields include
 `workdir`, `name`, `baseline`, `repeats`, `seed`, `max_runs`, and scalar
 scientific `parameters`. Each configuration declares `workers` and can declare
@@ -393,13 +393,13 @@ exact proportional problem size per worker.
 The script receives:
 
 ```text
-TOWER_SCALING_WORKERS
-TOWER_SCALING_REPEAT
-TOWER_SCALING_SEED
-TOWER_SCALING_CONFIGURATION
-TOWER_SCALING_PROBLEM_SIZE
-TOWER_SCALING_EXPERIMENT_ID
-TOWER_PARAM_<UPPERCASE_PARAMETER_NAME>
+RAVEN_SCALING_WORKERS
+RAVEN_SCALING_REPEAT
+RAVEN_SCALING_SEED
+RAVEN_SCALING_CONFIGURATION
+RAVEN_SCALING_PROBLEM_SIZE
+RAVEN_SCALING_EXPERIMENT_ID
+RAVEN_PARAM_<UPPERCASE_PARAMETER_NAME>
 ```
 
 Forwarding controls does not prove that your application uses them. The supplied
@@ -419,7 +419,7 @@ paths for the local demonstration:
   --workers 2 --problem-size 10000 --repeat 1 --output two.json
 .venv/bin/python examples/planning/scaling_workload.py combine \
   one.json two.json --output measurements.json
-tower run scaling analyze measurements.json --mode strong --baseline 1
+raven run scaling analyze measurements.json --mode strong --baseline 1
 ```
 
 Run at least three distinct repeats per worker count to describe observed spread.
@@ -453,8 +453,8 @@ immediate capacity and successful predecessors. Queue delays, scheduler
 priority, retries, data staging, and real resource contention are not inferred.
 
 ```bash
-tower run workflow analyze examples/planning/workflow.json
-tower run workflow plan examples/planning/workflow.json --workdir "$PWD"
+raven run workflow analyze examples/planning/workflow.json
+raven run workflow plan examples/planning/workflow.json --workdir "$PWD"
 ```
 
 The example is an illustrative fork/join graph that reuses the independent toy
@@ -465,7 +465,7 @@ scenarios; those are illustrative estimates, not measurements.
 ```json
 {
   "version": 1,
-  "kind": "tower.workflow",
+  "kind": "raven.workflow",
   "name": "My workflow",
   "deadline_seconds": 900,
   "nodes": [
@@ -594,12 +594,12 @@ tracker evidence so it cannot calibrate an earlier projection.
 For integrations, the pure analysis APIs return JSON-compatible dictionaries:
 
 ```python
-from tower.predict import predict
-from tower.forecast import forecast, ForecastTracker
-from tower.blockers import explain
-from tower.tradeoffs import compare, prepare_choice
-from tower.scaling import analyze as analyze_scaling, plan as plan_scaling
-from tower.workflow import analyze as analyze_workflow, load, plans
+from raven.predict import predict
+from raven.forecast import forecast, ForecastTracker
+from raven.blockers import explain
+from raven.tradeoffs import compare, prepare_choice
+from raven.scaling import analyze as analyze_scaling, plan as plan_scaling
+from raven.workflow import analyze as analyze_workflow, load, plans
 
 resources = predict(history, query, coverage=0.8, max_records=10000)
 queue = forecast(job, history, observations=issued_outcomes, now=epoch,

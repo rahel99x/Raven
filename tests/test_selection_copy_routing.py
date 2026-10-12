@@ -1,11 +1,11 @@
 """Copy intent survives refreshes and never silently widens to the screen."""
 import pytest
 
-from tower import clipboard, layout, text_selection as text
-from tower.config import Config
-from tower.controller import App
-from tower.model import Store
-from tower.views import Views
+from raven import clipboard, layout, text_selection as text
+from raven.config import Config
+from raven.controller import App
+from raven.model import Store
+from raven.views import Views
 
 from test_text_selection import paint
 

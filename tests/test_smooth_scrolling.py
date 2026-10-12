@@ -8,12 +8,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import screen, scrolling
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Job, Store
-from tower.views import Views
+from raven import screen, scrolling
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Job, Store
+from raven.views import Views
 
 
 def small_app(**values):
@@ -332,7 +332,7 @@ def test_log_wheel_uses_only_published_buffer_and_exact_original_selection(tmp_p
 
 
 def test_dispatch_distinguishes_passive_hover_held_drag_release_and_press(monkeypatch):
-    from tower import toolbar, job_selection
+    from raven import toolbar, job_selection
     calls = []
     app = input_app(toolbar_state={}, job_selection_state={"capture": None},
                     click=lambda *args, **kwargs: calls.append(("click", args, kwargs)))

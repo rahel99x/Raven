@@ -226,7 +226,7 @@ protection for campaign launches and transfers.
 With normal state persistence, the common action layer writes
 `operations-receipts/<plan-digest>.intent.json` before execution and a matching
 `.result.json` when it collects the outcome. These files use
-`tower.operation-receipt/v1`. A durable intent prevents the same plan from
+`raven.operation-receipt/v1`. A durable intent prevents the same plan from
 being attempted again after a restart. An error record can describe a partial
 or unknown outcome; read the result and inspect current state before preparing
 another review. With `--no-state`, this common persistence is unavailable and
@@ -261,7 +261,7 @@ from a measured zero and a successful action.
 
 ## Project contracts and optional dependencies
 
-Keep reusable input policies in `.tower/definitions/operations/`. Keep generated
+Keep reusable input policies in `.raven/definitions/operations/`. Keep generated
 per-attempt evidence in `runs/<run_id>/reports/operations/`, and campaign evidence
 in `reports/operations/`. These are recommended locations, not automatic
 attachment rules. Enter explicit paths in operation forms. The existing
@@ -441,7 +441,7 @@ The event list retains the latest 16 observations.
 
 If blocks are misaligned, select a compatible monospace font.
 Use a UTF-8 locale for Unicode output.
-Use `tower --ascii --no-color` when those capabilities are unavailable.
+Use `raven --ascii --no-color` when those capabilities are unavailable.
 
 ### Test clipboard transport
 

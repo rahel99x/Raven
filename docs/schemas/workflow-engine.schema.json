@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/workflow-engine.schema.json",
-  "title": "Tower read-only native workflow runtime snapshot",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/workflow-engine.schema.json",
+  "title": "Raven read-only native workflow runtime snapshot",
   "type": "object", "additionalProperties": false,
   "required": ["schema", "engine", "workflow_id", "nodes"],
   "properties": {
-    "schema": {"const": "tower.workflow-engine/v1"},
+    "schema": {"const": "raven.workflow-engine/v1"},
     "engine": {"const": "snakemake"},
     "workflow_id": {"type": "string", "minLength": 1, "maxLength": 4096},
     "nodes": {

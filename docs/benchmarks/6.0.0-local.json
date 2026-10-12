@@ -1,5 +1,5 @@
 {
-  "schema": "tower.local-release-benchmark/v1",
+  "schema": "raven.local-release-benchmark/v1",
   "release": "6.0.0",
   "date_utc": "2026-10-11",
   "scope": "Linux shared cloud host; synthetic published job/metric fixtures and real local PTY. No terminal emulator, SSH, Slurm controller or physical GPU measurement.",

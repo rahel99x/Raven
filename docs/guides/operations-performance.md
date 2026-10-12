@@ -2,7 +2,7 @@
 
 [Performance guide](ui-performance.md) · [Scale operations](operations-scale.md)
 
-Tower 4.15.0 uses an immutable operation-definition cache for contextual
+Raven 4.15.0 uses an immutable operation-definition cache for contextual
 buttons, forms, and the catalog. The cache is built at application startup.
 Rendering no longer copies all field definitions for each visible button.
 This also fixes a regression in frozen Jobs views, where the new buttons
@@ -142,7 +142,7 @@ harness and arguments once for each source directory:
 ```sh
 python3 -S scripts/benchmark_changing_ui.py \
   --source-root /path/to/source \
-  --output /tmp/tower-benchmark.json \
+  --output /tmp/raven-benchmark.json \
   --cases static,live30,live1,switch,resize,scroll-end \
   --glyphs both --repeats 100
 ```

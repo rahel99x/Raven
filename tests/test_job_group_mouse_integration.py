@@ -4,11 +4,11 @@ import curses
 
 import pytest
 
-from tower import history_browser, job_groups, job_selection, layout, manual_job_groups, screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import history_browser, job_groups, job_selection, layout, manual_job_groups, screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 class InputWindow:
@@ -213,7 +213,7 @@ def test_range_selection_is_preserved_when_row_was_not_armed_or_shift_is_held(da
 
 @pytest.mark.parametrize("reason", ["resize", "tab", "modal", "source-attempt", "target-attempt", "membership", "fold"])
 def test_drag_rejects_changes_to_source_destination_or_view(dashboard, reason):
-    from tower import job_group_drag
+    from raven import job_group_drag
 
     app, store = dashboard
     _, hits = frame(dashboard)
@@ -245,7 +245,7 @@ def test_drag_rejects_changes_to_source_destination_or_view(dashboard, reason):
 
 @pytest.mark.parametrize("route", ["app", "native", "sgr"])
 def test_drag_pointer_hot_path_has_no_snapshot_inference_or_command_dispatch(dashboard, route, monkeypatch):
-    from tower import job_group_drag
+    from raven import job_group_drag
 
     app, store = dashboard
     _, hits = frame(dashboard)
@@ -266,7 +266,7 @@ def test_drag_pointer_hot_path_has_no_snapshot_inference_or_command_dispatch(das
 
 
 def test_proven_unheld_sgr_report_cancels_drop_after_missing_release(dashboard):
-    from tower import job_group_drag
+    from raven import job_group_drag
 
     app, _ = dashboard
     _, hits = frame(dashboard)
@@ -283,7 +283,7 @@ def test_proven_unheld_sgr_report_cancels_drop_after_missing_release(dashboard):
 
 
 def test_native_curses_motion_without_held_metadata_keeps_drag_compatibility(dashboard):
-    from tower import job_group_drag
+    from raven import job_group_drag
 
     app, _ = dashboard
     _, hits = frame(dashboard)
@@ -297,7 +297,7 @@ def test_native_curses_motion_without_held_metadata_keeps_drag_compatibility(das
 
 @pytest.mark.parametrize("route", ["app", "sgr"])
 def test_release_over_toolbar_or_tab_never_clicks_through(dashboard, route):
-    from tower import job_group_drag
+    from raven import job_group_drag
 
     app, _ = dashboard
     _, hits = frame(dashboard)
@@ -428,7 +428,7 @@ def test_advisor_job_rows_own_only_their_bounded_list_rectangles(dashboard):
 
 @pytest.mark.parametrize("route", ["app", "native", "sgr"])
 def test_dragging_marked_jobs_across_live_graph_cannot_capture_or_zoom_chart(dashboard, route):
-    from tower import chart_interaction, job_group_drag
+    from raven import chart_interaction, job_group_drag
 
     app, store = dashboard
     for step in range(30):
@@ -453,7 +453,7 @@ def test_dragging_marked_jobs_across_live_graph_cannot_capture_or_zoom_chart(das
 
 @pytest.mark.parametrize("route", ["app", "sgr"])
 def test_real_chart_gesture_and_right_reset_do_not_open_job_menu(dashboard, route):
-    from tower import chart_interaction, job_group_drag
+    from raven import chart_interaction, job_group_drag
 
     app, store = dashboard
     for step in range(30):
@@ -521,7 +521,7 @@ def many_group_menu(dashboard, *, expanded=True):
     dispatch(app, hits, point(hits, "4"), "right")
     assert app.mode == "job_group_menu"
     if expanded:
-        from tower import job_group_menu
+        from raven import job_group_menu
         state = job_group_menu.initialize(app)
         state["cursor"] = next(index for index, item in enumerate(state["items"]) if item["action"] == "more")
         job_group_menu.handle_key(app, "enter")
@@ -588,7 +588,7 @@ def test_group_menu_cached_hover_does_not_accumulate_scrollbars_or_recompose(das
 
 def selection_list(dashboard, scope):
     """Use the same published spans as pointer ownership, in painted order."""
-    from tower import job_group_drag
+    from raven import job_group_drag
     app, store = dashboard
     if scope.startswith("history:"):
         app.tab = scope.split(":", 1)[1]

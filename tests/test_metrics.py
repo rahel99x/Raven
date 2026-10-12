@@ -10,8 +10,8 @@ import sys
 
 import pytest
 
-from tower.metrics import MAX_ERRORS, MAX_LINE_BYTES, MAX_METRICS, MAX_POINTS, MAX_READ_BYTES, MAX_STREAMS, MetricReader, write_metric
-from tower.remote import LocalFiles
+from raven.metrics import MAX_ERRORS, MAX_LINE_BYTES, MAX_METRICS, MAX_POINTS, MAX_READ_BYTES, MAX_STREAMS, MetricReader, write_metric
+from raven.remote import LocalFiles
 
 
 def encoded(**overrides):
@@ -371,7 +371,7 @@ def test_concurrent_thread_writers_produce_complete_unique_records(tmp_path):
 
 def test_concurrent_process_writers_cooperate_without_interleaving(tmp_path):
     path = tmp_path / "processes"
-    code = ("import sys; from tower.metrics import write_metric; "
+    code = ("import sys; from raven.metrics import write_metric; "
             "[write_metric(sys.argv[1], {'result': i}, step=i, t=i) "
             "for i in range(int(sys.argv[2]), int(sys.argv[2])+25)]")
     processes = [subprocess.Popen([sys.executable, "-c", code, str(path), str(i * 25)],
@@ -432,7 +432,7 @@ def test_local_stat_to_open_replacements_cannot_block_or_be_read(tmp_path, repla
     code = """
 import json, os, sys
 from pathlib import Path
-from tower.metrics import MetricReader
+from raven.metrics import MetricReader
 path, target, replacement = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
 real_open = os.open
 triggered = False

@@ -8,10 +8,10 @@ import time
 
 import pytest
 
-from tower import flagship_commands, operations as O, ops_ui
-from tower.platform_session import GovernedBackend
-from tower.shared_collection import SharedQueryCache
-from tower.slurm import Backend, CommandError
+from raven import flagship_commands, operations as O, ops_ui
+from raven.platform_session import GovernedBackend
+from raven.shared_collection import SharedQueryCache
+from raven.slurm import Backend, CommandError
 from test_flagship_platform import policy
 from test_operations_sequences import operation_dashboard
 

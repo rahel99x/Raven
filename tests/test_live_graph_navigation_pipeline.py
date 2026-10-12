@@ -4,8 +4,8 @@ import curses
 
 import pytest
 
-from tower import chart_interaction, cli, clock, metric_live, screen
-from tower.config import Config
+from raven import chart_interaction, cli, clock, metric_live, screen
+from raven.config import Config
 
 
 class PointerWindow:

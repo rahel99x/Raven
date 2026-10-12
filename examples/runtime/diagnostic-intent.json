@@ -1,5 +1,5 @@
 {
-  "schema": "tower.diagnostic-intent/v1",
+  "schema": "raven.diagnostic-intent/v1",
   "question": "Compare MPI call duration and GPU activity duration for this phase.",
   "required": ["mpi-duration", "gpu-activity"],
   "runtime": {"mpi": "openmpi-5"},

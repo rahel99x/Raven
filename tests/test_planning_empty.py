@@ -1,7 +1,7 @@
 """An empty cohort must not silently accept invalid scientific preferences."""
 import pytest
 
-from tower.planning import analyze
+from raven.planning import analyze
 
 
 @pytest.mark.parametrize("coverage", [True, False, None, "0.8", 0, 1, -1, float("inf"), float("nan"), 1 << 5000])

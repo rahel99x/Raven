@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L, metric_sampling as M, refresh_rate as R, screen, toolbar as T
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import layout as L, metric_sampling as M, refresh_rate as R, screen, toolbar as T
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 def instance(**values):
@@ -283,7 +283,7 @@ def test_menu_controls_have_unique_stable_identity_and_one_slider_focus_stop():
 
 
 def test_view_accessibility_labels_follow_restored_preferences_not_config_defaults():
-    from tower import scrolling, startup
+    from raven import scrolling, startup
     app = instance()
     startup.restore(app, {"enabled": False})
     scrolling.restore(app, {"enabled": False})

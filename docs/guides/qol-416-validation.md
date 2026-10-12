@@ -28,7 +28,7 @@ The combined selection regression set passed 842 tests.
 A clean wheel installation outside the checkout completed the Bash helper
 workflow with dependency-linked jobs, sparse array tasks, a failure, a restart,
 and a job that completed before the submission command returned. All eleven
-`tower report` subcommands exposed their help. The source archive contains the
+`raven report` subcommands exposed their help. The source archive contains the
 Bash helper; the wheel contains the reporting and remote reader modules.
 
 All 23 JSON Schemas and 19 declared examples passed the schema audit. The Bash
@@ -65,11 +65,11 @@ that release's repository root:
 ```bash
 python -m pytest -q
 python scripts/validate_operation_schemas.py
-bash -n scripts/tower-report.sh
-shellcheck scripts/tower-report.sh
+bash -n scripts/raven-report.sh
+shellcheck scripts/raven-report.sh
 python -m build
 python -S scripts/benchmark_changing_ui.py \
-  --source-root "$PWD" --output /tmp/tower-changing-ui.json \
+  --source-root "$PWD" --output /tmp/raven-changing-ui.json \
   --cases static,live30,live1,switch,resize,scroll-end \
   --glyphs both --repeats 100
 ```

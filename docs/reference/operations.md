@@ -373,11 +373,11 @@ Import actual Perfetto, Caliper and RO-Crate JSON; export a reviewed portable bu
 | Field | Label | Required | Default | Choices |
 | --- | --- | --- | --- | --- |
 | <code>path</code> | Source JSON | Yes | (blank) | — |
-| <code>format</code> | Source format | No | <code>tower-evidence</code> | <code>tower-evidence</code>, <code>perfetto-json</code>, <code>caliper-json-records</code>, <code>workflow-run-ro-crate</code>, <code>otlp-json-traces</code> |
+| <code>format</code> | Source format | No | <code>raven-evidence</code> | <code>raven-evidence</code>, <code>perfetto-json</code>, <code>caliper-json-records</code>, <code>workflow-run-ro-crate</code>, <code>otlp-json-traces</code> |
 | <code>cluster</code> | Exact cluster | Yes | (blank) | — |
 | <code>job_id</code> | Exact job ID | Yes | (blank) | — |
 | <code>attempt</code> | Exact attempt | Yes | (blank) | — |
-| <code>export_format</code> | Export format | No | <code>workflow-run-ro-crate</code> | <code>tower-evidence</code>, <code>perfetto-json</code>, <code>caliper-json-records</code>, <code>workflow-run-ro-crate</code>, <code>otlp-json-traces</code> |
+| <code>export_format</code> | Export format | No | <code>workflow-run-ro-crate</code> | <code>raven-evidence</code>, <code>perfetto-json</code>, <code>caliper-json-records</code>, <code>workflow-run-ro-crate</code>, <code>otlp-json-traces</code> |
 | <code>destination</code> | New bundle directory (optional) | No | (blank) | — |
 
 ### Site collection admission

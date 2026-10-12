@@ -5,15 +5,15 @@ import threading
 
 import pytest
 
-from tower import gpu_provider_ui, interaction, layout as L, screen, toolbar, workbench
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.model import GpuSample, Job, Store
-from tower.sampler import Sampler
-from tower.slurm import CommandError, FakeBackend, Slurm
-from tower.views import Views
-from tower.worker_scheduler import WorkerScheduler
+from raven import gpu_provider_ui, interaction, layout as L, screen, toolbar, workbench
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.model import GpuSample, Job, Store
+from raven.sampler import Sampler
+from raven.slurm import CommandError, FakeBackend, Slurm
+from raven.views import Views
+from raven.worker_scheduler import WorkerScheduler
 
 MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,
     BUTTON1_DOUBLE_CLICKED=8, BUTTON3_CLICKED=16, BUTTON3_PRESSED=32,
@@ -153,7 +153,7 @@ def test_raw_terminal_events_never_dispatch_to_hidden_panes(dashboard, monkeypat
     # This browser used to intercept wheel events before the controller saw
     # the modal; a press-only test cannot detect that regression.
     app.enter_tab("deps")
-    from tower import history_browser
+    from raven import history_browser
     history_browser._view(app).update(explicit=True, selected="70")
     if mode == "arraymap":
         app.run_command("arraymap")
@@ -164,7 +164,7 @@ def test_raw_terminal_events_never_dispatch_to_hidden_panes(dashboard, monkeypat
     def forbidden(*args, **kwargs):
         raise AssertionError("A modal pointer event reached the hidden pane")
     monkeypatch.setattr(app, "move", forbidden)
-    from tower import chart_interaction, history_browser
+    from raven import chart_interaction, history_browser
     monkeypatch.setattr(chart_interaction, "hover", forbidden)
     monkeypatch.setattr(history_browser, "handle_mouse", forbidden)
     screen._apply_input(app, ("mouse", (0, 2, app.height - 3, 0, bits)), app.last_hits, MOUSE)

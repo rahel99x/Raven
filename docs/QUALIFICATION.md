@@ -20,7 +20,7 @@ Live checks require an explicitly selected existing allocation and site permissi
 From the checkout, run:
 
 ```bash
-python3 scripts/qualify_flagship.py --output /tmp/tower-qualification.json
+python3 scripts/qualify_flagship.py --output /tmp/raven-qualification.json
 ```
 
 The script uses simulated data, a temporary configuration, disabled plugins and
@@ -29,7 +29,7 @@ documentation links and the Report, Trace, and Runtime command help. Commands
 have deadlines and output limits. The script submits no jobs and installs no
 external packages.
 
-The output is a `tower.qualification-report/v1` JSON document. Each check has one
+The output is a `raven.qualification-report/v1` JSON document. Each check has one
 status: `qualified`, `failed`, or `untested`. `qualified-for-recorded-checks`
 applies only to the checks in the document. `production_qualified` remains false.
 The report explicitly lists real GPU, multi-node, emulator, production SSH,
@@ -48,8 +48,8 @@ Build with the optional development tools, then pass the actual wheel path:
 ```bash
 python3 -m build
 python3 scripts/qualify_flagship.py \
-  --wheel dist/slurm_tower-7.0.0-py3-none-any.whl \
-  --output /tmp/tower-wheel-qualification.json
+  --wheel dist/raven-7.0.0-py3-none-any.whl \
+  --output /tmp/raven-wheel-qualification.json
 ```
 
 Use the actual artifact path when its version differs from the example.
@@ -66,7 +66,7 @@ by the scheduler; do not convert their time zone or add a UTC suffix:
 
 ```json
 {
-  "schema": "tower.site-qualification/v1",
+  "schema": "raven.site-qualification/v1",
   "cluster": "my-cluster",
   "job_id": "1234",
   "user": "my-user",
@@ -78,7 +78,7 @@ by the scheduler; do not convert their time zone or add a UTC suffix:
 ```bash
 python3 scripts/qualify_flagship.py \
   --live-manifest /path/to/allocation.json \
-  --output /tmp/tower-site-qualification.json
+  --output /tmp/raven-site-qualification.json
 ```
 
 This adds one read-only `scontrol` query. It verifies the job or array task, owner,

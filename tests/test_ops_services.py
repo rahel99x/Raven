@@ -15,9 +15,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import ops_services, services_io, services_staging as staging, services_workflows as workflows, supervisor
-from tower.operations import Context
-from tower.remote import LocalFiles
+from raven import ops_services, services_io, services_staging as staging, services_workflows as workflows, supervisor
+from raven.operations import Context
+from raven.remote import LocalFiles
 
 
 @pytest.fixture
@@ -178,7 +178,7 @@ def test_supervisor_reaps_owned_child_after_lock_release_before_process_exit(tmp
     code = """
 import sys,time
 from pathlib import Path
-from tower import supervisor
+from raven import supervisor
 supervisor.serve(sys.argv[1], supervisor.configuration(), runner=lambda *a,**kw:'', max_polls=1)
 Path(sys.argv[2]).touch()
 deadline=time.monotonic()+5
@@ -340,7 +340,7 @@ def test_staging_roundtrip_and_resume(tmp_path):
     assert [entry["status"] for entry in staging.execute(prepared, receipts)] == ["verified-existing"] * 3
     receipt = services_io.read_json_file(receipts / (prepared["revision"] + ".json"))
     assert len(receipt["entries"]) == 3
-    assert not list(tmp_path.glob(".tower-transfer-*"))
+    assert not list(tmp_path.glob(".raven-transfer-*"))
 
 
 @pytest.mark.parametrize("kind", ["checksum", "size", "direction", "relative", "same", "duplicate", "cycle", "retention", "unknown"])
@@ -378,7 +378,7 @@ def test_staging_checksum_failure_partial_success_and_no_clobber(tmp_path):
     assert [entry["status"] for entry in result] == ["copied", "failed", "failed"]
     assert Path(document["entries"][2]["destination"]).read_bytes() == b"user data"
     assert not Path(document["entries"][1]["destination"]).exists()
-    assert not list(tmp_path.glob(".tower-transfer-*"))
+    assert not list(tmp_path.glob(".raven-transfer-*"))
 
 
 def test_staging_cancellation_cleans_temp_and_persists_partial_receipt(tmp_path, monkeypatch):
@@ -556,7 +556,7 @@ def test_snakemake_native_dag_does_not_invent_runtime(tmp_path, ctx):
 
 @pytest.mark.parametrize("kind", ["cycle", "missing", "duplicate", "self", "wrong-engine"])
 def test_snakemake_invalid_runtime_dag(tmp_path, ctx, kind):
-    value = {"schema": "tower.workflow-engine/v1", "engine": "snakemake", "workflow_id": "runA",
+    value = {"schema": "raven.workflow-engine/v1", "engine": "snakemake", "workflow_id": "runA",
              "nodes": [{"id": "a", "state": "complete", "dependencies": []},
                        {"id": "b", "state": "running", "dependencies": ["a"]}]}
     if kind == "cycle": value["nodes"][0]["dependencies"] = ["b"]
@@ -605,7 +605,7 @@ def test_staging_cancel_mid_chunk_cleans_temp_and_lists_remainder(tmp_path, monk
     monkeypatch.setattr(staging.os, "read", read)
     results = staging.execute(prepared, tmp_path / "receipts", cancel=cancel)
     assert [row["status"] for row in results] == ["cancelled", "not-attempted", "not-attempted"]
-    assert not list(tmp_path.glob(".tower-transfer-*"))
+    assert not list(tmp_path.glob(".raven-transfer-*"))
     assert not any(Path(item["destination"]).exists() for item in document["entries"])
 
 
@@ -668,7 +668,7 @@ def test_services_sequential_transfer_observe_reconcile(ctx, tmp_path):
 
 def test_snakemake_large_linear_dag_is_iterative(tmp_path, ctx):
     source = tmp_path / "large.json"
-    source.write_text(json.dumps({"schema": "tower.workflow-engine/v1", "engine": "snakemake", "workflow_id": "large",
+    source.write_text(json.dumps({"schema": "raven.workflow-engine/v1", "engine": "snakemake", "workflow_id": "large",
                                  "nodes": [{"id": str(i), "dependencies": [str(i - 1)] if i else []} for i in range(10000)]}))
     result = workflows.snakemake(ctx, str(source))
     assert len(result["nodes"]) == 10000

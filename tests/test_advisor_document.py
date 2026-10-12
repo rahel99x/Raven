@@ -3,12 +3,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import advisor, job_panels as J, layout as L, scrollbars as S, workspace_layout as W
-from tower.advisor_document import AdvisorDocument
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Live, Store
-from tower.views import Views
+from raven import advisor, job_panels as J, layout as L, scrollbars as S, workspace_layout as W
+from raven.advisor_document import AdvisorDocument
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Live, Store
+from raven.views import Views
 
 
 @pytest.mark.parametrize("names", [340, 1000])

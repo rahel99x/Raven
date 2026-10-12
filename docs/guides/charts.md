@@ -550,7 +550,7 @@ temporary sample interval after a restart.
 These methods are internal application interfaces. A project integration should
 publish the reporting schema. It does not need to call these methods.
 
-### `tower.chart_tools`
+### `raven.chart_tools`
 
 | Method | Purpose and result |
 | --- | --- |
@@ -566,7 +566,7 @@ publish the reporting schema. It does not need to call these methods.
 | `statistics_for(points, full_points=None)` | Calculate sample statistics and observed-interval coverage. Supply normalized points in timestamp order. |
 | `interval(points, state, name)` | Select source timestamps between the stored interval endpoints. |
 
-### `tower.charts`
+### `raven.charts`
 
 All drawing methods return rows of `(text, style)` segments. They do not perform
 file or process I/O. Use `Glyphs(True)` for ASCII output.
@@ -594,7 +594,7 @@ Use `envelope=False` only when a mean representation is intended. Their optional
 The internal `curve_style="blocks"` argument retains the older two-by-two raster for callers that require it.
 It is not a user-facing chart setting.
 
-### `tower.chart_interaction`
+### `raven.chart_interaction`
 
 The interaction layer reads published plot geometry. It performs no file or scheduler I/O.
 Renderers begin one outer frame, stage local plots, map them through the final layout,
@@ -631,7 +631,7 @@ Zoom bounds use plotted coordinates; logarithmic vertical bounds remain base-10 
 | `next_deadline(app, now=None)` | Schedule cached selector frames during the bounded 24 ms dot-phase transition. |
 | `overlay(views, snap, app, width, height)` | Return no full modal overlay; feedback belongs to the current plot. |
 
-### `tower.selector_glyphs`
+### `raven.selector_glyphs`
 
 These pure helpers place visual strokes on the two-by-four Braille lattice.
 They do not change event coordinates, measured values, or source sampling.
@@ -645,7 +645,7 @@ They do not change event coordinates, measured values, or source sampling.
 The selector passes a 0.024-second duration for its dot-phase transition inside the latest reported cell.
 The helper's general default does not delay whole-cell pointer movement.
 
-### `tower.metric_live`
+### `raven.metric_live`
 
 This layer uses published exact-job status and chart geometry.
 It changes display state and publishes bounded polling requests without performing source reads or scheduler I/O.
@@ -681,7 +681,7 @@ A filled companion uses the same canonical identity as its resource curve.
 | `feedback(app, g)` | Return the small control-row overlay between document refreshes. |
 | `overlay(views, snap, app, width, height)` | Return no full modal overlay. |
 
-### `tower.metric_envelope`
+### `raven.metric_envelope`
 
 This module derives display-only trend and range geometry from bounded drawing columns.
 It does not alter or retain the original measurement history.
@@ -695,7 +695,7 @@ Local fits use normalized coordinates and values. Geometry-only projection weigh
 | `Column` | Hold one drawing column's observed bounds, first and last values, count, and continuity metadata. Its `centre` is the midpoint of its range. |
 | `Polynomial.at(x)` | Evaluate one normalized local model within its stored value limits. Rendering clips and joins it only within the acquired domain. |
 
-### `tower.metric_playback`
+### `raven.metric_playback`
 
 This module owns the transient display time for each exact source and job attempt.
 It reads supplied timestamp metadata only. It does not read a source, scan its history, create samples, or schedule collection.
@@ -716,7 +716,7 @@ The UI owns these clocks. Captured and explicitly selected bounds do not advance
 The delay target is bounded at 30 seconds; actual lag can be longer after an outage.
 Catch-up is bounded at 1.25 times elapsed display-clock time.
 
-### `tower.metric_sampling`
+### `raven.metric_sampling`
 
 This layer maps exact metric identities to shared background collectors.
 Its validation and interval calculations perform no scheduler or file I/O.
@@ -741,7 +741,7 @@ The sampler schedules those probes separately from jobs that have no faster requ
 `ResearchHub.sampling_interval(identity)` reports that run's shared file-reader interval.
 These methods change requests without reading files immediately.
 
-### `tower.refresh_rate`
+### `raven.refresh_rate`
 
 This layer stores the global polling position and maps it to requested intervals.
 The stored `polling_multiplier` field keeps its existing name for compatibility.
@@ -754,7 +754,7 @@ The stored `polling_multiplier` field keeps its existing name for compatibility.
 | `file_interval(base, value, *, remote=False)` | Adjust a file-reader base by the global speed ratio while retaining local or remote limits. |
 | `cadence(app, source, base=None)` | Return the source's effective global interval without reading the source. |
 
-### `tower.analysis_ui`
+### `raven.analysis_ui`
 
 | Method | Purpose and result |
 | --- | --- |

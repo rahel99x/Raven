@@ -4,10 +4,10 @@ import curses
 
 import pytest
 
-from tower import screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Store
+from raven import screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Store
 
 
 class Window:
@@ -167,8 +167,8 @@ def test_table_filter_editor_keeps_colon_as_literal_input():
 
 
 def test_focused_header_explanation_is_reachable_through_palette():
-    from tower.views import Views
-    from tower.layout import Glyphs
+    from raven.views import Views
+    from raven.layout import Glyphs
     app = App(Store(persist=False), None, None, Config(), "test", interactive=False)
     app.run_command("headers jobs")
     views = Views(Glyphs(False), app.cfg)

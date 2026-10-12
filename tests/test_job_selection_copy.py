@@ -3,8 +3,8 @@ from dataclasses import replace
 
 import pytest
 
-from tower import clipboard, history_browser, job_copy, job_groups, job_selection
-from tower.model import Finished, Job
+from raven import clipboard, history_browser, job_copy, job_groups, job_selection
+from raven.model import Finished, Job
 from test_job_group_mouse_integration import dashboard, dispatch, frame, mark, point
 
 

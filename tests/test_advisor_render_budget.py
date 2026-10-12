@@ -3,8 +3,8 @@ from dataclasses import asdict, replace
 
 import pytest
 
-from tower import advisor
-from tower.model import Finished, Job, Live, stamp
+from raven import advisor
+from raven.model import Finished, Job, Live, stamp
 
 
 GIB = 1024 ** 3

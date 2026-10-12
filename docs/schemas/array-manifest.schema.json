@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/blob/main/docs/schemas/array-manifest.schema.json",
-  "title": "Tower scientific array-index manifest v1",
-  "description": "Bounded to 4 MiB. Index and scientific id must each be unique across entries (validated by Tower). Cluster matches exactly; empty string matches only unlabelled cluster records. Input/output paths are declarations and are never opened by this feature.",
+  "$id": "https://github.com/rahel99x/Raven/blob/main/docs/schemas/array-manifest.schema.json",
+  "title": "Raven scientific array-index manifest v1",
+  "description": "Bounded to 4 MiB. Index and scientific id must each be unique across entries (validated by Raven). Cluster matches exactly; empty string matches only unlabelled cluster records. Input/output paths are declarations and are never opened by this feature.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "cluster", "array_id", "entries"],
   "properties": {
-    "schema": {"const": "tower.array-manifest/v1"},
+    "schema": {"const": "raven.array-manifest/v1"},
     "cluster": {"type": "string", "maxLength": 128},
     "array_id": {"type": "string", "pattern": "^[1-9][0-9]{0,18}$", "description": "Canonical positive decimal parent job ID, at most 9223372036854775807."},
     "entries": {

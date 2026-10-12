@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.scientific-lineage/v1"
+      "const": "raven.scientific-lineage/v1"
     },
     "nodes": {
       "type": "array",

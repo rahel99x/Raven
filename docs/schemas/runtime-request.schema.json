@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/runtime-request.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/runtime-request.schema.json",
   "title": "runtime request",
   "description": "The current private mailbox configuration must declare the command and exact parameter names/types/ranges; epoch, TTL, attempt and mailbox identity are revalidated before submission.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.runtime-request/v1"
+      "const": "raven.runtime-request/v1"
     },
     "mailbox": {
       "$ref": "runtime-common.schema.json#/$defs/path"

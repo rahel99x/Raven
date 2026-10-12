@@ -5,8 +5,8 @@ import os
 
 import pytest
 
-from tower import artifacts
-from tower.artifacts import load_contract, validate_contract
+from raven import artifacts
+from raven.artifacts import load_contract, validate_contract
 
 
 def contract(*outputs):

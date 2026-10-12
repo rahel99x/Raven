@@ -8,8 +8,8 @@ import time
 
 import pytest
 
-from tower.model import Finished, Job
-from tower.predict import predict
+from raven.model import Finished, Job
+from raven.predict import predict
 
 
 def run(i, **changes):

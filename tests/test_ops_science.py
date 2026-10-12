@@ -10,8 +10,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import ops_science as ops, science_files as sf, science_probe
-from tower.operations import Context
+from raven import ops_science as ops, science_files as sf, science_probe
+from raven.operations import Context
 
 
 def dump(path, value):
@@ -31,7 +31,7 @@ def ctx(tmp_path):
 def environment(tmp_path):
     lock = tmp_path/"requirements.lock"
     lock.write_text("some-package==1.2.3 --hash=sha256:" + "a"*64 + "\n")
-    doc = {"schema": "tower.environment/v1", "python": platform.python_version(), "platform": platform.system(),
+    doc = {"schema": "raven.environment/v1", "python": platform.python_version(), "platform": platform.system(),
            "machine": platform.machine(), "packages": {"some_package": "1.2.3"}, "lockfile": {"path": lock.name, "sha256": sha(lock)}}
     return {"manifest": dump(tmp_path/"environment.json", doc), "destination": str(tmp_path/"bundle")}, doc
 
@@ -50,9 +50,9 @@ def reuse(tmp_path):
     output = tmp_path/"answer.dat"
     output.write_text("scientific output\n")
     policy_path, results_path = tmp_path/"policy.json", tmp_path/"results.json"
-    dump(policy_path, {"schema": "tower.acceptance/v1", "cases": [{"id": "run1", "expected": {"score": {"value": 1, "absolute": .01, "relative": 0}}}]})
-    dump(results_path, {"schema": "tower.results/v1", "runs": [{"id": "run1", "metrics": {"score": 1}}]})
-    doc = {"schema": "tower.reuse/v1", "identity": identity, "dependencies": dependencies,
+    dump(policy_path, {"schema": "raven.acceptance/v1", "cases": [{"id": "run1", "expected": {"score": {"value": 1, "absolute": .01, "relative": 0}}}]})
+    dump(results_path, {"schema": "raven.results/v1", "runs": [{"id": "run1", "metrics": {"score": 1}}]})
+    doc = {"schema": "raven.reuse/v1", "identity": identity, "dependencies": dependencies,
            "outputs": [{"path": output.name, "sha256": sha(output), "target": "results/output.dat"}],
            "acceptance": {"path": policy_path.name, "sha256": sha(policy_path)}, "results": {"path": results_path.name, "sha256": sha(results_path)}}
     params = {"manifest": dump(tmp_path/"reuse.json", doc), "identity": dump(tmp_path/"identity.json", identity), "destination": str(tmp_path/"reused")}
@@ -109,9 +109,9 @@ def test_reuse_requires_scientific_acceptance_and_copies_all_verified_outputs(tm
     output = ops.apply("reuse", reviewed["plan"], ctx)
     assert output["status"] == "ok"
     assert (Path(params["destination"])/"results/output.dat").read_bytes() == (tmp_path/"answer.dat").read_bytes()
-    receipt = json.loads((Path(params["destination"])/".tower-receipt.json").read_text())
+    receipt = json.loads((Path(params["destination"])/".raven-receipt.json").read_text())
     assert receipt["acceptance"]["passed"] == receipt["acceptance"]["total"] == 1
-    assert not (Path(params["destination"])/".tower-incomplete").exists()
+    assert not (Path(params["destination"])/".raven-incomplete").exists()
 
 
 @pytest.mark.parametrize("target", ["code.txt", "environment.txt", "parameters.txt", "input.txt", "answer.dat", "policy.json", "results.json", "reuse.json", "identity.json"])
@@ -138,14 +138,14 @@ def test_reuse_full_requested_identity_must_match(tmp_path, ctx, field):
 def test_reuse_failed_or_missing_acceptance_cannot_pass(tmp_path, ctx):
     params, doc = reuse(tmp_path)
     path = tmp_path/"results.json"
-    dump(path, {"schema": "tower.results/v1", "runs": []})
+    dump(path, {"schema": "raven.results/v1", "runs": []})
     doc["results"]["sha256"] = sha(path)
     dump(Path(params["manifest"]), doc)
     with pytest.raises(ValueError, match="acceptance failed"):
         ops.run("reuse", params, ctx)
 
 
-@pytest.mark.parametrize("target", ["../outside", "/tmp/outside", ".", "", "dir/", ".tower-receipt.json"])
+@pytest.mark.parametrize("target", ["../outside", "/tmp/outside", ".", "", "dir/", ".raven-receipt.json"])
 def test_reuse_destinations_cannot_escape_or_collide_with_metadata(tmp_path, ctx, target):
     params, doc = reuse(tmp_path)
     doc["outputs"][0]["target"] = target
@@ -252,7 +252,7 @@ def scheduler_context(ctx):
 
 def repair(tmp_path, backend, ids=("10",)):
     rows = [{"job_id": jid, "submit_time": backend.jobs[jid]["SubmitTime"], "dependency": "afterok:6"} for jid in ids]
-    return {"manifest": dump(tmp_path/"repair.json", {"schema": "tower.dependency-repair/v1", "repairs": rows})}
+    return {"manifest": dump(tmp_path/"repair.json", {"schema": "raven.dependency-repair/v1", "repairs": rows})}
 
 
 def test_dependency_repair_preserves_successful_jobs_and_confirms_pending_updates(tmp_path, ctx):
@@ -327,7 +327,7 @@ def test_placement_reads_existing_processes_without_affinity_mutation(tmp_path, 
     ctx, backend = scheduler_context(ctx)
     backend.jobs["10"].update(JobState="RUNNING", StartTime="2026-01-01T01:01:00", NumCPUs="8", AllocTRES="cpu=8,gres/gpu=1")
     sample = {"job_id": "10", "node": "n1", "warnings": [], "processes": [{"pid": 123, "cpu_allowed": "0-7", "numa_pages": {"0": 32}, "gpu_visibility": {"CUDA_VISIBLE_DEVICES": "0"}}]}
-    backend.probe = "0: TOWER_PLACEMENT " + json.dumps(sample)
+    backend.probe = "0: RAVEN_PLACEMENT " + json.dumps(sample)
     result = ops.run("placement", {"job_id": "10"}, ctx)
     assert result["status"] == "ok"
     argv = next(call for call in backend.calls if call[0] == "srun")
@@ -339,7 +339,7 @@ def test_placement_reads_existing_processes_without_affinity_mutation(tmp_path, 
 def test_placement_discards_requeued_attempt(ctx):
     ctx, backend = scheduler_context(ctx)
     backend.jobs["10"].update(JobState="RUNNING")
-    backend.probe = "TOWER_PLACEMENT " + json.dumps({"job_id": "10", "node": "n1", "warnings": [], "processes": []})
+    backend.probe = "RAVEN_PLACEMENT " + json.dumps({"job_id": "10", "node": "n1", "warnings": [], "processes": []})
     original = backend.run
     def run(argv, timeout=8):
         value = original(argv, timeout)
@@ -351,7 +351,7 @@ def test_placement_discards_requeued_attempt(ctx):
         ops.run("placement", {"job_id": "10"}, ctx)
 
 
-@pytest.mark.parametrize("output", ["", "TOWER_PLACEMENT {}", 'TOWER_PLACEMENT {"job_id":"11","node":"n1"}', 'TOWER_PLACEMENT {"job_id":"10","node":"n1","processes":{},"warnings":[]}'])
+@pytest.mark.parametrize("output", ["", "RAVEN_PLACEMENT {}", 'RAVEN_PLACEMENT {"job_id":"11","node":"n1"}', 'RAVEN_PLACEMENT {"job_id":"10","node":"n1","processes":{},"warnings":[]}'])
 def test_placement_rejects_unattributed_or_malformed_reply(output):
     with pytest.raises(ValueError):
         science_probe.parse(output, "10")
@@ -415,7 +415,7 @@ def test_runtime_probe_reports_compute_host_separately_from_local_environment(tm
     params["probe_job_id"] = "10"
     evidence = {"job_id": "10", "node": "n1", "python": "3.10.1", "platform": "Linux", "machine": "aarch64",
                 "libc": ["glibc", "2.31"], "packages": {"some-package": None}, "warnings": []}
-    backend.probe = "0: TOWER_RUNTIME " + json.dumps(evidence)
+    backend.probe = "0: RAVEN_RUNTIME " + json.dumps(evidence)
     result = ops.run("environment", params, ctx)
     assert result["data"]["compute_hosts"][0]["python"] == "3.10.1"
     assert result["data"]["actual"]["python"] == platform.python_version()

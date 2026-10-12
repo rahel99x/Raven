@@ -20,7 +20,7 @@ Opening a form or retaining a compatibility command does not grant execution.
 ## Raven execution controls
 
 `ravenl` opens Light; `ravenh` requests an admitted worker before loading the UI.
-`tower` remains a compatibility route to Light. Open the Light/Heavy toolbar
+`raven` remains a compatibility route to Light. Open the Light/Heavy toolbar
 control or enter `:raven inspect` for mode, target, collection rates, queues, and
 retention coverage. Request, Cancel, and Release use a current identity-bound
 review. `:raven reuse JOBID` starts a fresh ownership/resource review; it does not
@@ -99,20 +99,20 @@ Key bindings in configuration can replace the defaults below.
 | --- | --- | --- |
 | Installed Light entry point | `ravenl` | Open the governed interface without requesting compute |
 | Installed Heavy entry point | `ravenh` | Request verified worker admission before opening the interface |
-| Installed compatibility entry point | `tower` | Open Light with compatibility command syntax |
-| Checkout launcher | `./scripts/tower` | Use the checkout's virtual environment when available |
-| Python module | `python3 -m tower` | Run directly from the checkout |
-| Optional managed Bash alias | `tower` | Use the checkout launcher configured by `scripts/install_shell.py` |
-| Demonstration | `tower --fake` | Run the simulated scheduler |
-| One frame | `tower --once --tab history` | Print a page and exit |
-| Updating text screen | `tower --watch` | Refresh an ANSI screen; Ctrl-C exits |
-| Scripted command | `tower run COMMAND ARGUMENTS` | Execute one palette command |
-| Bash Research reporting | `tower report COMMAND ARGUMENTS` | Publish job-linked reports; explicit `submit` launches a tracked Slurm job |
+| Installed compatibility entry point | `raven` | Open Light with compatibility command syntax |
+| Checkout launcher | `./scripts/raven` | Use the checkout's virtual environment when available |
+| Python module | `python3 -m raven` | Run directly from the checkout |
+| Optional managed Bash alias | `raven` | Use the checkout launcher configured by `scripts/install_shell.py` |
+| Demonstration | `raven --fake` | Run the simulated scheduler |
+| One frame | `raven --once --tab history` | Print a page and exit |
+| Updating text screen | `raven --watch` | Refresh an ANSI screen; Ctrl-C exits |
+| Scripted command | `raven run COMMAND ARGUMENTS` | Execute one palette command |
+| Bash Research reporting | `raven report COMMAND ARGUMENTS` | Publish job-linked reports; explicit `submit` launches a tracked Slurm job |
 
 Use the [installation guide](INSTALLATION.md) to expose installed commands on
-`PATH` without aliases or shell-file changes. Run `type ravenl ravenh tower` to
+`PATH` without aliases or shell-file changes. Run `type ravenl ravenh raven` to
 identify which commands the shell will use. The
-[compatibility runbook](runbook.md#use-one-tower-shell-command) describes the
+[compatibility runbook](runbook.md#use-one-raven-shell-command) describes the
 optional managed alias for an existing source installation.
 Use [Research reporting from Bash](guides/research-automation.md) for `init`,
 `submit`, `start`, `exec`, `finish`, `metric`, `research`, `log`, `passport`,
@@ -123,7 +123,7 @@ Use [Research reporting from Bash](guides/research-automation.md) for `init`,
 Click the toolbar worker switch, or use `:workers single`, `:workers multi`,
 `:workers toggle`, and `:workers status`. F8 includes the switch in directional
 button navigation. Single keeps one background worker and a separate UI thread.
-Start with `tower --workers single` or `tower --workers multi` to override the
+Start with `raven --workers single` or `raven --workers multi` to override the
 saved preference. See [Background workers](guides/background-workers.md) for
 pending transitions, result collection, and limits.
 
@@ -141,7 +141,7 @@ installed configurations, follow [Choose a site](raven/README.md#choose-a-site).
 | `python3 scripts/install_shell.py --profile desktop --apply` | Back up `.bashrc` and install the desktop alias |
 
 If you install the optional alias, source the updated `.bashrc` to load it.
-Use `tower --version`, `tower --doctor`, and `tower --once --tab sources` to inspect the installation.
+Use `raven --version`, `raven --doctor`, and `raven --once --tab sources` to inspect the installation.
 Use the [Fedora desktop guide](DESKTOP.md) when Slurm is installed directly on your desktop.
 Use the [runbook](runbook.md#3-adapt-setup-to-your-environment) for other setup modes.
 
@@ -804,7 +804,7 @@ Copy is the default destination. Yank uses a running local Vim or Neovim server.
 The toolbar uses compact `C` / `Y` labels when space is limited.
 Editor delivery sets registers `0` and unnamed without opening an editor or changing a buffer.
 `clipboard.destination` accepts `copy` or `yank`.
-An inherited owned Unix socket identifies Neovim; one reported server or `TOWER_VIM_SERVER` identifies Vim.
+An inherited owned Unix socket identifies Neovim; one reported server or `RAVEN_VIM_SERVER` identifies Vim.
 Discovery has a 0.4-second timeout; delivery has a 0.8-second timeout.
 Editor payloads must be complete UTF-8 without NUL bytes and no larger than 8 MiB.
 Failures keep the private export and attempt enabled clipboard fallback.
@@ -1098,7 +1098,7 @@ and replay sessions, even when a path is explicit.
 ### Command index
 
 These commands are available through the palette.
-The same command families are available through `tower run` when they do not require an interactive overlay.
+The same command families are available through `raven run` when they do not require an interactive overlay.
 Quoted arguments preserve paths that contain spaces.
 Job-changing commands open a review; scripted changes require `--yes`.
 
@@ -1138,7 +1138,7 @@ The [plugin reference](reference.md#plugins) defines the extension interface.
 
 ## Command-line options
 
-Run `ravenl --help`, `ravenh --help`, or `tower --help` for current syntax.
+Run `ravenl --help`, `ravenh --help`, or `raven --help` for current syntax.
 The table includes compatibility dashboard options; execution and configuration
 selection are governed by the Raven launcher.
 
@@ -1195,26 +1195,26 @@ selection are governed by the Raven launcher.
 | `--no-state` | Disable normal UI state reads and writes |
 | `--width COLUMNS` | Set report or one-frame output width |
 
-Use `tower run COMMAND ARGUMENTS` as an alternative to `--run`.
+Use `raven run COMMAND ARGUMENTS` as an alternative to `--run`.
 Command-specific flags are passed to that palette command.
 See the [scripted-mode reference](reference.md#scripted-mode-and-expressions) for exit codes.
 
 ## Configuration and environment variables
 
 Use `--config`, `RAVEN_CONFIG`, or the default Raven file under
-`~/.config/raven/`, honoring `XDG_CONFIG_HOME`. `TOWER_CONFIG` and files under
-`~/.config/tower/` remain read-only compatibility inputs. Use
+`~/.config/raven/`, honoring `XDG_CONFIG_HOME`. `RAVEN_CONFIG` and files under
+`~/.config/raven/` remain read-only compatibility inputs. Use
 `ravenl config explain` to inspect which source and profile are active.
 Use `NO_COLOR=1` to disable color.
 Use `--account ACCOUNT` for a single launch override.
 
 | Variable | Managed Bash alias behavior |
 | --- | --- |
-| `SLURM_TOWER_PROFILE` | A nonempty value overrides the installed profile |
-| `SLURM_TOWER_ACCOUNT` | Sets an account for any profile; an empty value suppresses legacy account injection |
+| `RAVEN_PROFILE` | A nonempty value overrides the installed profile |
+| `RAVEN_ACCOUNT` | Sets an account for any profile; an empty value suppresses legacy account injection |
 | `CARC_ACCOUNT` | Provides a fallback only for the CARC profile when the generic account variable is unset |
-| `TOWER_CONFIG` | Selects a custom configuration instead of the supplied example |
-| `SLURM_TOWER_ROOT` | Selects the checkout used by the managed launcher |
+| `RAVEN_CONFIG` | Selects a custom configuration instead of the supplied example |
+| `RAVEN_ROOT` | Selects the checkout used by the managed launcher |
 
 The desktop alias ignores `CARC_ACCOUNT`.
 See [Desktop account overrides](DESKTOP.md#account-and-profile-overrides) for examples.
@@ -1225,13 +1225,13 @@ Editor destination variables are separate from the managed alias settings:
 | --- | --- |
 | `NVIM` | Preferred absolute Unix socket for an already-running local Neovim owned by the current user |
 | `NVIM_LISTEN_ADDRESS` | Alternative owned local Neovim Unix socket |
-| `TOWER_VIM_SERVER` | Exact reported Vim server name; required to choose among multiple servers |
+| `RAVEN_VIM_SERVER` | Exact reported Vim server name; required to choose among multiple servers |
 
 See [Pane navigation](guides/pane-navigation.md#send-text-to-vim-or-neovim) for discovery, timeouts, and clipboard fallback.
 
 The normal Raven state base is `~/.local/state/raven/`, honoring `XDG_STATE_HOME`
 and `RAVEN_STATE_DIR`. Connection-scoped state remains separate. Legacy state
-under `~/.local/state/tower/` is preserved until explicit migration. See
+under `~/.local/state/raven/` is preserved until explicit migration. See
 [migration](raven/README.md#migrate-without-changing-evidence) for the copy and
 rollback workflow, and [Desktop state](DESKTOP.md#keep-desktop-state-separate)
 for the legacy desktop layout.

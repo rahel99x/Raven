@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower campaign energy per useful work",
+  "title": "Raven campaign energy per useful work",
   "type": "object", "required": ["schema", "work_unit", "attempts"],
   "properties": {
-    "schema": {"const": "tower.energy/v1"},
+    "schema": {"const": "raven.energy/v1"},
     "work_unit": {"type": "string", "minLength": 1, "maxLength": 80},
     "attempts": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {
       "type": "object", "required": ["cluster", "job_id", "attempt", "state", "accepted_work"],

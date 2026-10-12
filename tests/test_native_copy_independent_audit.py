@@ -3,7 +3,7 @@ import struct
 
 import pytest
 
-from tower import native_series_cache as N
+from raven import native_series_cache as N
 
 
 @pytest.mark.parametrize("bits", ["0000000000000000", "8000000000000000", "7ff0000000000000", "fff0000000000000",

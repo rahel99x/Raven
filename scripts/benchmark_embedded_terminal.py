@@ -23,6 +23,9 @@ import threading
 import time
 from types import SimpleNamespace
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from benchmark_source import load_module
+
 
 PROBE = r'''
 import os, select, sys, termios, time, tty
@@ -82,17 +85,20 @@ def cgroup_cpu():
         return {}
 
 
-def fixture(directory, jobs):
-    from tower import layout as L
-    from tower.actions import Actions
-    from tower.config import Config
-    from tower.controller import App
-    from tower.model import Job, Store
-    from tower.research import ResearchHub
-    from tower.sampler import Sampler
-    from tower.slurm import FakeBackend, Slurm
-    from tower.views import Views
-    from tower.worker_scheduler import WorkerScheduler
+def fixture(directory, jobs, source_root=None):
+    source = source_root if source_root is not None else Path(__file__).resolve().parents[1]
+    L = load_module(source, "layout")
+    Actions = load_module(source, "actions").Actions
+    Config = load_module(source, "config").Config
+    App = load_module(source, "controller").App
+    model = load_module(source, "model")
+    Job, Store = model.Job, model.Store
+    ResearchHub = load_module(source, "research").ResearchHub
+    Sampler = load_module(source, "sampler").Sampler
+    slurm_module = load_module(source, "slurm")
+    FakeBackend, Slurm = slurm_module.FakeBackend, slurm_module.Slurm
+    Views = load_module(source, "views").Views
+    WorkerScheduler = load_module(source, "worker_scheduler").WorkerScheduler
 
     cfg = Config()
     for key, value in (("startup_animation", False), ("animations", False),
@@ -119,10 +125,13 @@ def fixture(directory, jobs):
 
 
 def scenario(args, name, directory):
-    from tower import layout as L, screen, terminal_ui as T
-    from tower.terminal_service import TerminalService
-    from tower.ui_trace import UITrace
-    f = fixture(directory, args.jobs)
+    source = getattr(args, "source_root", Path(__file__).resolve().parents[1])
+    L, screen, T, terminal_fusion = (
+        load_module(source, suffix) for suffix in
+        ("layout", "screen", "terminal_ui", "terminal_fusion"))
+    TerminalService = load_module(source, "terminal_service").TerminalService
+    UITrace = load_module(source, "ui_trace").UITrace
+    f = fixture(directory, args.jobs, source)
     app, views = f.app, f.views
     service = TerminalService()
     state = T.initialize(app)
@@ -310,7 +319,7 @@ def scenario(args, name, directory):
             input_samples.append({"index": index, "at_seconds": round(started-started_perf, 6),
                                   "latency_ms": round(timings["semantic_input_to_paint"][-1], 4)})
             if app.tab != "jobs" or app.mode != "main":
-                invalid.append("terminal input changed Tower's page or mode")
+                invalid.append("terminal input changed Raven's page or mode")
                 break
         elapsed = time.monotonic()-started_wall
         cpu = time.process_time()-started_cpu
@@ -340,7 +349,6 @@ def scenario(args, name, directory):
     finally:
         gc.callbacks.remove(observe_gc)
         service.shutdown()
-        from tower import terminal_fusion
         terminal_fusion.close(app)
         app.research.close()
         f.sampler.shutdown()
@@ -368,8 +376,11 @@ def main():
     names = args.scenarios.split(",")
     if not names or len(names) > 3 or any(name not in {"idle", "hidden-flood", "visible-flood"} for name in names):
         parser.error("Choose idle,hidden-flood,visible-flood")
-    sys.path.insert(0, str(args.source_root.resolve()))
-    report = {"schema": "tower.terminal-benchmark/v1", "python": sys.version,
+    try:
+        load_module(args.source_root.resolve())
+    except (OSError, ValueError, RuntimeError, ImportError) as exc:
+        parser.error(str(exc))
+    report = {"schema": "raven.terminal-benchmark/v1", "python": sys.version,
               "benchmark_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               "platform": platform.platform(), "workload": {key: str(value) if isinstance(value, Path) else value
                   for key, value in vars(args).items()},
@@ -377,13 +388,13 @@ def main():
                          "Latency begins at semantic input dispatch and ends at the differential paint callback.",
                          "In-memory paint sink excludes curses conversion, outer-terminal rendering, network, and monitor latency.",
                          "UI process CPU excludes the isolated broker and child process CPU.",
-                         "Cgroup CPU counters include all processes in this container; they do not attribute other workload to Tower.",
+                         "Cgroup CPU counters include all processes in this container; they do not attribute other workload to Raven.",
                          "Maintenance can rebuild Jobs at its normal interval; cached output feedback must not rebuild it.",
                          "The default 16 ms readiness interval matches the embedded pane's outer-loop idle wait cap.",
                          "Visible child startup is excluded after READY; hidden child startup is included as cold-session pressure.",
                          "Output and parser counters come from published snapshots; hidden snapshots publish less frequently and can lag actual work.",
                          "Finite flood children are closed during cleanup; output bytes report the measured interval, not the entire budget."]}
-    with tempfile.TemporaryDirectory(prefix="tower-terminal-benchmark-") as directory:
+    with tempfile.TemporaryDirectory(prefix="raven-terminal-benchmark-") as directory:
         report["scenarios"] = [scenario(args, name, Path(directory)/name) for name in names]
     report["passed"] = all(not result["failures"] and result["timings"]["semantic_input_to_paint"].get("count") == args.samples
                            for result in report["scenarios"])

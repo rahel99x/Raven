@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.diagnostic-campaign/v1"
+      "const": "raven.diagnostic-campaign/v1"
     },
     "id": {
       "type": "string",

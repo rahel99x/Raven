@@ -7,8 +7,8 @@ import dataclasses
 
 import pytest
 
-from tower.model import Job, Store
-from tower.sampler import Sampler
+from raven.model import Job, Store
+from raven.sampler import Sampler
 
 
 @pytest.fixture

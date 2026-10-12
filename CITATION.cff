@@ -5,7 +5,7 @@ title: Raven
 version: 7.0.0
 abstract: "A terminal workbench for Slurm job monitoring, project evidence inspection, and admitted analysis."
 authors:
-  - name: "Slurm-Tower contributors"
+  - name: "Raven contributors"
 repository-code: "https://github.com/rahel99x/Raven"
 url: "https://github.com/rahel99x/Raven"
 license: MIT

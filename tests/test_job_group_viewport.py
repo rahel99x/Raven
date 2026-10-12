@@ -1,15 +1,15 @@
 """A scrolled batch retains one usable disclosure without changing job identity."""
 import pytest
 
-from tower import history_browser as H, job_groups as G, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import history_browser as H, job_groups as G, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
-def tower():
+def raven():
     store = Store(persist=False)
     store.jobs = [Job(f"700_{index:02}", "batch", "cpu", "RUNNING") for index in range(40)]
     store.group = list(store.jobs)
@@ -26,8 +26,8 @@ def tower():
 @pytest.mark.parametrize("context", ["jobs", "recent", "history", "group", "analytics:advisor"])
 @pytest.mark.parametrize("reverse", [False, True])
 @pytest.mark.parametrize("ascii_", [False, True])
-def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(tower, context, reverse, ascii_):
-    app, views, store = tower
+def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(raven, context, reverse, ascii_):
+    app, views, store = raven
     views.set_ascii(ascii_)
     # Filtering omits the first allocations; sort then changes the real
     # representative. The viewport begins still farther into that projection.
@@ -55,8 +55,8 @@ def test_first_visible_member_has_one_arrow_after_sort_filter_and_scroll(tower, 
 
 @pytest.mark.parametrize("tab", H.TABS)
 @pytest.mark.parametrize("dock", ["left", "right", "top", "bottom"])
-def test_scrolled_job_dock_promotes_only_the_disclosure_cell(tower, tab, dock):
-    app, views, store = tower
+def test_scrolled_job_dock_promotes_only_the_disclosure_cell(raven, tab, dock):
+    app, views, store = raven
     app.tab = tab
     snap = store.snapshot()
     records = H._records(snap, H.initialize(app))
@@ -78,8 +78,8 @@ def test_scrolled_job_dock_promotes_only_the_disclosure_cell(tower, tab, dock):
     assert items[8].meta.representative_id == representative and not items[8].meta.header
 
 
-def test_advisor_uses_actual_scrolled_rows_instead_of_overscan_for_group_arrow(tower):
-    app, views, store = tower
+def test_advisor_uses_actual_scrolled_rows_instead_of_overscan_for_group_arrow(raven):
+    app, views, store = raven
     app.tab, app.analytics_view = "analytics", "advisor"
     app.width, app.height = 120, 18
     views.analytics_tab(store.snapshot(), app, 120, 18)

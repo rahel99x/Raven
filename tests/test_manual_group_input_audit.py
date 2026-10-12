@@ -2,11 +2,11 @@
 
 import pytest
 
-from tower import history_browser, job_groups, job_selection, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import history_browser, job_groups, job_selection, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -254,7 +254,7 @@ def test_group_command_does_not_consume_marks_owned_by_another_job_list(dashboar
 
 @pytest.mark.parametrize("key", ["g", "u"])
 def test_details_focus_cannot_act_on_marks_left_in_jobs(dashboard, key):
-    from tower import job_panels
+    from raven import job_panels
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
     drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
@@ -280,7 +280,7 @@ def test_uppercase_u_clears_marks_without_detaching_grouped_jobs(dashboard):
 
 @pytest.mark.parametrize("key", ["g", "u"])
 def test_explicit_rendered_line_selection_keeps_group_shortcuts_out(dashboard, key):
-    from tower import text_selection
+    from raven import text_selection
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
     drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
@@ -386,7 +386,7 @@ def test_collapsed_summary_ungroup_removes_members_hidden_by_current_filter(dash
 @pytest.mark.parametrize("owner", ["graph-hover", "graph-drag", "metric-slider"])
 @pytest.mark.parametrize("key", ["g", "u"])
 def test_graph_input_owners_cannot_group_or_detach_job_marks(dashboard, owner, key):
-    from tower import chart_interaction, metric_live
+    from raven import chart_interaction, metric_live
     app, _, store = dashboard
     for sample in range(20):
         store.record("600_1", {"k": "live", "t": 180.0 + sample,

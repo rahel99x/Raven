@@ -8,14 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from tower import log_catalog
-from tower.log_catalog import LogCatalog, build_catalog
-from tower.remote import LocalFiles, RemoteFiles
+from raven import log_catalog
+from raven.log_catalog import LogCatalog, build_catalog
+from raven.remote import LocalFiles, RemoteFiles
 
 
 def manifest(path, entries, **values):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"schema": "tower.logs/v1", "logs": entries, **values}), encoding="utf-8")
+    path.write_text(json.dumps({"schema": "raven.logs/v1", "logs": entries, **values}), encoding="utf-8")
     return str(path)
 
 
@@ -48,12 +48,12 @@ def test_local_relative_manifest_resolves_its_own_directory(tmp_path, monkeypatc
 
 
 @pytest.mark.parametrize("field,value", [
-    ("schema", "tower.logs/v2"), ("job_id", "78"), ("job_id", 77),
+    ("schema", "raven.logs/v2"), ("job_id", "78"), ("job_id", 77),
     ("run_id", "../other"), ("run_id", "bad/name"), ("run_id", "é"),
     ("run_id", ""), ("logs", {}), ("logs", [None]), ("unexpected", True),
 ])
 def test_invalid_manifest_atomic_scheduler_still_available(tmp_path, field, value):
-    payload = {"schema": "tower.logs/v1", "logs": [{"id": "would-leak", "path": "one.log"}], field: value}
+    payload = {"schema": "raven.logs/v1", "logs": [{"id": "would-leak", "path": "one.log"}], field: value}
     source = tmp_path / "logs.json"
     source.write_text(json.dumps(payload), encoding="utf-8")
     result = build_catalog("77", str(tmp_path / "77.out"), "", manifest_file=str(source))
@@ -188,9 +188,9 @@ def test_manifest_entry_count_limit_rejects_before_partial_admission(tmp_path):
 
 
 @pytest.mark.parametrize("payload", [
-    b'{"schema":"tower.logs/v1","schema":"tower.logs/v1","logs":[]}',
-    b'{"schema":"tower.logs/v1","logs":[],"run_id":NaN}',
-    b'{"schema":"tower.logs/v1","logs":[],"run_id":1e400}',
+    b'{"schema":"raven.logs/v1","schema":"raven.logs/v1","logs":[]}',
+    b'{"schema":"raven.logs/v1","logs":[],"run_id":NaN}',
+    b'{"schema":"raven.logs/v1","logs":[],"run_id":1e400}',
     b'\xff', b'[]', b'null', b'{',
 ])
 def test_strict_manifest_json(tmp_path, payload):
@@ -260,7 +260,7 @@ class RemoteFixture(LocalFiles):
 def test_remote_manifest_has_no_local_fallback_or_path_rebasing(tmp_path):
     source = tmp_path / "logs.json"
     manifest(source, [{"id": "local-wrong", "path": "local.log"}])
-    remote = RemoteFixture(json.dumps({"schema": "tower.logs/v1", "job_id": "77", "logs": [{"id": "remote", "path": "../remote.log"}]}).encode())
+    remote = RemoteFixture(json.dumps({"schema": "raven.logs/v1", "job_id": "77", "logs": [{"id": "remote", "path": "../remote.log"}]}).encode())
     result = build_catalog("77", "", "", manifest_file=str(source), files=remote)
     assert paths(result) == [str(tmp_path.parent / "remote.log")]
     assert remote.calls[1] == ("read", str(source), 0, len(remote.payload) + 1)
@@ -270,14 +270,14 @@ def test_remote_manifest_has_no_local_fallback_or_path_rebasing(tmp_path):
 @pytest.mark.parametrize("option", ["changed", "truncated", "fail"])
 def test_remote_manifest_unstable_or_failed_reads_do_not_fall_back(tmp_path, option):
     source = manifest(tmp_path / "logs.json", [{"id": "local", "path": "local.log"}])
-    remote = RemoteFixture(b'{"schema":"tower.logs/v1","logs":[]}', **{option: True})
+    remote = RemoteFixture(b'{"schema":"raven.logs/v1","logs":[]}', **{option: True})
     result = build_catalog("77", "", "", manifest_file=source, files=remote)
     assert result["status"] == "error"
     assert result["entries"] == []
 
 
 def test_remote_bounded_directory_listing_keeps_same_backend():
-    payload = b'{"schema":"tower.logs/v1","logs":[]}'
+    payload = b'{"schema":"raven.logs/v1","logs":[]}'
     calls = []
 
     class SSH:
@@ -426,7 +426,7 @@ def test_background_errors_are_visible_and_completion_clears_pending():
 
 @pytest.mark.parametrize("fail", [False, True])
 def test_existing_single_worker_wait_publishes_success_or_failure(monkeypatch, fail):
-    from tower.research import ResearchHub
+    from raven.research import ResearchHub
 
     if fail:
         def read(*args, **kwargs):

@@ -12,11 +12,11 @@ uses optional `pyte` and `wcwidth` dependencies.
 | --- | --- |
 | `ravenl` | Opens Light without requesting compute. |
 | `ravenh` | Requests Heavy and waits for a verified worker before loading the interface. On Slurm, the worker runs in the requested allocation. |
-| `tower` | Compatibility command for the governed Light interface. |
+| `raven` | Opens the governed Light interface; equivalent to `ravenl`. |
 
-The Python distribution is **`slurm-tower`** and the import namespace is `tower`.
-These compatibility identifiers and existing `tower.*` evidence schemas are
-retained from Slurm Tower.
+The Python distribution and import namespace are **`raven`**. Current evidence
+schemas use the `raven.*` namespace. Install from this repository or a wheel
+built from it; an identically named package on an index is not this implementation.
 
 [Installation](docs/INSTALLATION.md) · [Configuration migration](docs/MIGRATION.md) ·
 [Runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
@@ -55,7 +55,7 @@ python3 scripts/setup.py --mode demo
 The demonstration uses simulated jobs and submits no work. Source setup
 prepares the checkout's launchers; it does not expose commands on `PATH`.
 After updating a pipx installation's original checkout, run
-`pipx reinstall slurm-tower`. User configuration and state remain separate.
+`pipx reinstall raven`. User configuration and state remain separate.
 
 ## Configuration
 
@@ -89,18 +89,27 @@ for local, SSH, and site-policy configuration.
 
 ## Configuration migration
 
-The Bash helpers preview a copy-only migration from legacy Tower configuration
-to Raven. Save and review a plan before applying it:
+The Bash helpers preview a copy-only migration from a previous installation.
+Select its configuration directory explicitly, then save and review a plan:
 
 ```bash
-bash scripts/migrate-config.sh --save-plan ~/.config/raven/migration-plan.json
-bash scripts/migrate-config.sh --apply --plan-file ~/.config/raven/migration-plan.json
+raven_migration_dir="$(mktemp -d)"
+bash scripts/migrate-config.sh --source-config /path/to/previous-config \
+  --save-plan "$raven_migration_dir/plan.json"
+cat -- "$raven_migration_dir/plan.json"
+```
+
+Review the source paths, destinations, and omissions before applying that plan:
+
+```bash
+bash scripts/migrate-config.sh --apply --plan-file "$raven_migration_dir/plan.json"
 ```
 
 The migration preserves original files and existing Raven configuration.
 State and history imports are optional. The [migration guide](docs/MIGRATION.md)
 covers custom paths, retained local Slurm profiles, restart recovery, and
-rollback with `scripts/rollback-config.sh`.
+rollback with `scripts/rollback-config.sh`. Previous package imports and evidence
+schema identifiers require explicit conversion before use by this implementation.
 
 ## Execution model
 
@@ -154,8 +163,8 @@ including its logs, metrics, results, and artifacts. The reporting CLI can
 publish these records from a Bash launcher without application imports:
 
 ```bash
-tower report --help
-tower report init --root /path/to/project
+raven report --help
+raven report init --root /path/to/project
 ```
 
 Use the [project standard](docs/PROJECT_STANDARD.md),

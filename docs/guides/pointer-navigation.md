@@ -338,7 +338,7 @@ The welcome does not change sampler intervals or delay job actions behind an ani
 
 ## Selection integration methods
 
-The `tower.job_selection` methods operate on published job identities and terminal display state.
+The `raven.job_selection` methods operate on published job identities and terminal display state.
 They do not read log files or send scheduler actions.
 
 | Method | Purpose and result |

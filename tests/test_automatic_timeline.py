@@ -5,9 +5,9 @@ import threading
 
 import pytest
 
-from tower import operations as O, ops_workspace as W
-from tower.remote import LocalFiles
-from tower.trace_recorder import Recorder
+from raven import operations as O, ops_workspace as W
+from raven.remote import LocalFiles
+from raven.trace_recorder import Recorder
 
 
 SUBMIT = "2026-10-10T10:00:00"
@@ -100,23 +100,23 @@ def test_pending_expected_start_is_not_a_started_transition(context):
 def test_supplied_timeline_refuses_same_job_from_multiple_clusters():
     event = {"id": "1", "source": "scheduler", "job_id": "81", "attempt": "same", "kind": "state",
              "message": "RUNNING", "clock": "unix", "timestamp": 1, "cluster": "one"}
-    value = {"schema": "tower.timeline/v1", "events": [event, dict(event, cluster="two")]}
+    value = {"schema": "raven.timeline/v1", "events": [event, dict(event, cluster="two")]}
     with pytest.raises(ValueError, match="multiple clusters"):
         W.timeline(value, "81")
     with pytest.raises(ValueError, match="does not match"):
-        W.timeline({"schema": "tower.timeline/v1", "events": [event]}, "81", "different")
+        W.timeline({"schema": "raven.timeline/v1", "events": [event]}, "81", "different")
 
 
 def test_missing_timestamps_need_source_order():
     event = {"id": "1", "source": "log", "job_id": "81", "attempt": "a", "kind": "line",
              "message": "raw", "clock": "source-order", "timestamp": None, "cluster": "lab"}
     with pytest.raises(ValueError, match="ordinal"):
-        W.timeline({"schema": "tower.timeline/v1", "events": [event]})
+        W.timeline({"schema": "raven.timeline/v1", "events": [event]})
     event["ordinal"] = 1
-    assert W.timeline({"schema": "tower.timeline/v1", "events": [event]})["events"][0]["timestamp"] is None
+    assert W.timeline({"schema": "raven.timeline/v1", "events": [event]})["events"][0]["timestamp"] is None
     event["timestamp"] = 10 ** 1000
     with pytest.raises(ValueError, match="finite"):
-        W.timeline({"schema": "tower.timeline/v1", "events": [event]})
+        W.timeline({"schema": "raven.timeline/v1", "events": [event]})
 
 
 def test_cancellation_before_discovery_never_collects_files(context, monkeypatch):
@@ -131,4 +131,4 @@ def test_numeric_timestamp_does_not_allow_invalid_sort_ordinals(ordinal):
     event = {"id": "1", "source": "log", "job_id": "81", "attempt": "a", "kind": "line",
              "message": "raw", "clock": "unix", "timestamp": 1, "cluster": "lab", "ordinal": ordinal}
     with pytest.raises(ValueError, match="ordinal"):
-        W.timeline({"schema": "tower.timeline/v1", "events": [event]})
+        W.timeline({"schema": "raven.timeline/v1", "events": [event]})

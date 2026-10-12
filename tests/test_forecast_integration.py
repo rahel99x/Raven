@@ -7,14 +7,14 @@ import time
 
 import pytest
 
-from tower import cli, clock, ui_persistence
-from tower.config import Config
-from tower.forecast import ForecastTracker
-from tower.model import Job, Store
-from tower.record import RecordingBackend
-from tower.remote import LocalFiles, RemoteFiles, SshBackend
-from tower.sampler import Sampler
-from tower.slurm import FakeBackend, Slurm
+from raven import cli, clock, ui_persistence
+from raven.config import Config
+from raven.forecast import ForecastTracker
+from raven.model import Job, Store
+from raven.record import RecordingBackend
+from raven.remote import LocalFiles, RemoteFiles, SshBackend
+from raven.sampler import Sampler
+from raven.slurm import FakeBackend, Slurm
 
 
 def pending(jid="1", **changes):

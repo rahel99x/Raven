@@ -3,15 +3,15 @@ import json
 
 import pytest
 
-from tower import doctor
-from tower.cli import main, parse
-from tower.config import Config
-from tower.slurm import CommandError
+from raven import doctor
+from raven.cli import main, parse
+from raven.config import Config
+from raven.slurm import CommandError
 
 
 def test_demo_doctor_does_not_need_commands_or_build_a_session(monkeypatch, capsys):
     monkeypatch.setattr(doctor.shutil, "which", lambda _: None)
-    monkeypatch.setattr("tower.cli.build", lambda *_: pytest.fail("doctor must not start sampling"))
+    monkeypatch.setattr("raven.cli.build", lambda *_: pytest.fail("doctor must not start sampling"))
     assert main(["--doctor", "--fake", "--json"]) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["ready"] and result["mode"] == "demo"

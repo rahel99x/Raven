@@ -18,7 +18,7 @@ SSH, tmux, and container actions require their corresponding executables on the 
 | `:terminal job-cwd 1234` | Start a local shell in that job's declared working directory. Refuse remote or ambiguous paths. |
 | `:terminal ssh cluster-alias` | Start SSH with your normal host alias, SSH configuration, host verification, and interactive authentication. |
 | `:terminal ssh-many node-a node-b` | Open a collection of up to four explicit SSH destinations. Validate all destinations before starting the first session. |
-| `:terminal tmux analysis` | Create or attach to `analysis` on the dedicated local `tower-fusion` tmux server. |
+| `:terminal tmux analysis` | Create or attach to `analysis` on the dedicated local `raven-fusion` tmux server. |
 | `:terminal container podman analysis /bin/bash` | Open an interactive shell in an existing container. |
 | `:terminal container apptainer /project/image.sif /bin/sh` | Open a shell in an explicit image. Host and image paths are separate. |
 
@@ -34,7 +34,7 @@ Inspect the child terminal's authentication messages and prompt before sending i
 The tmux action uses a separate server socket so it does not attach to unrelated default-server sessions.
 Use **Ctrl-B**, then **D** to detach with tmux's default key map. If your tmux configuration changes that map, use its detach command.
 Closing an embedded tmux client leaves its tmux session running. A normal local shell does not have this persistence guarantee.
-To attach outside Raven, use `tmux -L tower-fusion attach-session -t analysis`.
+To attach outside Raven, use `tmux -L raven-fusion attach-session -t analysis`.
 
 ## Open a reviewed allocation terminal
 
@@ -80,7 +80,7 @@ Select **Cancel** to discard the preview.
 | `environment` | `uname -srmo`; this does not dump environment variables or credentials. |
 | `python` | `python --version`. |
 | `allocation 1234` | `scontrol show job -o 1234`. |
-| `trace /project/trace.json` | `tower trace inspect /project/trace.json`. |
+| `trace /project/trace.json` | `raven trace inspect /project/trace.json`. |
 
 Prepared insertion requires a known shell profile. It is refused for unknown shells, SSH prompts without shell metadata, tmux sessions with unknown foreground programs, and application attachments.
 A known launch profile does not prove that the shell is currently at a prompt. For example, you can start Python inside Bash. The preview requires you to check the current foreground program.
@@ -120,7 +120,7 @@ Parameterized recipes refuse nested shell substitutions, formatted placeholders,
 
 Recipes remain in the current Raven session until you export them.
 Export creates a new private file and refuses to replace an existing path.
-Use `:terminal recipe import PATH` to read a `tower.terminal-recipes/v1` regular JSON file.
+Use `:terminal recipe import PATH` to read a `raven.terminal-recipes/v1` regular JSON file.
 Imports are bounded and atomic: an invalid record, duplicate name, conflicting existing name, or limit violation leaves the existing recipe collection unchanged.
 Interactive file operations use a background worker and a short-lived helper process with a five-second deadline. They do not wait for project filesystem reads on the UI thread.
 If an export times out, inspect its destination before retrying. Raven does not replay an uncertain file write.

@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import analysis_ui as A, chart_interaction as C, charts, layout as L, palette as P
-from tower.config import Config
-from tower.views import Views
+from raven import analysis_ui as A, chart_interaction as C, charts, layout as L, palette as P
+from raven.config import Config
+from raven.views import Views
 
 
 @pytest.fixture

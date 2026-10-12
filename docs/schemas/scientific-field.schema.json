@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/scientific-field.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/scientific-field.schema.json",
   "title": "scientific field",
   "description": "Native validation requires product(shape) <= 262144, len(values) == product(shape) and len(axes) == len(shape). These cross-field constraints require native validation.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.scientific-field/v1"
+      "const": "raven.scientific-field/v1"
     },
     "identity": {
       "type": "string",

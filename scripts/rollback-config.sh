@@ -48,7 +48,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, sys.argv[1])
-from tower import raven_migration as migration
+from raven import raven_migration as migration
 
 try:
     path = Path(sys.argv[2]).absolute()

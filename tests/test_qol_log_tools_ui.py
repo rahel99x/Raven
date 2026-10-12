@@ -6,11 +6,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L, log_tools as tools
-from tower.activity_ui import Activity
-from tower.logs import LogSession
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven import layout as L, log_tools as tools
+from raven.activity_ui import Activity
+from raven.logs import LogSession
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 def app_for(tmp_path, files=None):
@@ -194,7 +194,7 @@ def test_scan_and_page_io_run_on_shared_worker_never_overlay(tmp_path):
         count = len(files.threads)
         for _ in range(30): tools.overlay(SimpleNamespace(g=L.Glyphs(False)), {}, app, 100, 26)
         assert len(files.threads) == count
-        assert all(name.startswith('tower-research') for name in files.threads)
+        assert all(name.startswith('raven-research') for name in files.threads)
     finally: app.research.close()
 
 
@@ -255,7 +255,7 @@ def test_invalid_commands_are_atomic_and_do_not_start_io(tmp_path, command):
 
 
 def test_forward_pages_preserve_long_line_bytes_and_absolute_line_numbers(tmp_path):
-    from tower import log_scan
+    from raven import log_scan
     p = tmp_path / 'job.out'
     raw = b'a' * (log_scan.PAGE_BYTES * 2 + 71) + b'\nlast\n'
     p.write_bytes(raw)
@@ -309,7 +309,7 @@ def test_cancellation_publishes_no_results_and_keeps_source_context(tmp_path):
 
 
 def test_exact_source_search_result_fragment_opens_matching_fragment(tmp_path):
-    from tower import log_scan
+    from raven import log_scan
     p = tmp_path / 'job.out'
     p.write_bytes(b'x' * log_scan.MAX_LINE_BYTES + b'FAILED fragment\nlast\n')
     app = app_for(tmp_path)
@@ -349,7 +349,7 @@ def test_retained_pathological_regex_cannot_scan_oversized_tail_line(tmp_path):
 
 
 def test_page_horizontal_pan_is_bounded_cached_and_keeps_raw_bytes(tmp_path, monkeypatch):
-    from tower import log_scan
+    from raven import log_scan
     p = tmp_path / 'job.out'
     p.write_text('界' * 60000 + 'end\n')
     app = app_for(tmp_path)
@@ -407,7 +407,7 @@ def test_closed_source_page_stays_closed_when_next_page_finishes(tmp_path):
 
 
 def test_mark_from_long_line_fragment_reopens_same_fragment(tmp_path):
-    from tower import log_scan
+    from raven import log_scan
     p = tmp_path / 'job.out'
     p.write_bytes(b'x' * log_scan.MAX_LINE_BYTES + b'FAILED fragment\nlast\n')
     app = app_for(tmp_path)

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "kind": "tower.scaling",
+  "kind": "raven.scaling",
   "name": "toy-scaling",
   "script": "examples/planning/scaling.sbatch",
   "mode": "strong",

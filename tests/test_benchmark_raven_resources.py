@@ -38,7 +38,7 @@ def test_disk_sampler_never_follows_symlink_outside_fixture(tmp_path):
 
 
 def test_source_digest_tracks_content_and_filename(tmp_path):
-    package = tmp_path / 'tower'
+    package = tmp_path / 'raven'
     package.mkdir()
     source = package / 'one.py'
     source.write_text('value = 1\n')
@@ -48,6 +48,21 @@ def test_source_digest_tracks_content_and_filename(tmp_path):
     assert changed != before
     source.rename(package / 'two.py')
     assert B.source_digest(tmp_path) != changed
+
+
+def test_source_digest_uses_selected_checkout_package_metadata(tmp_path):
+    (tmp_path / 'pyproject.toml').write_text('[tool.setuptools]\npackages = ["retained_fixture"]\n')
+    package = tmp_path / 'retained_fixture'
+    package.mkdir()
+    source = package / 'one.py'
+    source.write_text('value = 1\n')
+    before = B.source_digest(tmp_path)
+    unrelated = tmp_path / 'raven'
+    unrelated.mkdir()
+    (unrelated / 'one.py').write_text('wrong = True\n')
+    assert B.source_digest(tmp_path) == before
+    source.write_text('value = 2\n')
+    assert B.source_digest(tmp_path) != before
 
 
 def test_quantiles_preserve_units_and_report_empty_series():

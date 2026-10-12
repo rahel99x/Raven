@@ -10,10 +10,10 @@ import threading
 
 import pytest
 
-from tower.gpu_collectors import (MAX_BYTES, PROBE_SOURCE, parse_amd, parse_intel,
+from raven.gpu_collectors import (MAX_BYTES, PROBE_SOURCE, parse_amd, parse_intel,
     parse_nvidia, parse_probe_output, probe_command, provider_name)
-from tower.model import GpuSample, Job, Store
-from tower.slurm import CommandError, Slurm
+from raven.model import GpuSample, Job, Store
+from raven.slurm import CommandError, Slurm
 
 FIXTURES = Path(__file__).parent / "fixtures" / "gpu"
 
@@ -23,7 +23,7 @@ def fixture(name):
 
 
 def envelope(vendors=None, *, node="node1", job_id="7", gpus="0", **kwargs):
-    return json.dumps(dict(tower_gpu=1, node=node, job_id=job_id, gpus=gpus,
+    return json.dumps(dict(raven_gpu=1, node=node, job_id=job_id, gpus=gpus,
         vendors=vendors if vendors is not None else {"nvidia": {"metrics": "0, 75, 512, 1024, NVIDIA, GPU-a, 0000:01:00.0\n"}},
         **kwargs), separators=(",", ":"))
 
@@ -180,7 +180,7 @@ def test_invalid_provider_rejected_before_execution(value):
 
 def test_inventory_cache_expires_not_slid_by_each_poll(monkeypatch):
     now = [10.]
-    monkeypatch.setattr("tower.slurm.time.monotonic", lambda: now[0])
+    monkeypatch.setattr("raven.slurm.time.monotonic", lambda: now[0])
     vendors = {"amd": {"inventory": fixture("amd-list.json"), "metrics": fixture("amd-metric.json")}}
     backend = Backend(envelope(vendors, visible={"amd": "AMD-1111"}))
     slurm = Slurm(backend, "u")
@@ -373,7 +373,7 @@ def test_probe_prefers_slurm_node_name_over_operating_system_hostname(tmp_path):
 
 @pytest.mark.parametrize("provider", ["auto", "nvidia", "amd", "intel"])
 def test_demo_gpu_provider_uses_production_parsers(provider):
-    from tower.slurm import FakeBackend
+    from raven.slurm import FakeBackend
     backend = FakeBackend()
     slurm = Slurm(backend, "alex", gpu_provider=provider)
     gpu_job = next(j for j in slurm.jobs() if j.gpus and j.state == "RUNNING")

@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from tower import charts, clock, layout as L
-from tower.model import GpuSample, Live, Store
+from raven import charts, clock, layout as L
+from raven.model import GpuSample, Live, Store
 
 
 def capture(store, monkeypatch, kind, timestamp, value=0.5):

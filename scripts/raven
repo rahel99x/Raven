@@ -1,0 +1,8 @@
+#!/bin/sh
+# Source launcher: no pip installation needed; works from any directory.
+set -eu
+RAVEN_SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+if [ -x "$RAVEN_SOURCE_ROOT/.venv/bin/python" ]; then
+    exec "$RAVEN_SOURCE_ROOT/.venv/bin/python" "$RAVEN_SOURCE_ROOT/raven" "$@"
+fi
+exec python3 "$RAVEN_SOURCE_ROOT/raven" "$@"

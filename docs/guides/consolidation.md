@@ -1,6 +1,6 @@
 # Consolidation in 6.1
 
-This guide describes the shared mechanisms introduced in Tower 6.1 and retained
+This guide describes the shared mechanisms introduced in Raven 6.1 and retained
 in Raven. Views reuse prepared observations and analyses while keeping their
 pane state local. Source collection, scientific analysis, and reviewed actions
 retain separate identities and lifecycles.

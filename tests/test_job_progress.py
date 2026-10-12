@@ -9,10 +9,10 @@ import json
 
 import pytest
 
-from tower import job_progress as P, layout as L
-from tower.config import Config
-from tower.model import Finished, Job, Store, stamp
-from tower.research import ResearchHub
+from raven import job_progress as P, layout as L
+from raven.config import Config
+from raven.model import Finished, Job, Store, stamp
+from raven.research import ResearchHub
 
 
 @pytest.fixture
@@ -122,8 +122,8 @@ def test_single_cell_markers_keep_allocation_time_distinct_from_completion(basis
 
 @pytest.fixture
 def progress_table():
-    from tower.controller import App
-    from tower.views import Views
+    from raven.controller import App
+    from raven.views import Views
 
     cfg = Config({"log_lines": 0, "animations": False, "startup_animation": False})
     store = Store(persist=False)
@@ -165,7 +165,7 @@ def test_leading_progress_retains_six_cells_beside_marks_and_array_fold_controls
 
 
 def test_leading_progress_mouse_cycle_sorts_raw_fractions_and_keeps_job_identity(progress_table):
-    from tower import table_sort
+    from raven import table_sort
 
     store, app, views = progress_table
     store.jobs = [Job("100", "high", "cpu", "RUNNING"),
@@ -192,8 +192,8 @@ def test_leading_progress_mouse_cycle_sorts_raw_fractions_and_keeps_job_identity
 
 
 def test_custom_column_order_and_hidden_progress_preserve_identity_columns(progress_table):
-    from tower import table_ui
-    from tower.views import JOB_COLS
+    from raven import table_ui
+    from raven.views import JOB_COLS
 
     store, app, views = progress_table
     assert [col.key for col in JOB_COLS[:2]] == ["progress", "id"]
@@ -324,7 +324,7 @@ def test_jobs_progress_reads_on_existing_worker_without_opening_research(dashboa
     entered, release = Event(), Event()
     contexts = []
     def background(context):
-        assert current_thread().name.startswith("tower-research")
+        assert current_thread().name.startswith("raven-research")
         contexts.append(context)
         entered.set()
         assert release.wait(3)
@@ -470,7 +470,7 @@ def visible_project(dashboard, tmp_path, count=6):
         jid, run_id = str(900 + index), "run" + str(900 + index)
         directory = tmp_path / "runs" / run_id
         directory.mkdir(parents=True)
-        inventory = {"schema": "tower.run/v1", "run_id": run_id, "experiment_id": "test", "attempt": 1,
+        inventory = {"schema": "raven.run/v1", "run_id": run_id, "experiment_id": "test", "attempt": 1,
                      "state": "RUNNING", "job_id": jid, "paths": {"metrics": "metrics.jsonl"}}
         (directory / "run.json").write_text(json.dumps(inventory))
         (directory / "metrics.jsonl").write_text(json.dumps({"t": 1, "metrics": {"loss": .3},
@@ -488,17 +488,17 @@ def finish_batch(dashboard):
 
 
 def test_all_visible_standard_runs_refresh_in_fair_bounded_batches(dashboard, tmp_path, monkeypatch):
-    from tower import projects
-    from tower.metrics import MetricReader
+    from raven import projects
+    from raven.metrics import MetricReader
     app = visible_project(dashboard, tmp_path)
     calls = []
     original, original_read = projects.select_run, MetricReader.read_confined
     def select(root, run_id, **kwargs):
-        assert current_thread().name.startswith("tower-research")
+        assert current_thread().name.startswith("raven-research")
         calls.append(run_id)
         return original(root, run_id, **kwargs)
     def read(reader, *args, **kwargs):
-        assert current_thread().name.startswith("tower-research")
+        assert current_thread().name.startswith("raven-research")
         assert reader.max_points == 1 and reader.max_bytes == 65536 and reader.max_streams == 64
         return original_read(reader, *args, **kwargs)
     def forbidden(*args, **kwargs):
@@ -537,7 +537,7 @@ def test_batch_metric_appends_update_report_without_research_navigation(dashboar
 
 @pytest.mark.parametrize("transition", ["root", "generation", "attempt", "inventory_path", "cancel", "tab"])
 def test_stale_visible_batch_cannot_publish(dashboard, tmp_path, monkeypatch, transition):
-    from tower import projects
+    from raven import projects
     app = visible_project(dashboard, tmp_path, count=1)
     entered, release = Event(), Event()
     original = projects.select_run
@@ -623,8 +623,8 @@ def test_over_limit_inventory_adapter_is_refused_without_traversing_it(dashboard
 
 
 def test_explicit_quick_advisor_detaches_visible_progress_batch(dashboard, tmp_path, monkeypatch):
-    from tower import projects, job_panels as J, quick_advisor as Q
-    from tower.views import Views
+    from raven import projects, job_panels as J, quick_advisor as Q
+    from raven.views import Views
     app = visible_project(dashboard, tmp_path, count=1)
     app.selected_id, app.views_ref = "900", Views(L.Glyphs(False), app.cfg)
     app.job_panel_state.update(mode="quick")
@@ -675,7 +675,7 @@ def test_manual_detach_and_project_off_hide_prior_scalar_reports(dashboard, tmp_
 
 
 def test_explicit_project_priority_hook_detaches_running_progress_batch(dashboard, tmp_path, monkeypatch):
-    from tower import projects, project_ui
+    from raven import projects, project_ui
     app = visible_project(dashboard, tmp_path, count=1)
     entered, release = Event(), Event()
     original = projects.select_run

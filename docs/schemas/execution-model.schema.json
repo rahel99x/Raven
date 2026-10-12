@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/rahel99x/Slurm-Tower/main/docs/schemas/execution-model.schema.json",
+  "$id": "https://raw.githubusercontent.com/rahel99x/Raven/main/docs/schemas/execution-model.schema.json",
   "title": "execution model",
   "description": "Native validation checks resource kinds/references, unique IDs, dependency existence/acyclicity, fixed rank identities, scenario ratios and bounded arithmetic. A structural schema does not establish model fidelity.",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.execution-model/v1"
+      "const": "raven.execution-model/v1"
     },
     "workload": {
       "type": "string",

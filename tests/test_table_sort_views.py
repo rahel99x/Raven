@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from tower import layout as L, table_sort
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Health, Job, Live, Node, Partition, Store
-from tower.views import JOB_COLS, Views
+from raven import layout as L, table_sort
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Health, Job, Live, Node, Partition, Store
+from raven.views import JOB_COLS, Views
 
 
 @pytest.fixture

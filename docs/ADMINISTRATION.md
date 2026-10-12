@@ -12,7 +12,7 @@ before starting a site pilot.
 1. Select a supported Python and Slurm environment through your normal modules.
 2. Install a reviewed source release or a locally built wheel. Keep its hash.
 3. Start with the conservative example profile and disabled optional collectors.
-4. Run `tower --doctor`, then the [qualification script](QUALIFICATION.md).
+4. Run `raven --doctor`, then the [qualification script](QUALIFICATION.md).
 5. Check a small existing allocation, accounting delay, logs, and terminal behavior.
 6. Enable one optional collector or operation at a time and record its cost.
 
@@ -28,7 +28,7 @@ site policy, Prometheus, adapter, portable evidence and support-bundle examples.
 The [generated operation reference](reference/operations.md) lists their form
 fields and defaults.
 
-The `site-policy` operation evaluates a `tower.site-policy/v1` document against
+The `site-policy` operation evaluates a `raven.collection-policy/v1` document against
 declared source capabilities and a collection request. Policy covers source and
 operation allowlists, collection/resource limits, allocation requirements, and
 intrusive-tool permission. It produces a reason for admission or refusal.

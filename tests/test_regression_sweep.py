@@ -12,9 +12,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import diagnostic_trials as driver
-from tower import ops_investigation as ops
-from tower.operations import Context
+from raven import diagnostic_trials as driver
+from raven import ops_investigation as ops
+from raven.operations import Context
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,7 @@ def synchronous_driver_validation(monkeypatch):
 
 
 def git(repo, *argv):
-    result = subprocess.run(["git", "-c", "user.name=Tower test", "-c", "user.email=tower@example.invalid", "-C", str(repo), *argv], capture_output=True, text=True, timeout=10)
+    result = subprocess.run(["git", "-c", "user.name=Raven test", "-c", "user.email=raven@example.invalid", "-C", str(repo), *argv], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     return result.stdout.strip()
 
@@ -39,7 +39,7 @@ def sweep(tmp_path):
         git(repo, "add", "measure.py")
         git(repo, "commit", "-qm", name)
         revisions.append({"id": name, "commit": git(repo, "rev-parse", "HEAD")})
-    recipe = {"schema": "tower.diagnostic-campaign/v1", "id": "git-sweep", "mode": "local-diagnostic", "kind": "regression",
+    recipe = {"schema": "raven.diagnostic-campaign/v1", "id": "git-sweep", "mode": "local-diagnostic", "kind": "regression",
               "command": [str(Path(sys.executable).resolve()), "{repo:measure.py}", "{result}"], "files": [],
               "limits": {"max_trials": 40, "trial_seconds": 3, "total_seconds": 45, "cpus": 1, "memory_mb": 256, "output_bytes": 16384, "repeats": 4},
               "oracle": {"exit_code": 0, "contains": "SCIENTIFIC_CHECK_OK"},

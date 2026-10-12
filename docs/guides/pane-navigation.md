@@ -154,7 +154,7 @@ Paste with the editor's normal controls when required.
 The toolbar uses compact `C` and `Y` labels in narrow terminals.
 The Edit menu also provides **Switch to Vim/Neovim yanking** and **Switch to clipboard copying**.
 
-For the compatibility `tower` launcher, set the launch preference in its existing configuration:
+For the compatibility `raven` launcher, set the launch preference in its existing configuration:
 
 ```json
 {
@@ -183,7 +183,7 @@ Raven does not discover arbitrary sockets or infer a remote TCP connection.
 
 Raven resolves `vim` on `PATH` and requests `vim --serverlist`.
 It selects one unambiguous running server.
-When several servers exist, set `TOWER_VIM_SERVER` to the required exact server name before starting Raven.
+When several servers exist, set `RAVEN_VIM_SERVER` to the required exact server name before starting Raven.
 That name must appear in the reported server list.
 A Vim build without usable server support remains eligible for clipboard fallback.
 
@@ -211,13 +211,13 @@ Use the terminal clipboard or exported file when the editor is on another machin
 | Dragging job rows marks jobs | Press `v` first when you need rendered job-row text. |
 | Copy reports missing rendered lines | Scroll through the range, narrow it, or export the source. |
 | Yank cannot find Neovim | Check `PATH` and the inherited owned Unix socket address. |
-| Yank reports multiple Vim servers | Set `TOWER_VIM_SERVER` to one exact reported server name. |
+| Yank reports multiple Vim servers | Set `RAVEN_VIM_SERVER` to one exact reported server name. |
 | Editor delivery is rejected | Check the notice for the UTF-8, NUL, size, timeout, or server condition. Use the retained export. |
 
 ## Integration methods
 
 These methods operate on published geometry and bounded display state.
-`tower.editor_yank` performs the explicit local editor delivery.
+`raven.editor_yank` performs the explicit local editor delivery.
 
 | Method | Purpose and result |
 | --- | --- |

@@ -7,10 +7,10 @@ build/
 dist/
 *.egg-info/
 .venv/
-.tower/
-!examples/project-template/.tower/
-!examples/project-template/.tower/**
-tower-exports/
+.raven/
+!examples/project-template/.raven/
+!examples/project-template/.raven/**
+raven-exports/
 .DS_Store
 .env
 .env.*

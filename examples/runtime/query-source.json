@@ -1,5 +1,5 @@
 {
-  "schema": "tower.query-source/v1",
+  "schema": "raven.query-source/v1",
   "identity": "job123:attempt1:rank-phase-duration",
   "coverage": {"complete": false, "reason": "Rank 3 did not publish a phase observation."},
   "rows": [

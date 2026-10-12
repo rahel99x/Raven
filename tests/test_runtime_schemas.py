@@ -8,8 +8,8 @@ import pytest
 jsonschema = pytest.importorskip("jsonschema")
 from referencing import Registry, Resource
 
-from tower import diagnostic_recipes, execution_simulator, ops_runtime, runtime_control, science_fields
-from tower.operations import Context
+from raven import diagnostic_recipes, execution_simulator, ops_runtime, runtime_control, science_fields
+from raven.operations import Context
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples/runtime"

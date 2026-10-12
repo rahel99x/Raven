@@ -1,4 +1,4 @@
-"""The copyable project producer works with Tower's real bounded readers."""
+"""The copyable project producer works with Raven's real bounded readers."""
 import importlib.util
 import json
 import math
@@ -10,14 +10,14 @@ import sys
 
 import pytest
 
-from tower import cli
-from tower.artifacts import load_contract, validate_contract
-from tower.config import Config
-from tower.metrics import MetricReader
-from tower.planning_io import load_json
-from tower.predict import predict
-from tower.scaling import analyze as analyze_scaling
-from tower.workflow import analyze as analyze_workflow
+from raven import cli
+from raven.artifacts import load_contract, validate_contract
+from raven.config import Config
+from raven.metrics import MetricReader
+from raven.planning_io import load_json
+from raven.predict import predict
+from raven.scaling import analyze as analyze_scaling
+from raven.workflow import analyze as analyze_workflow
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "examples" / "project-template"
@@ -55,9 +55,9 @@ def load_experiment(project, monkeypatch):
     return experiment
 
 
-def test_copied_project_produces_real_reports_without_tower_dependency(project, monkeypatch, capsys):
+def test_copied_project_produces_real_reports_without_raven_dependency(project, monkeypatch, capsys):
     root, _ = project
-    env = {key: value for key, value in os.environ.items() if not key.startswith(("SLURM_", "TOWER_"))}
+    env = {key: value for key, value in os.environ.items() if not key.startswith(("SLURM_", "RAVEN_"))}
     env.pop("PYTHONPATH", None)
     completed = subprocess.run([sys.executable, "-S", str(root / "experiment.py"), "--run-id", "observed",
                                 "--steps", "3", "--terms-per-step", "32"],
@@ -77,7 +77,7 @@ def test_copied_project_produces_real_reports_without_tower_dependency(project, 
     assert metrics["progress"]["completed"] == metrics["progress"]["total"] == 96
     assert "Starting 96 terms" in (run / "logs" / "stdout.log").read_text()
     assert (run / "logs" / "stderr.log").read_text() == ""
-    contract = load_contract(root / ".tower" / "contracts" / "outputs.v1.json")
+    contract = load_contract(root / ".raven" / "contracts" / "outputs.v1.json")
     checked = validate_contract(contract, run)
     assert checked["valid"], checked
     exported = subprocess.run([sys.executable, "-S", str(root / "reporting.py"), "export", "runs/observed",
@@ -90,7 +90,7 @@ def test_copied_project_produces_real_reports_without_tower_dependency(project, 
     config = root / "test-config.json"
     config.write_text("{}")
     assert cli.main(["--config", str(config), "--no-state", "--no-plugins", "run", "validate",
-                     str(root / ".tower" / "contracts" / "outputs.v1.json"), str(run)]) == 0
+                     str(root / ".raven" / "contracts" / "outputs.v1.json"), str(run)]) == 0
     assert json.loads(capsys.readouterr().out)["valid"]
 
 
@@ -101,7 +101,7 @@ def test_template_config_attaches_explicit_run_and_native_readers_without_extra_
                                 "--steps", "2", "--terms-per-step", "16"],
                                cwd=root, capture_output=True, text=True, timeout=10)
     assert completed.returncode == 0, completed.stderr
-    config = root / ".tower" / "config.json"
+    config = root / ".raven" / "config.json"
     session = cli.build(cli.parse(["--fake", "--no-state", "--no-plugins", "--config", str(config),
                                    "--workdir", str(root / "runs" / "attached"),
                                    "--tab", "research", "--research-view", "experiment"]), Config.load(str(config)))
@@ -481,7 +481,7 @@ def test_scaling_metadata_is_explicit_and_failures_suppress_relative_claims(proj
 
 def test_template_workflow_unknown_times_remain_unknown(project):
     root, _ = project
-    recipe = load_json(root / ".tower" / "definitions" / "workflow.json")
+    recipe = load_json(root / ".raven" / "definitions" / "workflow.json")
     output = analyze_workflow(recipe)
     assert output["status"] == "incomplete"
     assert len(output["order"]) >= 1

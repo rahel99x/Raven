@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import operations as O
+from raven import operations as O
 
 
 @pytest.fixture

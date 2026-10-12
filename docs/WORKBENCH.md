@@ -29,9 +29,9 @@ Update your checkout, keep its existing configuration, and launch normally:
 ```bash
 git pull --ff-only
 python3 scripts/setup.py --mode local
-tower
+raven
 # Explore without accessing Slurm:
-tower --fake --unicode
+raven --fake --unicode
 ```
 
 1. Press `?`, then `/` and a word such as `logs` to search help. Arrows and page
@@ -49,7 +49,7 @@ tower --fake --unicode
 
 The command examples below are entered after `:` inside Raven. They are
 interactive workbench commands. Overlay availability differs from the scripted
-`tower run` interface. Use `?` on the current page
+`raven run` interface. Use `?` on the current page
 for its keys and the [reference](reference.md) for scripted commands.
 
 ## The twenty improvements
@@ -317,7 +317,7 @@ binding/discovery notices. The inventory is revalidated when selected; its
 `run_id` must match its directory, and `attempt` identifies that execution attempt.
 
 A selected inventory binds its declared metrics and log index, the standard
-`.tower/contracts/outputs.v1.json`, and a verified passport where unambiguous.
+`.raven/contracts/outputs.v1.json`, and a verified passport where unambiguous.
 Runs without `job_id` remain project runs: metrics, logs, and outputs work without
 attaching an unrelated running job. Missing sources stay missing. Multiple
 passports require an explicit `:run passport passports/FILE.json`. Clearing the
@@ -425,5 +425,5 @@ The interface and scheduler integration are covered with simulated jobs, local
 files, malformed/stale data, bounded-work checks, and terminal rendering tests.
 Development verification does not submit real jobs. Live CARC accounting,
 permissions, submission receipts, and workload performance still require local
-verification. Start with `tower --fake`, then the runbook's low-impact CARC
+verification. Start with `raven --fake`, then the runbook's low-impact CARC
 checks, and review one small real submission before adopting batch execution.

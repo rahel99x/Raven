@@ -3,12 +3,12 @@ import math
 
 import pytest
 
-from tower import chart_interaction as C, charts, clock, layout as L, metric_live as M
-from tower.config import Config
-from tower.controller import App
-from tower.metric_raster import MAX_CELLS, MAX_ENTRIES, MAX_POINTS
-from tower.model import Job, Store
-from tower.views import Views
+from raven import chart_interaction as C, charts, clock, layout as L, metric_live as M
+from raven.config import Config
+from raven.controller import App
+from raven.metric_raster import MAX_CELLS, MAX_ENTRIES, MAX_POINTS
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.mark.parametrize("tab", ["jobs", "analytics"])

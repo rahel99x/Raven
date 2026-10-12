@@ -3,14 +3,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import charts, clock, layout as L
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.model import Health, Job, Live, Store
-from tower.sampler import Sampler
-from tower.slurm import FakeBackend, Slurm
-from tower.views import ANALYTICS_VIEWS, TABS, Views
+from raven import charts, clock, layout as L
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.model import Health, Job, Live, Store
+from raven.sampler import Sampler
+from raven.slurm import FakeBackend, Slurm
+from raven.views import ANALYTICS_VIEWS, TABS, Views
 
 
 @pytest.fixture

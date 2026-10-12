@@ -7,6 +7,32 @@ Target-system Slurm qualification remains outstanding. The
 [implementation map](implementation.md) and
 [execution contracts](execution-contracts.md) define the supported scope.
 
+Retained reports preserve the original measurements and code fingerprints.
+Raven names, schema identifiers, and paths have been normalized in publication
+copies; this metadata change does not record a measurement rerun. The
+[benchmark manifest](../benchmarks/7.0.0-benchmark-manifest.json) distinguishes
+current publication hashes from original recorded artifact hashes. Its source
+and harness fingerprints identify the measured implementations, rather than
+the current checkout.
+
+## Namespace and startup verification
+
+The namespace follow-up was validated separately from those retained workload
+measurements. The complete Python 3.12.14 regression suite passed 15,758 tests,
+with eight optional-dependency skips. All 867 tracked files and both built
+distributions were checked for previous product names; none remained.
+
+Fresh pipx installation exposed `raven`, `ravenl`, and `ravenh` from outside the
+checkout with Bash startup files disabled. The installed wheel passed all eight
+local qualification checks, including real curses startup and clean offline
+installation. The 51 schemas and 38 examples passed their published contracts.
+Live Slurm startup remains a target-system check.
+
+Step admission was checked at the ten-second boundary, across concurrent owners
+and configuration profiles, after failed attempts and ledger upgrades, and under
+stricter mandatory policies. Existing configuration remains explicit; package
+replacement requires selecting its new worker interpreter.
+
 ## Regression and compatibility
 
 | Check | Result |
@@ -58,9 +84,9 @@ pressure, source budgets, retention, migration, and exact-job advice.
 
 ## Distribution and terminal checks
 
-The recorded wheel and source archive builds succeeded. All 233 Python modules in the
-wheel match the checkout. The source archive includes the source launchers,
-schemas, and TOML examples.
+The recorded wheel and source archive builds succeeded. All 233 Python modules
+in that wheel matched the source used for those checks. The source archive
+included the source launchers, schemas, and TOML examples.
 
 A fresh environment outside the checkout passed all three installed launchers,
 a dependency-free core run, standalone desktop diagnostics, a Heavy plan, and
@@ -99,6 +125,11 @@ Each run uses a real 160-column, 48-row curses PTY, a ten-second warmup, and a
 Monitoring receives one Up/Down key every 15 seconds. Idle tests pre-age the
 actual idle timer at the first complete frame and then send no input; they
 measure steady idle behavior, not the natural transition into idle.
+
+Current benchmark harnesses read the selected checkout's static package
+declaration and verify import origins, so retained commits can run with their
+original namespace. Run each source comparison in a fresh process; a package
+already loaded from another checkout is rejected.
 
 Tests and builds do not run alongside these measurements. CPU is normalized to
 one logical core and includes owned processes and waited descendants. RSS is

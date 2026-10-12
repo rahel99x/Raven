@@ -14,9 +14,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.raven_protocol import Decoder, MAX_FRAME, MAX_QUEUE, ProtocolError, build_digest, canonical, digest, encode
-from tower.raven_resources import child_environment, limits, placement_probe, task_limits, verify_placement
-from tower.raven_worker_client import WorkerClient
+from raven.raven_protocol import Decoder, MAX_FRAME, MAX_QUEUE, ProtocolError, build_digest, canonical, digest, encode
+from raven.raven_resources import child_environment, limits, placement_probe, task_limits, verify_placement
+from raven.raven_worker_client import WorkerClient
 
 
 def config(**updates):
@@ -25,7 +25,7 @@ def config(**updates):
 
 
 def inputs():
-    return {"document": {"schema": "tower.statistics/v1", "design": "independent", "unit": "seed",
+    return {"document": {"schema": "raven.statistics/v1", "design": "independent", "unit": "seed",
                          "control": [{"id": "a", "value": 1}, {"id": "b", "value": 2}, {"id": "c", "value": 3}],
                          "treatment": [{"id": "d", "value": 4}, {"id": "e", "value": 5}, {"id": "f", "value": 6}]}}
 
@@ -210,12 +210,12 @@ def test_immediate_cancellation_reaps_task_and_later_work_is_admitted():
 
 
 def test_worker_module_bootstrap_imports_no_sampler_or_ui():
-    result = subprocess.run([sys.executable, "-c", "import sys,tower.raven_worker; print(','.join(sorted(k for k in sys.modules if k.startswith('tower.'))))"],
+    result = subprocess.run([sys.executable, "-c", "import sys,raven.raven_worker; print(','.join(sorted(k for k in sys.modules if k.startswith('raven.'))))"],
                             capture_output=True, text=True, timeout=5)
     assert result.returncode == 0
-    assert "tower.sampler" not in result.stdout
-    assert "tower.screen" not in result.stdout
-    assert "tower.views" not in result.stdout
+    assert "raven.sampler" not in result.stdout
+    assert "raven.screen" not in result.stdout
+    assert "raven.views" not in result.stdout
 
 
 def test_client_rejects_generation_sequence_nonce_and_context_changes():
@@ -249,7 +249,7 @@ def test_task_cancellation_kills_owned_child_and_preserves_worker_process():
 
 def test_analysis_task_cli_refuses_missing_or_forged_supervisor():
     for parent in (None, os.getpid() + 999999):
-        command = [sys.executable, "-m", "tower.raven_worker", "--task"]
+        command = [sys.executable, "-m", "raven.raven_worker", "--task"]
         if parent is not None:
             command += ["--parent-pid", str(parent)]
         result = subprocess.run(command, input=b"", capture_output=True, timeout=5)
@@ -342,7 +342,7 @@ def test_actual_task_wall_budget_terminates_child_and_allows_followup():
 
 
 def test_build_mismatch_has_correlated_diagnostic_without_admission(monkeypatch):
-    from tower import raven_worker_client
+    from raven import raven_worker_client
     monkeypatch.setattr(raven_worker_client, 'build_digest', lambda: '0' * 64)
     with WorkerClient(config()) as client:
         until(client, lambda: client.status == 'failed')

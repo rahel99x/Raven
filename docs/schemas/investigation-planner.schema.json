@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "properties": {
     "schema": {
-      "const": "tower.investigation-plan/v1"
+      "const": "raven.investigation-plan/v1"
     },
     "budget": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

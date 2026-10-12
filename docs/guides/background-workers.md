@@ -25,8 +25,8 @@ remain in effect.
 | `:workers multi` | Request Multi. |
 | `:workers toggle` | Reverse the most recently requested mode. |
 | `:workers status` | Show the current mode and pending work. |
-| `tower --workers single` | Start with Single. |
-| `tower --workers multi` | Start with Multi. |
+| `raven --workers single` | Start with Single. |
+| `raven --workers multi` | Start with Multi. |
 
 Use F8 and the arrow keys to reach the toolbar switch without a mouse.
 Use Enter or Space to activate it.
@@ -64,7 +64,7 @@ In a managed Raven profile, set `ui.worker_mode`:
 ```
 
 Add that field to the existing profile; see [effective configuration](../raven/README.md#inspect-effective-configuration).
-The compatibility `tower` configuration uses a top-level TOML entry:
+The compatibility `raven` configuration uses a top-level TOML entry:
 
 ```toml
 worker_mode = "single"
@@ -92,7 +92,7 @@ To test transitions with simulated data and terminal input, run:
 
 ```bash
 python3 -S scripts/benchmark_sustained_pointer.py \
-  --source-root . --output /tmp/tower-worker-switch.json \
+  --source-root . --output /tmp/raven-worker-switch.json \
   --live --delta 5 --points 4000 --jobs 3 \
   --rates 250 --seconds 4 --workers multi --switch-workers --switch-control toolbar
 ```

@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/qualification.schema.json",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/qualification.schema.json",
   "type": "object",
   "properties": {
     "schema": {
-      "const": "tower.qualification/v1"
+      "const": "raven.qualification-manifest/v1"
     },
     "id": {
       "type": "string",
@@ -34,7 +34,7 @@
           },
           "format": {
             "enum": [
-              "tower-evidence",
+              "raven-evidence",
               "perfetto-json",
               "caliper-json-records",
               "workflow-run-ro-crate",

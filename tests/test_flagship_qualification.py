@@ -7,13 +7,13 @@ import sys
 
 import pytest
 
-SPEC = importlib.util.spec_from_file_location("tower_qualify", Path(__file__).resolve().parents[1] / "scripts" / "qualify_flagship.py")
+SPEC = importlib.util.spec_from_file_location("raven_qualify", Path(__file__).resolve().parents[1] / "scripts" / "qualify_flagship.py")
 Q = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(Q)
 
 
 def manifest():
-    return {"schema": "tower.site-qualification/v1", "cluster": "lab", "job_id": "123",
+    return {"schema": "raven.site-qualification/v1", "cluster": "lab", "job_id": "123",
             "user": "researcher", "submit_time": "2026-10-10T12:00:00", "start_time": "2026-10-10T12:01:00"}
 
 
@@ -98,7 +98,7 @@ def test_docs_checker_reports_only_local_missing_paths(tmp_path):
 
 def test_offline_report_retains_external_untested_gates(monkeypatch):
     monkeypatch.setattr(Q, "documentation_check", lambda: {"documents": 2})
-    monkeypatch.setattr(Q, "run", lambda *args, **kwargs: "Tower demo")
+    monkeypatch.setattr(Q, "run", lambda *args, **kwargs: "Raven demo")
     monkeypatch.setattr(Q, "terminal_check", lambda *args: {"output_bytes": 1})
     report = Q.qualify()
     assert report["status"] == "qualified-for-recorded-checks"

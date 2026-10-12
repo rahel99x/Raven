@@ -3,8 +3,8 @@ from dataclasses import replace
 
 import pytest
 
-from tower import job_groups as G, manual_job_groups as M, queue_order_ui as Q, ops_ui
-from tower.model import Finished, Job
+from raven import job_groups as G, manual_job_groups as M, queue_order_ui as Q, ops_ui
+from raven.model import Finished, Job
 from test_operations_sequences import operation_dashboard
 from test_ops_queue_order import Backend
 

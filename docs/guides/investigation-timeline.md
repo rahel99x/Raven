@@ -66,7 +66,7 @@ the current execution.
 ## Import a declared timeline
 
 Set **Optional timeline manifest** to a JSON file and select **Inspect / prepare**
-to inspect supplied evidence. A manifest uses `tower.timeline/v1` and contains
+to inspect supplied evidence. A manifest uses `raven.timeline/v1` and contains
 at most 20,000 events. Each event declares:
 
 - `id`, `source`, `cluster`, `job_id` and `attempt` for its namespace.

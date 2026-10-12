@@ -150,8 +150,8 @@ def live_manifest(path):
         raise ValueError("Site manifest exceeds 16 KiB")
     value = json.loads(raw.decode("utf-8"))
     fields = {"schema", "cluster", "job_id", "user", "submit_time", "start_time"}
-    if not isinstance(value, dict) or set(value) != fields or value["schema"] != "tower.site-qualification/v1":
-        raise ValueError("Expected exact tower.site-qualification/v1 identity fields")
+    if not isinstance(value, dict) or set(value) != fields or value["schema"] != "raven.site-qualification/v1":
+        raise ValueError("Expected exact raven.site-qualification/v1 identity fields")
     if not isinstance(value["job_id"], str) or not re.fullmatch(r"[1-9][0-9]{0,18}(?:_[0-9]{1,19})?", value["job_id"]):
         raise ValueError("Use one explicit job or array-task ID")
     for key in ("cluster", "user"):
@@ -191,15 +191,15 @@ def qualify(*, wheel=None, site_manifest=None):
         except Exception as exc:
             checks.append({"id": name, "status": "failed", "detail": str(exc)[:2400],
                            "seconds": round(time.monotonic() - started, 3)})
-    with tempfile.TemporaryDirectory(prefix="tower-qualification-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="raven-qualification-") as temporary:
         scratch = Path(temporary)
         config = scratch / "config.json"
         config.write_text('{"startup_animation":false,"animations":false}\n')
         env = dict(os.environ, TERM="xterm-256color", PYTHONPATH="", XDG_CONFIG_HOME=str(scratch / "config"),
-                   XDG_STATE_HOME=str(scratch / "state"), TOWER_CONFIG=str(config))
-        command = [sys.executable, "-m", "tower", "--config", str(config), "--fake", "--no-state", "--no-plugins"]
+                   XDG_STATE_HOME=str(scratch / "state"), RAVEN_CONFIG=str(config))
+        command = [sys.executable, "-m", "raven", "--config", str(config), "--fake", "--no-state", "--no-plugins"]
         check("documentation", documentation_check)
-        check("source-cli", lambda: {"version": run([sys.executable, "-m", "tower", "--version"], env=env).strip(),
+        check("source-cli", lambda: {"version": run([sys.executable, "-m", "raven", "--version"], env=env).strip(),
                                     "doctor": run([*command, "--doctor"], env=env).strip()[-1200:]})
         def pages():
             for tab in ("jobs", "cluster", "history", "analytics", "nodes", "group", "deps", "log", "sources", "research"):
@@ -210,7 +210,7 @@ def qualify(*, wheel=None, site_manifest=None):
         check("terminal-pages", pages)
         check("real-pty", lambda: terminal_check(command, env))
         for name in ("trace", "runtime", "report"):
-            check("cli-" + name, lambda name=name: {"help_available": bool(run([sys.executable, "-m", "tower", name, "--help"], env=env).strip())})
+            check("cli-" + name, lambda name=name: {"help_available": bool(run([sys.executable, "-m", "raven", name, "--help"], env=env).strip())})
         def installed():
             if not wheel.is_file() or wheel.suffix != ".whl" or wheel.stat().st_size > 64 << 20:
                 raise ValueError("Expected a built wheel smaller than 64 MiB")
@@ -218,7 +218,7 @@ def qualify(*, wheel=None, site_manifest=None):
             run([sys.executable, "-m", "venv", str(target)], cwd=scratch, env=env, timeout=60)
             python = target / "bin" / "python"
             run([python, "-m", "pip", "install", "--no-index", "--no-deps", str(wheel)], cwd=scratch, env=env, timeout=60)
-            text = run([python, "-I", "-m", "tower", "--config", str(config), "--fake", "--no-state", "--no-plugins", "--doctor"], cwd=scratch, env=env)
+            text = run([python, "-I", "-m", "raven", "--config", str(config), "--fake", "--no-state", "--no-plugins", "--doctor"], cwd=scratch, env=env)
             return {"wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(), "outside_checkout": True,
                     "doctor": text.strip()[-1000:]}
         if wheel is not None:
@@ -231,7 +231,7 @@ def qualify(*, wheel=None, site_manifest=None):
             checks.append({"id": "live-allocation-identity", "status": "untested", "detail": "No explicitly selected existing allocation"})
     for name in ("physical-gpu", "multi-node", "terminal-emulator", "production-ssh", "external-user-study", "scientific-outcomes"):
         checks.append({"id": name, "status": "untested", "detail": "Requires a separately recorded target-system or user evaluation"})
-    return {"schema": "tower.qualification-report/v1", "scope": "bounded local source, CLI and terminal qualification",
+    return {"schema": "raven.qualification-report/v1", "scope": "bounded local source, CLI and terminal qualification",
             "production_qualified": False, "status": "failed" if any(item["status"] == "failed" for item in checks) else "qualified-for-recorded-checks",
             "python": platform.python_version(), "system": platform.system(), "checks": checks}
 

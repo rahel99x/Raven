@@ -4,7 +4,7 @@ import curses
 
 import pytest
 
-from tower import screen
+from raven import screen
 
 
 class Window:

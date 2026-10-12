@@ -11,8 +11,8 @@ import time
 
 import pytest
 
-from tower import terminal_workflows as W
-from tower import operations as O, ops_cluster as C, ops_ui
+from raven import terminal_workflows as W
+from raven import operations as O, ops_cluster as C, ops_ui
 from test_operations_sequences import operation_dashboard
 
 
@@ -58,7 +58,7 @@ def test_collection_bounded_distinct_targets(binaries):
 @pytest.mark.parametrize("name", ["lab", "lab_2026", "experiment-1"])
 def test_tmux_is_explicit_durable_and_dedicated(name, binaries):
     spec = W.tmux_spec(name)
-    assert spec.argv == ("/usr/bin/tmux", "-L", "tower-fusion", "new-session", "-A", "-s", name)
+    assert spec.argv == ("/usr/bin/tmux", "-L", "raven-fusion", "new-session", "-A", "-s", name)
     assert spec.metadata["persistent"] is True
     assert spec.metadata["shell"] == ""  # an existing tmux client can contain a REPL
 
@@ -197,12 +197,12 @@ def test_prepared_diagnostics_are_single_line_readonly_and_not_executed(name):
 
 
 def test_trace_diagnostic_uses_existing_inspect_interface():
-    assert shlex.split(W.diagnostic("trace", "/project/trace file.json")) == ["tower", "trace", "inspect", "/project/trace file.json"]
+    assert shlex.split(W.diagnostic("trace", "/project/trace file.json")) == ["raven", "trace", "inspect", "/project/trace file.json"]
 
 
 @pytest.fixture
 def app(monkeypatch):
-    from tower import terminal_ui
+    from raven import terminal_ui
     terminal = SimpleNamespace(active="s1", sessions={"s1": {"metadata": {"shell": "bash", "host": "local"}}}, focus_generation=1)
     result = SimpleNamespace(selected_id="42", mode="main", tab="jobs", opened=[], previews=[], messages=[], errors=[], terminal=terminal)
     result.say = result.messages.append
@@ -417,7 +417,7 @@ def _reviewed_ui(operation_dashboard, monkeypatch, *, display="embedded"):
 
 
 def test_operations_apply_embeds_only_after_review_and_immediate_revalidation(operation_dashboard, monkeypatch):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     launches = []
     monkeypatch.setattr(terminal_ui, "open_session", lambda app, **spec: launches.append(spec) or "sid-81")
@@ -432,7 +432,7 @@ def test_operations_apply_embeds_only_after_review_and_immediate_revalidation(op
 
 
 def test_operations_explicit_fullscreen_preserves_existing_handoff(operation_dashboard, monkeypatch):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch, display="fullscreen")
     monkeypatch.setattr(terminal_ui, "open_session", lambda *a, **k: pytest.fail("Fullscreen cannot create an embedded session"))
     app.run_command("ops apply")
@@ -442,7 +442,7 @@ def test_operations_explicit_fullscreen_preserves_existing_handoff(operation_das
 
 
 def test_operation_never_opens_after_identity_failure(operation_dashboard, monkeypatch):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     def stale(*args):
         raise ValueError("Job attempt changed")
@@ -455,7 +455,7 @@ def test_operation_never_opens_after_identity_failure(operation_dashboard, monke
 
 @pytest.mark.parametrize("change", ["page", "tab", "connection", "expired", "quit"])
 def test_worker_completion_cannot_open_after_context_change(operation_dashboard, monkeypatch, change):
-    from tower import terminal_ui
+    from raven import terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     completions = []
     original = ops_ui._background
@@ -484,7 +484,7 @@ def test_worker_completion_cannot_open_after_context_change(operation_dashboard,
 
 @pytest.fixture
 def broadcast(app, monkeypatch):
-    from tower import terminal_ui
+    from raven import terminal_ui
     for sid in ("s1", "s2", "s3", "s4"):
         app.terminal.sessions[sid] = {"label": sid, "status": "running", "kind": "local", "metadata": {"shell": "bash", "host": "local"}}
     app.sent = []
@@ -554,7 +554,7 @@ def test_broadcast_never_accepts_multiline_or_unknown_repl(broadcast):
 
 @pytest.mark.parametrize("allowed", [True, False])
 def test_managed_allocation_terminal_requires_collection_admission_after_revalidation(operation_dashboard, monkeypatch, allowed):
-    from tower import terminal_ui, raven_collection, raven_execution
+    from raven import terminal_ui, raven_collection, raven_execution
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     app.raven_execution = raven_execution.ExecutionRouter({"managed": True})
     launches, admissions = [], []

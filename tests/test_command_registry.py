@@ -4,11 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import command_registry as registry, command_ui, flagship_commands, operations, toolbar, workbench
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.palette import THEME_NAMES
+from raven import command_registry as registry, command_ui, flagship_commands, operations, toolbar, workbench
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.palette import THEME_NAMES
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_all_installed_handlers_are_discoverable_with_owned_metadata(app):
     for module in workbench.modules():
         for name in module.command_names():
             assert registry.command(name).owner != "controller"
-            assert registry.command(name).description != "Tower command"
+            assert registry.command(name).description != "Raven command"
     assert flagship_commands.TASKS is registry.TASKS
     assert flagship_commands.command_rows() == registry.task_rows()
 

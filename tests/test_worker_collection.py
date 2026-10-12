@@ -3,9 +3,9 @@ from concurrent.futures import FIRST_COMPLETED, wait
 from threading import Event, current_thread, get_ident
 from types import SimpleNamespace
 
-from tower.model import GpuSample, Job, Store
-from tower.sampler import Sampler
-from tower.worker_scheduler import WorkerScheduler
+from raven.model import GpuSample, Job, Store
+from raven.sampler import Sampler
+from raven.worker_scheduler import WorkerScheduler
 
 
 def test_full_root_queue_reserves_bounded_gpu_children_without_losing_jobs():
@@ -73,7 +73,7 @@ def test_cooperative_nested_names_and_callback_context_restore_parent_lane():
         release.set()
         assert future.result(timeout=3) == "done" and callback_done.wait(1)
         assert [label for label, _, _ in observed] == ["parent-before", "child", "parent-after", "callback"]
-        assert [name for _, name, _ in observed] == ["tower-src", "tower-gpu", "tower-src", "tower-src"]
+        assert [name for _, name, _ in observed] == ["raven-src", "raven-gpu", "raven-src", "raven-src"]
         assert len({tid for _, _, tid in observed}) == 1
     finally:
         release.set()

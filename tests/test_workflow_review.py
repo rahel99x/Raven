@@ -9,11 +9,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout, planning_views, workflow
+from raven import layout, planning_views, workflow
 
 
 def recipe(nodes):
-    return {"kind": "tower.workflow", "version": 1, "nodes": nodes}
+    return {"kind": "raven.workflow", "version": 1, "nodes": nodes}
 
 
 def paths(nodes):
@@ -150,7 +150,7 @@ def test_blocker_tree_depth_boundary_cannot_crash_or_allocate_unbounded_text(dep
 
 
 def test_symbolic_workflow_plans_cannot_be_previewed_or_submitted_as_independent_jobs(tmp_path, monkeypatch):
-    from tower import submission
+    from raven import submission
     import os
     for key in os.environ:
         if key.startswith("SBATCH_"):
@@ -178,7 +178,7 @@ def test_symbolic_workflow_plans_cannot_be_previewed_or_submitted_as_independent
 
 def test_workflow_execution_permission_is_sealed_with_review_fields(tmp_path, monkeypatch):
     import os
-    from tower import submission
+    from raven import submission
     for key in os.environ:
         if key.startswith("SBATCH_"):
             monkeypatch.delenv(key)

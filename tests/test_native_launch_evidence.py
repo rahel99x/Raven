@@ -4,9 +4,9 @@ import os
 
 import pytest
 
-from tower.job_groups import Registry
-from tower.model import Job
-from tower.slurm import FakeBackend, GROUP_FMT, JOB_FMT, Slurm, parse_group, parse_jobs
+from raven.job_groups import Registry
+from raven.model import Job
+from raven.slurm import FakeBackend, GROUP_FMT, JOB_FMT, Slurm, parse_group, parse_jobs
 
 LEGACY_JOB_FMT = "%i|%j|%P|%T|%M|%l|%D|%C|%b|%N|%m|%S|%V|%r|%Q|%E|%a|%q|%e|%o"
 LEGACY_GROUP_FMT = "%i|%u|%j|%P|%T|%M|%l|%D|%C|%b|%r|%Q|%N|%V|%S"
@@ -58,7 +58,7 @@ def test_native_user_queue_has_reliable_owner_absolute_workdir_and_no_extra_poll
     assert record.user == "alex" and record.workdir == "/project with spaces"
     assert record.command == "/project/train.sh"
     assert backend.calls == [["squeue", "-u", "alex", "-h", "-o", JOB_FMT]]
-    assert JOB_FMT.endswith("|%o|%Z|%k|TOWER_GROUP_V1")
+    assert JOB_FMT.endswith("|%o|%Z|%k|RAVEN_GROUP_V1")
 
 
 def test_ordinary_native_jobs_infer_launch_without_inspection_or_filesystem_access(monkeypatch):
@@ -96,7 +96,7 @@ def test_account_poll_supplies_launch_evidence_for_each_owner_without_extra_quer
                            account_row("102", user="bea", workdir="/project with spaces"))
     records = Slurm(backend, "alex").group("lab")
     assert backend.calls == [["squeue", "-h", "-A", "lab", "-o", GROUP_FMT]]
-    assert GROUP_FMT.endswith("|%a|%o|%Z|%k|TOWER_GROUP_V1")
+    assert GROUP_FMT.endswith("|%a|%o|%Z|%k|RAVEN_GROUP_V1")
     group, = Registry().ensure({"group": records}).groups.values()
     assert group.members == ("100", "101") and "102" not in group.members
     assert all(record.workdir == "/project with spaces" for record in records)
@@ -131,7 +131,7 @@ def recording(tmp_path, entries):
 
 
 def test_legacy_user_recording_replays_at_exact_time_without_false_launch_evidence(tmp_path):
-    from tower.record import ReplayBackend
+    from raven.record import ReplayBackend
     legacy = LEGACY_JOB_FMT
     command = ["squeue", "-u", "alex", "-h", "-o", legacy]
     early = user_row("100") + user_row("101")
@@ -149,7 +149,7 @@ def test_legacy_user_recording_replays_at_exact_time_without_false_launch_eviden
 
 
 def test_legacy_account_recording_preserves_user_account_scope(tmp_path):
-    from tower.record import ReplayBackend
+    from raven.record import ReplayBackend
     legacy = LEGACY_GROUP_FMT
     command = ["squeue", "-h", "-A", "lab", "-o", legacy]
     path = recording(tmp_path, [{"t": 100, "cmd": command, "out": account_row("100") + account_row("101")}])
@@ -161,7 +161,7 @@ def test_legacy_account_recording_preserves_user_account_scope(tmp_path):
 
 
 def test_new_recorded_queue_response_takes_priority_over_legacy_alias(tmp_path):
-    from tower.record import ReplayBackend
+    from raven.record import ReplayBackend
     current = ["squeue", "-u", "alex", "-h", "-o", JOB_FMT]
     legacy = [*current[:-1], LEGACY_JOB_FMT]
     path = recording(tmp_path, [{"t": 100, "cmd": legacy, "out": user_row("100")},
@@ -171,8 +171,8 @@ def test_new_recorded_queue_response_takes_priority_over_legacy_alias(tmp_path):
 
 
 def test_new_recorded_queue_error_is_not_hidden_by_successful_legacy_alias(tmp_path):
-    from tower.record import ReplayBackend
-    from tower.slurm import CommandError
+    from raven.record import ReplayBackend
+    from raven.slurm import CommandError
     current = ["squeue", "-u", "alex", "-h", "-o", JOB_FMT]
     path = recording(tmp_path, [{"t": 100, "cmd": [*current[:-1], LEGACY_JOB_FMT], "out": user_row("100")},
                                {"t": 100, "cmd": current, "err": "recorded current-format error"}])
@@ -184,8 +184,8 @@ def test_new_recorded_queue_error_is_not_hidden_by_successful_legacy_alias(tmp_p
                                        ["squeue", "-u", "alex", "-h", "-o", JOB_FMT + "|%u"],
                                        ["other", "-u", "alex", "-h", "-o", JOB_FMT]])
 def test_replay_format_alias_does_not_match_different_scope_or_arbitrary_command(tmp_path, requested):
-    from tower.record import ReplayBackend
-    from tower.slurm import CommandError
+    from raven.record import ReplayBackend
+    from raven.slurm import CommandError
     legacy = ["squeue", "-u", "alex", "-h", "-o", LEGACY_JOB_FMT]
     path = recording(tmp_path, [{"t": 100, "cmd": legacy, "out": user_row("100")}])
     with pytest.raises(CommandError, match="not in the recording"):

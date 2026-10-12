@@ -11,9 +11,9 @@ import threading
 
 import pytest
 
-from tower import log_bundle, projects
-from tower.model import Finished
-from tower.remote import LocalFiles
+from raven import log_bundle, projects
+from raven.model import Finished
+from raven.remote import LocalFiles
 
 
 def request_for(paths, *, settings=None, root=""):
@@ -72,7 +72,7 @@ def test_all_stdout_stderr_directory_and_manifest_locations_are_owned(tmp_path):
     for source in allowed + excluded:
         source.write_bytes((source.name + "\n").encode())
     manifest = extra / "logs.json"
-    manifest.write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "77", "logs": [{"id": "worker", "path": "worker.log"}]}))
+    manifest.write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "77", "logs": [{"id": "worker", "path": "worker.log"}]}))
     request = request_for([("77", allowed[0], allowed[1])], settings={"manifest_file": str(manifest)})
     report = log_bundle.discover_logs(request)
     assert report["status"] == "ready", report
@@ -81,7 +81,7 @@ def test_all_stdout_stderr_directory_and_manifest_locations_are_owned(tmp_path):
     assert result["status"] == "ready", result
     assert exported_bytes(result) == {str(source): source.read_bytes() for source in allowed}
     document = json.loads((Path(result["export_path"]) / "manifest.json").read_text())
-    assert document["schema"] == "tower.log-bundle/v1"
+    assert document["schema"] == "raven.log-bundle/v1"
     assert document["jobs"] == ["77"] and len(document["files"]) == 5
     for directory in Path(result["export_path"]).rglob("*"):
         assert stat.S_IMODE(directory.stat().st_mode) == (0o700 if directory.is_dir() else 0o600)
@@ -161,7 +161,7 @@ def test_same_basenames_from_multiple_locations_survive(tmp_path):
         source.write_bytes(f"source {index}".encode())
         paths.append(source)
     manifest = tmp_path / "logs.json"
-    manifest.write_text(json.dumps({"schema": "tower.logs/v1", "job_id": "77", "logs": [{"id": str(i), "path": str(source)} for i, source in enumerate(paths)]}))
+    manifest.write_text(json.dumps({"schema": "raven.logs/v1", "job_id": "77", "logs": [{"id": str(i), "path": str(source)} for i, source in enumerate(paths)]}))
     report = log_bundle.discover_logs(request_for([("77", paths[0], paths[1])], settings={"manifest_file": str(manifest)}))
     result = save(report, tmp_path)
     assert len(result["files"]) == 3
@@ -272,7 +272,7 @@ def test_mutating_source_during_stream_never_publishes_incomplete_file(tmp_path,
     else:
         assert result["status"] == "error" and not result["export_path"]
         assert result["missing"][0]["job_id"] == "7"
-        assert not list(tmp_path.glob("tower-logs-*"))
+        assert not list(tmp_path.glob("raven-logs-*"))
 
 
 def test_rotation_between_discovery_and_save_is_refused(tmp_path):
@@ -283,7 +283,7 @@ def test_rotation_between_discovery_and_save_is_refused(tmp_path):
     source.write_bytes(b"wrong replacement")
     result = save(report, tmp_path)
     assert result["status"] == "error" and "rotated" in result["missing"][0]["message"]
-    assert not list(tmp_path.glob("tower-logs-*"))
+    assert not list(tmp_path.glob("raven-logs-*"))
 
 
 def test_stream_cancel_event_removes_whole_unfinished_bundle(tmp_path):
@@ -296,7 +296,7 @@ def test_stream_cancel_event_removes_whole_unfinished_bundle(tmp_path):
     result = save(discover([("7", source, source)]), tmp_path, cancel=cancelled, progress=progress)
     assert result["status"] == "cancelled"
     assert not result["export_path"] and not result["files"]
-    assert not list(tmp_path.glob("tower-logs-*"))
+    assert not list(tmp_path.glob("raven-logs-*"))
 
 
 def test_cancel_before_discovery_and_export_is_explicit(tmp_path):
@@ -304,7 +304,7 @@ def test_cancel_before_discovery_and_export_is_explicit(tmp_path):
     assert report["status"] == "cancelled" and not report["entries"]
     result = save(report, tmp_path, cancel=lambda: True)
     assert result["status"] == "cancelled"
-    assert not list(tmp_path.glob("tower-logs-*"))
+    assert not list(tmp_path.glob("raven-logs-*"))
 
 
 def test_directory_list_mkdir_parent_and_symlinks_are_confined(tmp_path):
@@ -414,7 +414,7 @@ def test_remote_short_read_is_not_a_complete_output(tmp_path):
     report = discover([("7", "/remote/7.out", "/remote/7.out")], files=adapter)
     result = save(report, tmp_path, files=adapter)
     assert result["status"] == "error" and "short" in result["missing"][0]["message"]
-    assert not list(tmp_path.glob("tower-logs-*"))
+    assert not list(tmp_path.glob("raven-logs-*"))
 
 
 @pytest.fixture

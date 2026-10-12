@@ -42,11 +42,13 @@ Update the original checkout and reinstall the installed package:
 ```bash
 cd /path/to/Raven
 git pull --ff-only
-pipx reinstall slurm-tower
+pipx reinstall raven
 ```
 
-Use the `slurm-tower` distribution. Do not co-install another distribution that
-owns the `tower` package. `ravenl`, `ravenh`, and `tower` come from the same wheel.
+Use the `raven` distribution. Do not co-install another distribution that
+owns the `raven` package. `ravenl`, `ravenh`, and `raven` come from the same wheel.
+`raven` and `ravenl` both open Light. Install from this repository or its built
+wheel; the bare package-index name does not identify this implementation.
 The installed commands launch independently of the source checkout; updates
 from the recorded local source need that checkout. For source development,
 `python3 scripts/setup.py --mode demo` and
@@ -56,6 +58,10 @@ Source launchers use the checkout's `.venv` when it exists. Installing with
 its `bin` directory must be on `PATH` to use bare command names.
 For offline installation, build or download the wheel and optional dependencies on
 an approved connected machine, then install with `--no-index --find-links`.
+An installation under a previous distribution name needs the
+[replacement procedure](../INSTALLATION.md#replace-an-installation-with-the-previous-package-name)
+before normal reinstall updates. Existing configuration is retained, so repoint
+`execution.worker_python` to the new environment's Python executable.
 
 ## Choose a site
 
@@ -96,8 +102,8 @@ ravenh --site desktop
 ```
 
 For Fedora **with** local Slurm, use a Slurm profile. Raven's `--site desktop`
-selects standalone local execution. The legacy Slurm Tower `--profile desktop`
-continues to select local Slurm.
+selects standalone local execution. The supplied native configuration's
+`--profile desktop` instead selects local Slurm.
 
 ## Inspect effective configuration
 
@@ -126,8 +132,8 @@ and [example policy](../examples/raven/site-policy.json) specify supported rules
 The explicit `--account NAME` option is resolved before policy checks and sets
 the account used for monitoring and a Heavy request.
 
-`RAVEN_CONFIG`, `RAVEN_PROFILE`, `RAVEN_STATE_DIR`, and `RAVEN_SITE_POLICY` take
-precedence over the corresponding `TOWER_*` compatibility variables.
+`RAVEN_CONFIG`, `RAVEN_PROFILE`, `RAVEN_STATE_DIR`, and `RAVEN_SITE_POLICY` select
+the corresponding configuration, profile, storage, and additional policy paths.
 `RAVEN_WORKER_PYTHON` selects the installed worker executable.
 Restart to load a changed connection/profile. An existing worker or terminal is
 never silently transferred to a new connection.
@@ -228,6 +234,8 @@ subject to the rolling ceiling and other admission limits. Same-user sessions
 sharing an endpoint use the same allowance, and failed launches count as attempts.
 Site policy can require a longer interval or a lower ceiling. Updating Raven does
 not replace these settings in an existing configuration.
+Explicit submission-test probes use the same configured per-minute ceiling in a
+separate budget. Automatic weather probes remain disabled.
 
 The private SQLite coordination directory must be host-local and owned by the
 user. It must not be placed on NFS, Lustre, or another shared filesystem.
@@ -244,20 +252,34 @@ record. User-created terminal child processes are separately visible resources.
 
 ## Migrate without changing evidence
 
-Existing `.tower` project directories and historical schema IDs remain readable.
-The `tower` command and old config variables are compatibility routes to Light.
-A legacy config is read through a governed view; Raven does not rewrite it on
-startup. Use explicit migration for new config and selected state:
+Current projects use `.raven` directories and `raven.*` schema identifiers.
+Configuration formats supported by the native adapter can be read through a
+governed view without rewriting their originals. Previous Python imports,
+environment variables, and evidence schema identifiers are not aliases for the
+Raven namespace. Preserve external artifacts and convert them explicitly before
+using them as current Raven projects.
+
+From the checkout, select the previous configuration root explicitly for migration.
+The Bash wrapper inventories configuration only unless state is requested:
 
 ```bash
 raven_migration_dir="$(mktemp -d)"
-ravenl migrate --plan --save-plan "$raven_migration_dir/plan.json"
-ravenl migrate --apply --plan-file "$raven_migration_dir/plan.json"
+bash scripts/migrate-config.sh --source-config /path/to/previous-config \
+  --save-plan "$raven_migration_dir/plan.json"
+cat -- "$raven_migration_dir/plan.json"
 ```
 
-Inspect the plan first. It lists source and destination paths and hashes.
+Inspect the plan first. It lists source and destination paths and hashes. Apply
+that saved plan after reviewing its conflicts and omissions:
+
+```bash
+bash scripts/migrate-config.sh --apply --plan-file "$raven_migration_dir/plan.json"
+```
+
 Large history is opt-in with `--include-history`. Migration preserves original
-files and writes a journal. Interrupted application can resume against that
+files. To inventory state, add `--include-state --source-state /path/to/previous-state`
+when saving the plan; history also requires `--include-state`. Migration writes
+journaled receipts. Interrupted application can resume against that
 journal. Live sockets, active execution receipts, terminal transcripts, and
 project evidence are not rewritten. Keep the returned journal path.
 

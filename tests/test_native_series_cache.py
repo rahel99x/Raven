@@ -6,8 +6,8 @@ import struct
 
 import pytest
 
-from tower import charts, native_series_cache as N
-from tower.views import _metric_observations, _prepare_native_metrics, _prepare_trace_metrics
+from raven import charts, native_series_cache as N
+from raven.views import _metric_observations, _prepare_native_metrics, _prepare_trace_metrics
 
 
 def test_content_cache_reuses_preparation_and_detects_deep_in_place_corrections():

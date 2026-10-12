@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_groups as G
-from tower.model import Finished, Job
+from raven import job_groups as G
+from raven.model import Finished, Job
 
 
 CONTEXTS = ("jobs", "recent", "history", "group", "deps", "analytics:advisor",

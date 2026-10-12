@@ -4,26 +4,26 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.views import Views, stdout_path
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.views import Views, stdout_path
 
 
 class WorkerFiles(LocalFiles):
     def stat(self, path):
-        assert current_thread().name.startswith("tower-research")
+        assert current_thread().name.startswith("raven-research")
         return super().stat(path)
 
     def snapshot_stat(self, path):
-        assert current_thread().name.startswith("tower-research")
+        assert current_thread().name.startswith("raven-research")
         return super().snapshot_stat(path)
 
     def read(self, path, offset, length):
-        assert current_thread().name.startswith("tower-research")
+        assert current_thread().name.startswith("raven-research")
         return super().read(path, offset, length)
 
 
@@ -45,13 +45,13 @@ def dashboard(tmp_path, monkeypatch):
     app.views_ref = views
 
     def reject_ui_probe(path):
-        assert current_thread().name.startswith("tower-research"), (
+        assert current_thread().name.startswith("raven-research"), (
             f"Legacy path existence check reached the terminal thread: {path}")
         return original_exists(path)
 
     import os
     original_exists = os.path.exists
-    monkeypatch.setattr("tower.views.os.path.exists", reject_ui_probe)
+    monkeypatch.setattr("raven.views.os.path.exists", reject_ui_probe)
     yield app, views, guessed, custom
     if app.logs.catalog:
         app.logs.catalog.close()

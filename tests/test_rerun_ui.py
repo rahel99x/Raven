@@ -10,9 +10,9 @@ import curses
 
 import pytest
 
-from tower import job_group_menu, job_groups, job_selection, manual_job_groups
-from tower import operations, ops_ui, screen
-from tower.model import Finished, Job
+from raven import job_group_menu, job_groups, job_selection, manual_job_groups
+from raven import operations, ops_ui, screen
+from raven.model import Finished, Job
 from test_job_group_mouse_integration import dispatch, menu_point, point
 from test_operations_sequences import operation_dashboard
 

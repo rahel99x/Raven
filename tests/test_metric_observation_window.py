@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, charts, clock, layout as L, metric_live as M
-from tower.config import Config
-from tower.views import Views, _metric_observations
-from tower.native_series_cache import ObservationIndex
+from raven import chart_interaction as C, charts, clock, layout as L, metric_live as M
+from raven.config import Config
+from raven.views import Views, _metric_observations
+from raven.native_series_cache import ObservationIndex
 
 
 @pytest.mark.parametrize("envelope", [False, True])
@@ -113,7 +113,7 @@ def test_indexed_live_zoom_and_capture_read_only_window_and_exclude_future_recor
         def __iter__(self):
             pytest.fail("An indexed Live zoom or capture scanned the entire retained history")
 
-    monkeypatch.setattr("tower.views._metric_observations", lambda *args, **kwargs:
+    monkeypatch.setattr("raven.views._metric_observations", lambda *args, **kwargs:
                         pytest.fail("An indexed Live curve performed a full observation scan"))
     rendered, original = [], views._metric_rasters.render
 

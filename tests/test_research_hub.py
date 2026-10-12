@@ -9,8 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.model import Finished, Job
-from tower.research import ResearchHub, clean
+from raven.model import Finished, Job
+from raven.research import ResearchHub, clean
 
 
 def context(hub, view="experiment", jid="1", *, job=None, snap=None):
@@ -240,7 +240,7 @@ def test_special_log_paths_are_rejected_without_blocking_the_worker(tmp_path, ki
     # A child deadline makes this regression safe even if a future change
     # accidentally reintroduces a blocking FIFO open.
     source = """import sys
-from tower.research import ResearchHub
+from raven.research import ResearchHub
 hub = ResearchHub({})
 try:
     hub._tail(sys.argv[1], 128)
@@ -256,7 +256,7 @@ finally:
 
 
 def test_changed_log_tail_is_unverified_instead_of_interpreted(monkeypatch):
-    from tower import artifacts
+    from raven import artifacts
     hub = ResearchHub({})
     monkeypatch.setattr(artifacts, "read_local_tail", lambda path, max_bytes: (b"CUDA out of memory", 50, False))
     selected = context(hub, "evidence", job=Finished(id="1", state="COMPLETED"), snap={"details": {"1": {"StdErr": "changed.err"}}})
@@ -283,7 +283,7 @@ def test_evidence_scheduler_details_run_only_in_background_on_explicit_view():
         assert not threads
         selected["view"] = "evidence"
         assert hub.request(selected, wait=True)["job_id"] == "1"
-        assert len(threads) == 1 and threads[0][0].startswith("tower-research")
+        assert len(threads) == 1 and threads[0][0].startswith("raven-research")
     finally:
         hub.close()
 
@@ -316,8 +316,8 @@ def test_reader_error_summaries_are_bounded():
 
 
 def render_result(view, result, *, ascii_=False):
-    from tower.layout import Glyphs
-    from tower.research_views import render
+    from raven.layout import Glyphs
+    from raven.research_views import render
 
     class Hub:
         def context(self, snap, app):

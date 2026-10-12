@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from tower import trace_analysis as T
+from raven import trace_analysis as T
 
 
 def event(kind, data, *, stream="a", seq=1, t=10, **identity):

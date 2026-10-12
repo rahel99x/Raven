@@ -30,7 +30,7 @@ These diagnostics have no Apply action because they are read-only.
 ## Distributed bottleneck explorer
 
 Select **Distributed bottleneck explorer**. Set **Profiler export** and select
-the format. For JSON, use [tower.profiler/v1](../schemas/profiler.schema.json).
+the format. For JSON, use [raven.profiler/v1](../schemas/profiler.schema.json).
 The [example](../../examples/scale-profiler.json) contains two ranks.
 
 1. Export exclusive phase wall durations from your profiling system. Include
@@ -72,7 +72,7 @@ matrix, which can otherwise grow quadratically.
 
 Select **Concurrent cluster workspace**. Leave **Workspace JSON** empty to use
 configured Raven profiles, or provide
-[tower.cluster-workspace/v1](../schemas/cluster-workspace.schema.json).
+[raven.cluster-workspace/v1](../schemas/cluster-workspace.schema.json).
 Adapt the [example](../../examples/scale-clusters.json) to your login hosts.
 
 Each source needs a unique display name. A source can refer to a configured
@@ -125,7 +125,7 @@ needs correction; use timestamps with a timezone.
 With no file path, Raven requests read-only node events from `sacctmgr`. It
 does not ask for administrator access. If accounting permissions or event
 retention prevent the query, export site-provided notices as
-[tower.incidents/v1](../schemas/incidents.schema.json) and set **Events JSON**.
+[raven.incidents/v1](../schemas/incidents.schema.json) and set **Events JSON**.
 The [example](../../examples/scale-incidents.json) uses an explicit UTC interval.
 Use exact expanded hostnames in the file. An absent or null event end means the
 incident is ongoing. The cluster name must match the selected job connection.
@@ -141,7 +141,7 @@ event export and interval overrides.
 ## Energy per useful result
 
 Select **Energy per useful result** and load
-[tower.energy/v1](../schemas/energy.schema.json). Start with the
+[raven.energy/v1](../schemas/energy.schema.json). Start with the
 [campaign example](../../examples/scale-energy.json). The producer defines the
 scientific acceptance rule and the unit of useful work. Raven does not infer
 accepted output from a successful scheduler exit code.

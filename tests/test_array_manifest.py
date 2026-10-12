@@ -7,10 +7,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import array_manifest as M, submission
-from tower.research_commands import array_plan
-from tower.remote import LocalFiles
-from tower.model import Finished
+from raven import array_manifest as M, submission
+from raven.research_commands import array_plan
+from raven.remote import LocalFiles
+from raven.model import Finished
 
 
 def document(**updates):
@@ -54,7 +54,7 @@ def test_manifest_immutable_revision_ignores_entry_order_and_whitespace():
 
 
 @pytest.mark.parametrize("change", [
-    {"schema": "tower.array-manifest/v2"}, {"array_id": "052"}, {"array_id": 52},
+    {"schema": "raven.array-manifest/v2"}, {"array_id": "052"}, {"array_id": 52},
     {"array_id": "0"}, {"array_id": str(2**63)}, {"array_id": "52_2"},
     {"cluster": "x\n52"}, {"cluster": None}, {"cluster": "x" * 129},
     {"entries": []}, {"entries": {}}, {"unknown": True},
@@ -167,7 +167,7 @@ def test_retry_preserves_sparse_indices_scope_mapping_and_passport(retry):
     result = submission.submit(plan, Scheduler())
     assert result["ok"], result
     assert result["array_retry"]["manifest"] == metadata
-    assert result["passport"]["resources"]["tower_array_manifest"]["revision"] == metadata["revision"]
+    assert result["passport"]["resources"]["raven_array_manifest"]["revision"] == metadata["revision"]
 
 
 def test_changed_source_blocks_preparation_and_submission(retry):
@@ -198,7 +198,7 @@ def test_metadata_tampering_is_detected_even_with_recomputed_digest(retry, redig
 
 
 def test_changed_during_passport_capture_is_rechecked(retry, monkeypatch):
-    from tower import provenance
+    from raven import provenance
     original = provenance.capture
     def capture(*args, **kwargs):
         result = original(*args, **kwargs)
@@ -225,7 +225,7 @@ def test_mapping_plan_save_load_roundtrip(retry):
 
 
 def test_preflight_resource_edits_preserve_reviewed_scientific_mapping(retry):
-    from tower.execution_ui import _form_plan
+    from raven.execution_ui import _form_plan
     state = {"base": retry.plan, "values": {"script": str(retry.script), "workdir": str(retry.tmp), "cpus": "4"}}
     edited = _form_plan(state)
     assert edited["resources"]["cpus_per_task"] == "4"

@@ -11,7 +11,7 @@ defines the convention and schemas.
 
 For Bash launchers, use the
 [automated Research reporting guide](https://github.com/rahel99x/Raven/blob/main/docs/guides/research-automation.md).
-`tower report` creates the same standard files and links them to actual Slurm job
+`raven report` creates the same standard files and links them to actual Slurm job
 attempts. The included MIT [license](LICENSE) permits reuse and adaptation; retain its notice when
 copying the reporting code.
 
@@ -29,7 +29,7 @@ From your copied **project root**:
 ```bash
 python3 experiment.py --run-id demo-001 --steps 20 --terms-per-step 1000
 python3 reporting.py export runs/demo-001 --reference runs/demo-001
-tower --fake --config .tower/config.json --workdir "$PWD/runs/demo-001" \
+raven --fake --config .raven/config.json --workdir "$PWD/runs/demo-001" \
   --tab research --research-view experiment
 ```
 
@@ -47,9 +47,9 @@ absent. Its single run cannot support a calibrated resource prediction.
 Inspect outputs and planning independently:
 
 ```bash
-tower run validate .tower/contracts/outputs.v1.json runs/demo-001
-tower run predict --file reports/planning.json
-tower run workflow analyze .tower/definitions/workflow.json
+raven run validate .raven/contracts/outputs.v1.json runs/demo-001
+raven run predict --file reports/planning.json
+raven run workflow analyze .raven/definitions/workflow.json
 ```
 
 `predict` explains missing evidence rather than estimating from one local run.
@@ -60,7 +60,7 @@ with your real dependencies and measured timing estimates when available.
 
 ```text
 your-project/
-  .tower/
+  .raven/
     config.json                    Raven binding; committed
     contracts/outputs.v1.json       Exact expected outputs; committed
     definitions/workflow.json      Optional project-owned planning recipe
@@ -133,16 +133,16 @@ when adapting another application. These are the producer locations:
 | `experiment` | `runs/<run_id>/metrics.jsonl` | Actual numeric application measurements and progress |
 | `arrays` | One distinct attempt directory per exact array task | Actual scheduler task identities/states; no separate arrays file |
 | `evidence` | `logs.json`, its exact files, and `metrics.jsonl` | Application/worker logs plus real scheduler observations |
-| `artifacts` | `.tower/contracts/outputs.v1.json` and declared run outputs | Project-owned output expectations and actual files |
+| `artifacts` | `.raven/contracts/outputs.v1.json` and declared run outputs | Project-owned output expectations and actual files |
 | `passport` | `runs/<run_id>/passports/` | Genuine Raven provenance capture |
-| `submit` | `runs/<run_id>/reports/submit.json` | Intact offline `tower run prepare` result; read-only attachment |
+| `submit` | `runs/<run_id>/reports/submit.json` | Intact offline `raven run prepare` result; read-only attachment |
 | `predict` | `runs/<run_id>/reports/predict.json` | Native planning bundle of selected summaries and query |
 | `forecast` | `runs/<run_id>/reports/forecast.json` | Actual queued-job and pre-start prediction observations |
 | `blockers` | `runs/<run_id>/reports/blockers.json` | Actual matching job/controller/node/partition snapshot |
 | `tradeoffs` | `runs/<run_id>/reports/tradeoffs.json` | Explicit comparable configurations and measured histories |
 | `scaling` | `runs/<run_id>/reports/scaling.json` | Controlled repeats or an actual native scaling recipe |
 | `workflow` | `runs/<run_id>/reports/workflow.json` | Real dependency recipe and timing evidence when known |
-| `operations` | Explicit `.tower/definitions/operations/`, `reports/operations/`, or per-run operation manifests | Declared policies, measurements, and campaign inputs for the selected operation; use its reviewed Operations controls |
+| `operations` | Explicit `.raven/definitions/operations/`, `reports/operations/`, or per-run operation manifests | Declared policies, measurements, and campaign inputs for the selected operation; use its reviewed Operations controls |
 
 Operations uses its own manifest contracts. It has no generic
 `publish_research(..., "operations", ...)` source. See the
@@ -167,7 +167,7 @@ launch a job. Recipes and summaries remain project-owned evidence.
 Publish an existing native source through the same helper:
 
 ```bash
-python3 reporting.py report workflow .tower/definitions/workflow.json --run runs/demo-001
+python3 reporting.py report workflow .raven/definitions/workflow.json --run runs/demo-001
 python3 reporting.py export runs/demo-001 --reference runs/demo-001 \
   --output runs/demo-001/reports/planning.json
 ```
@@ -181,7 +181,7 @@ For Submit evidence, capture an actual preflight:
 
 ```bash
 preflight_file=$(mktemp)
-tower run prepare jobs/run.sbatch --workdir "$PWD" > "$preflight_file"
+raven run prepare jobs/run.sbatch --workdir "$PWD" > "$preflight_file"
 python3 reporting.py report submit "$preflight_file" --run runs/demo-001
 rm "$preflight_file"
 ```
@@ -194,7 +194,7 @@ For artifact checks use the same config and run directory with
 `--research-view artifacts`. For aggregate resource analysis use
 `--research-view predict`. Inside Raven, `:metrics /absolute/project/runs/demo-001/metrics.jsonl`
 attaches an explicit stream; use an absolute path when a run workdir is already
-selected. `:artifacts .tower/contracts/outputs.v1.json
+selected. `:artifacts .raven/contracts/outputs.v1.json
 runs/demo-001` attaches the matching output root.
 
 ## Organize logs across locations
@@ -246,8 +246,8 @@ For all contents, use `V` then `y`, `Y`, or `:copy all`; `y` without a selection
 also copies the entire file. The shared worker streams exact bytes through the
 selected local/SSH backend independently of displayed tail limits, search,
 scrolling, or wrapping. Its private unique `log-full-<uuid>.log` export is under
-Raven's `state/exports/`, or `./tower-exports/` with `--no-state`. Keep these
-generated/private exports out of Git; add `tower-exports/` to your project's
+Raven's `state/exports/`, or `./raven-exports/` with `--no-state`. Keep these
+generated/private exports out of Git; add `raven-exports/` to your project's
 ignore rules if using that fallback.
 
 An active log copy includes only its initial byte range and reports later
@@ -336,7 +336,7 @@ resource requests for your CARC allocation. From the project root:
 
 ```bash
 mkdir -p logs
-tower run prepare jobs/run.sbatch --workdir "$PWD"
+raven run prepare jobs/run.sbatch --workdir "$PWD"
 ```
 
 Review the preflight before choosing Raven's explicit confirmation-based submit

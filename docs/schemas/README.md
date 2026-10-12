@@ -12,10 +12,10 @@ runtime identity, semantics, and bounded I/O.
 | --- | --- | --- |
 | [metrics.v1.schema.json](metrics.v1.schema.json) | Each object in `runs/<run_id>/metrics.jsonl` | Native incremental `MetricReader`; Experiment view |
 | [run.v1.schema.json](run.v1.schema.json) | `runs/<run_id>/run.json` | Bounded exact-job runtime discovery or explicit project/run selection |
-| [job-index.v1.schema.json](job-index.v1.schema.json) | `.tower/jobs/<job_id>.json` and cluster-prefixed equivalents | Exact job-to-attempt lookup without scanning sibling runs; ambiguous cluster aliases are refused |
+| [job-index.v1.schema.json](job-index.v1.schema.json) | `.raven/jobs/<job_id>.json` and cluster-prefixed equivalents | Exact job-to-attempt lookup without scanning sibling runs; ambiguous cluster aliases are refused |
 | [logs.v1.schema.json](logs.v1.schema.json) | `runs/<run_id>/logs.json` | Native grouped Logs catalog, bound by `logs.manifest_file` |
 | [summary.v1.schema.json](summary.v1.schema.json) | `runs/<run_id>/summary.json` | Flat fields consumed after aggregation into a planning bundle |
-| [output-contract.v1.schema.json](output-contract.v1.schema.json) | Project `.tower/contracts/outputs.v1.json`, or the run-relative `paths.contract` | Native artifact contract loader and bounded validation; an explicit run contract takes precedence |
+| [output-contract.v1.schema.json](output-contract.v1.schema.json) | Project `.raven/contracts/outputs.v1.json`, or the run-relative `paths.contract` | Native artifact contract loader and bounded validation; an explicit run contract takes precedence |
 | [planning.v1.schema.json](planning.v1.schema.json) | Project or per-run `reports/planning.json`, plus per-view sources | Native planning-file views, exact run bindings, and offline analysis commands |
 | [submission-plan.v1.schema.json](submission-plan.v1.schema.json) | `runs/<run_id>/reports/submit.json` | Intact native preflight shown as read-only Submit evidence |
 | [array-manifest.schema.json](array-manifest.schema.json) | Run-relative `paths.array_manifest`, or an explicit map path | Automatic exact-run attachment or manual `arraymap`; cluster, parent, and task-index matching |
@@ -46,14 +46,14 @@ action authorization or scientific validation result.
 
 `planning.v1.schema.json` also includes native workflow and scaling recipe
 definitions as `$defs.workflowRecipe` and `$defs.scalingRecipe`. Standalone
-recipes retain their native `{"version": 1, "kind": "tower.workflow"}` or
-`{"version": 1, "kind": "tower.scaling"}` header. The planning bundle uses
-`{"version": 1, "kind": "tower.planning"}`. A run manifest and summary use the
-distinct `schema` markers `tower.run/v1` and `tower.summary/v1`; metric records
+recipes retain their native `{"version": 1, "kind": "raven.workflow"}` or
+`{"version": 1, "kind": "raven.scaling"}` header. The planning bundle uses
+`{"version": 1, "kind": "raven.planning"}`. A run manifest and summary use the
+distinct `schema` markers `raven.run/v1` and `raven.summary/v1`; metric records
 carry no version or schema marker.
-The separate log index uses `tower.logs/v1`; inventory `paths.log_index` describes
+The separate log index uses `raven.logs/v1`; inventory `paths.log_index` describes
 its location, while native `logs.manifest_file` binds it to the selected workdir.
-The separate array map uses `tower.array-manifest/v1`. Declare it with
+The separate array map uses `raven.array-manifest/v1`. Declare it with
 `paths.array_manifest` in `run.json` to attach it automatically. An undeclared
 map still needs explicit `arraymap` attachment. Automatic maps follow validated
 run declarations; manual maps retain their reviewed revision until reload.
@@ -69,7 +69,7 @@ Optional `paths.planning` and `paths.predict` / `forecast` / `blockers` /
 `tradeoffs` / `scaling` / `workflow` bind confined run-relative native sources.
 The view-specific declaration takes precedence over the shared source.
 An absent per-run planning report can use the exact `paths.planning` declaration
-in `.tower/project.json` (`tower.project/v1`). Both local and SSH readers pin the
+in `.raven/project.json` (`raven.project/v1`). Both local and SSH readers pin the
 run identity and confined file descriptors before reading this shared report.
 SSH needs Python 3.10 or later on the selected host, with no Raven installation there.
 Every discovery/report read runs in the background; rendering uses cached data.

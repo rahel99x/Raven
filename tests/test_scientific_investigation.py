@@ -3,11 +3,11 @@ import copy
 
 import pytest
 
-from tower import investigation_planner as planner
-from tower import science_contracts as contracts
-from tower import science_diagnostics as diagnostics
-from tower import scientific_lineage as lineage
-from tower.operations import digest
+from raven import investigation_planner as planner
+from raven import science_contracts as contracts
+from raven import science_diagnostics as diagnostics
+from raven import scientific_lineage as lineage
+from raven.operations import digest
 
 
 def evidence(name, data, complete=True):
@@ -23,7 +23,7 @@ def recommendation():
                 "acceptance": [{"source": "experiment", "path": ["error"], "op": "le", "value": .001},
                                {"source": "experiment", "path": ["runtime"], "op": "lt", "value": 10}],
                 "intervention": "Prepare a matched fewer-ranks experiment"}
-    return {"schema": "tower.recommendation-review/v1", "contract": contract,
+    return {"schema": "raven.recommendation-review/v1", "contract": contract,
             "snapshot": {"identity": copy.deepcopy(identity), "evidence": [source]}}
 
 
@@ -96,7 +96,7 @@ def action(name, kind="repeat", **extra):
 
 
 def test_mixed_action_selection_respects_every_budget_and_committed_intent():
-    doc = {"schema": "tower.investigation-plan/v1", "budget": {"seconds": 16, "resource_seconds": 30, "trials": 3},
+    doc = {"schema": "raven.investigation-plan/v1", "budget": {"seconds": 16, "resource_seconds": 30, "trials": 3},
            "known_evidence": ["validated"], "committed": [{"id": "old", "seconds": 5, "resource_seconds": 10}],
            "actions": [action("slow", queue_seconds=100), action("trace", "trace"), action("audit", "scientific-validation", decision_gain=.9),
                        action("risk", scientific_risk=.1), action("missing", requires=["absent"]), action("old")]}
@@ -108,14 +108,14 @@ def test_mixed_action_selection_respects_every_budget_and_committed_intent():
 
 @pytest.mark.parametrize("field,value", [("scientific_risk", float("nan")), ("success_probability", 1.1), ("seconds", 0), ("resource_seconds", -1), ("queue_seconds", True), ("model", "")])
 def test_planner_refuses_unsound_model_values(field, value):
-    doc = {"schema": "tower.investigation-plan/v1", "budget": {"seconds": 100, "resource_seconds": 100, "trials": 2},
+    doc = {"schema": "raven.investigation-plan/v1", "budget": {"seconds": 100, "resource_seconds": 100, "trials": 2},
            "known_evidence": [], "actions": [action("a", **{field: value})]}
     with pytest.raises(ValueError):
         planner.plan(doc)
 
 
 def graph():
-    return {"schema": "tower.scientific-lineage/v1", "nodes": [
+    return {"schema": "raven.scientific-lineage/v1", "nodes": [
         {"id": "raw", "kind": "artifact", "dependencies": [], "complete": True},
         {"id": "parser", "kind": "policy", "dependencies": [], "complete": True},
         {"id": "parsed", "kind": "artifact", "dependencies": ["raw", "parser"], "complete": True},
@@ -164,14 +164,14 @@ def test_lineage_does_not_propose_unneeded_work_without_affected_claims():
 
 
 def test_deep_lineage_is_iterative_and_linear_witness_storage():
-    doc = {"schema": "tower.scientific-lineage/v1", "nodes": [{"id": str(i), "kind": "claim", "dependencies": [str(i-1)] if i else [], "complete": True} for i in range(2000)], "changed": ["0"], "actions": []}
+    doc = {"schema": "raven.scientific-lineage/v1", "nodes": [{"id": str(i), "kind": "claim", "dependencies": [str(i-1)] if i else [], "complete": True} for i in range(2000)], "changed": ["0"], "actions": []}
     result = lineage.analyze(doc)
     assert len(result["affected"]) == 2000
     assert result["witnesses"]["1999"]["distance"] == 1999
 
 
 def test_numerical_analysis_preserves_missing_and_failed_measurements():
-    doc = {"schema": "tower.numerical-stability/v1", "metrics": [{"name": "mass", "reference": 0, "absolute": .1, "relative": .01}],
+    doc = {"schema": "raven.numerical-stability/v1", "metrics": [{"name": "mass", "reference": 0, "absolute": .1, "relative": .01}],
            "runs": [{"id": "a", "configuration": "safe", "metrics": {"mass": .01}},
                     {"id": "b", "configuration": "safe", "metrics": {}},
                     {"id": "c", "configuration": "fast", "metrics": {"mass": .2}}]}
@@ -183,7 +183,7 @@ def test_numerical_analysis_preserves_missing_and_failed_measurements():
 
 
 def regression():
-    return {"schema": "tower.performance-investigation/v1", "unit": "independent seed", "design": "paired", "baseline": "base", "minimum_change": .5,
+    return {"schema": "raven.performance-investigation/v1", "unit": "independent seed", "design": "paired", "baseline": "base", "minimum_change": .5,
             "versions": [{"id": name, "scientific_valid": True,
                           "samples": [{"id": str(i), "value": v} for i, v in enumerate(values)]}
                          for name, values in [("base", [10, 10.1, 9.9, 10.2, 10]), ("slow", [20, 20.2, 19.9, 20.5, 20.1]), ("fixed", [8, 8.2, 8, 8.3, 7.9])]]}
@@ -212,7 +212,7 @@ def test_regression_does_not_invent_confidence(issue):
     assert result["comparisons"][0]["state"] in {"inconclusive", "scientifically-incomparable"}
 
 
-@pytest.mark.parametrize("analyzer,schema", [(planner.plan, "tower.investigation-plan/v1"), (contracts.evaluate, "tower.recommendation-review/v1"), (lineage.analyze, "tower.scientific-lineage/v1"), (diagnostics.numerical, "tower.numerical-stability/v1"), (diagnostics.regression, "tower.performance-investigation/v1")])
+@pytest.mark.parametrize("analyzer,schema", [(planner.plan, "raven.investigation-plan/v1"), (contracts.evaluate, "raven.recommendation-review/v1"), (lineage.analyze, "raven.scientific-lineage/v1"), (diagnostics.numerical, "raven.numerical-stability/v1"), (diagnostics.regression, "raven.performance-investigation/v1")])
 def test_analysis_rejects_empty_and_unknown_fields(analyzer, schema):
     with pytest.raises(ValueError):
         analyzer({"schema": schema, "surprise": True})

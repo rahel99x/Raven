@@ -3,11 +3,11 @@ import copy
 
 import pytest
 
-from tower import layout, report
-from tower.config import Config
-from tower.controller import App
-from tower.model import Health, Job, Store
-from tower.views import Views
+from raven import layout, report
+from raven.config import Config
+from raven.controller import App
+from raven.model import Health, Job, Store
+from raven.views import Views
 
 
 def make_report_app():
@@ -85,7 +85,7 @@ def test_report_cannot_emit_terminal_control_sequences_or_non_ascii_names():
     store.jobs = [Job('17', 'caf\u00e9\x1b[31m', 'cpu', 'RUNNING', cpus=1)]
     store.events.append(dict(t=1000, kind='alert', text='unsafe\x1b]52;c;payload\x07\nspoofed', job='17'))
     store.health['source'] = Health(name='source', error='bad\x1b[2J\x00\u2603')
-    page = report.build(store.snapshot(), app, views, title='Tower\r\x1b[2J')
+    page = report.build(store.snapshot(), app, views, title='Raven\r\x1b[2J')
     assert page.isascii()
     assert all(ch == '\n' or ' ' <= ch <= '~' for ch in page)
     assert '\\x1b' in page and '\\x07' in page and '\\nspoofed' in page

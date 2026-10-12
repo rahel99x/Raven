@@ -5,12 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import clipboard, screen
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Job, Store
-from tower.views import Views
+from raven import clipboard, screen
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Job, Store
+from raven.views import Views
 
 
 class InputWindow:

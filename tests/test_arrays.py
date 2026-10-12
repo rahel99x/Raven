@@ -5,8 +5,8 @@ import time
 
 import pytest
 
-from tower import arrays
-from tower.model import Finished, Job
+from raven import arrays
+from raven.model import Finished, Job
 
 
 def row(identity, state, **kwargs):

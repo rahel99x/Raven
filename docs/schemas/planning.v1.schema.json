@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Tower native planning bundle v1",
+  "title": "Raven native planning bundle v1",
   "description": "Native source for explicit --planning-file, file-based analysis commands, or run.json paths.planning / per-view bindings. Publishers select actual measured histories, recipes and scheduler observations; attaching a file does not generate observations.",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
       "const": 1
     },
     "kind": {
-      "const": "tower.planning"
+      "const": "raven.planning"
     },
     "description": {
       "type": "string",
@@ -174,7 +174,7 @@
     },
     "nodes": {
       "type": "object",
-      "description": "Frozen Tower nodemap shape for placement screening, not a replacement for scheduler allocation decisions."
+      "description": "Frozen Raven nodemap shape for placement screening, not a replacement for scheduler allocation decisions."
     },
     "share": {
       "type": "array",
@@ -360,7 +360,7 @@
         },
         "additionalProperties": true
       },
-      "description": "Canonical summaries carry schema tower.summary/v1. Legacy native records without a schema marker remain accepted; native models independently check concrete identities and eligibility."
+      "description": "Canonical summaries carry schema raven.summary/v1. Legacy native records without a schema marker remain accepted; native models independently check concrete identities and eligibility."
     },
     "jobRecord": {
       "type": "object",
@@ -1024,7 +1024,7 @@
           "const": 1
         },
         "kind": {
-          "const": "tower.workflow"
+          "const": "raven.workflow"
         },
         "name": {
           "type": "string",
@@ -1236,7 +1236,7 @@
           "const": 1
         },
         "kind": {
-          "const": "tower.scaling"
+          "const": "raven.scaling"
         },
         "script": {
           "type": "string",
@@ -1311,7 +1311,7 @@
               }
             ]
           },
-          "description": "Scaling recipe exports explicit scalar parameters as TOWER_PARAM_<NAME>. Native validation rejects commas, control characters, secret-like/reserved names, and case-insensitive export collisions. The workload must consume these values."
+          "description": "Scaling recipe exports explicit scalar parameters as RAVEN_PARAM_<NAME>. Native validation rejects commas, control characters, secret-like/reserved names, and case-insensitive export collisions. The workload must consume these values."
         },
         "name": {
           "type": "string",
@@ -1382,7 +1382,7 @@
                     }
                   ]
                 },
-                "description": "Scaling recipe exports explicit scalar parameters as TOWER_PARAM_<NAME>. Native validation rejects commas, control characters, secret-like/reserved names, and case-insensitive export collisions. The workload must consume these values."
+                "description": "Scaling recipe exports explicit scalar parameters as RAVEN_PARAM_<NAME>. Native validation rejects commas, control characters, secret-like/reserved names, and case-insensitive export collisions. The workload must consume these values."
               },
               "problem_size": {
                 "allOf": [

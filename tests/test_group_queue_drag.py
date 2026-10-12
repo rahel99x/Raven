@@ -5,13 +5,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import group_queue_drag as D, job_group_drag as M, job_groups as G
-from tower import job_selection as S, layout as L, manual_job_groups as MG, queue_order_ui as Q
-from tower import screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import group_queue_drag as D, job_group_drag as M, job_groups as G
+from raven import job_selection as S, layout as L, manual_job_groups as MG, queue_order_ui as Q
+from raven import screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 from test_job_group_mouse_integration import dispatch
 
 REAL_PREPARE_DROP = Q.prepare_drop
@@ -161,7 +161,7 @@ def test_stale_painted_drag_cancels_and_eats_late_release(dashboard, route, chan
 def test_reused_attempt_without_repaint_reaches_validator_but_not_operations(dashboard, monkeypatch, which):
     ui, app = dashboard, dashboard.app
     # Restore the real last-mile validator. No scheduler adapter should open.
-    from tower import ops_ui
+    from raven import ops_ui
     monkeypatch.setattr(Q, "prepare_drop", REAL_PREPARE_DROP)
     monkeypatch.setattr(ops_ui, "_open", lambda *_a, **_kw: pytest.fail("Stale evidence opened an operation"))
     send(ui, grip(ui, ui.groups[0]), "press")

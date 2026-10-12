@@ -1,6 +1,6 @@
 """Public launch/CLI behavior used in the research guide."""
-from tower import cli
-from tower.config import Config
+from raven import cli
+from raven.config import Config
 
 
 def test_research_launch_opens_requested_view_without_sampling():

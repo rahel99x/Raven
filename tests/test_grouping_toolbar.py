@@ -1,8 +1,8 @@
 """Automatic presentation commands preserve explicit choices and undo scope."""
 from types import SimpleNamespace
 
-from tower import job_groups as G, manual_job_groups as M, grouping_toolbar as T
-from tower.model import Job
+from raven import job_groups as G, manual_job_groups as M, grouping_toolbar as T
+from raven.model import Job
 
 
 def fixture():

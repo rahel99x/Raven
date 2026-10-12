@@ -14,21 +14,21 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from tower import prometheus_source as T, ops_platform as OPS, operations as O
+from raven import prometheus_source as T, ops_platform as OPS, operations as O
 
 IDENTITY = {'cluster': 'alpha', 'job_id': '123_4', 'attempt': 'submitted/started'}
 
 
 def manifest(endpoint):
     return {'schema': T.SCHEMA, 'id': 'site-metrics', 'endpoint': endpoint, 'query': 'job_gpu_percent{job="123_4"}',
-            'identity': IDENTITY, 'labels': {'cluster': 'cluster', 'job_id': 'slurm_job_id', 'attempt': 'tower_attempt'},
+            'identity': IDENTITY, 'labels': {'cluster': 'cluster', 'job_id': 'slurm_job_id', 'attempt': 'raven_attempt'},
             'metric': {'name': 'GPU utilization', 'unit': 'percent', 'semantics': 'gauge'},
             'start': 10, 'end': 11, 'step': .5, 'timeout': 3, 'max_bytes': 200000, 'auth': {'kind': 'none'}, 'allow_http': True}
 
 
 def response():
     return {'status': 'success', 'data': {'resultType': 'matrix', 'result': [
-        {'metric': {'cluster': 'alpha', 'slurm_job_id': '123_4', 'tower_attempt': 'submitted/started', 'gpu_uuid': 'GPU-example'},
+        {'metric': {'cluster': 'alpha', 'slurm_job_id': '123_4', 'raven_attempt': 'submitted/started', 'gpu_uuid': 'GPU-example'},
          'values': [[10, '50'], [10.5, 'NaN'], [11, '70']]}]}}
 
 
@@ -79,7 +79,7 @@ def test_actual_http_query_exact_identity_missing_values_and_no_secret_result(se
     assert 'auth' not in json.dumps(result)
 
 
-@pytest.mark.parametrize('field', ['cluster', 'slurm_job_id', 'tower_attempt'])
+@pytest.mark.parametrize('field', ['cluster', 'slurm_job_id', 'raven_attempt'])
 def test_every_series_requires_exact_attempt_labels(field):
     data = response()
     data['data']['result'][0]['metric'][field] = 'other'
@@ -139,9 +139,9 @@ def test_credential_file_permissions_and_unknown_environment(tmp_path, monkeypat
         T._credential({'kind': 'bearer_file', 'source': str(token)})
     token.chmod(0o600)
     assert T._credential({'kind': 'bearer_file', 'source': str(token)}) == 'example-token'
-    monkeypatch.delenv('TOWER_MISSING_TOKEN', raising=False)
+    monkeypatch.delenv('RAVEN_MISSING_TOKEN', raising=False)
     with pytest.raises(ValueError, match='missing'):
-        T._credential({'kind': 'bearer_env', 'source': 'TOWER_MISSING_TOKEN'})
+        T._credential({'kind': 'bearer_env', 'source': 'RAVEN_MISSING_TOKEN'})
     link = tmp_path / 'link'
     link.symlink_to(token)
     with pytest.raises(ValueError, match='symlink'):
@@ -166,7 +166,7 @@ def test_cancel_prevents_network_and_cancelled_read_is_bounded(server):
 
 def test_opt_in_source_cache_policy_and_inspect_without_query(server, tmp_path):
     doc = manifest(endpoint(server))
-    doc['policy'] = {'schema': 'tower.site-policy/v1', 'id': 'site', 'revision': '1', 'sources': ['site-metrics'], 'operations': ['query-range'],
+    doc['policy'] = {'schema': 'raven.collection-policy/v1', 'id': 'site', 'revision': '1', 'sources': ['site-metrics'], 'operations': ['query-range'],
                      'allocation_required': True, 'allow_intrusive': False,
                      'limits': {'min_interval': .5, 'max_duration': 5, 'max_bytes': 500000, 'max_records': 20000, 'max_inflight': 2}}
     doc['cache_directory'] = str(tmp_path / 'cache')
@@ -195,8 +195,8 @@ def test_real_tls_bearer_and_redirect_credential_not_forwarded(server, tmp_path,
     server.socket = tls.wrap_socket(server.socket, server_side=True)
     doc = manifest(endpoint(server, 'https'))
     doc['ca_file'] = str(cert)
-    doc['auth'] = {'kind': 'bearer_env', 'source': 'TOWER_PROM_TOKEN'}
-    monkeypatch.setenv('TOWER_PROM_TOKEN', 'test-private-bearer')
+    doc['auth'] = {'kind': 'bearer_env', 'source': 'RAVEN_PROM_TOKEN'}
+    monkeypatch.setenv('RAVEN_PROM_TOKEN', 'test-private-bearer')
     result = T.collect(doc)
     assert server.requests[-1]['authorization'] == 'Bearer test-private-bearer'
     assert 'test-private-bearer' not in json.dumps(result)

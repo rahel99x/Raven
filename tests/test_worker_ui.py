@@ -6,11 +6,11 @@ import threading
 
 import pytest
 
-from tower import interaction, layout, toolbar, workbench, worker_ui
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import interaction, layout, toolbar, workbench, worker_ui
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 class Governor:
@@ -123,7 +123,7 @@ def test_scheduler_error_preserves_preference_and_surfaces_the_reason():
 
 
 def test_real_scheduler_pending_switch_returns_before_active_collection_finishes():
-    from tower.worker_scheduler import WorkerScheduler
+    from raven.worker_scheduler import WorkerScheduler
 
     started, finish = threading.Event(), threading.Event()
     governor = WorkerScheduler(workers=2)

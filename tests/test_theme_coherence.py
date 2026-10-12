@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L, palette as P, screen, toolbar
-from tower.config import Config
-from tower.controller import App, THEMES
-from tower.model import Store
-from tower.navigation_tools import SETTING_CHOICES
+from raven import layout as L, palette as P, screen, toolbar
+from raven.config import Config
+from raven.controller import App, THEMES
+from raven.model import Store
+from raven.navigation_tools import SETTING_CHOICES
 
 
 NAMED = ("darcula", "modnokai", "gruvbox-dark")

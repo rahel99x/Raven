@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_groups as G
-from tower.model import Finished, Job
+from raven import job_groups as G
+from raven.model import Finished, Job
 
 
 def job(jid, *, name="experiment", submit="2026-10-08T12:00:00", **kwargs):
@@ -124,7 +124,7 @@ def test_explicit_launch_id_is_scoped_by_owner_and_project():
     records = [job(100), job(500)]
     snap = snapshot(records)
     for fields in snap["details"].values():
-        fields["TowerLaunchId"] = "same-id"
+        fields["RavenLaunchId"] = "same-id"
     snap["details"]["500"]["WorkDir"] = "/another-project"
     assert not G.Registry().ensure(snap).groups
     snap["details"]["500"]["WorkDir"] = "/project"
@@ -324,7 +324,7 @@ def test_ordinary_accounting_fastpath_still_detects_later_launch_evidence(monkey
 
     monkeypatch.setattr(G, "_evidence", counted)
     assert not groups.ensure(snap).groups and seen == 0
-    snap["details"] = {"100": {"TowerLaunchId": "later"}, "101": {"TowerLaunchId": "later"}}
+    snap["details"] = {"100": {"RavenLaunchId": "later"}, "101": {"RavenLaunchId": "later"}}
     group, = groups.ensure(snap).groups.values()
     assert group.members == ("100", "101") and seen == 2
 
@@ -347,12 +347,12 @@ def test_bounded_collapsed_registry_retains_the_group_just_closed(monkeypatch):
 
 def test_mapping_records_and_in_place_metadata_are_supported():
     from types import MappingProxyType
-    first = {"id": "100", "name": "first", "TowerLaunchId": "marker"}
-    second = {"id": "500", "name": "second", "TowerLaunchId": "marker"}
+    first = {"id": "100", "name": "first", "RavenLaunchId": "marker"}
+    second = {"id": "500", "name": "second", "RavenLaunchId": "marker"}
     snap = {"jobs": [MappingProxyType(first), MappingProxyType(second)]}
     groups = G.Registry()
     assert len(groups.ensure(snap).groups) == 1
-    second["TowerLaunchId"] = "different"
+    second["RavenLaunchId"] = "different"
     assert not groups.ensure(snap).groups
 
 

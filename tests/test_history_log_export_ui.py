@@ -7,13 +7,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import history_log_export as ui, layout as L, log_bundle
-from tower.config import Config
-from tower.controller import App
-from tower.interaction import Rect
-from tower.model import Finished, Store
-from tower.remote import LocalFiles
-from tower.views import Views
+from raven import history_log_export as ui, layout as L, log_bundle
+from raven.config import Config
+from raven.controller import App
+from raven.interaction import Rect
+from raven.model import Finished, Store
+from raven.remote import LocalFiles
+from raven.views import Views
 
 
 @pytest.fixture
@@ -196,7 +196,7 @@ def test_source_discovery_and_clipboard_run_only_on_background_worker(dashboard,
     finish(app)
     state = ui.initialize(app)
     assert app.mode == "history_log_receipt"
-    assert threads and all(name.startswith("tower-research") for name in threads)
+    assert threads and all(name.startswith("raven-research") for name in threads)
     result = state["result"]
     assert len(result["files"]) == 4
     assert result["bytes"] == sum(len(value) for value in dashboard.payloads.values())

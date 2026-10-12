@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import array_disclosure as D, arrays, job_panels as J, layout as L
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import array_disclosure as D, arrays, job_panels as J, layout as L
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture

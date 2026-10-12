@@ -8,7 +8,7 @@ measurements. A GPU visible on the desktop does not establish job ownership.
 The checks distinguish sampling settings, allocation detection, driver access,
 live measurements, trace files, and retained data.
 
-Optional NVIDIA, AMD, and Intel providers were introduced in Tower 4.14.
+Optional NVIDIA, AMD, and Intel providers were introduced in Raven 4.14.
 Use **GPU source** on Sources or `:gpuprovider` to choose one. See
 [provider requirements](phase-one.md#select-a-gpu-provider) for compute-node
 tools, allocation identity checks, and unsupported-counter behavior.
@@ -25,7 +25,7 @@ desktop that also has an AMD or Intel display device.
 
 ## Enable sampling on Fedora
 
-The supplied `desktop` profile enables GPU sampling from Tower 4.7.1.
+The supplied `desktop` profile enables GPU sampling from Raven 4.7.1.
 Earlier versions supplied that profile with sampling disabled.
 A custom configuration or a saved off preference can still disable it.
 
@@ -71,7 +71,7 @@ Source enable/disable controls apply to the running session and are not saved.
 From a terminal with the same Slurm configuration and permissions as Raven, run:
 
 ```bash
-tower --gpu-check --gpu-check-output ./tower-gpu-report
+raven --gpu-check --gpu-check-output ./raven-gpu-report
 ```
 
 The output directory must not exist.
@@ -79,8 +79,8 @@ The check preserves existing files and does not replace configuration.
 To inspect one job, use its exact individual ID:
 
 ```bash
-tower --gpu-check 123 --gpu-check-output ./tower-gpu-job-123
-tower --gpu-check 123_4 --json > gpu-array-task-123_4.json
+raven --gpu-check 123 --gpu-check-output ./raven-gpu-job-123
+raven --gpu-check 123_4 --json > gpu-array-task-123_4.json
 ```
 
 Replace the example IDs with your actual job IDs.
@@ -90,15 +90,15 @@ Use `--user USER` for another authorized scheduler user.
 To bypass an old alias or custom configuration, run from the checkout:
 
 ```bash
-./scripts/tower --config docs/config.example.json --profile desktop \
-  --gpu-check --gpu-check-output ./tower-gpu-report-direct
+./scripts/raven --config docs/config.example.json --profile desktop \
+  --gpu-check --gpu-check-output ./raven-gpu-report-direct
 ```
 
 The standalone check file uses the same implementation:
 
 ```bash
 python3 scripts/check_gpu.py --config docs/config.example.json --profile desktop \
-  --gpu-check-output ./tower-gpu-report-script
+  --gpu-check-output ./raven-gpu-report-script
 
 python3 scripts/check_gpu.py 123 --profile desktop
 ```
@@ -119,7 +119,7 @@ A configured session recording path is ignored; the diagnostic writes only its r
 | File | Contents |
 | --- | --- |
 | `report.txt` | Human-readable checks, next steps, and captured command excerpts |
-| `report.json` | Structured `tower.gpu-check/v1` report, job evidence, limits, and results |
+| `report.json` | Structured `raven.gpu-check/v1` report, job evidence, limits, and results |
 | `commands.jsonl` | One record per attempted command, with arguments, status, return code, duration, stdout, and stderr |
 
 The check captures both successful commands and failures.

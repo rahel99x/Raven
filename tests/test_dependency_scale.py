@@ -1,8 +1,8 @@
 """Dependency traversals preserve action order without recursion or rescans."""
 from collections import deque
 
-from tower.deps import DepGraph
-from tower.model import Job
+from raven.deps import DepGraph
+from raven.model import Job
 
 
 def job(jid, dependency=""):
@@ -19,7 +19,7 @@ def test_ten_thousand_deep_chain_has_exact_dfs_and_action_closures():
 
 
 def test_wide_bfs_has_constant_time_queue_removal_and_original_neighbor_order(monkeypatch):
-    from tower import deps
+    from raven import deps
     records = [job(1)] + [job(index, "afterok:1") for index in range(2, 10002)]
     queues = []
 

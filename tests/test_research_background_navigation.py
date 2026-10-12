@@ -7,12 +7,12 @@ import shlex
 
 import pytest
 
-from tower import research_commands
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven import research_commands
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 @pytest.fixture
@@ -159,7 +159,7 @@ def test_busy_command_rejection_does_not_navigate_or_replace_the_accepted_reques
 
 
 def test_submit_cannot_review_an_old_plan_while_its_replacement_is_preparing(dashboard, monkeypatch):
-    from tower.submission import prepare
+    from raven.submission import prepare
     app = dashboard.app
     app.research.plan = old_plan = prepare(str(dashboard.script), workdir=str(dashboard.root))
     entered, release = block_worker(monkeypatch, "prepare")

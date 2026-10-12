@@ -8,12 +8,12 @@ import sys
 
 import pytest
 
-from tower import palette
-from tower import terminal_diagnostics as D
+from raven import palette
+from raven import terminal_diagnostics as D
 
 
 @pytest.mark.parametrize("theme", palette.THEME_NAMES)
-def test_child_explicit_rgb_is_not_a_tower_theme_alias(theme):
+def test_child_explicit_rgb_is_not_a_raven_theme_alias(theme):
     styled = palette.cell_style("terminal+fg:#22d3ee+bg:#164e63+bold", theme)
     result = palette.resolve(styled, theme)
     if theme in ("mono", "reader"):
@@ -25,7 +25,7 @@ def test_child_explicit_rgb_is_not_a_tower_theme_alias(theme):
 
 
 @pytest.mark.parametrize("theme", palette.THEME_NAMES)
-def test_child_default_cells_inherit_the_tower_theme(theme):
+def test_child_default_cells_inherit_the_raven_theme(theme):
     assert palette.resolve(palette.cell_style("terminal", theme), theme) == palette.resolve(
         palette.cell_style("", theme), theme)
 
@@ -40,7 +40,7 @@ def test_terminal_marker_cannot_inject_escape_sequences(monkeypatch):
 
 def test_setup_terminal_is_explicit_and_offline_default_remains():
     source = Path(__file__).resolve().parents[1] / "scripts" / "setup.py"
-    spec = importlib.util.spec_from_file_location("tower_terminal_setup_test", source)
+    spec = importlib.util.spec_from_file_location("raven_terminal_setup_test", source)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.parser().parse_args([]).terminal is False
@@ -50,15 +50,15 @@ def test_setup_terminal_is_explicit_and_offline_default_remains():
 def test_core_import_without_site_packages_does_not_require_terminal_engine():
     root = Path(__file__).resolve().parents[1]
     result = subprocess.run([sys.executable, "-S", "-c",
-                             "from tower.config import Config; from tower.controller import App; "
-                             "from tower.model import Store; App(Store(persist=False), None, None, Config(), 'test')"],
+                             "from raven.config import Config; from raven.controller import App; "
+                             "from raven.model import Store; App(Store(persist=False), None, None, Config(), 'test')"],
                             cwd=root, capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
 
 
 def test_local_capability_probe_runs_real_controlling_pty_without_slurm():
     pytest.importorskip("pyte")
-    from tower.terminal_diagnostics import run_probe
+    from raven.terminal_diagnostics import run_probe
     result = run_probe()
     assert result["status"] == "passed", result
     assert result["scheduler_contacted"] is False
@@ -70,7 +70,7 @@ def test_selftest_outside_checkout_keeps_source_launcher_support(tmp_path):
     pytest.importorskip("pyte")
     import json
     root = Path(__file__).resolve().parents[1]
-    result = subprocess.run([sys.executable, str(root / "tower" / "terminal_diagnostics.py"), "--json"],
+    result = subprocess.run([sys.executable, str(root / "raven" / "terminal_diagnostics.py"), "--json"],
                             cwd=tmp_path, capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stderr + result.stdout
     assert json.loads(result.stdout)["status"] == "passed"
@@ -83,7 +83,7 @@ def profile_probe():
 
 
 def test_private_profile_roundtrip_distinguishes_tools_from_tested_features(tmp_path, profile_probe, monkeypatch):
-    monkeypatch.setenv("TOWER_PROFILE_SECRET", "never-capture-this-value")
+    monkeypatch.setenv("RAVEN_PROFILE_SECRET", "never-capture-this-value")
     monkeypatch.setenv("TERM", "xterm-256color")
     monkeypatch.setattr(D.shutil, "which", lambda name: "/private/path/" + name)
     path = tmp_path / "profile.json"

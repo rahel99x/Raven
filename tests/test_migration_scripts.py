@@ -22,16 +22,16 @@ def desktop(tmp_path):
     temporary = tmp_path / "temporary files"
     for directory in (home, config, state, temporary):
         directory.mkdir(mode=0o700)
-    old_config = config / "tower"
-    old_state = state / "tower"
+    old_config = config / "previous-app"
+    old_state = state / "previous-app"
     old_config.mkdir(mode=0o700)
     old_state.mkdir(mode=0o700)
     (old_config / "config.json").write_text(json.dumps({
         "theme": "mono", "host": "", "account": "local-slurm",
         "profiles": {"desktop": {"host": "", "account": "desktop-slurm"}},
     }))
-    (old_state / "groups.json").write_text('{"schema":"tower.groups/v1","jobs":["123"]}')
-    (old_state / "history.jsonl").write_text('{"schema":"tower.event/v1"}\n')
+    (old_state / "groups.json").write_text('{"schema":"raven.groups/v1","jobs":["123"]}')
+    (old_state / "history.jsonl").write_text('{"schema":"raven.event/v1"}\n')
     for name, filename in (("runtime", "worker.pid"), ("ssh", "private-key")):
         directory = old_state / name
         directory.mkdir(mode=0o700)
@@ -40,14 +40,21 @@ def desktop(tmp_path):
     environment.update(HOME=str(home), XDG_CONFIG_HOME=str(config),
                        XDG_STATE_HOME=str(state), XDG_CACHE_HOME=str(home / "cache"),
                        TMPDIR=str(temporary), PYTHONNOUSERSITE="1")
-    for name in ("RAVEN_CONFIG", "RAVEN_PROFILE", "TOWER_CONFIG", "TOWER_PROFILE"):
+    for name in ("RAVEN_CONFIG", "RAVEN_PROFILE", "RAVEN_STATE_DIR", "RAVEN_SITE_POLICY"):
         environment.pop(name, None)
     return {"root": tmp_path, "home": home, "config": config, "state": state,
             "temporary": temporary, "old_config": old_config, "old_state": old_state,
             "new_config": config / "raven" / "config.json", "env": environment}
 
 
-def run(desktop, script, *arguments, expected=0, scripts=SCRIPTS):
+def run(desktop, script, *arguments, expected=0, scripts=SCRIPTS, source_defaults=True):
+    arguments = list(map(str, arguments))
+    if source_defaults and script == "migrate-config.sh" and not any(
+            option in arguments for option in ("--help", "-h", "--plan-file")):
+        if "--source-config" not in arguments:
+            arguments += ["--source-config", str(desktop["old_config"])]
+        if "--include-state" in arguments and "--source-state" not in arguments:
+            arguments += ["--source-state", str(desktop["old_state"])]
     result = subprocess.run([str(scripts / script), *map(str, arguments)],
                             cwd=desktop["root"], env=desktop["env"],
                             capture_output=True, text=True, timeout=30)
@@ -79,7 +86,7 @@ def test_help_is_available_without_install_or_user_configuration(desktop, script
     assert os.access(SCRIPTS / script, os.X_OK)
 
 
-def test_default_preview_selects_config_only_and_leaves_user_files_unchanged(desktop):
+def test_explicit_source_preview_selects_config_only_and_leaves_user_files_unchanged(desktop):
     before = files(desktop["root"])
     value = json.loads(run(desktop, "migrate-config.sh").stdout)
     assert [(item["category"], item["path"]) for item in value["files"]] == [("config", "config.json")]
@@ -90,6 +97,17 @@ def test_default_preview_selects_config_only_and_leaves_user_files_unchanged(des
     assert files(desktop["root"]) == before
     assert not list(desktop["temporary"].iterdir())
     assert not desktop["new_config"].parent.exists()
+
+
+def test_new_plan_requires_explicit_source_directories(desktop):
+    before = files(desktop["root"])
+    result = run(desktop, "migrate-config.sh", source_defaults=False, expected=2)
+    assert "requires --source-config" in result.stderr
+    result = run(desktop, "migrate-config.sh", "--source-config", desktop["old_config"],
+                 "--include-state", source_defaults=False, expected=2)
+    assert "requires --source-state" in result.stderr
+    assert files(desktop["root"]) == before
+    assert not list(desktop["temporary"].iterdir())
 
 
 def test_saved_plan_is_private_and_replays_after_temporary_inventory_is_removed(desktop):
@@ -118,7 +136,7 @@ def test_interrupted_publication_resumes_against_same_saved_plan(desktop):
     program = """
 import json
 import sys
-from tower import raven_migration as migration
+from raven import raven_migration as migration
 value = json.loads(migration._read(sys.argv[1], migration.MAX_PLAN)[0])
 writer = migration._journal_write
 def interrupt(path, journal):

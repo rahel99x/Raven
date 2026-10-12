@@ -3,14 +3,14 @@ from dataclasses import fields, replace
 
 import pytest
 
-from tower import clock, job_groups, job_row_cache as C, layout as L, table_sort
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.job_progress import Source
-from tower.model import GpuSample, Job, Live, Store
-from tower.plugins import PluginAPI
-from tower.views import Views
+from raven import clock, job_groups, job_row_cache as C, layout as L, table_sort
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.job_progress import Source
+from raven.model import GpuSample, Job, Live, Store
+from raven.plugins import PluginAPI
+from raven.views import Views
 
 
 @pytest.fixture

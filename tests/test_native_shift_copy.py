@@ -1,13 +1,13 @@
 """Native Shift ranges and Advisor drags retain exact painted pane ownership."""
 import pytest
 
-from tower import clipboard, history_browser, text_selection as T
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs
-from tower.model import Finished, Health, Job, Live, Store
-from tower.screen import _FrameCache
-from tower.views import Views
+from raven import clipboard, history_browser, text_selection as T
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs
+from raven.model import Finished, Health, Job, Live, Store
+from raven.screen import _FrameCache
+from raven.views import Views
 
 
 @pytest.mark.parametrize("reverse", [False, True])
@@ -34,7 +34,7 @@ def test_source_shift_click_uses_rendered_range_instead_of_legacy_screen_rows(mo
     app.handle("y")
     assert copies == [expected]
     assert copies[0].count("\n") == len(rows)
-    assert "File" not in copies[0] and "Tower" not in copies[0]
+    assert "File" not in copies[0] and "Raven" not in copies[0]
 
 
 @pytest.mark.parametrize("reverse", [False, True])

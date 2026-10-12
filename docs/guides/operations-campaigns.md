@@ -65,7 +65,7 @@ checkpoint and this explicit contract:
 
 ```json
 {
-  "schema": "tower.checkpoint-restart/v1",
+  "schema": "raven.checkpoint-restart/v1",
   "id": "restart-001",
   "script": "restart.sbatch",
   "script_sha256": "REPLACE_WITH_THE_RESTART_SCRIPT_SHA256",
@@ -94,8 +94,8 @@ the restart environment that the application has checked. These maps must match
 exactly. The application remains responsible for the meaning of its compatibility
 identifiers. Pin the exact restart script as well as the checkpoint.
 
-The generated shell script exports `TOWER_CHECKPOINT` and
-`TOWER_CHECKPOINT_SHA256`. A Python 3 guard rechecks the hash when the queued job
+The generated shell script exports `RAVEN_CHECKPOINT` and
+`RAVEN_CHECKPOINT_SHA256`. A Python 3 guard rechecks the hash when the queued job
 starts, before the application runs. Keep the checkpoint immutable for the full
 restart. Write `restart.sbatch` to consume the path explicitly:
 
@@ -103,7 +103,7 @@ restart. Write `restart.sbatch` to consume the path explicitly:
 #!/bin/bash
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=4
-exec ./solver --restart "$TOWER_CHECKPOINT"
+exec ./solver --restart "$RAVEN_CHECKPOINT"
 ```
 
 Use a bash, sh, or dash script. Raven inserts literal environment values after
@@ -127,7 +127,7 @@ dependency and does not claim Bayesian uncertainty estimates.
 
 ```json
 {
-  "schema": "tower.parameter-search/v1",
+  "schema": "raven.parameter-search/v1",
   "id": "mesh-study-01",
   "script": "trial.sbatch",
   "workdir": ".",
@@ -145,9 +145,9 @@ Select **Propose** to inspect candidates without a submission plan. Select
 concurrent trials. Values must be finite JSON scalars. Existing Slurm arrays in
 the trial script are not supported: each logical trial has one scheduler receipt.
 
-The trial script reads `TOWER_TRIAL_ID` and JSON `TOWER_TRIAL_PARAMETERS` from its
+The trial script reads `RAVEN_TRIAL_ID` and JSON `RAVEN_TRIAL_PARAMETERS` from its
 environment. For example, a Python application can use
-`json.loads(os.environ["TOWER_TRIAL_PARAMETERS"])`. Arguments are not interpolated
+`json.loads(os.environ["RAVEN_TRIAL_PARAMETERS"])`. Arguments are not interpolated
 into shell commands. An optional `sbatch` list contains normal submission
 workbench overrides.
 
@@ -178,7 +178,7 @@ to force a retry.
 
 ```json
 {
-  "schema": "tower.packed-tasks/v1",
+  "schema": "raven.packed-tasks/v1",
   "id": "packed-analysis-01",
   "workdir": ".",
   "cpus": 8,
@@ -232,7 +232,7 @@ interface, and queue settings remain site configuration.
 
 ```json
 {
-  "schema": "tower.dask-pool/v1",
+  "schema": "raven.dask-pool/v1",
   "id": "analysis-pool-01",
   "cores": 8,
   "memory_mb": 16384,
@@ -269,7 +269,7 @@ unrelated Dask jobs. Linux `/proc` process identity is required for live control
 
 ```json
 {
-  "schema": "tower.heterogeneous-allocation/v1",
+  "schema": "raven.heterogeneous-allocation/v1",
   "id": "coupled-run-01",
   "workdir": ".",
   "walltime": "01:00:00",

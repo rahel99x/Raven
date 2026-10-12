@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as charts, job_groups, job_panels, layout as L, screen
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Job, Store
-from tower.views import Views
+from raven import chart_interaction as charts, job_groups, job_panels, layout as L, screen
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Job, Store
+from raven.views import Views
 
 
 MOUSE = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,

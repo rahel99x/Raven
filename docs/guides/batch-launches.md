@@ -275,10 +275,10 @@ For example, run these commands from one project working directory.
 Replace the script paths with your project's actual batch entry points.
 
 ```bash
-tower_batch_id="study-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
-sbatch --comment="launch:${tower_batch_id}" jobs/first.sbatch
-sbatch --comment="launch:${tower_batch_id}" jobs/second.sbatch
-sbatch --comment="launch:${tower_batch_id}" jobs/third.sbatch
+raven_batch_id="study-$(python3 -c 'import uuid; print(uuid.uuid4().hex)')"
+sbatch --comment="launch:${raven_batch_id}" jobs/first.sbatch
+sbatch --comment="launch:${raven_batch_id}" jobs/second.sbatch
+sbatch --comment="launch:${raven_batch_id}" jobs/third.sbatch
 ```
 
 **Expected result:** Raven groups available members that share the marker and its scope.
@@ -302,7 +302,7 @@ Use the actual available job IDs.
 Local tags persist in the current Raven state directory; they are not written to Slurm and are not shared automatically with another installation.
 Remove a local marker with `:untag 101 102 103 launch:study-17`.
 Conflicting local marker tags do not establish a reliable local marker.
-When an integration already publishes `TowerLaunchId`, `LaunchId`, `LaunchGroup`, or `JobGroup` in scheduler details, Raven also accepts that explicit ID.
+When an integration already publishes `RavenLaunchId`, `LaunchId`, `LaunchGroup`, or `JobGroup` in scheduler details, Raven also accepts that explicit ID.
 An explicit scheduler detail takes precedence over a comment; a recognized comment takes precedence over local marker tags.
 
 ## Understand automatic deduction

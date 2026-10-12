@@ -14,7 +14,7 @@ Treat commands, file paths, key names, Slurm terms, and metric identifiers as te
 
 | Term | Meaning |
 | --- | --- |
-| Raven | The application; `slurm-tower` is the distribution and `tower` is its import namespace and compatibility command |
+| Raven | The application; `raven` is the distribution and `raven` is its import namespace and compatibility command |
 | Page | A main application view, such as Jobs or History |
 | Workspace | A Research subview, such as Experiment or Workflow |
 | Panel | A separately focused area within a page |
@@ -90,7 +90,7 @@ State whether an action changes a preference, a local file, or a scheduler job.
 
 A leading `:` means that the user must open the command palette.
 The user types the command text without that leading character.
-Command examples in a terminal shell must use the `tower` launcher or another explicit program.
+Command examples in a terminal shell must use the `raven` launcher or another explicit program.
 Do not place palette commands in a Bash code block.
 
 Describe uppercase and lowercase keys separately.
@@ -128,7 +128,7 @@ claims. Keep documentation suitable for review as a software artifact.
 2. Check links to section headings.
 3. Compare key names with the configured default bindings.
 4. Compare command names with the command registry.
-5. Compare CLI options with `tower --help`.
+5. Compare CLI options with `raven --help`.
 6. Run examples against simulated data where they do not change real jobs.
 7. Check that each procedure identifies its expected result.
 8. Check that source identity, limits, and unknown states are described correctly.

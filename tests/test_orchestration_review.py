@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import execution_ui, orchestrator
-from tower.layout import Glyphs, row_text
+from raven import execution_ui, orchestrator
+from raven.layout import Glyphs, row_text
 
 
 class Scheduler:
@@ -33,7 +33,7 @@ def review(tmp_path, monkeypatch):
             monkeypatch.delenv(name)
     script = tmp_path / "reviewed.sh"
     script.write_text("#!/bin/bash\ntrue\n")
-    recipe = {"version": 1, "kind": "tower.workflow", "nodes": [
+    recipe = {"version": 1, "kind": "raven.workflow", "nodes": [
         {"id": "parent", "script": str(script), "resources": {"cpus_per_task": 1}},
         {"id": "child", "script": str(script), "depends_on": ["parent"], "resources": {"cpus_per_task": 1}},
     ]}

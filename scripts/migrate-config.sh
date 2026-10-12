@@ -15,18 +15,19 @@ Raven configuration are preserved. No shell startup files are changed.
   --apply                        Apply --plan-file, or create/apply --save-plan
   --include-state                Also inventory the legacy state directory
   --include-history              Include bounded history; requires --include-state
-  --source-config DIR            Legacy config root (default: XDG config/tower)
-  --source-state DIR             Legacy state root (default: XDG state/tower)
+  --source-config DIR            Previous config root; required for a new plan
+  --source-state DIR             Previous state root; required with --include-state
   --destination-config FILE      Raven config (default: XDG config/raven/config.json)
   --destination-state DIR        Raven state/archive root (default: XDG state/raven)
   -h, --help                     Show this help
 
-Review:  scripts/migrate-config.sh --save-plan /private/directory/plan.json
+Review:  scripts/migrate-config.sh --source-config /previous/config --save-plan /private/directory/plan.json
 Apply:   scripts/migrate-config.sh --apply --plan-file /private/directory/plan.json
 Resume:  Repeat the same apply command; retain the returned journal path.
 
---source-state requires --include-state. A saved plan fixes all source and
-destination choices; do not combine --plan-file with inventory/path options.
+Source directories are explicit; Raven never inventories its own default state
+as a migration source. --source-state requires --include-state. A saved plan fixes
+all source and destination choices; do not combine it with inventory/path options.
 HELP
 }
 
@@ -38,6 +39,7 @@ action=--plan
 explicit_plan=false
 include_state=false
 include_history=false
+source_config_set=false
 source_state_set=false
 inventory_options=false
 plan_file=
@@ -58,6 +60,7 @@ while (( $# )); do
             save_plan=$2; shift 2 ;;
         --source-config|--source-state|--destination-config|--destination-state)
             require_value "$@"; inventory_options=true
+            if [[ $1 == --source-config ]]; then source_config_set=true; fi
             if [[ $1 == --source-state ]]; then source_state_set=true; fi
             arguments+=("$1" "$2"); shift 2 ;;
         -h|--help) usage; exit 0 ;;
@@ -72,6 +75,10 @@ if $source_state_set && ! $include_state; then fail "--source-state requires --i
 if $include_history && ! $include_state; then fail "--include-history requires --include-state"; fi
 if [[ $action == --apply && -z $plan_file && -z $save_plan ]]; then
     fail "--apply requires a reviewed --plan-file or an explicit new --save-plan"
+fi
+if [[ -z $plan_file ]]; then
+    if ! $source_config_set; then fail "A new plan requires --source-config"; fi
+    if $include_state && ! $source_state_set; then fail "--include-state requires --source-state"; fi
 fi
 
 empty_state=

@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://slurm-tower.dev/schemas/investigation-workflow.schema.json",
+  "$id": "https://raven.dev/schemas/investigation-workflow.schema.json",
   "title": "Staged job investigation",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "identity", "sources", "planner", "diagnostics"],
   "properties": {
-    "schema": {"const": "tower.investigation-workflow/v1"},
+    "schema": {"const": "raven.investigation-workflow/v1"},
     "identity": {
       "type": "object", "additionalProperties": false,
       "required": ["cluster", "job_id", "attempt"],

@@ -4,6 +4,10 @@
 
 - Use Raven consistently in documentation, command output, interface labels,
   and package metadata; update repository links to `rahel99x/Raven`.
+- Rename the distribution, Python package, command, environment variables,
+  project directories, and current evidence schema identifiers to Raven.
+  Require source or built-wheel installation and explicit previous-package
+  replacement; retain private configuration and repoint its worker interpreter.
 - Document pipx installation of `ravenl` and `ravenh`, persistent local Slurm
   configuration, and updates without shell aliases.
 - Add Bash helpers for reviewed, copy-only configuration migration and rollback.
@@ -226,7 +230,7 @@ a future 5.0 proposal.
 Phase one adds measurement and submission checks while retaining the terminal
 interface and optional-adapter architecture.
 
-- Inspect Tower polling separately from Slurm collection capabilities.
+- Inspect Raven polling separately from Slurm collection capabilities.
 - Select NVIDIA, AMD, or Intel GPU collection where the required vendor tool
   and allocation access are available.
 - Run explicit local shell syntax checks and optional ShellCheck analysis
@@ -293,7 +297,7 @@ Earlier release notes continue below.
 - Jobs Details renders the visible metric bands. Off-screen graphs retain their place in the scrollable document without repeating raster work.
 - Pointer feedback validates visible Live controls. Background maintenance still checks all retained sampling requests.
 - Completed background Research commands preserve the current page, selection, and source when the user leaves their workflow.
-- Use `tower --ui-trace ui-trace.json` to record bounded UI timings and page transitions. Quit normally to save the report. See [the timing guide](docs/guides/ui-performance.md#record-a-desktop-latency-report).
+- Use `raven --ui-trace ui-trace.json` to record bounded UI timings and page transitions. Quit normally to save the report. See [the timing guide](docs/guides/ui-performance.md#record-a-desktop-latency-report).
 
 
 ## 4.8.2
@@ -325,7 +329,7 @@ See [chart controls](docs/guides/charts.md#follow-a-running-metric) for mouse, k
 - GPU detection reads allocation TRES when the per-node queue field omits a `--gpus` request.
 - Analytics finds GPU traces without opening Inspector first and shows sampling errors before the first sample.
 - Unknown NVIDIA counters remain gaps. Trace paths preserve spaces, and missing trace files clear stale readings.
-- Use `tower --gpu-check` to inspect current jobs. Add `--gpu-check-output DIRECTORY` to save allocation, command, trace, and cache evidence.
+- Use `raven --gpu-check` to inspect current jobs. Add `--gpu-check-output DIRECTORY` to save allocation, command, trace, and cache evidence.
 
 See [GPU detection checks](docs/guides/gpu-detection.md) for Fedora instructions and report interpretation.
 

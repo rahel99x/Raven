@@ -6,9 +6,9 @@ import time
 
 import pytest
 
-from tower.logs import LogSession
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
+from raven.logs import LogSession
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
 
 
 class SharedFiles(LocalFiles):
@@ -19,7 +19,7 @@ class SharedFiles(LocalFiles):
 
     def _call(self, operation):
         thread = current_thread().name
-        assert thread.startswith("tower-research"), "Shared filesystem I/O reached the terminal thread"
+        assert thread.startswith("raven-research"), "Shared filesystem I/O reached the terminal thread"
         self.calls.append((operation, thread))
         if self.block == operation:
             self.entered.set()
@@ -158,7 +158,7 @@ def test_local_polling_coalesces_until_due_and_refresh_retries(tmp_path, monkeyp
     files = SharedFiles()
     worker, session = ResearchHub({}, files), LogSession(files=files)
     now = [100.0]
-    monkeypatch.setattr("tower.logs.time.monotonic", lambda: now[0])
+    monkeypatch.setattr("raven.logs.time.monotonic", lambda: now[0])
     try:
         ready = load(session, worker, path)
         calls = len(files.calls)
@@ -243,7 +243,7 @@ def test_pending_local_read_cannot_publish_over_different_file(tmp_path):
 
 
 def test_unchanged_local_poll_does_not_copy_retained_containers(tmp_path, monkeypatch):
-    from tower.logs import LogBuffer
+    from raven.logs import LogBuffer
     path = tmp_path / "job.log"
     path.write_bytes(b"first\nsecond\n" * 5000)
     files = SharedFiles()
@@ -263,11 +263,11 @@ def test_unchanged_local_poll_does_not_copy_retained_containers(tmp_path, monkey
 
 
 def test_real_controller_top_navigation_uses_warmed_snapshot_during_filesystem_stall(tmp_path):
-    from tower.config import Config
-    from tower.controller import App
-    from tower.layout import Glyphs, row_text
-    from tower.model import Finished, Store
-    from tower.views import Views
+    from raven.config import Config
+    from raven.controller import App
+    from raven.layout import Glyphs, row_text
+    from raven.model import Finished, Store
+    from raven.views import Views
     path = tmp_path / "job.log"
     path.write_bytes(b"".join(f"AB original line {number}\n".encode() for number in range(2000)))
     files = SharedFiles()
@@ -300,19 +300,19 @@ def test_real_controller_top_navigation_uses_warmed_snapshot_during_filesystem_s
         assert "AB original line 0" in "\n".join(row_text(row) for row in rows)
         assert app.logs.buffers[str(path)] is ready
         assert app.research.future is future and len(files.calls) == calls
-        assert all(thread.startswith("tower-research") for _, thread in files.calls)
+        assert all(thread.startswith("raven-research") for _, thread in files.calls)
     finally:
         files.release.set()
         app.research.close()
 
 
 def test_real_interactive_local_snapshot_yanks_original_bytes_after_pan(tmp_path, monkeypatch):
-    from tower import clipboard
-    from tower.config import Config
-    from tower.controller import App
-    from tower.layout import Glyphs, row_text
-    from tower.model import Finished, Store
-    from tower.views import Views
+    from raven import clipboard
+    from raven.config import Config
+    from raven.controller import App
+    from raven.layout import Glyphs, row_text
+    from raven.model import Finished, Store
+    from raven.views import Views
     path = tmp_path / "job.log"
     original = "AB first\tcolumn 界\r\nCD second\r\nEF third\n".encode()
     path.write_bytes(original)
@@ -351,7 +351,7 @@ def test_real_interactive_local_snapshot_yanks_original_bytes_after_pan(tmp_path
 
 def test_same_size_local_rewrite_reloads_without_mutating_published_snapshot(tmp_path):
     from types import SimpleNamespace
-    from tower import log_tools
+    from raven import log_tools
     path = tmp_path / 'job.log'
     original, replacement = b'ERROR first\nsecond\n', b'plain first\nsecond\n'
     assert len(original) == len(replacement)

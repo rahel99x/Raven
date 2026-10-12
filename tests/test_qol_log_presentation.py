@@ -4,14 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L, log_presentation as P, log_workbench as W
-from tower.logs import LogSession
-from tower.remote import LocalFiles
-from tower.research import ResearchHub
-from tower.config import Config
-from tower.controller import App
-from tower.model import Finished, Store
-from tower.views import Views
+from raven import layout as L, log_presentation as P, log_workbench as W
+from raven.logs import LogSession
+from raven.remote import LocalFiles
+from raven.research import ResearchHub
+from raven.config import Config
+from raven.controller import App
+from raven.model import Finished, Store
+from raven.views import Views
 
 
 def app(path):

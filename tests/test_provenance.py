@@ -8,7 +8,7 @@ import subprocess
 
 import pytest
 
-from tower import provenance as p
+from raven import provenance as p
 
 
 def script(tmp_path):
@@ -160,15 +160,15 @@ def test_environment_explicit_allowlist_and_metadata(tmp_path, monkeypatch):
     monkeypatch.setenv("LOADEDMODULES", "python/3.12:cuda/12")
     monkeypatch.setenv("APPTAINER_CONTAINER", "/containers/science.sif")
     monkeypatch.setenv("OMP_NUM_THREADS", "8")
-    monkeypatch.setenv("TOWER_API_TOKEN", "secret")
+    monkeypatch.setenv("RAVEN_API_TOKEN", "secret")
     empty = p.capture(tmp_path)
     assert empty["environment"] == {}
     assert "secret" not in json.dumps(empty)
-    selected = p.capture(tmp_path, environment_names=["LOADEDMODULES", "APPTAINER_CONTAINER", "OMP_NUM_THREADS", "TOWER_UNSET_EXAMPLE"])
+    selected = p.capture(tmp_path, environment_names=["LOADEDMODULES", "APPTAINER_CONTAINER", "OMP_NUM_THREADS", "RAVEN_UNSET_EXAMPLE"])
     assert selected["modules"] == ["python/3.12", "cuda/12"]
     assert selected["container"] == {"APPTAINER_CONTAINER": "/containers/science.sif"}
-    assert selected["environment"]["TOWER_UNSET_EXAMPLE"] is None
-    assert "TOWER_API_TOKEN" not in selected["environment"]
+    assert selected["environment"]["RAVEN_UNSET_EXAMPLE"] is None
+    assert "RAVEN_API_TOKEN" not in selected["environment"]
 
 
 @pytest.mark.parametrize("name", ["TOKEN", "AWS_SECRET_ACCESS_KEY", "SSH_KEY", "AUTH", "GITHUB_TOKEN", "SECRET", "API_KEY", "PASSWORD", "bad-name", ""])

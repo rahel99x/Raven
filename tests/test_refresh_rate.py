@@ -7,11 +7,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import refresh_rate as rate
-from tower.config import Config
-from tower.model import Store
-from tower.sampler import Sampler
-from tower.slurm import CommandError
+from raven import refresh_rate as rate
+from raven.config import Config
+from raven.model import Store
+from raven.sampler import Sampler
+from raven.slurm import CommandError
 
 
 def sampler(intervals=None, *, workers=1):
@@ -313,9 +313,9 @@ def test_bad_configured_rate_does_not_initialize_application_state():
 
 
 def test_hub_polling_rate_reads_new_files_without_resetting_base_cache_or_worker(monkeypatch):
-    from tower.research import ResearchHub
+    from raven.research import ResearchHub
     timer = SimpleNamespace(value=100.0)
-    monkeypatch.setattr("tower.research.time.monotonic", lambda: timer.value)
+    monkeypatch.setattr("raven.research.time.monotonic", lambda: timer.value)
     hub = ResearchHub(Config({"research": {"interval": 5}}))
     reads = []
     hub._read = lambda context: reads.append(context["jid"]) or {"status": "ready", "summary": "sample"}
@@ -344,7 +344,7 @@ def test_hub_polling_rate_reads_new_files_without_resetting_base_cache_or_worker
 
 
 def test_config_rate_constructs_hub_and_remote_file_limit_remains_bounded():
-    from tower.research import ResearchHub
+    from raven.research import ResearchHub
     hub = ResearchHub(Config({"polling_multiplier": 50}), files=SimpleNamespace(remote=True))
     try:
         assert hub.polling_multiplier == 50
@@ -356,7 +356,7 @@ def test_config_rate_constructs_hub_and_remote_file_limit_remains_bounded():
 
 
 def test_real_app_command_restores_rate_from_scoped_ui_preferences(tmp_path):
-    from tower.controller import App
+    from raven.controller import App
     state_root = str(tmp_path / "desktop-state")
     store = Store(state_dir=state_root)
     worker = Sampler(SimpleNamespace(), store, {"jobs": 2}, [])
@@ -379,14 +379,14 @@ def test_real_app_command_restores_rate_from_scoped_ui_preferences(tmp_path):
 
 @pytest.mark.parametrize("value", [False, "50", 51, float("nan")])
 def test_cli_bad_config_rate_rejected_before_backend_or_state_creation(value, monkeypatch):
-    from tower import cli
+    from raven import cli
     monkeypatch.setattr(cli, "make_backend", lambda *args: pytest.fail("bad rate created a backend"))
     with pytest.raises(ValueError, match="polling_multiplier"):
         cli.build(cli.parse(["--fake", "--no-plugins", "--no-state"]), Config({"polling_multiplier": value}))
 
 
 def test_cli_explicit_rate_overrides_saved_preference_for_all_readers(monkeypatch):
-    from tower import cli
+    from raven import cli
     monkeypatch.setattr(Store, "load_ui", lambda self: {"workbench": {"refresh_rate": {"multiplier": 5}}})
     session = cli.build(cli.parse(["--fake", "--no-plugins", "--no-state", "--rate", "50"]), Config())
     try:
@@ -400,10 +400,10 @@ def test_cli_explicit_rate_overrides_saved_preference_for_all_readers(monkeypatc
 
 
 def test_repeated_app_frames_and_arrow_selection_preserve_accounting_failure_deadline(monkeypatch):
-    from tower.controller import App
-    from tower.model import Finished
+    from raven.controller import App
+    from raven.model import Finished
     timer = SimpleNamespace(value=1000.0)
-    monkeypatch.setattr("tower.sampler.time.time", lambda: timer.value)
+    monkeypatch.setattr("raven.sampler.time.time", lambda: timer.value)
     calls = []
     def unavailable(jid):
         calls.append(jid)

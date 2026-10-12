@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower.model import COMPLETION_KEEP, TRANSITION_KEEP, Finished, Job, Store
-from tower.sampler import HISTORY_FAST_ATTEMPTS, Sampler
-from tower.slurm import CommandError
+from raven.model import COMPLETION_KEEP, TRANSITION_KEEP, Finished, Job, Store
+from raven.sampler import HISTORY_FAST_ATTEMPTS, Sampler
+from raven.slurm import CommandError
 
 
 def active(jid="42", **kw):
@@ -127,7 +127,7 @@ def test_array_group_splitting_is_not_an_individual_completion():
 
 
 def test_confirmed_recent_job_survives_incomplete_snapshot_but_respects_window():
-    from tower import clock
+    from raven import clock
     store = memory()
     store.apply_jobs([active()])
     store.apply_jobs([])
@@ -201,7 +201,7 @@ class Scheduler:
 
 @pytest.fixture
 def session(monkeypatch):
-    from tower import sampler as module
+    from raven import sampler as module
     timer = Clock()
     monkeypatch.setattr(module.time, "time", timer)
     slurm = Scheduler()

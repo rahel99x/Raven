@@ -27,7 +27,7 @@ optional fields must retain the existing meaning of accepted records. A change
 to identity, units, delivery semantics, or scientific interpretation needs a
 schema revision and migration or a clear refusal.
 
-Published schema `$id` values and `tower.*` interchange identifiers remain
+Published schema `$id` values and `raven.*` interchange identifiers remain
 stable when repository locations change. A repository URL update does not
 change the identity or semantics of previously published evidence.
 

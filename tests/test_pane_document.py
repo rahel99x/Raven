@@ -3,9 +3,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import chart_interaction as C, scrollbars as S
-from tower.pane_context import PaneContext, job_identity
-from tower.pane_document import DocumentTransform, PaneDocument, source_window
+from raven import chart_interaction as C, scrollbars as S
+from raven.pane_context import PaneContext, job_identity
+from raven.pane_document import DocumentTransform, PaneDocument, source_window
 
 
 def test_pane_context_rebinds_controller_methods_and_properties_without_copying_owner():

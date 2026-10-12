@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import job_groups as G
-from tower import manual_job_groups as M
-from tower.model import Finished, Job
+from raven import job_groups as G
+from raven import manual_job_groups as M
+from raven.model import Finished, Job
 
 
 def job(jid, **kwargs):

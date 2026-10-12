@@ -8,8 +8,8 @@ import time
 
 import pytest
 
-from tower import shell_checks, shell_checks_ui as UI, submission
-from tower.layout import Glyphs, row_text, vlen
+from raven import shell_checks, shell_checks_ui as UI, submission
+from raven.layout import Glyphs, row_text, vlen
 
 
 class Hub:
@@ -265,7 +265,7 @@ def test_noninteractive_command_publishes_machine_readable_evidence(app, script)
 
 
 def test_execution_form_button_and_key_use_same_reviewed_plan(app, script):
-    from tower import execution_ui
+    from raven import execution_ui
     plan = submission.prepare(str(script))
     execution_ui.initialize(app)
     execution_ui._open_form(app, plan)
@@ -280,7 +280,7 @@ def test_execution_form_button_and_key_use_same_reviewed_plan(app, script):
 
 
 def test_semantic_graph_excludes_underlying_tabs_and_supports_hover_and_arrows(app, script):
-    from tower import interaction
+    from raven import interaction
     state = open_checked(app, script)
     overlays = render(app)
     app.selected_id = "1234"
@@ -302,7 +302,7 @@ def test_semantic_graph_excludes_underlying_tabs_and_supports_hover_and_arrows(a
 
 
 def test_real_worker_cancellation_reaps_live_analyzer_and_discards_publication(app, script, tmp_path, monkeypatch):
-    from tower.research import ResearchHub
+    from raven.research import ResearchHub
     marker = tmp_path / "analyzer-started"
     tool = tmp_path / "shellcheck"
     tool.write_text(f"#!{sys.executable}\nimport sys,time\n"

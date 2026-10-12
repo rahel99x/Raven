@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import cli, ui_trace
+from raven import cli, ui_trace
 
 
 def app(**values):

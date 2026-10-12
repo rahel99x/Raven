@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from tower import table_ui
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Health, Job, Store
-from tower.views import Views
+from raven import table_ui
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Health, Job, Store
+from raven.views import Views
 
 
 @pytest.fixture
@@ -189,7 +189,7 @@ def test_sort_reveals_selected_array_task_if_folded_representative_changes(dashb
 @pytest.mark.parametrize("target", ["header", "row", "blank"])
 def test_double_click_activates_only_job_rows(dashboard, table, target):
     import curses
-    from tower.screen import _apply_input
+    from raven.screen import _apply_input
 
     app, views, store = dashboard
     app.enter_tab(table)

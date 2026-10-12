@@ -1,12 +1,12 @@
 """Finished-job log selection through the same keyboard and mouse UI as live jobs."""
 import pytest
 
-from tower.config import Config
-from tower.controller import App
-from tower.layout import Glyphs, row_text
-from tower.model import Finished, Job, Store
-from tower.remote import LocalFiles
-from tower.views import Views, stdout_path
+from raven.config import Config
+from raven.controller import App
+from raven.layout import Glyphs, row_text
+from raven.model import Finished, Job, Store
+from raven.remote import LocalFiles
+from raven.views import Views, stdout_path
 
 
 class SelectionSampler:
@@ -227,7 +227,7 @@ def test_jobs_queue_empty_still_selects_recent_logs(tmp_path, ascii_):
 
 def test_jobs_filter_can_select_recent_when_no_active_jobs_match(dashboard):
     dashboard.app.filter = "alpha-success"
-    from tower.table_tools import set_filter_text
+    from raven.table_tools import set_filter_text
     set_filter_text(dashboard.app, "recent", "alpha-success")
     dashboard.render()
     assert dashboard.app.visible_ids == []
@@ -241,7 +241,7 @@ def test_jobs_recent_limit_is_applied_after_filtering(dashboard):
         dashboard.store.finished.append(job)
         dashboard.add_logs(job)
     dashboard.app.filter = "another-run-716"
-    from tower.table_tools import set_filter_text
+    from raven.table_tools import set_filter_text
     set_filter_text(dashboard.app, "recent", "another-run-716")
     dashboard.render()
     dashboard.app.handle("l")

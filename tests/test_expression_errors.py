@@ -1,7 +1,7 @@
 import pytest
 
-from tower.expr import Expr, ExprError
-from tower.cli import main
+from raven.expr import Expr, ExprError
+from raven.cli import main
 
 
 @pytest.mark.parametrize("expression", ["-None", "{[]: 1}", "{[]}", "[1][::0]", "[a for a, b in [(1,)]]", "[x for x in 1]"])

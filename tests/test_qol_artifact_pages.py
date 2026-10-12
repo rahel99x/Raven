@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import artifact_pages as A, layout as L, project_ui as U
-from tower.remote import LocalFiles
+from raven import artifact_pages as A, layout as L, project_ui as U
+from raven.remote import LocalFiles
 
 
 def read(root, name="output.txt", **kwargs):

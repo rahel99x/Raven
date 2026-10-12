@@ -2,8 +2,8 @@ import threading
 
 import pytest
 
-from tower.trace_recorder import Recorder
-from tower.trace_ui import _read
+from raven.trace_recorder import Recorder
+from raven.trace_ui import _read
 
 
 def context(tmp_path, **values):

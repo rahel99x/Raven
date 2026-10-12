@@ -3,12 +3,12 @@ import math
 
 import pytest
 
-from tower import charts, chart_interaction as C, clock, layout as L, metric_live as M, refresh_rate as R
-from tower.config import Config
-from tower.controller import App
-from tower.metric_raster import MetricRasterCache, MAX_ENTRIES, MAX_POINTS, MAX_CELLS, _freeze, coalesce_row
-from tower.model import Job, Store
-from tower.views import Views
+from raven import charts, chart_interaction as C, clock, layout as L, metric_live as M, refresh_rate as R
+from raven.config import Config
+from raven.controller import App
+from raven.metric_raster import MetricRasterCache, MAX_ENTRIES, MAX_POINTS, MAX_CELLS, _freeze, coalesce_row
+from raven.model import Job, Store
+from raven.views import Views
 
 
 @pytest.mark.parametrize('ascii_', [False, True])

@@ -52,7 +52,7 @@ waits for a newline. No status certifies all project data or scientific results.
 ## Copy the reporting hooks
 
 Set **Batch script relative to project** and **Experiment label** if needed.
-The default batch path is `tower-batch.sh`; the experiment comes from the sample
+The default batch path is `raven-batch.sh`; the experiment comes from the sample
 or defaults to `experiment`. Inspect again to regenerate the quoted hooks.
 
 Copy the **Batch hook** into that batch script. Keep your site's required
@@ -60,12 +60,12 @@ Copy the **Batch hook** into that batch script. Keep your site's required
 arguments through your normal submission procedure, for example:
 
 ```bash
-sbatch tower-batch.sh python3 solve.py --iterations 100
+sbatch raven-batch.sh python3 solve.py --iterations 100
 ```
 
-The hook uses `tower report exec`. It records the actual start, stdout, stderr,
-wall time, exit status and finish, and passes `TOWER_RUN_DIR` to the application.
-It refuses an empty payload. Use an installed `tower` command available on the
+The hook uses `raven report exec`. It records the actual start, stdout, stderr,
+wall time, exit status and finish, and passes `RAVEN_RUN_DIR` to the application.
+It refuses an empty payload. Use an installed `raven` command available on the
 compute node; an interactive alias alone is insufficient. Do not overwrite
 application source with a generated batch hook.
 

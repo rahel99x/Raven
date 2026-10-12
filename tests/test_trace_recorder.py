@@ -7,14 +7,14 @@ import sys
 
 import pytest
 
-from tower.trace_protocol import discover_trace, read_trace, TraceReader
-from tower.trace_native import HEADER
+from raven.trace_protocol import discover_trace, read_trace, TraceReader
+from raven.trace_native import HEADER
 
 
 def launch(tmp_path, source, extra=()):
     script = tmp_path / "app.py"
     script.write_text(source)
-    result = subprocess.run([sys.executable, "-m", "tower.trace_recorder", "run", "--project", str(tmp_path),
+    result = subprocess.run([sys.executable, "-m", "raven.trace_recorder", "run", "--project", str(tmp_path),
         "--job-id", "123", "--attempt", "submit/start", *extra, "--", str(script)], capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr
     paths = discover_trace(tmp_path, "123", "submit/start")
@@ -71,7 +71,7 @@ def test_script_exception_still_finalizes_recorded_evidence(tmp_path, adapter):
     script = tmp_path / "bad.py"
     script.write_text("def fail(): raise RuntimeError('expected')\nfail()\n")
     options = ["--legacy-profile"] if adapter == "profile" else []
-    result = subprocess.run([sys.executable, "-m", "tower.trace_recorder", "run", "--project", str(tmp_path),
+    result = subprocess.run([sys.executable, "-m", "raven.trace_recorder", "run", "--project", str(tmp_path),
         "--job-id", "bad", "--attempt", "attempt", *options, "--", str(script)], capture_output=True, text=True, timeout=20)
     assert result.returncode != 0 and "expected" in result.stderr
     trace = read_trace(discover_trace(tmp_path, "bad")[0])
@@ -83,19 +83,19 @@ def test_script_exception_still_finalizes_recorded_evidence(tmp_path, adapter):
 def test_compiled_native_threads_and_fork_use_separate_streams(tmp_path, compiler, suffix):
     if not shutil.which(compiler):
         pytest.skip("C/C++ compiler unavailable")
-    (tmp_path / "tower_trace.h").write_text(HEADER)
+    (tmp_path / "raven_trace.h").write_text(HEADER)
     source = tmp_path / ("native" + suffix)
     source.write_text('''
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-#include "tower_trace.h"
+#include "raven_trace.h"
 #include <pthread.h>
 #include <sys/wait.h>
 static void *work(void *arg) {
     (void)arg;
-    tower_trace_emit("span_start", "{\\"span_id\\":\\"work\\",\\"name\\":\\"work\\"}");
-    tower_trace_emit("span_end", "{\\"span_id\\":\\"work\\"}");
+    raven_trace_emit("span_start", "{\\"span_id\\":\\"work\\",\\"name\\":\\"work\\"}");
+    raven_trace_emit("span_end", "{\\"span_id\\":\\"work\\"}");
     return NULL;
 }
 int main(void) {
@@ -112,7 +112,7 @@ int main(void) {
     binary = tmp_path / "native"
     compile_result = subprocess.run([compiler, "-Wall", "-Wextra", "-Werror", "-pthread", str(source), "-o", str(binary)], capture_output=True, text=True)
     assert compile_result.returncode == 0, compile_result.stderr
-    result = subprocess.run([sys.executable, "-m", "tower.trace_recorder", "native", "--project", str(tmp_path),
+    result = subprocess.run([sys.executable, "-m", "raven.trace_recorder", "native", "--project", str(tmp_path),
         "--job-id", "123", "--attempt", "attempt", "--", str(binary)], capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr
     paths = discover_trace(tmp_path, "123", "attempt")
@@ -124,13 +124,13 @@ int main(void) {
 
 
 def test_native_without_sdk_does_not_claim_capture(tmp_path):
-    result = subprocess.run([sys.executable, "-m", "tower.trace_recorder", "native", "--project", str(tmp_path),
+    result = subprocess.run([sys.executable, "-m", "raven.trace_recorder", "native", "--project", str(tmp_path),
         "--", sys.executable, "-c", "print('ordinary stdout')"], capture_output=True, text=True, timeout=20)
     assert result.returncode == 0 and result.stdout.strip() == "ordinary stdout"
     assert "no SDK events" in result.stderr
 
 
 def test_sdk_dump_is_standalone_header(tmp_path):
-    result = subprocess.run([sys.executable, "-m", "tower.trace_recorder", "native", "--sdk-header"], capture_output=True, text=True, timeout=10)
-    assert result.returncode == 0 and "tower_trace_emit" in result.stdout
-    assert not (tmp_path / ".tower").exists()
+    result = subprocess.run([sys.executable, "-m", "raven.trace_recorder", "native", "--sdk-header"], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0 and "raven_trace_emit" in result.stdout
+    assert not (tmp_path / ".raven").exists()

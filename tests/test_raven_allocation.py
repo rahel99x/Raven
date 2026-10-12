@@ -18,9 +18,9 @@ import time
 
 import pytest
 
-from tower.raven_allocation import AllocationManager, Decoder, MAX_FRAME, WorkerProxy, encode
-from tower.raven_allocation_adapters import VerifiedReuse, build_launch, prepare, scrub_launch_environment
-from tower.raven_allocation_helper import OwnershipRecord
+from raven.raven_allocation import AllocationManager, Decoder, MAX_FRAME, WorkerProxy, encode
+from raven.raven_allocation_adapters import VerifiedReuse, build_launch, prepare, scrub_launch_environment
+from raven.raven_allocation_helper import OwnershipRecord
 
 
 def desktop(**allocation):
@@ -123,7 +123,7 @@ def test_protocol_rejects_size_depth_and_nonfinite():
 def test_plan_does_not_create_state_or_launch_commands(tmp_path, monkeypatch):
     def forbidden(*args, **kwargs):
         pytest.fail("Plan must not start a process")
-    monkeypatch.setattr("tower.raven_allocation.subprocess.Popen", forbidden)
+    monkeypatch.setattr("raven.raven_allocation.subprocess.Popen", forbidden)
     manager = AllocationManager(desktop(), state_dir=tmp_path / "absent")
     plan = manager.plan()
     assert plan["site_kind"] == "desktop" and not (tmp_path / "absent").exists()
@@ -174,7 +174,7 @@ def test_ssh_argv_quotes_complete_remote_command_once():
     cfg["connection"] = {"transport": "ssh", "host": "approved-alias"}
     cfg["execution"]["worker_python"] = "/opt/runtime with spaces/python"
     planned = prepare(cfg)
-    argv = build_launch(planned, [sys.executable, "-m", "tower.raven_worker"])
+    argv = build_launch(planned, [sys.executable, "-m", "raven.raven_worker"])
     assert argv[:2] == ["ssh", "-T"] and argv[-2] == "approved-alias"
     remote = shlex.split(argv[-1])
     assert remote[0] == cfg["execution"]["worker_python"]
@@ -187,7 +187,7 @@ def test_ssh_launch_preserves_governed_connection_routing_and_safe_options():
     cfg["connection"] = {"transport": "ssh", "host": "approved-alias", "user": "researcher",
                          "ssh_options": ["-p", "2222", "-i", "/keys/key with spaces", "-o", "ProxyJump=gateway"]}
     value = prepare(cfg)
-    argv = build_launch(value, [sys.executable, "-m", "tower.raven_worker"])
+    argv = build_launch(value, [sys.executable, "-m", "raven.raven_worker"])
     assert argv[-2] == "researcher@approved-alias"
     assert argv[6:-3] == cfg["connection"]["ssh_options"]
     for options in (["-tt"], ["another-host"], ["-o", "ProxyCommand=command"], ["-o", "StrictHostKeyChecking=no"], ["-o", "RemoteCommand=command"]):
@@ -215,7 +215,7 @@ def test_desktop_request_ready_real_task_release_and_receipt(tmp_path):
         assert manager.request() == request
         until(manager, lambda: manager.worker.ready)
         assert manager.snapshot()["identity"]["verified"] is True
-        document = {"schema": "tower.statistics/v1", "design": "independent", "unit": "independent runs",
+        document = {"schema": "raven.statistics/v1", "design": "independent", "unit": "independent runs",
                     "control": [{"id": "a", "value": 1}, {"id": "b", "value": 2}, {"id": "c", "value": 3}],
                     "treatment": [{"id": "d", "value": 4}, {"id": "e", "value": 5}, {"id": "f", "value": 6}]}
         task = manager.worker.submit("statistics", {"document": document}, {"test": "exact"})
@@ -240,7 +240,7 @@ def test_desktop_source_worker_from_another_directory(tmp_path, monkeypatch):
         manager.request()
         until(manager, lambda: manager.worker.ready)
         assert manager.snapshot()["host"] == socket.gethostname()
-        task = manager.worker.submit("statistics", {"document": {"schema": "tower.statistics/v1", "design": "independent",
+        task = manager.worker.submit("statistics", {"document": {"schema": "raven.statistics/v1", "design": "independent",
             "unit": "runs", "control": [{"id": "a", "value": 1}, {"id": "b", "value": 2}],
             "treatment": [{"id": "c", "value": 4}, {"id": "d", "value": 5}]}}, {})
         until(manager, lambda: manager.worker.tasks.get(task, {}).get("status") in ("committed", "failed"))
@@ -312,8 +312,8 @@ def test_fake_slurm_grant_verifies_placement_and_release_owns_only_its_lifetime(
 
 @pytest.mark.parametrize("outside_step", [False, True])
 def test_real_slurm_step_fields_admit_only_the_allocated_worker(tmp_path, fake_slurm, outside_step):
-    from tower.platform_session import wrap_backend
-    from tower.raven_collection import make_placement_verifier
+    from raven.platform_session import wrap_backend
+    from raven.raven_collection import make_placement_verifier
 
     class ControllerRecords:
         candidate = None
@@ -502,7 +502,7 @@ def test_reuse_review_is_async_governed_and_token_bound(tmp_path, fake_slurm):
     {"Cluster": "another"}, {"NodeList": "node[1-2]"},
 ])
 def test_reuse_review_rejects_unproven_ownership_capacity_and_attempt(changed):
-    from tower.raven_allocation_reuse import review
+    from raven.raven_allocation_reuse import review
     with pytest.raises(ValueError):
         review(ReuseBackend(reuse_record(**changed)), "7654", prepare(cluster()))
 
@@ -524,7 +524,7 @@ def test_reuse_token_cannot_be_replayed_after_expiry_or_generation(tmp_path):
 
 
 def test_remote_reuse_verifies_remote_uid_instead_of_desktop_uid():
-    from tower.raven_allocation_reuse import review
+    from raven.raven_allocation_reuse import review
     remote_uid = os.getuid() + 20000
     class RemoteBackend(ReuseBackend):
         def command(self, argv, timeout, limit, cancel=None):
@@ -560,7 +560,7 @@ def test_task_with_declared_deadline_beyond_lease_is_rejected(tmp_path):
 
 
 def test_captured_light_policy_still_blocks_later_heavy_request(tmp_path):
-    from tower.raven_config import resolve
+    from raven.raven_config import resolve
     policy = tmp_path / "policy.json"
     policy.write_text(json.dumps({"schema": "raven.site-policy/v1", "restrictions": {"deny_heavy": True}}))
     resolved = resolve(site="desktop", env={"HOME": str(tmp_path), "XDG_CONFIG_HOME": str(tmp_path / "config"),
@@ -577,7 +577,7 @@ def test_helper_crash_stops_owned_desktop_worker_and_refuses_replay(tmp_path):
     # whose intentionally killed supervisor can no longer collect it.
     code = '''
 import ctypes,json,os,signal,sys,time
-from tower.raven_allocation import AllocationManager
+from raven.raven_allocation import AllocationManager
 assert ctypes.CDLL(None).prctl(36,1,0,0,0)==0
 manager=AllocationManager(json.loads(sys.argv[1]),state_dir=sys.argv[2])
 try:

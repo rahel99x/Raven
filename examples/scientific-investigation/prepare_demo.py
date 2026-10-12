@@ -25,17 +25,17 @@ def prepare(destination):
         return {"name": name, "path": name, "sha256": hashlib.sha256((destination/name).read_bytes()).hexdigest()}
     limits = {"max_trials": 40, "trial_seconds": 2, "total_seconds": 30, "cpus": 1,
               "memory_mb": 256, "output_bytes": 16384, "repeats": 2}
-    common = {"schema": "tower.diagnostic-campaign/v1", "mode": "local-diagnostic", "limits": limits}
+    common = {"schema": "raven.diagnostic-campaign/v1", "mode": "local-diagnostic", "limits": limits}
     reproducer = {**common, "id": "synthetic-minimizer", "kind": "minimize",
                   "command": [str(Path(sys.executable).resolve()), "{file:oracle.py}", "{input}"],
                   "files": [pinned("oracle.py"), pinned("input.txt")], "input": "input.txt",
-                  "oracle": {"exit_code": 7, "contains": "TOWER_DEMO_TARGET"}}
+                  "oracle": {"exit_code": 7, "contains": "RAVEN_DEMO_TARGET"}}
     numerical = {**common, "id": "synthetic-roundoff", "kind": "campaign",
                  "command": [str(Path(sys.executable).resolve()), "{file:numerical_program.py}"],
                  "files": [pinned("numerical_program.py")],
                  "cases": [{"id": mode, "arguments": [mode, "{result}"]} for mode in ("naive", "compensated")],
-                 "oracle": {"exit_code": 0, "contains": "TOWER_DEMO_MEASURED"}}
-    planner = {"schema": "tower.investigation-plan/v1", "budget": {"seconds": 100, "resource_seconds": 200, "trials": 2},
+                 "oracle": {"exit_code": 0, "contains": "RAVEN_DEMO_MEASURED"}}
+    planner = {"schema": "raven.investigation-plan/v1", "budget": {"seconds": 100, "resource_seconds": 200, "trials": 2},
                "known_evidence": ["pilot"], "risk_limit": 0, "actions": [
                    {"id": "accuracy-audit", "kind": "scientific-validation", "seconds": 20, "resource_seconds": 20,
                     "queue_seconds": 0, "decision_gain": .8, "success_probability": .9, "scientific_risk": 0,
@@ -50,19 +50,19 @@ def prepare(destination):
                 "preconditions": [{"source": "pilot", "path": ["communication_fraction"], "op": "gt", "value": .5}],
                 "acceptance": [{"source": "measured", "path": ["scientific_error"], "op": "le", "value": .01}],
                 "intervention": "Prepare a matched fewer-ranks scientific experiment; synthetic example only"}
-    recommendation = {"schema": "tower.recommendation-review/v1", "contract": contract,
+    recommendation = {"schema": "raven.recommendation-review/v1", "contract": contract,
                       "snapshot": {"identity": identity, "evidence": [{"id": "pilot", "sha256": digest(data), "data": data, "complete": True}]}}
-    lineage = {"schema": "tower.scientific-lineage/v1", "nodes": [
+    lineage = {"schema": "raven.scientific-lineage/v1", "nodes": [
         {"id": "raw", "kind": "artifact", "dependencies": [], "complete": True},
         {"id": "parser", "kind": "policy", "dependencies": [], "complete": True},
         {"id": "claim", "kind": "claim", "dependencies": ["raw", "parser"], "complete": True}],
         "changed": ["parser"], "actions": [
             {"id": "reparse-validate", "covers": ["parser", "claim"], "requires": ["raw"], "cost": 2, "method": "correct parser; check declared scientific observable"}]}
-    regression = {"schema": "tower.performance-investigation/v1", "unit": "synthetic independent unit", "design": "paired",
+    regression = {"schema": "raven.performance-investigation/v1", "unit": "synthetic independent unit", "design": "paired",
                   "baseline": "baseline", "minimum_change": .5, "versions": [
                       {"id": name, "scientific_valid": True, "samples": [{"id": str(i), "value": value} for i, value in enumerate(samples)]}
                       for name, samples in [("baseline", [10, 10.1, 9.9, 10.2]), ("slower", [15, 15.2, 15.1, 15.4]), ("recovered", [8, 8.2, 7.9, 8.1])]]}
-    workflow = {"schema": "tower.investigation-workflow/v1",
+    workflow = {"schema": "raven.investigation-workflow/v1",
                 "identity": {"cluster": "synthetic", "job_id": "0", "attempt": "offline-demo"},
                 "sources": [{"id": "pilot", "operation": "regression-investigation", "path": "regression.json"}],
                 "planner": "planner.json",

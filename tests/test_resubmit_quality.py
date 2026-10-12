@@ -3,12 +3,12 @@ import shlex
 
 import pytest
 
-from tower.actions import Actions
-from tower.config import Config
-from tower.controller import App
-from tower.model import Store
-from tower.resubmit import apply_overrides, build, flags_of, has_submission, parse_override_args, script_of
-from tower.slurm import FakeBackend, Slurm
+from raven.actions import Actions
+from raven.config import Config
+from raven.controller import App
+from raven.model import Store
+from raven.resubmit import apply_overrides, build, flags_of, has_submission, parse_override_args, script_of
+from raven.slurm import FakeBackend, Slurm
 
 
 @pytest.fixture

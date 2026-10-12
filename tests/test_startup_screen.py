@@ -8,12 +8,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import layout as L
-from tower import screen, startup, toolbar
-from tower.config import Config
-from tower.controller import App
-from tower.model import Job, Store
-from tower.views import Views
+from raven import layout as L
+from raven import screen, startup, toolbar
+from raven.config import Config
+from raven.controller import App
+from raven.model import Job, Store
+from raven.views import Views
 
 
 class PaintedWindow:
@@ -224,7 +224,7 @@ def test_actual_screen_retains_footer_selection_and_pristine_copy(terminal):
 
 
 def test_ui_trace_covers_actual_curses_phases(terminal):
-    from tower.ui_trace import UITrace
+    from raven.ui_trace import UITrace
     terminal.app.ui_trace = UITrace()
     terminal.cfg.set("animations", False)
     terminal.run([None, ("2", None), ("ctrl-c", None)])

@@ -84,7 +84,7 @@ Use `:terminaltest` to inspect missing movement, drag, or release reports.
 Use `:terminaldoctor` to inspect terminal and connection settings.
 Press Esc to leave the test.
 See [display performance](ui-performance.md) for the synthetic benchmark and its limits.
-Use `tower --ui-trace ui-trace.json` when movement still stalls. Reproduce the issue, quit normally,
+Use `raven --ui-trace ui-trace.json` when movement still stalls. Reproduce the issue, quit normally,
 and inspect the saved phase timings and page transitions.
 
 ## Run the regressions

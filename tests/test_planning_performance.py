@@ -12,13 +12,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from tower import cli, planning, planning_io
-from tower.config import Config
-from tower.metrics import write_metric
-from tower.model import Finished, Job
-from tower.provenance import capture
-from tower.research import RESEARCH_VIEWS, ResearchHub
-from tower.submission import prepare
+from raven import cli, planning, planning_io
+from raven.config import Config
+from raven.metrics import write_metric
+from raven.model import Finished, Job
+from raven.provenance import capture
+from raven.research import RESEARCH_VIEWS, ResearchHub
+from raven.submission import prepare
 
 
 def context(hub, view="tradeoffs", jid="1", *, snap=None, job=None):
@@ -88,7 +88,7 @@ def test_closed_planning_reader_cannot_publish_side_state(monkeypatch):
 def test_source_cache_does_not_bypass_a_stricter_view_read_budget(tmp_path):
     path = tmp_path / "large bundle.json"
     path.write_text(json.dumps({"padding": "x" * (1048576 + 100), "scaling": [],
-                                "workflow": {"kind": "tower.workflow", "version": 1,
+                                "workflow": {"kind": "raven.workflow", "version": 1,
                                              "nodes": [{"id": "task", "runtime_seconds": 1}]}}))
     hub = ResearchHub({"research": {"planning_file": str(path)}})
     try:
@@ -276,7 +276,7 @@ def test_command_file_change_adopts_new_file_job_before_background_refresh(cache
 
 
 def test_async_command_cannot_cache_original_job_under_new_selection(cached_dashboard, monkeypatch):
-    from tower import planning_commands
+    from raven import planning_commands
     session = cached_dashboard
     app, hub = session.app, session.app.research
     entered, release = threading.Event(), threading.Event()

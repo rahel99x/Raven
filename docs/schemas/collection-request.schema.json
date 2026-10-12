@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/rahel99x/Slurm-Tower/docs/schemas/collection-request.schema.json",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/collection-request.schema.json",
   "type": "object",
   "properties": {
     "source": {

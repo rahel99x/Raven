@@ -6,7 +6,7 @@
 This reference defines the terminal dashboard, measurement semantics, and
 compatibility configuration formats. Use the [Raven runbook](raven/README.md)
 for current installation, execution admission, and versioned configuration.
-The installed `ravenl`, `ravenh`, and `tower` commands apply Raven policy.
+The installed `ravenl`, `ravenh`, and `raven` commands apply Raven policy.
 Legacy control ranges describe requested values; collection floors and command
 budgets determine the effective rates.
 
@@ -32,30 +32,30 @@ scientific array manifests](guides/phase-one.md). The [roadmap](ROADMAP.md)
 tracks proposals that remain unimplemented.
 
 ```bash
-tower                        # interactive (curses); q quits, ? lists the keys
-tower --fake                 # a simulated cluster: try it anywhere, no Slurm needed
-tower --unicode              # explicitly prefer Unicode block graphics and symbols
-tower --ascii --no-color     # portable fallback for a limited terminal
-tower --watch --bell         # the animated non-interactive screen (Ctrl-C exits)
-tower --once --tab history   # one frame of text, e.g. to paste into a chat
-tower --json                 # the whole snapshot as JSON, for scripts
-tower --write-config         # create ~/.config/raven/config.json; preserve an existing file
-tower --config legacy.json --profile carc  # select a legacy [profiles.carc] view
-tower --host login.example.edu   # from a laptop: every Slurm command over ssh, logs read remotely
-tower --record today.jsonl.gz    # keep every command and answer; --replay today.jsonl.gz --speed 10 plays it back
-tower --ui-trace ui-trace.json   # record interactive UI timings; quit normally to save the new private report
-tower run cancel 123 --yes   # one palette command without the screen (exit 0 ok, 1 failed, 3 needs --yes)
-tower --eval '[j.id for j in running if j.cpu < 0.3]'     # an expression over the snapshot
-tower --wait-for 'n_pending == 0' --timeout 3600          # block until it holds (exit 0) or time out (exit 2)
-tower --report report.txt    # the whole dashboard as a plain ASCII text report
+raven                        # interactive (curses); q quits, ? lists the keys
+raven --fake                 # a simulated cluster: try it anywhere, no Slurm needed
+raven --unicode              # explicitly prefer Unicode block graphics and symbols
+raven --ascii --no-color     # portable fallback for a limited terminal
+raven --watch --bell         # the animated non-interactive screen (Ctrl-C exits)
+raven --once --tab history   # one frame of text, e.g. to paste into a chat
+raven --json                 # the whole snapshot as JSON, for scripts
+raven --write-config         # create ~/.config/raven/config.json; preserve an existing file
+raven --config legacy.json --profile carc  # select a legacy [profiles.carc] view
+raven --host login.example.edu   # from a laptop: every Slurm command over ssh, logs read remotely
+raven --record today.jsonl.gz    # keep every command and answer; --replay today.jsonl.gz --speed 10 plays it back
+raven --ui-trace ui-trace.json   # record interactive UI timings; quit normally to save the new private report
+raven run cancel 123 --yes   # one palette command without the screen (exit 0 ok, 1 failed, 3 needs --yes)
+raven --eval '[j.id for j in running if j.cpu < 0.3]'     # an expression over the snapshot
+raven --wait-for 'n_pending == 0' --timeout 3600          # block until it holds (exit 0) or time out (exit 2)
+raven --report report.txt    # the whole dashboard as a plain ASCII text report
 ```
 
 ## Install and configure
 
 Follow the [installation guide](INSTALLATION.md) and
 [Raven runbook](raven/README.md). Installing the Python package provides the
-commands without a Bash alias. The examples use the `tower` compatibility entry
-point; `./scripts/tower` accepts the same arguments from a configured checkout.
+commands without a Bash alias. The examples use the `raven` compatibility entry
+point; `./scripts/raven` accepts the same arguments from a configured checkout.
 
 ## Terminal visuals and accessibility
 
@@ -315,11 +315,11 @@ See [Planning and analysis](WAVE_TWO.md) for evidence requirements, prediction a
 calibration limits, reviewed choices, and complete scaling/workflow examples.
 
 ```bash
-tower --fake --tab research --research-view predict
-tower run blockers 123
-tower run scaling plan examples/planning/scaling.json --workdir "$PWD"
-tower run scaling analyze measurements.json --mode strong --baseline 1
-tower run workflow analyze examples/planning/workflow.json
+raven --fake --tab research --research-view predict
+raven run blockers 123
+raven run scaling plan examples/planning/scaling.json --workdir "$PWD"
+raven run scaling analyze measurements.json --mode strong --baseline 1
+raven run workflow analyze examples/planning/workflow.json
 ```
 
 `--research-view` accepts `experiment`, `arrays`, `evidence`, `artifacts`,
@@ -346,7 +346,7 @@ scaling spread describes measured repeats rather than future-run confidence.
 | Nodes | My Nodes lists allocations, load, memory, GRES, and available GPU observations. Cluster Map shows node state, allocated/total resources, and your allocated nodes. | The configured partition selection bounds the map. Missing node or device observations remain unavailable. |
 | Dependencies | Dependency trees, predecessor states, and selected-job details. `c` reviews cancellation of the selected job and its dependent chain; `h` reviews hold/release. | Supported dependency kinds include `afterok`, `afterany`, `afternotok`, `after`, `aftercorr`, and `singleton`. Finished predecessors use retained history. Inspect every target before confirmation. |
 | Group | Per-user running/pending job counts and allocated CPUs, GPUs, and nodes for the selected account, plus a sortable job table. `C` exports it; `i` opens details. | Records cover the account query's available snapshot. Display order does not establish scheduler order. |
-| Logs | Exact selected-job sources, grouped file catalog, bounded retained tail, complete-file search/copy, wrapping, bookmarks, and source-line selection. | The catalog combines scheduler paths, bounded job-ID matches, and explicit `tower.logs/v1` entries. Historical missing paths do not fall back to another job. Full-file operations remain separate from the display buffer. |
+| Logs | Exact selected-job sources, grouped file catalog, bounded retained tail, complete-file search/copy, wrapping, bookmarks, and source-line selection. | The catalog combines scheduler paths, bounded job-ID matches, and explicit `raven.logs/v1` entries. Historical missing paths do not fall back to another job. Full-file operations remain separate from the display buffer. |
 | Sources | Source cadence, last success, latency, calls, failures, backoff, and the latest error. `x` enables or disables the selected source. | Effective intervals include Raven collection policy. A failed source does not establish that its data is absent or zero. |
 | Research | Application metrics, arrays, evidence, artifacts, passports, submission preparation, and six planning views. | Exact run/job attachment and each reader's limits determine which observations can support analysis. |
 
@@ -424,7 +424,7 @@ state's `tags.json`.
 ### Clone-and-resubmit preparation
 
 `A` opens `resubmit <id>` in the palette. `:resubmit [id] ...` and
-`tower run resubmit 123 --mem 12G --yes` use the same preparation. Override
+`raven run resubmit 123 --mem 12G --yes` use the same preparation. Override
 resources with `--mem 12G`, `--time 03:00:00`, `-c 4`, `--gres gpu:a100:2`, or
 `-p gpu`. `--dependency=` clears an inherited dependency; `--script PATH`
 selects a script, and `--advised` applies the advisor's suggested flags.
@@ -608,7 +608,7 @@ The Edit menu provides the same destination switch.
 `clipboard.destination` accepts `copy` (default) or `yank`.
 Yank targets a running local Vim or Neovim and sets registers `0` and unnamed.
 It resolves executables on `PATH` and checks an inherited owned Neovim Unix socket or a reported Vim server.
-`TOWER_VIM_SERVER` selects an exact name when Vim has several servers.
+`RAVEN_VIM_SERVER` selects an exact name when Vim has several servers.
 Discovery times out after 0.4 seconds; delivery times out after 0.8 seconds.
 Editor delivery accepts complete UTF-8 text without NUL bytes, up to 8 MiB.
 It does not start an editor or change an editor buffer.
@@ -622,7 +622,7 @@ a private unique `state/exports/log-selected-<uuid>.log` file before attempting
 clipboard delivery. Invalid UTF-8 skips text clipboard transport rather than
 substituting replacement characters. Small valid UTF-8 ranges keep the immediate
 private atomic `clipboard.txt` fallback. With `--no-state`, exports use
-`./tower-exports/` instead.
+`./raven-exports/` instead.
 An unfinished selected last line keeps its original bytes without an invented
 final newline.
 
@@ -640,7 +640,7 @@ position, wrapping, or line count. It saves exact source bytes to a unique
 private file with mode `0600` at `state/exports/log-full-<uuid>.log` under the
 active scoped state directory. Raven's default state base is
 `~/.local/state/raven`, honoring `XDG_STATE_HOME`. With `--no-state`,
-the file goes under the launch directory's `tower-exports/` instead.
+the file goes under the launch directory's `raven-exports/` instead.
 
 A growing log is copied through its initial byte count; later appends are
 excluded and the status reports that snapshot. The writer is not locked, so
@@ -656,13 +656,13 @@ keep their complete raw export, with the skipped transport explained. A local
 tool can accept larger text files when a usable display is available.
 
 Small valid UTF-8 selections and ordinary screen-text copies publish private, atomically replaced
-`state/clipboard.txt` (or `tower-exports/clipboard.txt` with `--no-state`) as a
+`state/clipboard.txt` (or `raven-exports/clipboard.txt` with `--no-state`) as a
 fallback. The clipboard tools are pbcopy, wl-copy, xclip, xsel, or clip.exe.
 Exports of views use `text-<tab>-<stamp>.txt`, `csv-<tab>-<stamp>.csv`,
 `json-<tab>-<stamp>.json`, or `report-<stamp>.txt` under `state/exports/`.
 JSON carries the job record, live statistics, GPU samples, controller details,
-and recorded series. From the command line, `tower --csv --tab history`,
-`tower --json`, and `tower --report [PATH]` print the corresponding reports.
+and recorded series. From the command line, `raven --csv --tab history`,
+`raven --json`, and `raven --report [PATH]` print the corresponding reports.
 
 `:export report` (and `--report`) writes **the complete dashboard as an ASCII text
 report**: summary, jobs, partitions, history, analytics, nodes, dependencies,
@@ -682,7 +682,7 @@ continues to wait for its result.
 ## Remote mode and profiles
 
 `--host login.example` (or `host = ...` in the config) runs every Slurm command on that machine over ssh with a
-ControlMaster connection (`~/.ssh/tower-*`), so a command costs one round trip after the first; stdout and the GPU
+ControlMaster connection (`~/.ssh/raven-*`), so a command costs one round trip after the first; stdout and the GPU
 traces are read there too (`stat` and offset reads, so following a log costs one stat every 1.5 s), and `L`
 opens `less` over `ssh -t`.  Actions go the same way.  `ssh_user` and `ssh_opts` (`["-J", "bastion"]`) complete it.
 
@@ -704,7 +704,7 @@ partitions = ["gpu", "main"]
 history_days = 7
 ```
 
-`tower --profile mycluster` merges it over the top level; `:profile local` inside the dashboard restarts on that
+`raven --profile mycluster` merges it over the top level; `:profile local` inside the dashboard restarts on that
 profile (the header shows `user@host [profile]`).
 
 ## Recording and replay
@@ -720,17 +720,17 @@ made with `--fake --record` is a self-contained fixture: the tests replay one.
 
 ## Scripted mode and expressions
 
-`tower run <palette command>` runs one command without a screen: `tower run cancel 123 --yes`, `tower run export
-csv --tab history`, `tower run hold marked` (marks come from the saved state).  An action that would ask for
+`raven run <palette command>` runs one command without a screen: `raven run cancel 123 --yes`, `raven run export
+csv --tab history`, `raven run hold marked` (marks come from the saved state).  An action that would ask for
 confirmation needs `--yes` (exit 3 otherwise); a failed or unknown command exits 1.
 
 `--eval EXPR` prints the value of an expression over the snapshot; `--wait-for EXPR [--timeout S] [--poll S]`
 polls until it is true (exit 0) or the timeout passes (exit 2), for scripts that wait on the queue:
 
 ```bash
-tower --wait-for 'not any(j.name.startswith("train") for j in jobs)' --timeout 7200 && ./collect_results.sh
-tower --eval 'sum(j.gpus for j in running)'
-tower --eval '[j.id for j in running if j.cpu is not None and j.cpu < 0.2 and j.elapsed > 600]'
+raven --wait-for 'not any(j.name.startswith("train") for j in jobs)' --timeout 7200 && ./collect_results.sh
+raven --eval 'sum(j.gpus for j in running)'
+raven --eval '[j.id for j in running if j.cpu is not None and j.cpu < 0.2 and j.elapsed > 600]'
 ```
 
 The language is Python syntax restricted to literals, names, attribute and item access, arithmetic, comparisons,
@@ -752,7 +752,7 @@ This section documents the native trusted-plugin interface. Raven's governed
 startup disables configured automatic plugin loading. Treat plugin code as
 trusted application code; the interface is not a security sandbox.
 
-Python files in `~/.config/tower/plugins/` (or listed under `plugins` in the config; `--no-plugins` skips them)
+Python files in `~/.config/raven/plugins/` (or listed under `plugins` in the config; `--no-plugins` skips them)
 define `setup(api)` and register palette commands, flags in the FLAGS column, extra tabs, event hooks and
 sampled sources, each with the same health and backoff as the built-in sources:
 
@@ -772,7 +772,7 @@ process's permissions.
 ## The advisor
 
 The **Advisor** view of Analytics, `:advise [id | name]`, and
-`tower run advise rb3-identity` produce resource-request heuristics from observed
+`raven run advise rb3-identity` produce resource-request heuristics from observed
 usage. The native rules use the following constants:
 
 | Suggested resource | Rule | Condition and limits |
@@ -809,8 +809,8 @@ add an explicit session rule. Custom command hooks execute trusted local code.
 name = "idle gpu"
 when = "running and gpus and gpu is not None and gpu < 15 and elapsed > 900"   # over each job (scope = "job")
 every = 1800                    # seconds before the same job fires the rule again (0: once per job)
-actions = ["bell", "event"]     # bell | event | notify (the [notify] command, TOWER_EVENT=alert) | command
-command = ""                    # with "command": a shell command with TOWER_ALERT TOWER_JOBID TOWER_JOBNAME TOWER_TEXT
+actions = ["bell", "event"]     # bell | event | notify (the [notify] command, RAVEN_EVENT=alert) | command
+command = ""                    # with "command": a shell command with RAVEN_ALERT RAVEN_JOBID RAVEN_JOBNAME RAVEN_TEXT
 [[alerts]]
 name = "queue empty"
 scope = "cluster"               # over the whole snapshot: n_pending, free_gpus, source_errors ...
@@ -822,7 +822,7 @@ Rules use the expression language above; the sampler evaluates them after every 
 firing rings (the curses screen beeps, `--watch` writes a bell), logs an `alert` event (red in the events list),
 runs the notify command or the rule's own command, and the header shows the active alerts (`⚠ 2 alerts: idle gpu
 12480001, queue empty`) until their conditions turn false.  A rule that does not parse or fails to evaluate is an
-`alert_error` event, once.  `--alert EXPR` (repeatable) adds a rule for one run: `tower --watch --alert 'running
+`alert_error` event, once.  `--alert EXPR` (repeatable) adds a rule for one run: `raven --watch --alert 'running
 and cpu is not None and cpu < 0.1'`.
 
 ## Figures and flags
@@ -901,18 +901,18 @@ callbacks before queued work starts under the new limit. See
 
 ### Legacy dashboard configuration
 
-Legacy inputs remain at `~/.config/tower/config.toml` or `config.json`, with
-`--config PATH` and `TOWER_CONFIG` supported for compatibility. Raven reads
+Legacy inputs remain at `~/.config/raven/config.toml` or `config.json`, with
+`--config PATH` and `RAVEN_CONFIG` supported for compatibility. Raven reads
 these inputs without rewriting them. Use the migration procedure to create a
 versioned Raven configuration. The native legacy format contains these sections: top level (`user`, `account`, `ascii`, `color`, `history_days`, `log_lines`,
 `gpu_sampling`, `bell`, `partitions`, `gpu_types`, `weather`, `weather_probes`, `budget`, `animations`, `startup_animation`, `smooth_scrolling`), `[research]`, `[logs]`, `[exports]`, `[clipboard]`, `[intervals]`, `[timeouts]`, `[thresholds]`, `[[alerts]]`, `[notify]`
-(`command` runs through the shell on the configured `events` with `TOWER_EVENT`, `TOWER_JOBID`, `TOWER_JOBNAME`
-and `TOWER_TEXT` in the environment: a Slack webhook, an e-mail, anything), `[keys]` (action = list of key names).
+(`command` runs through the shell on the configured `events` with `RAVEN_EVENT`, `RAVEN_JOBID`, `RAVEN_JOBNAME`
+and `RAVEN_TEXT` in the environment: a Slack webhook, an e-mail, anything), `[keys]` (action = list of key names).
 
 `clipboard.destination` selects `copy` or `yank`; its default is `copy`.
 `clipboard.osc52` and `clipboard.tools` control the clipboard transports used in Copy mode and Yank fallback.
 These preferences also apply to complete-file and History multi-job copy workers.
-The editor server variables are `NVIM`, `NVIM_LISTEN_ADDRESS`, and `TOWER_VIM_SERVER`.
+The editor server variables are `NVIM`, `NVIM_LISTEN_ADDRESS`, and `RAVEN_VIM_SERVER`.
 See [Editor delivery](guides/pane-navigation.md#send-text-to-vim-or-neovim) for exact server checks and limits.
 
 Set `logs.manifest_file` to an exact log-index filename, such as `logs.json`.
@@ -940,7 +940,7 @@ and `RAVEN_STATE_DIR`. Scoped `ui.json` files retain page and display preference
 disables ordinary UI-state persistence. Durable execution receipts are a
 separate requirement for submission workflows.
 
-Legacy state under `~/.local/state/tower/` remains intact. The following
+Legacy state under `~/.local/state/raven/` remains intact. The following
 `state_namespace` rules describe the native compatibility layout:
 
 Set `state_namespace` to isolate state for different scheduler environments.
@@ -951,7 +951,7 @@ The connection digest includes backend, host, scheduler user, local owner, profi
 It separates preferences, log bookmarks, tags, events, exports, and recorded resource samples.
 The supplied `desktop` profile uses `state_namespace = "desktop"`.
 Existing state is retained in its original directory.
-The normal base follows `XDG_STATE_HOME`, or defaults to `~/.local/state/tower/`.
+The normal base follows `XDG_STATE_HOME`, or defaults to `~/.local/state/raven/`.
 Fake sessions, replay, and `--no-state` do not enable persistent state.
 See the [Fedora desktop guide](DESKTOP.md#keep-desktop-state-separate) for the local setup procedure.
 
@@ -993,7 +993,7 @@ introduced in release 3.0 have their own [workbench map](WORKBENCH.md#the-twenty
 | | feature | where |
 |---|---|---|
 | 1 | resource advisor: suggested `--mem` / `--cpus-per-task` / `--time`, idle core-hours, time against the longest run | Analytics › advisor, the selected panel, `:advise` |
-| 2 | clone and resubmit with overrides, the advisor's flags and an `sbatch --test-only` preview | `A`, `:resubmit`, `tower run resubmit` |
+| 2 | clone and resubmit with overrides, the advisor's flags and an `sbatch --test-only` preview | `A`, `:resubmit`, `raven run resubmit` |
 | 3 | dependency chains as trees, chain cancel / hold / release | Dependencies page, `:chain` |
 | 4 | alert rules (per job or over the snapshot) with rate limits: bell, event, notify, command | `[[alerts]]`, `--alert` |
 | 5 | queue weather: pending work ahead per partition, `sbatch --test-only` projections | Cluster tab |
@@ -1009,8 +1009,8 @@ introduced in release 3.0 have their own [workbench map](WORKBENCH.md#the-twenty
 | 15 | steps per job: tasks, CPU time, peak memory and where, the slowest rank; sacct steps of finished jobs | the panel, `i` |
 | 16 | the job's own GPU trace CSV in the panel and the charts | `logs/gpu-util-<id>.csv` |
 | 17 | log extras: grouped multi-location files, wrap, stderr, bookmarks | Logs page `O` `w` `e` `o` `m` `'` |
-| 18 | scripted mode: one command, an expression, a wait | `tower run`, `--eval`, `--wait-for` |
-| 19 | plugins: commands, flags, tabs, hooks, sources | `~/.config/tower/plugins/` |
+| 18 | scripted mode: one command, an expression, a wait | `raven run`, `--eval`, `--wait-for` |
+| 19 | plugins: commands, flags, tabs, hooks, sources | `~/.config/raven/plugins/` |
 | 20 | accessibility: a colour-blind palette and a plain-text reader theme; recordings as test fixtures | `T`, `theme cb`, `theme reader` |
 
 ## The GPU trace
@@ -1046,7 +1046,7 @@ policy, and storage ownership are described separately in the
 [implementation reference](raven/implementation.md#ownership).
 
 ```text
-tower/
+raven/
   layout.py      pure layout: columns fitted to a width (shrink flexible ones, drop the least useful, then a floor),
                  ellipsis clipping by display width, bars, sparklines, rules, boxes, painters to text / ANSI
   model.py       typed records (Job, Live, GpuSample, Node, Partition, Finished, Health) and the Store: histories,
@@ -1080,7 +1080,7 @@ tower/
   metric_sampling.py exact-source requests, shared probe intervals, source limits, and adaptive interval labels
   analytics_document.py bounded native Job Series document scrolling and visible metric cards
   logs.py        bounded incremental log buffers, logical keyboard cursors, raw line ranges, and selection
-  log_catalog.py bounded grouped file discovery and explicit tower.logs/v1 manifests on the selected backend
+  log_catalog.py bounded grouped file discovery and explicit raven.logs/v1 manifests on the selected backend
   log_copy.py    background exact-byte full-file snapshots and selected ranges, private exports, clipboard handoff
   log_bundle.py  exact-job multi-source full-file bundles, source hashes, confined destination listings and folder creation
   history_log_export.py asynchronous History export menus, directory picker, missing-source alerts and receipts
@@ -1108,7 +1108,7 @@ tower/
   report.py      the ASCII report: complete terminal snapshots of every tab
 ```
 
-`tests/test_tower.py` exercises the core parsers, layout, configuration, Store
+`tests/test_raven.py` exercises the core parsers, layout, configuration, Store
 transitions, and controller using recorded output and a simulated cluster.
 Controller checks cover selection, marks, action confirmations, sorting,
 filters, page changes, overlays, mouse input, tags, pins, and comparisons.

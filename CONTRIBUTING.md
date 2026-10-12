@@ -34,9 +34,9 @@ After changing a form or task descriptor, run
 `python3 scripts/generate_operation_reference.py`. Use its `--check` option in
 validation; do not maintain a second handwritten list of input defaults.
 
-Use `tower.command_registry` for built-in command metadata and static toolbar
+Use `raven.command_registry` for built-in command metadata and static toolbar
 actions. Keep contextual validation in the appropriate command handler. Use
-`tower.capabilities` to assign proposals to their primary owner, then run
+`raven.capabilities` to assign proposals to their primary owner, then run
 `python3 scripts/generate_capability_reference.py --check`. Read the
 [consolidation guide](docs/guides/consolidation.md) before adding a second
 collection, pane, investigation, or action lifecycle.
