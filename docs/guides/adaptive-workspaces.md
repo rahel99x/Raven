@@ -166,8 +166,10 @@ In scheduler job lists, closing a group moves a hidden selected child to the vis
 A data view opened for an exact historical job can stay on that job while its browser group is folded.
 Check that displayed ID before inspecting or acting on a job.
 
-Use `:jobgroups off` to show individual jobs without grouping in other lists.
-Recents has its own **Grouped** and **Sequential** controls.
+Use **Grouped** or **Sequential** to save the presentation of an individual
+job list. `:jobgroups on|off` resets these overrides and sets visibility across
+lists except Recents. **Sort Min** and **Sort Max** apply a saved batch rank to
+an individual list.
 Use `:jobgroups on` to restore shared grouping, or `:jobgroups` to toggle it.
 Use `:jobgroup open GROUP_ID`, `:jobgroup close GROUP_ID`, or `:jobgroup toggle GROUP_ID` for an exact known group.
 A simple unscoped array also accepts its numeric parent ID in this command.

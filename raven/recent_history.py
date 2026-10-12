@@ -179,8 +179,13 @@ def records(app, snap):
     state = initialize(app)
     options = fingerprint(app, "recent")
     selected = getattr(app, "selected_id", None)
-    anchor = state.transition_anchor or (selected if state.enabled and options == state.options and
-              any(record.id == selected for record in state.loaded) else None)
+    active = {job.id for job in snap.get("jobs", [])}
+    # A selected queue job can disappear alongside more completions than the
+    # initial Recents preview admits. Keep its exact identity through that
+    # transition, just as for a selected row already loaded in Recents.
+    anchor = state.transition_anchor or (selected if state.enabled and selected not in active and options == state.options and
+              (any(record.id == selected for record in state.loaded) or
+               selected in (getattr(app, "last_jobs_ids", None) or ())) else None)
     if state.options is not None and options != state.options:
         state.target = max(_base(app), state.page, state.target if state.transition_anchor else 0)
         state.exhausted = False
@@ -191,7 +196,6 @@ def records(app, snap):
     # Retain only observation fields required by filters and typed sorting.
     state.observation = {key: snap.get(key, {} if key in ("departed_jobs", "tags", "live", "details") else [])
                          for key in ("jobs", "finished", "departed_jobs", "tags", "live", "details", "group")}
-    active = {job.id for job in snap.get("jobs", [])}
     limit = candidate_limit(app)
     pending = _matching(app, snap, reversed(list(snap.get("departed_jobs", {}).values())),
                         active=active, limit=limit)
@@ -229,7 +233,7 @@ def records(app, snap):
     else:
         finished = _matching(app, snap, snap.get("finished", []), active=active,
                              pending_ids=pending_ids, limit=needed)
-    if anchor and not any(record.id == anchor for record in pending + finished):
+    if anchor and anchor not in active and not any(record.id == anchor for record in pending + finished):
         # New completions can push a selected boundary row past a bounded
         # preview while Queue size remains constant. Find only this displaced
         # identity, and admit enough accounting prefix to keep it available.

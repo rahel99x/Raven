@@ -12,6 +12,12 @@ def _finish(app, context, result, targets, *, created=False):
     selected = context.get("selected")
     if created:
         app.table_state["groups"] = True
+        scope = context["scope"]
+        if scope == "recent" or (scope == "jobs" and targets and
+                                  all(jid in getattr(app, "recent_ids", ()) for jid in targets)):
+            app.table_state["recents_mode"] = "grouped"
+        else:
+            app.table_state.setdefault("job_list_modes", {})[scope] = "grouped"
         job_groups.fold(app, result.group_id, True)
         selected = targets[0]
     elif selected not in context["ids"]:
@@ -87,11 +93,8 @@ def run_action(app, action, *, explicit=False):
                 continue
             # Only a displayed collapsed row implies the whole group. An
             # expanded member never silently adds its siblings to the action.
-            if app.tab == "jobs" and jid in getattr(app, "recent_ids", ()):
-                meta = job_groups.metadata_for_record(app, "recent", jid)
-                whole_group = bool(meta and meta.header and meta.collapsed and meta.group.id == group.id)
-            else:
-                whole_group = app.table_state.get("groups") and registry.is_collapsed(group)
+            from .job_list_controls import painted_group
+            whole_group = painted_group(app, current["scope"], jid, group)
             if whole_group:
                 groups.append(group.id)
             else:

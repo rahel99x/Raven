@@ -157,11 +157,12 @@ def _items(app, snap, records):
     from . import job_groups
     state = initialize(app)
     context = "history:" + app.tab
+    from .job_list_controls import fingerprint, mode
     registry = job_groups.registry(app)
-    enabled = bool(getattr(app, "table_state", {}).get("groups", False))
+    enabled = mode(app, context) == "grouped"
     index = job_groups.frame_index(app, snap) if enabled else registry.index
     cache_key = (app.tab, id(records), id(index), tuple(sorted(registry.collapsed)),
-                 enabled)
+                 fingerprint(app, context), _selected(app, _view(app)))
     cached = state.get("item_cache")
     if cached is not None and cached[0] == cache_key:
         state["indices"] = cached[4]
@@ -229,7 +230,8 @@ def _geometry(width, height, dock, ratio):
         content = Rect(size + 1 if dock == "left" else 0, 0, main, height)
         divider = Rect(size if dock == "left" else main, 0, 1, height)
     else:
-        size = max(2, min(max(2, height - 4), round((height - 1) * ratio / 100)))
+        minimum = 3 if height >= 6 else 2
+        size = max(minimum, min(max(minimum, height - 4), round((height - 1) * ratio / 100)))
         size = min(size, max(0, height - 2))
         main = max(0, height - size - 1)
         browser = Rect(0, 0 if dock == "top" else main + 1, width, size)
@@ -281,7 +283,16 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
         hits.append(_control(tab, "dock", "Change job-history dock", 0, dock_x, dock_x + len(dock_label), "history-dock next"))
         hits.append(_control(tab, "off", "Hide job history", 0, width - len(close), width, "history-browser off"))
     columns = max(1, width // 26) if dock in ("top", "bottom") else 1
-    data_height = max(0, height - 2) if height >= 4 else max(0, height - 1)
+    first = 1
+    if height >= 3 and width >= 19:
+        from .job_list_controls import controls
+        choices, choice_hits = controls(app, views.g, width, "history:" + tab)
+        if len(choices) == 1:
+            rows[1] = choices[0]
+            hits += [(y + 1, kind, value) for y, kind, value in choice_hits]
+            first += 1
+    footer = height >= first + 3
+    data_height = max(0, height - first - int(footer))
     page = data_height * columns
     top = max(0, min(max(0, len(items) - page), view["top"])) if page else 0
     state = initialize(app)
@@ -301,7 +312,7 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
     cell_width = max(1, content_width // columns)
     seen_groups = set()
     for position, item in enumerate(items[top:top + page]):
-        y, column = 1 + position // columns, position % columns
+        y, column = first + position // columns, position % columns
         x = column * cell_width
         size = content_width - x if column == columns - 1 else cell_width
         group = _header(item)
@@ -361,8 +372,8 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
         rows[y].extend(segments)
         hits.append(_control(tab, ident, label, y, x, x + size, command))
     if not items and data_height:
-        rows[1] = [(L.cut(" No job records yet", width, ascii_), "dim")]
-    if height >= 4:
+        rows[first] = [(L.cut(" No job records yet", width, ascii_), "dim")]
+    if footer:
         arrow_up, arrow_down = (" ^ ", " v ") if ascii_ else (" ↑ ", " ↓ ")
         text = f" {top + 1 if items else 0}-{min(len(items), top + page)}/{len(items)} "
         limit = max(0, width - 6)
@@ -371,7 +382,7 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
             hits.extend([_control(tab, "previous", "Previous history page", height - 1, width - 6, width - 3, "history-scroll page-up"),
                          _control(tab, "next", "Next history page", height - 1, width - 3, width, "history-scroll page-down")])
     if data_height and width >= 2:
-        scrollbars.register(app, "history-browser:" + tab, (1, 0, 1 + data_height, width),
+        scrollbars.register(app, "history-browser:" + tab, (first, 0, first + data_height, width),
             len(items), page, logical_top, top, lambda value: view.__setitem__("top", value),
             context=(tab, dock, width, height, columns), header=(0, 0, width) if jump_space else None)
     return [L.clip_row(row, width) for row in rows], hits, page, columns
@@ -556,10 +567,11 @@ def header_control_contains(app, y, x):
     """Give visible header buttons priority over an adjacent splitter buffer."""
     frame = _current(app)
     rect = getattr(app, "history_browser_rect", None)
-    if not frame or not rect or y != rect.y or not rect.contains(y, x):
+    if not frame or not rect or not rect.contains(y, x):
         return False
-    local_x = x - rect.x
-    return any(hy == 0 and value["left"] <= local_x < value["right"]
+    local_y, local_x = y - rect.y, x - rect.x
+    return any(hy == local_y and (hy == 0 or value.get("group") == "job-list-controls")
+               and value["left"] <= local_x < value["right"]
                for hy, kind, value in frame["hits"])
 
 
@@ -628,7 +640,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             state["discard_release"] = False
         else:
             arguments = shlex.split(hit["action"][1])
-            if arguments[0] == "jobgroup":
+            if arguments[0] in ("jobgroup", "joblist"):
                 app.run_command(hit["action"][1])
             else:
                 run_command(app, arguments)

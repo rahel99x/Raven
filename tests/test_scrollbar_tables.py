@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from raven import advisor, chart_interaction as C, history_browser as H, layout as L, recent_history as R, scrollbars as S, scrolling
+from raven import advisor, chart_interaction as C, history_browser as H, layout as L, recent_history as R, screen, scrollbars as S, scrolling
 from raven.config import Config
 from raven.controller import App
 from raven.model import Finished, Health, Job, Store
@@ -239,3 +239,52 @@ def test_scrollbar_staging_never_leaks_geometry_outside_terminal(raven, width, h
         if item.header:
             assert 0 <= item.header[0] < height - 1
             assert 0 <= item.header[1] < item.header[2] <= width
+
+
+@pytest.mark.parametrize('route', ['screen', 'controller'])
+@pytest.mark.parametrize('release', ['normal', 'missing', 'details'])
+def test_jobs_drag_then_details_click_preserves_scroll_and_activates_details(raven, monkeypatch, route, release):
+    app = raven.app
+    draw(raven)
+    item = pane(raven, 'jobs')
+    start, _, _ = S._thumb(item)
+    middle = (item.rect.top + item.rect.bottom) // 2
+    mouse = SimpleNamespace(BUTTON1_CLICKED=1, BUTTON1_PRESSED=2, BUTTON1_RELEASED=4,
+                            BUTTON1_DOUBLE_CLICKED=8, REPORT_MOUSE_POSITION=256)
+    flags = {'press': mouse.BUTTON1_PRESSED, 'left': mouse.BUTTON1_CLICKED,
+             'release': mouse.BUTTON1_RELEASED, 'motion': mouse.REPORT_MOUSE_POSITION,
+             'drag': mouse.REPORT_MOUSE_POSITION | mouse.BUTTON1_PRESSED}
+
+    def send(y, x, button):
+        if route == 'screen':
+            screen._apply_input(app, ('mouse', (0, x, y, 0, flags[button])), app.last_hits, mouse)
+        else:
+            app.click(y, x, app.last_hits, button=button)
+
+    y, _, (_, left, _) = next(hit for hit in app.last_hits
+                              if hit[1] == 'job_panel_tab' and hit[2][0] == 'logs')
+    selected = app.selected_id
+    send(start, item.rect.right - 1, 'press')
+    send(middle, item.rect.right - 1, 'drag')
+    offset = S.manual(app, 'jobs')
+    assert offset and S.initialize(app)['capture']
+    # A drag changes the published viewport token. The terminal repaints it
+    # before accepting fresh content actions, while preserving rail capture.
+    draw(raven)
+    with monkeypatch.context() as patch:
+        patch.setattr(raven.store, 'snapshot', forbidden)
+        patch.setattr(raven.store, 'render_snapshot', forbidden)
+        if release == 'normal':
+            send(middle, item.rect.right - 1, 'release')
+        elif release == 'details':
+            send(y, left, 'release')
+        # Native curses can omit button state after a lost release. Merely
+        # passing over Details must never seek the still-captured Jobs rail.
+        send(y, left, 'motion')
+        assert S.manual(app, 'jobs') == offset
+        send(y, left, 'left')
+        assert app.job_panel_state['mode'] == 'logs'
+        assert not S.initialize(app)['capture']
+        send(item.rect.bottom - 1, item.rect.right - 1, 'release')
+    assert S.manual(app, 'jobs') == offset
+    assert app.selected_id == selected

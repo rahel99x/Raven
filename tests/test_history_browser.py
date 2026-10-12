@@ -301,11 +301,11 @@ def test_left_right_fold_a_selected_child_without_changing_its_data_source(brows
     rows, hits = render(browser)
     assert browser.app.analytics_job == '1200_1'
     assert len([item for item in H.initialize(browser.app)['items'] if item.meta]) == 1
-    representative = next(hit for hit in hits if hit[1] == 'control' and hit[2]['id'] == 'history:analytics:job:1200_2')
-    assert '>1200_1' in L.row_text(rows[representative[0]])
-    assert '1200_2 [>1200_1]' in L.row_text(rows[representative[0]])
+    representative = next(hit for hit in hits if hit[1] == 'control' and hit[2]['id'] == 'history:analytics:job:1200_1')
+    assert '1200_1' in L.row_text(rows[representative[0]])
+    assert '1200_2' not in L.row_text(rows[representative[0]])
     assert any('sel' in style.split('+') for _, style in rows[representative[0]])
-    assert representative[2]['action'] == ('command', 'history-job 1200_2')
+    assert representative[2]['action'] == ('command', 'history-job 1200_1')
     assert H.handle_key(browser.app, 'right')
     render(browser)
     assert len([item for item in H.initialize(browser.app)['items'] if item.meta]) == 2

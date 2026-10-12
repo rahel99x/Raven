@@ -91,10 +91,18 @@ def test_state_change_reorders_batches_without_stale_inference_cache():
     assert job_groups.registry(value).inference_count == before
 
 
-@pytest.mark.parametrize("table", ["history", "group", "deps", "analytics:advisor"])
-def test_other_views_keep_their_existing_sort_and_tree_order(table):
+def test_dependency_tree_keeps_its_edge_order():
     value = app()
     _, _, _, _, snap = batches()
+    assert job_groups.project_records(value, snap, snap["jobs"], "deps") == snap["jobs"]
+
+
+@pytest.mark.parametrize("table", ["history", "group", "analytics:advisor"])
+def test_other_job_lists_pack_batches_without_applying_queue_rank_by_default(table):
+    value = app()
+    a, b, c, d, snap = batches()
+    assert job_groups.project_records(value, snap, snap["jobs"], table) == a + b + c + d
+    value.table_state["job_list_modes"] = {table: "sequential"}
     assert job_groups.project_records(value, snap, snap["jobs"], table) == snap["jobs"]
 
 

@@ -30,7 +30,7 @@ def test_disclosure_follows_first_filtered_sorted_record_without_reintroducing_s
     source = [snap["jobs"][2], snap["jobs"][3], snap["jobs"][0]]
     displayed = G.project_records(app, snap, source, context)
     expected = ([source[1], source[0], source[2]] if context == "jobs" else
-                [source[0], source[2], source[1]] if context == "recent" else source)
+                source if context == "deps" else [source[0], source[2], source[1]])
     assert all(actual is original for actual, original in zip(displayed, expected))
     first = G.metadata_for_record(app, context, "52_2")
     assert first.header and first.representative_id == "52_2"

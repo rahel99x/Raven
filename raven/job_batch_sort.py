@@ -64,13 +64,13 @@ def heavy_job_id(publication, snap):
     return jid
 
 
-def order(app, snap, records, index=None):
+def order(app, snap, records, index=None, *, observed=None, sort_mode=None):
     """Keep batches contiguous, retaining the caller's order within each one.
 
     Counts come from the unfiltered queue, before collapse. A compressed Slurm
     array row counts as one observed record. Ties keep the existing column sort.
     """
-    from .job_groups import _value, status_counts
+    from .job_groups import _value
     membership = index.by_job if index is not None else {}
     heavy = heavy_job_id(heavy_publication(app), snap)
 
@@ -81,20 +81,28 @@ def order(app, snap, records, index=None):
     blocks = defaultdict(list)
     for record in records:
         blocks[key(record)].append(record)
-    observed = defaultdict(list)
+    counts = {}
     seen = set()
-    for record in snap.get("jobs", ()):
+    for record in snap.get("jobs", ()) if observed is None else observed:
         jid = _value(record, "id")
         if jid not in seen:
-            observed[key(record)].append(record)
+            count = counts.setdefault(key(record), [0, 0])
+            state = str(_value(record, "state")).split(" ", 1)[0].rstrip("+").upper()
+            count[0] += state in ("RUNNING", "R", "COMPLETING", "CG", "CONFIGURING", "CF", "RESIZING", "SIGNALING", "STAGE_OUT")
+            count[1] += 1
             seen.add(jid)
-    descending = mode(app) == "max"
+    descending = (mode(app) if sort_mode is None else sort_mode) == "max"
 
     def rank(item):
         identifier, members = item
-        counted = observed.get(identifier, members)
-        active = status_counts(counted)["running"]
+        # The queue can be absent in an explicit standalone projection.
+        # Only those fallback blocks need a local status count.
+        counted = counts.get(identifier)
+        if counted is None:
+            from .job_groups import status_counts
+            counted = (status_counts(members)["running"], len(members))
+        active, total = counted
         return (0 if identifier == ("job", heavy) else 1,
-                -active if descending else active, len(counted))
+                -active if descending else active, total)
 
     return [record for _, members in sorted(blocks.items(), key=rank) for record in members]

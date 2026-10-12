@@ -69,6 +69,8 @@ def restore(app, data):
     from .recents_ui import MODES as RECENT_MODES
     if data.get("recents_mode") in RECENT_MODES:
         app.table_state["recents_mode"] = data["recents_mode"]
+    from .job_list_controls import restore as restore_job_lists
+    restore_job_lists(app.table_state, data)
     from .job_groups import valid_group_id
     app.table_state["collapsed"] = [value for value in data.get("collapsed", [])[:256] if valid_group_id(value)] if isinstance(data.get("collapsed"), list) else []
     from .manual_job_groups import validate_state
@@ -82,6 +84,8 @@ def save(app):
     result["jobs_batch_sort"] = mode(app)
     from .recents_ui import mode as recent_mode
     result["recents_mode"] = recent_mode(app)
+    from .job_list_controls import restore as restore_job_lists
+    restore_job_lists(result, app.table_state)
     from .column_resize import committed_widths
     committed_widths(app, result["widths"])
     result["column_layout_version"] = COLUMN_LAYOUT_VERSION
@@ -219,11 +223,10 @@ def facets_fingerprint(app, tab):
 def fingerprint(app, tab):
     """Selection cache identity includes both filters and explicit sort state."""
     from .table_tools import extra_fingerprint
-    from .job_batch_sort import mode
-    from .recents_ui import mode as recent_mode
+    from .job_list_controls import fingerprint as job_list_fingerprint
     return (facets_fingerprint(app, tab), sort_fingerprint(app, tab), extra_fingerprint(app, tab),
-            getattr(app, "table_state", {}).get("auto_groups", True) is True, mode(app) if tab == "jobs" else None,
-            recent_mode(app) if tab == "recent" else None)
+            getattr(app, "table_state", {}).get("auto_groups", True) is True,
+            job_list_fingerprint(app, tab) if tab in ("jobs", "recent", "history", "group") else None)
 
 
 def matches(app, tab, record, snap):
@@ -354,8 +357,13 @@ def run_command(app, args):
             app.fail("Usage: jobgroups [on|off]")
         else:
             app.table_state["groups"] = not app.table_state["groups"] if not values else values == ["on"]
+            # The legacy global command remains an explicit override; local
+            # buttons can subsequently choose their own presentation again.
+            app.table_state["job_list_modes"] = {}
             if values == ["on"]:
                 app.table_state["auto_groups"] = True
+            from .grouping_toolbar import _invalidate
+            _invalidate(app)
             app.say("Launch grouping " + ("on; Left/Right closes or opens the selected group" if app.table_state["groups"] else "off") +
                     "; Recents uses its own Grouped/Sequential mode")
         return True
@@ -507,9 +515,9 @@ def run_command(app, args):
 
 def handle_key(app, key):
     if app.mode == "main" and app.tab in ("jobs", "history", "group", "deps") and key in ("left", "right"):
-        from .recents_ui import mode as recent_mode
+        from .job_list_controls import mode as list_mode
         in_recent = app.tab == "jobs" and app.selected_id in getattr(app, "recent_ids", ())
-        visible = recent_mode(app) == "grouped" if in_recent else app.table_state["groups"]
+        visible = list_mode(app, "recent" if in_recent else app.tab) == "grouped"
         if not visible:
             return False
         from .job_groups import fold, registry

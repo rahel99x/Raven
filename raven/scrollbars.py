@@ -253,6 +253,18 @@ def _thumb(pane):
     return start, size, travel
 
 
+def _rail_hit(state, pane, y, x):
+    return (x == pane.rect.right - 1 and pane.rect.top <= y < pane.rect.bottom
+            and _visible(state, pane, y, x))
+
+
+def _seek_target(pane, y, grab):
+    _, size, travel = _thumb(pane)
+    grab = min(grab, max(0, size - 1))
+    fraction = (y - pane.rect.top - grab) / max(1, travel)
+    return round(max(0, min(1, fraction)) * pane.limit)
+
+
 def _set(app, pane, target):
     target = max(0, min(pane.limit, int(target)))
     current = manual(app, pane.key, context=pane.context)
@@ -328,10 +340,11 @@ def handle_mouse(app, y, x, button='left', shift=False, *, rail_only=False):
         if pane is None:
             cancel(app)
         elif button in ('motion', 'drag', 'release'):
-            _, size, travel = _thumb(pane)
-            capture['grab'] = min(capture['grab'], max(0, size - 1))
-            fraction = (y - pane.rect.top - capture['grab']) / max(1, travel)
-            _set(app, pane, round(max(0, min(1, fraction)) * pane.limit))
+            # Capture owns the release, not every cell under the pointer. A
+            # missing release may leave native motion reports arriving over
+            # Details; only the visible rail is allowed to change this pane.
+            if _rail_hit(state, pane, y, x):
+                _set(app, pane, _seek_target(pane, y, capture['grab']))
             if button == 'release':
                 state['capture'] = None
             return True
@@ -354,7 +367,7 @@ def handle_mouse(app, y, x, button='left', shift=False, *, rail_only=False):
                 _claim(app)
             _set(app, pane, 0 if x < pane.header[1] + 2 else pane.limit)
             return True
-        rail = x == pane.rect.right - 1 and pane.rect.top <= y < pane.rect.bottom
+        rail = _rail_hit(state, pane, y, x)
         body = not rail_only and pane.rect.contains(y, x)
         if button.startswith('wheel-') and (rail or body):
             # Native row navigation owns semantic table/log-body wheel input.
@@ -366,14 +379,16 @@ def handle_mouse(app, y, x, button='left', shift=False, *, rail_only=False):
         if not rail:
             continue
         _claim(app)
-        start, size, travel = _thumb(pane)
-        if start <= y < start + size:
-            if button == 'press':
-                state['capture'] = {'signature': pane.signature, 'token': state['token'], 'start': pane.target, 'grab': y - start}
-                state['discard_release'] = False
-            return True
-        target = manual(app, pane.key, context=pane.context)
-        _set(app, pane, (pane.target if target is None else target) + (pane.page if y >= start + size else -pane.page))
+        start, size, _ = _thumb(pane)
+        on_thumb = start <= y < start + size
+        grab = y - start if on_thumb else size // 2
+        if button == 'press':
+            target = manual(app, pane.key, context=pane.context)
+            state['capture'] = {'signature': pane.signature, 'token': state['token'],
+                                'start': pane.target if target is None else target, 'grab': grab}
+            state['discard_release'] = False
+        if not on_thumb:
+            _set(app, pane, _seek_target(pane, y, grab))
         return True
     return False
 

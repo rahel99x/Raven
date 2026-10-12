@@ -232,6 +232,13 @@ See [Live workbench](guides/live-workbench.md#use-the-terminal-toolbar) for ever
 See [Update rate](guides/live-workbench.md#set-the-update-rate) for source limits and saved preferences.
 See [Setup](guides/setup.md) for detected Slurm accounts, saved Heavy preferences, and embedded metric guides.
 
+When errors or warnings exist, the strip below the page tabs shows red Critical,
+orange Moderate, and yellow Mild count buttons. Click a count or enter
+`:notifications [all|critical|moderate|mild]` to read full messages. Click a
+notification or press Enter for its diagnosis and suggested fixes; use `×`
+(`x` in ASCII mode) or Delete to dismiss it. See
+[Notifications](guides/notifications.md) for severity and retention rules.
+
 ### Mouse and directional button focus
 
 | Control | Function |
@@ -603,7 +610,8 @@ Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, an
 | `:recents expand\|collapse` | Change the Recents presentation |
 | **Grouped**, `:recents grouped` | Keep complete Recents batches together; restore newest-completion order |
 | **Sequential**, `:recents sequential` | Show individual recent jobs without folds; restore newest-completion order |
-| `:jobgroups [on\|off]` | Toggle grouping in other lists; Recents uses its own Grouped/Sequential setting. Explicit `on` also enables automatic detection |
+| `:jobgroups [on\|off]` | Reset list-specific grouping choices and set visibility across lists except Recents; retain batch ranks. Explicit `on` also enables automatic detection |
+| `:joblist CONTEXT grouped\|sequential\|sort-min\|sort-max` | Save presentation and batch ranking for an individual job list; see [contexts and defaults](guides/batch-launches.md#apply-grouping-and-sorting-in-other-job-lists) |
 | `:grouping auto\|undo\|clear\|expand\|collapse\|sort-min\|sort-max\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
 | `:jobgroup toggle\|open\|close GROUP_ID` | Fold or expand one known launch group |
 | `:jobgroup create` | Group at least two marked real jobs in the focused list |
@@ -772,7 +780,8 @@ See [Log display](guides/log-view.md) for inspected-source coverage and timestam
 ## Pane scrolling and rendered selection
 
 Scrollable panes reserve four left header cells for top/bottom arrows and one right-edge cell for the scrollbar.
-Drag its thumb to scroll that pane. Click above or below the thumb for a viewport-sized step.
+Drag its thumb to scroll that pane. Click anywhere on its track to seek directly to that position.
+Dragging outside the visible track pauses scrolling; releasing there ends the gesture without moving the pane.
 Click the header arrows for the pane's endpoints, or reach them with F8 and Enter.
 These controls preserve the selected source and do not activate rows under the rail.
 Count growth keeps the current gesture. Changed source, page, geometry, layout, or modal context cancels it.

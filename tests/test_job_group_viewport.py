@@ -70,7 +70,9 @@ def test_scrolled_job_dock_promotes_only_the_disclosure_cell(raven, tab, dock):
     group_hits = [(y, value) for y, kind, value in hits if kind == "control" and ":group:" in value["id"]]
     assert len(group_hits) == 1
     y, control = group_hits[0]
-    assert y == 1 and L.row_text(rows[y]).startswith("▾ " + items[8].record.id)
+    list_controls = [yy for yy, kind, value in hits if kind == "control" and value.get("group") == "job-list-controls"]
+    assert list_controls and y == max(list_controls) + 1
+    assert L.row_text(rows[y]).startswith("▾ " + items[8].record.id)
     assert control["action"] == ("command", "jobgroup close array:700")
     assert any(kind == "control" and value["id"].endswith(":job:" + items[8].record.id)
                and value["action"] == ("command", "history-job " + items[8].record.id)

@@ -100,6 +100,7 @@ def test_ungroup_exists_only_for_grouped_jobs_and_collapsed_group_is_whole(dashb
     gid = group(app, store, ("1", "2", "3"))
     app.table_state["groups"] = True
     G.fold(app, gid, True)
+    frame(app, store)
     assert M.open_menu(app, source(app, store))
     assert gid in M.initialize(app)["context"]["ungroup_groups"]
     choose(app, "ungroup")

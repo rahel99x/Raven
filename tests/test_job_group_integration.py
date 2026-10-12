@@ -52,11 +52,11 @@ def test_sort_reveals_selected_explicit_group_member_when_representative_changes
     assert app.command_ok
     views.compose(store.snapshot(), app, 180, 48)
     assert app.selected_id == selected
-    if table == "recent":
-        # Recents keeps the exact selected allocation as the folded row;
+    if table in ("recent", "history", "group"):
+        # Secondary lists keep the exact selected allocation as the folded row;
         # changing its sort need not unfold that batch in every other view.
         assert job_groups.registry(app).is_collapsed(group)
-        meta = job_groups.metadata_for_record(app, "recent", selected)
+        meta = job_groups.metadata_for_record(app, table, selected)
         assert meta.header and meta.representative_id == selected
     else:
         assert not job_groups.registry(app).is_collapsed(group)

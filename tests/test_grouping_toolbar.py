@@ -51,6 +51,20 @@ def test_repeated_auto_retains_original_undo():
     assert not app.table_state["auto_groups"]
 
 
+def test_undo_auto_restores_local_sequential_presentation_after_repeated_press():
+    from raven.job_list_controls import mode
+    app, snap = fixture()
+    app.table_state["job_list_modes"] = {"jobs": "sequential", "history": "grouped"}
+    T.execute(app, "auto", snap)
+    assert mode(app, "jobs") == "grouped"
+    undo = app.grouping_auto_undo
+    T.execute(app, "auto", snap)
+    assert app.grouping_auto_undo is undo
+    T.execute(app, "undo", snap)
+    assert mode(app, "jobs") == "sequential"
+    assert mode(app, "history") == "grouped"
+
+
 def test_undo_keeps_preexisting_collapsed_manual_and_auto_groups():
     app, snap = fixture()
     made = M.create(app, snap, ["100", "101"])

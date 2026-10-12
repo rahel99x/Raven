@@ -837,9 +837,11 @@ def frame(app, snap):
     """Share one exact inference check during compose, then always clear it."""
     previous = getattr(app, "job_groups_frame_index", None)
     value = registry(app)
-    from .recents_ui import mode as recent_mode
-    index = value.ensure(snap) if (getattr(app, "table_state", {}).get("groups", False) or
-                                  getattr(app, "tab", "jobs") == "jobs" and recent_mode(app) == "grouped") else value.index
+    from .job_list_controls import mode
+    tab = getattr(app, "tab", "jobs")
+    contexts = (("jobs", "recent") if tab == "jobs" else
+                (tab, "history:" + tab, "analytics:advisor" if tab == "analytics" else tab))
+    index = value.ensure(snap) if any(mode(app, context) == "grouped" for context in contexts) else value.index
     app.job_groups_frame_index = (snap, index)
     try:
         yield index
@@ -876,32 +878,41 @@ def fold(app, group_id, collapsed=None):
 def project_records(app, snap, records, tab="history", *, enabled=None, index=None):
     """Keep actual representative rows, with separate presentation metadata.
 
-    Jobs first orders whole batches, retaining the caller's within-batch order.
-    Recents packs complete groups in its own completion/column sort order.
-    Other views retain their independent table/tree order.
+    List contexts pack complete groups in their completion/column sort order,
+    or apply the explicitly chosen batch rank. Dependency trees retain their
+    edge ordering. No record outside the caller's admitted list is fetched.
     A closed group retains its first visible record, so selection, log lookup,
     and cancellation always refer to one real allocation.  Filtered-out records
     are not reintroduced, and totals distinguish visible from observed jobs.
     """
     records = list(records)
     value = registry(app)
-    from .recents_ui import mode as recent_mode
+    from .job_list_controls import CONTEXTS, batch_mode, mode
     if enabled is None:
-        enabled = (recent_mode(app) == "grouped" if tab == "recent" else
-                   bool(getattr(app, "table_state", {}).get("groups", False)))
+        enabled = mode(app, tab) == "grouped"
     if tab == "recent":
-        enabled = enabled and recent_mode(app) == "grouped"
+        enabled = enabled and mode(app, tab) == "grouped"
     metadata = getattr(app, "job_group_metadata", None)
     if not isinstance(metadata, dict):
         metadata = app.job_group_metadata = {}
     current = metadata[tab] = {}
     index = frame_index(app, snap) if enabled and index is None else index
-    if tab == "jobs":
+    if tab == "jobs" and (enabled or getattr(app, "table_state", {}).get("job_list_modes", {}).get(tab) != "sequential"):
         from .job_batch_sort import order
         records = order(app, snap, records, index if enabled else None)
-    elif tab == "recent" and enabled:
-        from .recents_ui import order
-        records = order(records, index)
+    elif tab in CONTEXTS and enabled:
+        if batch_mode(app, tab):
+            from .job_batch_sort import order
+            observed = snap.get("group", records) if tab == "group" else records
+            records = order(app, snap, records, index, observed=observed, sort_mode=batch_mode(app, tab))
+        else:
+            from .recents_ui import order
+            records = order(records, index)
+    if tab == "jobs" and not enabled:
+        from .job_batch_sort import heavy_job_id, heavy_publication
+        heavy = heavy_job_id(heavy_publication(app), snap)
+        if heavy is not None:
+            records = [record for record in records if _value(record, "id") == heavy] + [record for record in records if _value(record, "id") != heavy]
     if not enabled:
         return records
     visible = defaultdict(list)
@@ -913,12 +924,14 @@ def project_records(app, snap, records, tab="history", *, enabled=None, index=No
             visible[gid].append(record)
             counted.add(jid)
     first = {gid: _value(members[0], "id") for gid, members in visible.items()}
-    if tab == "recent":
-        # A new completion can replace the newest member of a folded group.
-        # Keep the exact selected record as its real representative so a log
-        # or job action cannot silently target the new arrival. Group rank is
-        # still determined by the first sorted member, not the representative.
-        selected = getattr(app, "selected_id", None)
+    retain_selected = tab in CONTEXTS and tab != "jobs"
+    if retain_selected:
+        # Preserve the actual selected child when switching back from an
+        # individual-row list or receiving a newer completion. Keep the fold
+        # and original block rank; a representative is always a real record.
+        field = {"history:analytics": "analytics_job", "history:log": "log_job",
+                 "history:research": "research_job_id", "analytics:advisor": "analytics_job"}.get(tab, "selected_id")
+        selected = getattr(app, field, None) or getattr(app, "selected_id", None)
         gid = index.by_job.get(selected)
         if gid in visible and value.is_collapsed(index.groups[gid]):
             chosen = next((record for record in visible[gid] if _value(record, "id") == selected), None)
@@ -945,7 +958,7 @@ def project_records(app, snap, records, tab="history", *, enabled=None, index=No
         header = jid == first[gid]
         collapsed = value.is_collapsed(group)
         current[jid] = GroupMeta(group, first[gid], header, collapsed, counts[gid], statistics.get(gid))
-        if collapsed and tab == "recent":
+        if collapsed and retain_selected:
             if gid not in emitted:
                 emitted.add(gid)
                 representative = next(member for member in visible[gid] if _value(member, "id") == first[gid])

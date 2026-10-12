@@ -17,26 +17,35 @@ def overlay(views, snap, app, width, height):
 
 
 def command_names():
-    return ["grouping"]
+    return ["grouping", "joblist"]
 
 
 def controls(app, g, width):
     from .control_rows import buttons
     from .job_batch_sort import mode
-    choices = (("auto", "Auto Group"), ("undo", "Undo Auto"), ("clear", "Ungroup All"),
+    from .job_list_controls import mode as list_mode
+    choices = (("view-grouped", "Grouped"), ("view-sequential", "Sequential"),
+               ("auto", "Auto Group"), ("undo", "Undo Auto"), ("clear", "Ungroup All"),
                ("expand", "Expand All"), ("collapse", "Collapse All"),
                ("sort-min", "Sort Min"), ("sort-max", "Sort Max"))
     # The normal 80-column split layout can spare only one toolbar row. Keep
     # both sort choices together instead of wrapping the last one into a row
     # which the queue's minimum-height reservation would hide.
-    compact = {"auto": "Auto", "undo": "Undo", "clear": "Ungroup", "expand": "Expand"}
+    compact = {"view-grouped": "Group", "view-sequential": "Seq", "auto": "Auto", "undo": "Undo",
+               "clear": "Ungroup", "expand": "Expand", "collapse": "Collapse"}
     full_width = sum(len(label) + 2 for _, label in choices) + len(choices) - 1
     rows, hits = buttons(g, width, [(key, compact.get(key, label) if width < full_width else label,
-                                   ("command", "grouping " + key)) for key, label in choices],
-        selected="sort-" + mode(app), group="grouping-toolbar", prefix="grouping:")
+                                   ("command", "joblist jobs " + key[5:] if key.startswith("view-") else "grouping " + key)) for key, label in choices],
+        selected="sort-" + mode(app) if list_mode(app, "jobs") == "grouped" else None,
+        group="grouping-toolbar", prefix="grouping:", gap=0 if width < full_width else 1)
+    chosen = "view-" + list_mode(app, "jobs")
+    selected_label = compact.get(chosen, dict(choices)[chosen]) if width < full_width else dict(choices)[chosen]
+    rows = [[(text, "sel+bold" if text.strip() == selected_label else style) for text, style in row] for row in rows]
     full_labels = dict(choices)
     for _, _, descriptor in hits:
         descriptor["label"] = full_labels[descriptor["id"].removeprefix("grouping:")]
+        if descriptor["id"].startswith("grouping:view-"):
+            descriptor.update(id="joblist:jobs:" + descriptor["id"][14:], group="job-list-controls")
     return rows, hits
 
 
@@ -66,8 +75,10 @@ def execute(app, action, snap=None):
     if action in ("sort-min", "sort-max"):
         from .job_batch_sort import mode
         chosen = action[5:]
-        changed = mode(app) != chosen
+        from .job_list_controls import mode as list_mode
+        changed = mode(app) != chosen or list_mode(app, "jobs") != "grouped"
         table["jobs_batch_sort"] = chosen
+        table.setdefault("job_list_modes", {})["jobs"] = "grouped"
         _invalidate(app)
         # Synchronize the actual selected job before another input can act on
         # old row positions; the existing sort path preserves exact identity.
@@ -79,8 +90,10 @@ def execute(app, action, snap=None):
         return M.Result(changed, message + "; Raven Heavy first")
     elif action == "auto":
         before = dict(enabled=table.get("groups", True), auto=table.get("auto_groups", True),
-                      collapsed=set(registry.collapsed), revision=getattr(app, "manual_job_groups_revision", 0))
+                      collapsed=set(registry.collapsed), revision=getattr(app, "manual_job_groups_revision", 0),
+                      jobs_mode=table.get("job_list_modes", {}).get("jobs"))
         table.update(groups=True, auto_groups=True)
+        table.setdefault("job_list_modes", {})["jobs"] = "grouped"
         registry = G.registry(app)
         index = registry.ensure(snap)
         count = 0
@@ -94,7 +107,7 @@ def execute(app, action, snap=None):
         table["collapsed"] = sorted(registry.collapsed)
         before["added"] = registry.collapsed - before["collapsed"]
         # Repeated presses are idempotent and retain the useful undo record.
-        if not before["enabled"] or not before["auto"] or before["added"]:
+        if not before["enabled"] or not before["auto"] or before["added"] or before["jobs_mode"] == "sequential":
             app.grouping_auto_undo = before
         message = f"Automatic groups enabled ({count} detected); manual groups and exclusions kept"
     elif action == "undo":
@@ -102,6 +115,12 @@ def execute(app, action, snap=None):
         if not before:
             return M.Result(False, "There is no Auto Group change to undo")
         table["auto_groups"] = before["auto"]
+        if before["revision"] == getattr(app, "manual_job_groups_revision", 0):
+            modes = table.setdefault("job_list_modes", {})
+            if before.get("jobs_mode") is None:
+                modes.pop("jobs", None)
+            else:
+                modes["jobs"] = before["jobs_mode"]
         # A group created since Auto remains visible when the old view was off.
         if table.get("groups", True):
             table["groups"] = before["enabled"] or (bool(registry.manual.groups()) and
@@ -168,6 +187,9 @@ def execute(app, action, snap=None):
 
 
 def run_command(app, args):
+    from .job_list_controls import run_command as job_list_command
+    if args and args[0] == "joblist":
+        return job_list_command(app, args)
     if not args or args[0] != "grouping":
         return False
     if len(args) != 2:

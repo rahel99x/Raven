@@ -15,6 +15,8 @@ from .research import clean
 
 class Activity:
     def __init__(self):
+        from .notifications import NotificationCenter
+        self.alerts = NotificationCenter()
         self.notices = deque(maxlen=256)
         self.lock = threading.Lock()
         self.task = None
@@ -33,6 +35,9 @@ class Activity:
         self.persistent = False
 
     def post(self, text, level="info", path="", job="", task=""):
+        # Preserve the full bounded, multiline alert before the legacy activity
+        # list flattens and shortens its display text. Export behavior is shared.
+        self.alerts.post(text, level, source="activity", path=path, job=job, task=task)
         with self.lock:
             now = time.time()
             self.notices.append({"text": clean(text, limit=8192), "level": level if level in ("info", "success", "warning", "error") else "info",
@@ -67,6 +72,8 @@ class Activity:
 
 def initialize(app):
     app.activity = Activity()
+    from .notifications import initialize as initialize_notifications
+    initialize_notifications(app)
 
 
 def restore(app, data):

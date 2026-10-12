@@ -7,10 +7,12 @@ def _origin(app, scope):
     frame = browser.get("frame") or {}
     table = getattr(app, "table_state", {})
     tab = getattr(app, "tab", "")
+    from .job_list_controls import fingerprint
     return (tab, getattr(app, "analytics_view", None) if tab == "analytics" else None,
             getattr(app, "research_view", None) if tab == "research" else None,
             (frame.get("dock"), frame.get("preference")) if scope.startswith("history:") else None,
             bool(table.get("groups")), tuple(table.get("collapsed", ())),
+            fingerprint(app, scope), fingerprint(app, "recent") if scope == "jobs" else None,
             getattr(app, "manual_job_groups_revision", 0))
 
 
@@ -88,8 +90,8 @@ def execute(app, context, action, group_id=None, expected=None):
             group = index.for_job(jid)
             if group is None:
                 continue
-            if (not context.get("source_group") and app.table_state.get("groups")
-                    and registry.is_collapsed(group)):
+            from .job_list_controls import painted_group
+            if not context.get("source_group") and painted_group(app, context["scope"], jid, group):
                 groups.append(group.id)
             else:
                 members.append(jid)

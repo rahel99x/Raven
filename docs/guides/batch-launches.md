@@ -47,6 +47,41 @@ These are display preferences; they do not change Slurm priority, dependencies,
 or the order in which the scheduler starts jobs. Disabling state persistence
 also disables saving the selection between launches.
 
+## Apply grouping and sorting in other job lists
+
+**Grouped**, **Sequential**, **Sort Min**, and **Sort Max** are available in
+Jobs, Recents, History, Group account jobs, the Advisor job list, and the job
+browsers beside Analytics, Research, Logs, and Dependencies. Narrow panes use
+shorter labels. Scientific tables, charts, and dependency trees retain their
+domain-specific ordering.
+
+Each list saves its own choices. Jobs starts in Grouped with Sort Min. Other
+lists initially retain their existing chronological or column order while
+keeping grouped batches contiguous. Selecting Sort Min or Sort Max enables
+Grouped and applies the batch ranking above. Selecting Grouped or Sequential
+in those lists clears that additional rank; Sequential exposes every admitted
+record without collapsed headers. Jobs retains its saved Min/Max preference
+for the next grouped view.
+
+Batch counts use the complete observed queue in Jobs and Group. History,
+Recents, browsers, and Advisor count only records already admitted to that
+list; changing a display control does not fetch missing historical siblings.
+Column sorts order members within batches and break ties between batches.
+
+Command examples:
+
+```text
+:joblist history sort-max
+:joblist group sequential
+:joblist recent sort-min
+:joblist history:research grouped
+```
+
+The available contexts are `jobs`, `recent`, `history`, `group`,
+`analytics:advisor`, `history:analytics`, `history:research`, `history:log`, and
+`history:deps`. The four actions are `grouped`, `sequential`, `sort-min`, and
+`sort-max`.
+
 ## Choose Grouped or Sequential Recents
 
 Use **Grouped** or **Sequential** on the Recents divider. The choice is saved
@@ -67,13 +102,17 @@ Switching modes restores completion ordering for Recents. You can then choose
 a column sort explicitly; Grouped keeps batches contiguous under that sort.
 Jobs Main and History retain their own sorting choices. Sequential does not
 remove saved groups or change their shared fold preferences.
-Recents has its own visibility setting: Grouped can show known batches while
-`:jobgroups off` hides grouping in other lists. It still respects manual
-membership, exclusions, and the automatic-detection setting. **Ungroup All**
+Each list has its own saved visibility setting. The legacy `:jobgroups on|off`
+command resets those overrides and sets visibility across lists; Recents keeps
+its independent choice. Stored Min/Max ranks remain available. Lists still
+respect manual membership, exclusions, and the automatic-detection setting.
+**Ungroup All**
 therefore remains effective until groups are created or detection is enabled.
 
 The selected job remains an exact scheduler record when new completions arrive
-or the view changes. Filtering, the accounting window, and bounded history
+or the view changes. When it completes, Raven keeps that record selected in
+Recents and preserves the Jobs viewport, clamping only if the shrinking queue
+makes the previous offset invalid. Filtering, the accounting window, and bounded history
 loading still determine which records are available. Group counts do not imply
 that every historical member has been loaded. Scrolling admits older records
 without adding scheduler queries merely to switch views.

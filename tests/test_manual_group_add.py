@@ -313,4 +313,9 @@ def test_random_add_remove_sequence_never_duplicates_or_appends_out_of_order():
         for group in index.groups.values():
             if group.kind == "manual":
                 assert group.members == tuple(sorted(group.members, key=lambda value: (_natural(value), value)))
-        assert [record.id for record in G.project_records(owner, snap, snap["jobs"])] == [str(jid) for jid in range(1, 36)]
+        projected = [record.id for record in G.project_records(owner, snap, snap["jobs"])]
+        assert len(projected) == 35 and set(projected) == {str(jid) for jid in range(1, 36)}
+        positions = {jid: position for position, jid in enumerate(projected)}
+        for group in index.groups.values():
+            start = min(positions[jid] for jid in group.members)
+            assert projected[start:start + len(group.members)] == list(group.members)

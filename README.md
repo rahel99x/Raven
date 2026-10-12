@@ -139,8 +139,8 @@ project connection, and Heavy allocation preferences. The
 billing, and local Slurm defaults. Saving preferences is separate from requesting
 compute.
 
-Jobs keeps each batch together with saved **Sort Min** and **Sort Max** choices.
-Recents offers **Grouped** and **Sequential** views for completed jobs. See
+Job lists offer saved **Grouped**, **Sequential**, **Sort Min**, and **Sort Max**
+choices, including History and the browsers beside Research and Analytics. See
 [batch views](docs/guides/batch-launches.md) for ordering, readable group names,
 and selection behavior.
 
@@ -154,6 +154,7 @@ current project and job context.
 | Task | Guide |
 | --- | --- |
 | Inspect running jobs, history, and resource views | [Adaptive workspaces](docs/guides/adaptive-workspaces.md) |
+| Read full errors, dismiss notices, and review suggested fixes | [Notifications](docs/guides/notifications.md) |
 | Diagnose an exact failed or cancelled attempt | [Logs](docs/guides/log-view.md) · [Retained rerun](docs/guides/operations-cluster.md#rerun-one-cancelled-job) |
 | Review investigations and compare results | [Scientific investigation](docs/guides/scientific-investigation.md) |
 | Add application reporting on a workstation or HPC cluster | [Reporting V2](docs/PROJECT_REPORTING_V2.md) |

@@ -254,7 +254,8 @@ Research Evidence uses the shared line-selection state on its main page.
 
 Scrollable panes reserve four header cells for top/bottom arrows and one right-edge cell for the scrollbar.
 Drag the scrollbar thumb to move within that pane.
-Click above or below it to move by one viewport.
+Click anywhere on its track to seek directly to that position, then drag to adjust it.
+The pane moves only while the pointer is on its visible track. Releasing outside the track ends the drag without scrolling.
 Use the header arrows to reach the document endpoints.
 These gestures preserve the selected source and do not activate rows under the rail.
 A changed content count keeps the drag active; changed source or geometry cancels it.

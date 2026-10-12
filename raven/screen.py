@@ -1479,9 +1479,12 @@ def _quiet_jobs_token(app, *, publication=_UNREAD_PUBLICATION):
     published=store.ui_publication_token() if publication is _UNREAD_PUBLICATION else publication
     if published is None:
         return None
+    notifications = getattr(app, 'notifications', None)
+    notification_revision = notifications.snapshot().revision if notifications is not None else 0
     return (published,getattr(app,'ui_publication_revision',0),research,
             getattr(app,'message',''),getattr(app,'message_t',0),getattr(app,'selected_id',None),
-            getattr(app,'inbox_unread',0),getattr(app,'freeze_label',''),raven_ui.token(app))
+            getattr(app,'inbox_unread',0),getattr(app,'freeze_label',''),raven_ui.token(app),
+            notification_revision)
 
 
 class _FrameCache:
@@ -1922,6 +1925,8 @@ def once_text(app, views, store, actions, width: int, color: bool, tab: Optional
     app.tick()
     snap = store.snapshot()
     rows, _ = views.compose(snap, app, width, None, actions)
+    from .notification_ui import text_rows as notification_rows
+    rows = rows + notification_rows(app, width, getattr(getattr(views, 'g', None), 'ascii', False))
     return L.to_text(rows, width, color, theme=app.theme, canvas=True)
 
 

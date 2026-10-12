@@ -27,29 +27,33 @@ def order(records, index):
 
 
 def divider(app, g, row, width):
-    """Put both view choices on the existing divider, leaving a drag handle."""
-    from .control_rows import buttons
+    """Fit all four list choices on the divider, leaving a drag handle."""
+    from .job_list_controls import controls
     from .pane_drag import _replace
-    labels = (("grouped", "Grouped"), ("sequential", "Sequential"))
-    if width < 38:
-        labels = (("grouped", "Group"), ("sequential", "Seq"))
-    required = sum(L.vlen(label) + 2 for _, label in labels) + 1
     # The rightmost six cells belong to the existing header scroll controls.
     available = max(0, width - 6)
+    # Keep the section title intact: workspace partitioning and the resize
+    # handle both rely on this being the Recents divider, even in split panes.
+    rows, hits = controls(app, g, max(0, available - 16), "recent")
+    if len(rows) != 1 or len(hits) != 4:
+        return row, [], width
+    required = L.vlen(L.row_text(rows[0]))
     left = max(0, available - required)
-    rows, hits = buttons(g, available - left,
-        [(key, label, ("command", "recents " + key)) for key, label in labels],
-        selected=mode(app), group="recents-modes", prefix="recents-mode:")
-    if len(rows) != 1 or len(hits) != 2 or left < 2:
+    if left < 2:
         return row, [], width
     for text, style in rows[0]:
         row = _replace(row, left, text, style, width)
         left += L.vlen(text)
     offset = available - required
-    hits = [(y, kind, dict(value, left=value["left"] + offset, right=value["right"] + offset,
-                          label=("Grouped Recents" if value["id"].endswith("grouped") else "Sequential Recents")))
-            for y, kind, value in hits]
-    return row, hits, max(1, offset - 1)
+    result = []
+    for y, kind, value in hits:
+        value = dict(value, left=value["left"] + offset, right=value["right"] + offset)
+        choice = value["id"].rsplit(":", 1)[-1]
+        if choice in MODES:
+            value.update(id="recents-mode:" + choice, label=choice.title() + " Recents",
+                         action=("command", "recents " + choice), group="recents-modes")
+        result.append((y, kind, value))
+    return row, result, max(1, offset - 1)
 
 
 def run_command(app, args):
@@ -64,6 +68,7 @@ def run_command(app, args):
     if selected and any(record.id == selected for record in state.loaded):
         state.transition_anchor = selected
     app.table_state["recents_mode"] = args[1]
+    app.table_state.get("job_list_sorts", {}).pop("recent", None)
     table_sort.reset_sort(app, "recent")
     grouping_toolbar._invalidate(app)
     # The normal sorting callback preserves exact identity. A folded Recents

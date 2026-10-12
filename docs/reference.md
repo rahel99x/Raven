@@ -508,6 +508,11 @@ fewest total jobs). Sort Min is the initial default; the last choice is saved.
 Column sorting and ordinary pins apply within batches and break ties between
 equally ranked batches. The current Raven Heavy allocation stays first.
 See [batch sorting](guides/batch-launches.md#sort-complete-batches-in-jobs).
+The same Grouped, Sequential, Sort Min, and Sort Max controls appear in
+History, Recents, Group, Advisor, and the job browsers beside other views.
+Preferences are saved per listing. See
+[job-list controls](guides/batch-launches.md#apply-grouping-and-sorting-in-other-job-lists)
+for default ordering, admitted-record counts, and `:joblist` commands.
 If sorting would hide the selected task behind a different folded group representative, Raven expands that array to keep the same job selected.
 
 Automatic launch grouping is enabled by default; new groups start open.
@@ -520,8 +525,9 @@ Click the down-pointing chevron on the first visible expanded group row to close
 Click the right-pointing chevron on the closed summary to restore its members.
 During ordinary job-row navigation, Left closes the selected group and Right opens it.
 With directional button focus active, Right from a Jobs row enters Details instead.
-`:jobgroups [on|off]` toggles grouping in other lists; Recents uses its own
-Grouped/Sequential setting. `:jobgroup toggle|open|close GROUP_ID` controls one known group.
+`:jobgroups [on|off]` resets list-specific grouping choices and sets visibility
+across job lists; Recents keeps its independent choice. Stored batch ranks are
+retained. `:jobgroup toggle|open|close GROUP_ID` controls one known group.
 `:jobgroup create` and `:jobgroup ungroup` use the focused job list's current marked or selected records.
 `:jobgroup reset` removes all saved and session manual groups and explicit exclusions, allowing normal automatic deduction to apply again when grouping display is enabled.
 It preserves the current `:jobgroups on` or `:jobgroups off` setting.

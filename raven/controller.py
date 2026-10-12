@@ -187,17 +187,23 @@ class App:
         self.cursor[tab] = cur
         return cur
 
-    def scroll_to(self, tab: str, cursor: int, visible: int, n: int) -> int:
+    def scroll_to(self, tab: str, cursor: Optional[int], visible: int, n: int) -> int:
+        """Paint a bounded viewport, following only a cursor in this table.
+
+        Jobs and Recents share one selection cursor but have independent
+        viewports. ``None`` preserves the inactive table's logical offset
+        and any in-flight wheel target instead of following the other table.
+        """
         from . import scrollbars, scrolling
         top = self.top.get(tab, 0)
         state = scrollbars.initialize(self)
         manual = state['manual'].get(tab)
-        if manual and manual['cursor'] != self.cursor.get('jobs' if tab == 'recent' else tab):
+        if cursor is not None and manual and manual['cursor'] != self.cursor.get('jobs' if tab == 'recent' else tab):
             scrollbars.resume(self, tab)
             manual = None
         if manual is not None:
             top = manual['target']
-        if manual is None:
+        if manual is None and cursor is not None:
             if cursor < top:
                 top = cursor
             if cursor >= top + visible:
@@ -211,6 +217,7 @@ class App:
 
     def say(self, text: str, *, level="info", path="", job="", task=""):
         self.message, self.message_t = text, time.time()
+        self.message_level = level
         if hasattr(self, "activity"):
             self.activity.post(text, level, path, job=job, task=task)
             if path:

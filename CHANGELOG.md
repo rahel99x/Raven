@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Restrict scrollbar seeking to the visible track and clear stale drag capture
+  before unrelated clicks. Preserve the Jobs viewport when its selected job
+  completes and remains selected in Recents.
+- Replace truncated error strips with severity counts and a notification panel
+  containing wrapped messages, individual dismissal, and diagnostic guidance.
+- Extend saved grouping and batch-sort controls to History, account jobs, and
+  the shared job browsers beside Research, Analytics, Logs, and Dependencies.
 - Add an internal Setup menu with named Research/Analytics guides and saved
   Heavy allocation preferences, including connected-user Slurm account discovery.
   Keep saving preferences separate from requesting an allocation.

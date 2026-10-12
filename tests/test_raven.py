@@ -785,7 +785,11 @@ def test_ssh_backend_and_remote_files_through_a_local_shell(tmp_path):
     env = dict(os.environ, COLUMNS="150", USER="alex")
     r = subprocess.run([sys.executable, DASH, "--host", "nowhere.invalid", "--once", "--no-state", "--ascii", "--no-color", "--width", "150"], env=env,
                        capture_output=True, text=True, timeout=120)
-    assert r.returncode == 0 and "alex@nowhere.invalid" in r.stdout and ("ssh" in r.stdout or "sources:" in r.stdout)   # the errors show, nothing crashes
+    assert r.returncode == 0 and "alex@nowhere.invalid" in r.stdout
+    assert "Notifications" in r.stdout
+    # The one-shot report retains either the transport error or the reason that
+    # shared admission deferred collection before another connection attempt.
+    assert "ssh" in r.stdout or "Raven collection deferred:" in r.stdout
 
 
 def test_profiles_merge_and_switch(tmp_path):
@@ -1093,13 +1097,20 @@ def test_alert_rules_fire_rate_limit_and_report_errors(tmp_path):
     sampler.round(wait=True)                                                                   # the sampler checks after each jobs round
     rows, _ = views.compose(store.snapshot(), app, 170, 44, actions)
     text = "\n".join(L.row_text(r) for r in rows)
-    assert " alerts: low cpu 12477369" in text and any(e["text"] == "low cpu: 12477369 rb-setup" and e["kind"] == "alert" for e in store.events)
+    # The next queue round starts another GPU job. Its alert joins the three
+    # retained notices, while the repeated alert for rb-setup is deduplicated.
+    assert "Moderate 4" in text and "Critical 1" in text
+    assert any(item.text == "gpu job: 12480005 rb5-selector" for item in app.notifications.snapshot().notices)
+    assert next(item for item in app.notifications.snapshot().notices
+                if item.text == "gpu job: 12477369 rb-setup").occurrences == 2
+    assert any(item.text == "low cpu: 12477369 rb-setup" for item in app.notifications.snapshot().notices)
+    assert any(e["text"] == "low cpu: 12477369 rb-setup" and e["kind"] == "alert" for e in store.events)
     r = eng.add("running and cpus >= 32", name="big")
     assert eng.check(store.snapshot())[0]["job"] == "12480001" and not r.error
     env = dict(os.environ, COLUMNS="150", USER="alex")
     r = subprocess.run([sys.executable, DASH, "--fake", "--no-state", "--once", "--ascii", "--no-color", "--width", "170", "--alert", "running and cpus >= 32", "--alert", "bogus("],
                        env=env, capture_output=True, text=True)
-    assert r.returncode == 0 and "alert 1: 12480001 rb1-allrank" in r.stdout and "alert rule 'alert 2'" in r.stdout
+    assert r.returncode == 0 and "alert 1: 12480001 rb1-allrank" in r.stdout and "alert rule: alert 2" in r.stdout
 
 
 def test_dependency_graph_tab_and_chain_actions(tmp_path):

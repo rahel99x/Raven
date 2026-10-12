@@ -858,6 +858,8 @@ class Views:
 
     # ---- shared pieces ----------------------------------------------------------------------------
     def header(self, snap: dict, app, width: int) -> List[Row]:
+        from .notifications import sync as sync_notifications
+        sync_notifications(app, snap)
         jobs = snap["jobs"]
         running = [j for j in jobs if not j.pending]
         pending = [j for j in jobs if j.pending]
@@ -894,9 +896,6 @@ class Views:
             r1.append(("   GPU telemetry off" if gpu_mode == "off" else "   GPU existing telemetry", "dim"))
         elif not app.gpu:
             r1.append(("   GPU sampling off", "dim"))
-        eng = getattr(app.store, "alerts", None)
-        if eng is not None and eng.active_count():
-            r1.append((f"   {'!' if self.g.ascii else '⚠'} {eng.active_count()} alert{'s' if eng.active_count() != 1 else ''}: " + cut(", ".join(eng.active_text()[:3]), 60, self.g.ascii), "red+bold"))
         from .refresh_rate import cadence
         if age is not None and age > 3 * cadence(app, "jobs") + 2:
             r1.append((f"   (data {int(age)}s old)", "yellow"))
@@ -928,9 +927,10 @@ class Views:
         rows = [render_bar(self, app, width), r1, r2, tabs]
         if rp is not None:
             rows.insert(3, self.replay_bar(rp, width))
-        bad = [h for h in snap.get("health", {}).values() if h.error and h.enabled]
-        if bad:
-            rows.append([(" sources: " + "; ".join(f"{h.name}: {cut(h.error, 60, self.g.ascii)}" for h in bad[:3]), "red")])
+        from .notification_ui import status_row
+        notification_row = status_row(self, app, width, len(rows))
+        if notification_row:
+            rows.append(notification_row)
         from .navigation_ui import breadcrumb
         from .table_ui import chips
         trail = breadcrumb(app, width, self.g.ascii, snap=snap)
@@ -1056,7 +1056,14 @@ class Views:
             hint = app.palette_hint()
             return [(f" :{app.palette_edit}", "magenta"), (f"   {hint}" if hint else "", "dim")]
         if app.message:
-            return [(cut(app.message, width - 1, self.g.ascii), "yellow")]
+            if getattr(app, "message_level", "info") in ("warning", "error", "critical", "moderate", "mild"):
+                center = getattr(app, "notifications", None)
+                if center is not None and any(center.snapshot().counts.values()):
+                    marker = "!" if self.g.ascii else "⚠"
+                    return [(cut(f" {marker} New notification; open alerts or :notifications for details.",
+                                 max(0, width - 1), self.g.ascii), "yellow")]
+            else:
+                return [(cut(app.message, width - 1, self.g.ascii), "yellow")]
         def k(action):
             label = app.keys_help(action)
             if self.g.ascii:
@@ -1511,7 +1518,7 @@ class Views:
                 break
         if show_queue and n and not native:
             vis = min(n, vis + max(0, budget - used()))
-        top = app.scroll_to("jobs", min(cur, max(0, n - 1)), max(1, vis), n)
+        top = app.scroll_to("jobs", None if recent_focus else cur, max(1, vis), n)
         from .job_row_cache import copy_visible
         shown = copy_visible(rows_d[top:top + vis])
         app.job_progress_visible = [row["id"] for row in shown]
@@ -1740,6 +1747,10 @@ class Views:
         if height is None:
             rows = self.finished_rows(fin, width, "history", app=app)
             return prefix + rows, []
+        from .job_list_controls import controls as list_controls
+        controls, control_hits = list_controls(app, self.g, width, "history")
+        control_hits = [(y + len(prefix), kind, value) for y, kind, value in control_hits]
+        prefix += controls
         vis = max(1, height - len(prefix) - 2)
         top = app.scroll_to("history", cur, vis, n)
         shown = fin[top:top + vis]
@@ -1767,7 +1778,7 @@ class Views:
         out = prefix + [_scroll_rule(self.g, width, title)] + trows
         if not fin:
             out.append([("   nothing matches the filter; Esc clears it" if app.filter else "   No completed runs yet. Finished jobs and efficiency appear here.", "dim")])
-        hits = header_hits("history", cells, len(prefix) + 1) + [(len(prefix) + 2 + i, "fin", f.id) for i, f in enumerate(shown)]
+        hits = control_hits + header_hits("history", cells, len(prefix) + 1) + [(len(prefix) + 2 + i, "fin", f.id) for i, f in enumerate(shown)]
         self.group_controls(app, out, hits, shown, len(prefix) + 2, "history", width, first_visible=True)
         _table_scrollbar(app, "history", width, len(prefix) + 2, vis, n, top, header=len(prefix))
         if fin and app.selected_id and not getattr(app, "job_panel_defer_content", False):
@@ -2063,9 +2074,12 @@ class Views:
         user_hits = []
         if not jobs:
             app.group_ids, app.selected_id = [], None
+            if height is not None:
+                from .job_list_controls import controls as list_controls
+                out, user_hits = list_controls(app, g, width, "group")
             out.append(rule(g, width, "group"))
             out.append([("   squeue -A has not answered yet (or the account is unknown: --account, or [account] in the config)" if not acc else "   nobody in the account has jobs", "dim")])
-            return out, []
+            return out, user_hits
         # per-user summary
         by_user: Dict[str, dict] = {}
         for j in jobs:
@@ -2134,6 +2148,10 @@ class Views:
             trows, _ = table(columns(app, "group", self.GROUP_COLS), rows, width, g.ascii, droppable=("prio", "part", "gpu", "where", "st"))
             return out + [rule(g, width, "jobs")] + trows, []
         out = [L.clip_row(row, width) for row in out]
+        from .job_list_controls import controls as list_controls
+        controls, control_hits = list_controls(app, g, width, "group")
+        user_hits += [(y + len(out), kind, value) for y, kind, value in control_hits]
+        out += controls
         vis = max(1, height - len(out) - 2)
         top = app.scroll_to("group", cur, vis, n)
         shown = rows[top:top + vis]
@@ -2833,6 +2851,10 @@ class Views:
             running = project_records(app, snap, running, tab="analytics:advisor")
             app.analytics_advisor_ids = tuple(j.id for j in running)
             out.append(rule(g, width, "running jobs so far"))
+            from .job_list_controls import controls as list_controls
+            controls, control_hits = list_controls(app, g, width, "analytics:advisor")
+            app.analytics_group_hits += [(y + len(out), kind, value) for y, kind, value in control_hits]
+            out += controls
             app.analytics_advisor_positions = {j.id: len(out) + index for index, j in enumerate(running)}
             by_name = self.history_advice_cache.groups(snap["finished"])
             window = getattr(app, "analytics_render_window", None)
@@ -3202,8 +3224,10 @@ class Views:
     def compose(self, snap: dict, app, width: int, height: Optional[int], actions=None, *, feedback=True) -> Tuple[List[Row], List[Tuple[int, str, str]]]:
         from .job_groups import frame
         from .table_tools import snapshot
-        from .recents_ui import mode as recent_mode
-        groups_visible = app.table_state.get("groups") or app.tab == "jobs" and recent_mode(app) == "grouped"
+        from .job_list_controls import mode as list_mode
+        contexts = (("jobs", "recent") if app.tab == "jobs" else
+                    (app.tab, "history:" + app.tab, "analytics:advisor" if app.tab == "analytics" else app.tab))
+        groups_visible = any(list_mode(app, context) == "grouped" for context in contexts)
         if app.tab not in ("jobs", "history", "group", "deps", "log", "analytics", "research") or not groups_visible:
             return self._compose(snap, app, width, height, actions, feedback=feedback)
         with frame(app, snapshot(app, snap)):

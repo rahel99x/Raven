@@ -124,11 +124,8 @@ def open_menu(app, context=None):
         group = index.for_job(jid)
         if group is not None:
             grouped = True
-            if getattr(app, "tab", "") == "jobs" and jid in getattr(app, "recent_ids", ()):
-                meta = G.metadata_for_record(app, "recent", jid)
-                visible_fold = bool(meta and meta.header and meta.collapsed and meta.group.id == group.id)
-            else:
-                visible_fold = getattr(app, "table_state", {}).get("groups") and registry.is_collapsed(group)
+            from .job_list_controls import painted_group
+            visible_fold = painted_group(app, context["scope"], jid, group)
             if source_group is None and visible_fold:
                 collapsed[group.id] = group
     required = tuple(dict.fromkeys((*collapsed, *(group.id for group in destinations))))

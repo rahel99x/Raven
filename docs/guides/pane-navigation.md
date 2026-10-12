@@ -20,7 +20,8 @@ The controls do not add table columns or overlap the pane's text.
 
 **Expected result:** That pane scrolls toward the requested position.
 Dragging the scrollbar preserves the selected job, source, and line selection.
-Click above or below the thumb to move by one viewport.
+Click anywhere on the track to seek directly to that position.
+Dragging changes the pane only while the pointer is on the visible track; an outside release ends the gesture without scrolling.
 Use the wheel over the rail for smaller movements.
 Click the header's up arrow to reach the top.
 Click its down arrow to reach the bottom.
