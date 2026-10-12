@@ -675,6 +675,11 @@ def handle_mouse(app, y, x, button="left", shift=False):
         # including when it starts an ordinary row selection outside the plot.
         state["cancelled_release"] = False
     plot = _at(app, y, x, allow_empty=button == "right")
+    if button == "right" and plot and shift:
+        state["last_key"] = plot.key
+        from .data_export_ui import open_export
+        open_export(app, chart=True)
+        return True
     if button == "right" and plot:
         from .metric_live import stop_for_zoom, cancel as cancel_live
         from .pane_drag import cancel as cancel_pane

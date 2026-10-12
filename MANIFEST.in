@@ -17,4 +17,5 @@ recursive-include examples/planning *.py *.json *.sbatch
 recursive-include examples/project-template *.py *.json *.sbatch *.md .gitignore .gitkeep LICENSE
 recursive-include examples/project-template/.raven *.json
 recursive-include examples/reporting-v2 *.py *.sh *.md
+recursive-include examples/automated-reporting *.py *.sh *.md
 recursive-include .github/workflows *.yml

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add existing-script launches with read-only previews, Research feature aliases,
+  captured settings, exact attempt records, and an application tracing hook.
+- Retain supported job-owned CPU/memory and GPU observations independently of the
+  dashboard, with explicit measurement scope and incomplete-coverage reasons.
+- Add streaming measurement exports, individual metric selections, reviewed
+  project-relative or absolute destinations, and durable completion requests.
+  Keep existing table and log exports available.
+- Document the complete launch-to-export workflow and provide an ordinary batch
+  example, optional measurement producer, trace hook, and streaming benchmark.
 - Retry shared-cache publication after transient SQLite contention within the
   original collection deadline. Retain cancellation, ownership, and invalidation checks.
 - Restrict scrollbar seeking to the visible track and clear stale drag capture

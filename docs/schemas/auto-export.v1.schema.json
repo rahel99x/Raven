@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Raven/blob/main/docs/schemas/auto-export.v1.schema.json",
+  "title": "Raven durable completion export request",
+  "type": "object",
+  "required": ["schema", "key", "identity", "request", "status", "created_at", "tries", "outputs"],
+  "properties": {
+    "schema": {"const": "raven.auto-export/v1"},
+    "key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identity": {"type": "object", "required": ["project", "run_id", "attempt", "job_id", "cluster", "submission_token", "script_sha256"], "properties": {
+      "project": {"type": "string", "pattern": "^/"},
+      "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"},
+      "attempt": {"type": "integer", "minimum": 1},
+      "job_id": {"type": ["string", "null"]},
+      "cluster": {"type": "string"},
+      "submission_token": {"type": "string"},
+      "script_sha256": {"type": "string"}
+    }},
+    "request": {"type": "object"},
+    "plan": {"type": "object"},
+    "status": {"enum": ["pending", "running", "complete", "partial", "failed"]},
+    "created_at": {"type": "number"},
+    "tries": {"type": "integer", "minimum": 0, "maximum": 3},
+    "outputs": {"type": "array", "items": {"type": "string"}},
+    "reason": {"type": "string"},
+    "receipt": {"type": "object"}
+  }
+}

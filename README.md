@@ -13,6 +13,8 @@ uses optional `pyte` and `wcwidth` dependencies.
 | `ravenl` | Opens Light without requesting compute. |
 | `ravenh` | Requests Heavy and waits for a verified worker before loading the interface. On Slurm, the worker runs in the requested allocation. |
 | `raven` | Opens the governed Light interface; equivalent to `ravenl`. |
+| `raven launch SCRIPT` | Submits an existing shell script with retained run evidence; use `--local` for explicit workstation execution. |
+| `raven export-data` | Exports selected retained measurements without opening the dashboard. |
 
 The Python distribution and import namespace are **`raven`**. Current evidence
 schemas use the `raven.*` namespace. Install from this repository or a wheel
@@ -158,6 +160,7 @@ current project and job context.
 | Diagnose an exact failed or cancelled attempt | [Logs](docs/guides/log-view.md) · [Retained rerun](docs/guides/operations-cluster.md#rerun-one-cancelled-job) |
 | Review investigations and compare results | [Scientific investigation](docs/guides/scientific-investigation.md) |
 | Add application reporting on a workstation or HPC cluster | [Reporting V2](docs/PROJECT_REPORTING_V2.md) |
+| Launch an existing script and export plotting-ready measurements | [Automated reporting and exports](docs/guides/automated-reporting-exports.md) |
 | Attach project metrics, logs, and artifacts | [Project connection](docs/guides/project-connection.md) |
 | Work in an embedded shell | [Terminal guide](docs/guides/terminal-fusion.md) |
 | Inspect prepared Python or native recordings | [Stack tracing](docs/guides/stack-tracing.md) |
@@ -171,7 +174,22 @@ scrolling, and bounded graph zoom.
 
 ## Project evidence
 
-Start with the [reporting V2 guide](docs/PROJECT_REPORTING_V2.md) to connect an
+For an existing Bash or batch script, start with
+[automated reporting and exports](docs/guides/automated-reporting-exports.md):
+
+```bash
+raven launch test.sh --research experiment --check
+raven launch test.sh --research experiment --export-on-finish
+```
+
+The first command previews without submitting; the second submits once and
+retains an exact attempt independently of the dashboard. GPU recording and
+supported application tracing are explicit choices. Scientific measurements
+still need a producer; missing evidence remains visible. The
+[runnable example](examples/automated-reporting/README.md) needs no handwritten
+manifests.
+
+Use the [reporting V2 guide](docs/PROJECT_REPORTING_V2.md) to connect an
 existing application using a portable Bash launcher. It covers Linux, CARC,
 UCI HPC3, student and lab allocations, exact file formats, and every Research
 and Analytics data source. The application needs no Raven installation.

@@ -170,7 +170,11 @@ def start(root, *, experiment=None, script=None, name=None, job_id=None, paramet
         if metrics:
             from .projects import relative_path
             relative_path(metrics)
-        if record.get("run_id") and "_" not in selected and attempt == 1:
+        if record.get("run_id_base"):
+            # A launch token distinguishes recycled scheduler IDs; array tasks
+            # and restarts still use the existing exact job indexes.
+            run_id = record["run_id_base"] + ("-t" + selected.split("_", 1)[1] if "_" in selected else "") + "-a" + str(attempt)
+        elif record.get("run_id") and "_" not in selected and attempt == 1:
             run_id = record["run_id"]
         existing = root / "runs" / run_id / "run.json"
         if existing.exists():
@@ -179,7 +183,8 @@ def start(root, *, experiment=None, script=None, name=None, job_id=None, paramet
                 raise ValueError("this attempt already exists; do not reuse a finished attempt")
             if manifest.get("experiment_id") != experiment:
                 raise ValueError("this job attempt belongs to another experiment")
-            if manifest.get("provenance", {}).get("script") != str(R._under(root, script).relative_to(root)):
+            expected_script = script if record.get("plan") else str(R._under(root, script).relative_to(root))
+            if manifest.get("provenance", {}).get("script") != expected_script:
                 raise ValueError("this job attempt belongs to another script")
             if manifest["state"] == "RUNNING":
                 _job_index(root, selected, cluster, run_id)
@@ -188,10 +193,11 @@ def start(root, *, experiment=None, script=None, name=None, job_id=None, paramet
             manifest.update(state="RUNNING", start=time.time())
         else:
             run = R.begin_run(root, run_id, name=name or record.get("name") or experiment,
-                              script=script, experiment_id=experiment, attempt=attempt, job_id=selected,
+                              script=record.get("source_snapshot", script), experiment_id=experiment, attempt=attempt, job_id=selected,
                               parameters=actual_parameters,
                               resources=resources if resources is not None else record.get("resources", {}))
             manifest = R._read_json(run / "run.json")
+            manifest["provenance"]["script"] = script
         launch = {"cluster": cluster, "dependency": record.get("dependency", ""),
                   "submission_token": record.get("token", ""), "array_id": selected.split("_")[0] if "_" in selected else "",
                   "array_index": int(selected.split("_")[1]) if "_" in selected else None, "restart_count": attempt - 1}
@@ -216,11 +222,20 @@ def start(root, *, experiment=None, script=None, name=None, job_id=None, paramet
         for label, path in logs:
             R.register_log(run, "declared." + label, path, label=label, group="Declared logs")
         for label, pattern in record.get("logs", {}).items():
-            resolved = _log_pattern(pattern, selected, env, root)
-            if resolved:
-                index = R._read_json(run / "logs.json")
-                if not any(row["id"] == "slurm." + label for row in index["logs"]):
-                    R.register_log(run, "slurm." + label, resolved, label="Slurm " + label, group="Slurm")
+            try:
+                resolved = _log_pattern(pattern, selected, env, Path(record.get("workdir", root)))
+                if resolved:
+                    index = R._read_json(run / "logs.json")
+                    if not any(row["id"] == "slurm." + label for row in index["logs"]):
+                        R.register_log(run, "slurm." + label, resolved, label="Slurm " + label, group="Slurm")
+                elif record.get("plan"):
+                    raise ValueError("node/rank-dependent log pattern requires explicit per-rank registration")
+            except (ValueError, OSError) as exc:
+                if not record.get("plan"):
+                    raise
+                launch.setdefault("log_warnings", []).append("Slurm " + label + " is preserved but unavailable as a regular retained log: " + str(exc))
+        if launch.get("log_warnings"):
+            R._atomic_json(run / "run.json", manifest, replace=True)
     return run
 
 
@@ -348,32 +363,61 @@ def submit(root, *, experiment, script, options=(), name=None, parameters=None,
         intent["logs"]["stderr"] = metadata["stderr"]
     if declaration is not None:
         intent["array_manifest"] = declaration
+    intent["array"] = bool(metadata.get("array"))
+    return _submit_intent(root, intent, runner=runner)
+
+
+
+def _submission_unknown(root, path, intent, error):
+    """Retain runtime evidence even when the scheduler receipt is ambiguous."""
+    with _lock(root):
+        observed = R._read_json(path)
+        merged = dict(intent)
+        for key in ("observed_job_id", "observed_cluster", "observed_run_id"):
+            if key in observed:
+                merged[key] = observed[key]
+        merged.update(status="unknown", error=error[:2048])
+        R._atomic_json(path, merged, replace=True)
+        intent.update(merged)
+
+
+def _submit_intent(root, intent, *, runner=subprocess.run, cwd=None, environment=None):
+    """Shared durable one-submit protocol for explicit and prepared launchers.
+
+    Callers finish all validation/materialization first. An uncertain result
+    never triggers another scheduler invocation. The prepared caller embeds
+    its handshake in the wrapper, preserving isolated Slurm export policies.
+    """
+    root = R._directory(root)
+    token, experiment, script = intent["token"], intent["experiment"], intent["script"]
+    name, params, request = intent["name"], intent["parameters"], intent["resources"]
+    declaration = intent.get("array_manifest")
     path = R._under(root, f".raven/launches/{token}.json", create_parent=True)
     R._atomic_json(path, intent)
     # File-backed capture bounds memory even if a wrapper prints excessive data.
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
         try:
             env = dict(os.environ, RAVEN_PROJECT_ROOT=str(root), RAVEN_EXPERIMENT=experiment,
-                       RAVEN_SCRIPT=str(script_path.relative_to(root)),
+                       RAVEN_SCRIPT=script,
                        RAVEN_PARAMETERS=json.dumps(params, separators=(",", ":")),
                        RAVEN_RESOURCES=json.dumps(request, separators=(",", ":")), RAVEN_SUBMISSION_TOKEN=token)
+            if environment is not None:
+                env = dict(environment)
             from .raven_execution import reporting_submission
             with reporting_submission(intent["argv"]):
-                result = runner(intent["argv"], cwd=root, env=env, stdout=stdout, stderr=stderr, timeout=30, check=False)
+                result = runner(intent["argv"], cwd=cwd or root, env=env, stdout=stdout, stderr=stderr, timeout=30, check=False)
         except (OSError, subprocess.TimeoutExpired) as exc:
-            intent.update(status="unknown", error=str(exc)[:2048])
-            R._atomic_json(path, intent, replace=True)
+            _submission_unknown(root, path, intent, str(exc))
             raise ValueError(f"submission outcome unknown; inspect {path}; do not submit again blindly") from exc
         stdout.seek(0)
         stderr.seek(0)
         output = stdout.read(65537).decode("utf-8", "replace").strip()
         errors = stderr.read(8192).decode("utf-8", "replace").strip()
     if result.returncode or not re.fullmatch(r"[1-9][0-9]{0,18}(?:;[A-Za-z0-9_.-]{1,128})?", output):
-        intent.update(status="unknown", error=errors or output[:2048])
-        R._atomic_json(path, intent, replace=True)
+        _submission_unknown(root, path, intent, errors or output[:2048])
         raise ValueError(f"sbatch did not return an unambiguous job ID; inspect {path}: {intent['error']}")
     job_id, _, cluster = output.partition(";")
-    cluster = cluster or os.environ.get("SLURM_CLUSTER_NAME", "")
+    cluster = cluster or (os.environ if environment is None else environment).get("SLURM_CLUSTER_NAME", "")
     if not _CLUSTER.fullmatch(cluster):
         raise ValueError(f"job {output} submitted, but cluster identity is invalid; inspect {path}")
     intent.update(status="submitted", job_id=job_id, cluster=cluster)
@@ -392,21 +436,48 @@ def submit(root, *, experiment, script, options=(), name=None, parameters=None,
                 if "array_manifest" in intent:
                     intent["array_manifest"]["cluster"] = cluster
             _, _, run_id, _ = _identity(job_id, {"SLURM_CLUSTER_NAME": cluster})
+            if intent.get("run_id_base"):
+                run_id = intent["run_id_base"] + "-a1"
             run_id = observed.get("observed_run_id", run_id)
             intent["run_id"] = run_id
-            R._atomic_json(_submission_path(root, job_id, cluster), intent)
+            # The token receipt retains a known accepted ID even if a later
+            # alias/index write fails. It is also the immutable identity anchor
+            # when a scheduler eventually recycles the same numeric job ID.
+            for key in ("observed_job_id", "observed_cluster", "observed_run_id"):
+                if key in observed:
+                    intent[key] = observed[key]
             R._atomic_json(path, intent, replace=True)
+            alias = _submission_path(root, job_id, cluster)
+            if intent.get("run_id_base") and alias.exists():
+                previous = R._read_json(alias)
+                tokens = previous.get("tokens", [previous.get("token")])
+                tokens = [value for value in tokens if isinstance(value, str)]
+                R._atomic_json(alias, {"schema": "raven.submission-ambiguous/v1", "job_id": job_id,
+                    "cluster": cluster, "tokens": (tokens + [token])[-128:]}, replace=True)
+            else:
+                R._atomic_json(alias, intent)
             # Publish a pending experiment immediately; the runtime helper will
             # transition this exact attempt instead of creating a second run.
             run = root / "runs" / run_id
             if not (run / "run.json").exists():
-                run = R.begin_run(root, run_id, name=name or experiment, script=script,
+                run = R.begin_run(root, run_id, name=name or experiment, script=intent.get("source_snapshot", script),
                                   experiment_id=experiment, job_id=job_id, parameters=params, resources=request)
                 manifest = R._read_json(run / "run.json")
+                manifest["provenance"]["script"] = script
                 manifest.update(state="SUBMITTED", submit=intent["submitted"], metadata={"raven_launch": {
                     "cluster": cluster, "dependency": intent["dependency"], "submission_token": token,
-                    "array_id": job_id if metadata.get("array") else "", "array_index": None, "restart_count": 0}})
+                    "array_id": job_id if intent.get("array") else "", "array_index": None, "restart_count": 0}})
                 manifest.pop("start", None)
+                if intent.get("plan"):
+                    plan = intent["plan"]
+                    from .launch_runtime import plan_inventory
+                    manifest["metadata"]["automation"] = {"schema": "raven.automation/v1", "plan": plan_inventory(plan),
+                        "project_root": str(root), "filesystem_host": plan.get("filesystem_host", ""), "filesystem_id": plan.get("filesystem_id", ""),
+                        "application_outcome": "not started", "scheduler_outcome": "pending or unknown", "warnings": []}
+                    R._atomic_json(run / "reports" / "submit.json", {"schema": "raven.launch-report/v1", "plan": plan,
+                        "receipt": {"run_id": run_id, "job_id": job_id, "attempt": 1, "cluster": cluster,
+                                    "token": token, "execution": "slurm", "application_exit_code": None,
+                                    "scheduler_outcome": "pending or unknown", "argv": intent["argv"]}})
                 if declaration is not None:
                     R._atomic_json(run / "reports" / "array-manifest.json", intent["array_manifest"])
                     manifest["paths"]["array_manifest"] = "reports/array-manifest.json"
@@ -418,7 +489,7 @@ def submit(root, *, experiment, script, options=(), name=None, parameters=None,
     return output
 
 
-def finish(run, *, exit_code=0, state=None, runtime_seconds=None, results=None):
+def finish(run, *, exit_code=0, state=None, runtime_seconds=None, results=None, scaling=None):
     run = R._directory(run)
     with _lock(run):
         manifest = validate_inventory(R._read_json(run / "run.json"))
@@ -436,7 +507,7 @@ def finish(run, *, exit_code=0, state=None, runtime_seconds=None, results=None):
                 raise ValueError("attempt was already finished with a different result")
             return summary
         return R.finish_run(run, state=state or ("COMPLETED" if exit_code == 0 else "FAILED"),
-                            runtime_seconds=runtime_seconds, results=results, exit_code=exit_code)
+                            runtime_seconds=runtime_seconds, results=results, exit_code=exit_code, scaling=scaling)
 
 
 def aggregate(root):

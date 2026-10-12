@@ -20,6 +20,25 @@ runtime identity, semantics, and bounded I/O.
 | [submission-plan.v1.schema.json](submission-plan.v1.schema.json) | `runs/<run_id>/reports/submit.json` | Intact native preflight shown as read-only Submit evidence |
 | [array-manifest.schema.json](array-manifest.schema.json) | Run-relative `paths.array_manifest`, or an explicit map path | Automatic exact-run attachment or manual `arraymap`; cluster, parent, and task-index matching |
 
+Existing-script automation adds these independent contracts. It does not change
+the version markers of existing run, metric, or summary files. See the
+[launch and export guide](../guides/automated-reporting-exports.md).
+
+| File | Applies to | Consumer |
+| --- | --- | --- |
+| [launch-plan.v1.schema.json](launch-plan.v1.schema.json) | Immutable `raven.launch-plan/v1` | Read-only preview and job-owned runtime |
+| [launch-report.schema.json](launch-report.schema.json) | Captured launch plan and exact attempt receipt | Read-only Research Submit / Results, separate from a prepared submission action |
+| [automation-settings.v1.schema.json](automation-settings.v1.schema.json) | Project `.raven/automation.json` | Guided setup, launch recipes, export preferences/presets |
+| [telemetry-index.v1.schema.json](telemetry-index.v1.schema.json) | Exact run's `telemetry/index.json` | Retained source discovery and coverage |
+| [gpu-sample.v1.schema.json](gpu-sample.v1.schema.json) | Each retained GPU JSONL record | Exact node/device series and export |
+| [cpu-memory-sample.v1.schema.json](cpu-memory-sample.v1.schema.json) | Each retained CPU/memory JSONL record | Local process observations and export |
+| [export-request.v1.schema.json](export-request.v1.schema.json) | Selected attempts, families, range, destination | CLI, TUI, and completion exporter |
+| [export-plan.v1.schema.json](export-plan.v1.schema.json) | Immutable selected sources, cutoffs, destinations | Reviewed streaming writer |
+| [export-manifest.v1.schema.json](export-manifest.v1.schema.json) | Published bundle's `manifest.json` | Ordinary analysis tools and evidence verification |
+| [export-receipt.v1.schema.json](export-receipt.v1.schema.json) | Completed, partial, failed, or cancelled export result | CLI automation, notifications, and completion recovery |
+| [auto-export.v1.schema.json](auto-export.v1.schema.json) | Captured exact-attempt completion request and durable outcome | Bounded idempotent recovery without resubmission |
+| [scheduler-outcome.v1.schema.json](scheduler-outcome.v1.schema.json) | Exact retained terminal scheduler observation | Recovery of interrupted or pre-start attempts without inventing an application outcome |
+
 Release 4.15 adds explicit operation inputs. These documents do not change
 automatic run discovery and are not new `run.json` path keys. Select them in
 the relevant operation form. See [operation contracts](../PROJECT_STANDARD.md#research-operation-contracts).

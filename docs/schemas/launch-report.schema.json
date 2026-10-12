@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Raven/blob/main/docs/schemas/launch-report.schema.json",
+  "title": "Raven retained launch report",
+  "type": "object",
+  "required": ["schema", "plan", "receipt"],
+  "properties": {
+    "schema": {"const": "raven.launch-report/v1"},
+    "plan": {"type": "object", "required": ["schema", "token", "project_root", "script_sha256"], "properties": {"schema": {"const": "raven.launch-plan/v1"}}},
+    "receipt": {"type": "object", "required": ["run_id", "job_id", "attempt", "token"], "properties": {
+      "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"},
+      "job_id": {"type": ["string", "null"]},
+      "attempt": {"type": "integer", "minimum": 1},
+      "cluster": {"type": "string"},
+      "token": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+      "application_exit_code": {"type": ["integer", "null"]},
+      "scheduler_outcome": {"type": "string"}
+    }}
+  }
+}

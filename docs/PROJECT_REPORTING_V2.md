@@ -10,6 +10,13 @@ the supported `raven.run/v1`, `raven.summary/v1`, and other versioned contracts.
 Existing V1 projects remain readable. Do not change their schema markers to
 `/v2`.
 
+For the installed CLI's simplest existing-script workflow, start with
+[automated reporting and exports](guides/automated-reporting-exports.md).
+`raven launch batch.sh --research` packages the runtime and creates exact run
+records without copying a helper or writing a manifest. This guide remains the
+portable, explicitly embedded integration for applications and site workflows
+that need to own their reporting lifecycle.
+
 ## Choose the part you need
 
 Inside Raven, open **Setup** and choose a Research or Analytics view for embedded
@@ -19,6 +26,7 @@ configures Raven's own worker account and resource defaults. See the
 
 | Need | Start here |
 | --- | --- |
+| Launch an unchanged shell script and export measurements | [Automated launch and export](guides/automated-reporting-exports.md) |
 | Record a first application run | [Quick start](#quick-start) |
 | Add reporting to an existing Bash or batch script | [Application and job hooks](#application-and-job-hooks) |
 | Use a professor's allocation as a student | [Users, lab accounts, and runs](#users-lab-accounts-and-runs) |

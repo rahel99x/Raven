@@ -7,6 +7,11 @@ Use this page when adding a measurement or explaining a missing graph.
 The [file-format cookbook](project-reporting-formats.md) provides complete
 producer examples and field-by-field contracts.
 
+For job-owned recording and plotting-ready export, see
+[automated reporting and exports](../guides/automated-reporting-exports.md).
+Its retained telemetry complements the scheduler and legacy CSV sources below.
+Application measurements still use their native producer contract.
+
 The coverage is the current implementation: **10 workspace tabs, 13 Research
 views, 5 Analytics views, and 57 operations**. The tables cover every built-in
 measurement family and integration route. Application metric names are open
@@ -20,6 +25,7 @@ complete field sets, bounds, and required properties for structured inputs.
 | Is my job queued, running, or finished? | Slurm controller and accounting | No application hook | Jobs, Recents, History, Timeline |
 | How much CPU and memory has this allocation used? | Slurm job accounting | Working `sstat` / `sacct`, with permitted reads | Jobs Inspector; Analytics Job series, History, Advisor, Compare |
 | How busy was my GPU? | A recorder inside the GPU job | Exact NVIDIA CSV trace described below | Analytics Job series and the corresponding Jobs/History Series view |
+| What did my wrapped local processes use? | `raven launch` retained recorder | Versioned CPU/memory stream with local child-process scope | Retained Analytics and data export; separate from allocation accounting |
 | How far has my computation progressed? | Your application | `metrics.jsonl` plus the matching run inventory | Research Experiment; Jobs progress |
 | Is the scientific answer acceptable? | Your application and a declared acceptance policy | Results and acceptance manifests | Research Operations → Acceptance |
 | Which rank, phase, or function caused a delay? | Explicit instrumentation or a profiler export | Profiler, trace, or investigation contract | Bottlenecks, Trace, causal-delay and investigation operations |

@@ -269,6 +269,9 @@ def render(views, snap, app, width, height):
     elif view == "passport":
         passport = result.get("passport") or {}
         rows.extend(analysis_ui.passport_rows(g, passport, result.get("differences")))
+    elif view == "submit" and result.get("launch_report"):
+        from .launch_results import rows as launch_rows
+        rows.extend(launch_rows(result["launch_report"], width, ascii_=g.ascii))
     elif view == "submit":
         plan = result.get("plan") or {}
         from .shell_checks_ui import summary as shell_summary

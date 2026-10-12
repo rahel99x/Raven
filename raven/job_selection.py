@@ -107,7 +107,7 @@ def clear(app):
     app.say("Selections cleared; click a job or line to select again")
 
 
-def context_click(app, y, x, button="left"):
+def context_click(app, y, x, button="left", shift=False):
     """A graph or History export owns right-click; all other pages clear."""
     if button != "right":
         return False
@@ -124,7 +124,7 @@ def context_click(app, y, x, button="left"):
         return handle_mouse(app, y, x, button=button)
     if mode in ("help", "details", "analysis"):
         from . import chart_interaction
-        if mode == "analysis" and chart_interaction.handle_mouse(app, y, x, button=button):
+        if mode == "analysis" and chart_interaction.handle_mouse(app, y, x, button=button, shift=shift):
             return True
         clear_lines(app)
         chart_interaction.cancel(app)
@@ -138,7 +138,7 @@ def context_click(app, y, x, button="left"):
         return False
     tab = getattr(app, "tab", "")
     from .chart_interaction import handle_mouse as chart_mouse
-    if chart_mouse(app, y, x, button=button):
+    if chart_mouse(app, y, x, button=button, shift=shift):
         return True
     if tab == "history":
         rect = getattr(app, "history_jobs_rect", None)

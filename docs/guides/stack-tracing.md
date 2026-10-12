@@ -1,5 +1,11 @@
 # Recorded stacks and distributed trace evidence
 
+For a shell script launched through `raven launch`, use its explicit
+[`raven_exec` application hook](automated-reporting-exports.md#6-trace-a-supported-application-launch)
+to attach a supported Python recording to the existing run. This preserves one
+whole-job reporting attempt. The methods below remain available for prepared
+applications and separately instrumented native or distributed programs.
+
 Use Raven to record a prepared Python program, receive cooperative native
 events, reconstruct recorded stacks, inspect explicit causal links, and audit
 supported collective signatures. A running local Python process can provide a

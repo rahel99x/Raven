@@ -313,7 +313,7 @@ def run_command(app, args):
     action = parts[0]
     if action in ("research", "analytics") and len(parts) == 2:
         _open(app, action + "." + parts[1])
-    elif action in ("overview", "allocation", "project", "telemetry", "installation") and len(parts) == 1:
+    elif action in ("overview", "allocation", "project", "exports", "telemetry", "installation") and len(parts) == 1:
         _open(app, action)
     elif getattr(app, "mode", "") != "setup":
         _say(app, "Open Setup before using its controls.", error=True)

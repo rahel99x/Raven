@@ -792,7 +792,9 @@ def _navigation_context(app):
             toolbar.get("menu"), toolbar.get("focus"), toolbar.get("cursor"), toolbar.get("panel"),
             panels.get("mode"), panels.get("focus"), input_identity(app),
             tuple(getattr(app, "setup_ui_state", {}).get(key) for key in ("page", "generation", "revision", "editing"))
-            if app.mode == "setup" else None)
+            if app.mode == "setup" else None,
+            tuple(getattr(app, "data_export_state", {}).get(key) for key in ("generation", "revision", "stage", "editing"))
+            if app.mode == "data_export" else None)
 
 
 def _motion_report(buttons, curses):
@@ -911,6 +913,10 @@ def _apply_input(app, event, hits, curses):
             if export_active(app):
                 export_paste(app, mouse)
                 return
+            if app.mode == "data_export":
+                from .data_export_ui import paste as data_paste
+                data_paste(app, mouse)
+                return
             if app.mode == "operations":
                 from .ops_ui import paste as operation_paste
                 operation_paste(app, mouse)
@@ -1020,7 +1026,7 @@ def _apply_input(app, event, hits, curses):
     if button == "right":
         from .text_selection import clear as clear_text
         clear_text(app)
-    if context_click(app, my, mx, button=button):
+    if context_click(app, my, mx, button=button, shift=shift):
         return
     if button in ("press", "left"):
         # The toolbar can consume a fresh gesture before App.click runs.

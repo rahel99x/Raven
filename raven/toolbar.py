@@ -287,11 +287,14 @@ def render_bar(views, app, width, y=0):
     managed=isinstance(getattr(app,'cfg',{}).get('raven'),dict) or getattr(app,'raven_allocation_manager',None) is not None
     compute_space = 10 if managed and width >= minimum_slider + worker_space + 12 else 0
     copy_space=4 if width >= 80 else 0
-    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space - copy_space), forms[-1])
+    export_space=14 if width >= 100 else 9 if width >= 80 else 0
+    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space - copy_space - export_space), forms[-1])
     append(quit_label, "danger+bold+bg:surface-raised", "quit")
     for index, label in enumerate(labels):
         selected = state["menu"] == index if len(labels) == len(MENUS) else state["menu"] is not None
         append(label, "accent+bold+bg:surface-sunken" if selected else BAR_STYLE, "menu", index)
+    if export_space:
+        append(" [Export data] " if export_space == 14 else " [Export]", "accent+bold+bg:surface-raised", "export-data")
     compute_button = raven_ui.button(app, width-x-minimum_slider-worker_space-copy_space) if managed else None
     if compute_button is not None:
         append(*compute_button, 'raven')
@@ -503,6 +506,10 @@ def handle_mouse(app, y, x, button="left", shift=False):
                 _open(app, key, source="mouse")
             else:
                 state["menu_source"] = "mouse"
+        elif kind == "export-data":
+            _close(app)
+            from .data_export_ui import open_export
+            open_export(app)
         elif kind == "copy-mode":
             from .editor_yank import toggle
             toggle(app)

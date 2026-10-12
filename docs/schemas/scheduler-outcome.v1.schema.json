@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Raven/blob/main/docs/schemas/scheduler-outcome.v1.schema.json",
+  "title": "Raven retained terminal scheduler observation",
+  "type": "object",
+  "required": ["schema", "state", "job_id", "cluster", "attempt", "submit_time"],
+  "properties": {
+    "schema": {"const": "raven.scheduler-outcome/v1"},
+    "state": {"enum": ["COMPLETED", "FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL", "PREEMPTED", "BOOT_FAIL", "DEADLINE", "REVOKED", "INTERRUPTED"]},
+    "job_id": {"type": "string"},
+    "cluster": {"type": "string"},
+    "attempt": {"type": "integer", "minimum": 1},
+    "submit_time": {"type": "number"},
+    "observed_at": {"type": "number"},
+    "source": {"type": "string"}
+  },
+  "additionalProperties": false
+}

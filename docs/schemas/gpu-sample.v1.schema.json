@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven retained gpu observation v1",
+  "description": "One complete UTF-8 JSONL record. Missing counters stay null. Each node/producer owns its stream; cross-node clocks may be skewed.",
+  "type": "object",
+  "required": [
+    "schema",
+    "sequence",
+    "run_id",
+    "timestamp",
+    "timestamp_utc",
+    "source_time",
+    "clock",
+    "elapsed_seconds",
+    "node",
+    "scope",
+    "status",
+    "reason",
+    "quality",
+    "interval_seconds",
+    "source",
+    "provider",
+    "device_uuid",
+    "device_index",
+    "device_bdf",
+    "partition",
+    "utilization_percent",
+    "memory_used_mib",
+    "memory_total_mib"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.gpu-sample/v1"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "timestamp": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Collector Unix epoch seconds at observation completion; not a vendor source clock."
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_time": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ],
+      "description": "Original source clock when emitted; null for current vendor/procfs adapters."
+    },
+    "clock": {
+      "type": "string"
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Monotonic seconds since the recorder started on this node."
+    },
+    "node": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "recorded",
+        "partial"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "quality": {
+      "const": "sampled"
+    },
+    "interval_seconds": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 300
+    },
+    "source": {
+      "type": "string"
+    },
+    "provider": {
+      "enum": [
+        "nvidia",
+        "amd",
+        "intel"
+      ]
+    },
+    "device_uuid": {
+      "type": "string"
+    },
+    "device_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "device_bdf": {
+      "type": "string"
+    },
+    "partition": {
+      "type": "string"
+    },
+    "utilization_percent": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "memory_used_mib": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "memory_total_mib": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    }
+  }
+}

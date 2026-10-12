@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven retained-data export receipt v1",
+  "description": "Stable exit codes: 0 complete,3 partial,4 runtime write/source failure,130 cancelled. Invalid requests fail before receipt with CLI exit2. Published paths survive later independent-bundle failure.",
+  "type": "object",
+  "required": [
+    "schema",
+    "export_id",
+    "status",
+    "outputs",
+    "issues",
+    "files",
+    "attempts",
+    "exit_code"
+  ],
+  "properties": {
+    "schema": {
+      "const": "raven.export-receipt/v1"
+    },
+    "export_id": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "complete",
+        "partial",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "outputs": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {
+        "type": "string"
+      }
+    },
+    "issues": {
+      "type": "array",
+      "maxItems": 513,
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "attempts": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "exit_code": {
+      "enum": [
+        0,
+        3,
+        4,
+        130
+      ]
+    }
+  }
+}

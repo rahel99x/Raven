@@ -16,6 +16,7 @@ page; while editing a field, Esc cancels that edit.
 | Setup entry | Purpose |
 | --- | --- |
 | Heavy allocation settings | Discover the connected user's Slurm associations and save account, partition, QoS, CPU, memory, GPU, and time preferences. |
+| Project launch and recording defaults | Bind native measurements and declared files, select recording/Research features, and save launch recipes or completion-export preferences. |
 | Project connection and reporting | Connect a project and select an exact reported run; inspect its files before attaching them. |
 | Research: each named view | Read its prerequisites, exact source conventions, and available attachment controls. |
 | Analytics: each named view | Identify its scheduler or retained-series inputs, measured units, and missing-data checks. |
@@ -120,3 +121,25 @@ For complete application hooks and file examples, use
 [Project reporting V2](../PROJECT_REPORTING_V2.md), the
 [format cookbook](../reference/project-reporting-formats.md), and the
 [metric reference](../reference/project-reporting-metrics.md).
+
+## Save an existing-script integration
+
+Connect the intended project, then open **Setup → Project launch and recording
+defaults**, or enter `:launchsetup`. This editor saves project choices without
+launching a job. Configure only the bindings your application actually supplies:
+
+- Its native metric file and explicit artifact paths.
+- An array manifest and declared worker count, problem size, and repeat.
+- A reporting Python path available on the execution hosts.
+- Research selections, GPU/CPU recording, and a supported trace adapter.
+- A named launch recipe and an existing completion-export preset.
+
+The settings live in the project's `.raven/automation.json`. They are distinct
+from Heavy allocation preferences. A scientific worker count describes a run;
+it does not request scheduler resources. Keep account/partition requests in
+the script or the launch's explicit scheduler options.
+
+Use `raven launch batch.sh --recipe NAME --check` to review a saved recipe and
+its sources before submission. The [launch and export
+guide](automated-reporting-exports.md) describes immutable per-launch settings,
+recording prerequisites, exact attempts, and export destinations.

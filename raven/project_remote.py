@@ -18,10 +18,10 @@ from .remote import RemoteFiles
 
 _MODULES = ("projects", "artifacts", "remote", "slurm", "model", "clock", "history_snapshots", "ui_state",
             "series_archive", "series_publication", "series_cache_limits", "predict", "planning_io", "log_catalog", "provenance", "array_manifest",
-            "artifact_pages", "log_presentation")
+            "artifact_pages", "log_presentation", "retained_telemetry_io")
 _OPERATIONS = {"discover_project", "discover_job", "select_run", "read_bound_json",
                "read_bound_passport", "read_bound_artifacts", "read_bound_tail",
-               "read_bound_metric_chunk", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"}
+               "read_bound_metric_chunk", "read_bound_telemetry", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"}
 MAX_REPLY = 96 * 1024 * 1024
 
 _BOOTSTRAP = r'''
@@ -41,7 +41,7 @@ try:
     request = json.loads(sys.argv[1])
     allowed = {"discover_project", "discover_job", "select_run", "read_bound_json",
                "read_bound_passport", "read_bound_artifacts", "read_bound_tail",
-               "read_bound_metric_chunk", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"}
+               "read_bound_metric_chunk", "read_bound_telemetry", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"}
     if request["operation"] not in allowed:
         raise ValueError("unsupported project reader operation")
     value = getattr(projects, request["operation"])(*request["args"], **request["kwargs"])
@@ -89,7 +89,7 @@ def _payload():
     for name in _MODULES:
         sources["raven." + name] = (root / (name + ".py")).read_text(encoding="utf-8")
     data = json.dumps(sources, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
-    packed = base64.b64encode(zlib.compress(data, 6)).decode("ascii")
+    packed = base64.b64encode(zlib.compress(data, 9)).decode("ascii")
     # Keep every SSH argument beneath the POSIX per-argument limit.
     if len(packed) > 512 * 1024:
         raise ValueError("project reader bundle exceeds its transfer budget")
@@ -106,6 +106,10 @@ def request(files, operation, *args, **kwargs):
         binding = dict(arguments[0])
         if binding.pop("remote_identity", None) != request_identity:
             raise ValueError("project binding belongs to another connection; refresh its job first")
+        # UI discovery summaries are not authority for a confined source read.
+        # Keep them off the SSH command; the helper reopens current declarations.
+        binding.pop("scientific_query", None)
+        binding.pop("telemetry_sources", None)
         arguments[0] = binding
     encoded = json.dumps({"operation": operation, "args": arguments, "kwargs": kwargs},
                          ensure_ascii=True, allow_nan=False, separators=(",", ":"))
