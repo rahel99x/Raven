@@ -310,17 +310,28 @@ def _gpu_memory(sample):
     return ratio, text
 
 
+def _managed_gpu_mode(app):
+    value = getattr(app, "cfg", {}).get("raven", {})
+    return value.get("collection", {}).get("gpu", "existing-telemetry") if value.get("managed") else None
+
+
 def _gpu_unavailable(snap, app, jid, record, *, detected=False):
     """Explain published collection state without scheduler or file access."""
     if not detected and not getattr(record, "gpus", 0):
         return []
-    if detected:
+    managed = _managed_gpu_mode(app)
+    if managed is not None:
+        reason = "GPU rate graphs need this job's existing logs/gpu-util-JOBID.csv trace."
+    elif detected:
         reason = "GPU devices were detected, but utilisation counters are unavailable. Missing readings remain graph gaps."
     else:
         reason = "GPU telemetry is unavailable. Enable GPU sampling or provide this job's nvidia-smi trace."
     rows = [[(" " + reason, "yellow")]]
     health = snap.get("health", {}).get("gpu")
-    if not getattr(app, "gpu", True):
+    if managed is not None:
+        rows.append([(" GPU collection is disabled by configuration." if managed == "off" else
+                      " Raven reads existing telemetry; automatic device probes are disabled.", "dim")])
+    elif not getattr(app, "gpu", True):
         rows.append([(" GPU sampling is off.", "dim")])
     elif health is not None and not getattr(health, "enabled", True):
         rows.append([(" The GPU source is disabled. Enable it in Sources.", "dim")])
@@ -878,7 +889,10 @@ class Views:
             r1.append(("   " + app.freeze_label, "yellow+bold"))
         if getattr(app, "inbox_unread", 0):
             r1.append((f"   {app.inbox_unread} to review (:inbox)", "cyan"))
-        if not app.gpu:
+        gpu_mode = _managed_gpu_mode(app)
+        if gpu_mode is not None:
+            r1.append(("   GPU telemetry off" if gpu_mode == "off" else "   GPU existing telemetry", "dim"))
+        elif not app.gpu:
             r1.append(("   GPU sampling off", "dim"))
         eng = getattr(app.store, "alerts", None)
         if eng is not None and eng.active_count():
@@ -1264,7 +1278,11 @@ class Views:
                 rows.append([("   gpu   ", ""), bar(g_, None, bw), ("  n/a", "dim")])
                 rows += _gpu_unavailable(snap, app, j.id, j)
             elif not g:
-                rows.append([("   gpu   ", ""), bar(g_, None, bw), ("  sampling ..." if app.gpu else "  sampling off", "dim")])
+                if _managed_gpu_mode(app) is not None:
+                    rows.append([("   gpu   ", ""), bar(g_, None, bw), ("  existing telemetry", "dim")])
+                    rows += _gpu_unavailable(snap, app, j.id, j)
+                else:
+                    rows.append([("   gpu   ", ""), bar(g_, None, bw), ("  sampling ..." if app.gpu else "  sampling off", "dim")])
             else:
                 for x in g:
                     key = f"{j.id}:" + getattr(x, "device_key", f"{x.node}:{x.index}")

@@ -249,12 +249,15 @@ class App:
             panel = getattr(self, "job_panel_state", {})
             inline_trace = (self.tab in ("jobs", "history") and self.mode == "main" and panel.get("mode") == "analytics"
                             and panel.get("analytics_view", "job") == "job")
+            inline_live = (self.tab in ("jobs", "history") and self.mode == "main"
+                           and panel.get("mode", "inspector") == "inspector")
             self.sampler.select_trace(self.selected_id if inline_trace else
                                       self.analytics_job if (self.tab == "analytics" and self.analytics_view == "job") else None)
             demand = getattr(self.sampler, "set_collection_demand", None)
             if demand is not None:
-                demand(self.tab, self.analytics_job if self.tab == "analytics" else jid,
-                       sources=("live", "trace") if inline_trace else ())
+                sources = ("live", "trace") if inline_trace else ("live",) if inline_live or detail_mode else ()
+                demand(self.tab, jid if detail_mode else self.analytics_job if self.tab == "analytics" else jid,
+                       sources=sources)
         workbench.tick(self)
 
     @property

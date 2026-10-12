@@ -5,8 +5,53 @@
 Use this guide when a GPU job has no measurements or reports incomplete device
 coverage. Raven verifies the job's allocation before collecting automatic GPU
 measurements. A GPU visible on the desktop does not establish job ownership.
-The checks distinguish sampling settings, allocation detection, driver access,
-live measurements, trace files, and retained data.
+The checks distinguish collection policy, allocation detection, driver access,
+trace files, and retained data.
+
+## Managed Raven collection
+
+The installed `raven`, `ravenl`, and `ravenh` commands use managed collection.
+With `collection.gpu = "existing-telemetry"`, GPU rate graphs read the selected
+job's existing `<WorkDir>/logs/gpu-util-<jobid>.csv` NVIDIA trace. The job must
+already have a producer writing that file. Raven reads its rows without launching
+another Slurm step. See the [trace producer example](../reference.md#the-gpu-trace).
+With `collection.gpu = "off"`, the managed GPU trace source is disabled.
+
+Managed Raven does not start automatic device probes. `:gpu on` and provider
+preferences do not enable allocation probes in this mode. A GPU visible on the
+desktop, or a job with `gres/gpu=1`, establishes neither measured utilization
+nor an existing trace. Missing measurements remain unavailable.
+
+`ravenl --gpu-check JOBID` checks allocation metadata, existing traces, and
+retained measurements under the same collection limits. It reports this mode
+explicitly and does not launch vendor helpers or GPU sampling steps.
+
+Slurm's `gres/gpumem` and `gres/gpuutil` accounting also needs an upstream
+producer: NVIDIA `AutoDetect=nvml` or AMD `AutoDetect=rsmi`, compatible drivers,
+and GPU tasks that produce counters. `AccountingStorageTRES` alone does not prove
+measurements exist. Slurm describes `TRESUsageInAve`, `TRESUsageInMax`,
+`TRESUsageInMin`, and `TRESUsageInTot` as aggregations of GPU **high-water marks**
+across ranks. These values cannot supply instantaneous per-device rate curves.
+See [Slurm GPU accounting](https://slurm.schedmd.com/gres.html#Accounting).
+NVIDIA MIG devices do not expose these accounting utilization metrics.
+
+For NVIDIA installations using `AutoDetect=off`, GPU allocation can succeed
+while `sstat` and `sacct` contain no GPU counters. Before selecting
+`AutoDetect=nvml`, verify that `gpu_nvml.so` exists in the `PluginDir` reported by
+`scontrol show config`. The plugin must match the installed Slurm version and
+have its NVML runtime dependencies available. A missing plugin requires a
+compatible package or a Slurm build with NVML support; changing `gres.conf`
+alone cannot supply it. Validate the resulting GRES configuration with
+`slurmd -G` before scheduling new GPU work.
+
+The NVIDIA CSV producer uses the driver directly and does not require Slurm's
+NVML plugin. It supplies Raven's GPU curves independently of GPU accounting.
+Run it inside the actual GPU job as shown below; completed jobs retain only
+measurements that were recorded during their execution.
+
+The allocation-probe controls below describe the native collector and the
+standalone diagnostic helper. Their live-probe behavior does not apply to
+managed Raven commands.
 
 Optional NVIDIA, AMD, and Intel providers were introduced in Raven 4.14.
 Use **GPU source** on Sources or `:gpuprovider` to choose one. See

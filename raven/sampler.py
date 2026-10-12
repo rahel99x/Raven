@@ -165,6 +165,8 @@ class Sampler(threading.Thread):
             self._collection_demand = demand
             if active:
                 self._collection_activity = time.monotonic()
+        if changed:
+            self.prime_collection_snapshot()
         if changed or active:
             self.kick.set()
 
@@ -198,7 +200,8 @@ class Sampler(threading.Thread):
             return (self.collection["live_statistics"] != "off" and bool(selected or self._metric_requests)
                     and (tab == "analytics" or "live" in demand["sources"]))
         if name == "trace":
-            return bool(selected or self.want_trace) and (tab in ("analytics", "research") or "trace" in demand["sources"])
+            return (self.collection["gpu"] != "off" and bool(selected or self.want_trace)
+                    and (tab in ("analytics", "research") or "trace" in demand["sources"]))
         if name == "details":
             return bool(self.want_detail)
         if name == "fin_details":

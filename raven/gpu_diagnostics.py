@@ -56,6 +56,9 @@ class EvidenceBackend(Backend):
     """
     def __init__(self, inner, duration=DEADLINE):
         self.inner = inner
+        # Preserve the existing collection owner for local host-list expansion.
+        # Recording evidence must not reintroduce extra scheduler commands.
+        self.collection = getattr(inner, "collection", None)
         self.deadline = time.monotonic() + duration
         self.records = []
         self.retained = 0
@@ -168,9 +171,12 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
     """Inspect current user jobs and optionally one exact accounting job."""
     valid_job_id(job_id)
     max_jobs = max(1, min(MAX_JOBS, int(max_jobs)))
+    managed = bool(cfg.get("raven", {}).get("managed"))
+    gpu_mode = cfg.get("raven", {}).get("collection", {}).get("gpu", "existing-telemetry")
     evidence = EvidenceBackend(backend)
-    # Remote file operations must use the same recorder and total time budget.
-    if getattr(files, "remote", False):
+    # Native remote reads use the recorder's deadline. Managed files already
+    # own typed metadata/byte admission; replacing that adapter would lose it.
+    if getattr(files, "remote", False) and not managed:
         from .remote import RemoteFiles
         files = RemoteFiles(evidence, timeout=cfg["timeouts"]["command"])
     slurm = Slurm(evidence, user, timeout=cfg["timeouts"]["command"], gpu_timeout=cfg["timeouts"]["gpu"], gpu_provider=cfg.get("gpu_provider", "auto"))
@@ -187,13 +193,13 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
         checks.append(item)
         return item
 
-    available = {}
-    try:
-        output, _ = evidence.run(["sh", "-c", TOOL_PROBE], slurm.timeout)
-        available = dict(line.split("|", 1) for line in output.splitlines() if "|" in line)
-        add("command_paths", "ok", "Command paths on the scheduler connection host.", evidence_data=available)
-    except CommandError as exc:
-        add("command_paths", "warning", exc)
+    if not managed:
+        try:
+            output, _ = evidence.run(["sh", "-c", TOOL_PROBE], slurm.timeout)
+            available = dict(line.split("|", 1) for line in output.splitlines() if "|" in line)
+            add("command_paths", "ok", "Command paths on the scheduler connection host.", evidence_data=available)
+        except CommandError as exc:
+            add("command_paths", "warning", exc)
 
     saved_gpu = None
     if state_path and not no_state:
@@ -204,34 +210,42 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
                 raise ValueError("saved UI state exceeds the diagnostic read limit")
             ui = json.loads(raw)
             saved_gpu = ui.get("gpu") if isinstance(ui, dict) and type(ui.get("gpu")) is bool else None
-            add("saved_sampling", "warning" if saved_gpu is False else "ok",
+            add("saved_sampling", "warning" if saved_gpu is False and not managed else "ok",
                 f"Saved GPU toggle: {saved_gpu if saved_gpu is not None else 'not set'}.",
-                next_step="Use :gpu on in Raven." if saved_gpu is False else "")
+                next_step="Use :gpu on in Raven." if saved_gpu is False and not managed else "")
         except FileNotFoundError:
             pass
         except (OSError, ValueError, RecursionError) as exc:
             add("saved_sampling", "warning", f"Could not read saved GPU preference: {exc}")
-    enabled = bool(saved_gpu if saved_gpu is not None else cfg["gpu_sampling"]) and not no_gpu
-    add("sampling_settings", "ok" if enabled else "warning",
-        f"GPU sampling {'enabled' if enabled else 'disabled'}; interval {cfg['intervals']['gpu']:g}s; command timeout {slurm.gpu_timeout:g}s.",
-        next_step="Remove --no-gpu and use :gpu on; check gpu_sampling in the selected profile." if not enabled else "",
-        evidence_data=dict(config_gpu_sampling=bool(cfg["gpu_sampling"]), cli_no_gpu=no_gpu, saved_gpu=saved_gpu))
+    enabled = not managed and bool(saved_gpu if saved_gpu is not None else cfg["gpu_sampling"]) and not no_gpu
+    if managed:
+        add("sampling_settings", "ok" if gpu_mode == "existing-telemetry" else "warning",
+            f"Managed GPU collection: {gpu_mode}. Raven reads existing job telemetry; automatic device probes are disabled.",
+            next_step="Select the job's Series view and provide its existing logs/gpu-util-JOBID.csv trace. :gpu on does not enable allocation probes.",
+            evidence_data=dict(collection_gpu=gpu_mode, automatic_device_probes=False,
+                               config_gpu_sampling=bool(cfg["gpu_sampling"]), cli_no_gpu=no_gpu, saved_gpu=saved_gpu))
+    else:
+        add("sampling_settings", "ok" if enabled else "warning",
+            f"GPU sampling {'enabled' if enabled else 'disabled'}; interval {cfg['intervals']['gpu']:g}s; command timeout {slurm.gpu_timeout:g}s.",
+            next_step="Remove --no-gpu and use :gpu on; check gpu_sampling in the selected profile." if not enabled else "",
+            evidence_data=dict(config_gpu_sampling=bool(cfg["gpu_sampling"]), cli_no_gpu=no_gpu, saved_gpu=saved_gpu))
 
     # Host inventory is useful diagnostically but never supplies job graphs.
     host_samples = []
-    try:
-        output, _ = evidence.run(probe_command(slurm.gpu_provider, slurm.gpu_timeout - 1,
-                                              resolve_visibility=False), slurm.gpu_timeout)
-        host_samples, _, warnings = parse_probe_output(output, require_scope=False)
-        add("host_gpu_inventory", "ok" if host_samples else "warning",
-            f"{len(host_samples)} devices visible on the scheduler connection host. This is not a job measurement.",
-            evidence_data=[{**asdict(sample), "node": "scheduler-host"} for sample in host_samples])
-        for warning in warnings:
-            add("host_gpu_provider", "warning", warning)
-    except (CommandError, ValueError) as exc:
-        add("host_gpu_inventory", "warning", exc,
-            next_step="Check python3 and the selected GPU utility/driver. A GPU-free login host is normal on a cluster.")
-    if not host_samples:
+    if not managed:
+        try:
+            output, _ = evidence.run(probe_command(slurm.gpu_provider, slurm.gpu_timeout - 1,
+                                                  resolve_visibility=False), slurm.gpu_timeout)
+            host_samples, _, warnings = parse_probe_output(output, require_scope=False)
+            add("host_gpu_inventory", "ok" if host_samples else "warning",
+                f"{len(host_samples)} devices visible on the scheduler connection host. This is not a job measurement.",
+                evidence_data=[{**asdict(sample), "node": "scheduler-host"} for sample in host_samples])
+            for warning in warnings:
+                add("host_gpu_provider", "warning", warning)
+        except (CommandError, ValueError) as exc:
+            add("host_gpu_inventory", "warning", exc,
+                next_step="Check python3 and the selected GPU utility/driver. A GPU-free login host is normal on a cluster.")
+    if not host_samples and not managed:
         try:
             output, _ = evidence.run(["lspci", "-nn"], slurm.timeout)
             devices = [line for line in output.splitlines() if any(word in line.lower() for word in ("vga", "3d controller", "display controller"))]
@@ -332,6 +346,10 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
                 next_step="On Fedora, configure GPU GRES for the compute node and request --gpus=1 or --gres=gpu:1. A visible desktop GPU alone is not an allocation.")
         elif job.state != "RUNNING":
             add("not_running", "warning", f"Job state {job.state} cannot supply new live samples. Retained samples and a recorded trace can still be viewed.", job=job.id)
+        elif managed:
+            add("existing_telemetry", "ok" if gpu_mode == "existing-telemetry" else "warning",
+                "Managed Raven does not launch GPU sampling steps. The diagnostic checks the job's existing trace and retained measurements.",
+                job=job.id)
         elif not enabled:
             add("sampling_disabled", "warning", "The job has GPUs, but the effective sampling preference is off.", job=job.id, next_step="Use :gpu on.")
         else:
@@ -385,7 +403,8 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
                 add("trace_read", "ok" if valid else "warning", f"Read {len(rows)} trace rows; {valid} have valid utilization. Only the last 1 MiB is inspected.", job=job.id)
             except (OSError, ValueError) as exc:
                 add("trace_unavailable", "warning", f"{path}: {exc}", job=job.id,
-                    next_step="This trace is optional when live sampling works. Use the GPU guide to record it inside the job.")
+                    next_step=("GPU rate graphs need an existing trace producer inside the job; see the GPU guide."
+                               if managed else "This trace is optional when live sampling works. Use the GPU guide to record it inside the job."))
 
         if state_path and not no_state:
             safe_id = "".join(char if char.isalnum() or char in "_-" else "_" for char in job.id)
@@ -425,6 +444,7 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
     return dict(schema="raven.gpu-check/v1", raven_version=__version__,
                 generated_at=datetime.now(timezone.utc).isoformat(), mode="remote" if getattr(files, "remote", False) else "local",
                 user=user, profile=cfg.profile_name, requested_job=job_id, sampling_enabled=enabled,
+                collection_mode=gpu_mode if managed else "allocation-probes",
                 scope="NVIDIA/AMD/Intel telemetry, verified job allocations, optional NVIDIA CSV traces, and retained scheduler samples. Host inventory is not job telemetry.",
                 gpu_provider=slurm.gpu_provider,
                 limits=dict(jobs=MAX_JOBS, nodes_per_job=MAX_NODES, commands=MAX_COMMANDS, seconds=DEADLINE,
@@ -458,7 +478,9 @@ def render(result):
             lines.append("     Output excerpt was truncated; original byte counts are in report.json.")
     summary = result["summary"]
     lines.extend(["", f"Result: {summary['errors']} errors, {summary['warnings']} warnings; {summary['jobs_with_graph_data']}/{summary['jobs_checked']} checked jobs have graph data.",
-                  "A successful probe is a point-in-time check. Restart Raven after updating, then allow GPU sampling to run."])
+                  ("Existing telemetry needs a producer writing new measurements; Raven reads it without launching sampling steps."
+                   if result.get("collection_mode") in ("existing-telemetry", "off") else
+                   "A successful probe is a point-in-time check. Restart Raven after updating, then allow GPU sampling to run.")])
     return "\n".join(lines)
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections
 import json
+import math
 import os
 import re
 import threading
@@ -271,7 +272,7 @@ class Job:
 
 @dataclass
 class Live:
-    cpu_time: Optional[float] = None     # seconds of CPU consumed (sstat AveCPU of the batch step)
+    cpu_time: Optional[float] = None     # observed CPU seconds: sum of sstat AveCPU * NTasks across application steps
     rss: Optional[float] = None          # peak resident set, bytes
     avg: Optional[float] = None          # CPU efficiency so far: cpu_time / (elapsed * cpus)
     rate: Optional[float] = None         # CPU rate between the last two samples, per core
@@ -976,7 +977,15 @@ class Store:
             if value is not None:
                 self.hist_cpu[jid].append(value)
             sample = None
-            if lv.cpu_time is not None:
+            # RSS is independently observed; missing CPU accounting must not
+            # suppress a valid memory history or replace unknown CPU with zero.
+            memory_measured = False
+            if type(lv.rss) in (int, float):
+                try:
+                    memory_measured = math.isfinite(lv.rss) and lv.rss >= 0
+                except OverflowError:
+                    pass
+            if lv.cpu_time is not None or memory_measured:
                 sample = self.record(jid, dict(t=lv.t, k="live", cpu=lv.rate, eff=lv.avg, rss=lv.rss, cpu_time=lv.cpu_time), _persist=False)
         if _persist:
             self.flush_persistence(_series_only=True)

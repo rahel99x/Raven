@@ -128,3 +128,31 @@ def test_managed_partial_preferences_keep_legacy_shell_and_layout(tmp_path, monk
     assert observed['workspace']['split'] == 63
     assert observed['workspace']['density'] == 'comfortable'
     assert observed['plugins'] == [] and observed['gpu_sampling'] is False
+
+
+@pytest.mark.parametrize("tab", ["jobs", "history", "nodes"])
+def test_live_dashboard_primes_visible_snapshot_before_sampler_start(tmp_path, monkeypatch, tab):
+    from raven.remote import LocalFiles
+    from raven.sampler import Sampler
+    from raven.slurm import FakeBackend
+
+    value = resolved(tmp_path, monkeypatch, site="slurm")
+    monkeypatch.setattr("raven.sampler.time.time", lambda: 1000.)
+    monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
+    # Exercise the real non-demo launch path, retaining its 20% phase jitter,
+    # while an in-process scheduler fixture keeps this test independent of Slurm.
+    monkeypatch.setattr(cli, "make_backend", lambda args, cfg, user: (FakeBackend(user), LocalFiles(), None, user))
+    starts = []
+    def start(sampler):
+        assert sampler._collection_demand["tab"] == tab
+        assert sampler.due("jobs", 1000.)
+        visible = "partitions" if tab == "nodes" else "finished"
+        assert sampler.due(visible, 1000.)
+        assert sampler.health("jobs").calls == 0
+        assert sampler.collection["jitter_fraction"] == .2
+        starts.append(sampler)
+    monkeypatch.setattr(Sampler, "start", start)
+    monkeypatch.setattr(cli.screen, "run_watch", lambda *args, **kwargs: None)
+
+    assert cli.main(["--no-state", "--no-plugins", "--watch", "--tab", tab], raven=value) == 0
+    assert len(starts) == 1

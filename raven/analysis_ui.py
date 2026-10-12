@@ -1437,13 +1437,17 @@ def _inspector_rows(g, snap, app, width):
             # Finished.rss uses zero when accounting did not report MaxRSS.
             rss = None
         cpu = getattr(live, "rate", None) if live else getattr(job, "cpu_eff", None)
+        cpu_basis = "interval rate" if live else "completed efficiency"
+        if live and cpu is None:
+            cpu = live.avg
+            cpu_basis = "cumulative efficiency"
         requested = getattr(job, "mem_bytes", None) if hasattr(job, "mem_bytes") else getattr(job, "req_mem", None)
         rows.extend([row(f" Allocation  {job.cpus} CPUs  | {job.nodes} nodes  | {job.gpus} GPUs", "bold"),
                      row(" Requested memory  " + (human(requested) if _finite(requested) and requested > 0 else "unavailable")),
                      row(" Observed peak RSS " + (human(rss) if _finite(rss) else "unavailable")),
-                     row(" CPU per core      " + (_fmt(cpu * 100) + "%" if _finite(cpu) else "unavailable"))])
+                     row(" CPU per core      " + (_fmt(cpu * 100) + "% (" + cpu_basis + ")" if _finite(cpu) else "unavailable"))])
         if _finite(cpu):
-            rows.append(row(" CPU occupancy", "dim"))
+            rows.append(row(" CPU occupancy" if cpu_basis == "interval rate" else " CPU efficiency", "dim"))
             rows.append(L.gradient_bar(g, cpu, max(1, min(40, width - 8))))
         rows.append(row(" Live and accounting measurements retain their original source; missing samples stay unknown.", "dim"))
     elif section == "Steps":

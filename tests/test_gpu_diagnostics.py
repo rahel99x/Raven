@@ -170,6 +170,71 @@ def test_success_probes_exact_allocation_and_preserves_host_scope():
     assert_read_only(backend)
 
 
+@pytest.mark.parametrize("saved", [True, False])
+def test_managed_check_uses_existing_trace_without_host_or_allocation_probes(tmp_path, saved):
+    path = trace_file(tmp_path, TRACE_ROW.encode())
+    state = tmp_path / "state"
+    state.mkdir()
+    (state / "ui.json").write_text(json.dumps({"gpu": saved}))
+    cfg = Config({"raven": {"managed": True, "collection": {"gpu": "existing-telemetry"}},
+                  "gpu_sampling": True})
+    backend = ProbeBackend(queue=queue_row(workdir=str(path.parent.parent)))
+    result = check(backend, cfg=cfg, state_path=str(state))
+    assert result["collection_mode"] == "existing-telemetry"
+    assert not result["sampling_enabled"]
+    assert not result["jobs"][0]["sampling_eligible"]
+    assert result["summary"]["jobs_with_graph_data"] == 1
+    assert result["jobs"][0]["trace"]["valid_utilization_rows"] == 1
+    assert findings(result, "existing_telemetry", job="7")
+    assert not findings(result, "sampling_disabled")
+    assert not any(cmd[0] in {"sh", "python3", "nvidia-smi", "lspci", "srun", "ssh"}
+                   for cmd, _ in backend.calls)
+    assert "allow GPU sampling to run" not in G.render(result)
+    assert "existing" in G.render(result).lower()
+
+
+def test_managed_check_preserves_governed_host_expansion_and_controller_limits(tmp_path):
+    from raven.platform_session import wrap_backend
+    cfg = Config({"raven": {"managed": True, "collection": {"gpu": "existing-telemetry"}},
+                  "collection_cache_dir": str(tmp_path / "cache")})
+    raw = ProbeBackend()
+    backend = wrap_backend(raw, cfg, {"cluster": "test", "user": "alex"}, None)
+    try:
+        result = check(backend, cfg=cfg)
+        assert result["ok"]
+        assert result["collection_mode"] == "existing-telemetry"
+        assert findings(result, "trace_workdir_missing", job="7")
+        assert not any(cmd[:3] == ["scontrol", "show", "hostnames"] for cmd, _ in raw.calls)
+        assert not any(cmd[0] in {"srun", "sh", "python3"} for cmd, _ in raw.calls)
+        assert backend.ledger.report()["rates_last_minute"]["controller"] == 2
+    finally:
+        backend.close()
+
+
+def test_managed_remote_check_retains_typed_file_admission(tmp_path, monkeypatch):
+    from raven.platform_session import wrap_backend
+    from raven.raven_collection import wrap_files
+    from raven import remote
+    class RemoteFixture(LocalFiles):
+        remote = True
+    path = trace_file(tmp_path, TRACE_ROW.encode())
+    cfg = Config({"raven": {"managed": True, "collection": {"gpu": "existing-telemetry"}},
+                  "collection_cache_dir": str(tmp_path / "cache")})
+    raw = ProbeBackend(queue=queue_row(workdir=str(path.parent.parent)))
+    backend = wrap_backend(raw, cfg, {"cluster": "test", "user": "alex"}, None)
+    files = wrap_files(RemoteFixture(), backend)
+    monkeypatch.setattr(remote, "RemoteFiles", lambda *_a, **_kw: pytest.fail("Managed file admission was replaced"))
+    try:
+        result = check(backend, cfg=cfg, files=files)
+        assert result["mode"] == "remote"
+        assert result["jobs"][0]["trace"]["valid_utilization_rows"] == 1
+        rates = backend.ledger.report()["rates_last_minute"]
+        assert rates["filesystem"] == 2
+        assert rates["file-bytes"] == G.MAX_TRACE
+    finally:
+        backend.close()
+
+
 @pytest.mark.parametrize("tres", ["cpu=8,gres/gpu=1", "cpu=8,gres/gpu:rtx4090=1",
                                  "cpu=8,gres/gpu=2,gres/gpu:a100=2"])
 def test_per_job_allocation_explains_legacy_queue_count_and_probes(tres):

@@ -287,6 +287,21 @@ def test_gpu_health_notice_never_queries_sources_or_executes_terminal_controls(m
     assert "\x1b" not in text and "^Jretry" in text
 
 
+@pytest.mark.parametrize("mode", ["off", "existing-telemetry"])
+def test_managed_empty_gpu_graph_explains_existing_trace_requirement(monkeypatch, dashboard, mode):
+    dashboard.cfg.set("raven", {"managed": True, "collection": {"gpu": mode}})
+    dashboard.app.gpu = True
+    dashboard.store.health["gpu"] = Health("gpu")
+    curves, text = inspect_curves(monkeypatch, dashboard)
+    assert not curves
+    assert "existing logs/gpu-util-JOBID.csv trace" in text
+    if mode == "off":
+        assert "GPU collection is disabled by configuration" in text
+    else:
+        assert "automatic device probes are disabled" in text
+    assert "Enable GPU sampling" not in text and "GPU sampling is off" not in text
+
+
 @pytest.mark.parametrize("state", ["missing_workdir", "missing_file", "empty", "error"])
 def test_empty_gpu_series_shows_published_trace_reason_without_loading_the_path(monkeypatch, dashboard, state):
     dashboard.app.sampler = SimpleNamespace(trace_status={"900": {

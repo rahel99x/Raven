@@ -768,6 +768,25 @@ def test_unchanged_collection_demand_does_not_wake_background_scheduler():
         sampler.shutdown()
 
 
+@pytest.mark.parametrize("mode", ["off", "existing-telemetry"])
+def test_managed_gpu_setting_controls_existing_trace_reads(mode):
+    from raven.sampler import Sampler
+    reads = []
+    files = SimpleNamespace(exists=lambda path: reads.append(path) or False)
+    raw, store = Recorder(), Store(persist=False)
+    store.jobs = [Job("7", "gpu-job", "local", "RUNNING", gpus=1, workdir="/work")]
+    sampler = Sampler(Slurm(raw, "test"), store, {}, [], files=files,
+                      collection={"gpu": mode})
+    try:
+        sampler.select_trace("7")
+        sampler.set_collection_demand("analytics", "7")
+        sampler.src_trace()
+        assert reads == ([] if mode == "off" else ["/work/logs/gpu-util-7.csv"])
+        assert not raw.commands
+    finally:
+        sampler.shutdown()
+
+
 def test_managed_initial_and_periodic_jitter_never_schedule_below_source_floor(monkeypatch):
     from raven.sampler import Sampler
     timer = Timer()
@@ -805,6 +824,61 @@ def test_explicit_snapshot_primes_only_first_visible_attempts(monkeypatch):
         sampler.want_detail = "7"
         sampler.prime_collection_snapshot()
         assert sampler._collection_not_before["details"] == 0.
+    finally:
+        sampler.shutdown()
+
+
+def test_new_visible_demand_primes_only_unsampled_sources(monkeypatch):
+    from raven.sampler import Sampler
+    timer = Timer()
+    monkeypatch.setattr("raven.sampler.time.time", timer)
+    monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
+    sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
+    try:
+        sampler.prime_collection_snapshot()
+        sampler.run_source("jobs")
+        queue_deadline = sampler._collection_not_before["jobs"]
+        assert not sampler.due("nodes", timer.value)
+        assert sampler._collection_not_before["partitions"] == 1060.
+
+        sampler.set_collection_demand("nodes")
+        assert sampler.due("nodes", timer.value)
+        assert sampler.due("partitions", timer.value)
+        assert sampler._collection_not_before["jobs"] == queue_deadline == 1072.
+        assert not sampler.due("share", timer.value)
+
+        sampler.kick.clear()
+        sampler.set_collection_demand("nodes")
+        assert not sampler.kick.is_set()
+    finally:
+        sampler.shutdown()
+
+
+@pytest.mark.parametrize("error", [CommandError("scheduler unavailable"), Deferred("command lane occupied")])
+def test_visible_demand_and_refresh_preserve_first_attempt_recovery(monkeypatch, error):
+    from raven.sampler import Sampler
+    timer = Timer()
+    monkeypatch.setattr("raven.sampler.time.time", timer)
+    monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
+    class FailingRecorder(Recorder):
+        def run(self, argv, timeout=8):
+            self.commands.append(tuple(argv))
+            raise error
+    raw = FailingRecorder()
+    sampler = Sampler(Slurm(raw, "test"), Store(persist=False), {"jobs": 60}, [], collection={})
+    try:
+        sampler.prime_collection_snapshot()
+        sampler.run_source("jobs")
+        deadline = sampler._collection_not_before["jobs"]
+        backoff = sampler.health("jobs").backoff
+        assert deadline > timer.value
+        for tab in ("nodes", "jobs", "jobs"):
+            sampler.set_collection_demand(tab, active=True)
+            sampler.refresh_all()
+            assert sampler._collection_not_before["jobs"] == deadline
+            assert sampler.health("jobs").backoff == backoff
+            assert not sampler.due("jobs", timer.value)
+        assert len(raw.commands) == 1
     finally:
         sampler.shutdown()
 

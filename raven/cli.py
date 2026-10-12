@@ -833,6 +833,12 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
                 else:
                     print(screen.once_text(app, views, store, actions, width, color, tab=args.tab))
                 return 0
+            # A visible first snapshot should not wait for background phase
+            # jitter. Producer admission still enforces shared source floors
+            # and endpoint budgets before any scheduler command runs.
+            if getattr(sampler, "collection", None) is not None:
+                sampler.set_collection_demand(app.tab, app.selected_id)
+                sampler.prime_collection_snapshot()
             sampler.start()
             try:
                 if args.watch or not sys.stdout.isatty():

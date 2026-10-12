@@ -21,6 +21,10 @@ def provider(app):
     return value if value in PROVIDERS else "auto"
 
 
+def _managed(app):
+    return bool(getattr(app, "cfg", {}).get("raven", {}).get("managed"))
+
+
 def _preference(app, value):
     cfg = getattr(app, "cfg", {})
     setter = getattr(cfg, "set", None)
@@ -89,7 +93,10 @@ def run_command(app, args):
         _preference(app, value)
         state["cursor"] = PROVIDERS.index(value)
         app.command_ok = True
-        app.say("GPU provider: " + LABELS[value] + "; applies to the next allocation sample.")
+        if _managed(app):
+            app.say("GPU provider preference: " + LABELS[value] + ". Managed Raven reads existing GPU telemetry; automatic device probes remain disabled.")
+        else:
+            app.say("GPU provider: " + LABELS[value] + "; applies to the next allocation sample.")
     return True
 
 
@@ -130,11 +137,16 @@ def overlay(views, snap, app, width, height):
     rows, hits = buttons(views.g, inner,
                         [(key, LABELS[key], ("command", "gpuprovider " + key)) for key in PROVIDERS],
                         selected=PROVIDERS[state["cursor"]], group="gpu-provider", prefix="gpu-provider:")
-    rows += [[(" Active source: " + LABELS[provider(app)], "accent+bold")],
-             [(" Auto detects supported tools inside each allocation.", "text")],
-             [(" Missing tools or unverified device ownership stay unavailable.", "dim")],
-             [(" Changes preserve history. GPU sampling must be enabled.", "dim")],
-             [(" Arrows choose; Enter applies; Esc returns.", "dim")]]
+    rows += [[(" Provider preference: " + LABELS[provider(app)], "accent+bold")]]
+    if _managed(app):
+        rows += [[(" Managed Raven reads existing job telemetry.", "text")],
+                 [(" GPU rate graphs use the job's logs/gpu-util-JOBID.csv trace.", "dim")],
+                 [(" Provider changes do not start automatic GPU probes.", "dim")]]
+    else:
+        rows += [[(" Auto detects supported tools inside each allocation.", "text")],
+                 [(" Missing tools or unverified device ownership stay unavailable.", "dim")],
+                 [(" Changes preserve history. GPU sampling must be enabled.", "dim")]]
+    rows += [[(" Arrows choose; Enter applies; Esc returns.", "dim")]]
     close, close_hits = buttons(views.g, inner, [("close", "Close", ("command", "gpuprovider close"))],
                                group="gpu-provider", prefix="gpu-provider:")
     hits += [(y + len(rows), kind, item) for y, kind, item in close_hits]

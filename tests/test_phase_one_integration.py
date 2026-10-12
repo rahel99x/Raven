@@ -138,6 +138,20 @@ def test_provider_preferences_survive_restore_without_running_commands(dashboard
     assert dashboard.slurm.gpu_provider == "amd"
 
 
+def test_managed_provider_modal_explains_existing_telemetry_without_collecting(dashboard):
+    app = dashboard.app
+    app.cfg.set("raven", {"managed": True, "collection": {"gpu": "existing-telemetry"}})
+    before = list(dashboard.slurm.b.calls)
+    app.run_command("gpuprovider intel")
+    app.run_command("gpuprovider")
+    rows = gpu_provider_ui.overlay(dashboard.views, dashboard.store.snapshot(), app, 140, 30)
+    text = L.to_text([row for _, _, row in rows], 140)
+    assert "existing job telemetry" in text
+    assert "do not start automatic GPU probes" in text
+    assert "GPU sampling must be enabled" not in text
+    assert dashboard.slurm.b.calls == before
+
+
 def test_first_use_array_menu_opens_loader(dashboard):
     item = next(item for item in toolbar.menu_items(dashboard.app, "Edit") if item.key == "array-map")
     assert item.command == "arraymap"

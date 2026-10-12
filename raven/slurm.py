@@ -238,10 +238,14 @@ class FakeBackend(Backend):
                     cpu = elapsed * s["cpus"] * frac
                     rss = nbytes(s["mem"]) * (0.1 + 0.3 * min(1.0, elapsed / 3600)) / 1024
                     node = s.get("node", "n").split("[")[0].rstrip("-") + ("-01" if "[" in s.get("node", "") else "")
+                    batch_cpu = int(cpu) if s["nodes"] == 1 else int(cpu) // 10
                     lines = [f"{jid}.extern|00:00:00|1200K|0|{node}|1200K|{s['nodes']}|00:00:00|0|{node}",
-                             f"{jid}.batch|{hms(cpu)}|{rss:.0f}K|0|{node}|{rss * 0.8:.0f}K|1|{hms(cpu)}|0|{node}"]
+                             f"{jid}.batch|{hms(batch_cpu)}|{rss:.0f}K|0|{node}|{rss * 0.8:.0f}K|1|{hms(batch_cpu)}|0|{node}"]
                     if s["nodes"] > 1:                      # a multi-node step with a slow rank
-                        lines.append(f"{jid}.0|{hms(cpu * 0.9)}|{rss * 0.7:.0f}K|3|{node[:-2]}02|{rss * 0.5:.0f}K|{s['nodes'] * 2}|{hms(cpu * 0.4)}|3|{node[:-2]}02")
+                        tasks = s["nodes"] * 2
+                        average = (int(cpu) - batch_cpu) / tasks
+                        average_text = hms(average) + f"{average % 1:.3f}"[1:]
+                        lines.append(f"{jid}.0|{average_text}|{rss * 0.7:.0f}K|3|{node[:-2]}02|{rss * 0.5:.0f}K|{tasks}|{hms(average * 0.4)}|3|{node[:-2]}02")
                     return "\n".join(lines) + "\n", 0.05
             raise CommandError("sstat: no steps running")
         if name == "srun":
@@ -630,16 +634,39 @@ def parse_starts(text: str) -> Dict[str, str]:
 
 
 def parse_sstat(text: str) -> Tuple[Optional[float], Optional[float]]:
-    """(cpu seconds of the batch step, peak rss bytes)."""
-    cpu, rss, seen = None, 0.0, False
+    """Observed CPU seconds across application steps, and peak RSS bytes.
+
+    AveCPU is per task: multiply it by NTasks before summing distinct steps.
+    The extern step tracks allocation housekeeping rather than application
+    CPU. Older three-column recordings represent one task per step. Missing
+    CPU or task counts keep the aggregate unmeasured; memory is independent.
+    """
+    steps, rss, seen = {}, 0.0, False
     for line in text.splitlines():
         f = line.split("|")
         if len(f) < 3:
             continue
         seen = True
-        if f[0].endswith(".batch") or (cpu is None and not f[0].endswith(".extern")):
-            cpu = secs(f[1])
         rss = max(rss, nbytes(f[2]))
+        step = f[0].strip()
+        if not step or step.endswith(".extern"):
+            continue
+        steps.setdefault(step, None)
+        cpu = secs(f[1].strip())
+        if cpu is None or not math.isfinite(cpu) or cpu < 0:
+            continue
+        try:
+            tasks = int(f[6].strip()) if len(f) >= 7 else 1
+            contribution = cpu * tasks
+        except (ValueError, OverflowError):
+            continue
+        if tasks > 0 and math.isfinite(contribution):
+            # Duplicate step rows must not count the same task CPU twice.
+            previous = steps[step]
+            steps[step] = max(previous if previous is not None else 0., contribution)
+    cpu = sum(steps.values()) if steps and all(value is not None for value in steps.values()) else None
+    if cpu is not None and not math.isfinite(cpu):
+        cpu = None
     return cpu, (rss if seen else None)
 
 

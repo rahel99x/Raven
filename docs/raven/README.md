@@ -225,8 +225,10 @@ quota. Light's two-worker ceiling applies across its background lanes combined.
 Sliders cannot bypass these floors. Configured slow values remain slow; `60 s`
 does not become `5 s`. Sampling, display windows, and plot animation are distinct.
 Manual refresh, reconnect, and Heavy mode do not reset allowances. Failures count
-as attempts. Jitter, idle intervals, demand gating, and endpoint circuits bound
-startup and recovery traffic.
+as attempts. The first visible snapshot is requested immediately, including when
+a previously unopened view needs its first sample. Shared admission still applies.
+Periodic collections use jitter, idle intervals, demand gating, and endpoint
+circuits to bound subsequent traffic.
 
 Step admission uses `collection.step_launch_interval_seconds` and
 `collection.step_launches_per_minute`. The default allows a retry after 10 seconds,

@@ -219,6 +219,20 @@ Enabling Live again clears that metric's completed rectangular zoom.
 
 ### Read the sampling limits
 
+Raven Light and Heavy request CPU and memory measurements for the selected job
+when its Inspector or resource charts are visible. The first observation is
+eligible immediately; subsequent reads follow the configured collection policy.
+The starter profile uses a 60-second live-statistics interval, with up to 20%
+jitter. Slurm's own accounting interval can be shorter without changing Raven's
+read interval. CPU rate needs two observations; cumulative CPU efficiency and
+memory can appear after the first. Memory observations remain usable when CPU
+accounting is unavailable.
+
+Completed-job curves use measurements retained during execution or a saved trace.
+An accounting summary supplies totals and peaks, but cannot reconstruct a missing
+timeline. GPU graphs in managed sessions use existing job telemetry; see
+[GPU collection and diagnostics](gpu-detection.md).
+
 The polling slider uses positions one to 100 internally.
 For position `N`, its requested interval is `5 × 10^(-(N - 1) / 99)` seconds.
 The global control uses the same range with positions one to 50.
