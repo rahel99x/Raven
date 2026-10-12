@@ -134,8 +134,28 @@ def test_ambiguous_or_ineligible_selection_never_offers_rerun(dashboard, case):
         assert result.changed
         app.table_state["groups"] = True
         job_groups.fold(app, result.group_id, True)
+        draw(dashboard, "history")
+        meta = job_groups.metadata_for_record(app, "history", "90")
+        assert meta.header and meta.collapsed
     job_group_menu.open_menu(app, source(dashboard, store.finished[0].id))
     assert "rerun" not in actions(app)
+
+
+def test_sequential_cancelled_member_rerun_ignores_hidden_shared_fold(dashboard, monkeypatch):
+    app, store = dashboard.app, dashboard.store
+    result = manual_job_groups.create(app, store.snapshot(), ["90", "91"])
+    assert result.changed
+    job_groups.fold(app, result.group_id, True)
+    app.run_command("joblist history sequential")
+    _, hits, _ = draw(dashboard, "history")
+    assert any(kind == "fin" and identifier == "90" for _, kind, identifier in hits)
+    assert job_groups.metadata_for_record(app, "history", "90") is None
+    assert job_groups.registry(app).is_collapsed(job_groups.registry(app).index.groups[result.group_id])
+    inspected = reviewed_inspection(monkeypatch)
+    assert job_group_menu.open_menu(app, source(dashboard, ids=app.last_history_ids))
+    assert "rerun" in actions(app)
+    select_action(app, "rerun")
+    assert [(feature, params) for feature, params, _ in inspected] == [("rerun-job", {"job_id": "90"})]
 
 
 def test_exposed_array_member_can_rerun_without_absorbing_unrelated_marks(dashboard, monkeypatch):

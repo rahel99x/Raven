@@ -230,7 +230,10 @@ def _geometry(width, height, dock, ratio):
         content = Rect(size + 1 if dock == "left" else 0, 0, main, height)
         divider = Rect(size if dock == "left" else main, 0, 1, height)
     else:
-        minimum = 3 if height >= 6 else 2
+        # A horizontal dock needs three primary rows for a pane header,
+        # section heading and selected record. Show the extra browser
+        # controls only when that minimum primary viewport still fits.
+        minimum = 3 if height >= 7 else 2
         size = max(minimum, min(max(minimum, height - 4), round((height - 1) * ratio / 100)))
         size = min(size, max(0, height - 2))
         main = max(0, height - size - 1)
@@ -424,7 +427,10 @@ def wrap_render(views, snap, app, width, height, content_renderer):
     else:
         state["index"] = min(state["index"], max(0, len(items) - 1))
     state["last_selected"] = selected
-    if not view["enabled"] or height <= 2 or width < 8:
+    # Below six rows, a browser header and record plus a divider would leave
+    # fewer than three rows for primary content. Use the existing compact
+    # strip until more space is available, retaining the user's dock choice.
+    if not view["enabled"] or height < 6 or width < 8:
         browser, content, divider, dock = Rect(0, 0, width, 1), Rect(0, 1, width, max(0, height - 1)), None, "off"
         bar = L.cut(" Job history + ", width, views.g.ascii)
         browser_rows = [[(bar, "cyan+bg:surface")]]
