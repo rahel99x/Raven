@@ -2,19 +2,24 @@
 
 [README](../../README.md) · [Desktop setup](../DESKTOP.md) · [Chart controls](charts.md)
 
-Tower must detect a job's GPU allocation before it collects automatic GPU measurements.
-A GPU visible on the desktop does not establish that Slurm assigned it to a job.
-This guide separates sampling settings, allocation detection, driver access, live measurements, trace files, and retained data.
-Tower 4.14 supports optional NVIDIA, AMD, and Intel providers. Use **GPU source**
-on Sources or `:gpuprovider` to choose one. See
+Use this guide when a GPU job has no measurements or reports incomplete device
+coverage. Raven verifies the job's allocation before collecting automatic GPU
+measurements. A GPU visible on the desktop does not establish job ownership.
+The checks distinguish sampling settings, allocation detection, driver access,
+live measurements, trace files, and retained data.
+
+Optional NVIDIA, AMD, and Intel providers were introduced in Tower 4.14.
+Use **GPU source** on Sources or `:gpuprovider` to choose one. See
 [provider requirements](phase-one.md#select-a-gpu-provider) for compute-node
 tools, allocation identity checks, and unsupported-counter behavior.
+
 Numeric Slurm GRES order can differ from vendor device order. Without stable
-device evidence, Tower accepts only a matching complete visible
+device evidence, Raven accepts only a matching complete visible
 single-vendor device set, with no partition or mixed-vendor ambiguity. Opaque
 numeric subsets on shared multi-GPU nodes remain unavailable; faster polling
 cannot resolve that identity limit.
-For NVIDIA, Tower can resolve numeric `CUDA_VISIBLE_DEVICES` values to stable
+
+For NVIDIA, Raven can resolve numeric `CUDA_VISIBLE_DEVICES` values to stable
 device UUIDs inside the allocation. This supports a Slurm NVIDIA GPU on a
 desktop that also has an AMD or Intel display device.
 
@@ -24,7 +29,7 @@ The supplied `desktop` profile enables GPU sampling from Tower 4.7.1.
 Earlier versions supplied that profile with sampling disabled.
 A custom configuration or a saved off preference can still disable it.
 
-1. Open Tower with the desktop profile.
+1. Open Raven with the desktop profile.
 2. Enter `:gpu on`.
 3. Open Sources. Check that the GPU source is enabled.
 4. If required, enter `:source gpu on`.
@@ -35,7 +40,7 @@ A custom configuration or a saved off preference can still disable it.
 Unknown counters stay unknown. They do not become zero utilization.
 The default GPU polling request is five seconds.
 Confirmed allocation counts stay available across ordinary queue refreshes.
-Tower refreshes that evidence once per GPU polling round.
+Raven refreshes that evidence once per GPU polling round.
 Changed job attempts or resource settings invalidate the cached count.
 Failed discovery cannot extend it indefinitely: its lifetime is twice the effective GPU interval, bounded from 10 to 120 seconds.
 The cache retains at most 10,000 current running jobs.
@@ -44,7 +49,7 @@ The adjacent polling slider requests more frequent GPU measurements for that exa
 Its value and endpoints show effective intervals in `s`, `ms`, or `µs`; ASCII mode uses `us`.
 GPU utilization and busy-mean curves share a probe, so the fastest request for either curve applies.
 The sampling request remains active while Live is off and can remain active when the graph moves offscreen.
-It resets when Tower restarts or the job attempt ends.
+It resets when Raven restarts or the job attempt ends.
 
 The global and per-metric polling controls span five seconds to 500 milliseconds.
 The fastest request sets the shared GPU probe interval; the requests do not multiply.
@@ -63,7 +68,7 @@ Source enable/disable controls apply to the running session and are not saved.
 
 ## Run the complete check
 
-From a terminal with the same Slurm configuration and permissions as Tower, run:
+From a terminal with the same Slurm configuration and permissions as Raven, run:
 
 ```bash
 tower --gpu-check --gpu-check-output ./tower-gpu-report
@@ -138,7 +143,7 @@ Read `summary.jobs_with_graph_data` and the job-specific checks; a successful ex
 | Check | Meaning and action |
 | --- | --- |
 | `sampling_settings`, `saved_sampling` | Shows configuration, `--no-gpu`, and the saved toggle. Use `:gpu on` when off. |
-| `command_paths` | Reports tool paths on the scheduler connection host. Check that Tower uses your normal Slurm environment. |
+| `command_paths` | Reports tool paths on the scheduler connection host. Check that Raven uses your normal Slurm environment. |
 | `host_gpu_inventory` | Runs the selected vendor helper on the connection host. This is hardware evidence, not job attribution. A GPU-free cluster login host is normal. |
 | `host_gpu_provider` | Reports a provider-specific host inventory limitation. Inspect the named optional tool or driver. |
 | `pci_gpu_inventory` | Lists display/controller devices when vendor inventory fails. `lspci` is optional. |
@@ -147,9 +152,9 @@ Read `summary.jobs_with_graph_data` and the job-specific checks; a successful ex
 | `allocation_batch` | Reads per-job allocation TRES. This detects `--gpus` allocations omitted by the per-node `%b` field. |
 | `queue_gpu_underreported` | Allocation details show more GPUs than the queue lookup. Compare the captured resource fields and batch-query result. |
 | `allocation_missing` | Slurm reports no GPU allocation. Check compute-node GRES and the job's GPU request. |
-| `allocation_mapping_unavailable` | GPU counters or hardware can be visible, but Tower cannot prove which devices belong to this allocation. Inspect the exact Slurm job ID, GPU IDs, runtime visibility, and device UUID evidence in the captured `srun` reply. Read any CUDA visibility resolution error. |
+| `allocation_mapping_unavailable` | GPU counters or hardware can be visible, but Raven cannot prove which devices belong to this allocation. Inspect the exact Slurm job ID, GPU IDs, runtime visibility, and device UUID evidence in the captured `srun` reply. Read any CUDA visibility resolution error. |
 | `not_running` | Pending or completed jobs cannot produce a new live sample. Check recorded traces or retained samples. |
-| `live_samples` | Counts observed devices with valid utilization. Tower can record new graph samples. |
+| `live_samples` | Counts observed devices with valid utilization. Raven can record new graph samples. |
 | `utilization_unsupported` | Devices exist but the utilization counter is unavailable. Inspect the selected vendor output and device/partition/driver capabilities. |
 | `driver_unavailable`, `command_missing`, `permission_denied` | Identifies the original command failure. Fix the named prerequisite. |
 | `allocation_probe_failed`, `probe_timeout`, `sampling_failed` | Shows why the allocation probe failed. Read the corresponding `srun` records. |
@@ -160,7 +165,7 @@ Read `summary.jobs_with_graph_data` and the job-specific checks; a successful ex
 | `nonindividual_queue_ids` | Skips compressed array groups and malformed IDs. Specify the exact array task. |
 | `job_limit`, `node_limit`, `diagnostic_budget` | Reports incomplete coverage caused by the stated limits. Run another exact-job check if required. |
 
-Live sampling uses Tower's ordinary `srun --jobid ... --overlap` allocation helper
+Live sampling uses Raven's ordinary `srun --jobid ... --overlap` allocation helper
 with the selected provider. It requires `python3` and the relevant vendor tool
 on the compute node. Missing or ambiguous allocation ownership does not fall
 back to node-wide SSH measurements.
@@ -205,19 +210,18 @@ NVIDIA GPU. Slurm can report the allocated GPU as numeric ID `0`, and its job
 step can set `CUDA_VISIBLE_DEVICES=0`. The numeric IDs alone do not identify a
 vendor or prove that vendor enumeration matches Slurm GRES order.
 
-Tower resolves this case inside the job's allocation. A bounded helper uses
+Raven resolves this case inside the job's allocation. A bounded helper uses
 the CUDA driver to read the UUIDs of the devices visible through
 `CUDA_VISIBLE_DEVICES`. It matches those UUIDs to the NVIDIA measurements.
 The helper does not create a CUDA context or run GPU kernels. It requires the
 NVIDIA driver library `libcuda.so.1`; it does not require the CUDA toolkit,
 PyTorch, or an AMD utility to collect NVIDIA measurements.
-Tower caches identity discovery for at most 30 seconds within the same job
+Raven caches identity discovery for at most 30 seconds within the same job
 allocation and node. A changed visibility mask or NVIDIA inventory invalidates
 that identity evidence. Utilization and memory counters remain fresh on each
 successful probe.
 
 If `allocation_mapping_unavailable` persists:
-
 1. Open the recorded `srun` reply in `commands.jsonl`.
 2. Confirm that its job ID identifies the selected allocation.
 3. Read the GPU IDs, runtime visibility, and CUDA visibility resolution error.
@@ -225,19 +229,19 @@ If `allocation_mapping_unavailable` persists:
 5. Run the exact-job check again after correcting the reported problem.
 
 Keep the visibility assigned by Slurm. Do not disable the other display
-adapter or expose unallocated devices to bypass an identity error. Tower
+adapter or expose unallocated devices to bypass an identity error. Raven
 continues to reject ambiguous ownership and physical MIG parent counters
 that cannot describe an allocated partition.
 
-After updating Tower, restart the dashboard. A successful GPU poll adds new
+After updating Raven, restart the dashboard. A successful GPU poll adds new
 graph samples without clearing retained history. Past failed measurements
-remain unavailable; Tower does not recreate them from current utilization.
+remain unavailable; Raven does not recreate them from current utilization.
 The optional `gpu-util-<job_id>.csv` file is not required when live sampling
 works. A missing optional trace does not prevent the live GPU graphs from appearing.
 
 ## Provide an optional GPU trace
 
-Tower looks for this exact path:
+Raven looks for this exact path:
 
 ```text
 <WorkDir>/logs/gpu-util-<job_id>.csv
@@ -287,6 +291,6 @@ Unread or truncated portions do not establish that data is absent from the compl
 These limits bound diagnostic command and file work; scheduler and filesystem delays can still affect total elapsed time.
 
 A successful probe measures the system at that time.
-After updating Tower, restart it and let the GPU source run.
-The check cannot inspect the source-enable switch of a different running Tower process.
+After updating Raven, restart it and let the GPU source run.
+The check cannot inspect the source-enable switch of a different running Raven process.
 Use Sources in that process to verify its current source state.

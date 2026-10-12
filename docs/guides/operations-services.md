@@ -2,12 +2,18 @@
 
 [README](../../README.md) · [Research](../RESEARCH.md) · [Project standard](../PROJECT_STANDARD.md)
 
-These operations run outside the terminal renderer. Open **File → Research
-and cluster operations**, select the operation, set its fields, and select
-**Inspect**. On a result with a plan, select **Review**, then **Confirm apply**.
-A start, stop, or transfer requires this explicit review. Inspection does not
-start a service or copy data. A plan expires after five minutes. Prepare a new
-plan if the connection or source changes.
+Use these operations to manage a persistent scheduler monitor, transfer declared
+files with checksum verification, and inspect native workflow evidence.
+Service control and file transfer require explicit review. Workflow observation
+is read-only.
+
+1. Open **File → Research and cluster operations** and select an operation.
+2. Set its fields and select **Inspect / prepare**.
+3. Read the result. If a plan is available, select **Review action**.
+4. Check the exact plan, then select **Confirm apply**.
+
+A plan expires after five minutes. Prepare a new plan if the connection or
+source changes. Inspection runs outside the terminal renderer.
 
 The commands `:ops supervisor`, `:ops staging`, and `:ops workflow-engine` open
 the corresponding forms. `:ops catalog` opens the catalog. For an inspection
@@ -23,9 +29,10 @@ the service state, owner, source errors, queue and accounting observations, and
 recent state transitions. A stopped service's saved observations are marked
 stale.
 
-Set Action to `start`, inspect the user, cluster, interval, and record limit,
-then select **Review → Confirm apply**. Tower launches a separate process. Closing the terminal does not stop
-it. No monitor starts during installation or a normal Tower launch. Action `stop`
+Set **Action** to `start` and inspect the user, cluster, interval, and record limit.
+Select **Review action**, check the plan, then select **Confirm apply**.
+Raven launches a separate process. Closing the terminal does not stop it.
+No monitor starts during installation or a normal Raven launch. Action `stop`
 requests a graceful stop of the exact reviewed instance. Refresh to confirm
 that the service has stopped. A command that is already in progress can take
 up to both eight-second source timeouts before a stop request is processed.
@@ -33,7 +40,7 @@ up to both eight-second source timeouts before a stop request is processed.
 The service reads `squeue` and `sacct`; it does not submit, requeue, cancel, or
 recover jobs. Hosting must follow your site's rules for long-running processes
 on login or service nodes. It requires Python, Slurm clients, and the installed
-Tower package on that host. Use a local Tower session on the target host. An
+Raven package on that host. Use a local Raven session on the target host. An
 SSH profile cannot start a substitute service on your workstation.
 
 Command-line access uses the same service:
@@ -49,7 +56,7 @@ Add `--cluster CLUSTER` to Start for an explicit Slurm cluster. The interval
 range is 1–300 seconds. The record limit is 1–10000 per source. Each source has
 an eight-second command limit and a two-MiB output limit. Accounting covers
 the last 24 hours. If a response exceeds the output limit, the source is
-unavailable; Tower does not parse a partial command response. Record-limit
+unavailable; Raven does not parse a partial command response. Record-limit
 truncation is reported. This is a monitor, not a complete accounting archive.
 
 The state directory has mode `0700`. It contains:
@@ -77,12 +84,13 @@ adapter before persistent monitoring can be used reliably.
 
 Select **Verified staging and return**, choose a manifest, and set **Transfer
 direction** to `input`, `output`, or `all`. Inspect the exact paths, byte count,
-and manifest revision. Select **Review → Confirm apply** to perform the declared transfers.
+and manifest revision. Select **Review action**, check the plan, then select
+**Confirm apply** to perform the declared transfers.
 
 Use [`tower.staging/v1`](../schemas/staging.schema.json). The
 [example](../examples/staging-manifest.json) has input and output entries. Set
 each file's absolute source and destination path, byte size, SHA-256 checksum,
-and direction. Create destination parent directories before review. Tower does
+and direction. Create destination parent directories before review. Raven does
 not walk directories or infer extra files.
 
 ```json
@@ -111,14 +119,14 @@ destinations, and chains that use another entry's destination as an input are
 refused. Hard-link publication must be supported by the destination filesystem.
 
 An existing destination with the expected bytes is verified and retained. An
-existing destination with different bytes is refused. Tower never overwrites
+existing destination with different bytes is refused. Raven never overwrites
 that file. On a checksum error, source change, disk error, or interruption, an
 unfinished temporary file is removed. Verified earlier transfers remain valid.
 The result names failed, cancelled, and unattempted entries.
 
-Receipts are written atomically under Tower's state directory in `staging/`.
+Receipts are written atomically under Raven's state directory in `staging/`.
 A receipt records the manifest revision and each outcome. To resume, inspect
-the same manifest and select Apply again. Tower verifies existing destinations
+the same manifest and select Apply again. Raven verifies existing destinations
 before skipping them; a receipt alone is not proof that the file still exists
 or contains the expected data. One writer can execute a revision at a time.
 
@@ -136,7 +144,7 @@ source path identifies the observation. Refresh rereads the source through the
 current connection's file adapter. SSH profiles read the remote file and never
 substitute a local file with the same name.
 
-Tower keeps native task, attempt, hash, scheduler ID, and state evidence when
+Raven keeps native task, attempt, hash, scheduler ID, and state evidence when
 the engine supplies it. It does not infer missing scheduler IDs, dependency
 edges, or execution state. The native engine owns scheduling, retry, resume,
 and cancellation. This view has no Apply action and never resubmits work.
@@ -155,7 +163,7 @@ unique `task_id` and `status` columns. Optional `native_id`, `name`, `process`,
 the same task/hash/attempt retain the last complete row. An unfinished final
 line is omitted until the writer completes it.
 
-Tower reads the original header and at most the last two MiB of trace records.
+Raven reads the original header and at most the last two MiB of trace records.
 It reports truncation and does not claim that this tail contains the entire
 workflow. A trace can contain at most 10000 retained task attempts. A file that
 changes during the read is retried on Refresh. Trace order is not a dependency
@@ -169,7 +177,7 @@ Export the native DAG:
 snakemake --d3dag > dag.json
 ```
 
-Select engine `snakemake` and source `dag.json`. Tower accepts the native
+Select engine `snakemake` and source `dag.json`. Raven accepts the native
 `nodes`/`links` format. This format has rule and graph identity but no runtime
 state or scheduler IDs. Those fields remain unknown.
 
@@ -181,7 +189,7 @@ Keep the engine's run identity in `workflow_id`. Do not mix different runs in
 one snapshot. This contract does not install or replace a Snakemake executor.
 
 Both Snakemake formats are bounded to two MiB, 10000 nodes, and 50000 edges.
-Tower rejects duplicate IDs, missing dependency targets, self-dependencies,
+Raven rejects duplicate IDs, missing dependency targets, self-dependencies,
 duplicate edges, and cycles. Graph validation is linear in the node and edge
 count and does not run on pointer movement or during rendering.
 

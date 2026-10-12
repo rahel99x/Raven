@@ -1,9 +1,13 @@
 # Cluster operations
 
+Use these operations to inspect cluster services, storage, reservations, and
+licenses, or to review a specific job change. Slurm clients, credentials, and
+permissions must match the selected cluster connection.
+
 Open the Operations workbench with `:ops`. Select a tool, set its fields, and
-select **Inspect / prepare**. Inspection reads the current evidence. It does not change a
-job, start a shell, or write an export. A tool that can make a change supplies a
-review. Select **Review action**, then **Confirm apply** after you check that review.
+select **Inspect / prepare** to read current evidence. For a tool that changes
+a job, starts a shell, or writes an export, select **Review action**. Check the
+exact plan, then select **Confirm apply**.
 
 Use `:ops KEY` to open one tool. You can also start an inspection with
 `:ops run KEY key=value`. Quote values that contain spaces. Leave **Job ID**
@@ -12,7 +16,7 @@ several jobs.
 
 Commands run on the selected cluster connection in a background worker. They
 have time and output limits. Reading or scrolling a result does not run the
-commands again. Select **Inspect** again to get new evidence.
+commands again. Select **Inspect / prepare** again to get new evidence.
 
 ## Storage space, inodes, and quotas — P01
 
@@ -62,9 +66,9 @@ enter its new value. Supported fields are `TimeLimit`, `Partition`, `QOS`,
 The review shows the owner, submit time, old value, and new value. Apply requires
 the same owner, submit time, restart attempt, pending state, and original field.
 A conflict stops the update. Slurm determines whether the user may change the
-field. Tower does not change CPU or memory allocation through this editor.
+field. Raven does not change CPU or memory allocation through this editor.
 
-After Slurm accepts the command, Tower reads the job again. It distinguishes a
+After Slurm accepts the command, Raven reads the job again. It distinguishes a
 confirmed value from an accepted request whose readback is unavailable or
 different. Time-limit readback accounts for Slurm's minutes and formatted-time
 representations. Relative begin times can require inspection of the resulting
@@ -72,7 +76,7 @@ absolute timestamp.
 
 Slurm does not provide a compare-and-swap operation for this update. A job can
 start between the final state check and the scheduler's update. The result shows
-the state observed during readback. Tower does not retry a failed or uncertain
+the state observed during readback. Raven does not retry a failed or uncertain
 mutation automatically.
 
 ## Change live array concurrency — P03
@@ -85,15 +89,15 @@ number of concurrent tasks. **Zero means unlimited.**
 :ops run array-throttle job_id=2000_7 limit=0
 ```
 
-Tower verifies the actual `ArrayJobId` and targets the array parent. It sends
+Raven verifies the actual `ArrayJobId` and targets the array parent. It sends
 `scontrol update JobId=... ArrayTaskThrottle=...`; it does not resubmit the array
 or edit only a local plan. A lower throttle limits new starts. It does not cancel
 tasks that already run.
 
 Apply rechecks the parent identity and previous throttle. A changing remaining
-task range does not invalidate the array identity. After the update, Tower reads
+task range does not invalidate the array identity. After the update, Raven reads
 the throttle again. If the active parent cannot be identified or the Slurm
-version does not expose enough evidence, Tower stops or reports the missing
+version does not expose enough evidence, Raven stops or reports the missing
 confirmation.
 
 ## Reservation timeline — P04
@@ -123,14 +127,14 @@ licenses, or enter part of a license name.
 :ops run licenses name=matlab
 ```
 
-Tower shows total, used, free, and reserved counts, plus remote-server evidence
+Raven shows total, used, free, and reserved counts, plus remote-server evidence
 when present. Unknown counters stay unknown. These are Slurm's counters; a
 separate vendor license server can have additional users or limits. The tool
 does not acquire or reserve licenses.
 
 ## Slurm service doctor — A05
 
-Open `:ops slurm-doctor` and select **Inspect**. The doctor checks:
+Open `:ops slurm-doctor` and select **Inspect / prepare**. The doctor checks:
 
 1. The Slurm client version.
 2. Primary and backup controller responses.
@@ -146,14 +150,14 @@ warnings.
 
 The doctor does not read secret configuration files, restart services, or
 change settings. On managed clusters, send the evidence to the administrator
-through your normal support process. Tower does not send it automatically.
+through your normal support process. Raven does not send it automatically.
 
 ## Rerun one cancelled job
 
 Use this action to restart one cancelled job with its retained Slurm submission.
 Slurm restarts the batch script from the beginning under the **same JobID** and
 a new execution attempt. Its retained script, arguments, exported environment,
-and job settings stay with that individual job. Tower does not run the batch
+and job settings stay with that individual job. Raven does not run the batch
 launcher again.
 
 1. Open Recents in Jobs, or open History.
@@ -180,15 +184,15 @@ scheduling and dependency checks determine when the new attempt starts.
 The job must belong to you, remain cancelled, have requeue enabled, and still
 have its submission retained by the controller. An array target must identify
 one exact task, such as `1234_7`. Whole-array targets, task ranges,
-heterogeneous allocations, and multiple jobs are not accepted. Tower checks
+heterogeneous allocations, and multiple jobs are not accepted. Raven checks
 the job identity and retained data again before apply. Changed or unavailable
 evidence stops the action and requires a new inspection.
 
 Slurm does not provide an atomic "requeue only this cancelled attempt" command.
-Tower checks again immediately before dispatch and prevents repeated use of a
+Raven checks again immediately before dispatch and prevents repeated use of a
 review. A separate client can still change the same job between that final
 check and Slurm's command processing. Avoid concurrent rerun actions on the
-same job from other clients. Tower records acceptance separately from readback
+same job from other clients. Raven records acceptance separately from readback
 confirmation and does not retry an uncertain result automatically.
 
 The current retained dependencies remain in effect. Slurm may already have
@@ -199,7 +203,7 @@ therefore apply to existing logs. External source files, executables, inputs,
 and runtime environments are not frozen by requeue and can have changed since
 the previous attempt.
 
-If the controller has purged the submission, Tower reports why an exact rerun
+If the controller has purged the submission, Raven reports why an exact rerun
 is unavailable. It does not substitute the current local script or infer lost
 environment values. An accounting record or an archived batch script alone
 does not restore all submission settings.
@@ -225,7 +229,7 @@ Open `:ops batch-script`. Enter a job ID. Leave **Save path** empty for a previe
 :ops run batch-script job_id=1234 output=/home/alice/exports/job-1234.sh
 ```
 
-For a controller-retained job, Tower reads `scontrol write batch_script JOB -`.
+For a controller-retained job, Raven reads `scontrol write batch_script JOB -`.
 For an accounting-only job, it verifies the exact accounting row and requests
 `sacct --batch-script`. The cluster must retain that data. Older Slurm versions
 and sites without batch-script accounting can report unavailable data.
@@ -239,7 +243,7 @@ new file with mode `0600`. Existing files and symlinks are never overwritten.
 A replaced directory, changed script, reused job ID, or ambiguous accounting
 record stops the export.
 
-Saving requires Tower to run on the target host. An SSH profile can preview the
+Saving requires Raven to run on the target host. An SSH profile can preview the
 retained script; it cannot silently substitute a local filesystem for the
 selected remote filesystem.
 
@@ -266,16 +270,16 @@ It rejects `batch`, `extern`, another job's step, and a completed step. `sattach
 joins the application's input/output; use it only when that application can
 accept interactive input.
 
-For an array task or heterogeneous component, Tower resolves the logical ID to
+For an array task or heterogeneous component, Raven resolves the logical ID to
 the scheduler's numeric allocation ID before it builds the terminal command.
 The review retains both identities. Step selection uses the numeric ID that
 Slurm reports. An unavailable existing-step inventory blocks attachment, but
 does not prevent review of a new shell step.
 
 Apply checks the job's owner, submit time, start time, and restart count. The
-terminal handoff checks them again before launch. Tower suspends its terminal
+terminal handoff checks them again before launch. Raven suspends its terminal
 view while the command owns the terminal and restores the view when the command
-ends. Exit the shell to return. A terminal handoff requires Tower to run on the
+ends. Exit the shell to return. A terminal handoff requires Raven to run on the
 target host; it is unavailable through a remote SSH profile or recorded session.
 
 ## Validation and limits
@@ -291,7 +295,7 @@ The published JSON examples also run through their native readers and the real
 headless command interface. For an optional structural audit, use a developer
 Python environment with `jsonschema >= 4` and run
 `python scripts/validate_operation_schemas.py`. This checks all schema documents
-and their published examples without contacting Slurm. Tower itself does not
+and their published examples without contacting Slurm. Raven itself does not
 require `jsonschema`.
 
 Live Slurm policies, Lustre/project-quota variants, accounting retention, and

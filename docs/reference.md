@@ -1,21 +1,33 @@
-# Slurm Tower: complete reference
+# Raven reference
 
 [Quick start](../README.md) · [Runbook](runbook.md) · [Controls](CONTROLS.md) ·
-[Tower 4.0 improvements](QUALITY_OF_LIFE.md) · [Terminal workbench](WORKBENCH.md)
+[Raven 4.0 improvements](QUALITY_OF_LIFE.md) · [Terminal workbench](WORKBENCH.md)
 
-This reference describes the terminal dashboard and its underlying metrics.
+This reference defines the terminal dashboard, measurement semantics, and
+compatibility configuration formats. Use the [Raven runbook](raven/README.md)
+for current installation, execution admission, and versioned configuration.
+The installed `ravenl`, `ravenh`, and `tower` commands apply Raven policy.
+Legacy control ranges describe requested values; collection floors and command
+budgets determine the effective rates.
+
+The native command and extension formats below retain compatibility contracts.
+Managed scientific analysis requires a supported admitted worker; capture and
+external drivers have additional target requirements or remain deferred. The
+[execution contracts](raven/execution-contracts.md) define current availability.
+Standalone library examples retain their behavior outside a managed runtime.
+
 Unicode block visuals are the normal terminal presentation, with portable ASCII
 and accessible themes available.
 ASCII reports present the complete snapshot as portable plain text.
-Run Tower directly on your CARC login node; the runbook provides a low-impact profile.
+Run Raven directly on your CARC login node; the runbook provides a low-impact profile.
 
-Tower 4.0 adds table inspection, complete-file log search, navigation tools,
+Release 4.0 introduced table inspection, complete-file log search, navigation tools,
 graph controls, completion review, and paged artifact previews.
 The [50-improvement index](QUALITY_OF_LIFE.md) links each feature to its operating guide.
 The [Controls guide](CONTROLS.md) lists launch modes, key bindings, and command families.
 Use those guides with the metric and architecture definitions in this reference.
 
-Tower 4.14 adds a [sampling inspector, optional GPU adapters, shell checks, and
+Release 4.14 introduced a [sampling inspector, optional GPU adapters, shell checks, and
 scientific array manifests](guides/phase-one.md). The [roadmap](ROADMAP.md)
 tracks proposals that remain unimplemented.
 
@@ -27,8 +39,8 @@ tower --ascii --no-color     # portable fallback for a limited terminal
 tower --watch --bell         # the animated non-interactive screen (Ctrl-C exits)
 tower --once --tab history   # one frame of text, e.g. to paste into a chat
 tower --json                 # the whole snapshot as JSON, for scripts
-tower --write-config         # ~/.config/tower/config.toml with the commented defaults
-tower --profile carc         # a [profiles.carc] section of the config: a cluster (host, account, ...)
+tower --write-config         # create ~/.config/raven/config.json; preserve an existing file
+tower --config legacy.json --profile carc  # select a legacy [profiles.carc] view
 tower --host login.example.edu   # from a laptop: every Slurm command over ssh, logs read remotely
 tower --record today.jsonl.gz    # keep every command and answer; --replay today.jsonl.gz --speed 10 plays it back
 tower --ui-trace ui-trace.json   # record interactive UI timings; quit normally to save the new private report
@@ -40,10 +52,10 @@ tower --report report.txt    # the whole dashboard as a plain ASCII text report
 
 ## Install and configure
 
-Start with the [quick start](../README.md#1-install-on-carc) or the
-[adaptive runbook](runbook.md). The commands below use `tower` after installing
-the Bash alias or Python package; `./scripts/tower` from the checkout accepts
-the same arguments.
+Follow the [installation guide](INSTALLATION.md) and
+[Raven runbook](raven/README.md). Installing the Python package provides the
+commands without a Bash alias. The examples use the `tower` compatibility entry
+point; `./scripts/tower` accepts the same arguments from a configured checkout.
 
 ## Terminal visuals and accessibility
 
@@ -54,7 +66,7 @@ with two horizontal and four vertical positions per character. Measured resource
 an explicit scale, and numeric readings. Composition strips carry a legend with
 the underlying counts or allocation values.
 `--unicode` explicitly selects the Unicode preference; `--ascii` selects portable
-characters. By default Tower checks the output encoding and terminal type and
+characters. By default Raven checks the output encoding and terminal type and
 falls back to ASCII when needed. `--unicode` overrides the default fallback for
 `TERM=dumb`, but cannot override an output encoding that lacks the glyphs.
 Existing configurations with `ascii = true`
@@ -93,7 +105,7 @@ ASCII and reader modes use static dots and `+` intersections.
 Set `animations = false` to disable easing and keep the Unicode selector static.
 Press and drag inside the plot, then release inside it, to select a time interval.
 The time selection must span two columns; labels and buttons are outside capture.
-Tower fits its vertical scale to the known curve in that interval.
+Raven fits its vertical scale to the known curve in that interval.
 Hold Shift before pressing to select explicit horizontal and vertical bounds instead.
 That rectangle must also span one row.
 Selected intervals use relative `s`, `ms`, or `us` labels with a start-time anchor.
@@ -177,7 +189,6 @@ Click content to restore its normal navigation.
 Use `:jobpanel focus` for native mode selection with arrows.
 Enter or Tab changes native focus between mode buttons, subview buttons, and content.
 Esc returns input to the job rows.
-Use `:jobpanel focus` for keyboard entry.
 Inspector, logs, and investigation evidence update from background snapshots during the session.
 The full Logs page retains complete-file operations.
 Research includes all twelve workspaces; Analytics includes all five subviews.
@@ -207,7 +218,7 @@ The graph follows visible geometry and updates after layout and page changes.
 Hover does not change the selected job or file.
 Use [Mouse and button navigation](guides/pointer-navigation.md) for focus, dragging, menus, and terminal support.
 
-Tower retains the published document for cosmetic pointer feedback and paints changed terminal rows.
+Raven retains the published document for cosmetic pointer feedback and paints changed terminal rows.
 Data, actions, resize, and animation deadlines still refresh the document.
 Pointer traffic does not postpone scheduled publication.
 Bounded Advisor, chart-data, and Details reflow caches update when their inputs change.
@@ -300,7 +311,7 @@ tradeoffs, controlled scaling and workflow critical paths.
 Use Left/Right for subviews and PgUp/PgDn to scroll. Jobs and History carry the
 selected job into Research. See [Research workflows](RESEARCH.md) for schemas,
 instrumentation, commands, examples and inspection limits.
-See [Wave two planning](WAVE_TWO.md) for evidence requirements, prediction and
+See [Planning and analysis](WAVE_TWO.md) for evidence requirements, prediction and
 calibration limits, reviewed choices, and complete scaling/workflow examples.
 
 ```bash
@@ -319,36 +330,37 @@ read an explicit bundle with `--file PATH`; the latter runs without contacting
 Slurm. `tradeoffs`, `scaling` and `workflow` use explicit local files.
 Standard project runs can declare these files under their own `reports/` directory.
 The exact `run.json` job ID connects the selected job to its report paths.
-Tower rechecks those inventories and declared sources in the background.
+Raven rechecks those inventories and declared sources in the background.
 Manual selection resolves duplicate attempts; incomplete discovery does not choose an arbitrary run.
 See the [Research source map](PROJECT_STANDARD.md#files-for-every-research-view) for all twelve workspaces.
 Planning preparation is separate from confirmed submission. Prediction ranges
 require matching evidence, queue forecasts require recorded calibration, and
 scaling spread describes measured repeats rather than future-run confidence.
 
-| tab | what it shows |
-|---|---|
-| **Jobs** | your running jobs (by start) then pending ones (by priority): partition, state, nodes, CPUs, GPUs, elapsed against the limit, time left or time waited, CPU rate, CPU efficiency so far, memory against the request, GPU utilisation, flags, and the reason / projected start / priority of pending jobs. Below the table: the selected job (bars and sparklines for time, CPU, memory and each GPU with its mean since the dashboard started, the node's load, a tail of its stdout; for a pending job its dependency with the names of the jobs it waits for), the recently finished jobs, the last events. |
-| **Cluster** | the partitions (availability, limit, nodes and CPUs allocated / idle / other, your running and pending jobs there, GPUs free per type with drained ones subtracted), GPUs cluster-wide with each node counted once, fair share, your account's overall load (everyone's jobs); **queue weather**: the pending jobs, CPUs and GPUs (per type) waiting ahead of a new job in each partition, idle nodes and free GPUs, and what `sbatch --test-only` projects for a few typical jobs (one per GPU type of each GPU partition and one per partition with your jobs, or the `weather_probes` of the config): "a job of 8 cpus, 32G, gpu:a100:1, 01:00:00 would start in 1h09m (07:32) on a01-06"; **allocation**: the account's core-hours and gpu-hours this month against the association's limits (`sreport`, `sacctmgr GrpTRESMins`), the burn rate of the last 7 days, the month-end projection and the days left at that rate, the top users (also `allocation cpu 38% gpu 41%` in the header). |
-| **History** | sacct over the last N days (default 2): state, elapsed, CPU and memory efficiency (what `seff` reports), peak memory, exit code, nodes; a summary line with the counts per state, core-hours and gpu-hours; sortable and filterable. |
-| **Analytics** | five views (`←`/`→`): **job series**, full-width charts of a job's CPU rate, memory against the request and up to four observed session devices and four trace indices with utilisation and observed busy mean over time, from samples the dashboard records to `state/series/<job>.jsonl` (so they survive restarts and outlive the job; `↑`/`↓` and Home/End move between jobs; in the compact native layout, wheel and Page Up/Down scroll the metric document beneath its sticky heading; Enter on a history row opens its series); **history**, jobs per day stacked by outcome with core-hours and gpu-hours, core-hours per partition, the queue-wait and CPU-efficiency distributions; **timeline**, a Gantt chart of every job in the window with its queue wait and run. `=`/`_` widen or narrow the window (1, 2, 7, 14, 30 days; sacct refreshes); **advisor**, what every job name in the window should have asked for (see below); **compare**, the marked jobs (or `:compare 123 456`) side by side: a table (elapsed, cores, CPU mean and max, peak memory and its share of the request, GPU mean, core-hours) and, per metric, one chart per job aligned on its first sample. |
-| **Nodes** | two views (`←`/`→`): **my nodes**, the nodes running your jobs: state, allocated CPUs, load, memory in use, GRES and GRES in use, GPU utilisation with a sparkline per GPU; **cluster map**, every node of every partition (or of the configured `partitions`) as a cell: a state glyph (idle, mixed, allocated, down or drained), cores allocated / total, GPUs in use / total, the nodes running your jobs marked, with per-partition totals. |
-| **Deps** | the dependency chains among your jobs (the `Dependency` field of squeue: `afterok`, `afterany`, `afternotok`, `after`, `aftercorr`, `singleton`), as trees from each root with every job's state; prerequisites that already finished are named from the history. The cursor selects a job; `c` cancels it **and everything that waits for it** (the confirmation lists the chain), `h` holds or releases the chain, `Space` marks, `Enter` opens its details. The selected panel on the Jobs tab says what a pending job still waits for and how many jobs wait for it. |
-| **Group** | everyone in your account: a bar per user (running jobs, CPUs, GPUs, nodes, pending) and the table of all their jobs (sortable by user, state, name, id, time, priority; filterable; `C` exports it; `i` opens a job's details). |
-| **Log** | logs stay attached to the exact job selected from active Jobs, Recents, or History, including failed and other terminal states. `O` opens a grouped file list combining actual scheduler stdout/stderr, bounded job-ID-matching files in both output directories, and explicit `tower.logs/v1` index entries from other locations. Select with arrows/PgUp/PgDn/Home/End and Enter; Esc returns to the list, then closes it. The displayed tail is bounded by `log_max_mb` and follows appended bytes. Arrows move a logical line cursor, page keys move across pages, Home goes to the first retained line, and End or `f` follows unless extending a selection. `v` starts a line selection; `y` copies its original text. `V` then `y`, `Y`, or `:copy all` copies the entire selected file through a worker, independent of the tail limit. `/` searches, `N`/`P` move through matches, `L` opens `less`, `w` wraps, `e` switches stdout/stderr, and `o` cycles files. `m` bookmarks a line; `'` jumps to the next bookmark. Bookmarks and wrapping persist in `ui.json`. Missing historical paths stay missing instead of falling back to a running job. |
-| **Sources** | every Slurm command the dashboard runs: cadence, last success, latency, calls, errors, backoff, the last error; `x` disables or enables one (say `sinfo` on a slow controller). |
+| Page | Content and controls | Evidence scope |
+| --- | --- | --- |
+| Jobs | Running and pending jobs, selected-job details, resource curves, logs, Recents, and events. Running jobs use start order; pending jobs use priority order unless a sort overrides it. | CPU rate and efficiency, memory against request, GPU observations, elapsed time, pending reason, and projected start retain their source identity. |
+| Cluster | Partition availability, time limits, allocated/idle/other CPU and node totals, GPU counts by type, fairshare, and account load. Optional weather and allocation-budget views show probes and usage estimates. | Node GPU totals avoid duplicate counts. Weather uses declared `sbatch --test-only` probes; budget uses `sreport` and association limits. Raven startup disables automatic probes and budget queries. |
+| History | Accounting records within the selected window, outcome counts, resource hours, exit codes, and resource efficiency. Sort and filter the records. | The legacy lookback default is two days. Available accounting fields and configured collection determine coverage. |
+| Analytics | Job series, History, Timeline, Advisor, and Compare. Left/Right changes the view. `=` / `_` selects a 1-, 2-, 7-, 14-, or 30-day window. | Job series retain observed CPU, memory, and GPU samples. Comparisons align samples by elapsed time. GPU charts show up to four session devices and four trace indices. |
+| Nodes | My Nodes lists allocations, load, memory, GRES, and available GPU observations. Cluster Map shows node state, allocated/total resources, and your allocated nodes. | The configured partition selection bounds the map. Missing node or device observations remain unavailable. |
+| Dependencies | Dependency trees, predecessor states, and selected-job details. `c` reviews cancellation of the selected job and its dependent chain; `h` reviews hold/release. | Supported dependency kinds include `afterok`, `afterany`, `afternotok`, `after`, `aftercorr`, and `singleton`. Finished predecessors use retained history. Inspect every target before confirmation. |
+| Group | Per-user running/pending job counts and allocated CPUs, GPUs, and nodes for the selected account, plus a sortable job table. `C` exports it; `i` opens details. | Records cover the account query's available snapshot. Display order does not establish scheduler order. |
+| Logs | Exact selected-job sources, grouped file catalog, bounded retained tail, complete-file search/copy, wrapping, bookmarks, and source-line selection. | The catalog combines scheduler paths, bounded job-ID matches, and explicit `tower.logs/v1` entries. Historical missing paths do not fall back to another job. Full-file operations remain separate from the display buffer. |
+| Sources | Source cadence, last success, latency, calls, failures, backoff, and the latest error. `x` enables or disables the selected source. | Effective intervals include Raven collection policy. A failed source does not establish that its data is absent or zero. |
+| Research | Application metrics, arrays, evidence, artifacts, passports, submission preparation, and six planning views. | Exact run/job attachment and each reader's limits determine which observations can support analysis. |
 
 ## Observed job completion
 
 When a job disappears from a successful live-queue observation, its last real
 record remains selectable in Jobs' Recents as **awaiting accounting**. Queue
 absence alone does not establish `COMPLETED`, failure, cancellation, or another
-terminal state. Tower requests a bounded, expedited accounting refresh while
+terminal state. Raven requests a bounded, expedited accounting refresh while
 respecting source timeouts and backoff. A matching terminal accounting record
 confirms the attempt and adds it to History; cached details and log paths remain
 associated with that exact job. Delayed accounting remains visible as pending
 evidence instead of a fabricated terminal record.
-If the same job ID is requeued, Tower clears the old attempt's cached details
+If the same job ID is requeued, Raven clears the old attempt's cached details
 and requests fresh metadata subject to source backoff; old log paths do not
 silently become evidence for the new attempt.
 
@@ -370,20 +382,20 @@ from available metadata and the current script. They are approximate cloning
 tools. See [Rerun one cancelled job](guides/operations-cluster.md#rerun-one-cancelled-job)
 for the exact rerun requirements and limits.
 
-| keys | action |
-|---|---|
+| Key | Action |
+| --- | --- |
 | `↑` `↓` `j` `k` `PgUp` `PgDn` `Home` `End` `g` `G` | move; `g` instead groups two or more marked jobs in a focused job list. In Logs, move the logical line cursor before selection and extend it after `v` |
-| `Tab` `S-Tab` `]` `[` `1`..`9` | switch tabs (7 Analytics, 8 Group, 9 Deps) |
+| `Tab`, `Shift-Tab`, `]`, `[`, `0`–`9` | Change pages; `7` opens Analytics, `8` Group, `9` Dependencies, and `0` Research. |
 | `Space` `a` `U` | mark the selected job, all visible jobs, none: actions apply to the marked jobs, else the selected one |
 | `g` `u` | in a focused job list, `g` creates a closed manual group from two or more marked jobs. `u` dissolves the selected closed group or detaches selected expanded members; it clears marks when no grouped target applies |
-| `p` | pin or unpin the marked or selected jobs: pinned jobs stay at the top of the Jobs table with a `⚲` mark; `:tag [ids] <tags>`, `:untag`, `:note [id] <text>` attach tags (a TAGS column, also on the History tab) and a note (shown in INFO and under the job); `/#tag` filters by tag; `j.tags` in expressions. All of it persists in `state/tags.json` across restarts. |
-| `A` | clone and resubmit the selected job (also `:resubmit [id] ...`, `tower run resubmit 123 --mem 12G --yes`): the palette opens with `resubmit <id> `, where `--mem 12G`, `--time 03:00:00`, `-c 4`, `--gres gpu:a100:2`, `-p gpu`, `--dependency=`, `--script PATH` override the original flags and `--advised` applies the advisor's suggestions. The clone is the job's own submit line (sacct's `SubmitLine`, Slurm 23.02+, so `#SBATCH` lines in the script still apply and the overrides win over them) or, without one, an `sbatch` command rebuilt from `scontrol show job` and the record (name, partition, account, QOS, nodes, CPUs, memory, limit, GRES, an output pattern with `%x-%j` in place of the old name and id, the script). The confirmation box shows the exact command, the working directory it runs in, the resources, what `sbatch --test-only` projects for it and any caveat (an array task without `--array`, a kept dependency); `y` submits. The new job is tagged `from-<old id>` and the audit event carries the command. |
-| `Enter` `d` `i` | the job's `scontrol show job` record with its **steps** (sstat per step: tasks, CPU time, peak memory and the task and node holding it, the slowest rank and how far behind the mean it is); `i` on the History or Group tab opens the same for that job (sacct -j for a finished one: steps, states, exit codes, peak memory). The selected panel shows the steps of a multi-task job, and the job's own GPU trace when `logs/gpu-util-<id>.csv` exists in its WorkDir (one nvidia-smi line per GPU per minute, see "The GPU trace" below): mean and current utilisation per GPU and the share of idle samples; the Analytics job view charts it. |
+| `p` | Pin or unpin selected or marked jobs. Pins, tags, and notes persist in scoped state; see the annotation details below. |
+| `A` | Open clone-and-resubmit preparation for the selected job. Resource overrides and the resulting scheduler command require review; see below. |
+| `Enter` `d` `i` | Open selected-job details and available step records. `i` also opens historical or account-job details. |
 | `c` | cancel (a confirmation box lists the jobs; `y` confirms) |
 | `h` | hold a pending job, release a held one (confirmation) |
 | `R` | requeue a running job (confirmation) |
 | `t` | `scontrol top`: put a pending job first among your own (confirmation) |
-| `l` `L` `f` `+` `-` | the Log tab for the exact selected Jobs/Recents/History job; the current log in `less`; follow on/off; more / fewer log lines under the selected job |
+| `l` `L` `f` `+` `-` | the Logs page for the exact selected Jobs/Recents/History job; the current log in `less`; follow on/off; more / fewer log lines under the selected job |
 | `O` `Enter` `Esc` | Logs: open the grouped file list; open its selected file; return from the file to its list, then close the list |
 | `s` `S` | resume a single-column sort: cycle the tab's legacy sort keys (jobs: state, name, id, time, priority; history: end, name, state, elapsed, cpu eff, mem eff); reverse |
 | `/` `Esc` | filter by name, id, partition or info; clear the filter (or the marks) |
@@ -401,8 +413,49 @@ for the exact rerun requirements and limits.
 | `T` | cycle the theme: default, mono, high contrast, cb (colour-blind safe: blue / orange / magenta for green / red / yellow), reader (plain text), dark, light, terminal, darcula, modnokai, gruvbox-dark |
 | `?` `q` | help; quit (Esc closes an overlay, cancels a selection, clears the filter or the marks) |
 
-The mouse works too: a click selects a row or switches tabs, a double-click opens the details (Jobs) or the series
-(History), or opens the selected file in the Logs browser. The wheel scrolls,
+### Job annotations
+
+Pinned jobs appear first in Jobs with a `⚲` marker. Use `:tag [ids] <tags>`,
+`:untag`, and `:note [id] <text>` to attach tags and notes. Tags appear in TAGS;
+notes appear in INFO and selected-job details. `/#tag` filters by tag, and
+`j.tags` exposes tags in expressions. These annotations persist in the scoped
+state's `tags.json`.
+
+### Clone-and-resubmit preparation
+
+`A` opens `resubmit <id>` in the palette. `:resubmit [id] ...` and
+`tower run resubmit 123 --mem 12G --yes` use the same preparation. Override
+resources with `--mem 12G`, `--time 03:00:00`, `-c 4`, `--gres gpu:a100:2`, or
+`-p gpu`. `--dependency=` clears an inherited dependency; `--script PATH`
+selects a script, and `--advised` applies the advisor's suggested flags.
+
+Where available, preparation uses the job's accounting `SubmitLine` (Slurm
+23.02 or later). Script `#SBATCH` directives still apply, with command-line
+flags taking precedence. Otherwise, it reconstructs an `sbatch` command from
+available controller and job records: name, partition, account, QOS, nodes,
+CPUs, memory, walltime, GRES, script, and an output pattern using `%x-%j`.
+Reconstruction is approximate; inspect missing fields and retained dependencies.
+
+The review shows the exact command, working directory, effective resources,
+scheduler test-only projection when available, and limitations such as an array
+task without `--array`. Confirm with `y` only after reviewing it. The new job
+receives a `from-<old id>` tag, and the audit event records the command.
+
+### Job and step details
+
+Controller details show available step task counts, CPU time, peak memory,
+its task/node identity, and the slowest rank relative to the observed mean.
+Historical details use `sacct -j` for step states, exit codes, and peak memory.
+The selected-job panel also shows the job's own GPU trace when
+`logs/gpu-util-<id>.csv` exists in its WorkDir. GPU means, current utilization,
+and idle-sample fractions describe observed samples. Analytics plots the trace.
+See [GPU traces](#the-gpu-trace) for the producer format and measurement limits.
+
+### Mouse controls
+
+Click a row to select it or click a page label to change pages. Double-click
+opens job details in Jobs, resource series in History, or the selected file in
+the Logs browser. The wheel scrolls,
 and Shift-click extends a line selection from the last click.
 Right-click inside a metric plot restores its full view and keeps selected and marked jobs.
 Right-click a selected or marked job row for **Create Group**, **Ungroup**, and applicable **Add to GROUP NAME** choices.
@@ -425,9 +478,10 @@ Alt-dragging a selected or marked row starts an explicit group membership move.
 Esc during capture restores the earlier marks.
 Release completes the marked range; supported bulk actions use their existing confirmation.
 Drag the top-right slider to change the fetching interval.
-Its labels show the effective Jobs interval, from five seconds down to 500 milliseconds.
+Its labels show the effective Jobs interval. Slider positions request intervals
+from five seconds down to 500 milliseconds; Raven applies its governed floors.
 Use `:rate N` to select a logarithmic position from one to 50.
-Right-click the update control to restore five seconds.
+Right-click the update control to restore the five-second request.
 
 Click any visible **column heading**, including **JOBID**, to cycle ascending,
 descending, then off. Cascades follow the order in which you activate columns:
@@ -450,7 +504,7 @@ IDs use natural order (`2` before `10`, `123_2` before `123_10`). Measurements u
 their original numeric values rather than rounded labels; unknown values stay
 last in either direction. Jobs pins remain first, and optional array grouping
 arranges the sorted rows into their observed task groups.
-If sorting would hide the selected task behind a different folded group representative, Tower expands that array to keep the same job selected.
+If sorting would hide the selected task behind a different folded group representative, Raven expands that array to keep the same job selected.
 
 Automatic launch grouping is enabled by default; new groups start open.
 It recognizes arrays, heterogeneous components, scoped explicit launch tags or scheduler comments/details, bounded dependency-connected launches, and ordinary submission bursts.
@@ -489,7 +543,7 @@ Arrow keys, Tab, Shift-Tab, page keys, Home, and End navigate the menu; Enter or
 Manual membership uses natural job-ID order; displayed rows retain each list's active sort, including its default sort.
 Adding to an automatic group retains its label and converts its known members to manual membership.
 An existing manual destination retains its identity and saved absent members.
-Tower revalidates the exact source attempts and destination membership before changing local preferences.
+Raven revalidates the exact source attempts and destination membership before changing local preferences.
 See [Manual groups](guides/batch-launches.md#create-a-manual-group) for selection, persistence, and identity rules.
 A closed group keeps a real representative record and exact action ID.
 Hidden members are not automatically marked or added to cancellation.
@@ -583,8 +637,9 @@ Open an entry with Enter before copying from the file browser. The worker reads
 the exact selected file from its selected local or SSH backend in 1 MiB chunks,
 with bounded memory, independently of tail-buffer limits, filtering, cursor
 position, wrapping, or line count. It saves exact source bytes to a unique
-private file with mode `0600` at `state/exports/log-full-<uuid>.log`; the default
-state base is `~/.local/state/tower`, honoring `XDG_STATE_HOME`. With `--no-state`,
+private file with mode `0600` at `state/exports/log-full-<uuid>.log` under the
+active scoped state directory. Raven's default state base is
+`~/.local/state/raven`, honoring `XDG_STATE_HOME`. With `--no-state`,
 the file goes under the launch directory's `tower-exports/` instead.
 
 A growing log is copied through its initial byte count; later appends are
@@ -593,7 +648,7 @@ this is not an atomic application checkpoint. Detected replacement, rotation,
 truncation, in-place mutation, or a short read fails without publishing a
 partial export or requesting clipboard delivery; retry the current file.
 
-Tower attempts an OSC 52 request when the **complete** UTF-8 text fits its
+Raven attempts an OSC 52 request when the **complete** UTF-8 text fits its
 100,000-byte base64 limit, and a local clipboard tool when available. It never
 sends only a prefix. Terminal clipboard permission and acceptance cannot be
 confirmed; the status says when a request was sent. Oversize or non-UTF-8 files
@@ -620,7 +675,7 @@ and renders on the existing background worker. Navigation continues while
 project files are read for the report. The complete ASCII file is published
 atomically with mode `0600`; Ctrl-A / `:activity` retains the result path, and
 `c` there or `:task cancel` stops between pages and bounded chunks without
-publishing an incomplete report. The Log page contains a selected 40-line
+publishing an incomplete report. The Logs page contains a selected 40-line
 window; use `Y` in Logs to copy the whole original file. Scripted `--report`
 continues to wait for its result.
 
@@ -693,6 +748,10 @@ the same inside the dashboard; the alert rules use the same language.
 
 ## Plugins
 
+This section documents the native trusted-plugin interface. Raven's governed
+startup disables configured automatic plugin loading. Treat plugin code as
+trusted application code; the interface is not a security sandbox.
+
 Python files in `~/.config/tower/plugins/` (or listed under `plugins` in the config; `--no-plugins` skips them)
 define `setup(api)` and register palette commands, flags in the FLAGS column, extra tabs, event hooks and
 sampled sources, each with the same health and backoff as the built-in sources:
@@ -706,22 +765,44 @@ def setup(api):
     api.source("ticker", 60.0, lambda slurm, store: store.event("tick", "tick"))
 ```
 
-A plugin that fails to load or whose tab raises is reported (an event, a line on the tab) and never stops the
-dashboard.
+The loader reports ordinary plugin load failures and tab exceptions as events
+or tab errors. A trusted plugin can still execute arbitrary code with the
+process's permissions.
 
 ## The advisor
 
-The **advisor** view of the Analytics tab (and `:advise [id | name]`, `tower run advise rb3-identity`) turns what
-jobs used into what they should ask for: peak memory × 1.25 rounded to a round `--mem` (doubled after an
-out-of-memory), `--cpus-per-task` from the CPU efficiency when it is under 50% (cores = CPU time / (elapsed × 0.7)),
-`--time` from the longest run × 1.3 rounded up to 15 minutes (doubled after a timeout) when the limit is more than
-40% slack or too short.  Per job name over the window: the runs, peak against request, efficiency, longest run
-against limit, the suggested flags, the core-hours spent on idle cores (1 - efficiency × core-hours), and what
-failed.  For a running job the same so far, with the finished runs of the same name widening the memory and time
-figures: the selected panel shows one `advice` line once the job is older than `warn_after_minutes` or has
-history, and "already N past the longest completed run" when it is running long.
+The **Advisor** view of Analytics, `:advise [id | name]`, and
+`tower run advise rb3-identity` produce resource-request heuristics from observed
+usage. The native rules use the following constants:
+
+| Suggested resource | Rule | Condition and limits |
+| --- | --- | --- |
+| Memory | Observed peak × 1.25, rounded to a Slurm `--mem` value | Minimum 1 GiB; half-GiB steps below 4 GiB and whole-GiB steps above it. OOM evidence increases the target to at least twice the known request, or twice the peak if the request is unknown. |
+| CPUs | `ceil(cpu_efficiency × allocated_cpus / 0.7)`, minimum one CPU | Finished-job efficiency below 50%, or running efficiency below 30%. A running result is explicitly partial. |
+| Walltime | Longest observed runtime × 1.3, rounded up to 15 minutes | Suggested when this target exceeds the limit, is below 60% of the limit, or the limit is unknown. Timeout evidence increases the target to at least twice the known limit. |
+
+The history view groups records by job name and reports run counts, observed
+peak/request ratios, efficiency, longest runtime, suggested flags, failure
+states, and estimated idle core-hours. Idle core-hours use
+`(1 - cpu_efficiency) × core_hours` for records with known efficiency.
+
+Running-job advice uses observed samples and available same-name history.
+Historical completed runs support runtime comparisons; the panel can report
+how far the current job exceeds the longest observed completed run. The advice
+line appears after `warn_after_minutes` or when matching history is available.
+
+These rules are heuristics, not calibrated predictions. Matching names do not
+establish comparable scientific work. Task-level MaxRSS does not establish
+allocation-wide memory demand. Review measurement scope, task topology, code,
+and inputs before applying suggested resource flags. Use the
+[planning guide](WAVE_TWO.md#resource-predictions) for stricter workload cohorts
+and prediction intervals.
 
 ## Alert rules
+
+The example below shows the native alert declaration format. Raven startup
+clears configured automatic alerts and notification hooks; `--alert EXPR` can
+add an explicit session rule. Custom command hooks execute trusted local code.
 
 ```toml
 [[alerts]]
@@ -746,7 +827,7 @@ and cpu is not None and cpu < 0.1'`.
 
 ## Figures and flags
 
-CPU% is the rate between two accounting observations. Slurm's configured collection interval can differ from Tower's read interval, so the value can move in steps. Use `:telemetry` to inspect the available configuration; unknown configuration stays unknown. EFF is the CPU time
+CPU% is the rate between two accounting observations. Slurm's configured collection interval can differ from Raven's read interval, so the value can move in steps. Use `:telemetry` to inspect the available configuration; unknown configuration stays unknown. EFF is the CPU time
 over elapsed × cores so far; MEM% the peak resident set against the request; GPU% the mean utilisation of the job's
 GPUs at the last sample.  FLAGS: `!cpu` `!mem` `!gpu` when a job older than `thresholds.warn_after_minutes` is below
 the configured fractions, `ending` under ten minutes before the limit, `held`, `dep`.  Finished jobs: CPU EFF and
@@ -754,52 +835,62 @@ MEM EFF are what `seff` reports, computed from sacct.
 
 ## Sources and cadences
 
-| source | command | every |
-|---|---|---|
-| jobs | `squeue -u $USER` | 5 s |
-| starts | `squeue --start` (pending jobs) | 10 s, and after every queue change |
-| live | `sstat` (CPU time, peak memory of the batch step) | 5 s |
-| gpu | Selected NVIDIA, AMD, or Intel vendor command inside the allocation; see [provider limits](guides/phase-one.md#select-a-gpu-provider) | 5 s |
-| nodes | `scontrol show node` | 15 s |
-| partitions | `sinfo` (partitions, GPU inventory per node) | 60 s |
-| finished | `sacct -S now-Nhours` | 60 s |
-| share | `sshare -U` | 120 s |
-| account | `squeue -A account` (everyone's jobs in the account: the Group tab and the header's load) | 30 s |
-| details | `scontrol show job` of the selected job | 20 s |
-| weather | `squeue -t PD` cluster-wide (pending work per partition) and `sbatch --test-only` per probe | 120 s |
-| budget | `sreport cluster AccountUtilizationByUser` since the first of the month and over the last 7 days, `sacctmgr show assoc` for the limits | 600 s |
-| trace | the GPU trace CSV of each running GPU job and of the job the analytics view shows, through the file reader (local or ssh) | 5 s |
-| fin_details | `sacct -j` of the finished job whose details are open | on demand |
+The following table gives the starter Raven Slurm profile's collection intervals.
+A configured slower interval or restrictive site policy takes precedence.
+Optional sources require their stated capability and explicit activation.
 
-Every source runs in a small thread pool on its own cadence, never overlapping itself, with a timeout per command;
-a failing source backs off (doubling up to five minutes) without touching the others, and its error shows in the
-header and on the Sources tab.  Nothing in the screen thread ever waits on Slurm.  A job that leaves the queue shows
-within one `jobs` round.
+| Source | Command or input | Starter interval / condition |
+| --- | --- | --- |
+| `jobs` | `squeue -u $USER` | 60 s |
+| `starts` | `squeue --start` for pending jobs | 120 s |
+| `live` | `sstat` CPU time and batch-step memory | 60 s; selected on demand |
+| `gpu` | Selected NVIDIA, AMD, or Intel command inside an allocation | Automatic GPU steps disabled; see [provider limits](guides/phase-one.md#select-a-gpu-provider) |
+| `nodes` | `scontrol show node` | 300 s |
+| `partitions` | `sinfo` partition and GPU inventory | 300 s |
+| `finished` | `sacct` over the configured history window | 300 s |
+| `share` | `sshare -U` | 900 s |
+| `account` | `squeue -A ACCOUNT` | 900 s |
+| `details` | `scontrol show job` for the selected job | 60 s; selected on demand |
+| `weather` | Cluster-wide pending queue and declared `sbatch --test-only` probes | Automatic probes disabled |
+| `budget` | `sreport` usage and `sacctmgr` association limits | Automatic queries disabled |
+| `trace` | Job-produced GPU trace CSV through the selected file backend | 60 s governed read interval; production cadence remains independent |
+| `fin_details` | `sacct -j` for selected-job details | 60 s; selected on demand |
 
-The intervals above are effective defaults without a faster metric request.
-Profiles can set different bases for sources other than jobs, live, GPU, and trace.
-Those four native sources follow the global polling request directly, from five seconds to 500 milliseconds.
-The top-right update slider shows the effective Jobs interval.
-The command `:rate N` selects a position from one to 50, using a logarithmic interval scale.
-Position one requests five seconds; position 50 requests 500 milliseconds.
-Other sources use their configured base divided by the global speed ratio, from one to ten.
-Ordinary sources, GPU probes, and local file readers retain a 0.5-second minimum.
-Weather and budget retain 30-second minimums. Remote file readers retain a 1.5-second minimum.
-Use `:rate reset` or right-click the update control to restore five seconds.
-Per-metric sampling commands select positions one to 100 across the same five-second to 500-millisecond range.
-Each metric control shows its own requested interval as **Set** and the shared effective interval as **Poll**.
-Compact rows place the effective value before the polling track and `S` plus the requested value after it.
-Moving the slider changes the requested label even when a faster global or companion-metric request keeps the effective interval unchanged.
-CPU and memory share a job probe. GPU curves share a GPU probe.
-Each uses the fastest global or per-metric request for the exact job, without multiplying those requests.
-Jobs without a faster metric request retain their global cadence.
-Reported application metrics and CSV traces retain their job-produced measurement cadence; faster polling only reads their files more often.
-Failure backoff, source timeouts, and worker limits remain in effect.
-The Sources table's **EVERY** column shows the effective collector cadence, using adaptive units such as `5s` and `500ms`.
-It reflects active global and shared metric requests rather than the legacy configured native bases.
-See [Update rate](guides/live-workbench.md#set-the-update-rate) for controls and persistence.
+Sources use bounded background workers, per-command timeouts, and independent
+failure backoff. A source does not overlap its own collection. Its failure
+appears in Sources and the header without stopping unrelated readers. Terminal
+rendering consumes published snapshots rather than waiting for Slurm.
+
+The global slider and `:rate N` use positions 1–50. Position 1 requests five
+seconds; position 50 requests 500 milliseconds, with logarithmic intermediate
+steps. Per-metric sampling uses positions 1–100 across the same request range.
+These positions do not bypass Raven collection floors, demand gating, retry
+backoff, or command budgets. Manual refresh and a Heavy worker also retain those
+limits. See [collection and retention](raven/README.md#collection-and-retention).
+
+**Set** shows a metric's requested interval. **Poll** shows the effective shared
+interval, and Sources' **EVERY** column shows the effective collector cadence.
+A faster global or companion-metric request can leave a metric's effective
+interval unchanged. CPU and memory share a job probe; GPU curves share a GPU
+probe. Requests for the same exact job and source coalesce rather than multiply.
+
+Native readers retain their own lower limits before policy is applied: 0.5 s
+for ordinary local reads and 1.5 s for remote file reads. Raven log follow has a
+five-second floor. Job-produced metrics and CSV traces keep their own writing
+cadence; more frequent reads do not create measurements. Use Sources and the
+sampling inspector to distinguish read interval, source age, and upstream
+measurement cadence. See [Update rate](guides/live-workbench.md#set-the-update-rate)
+for the controls and saved preferences.
 
 ## Configuration
+
+New installations use `raven.config/v1` under `~/.config/raven/`, honoring
+`XDG_CONFIG_HOME`. `--config` selects an explicit JSON or TOML file, and
+`RAVEN_CONFIG` selects an environment override. TOML requires Python 3.11 or
+later. `ravenl --write-config [NEW_JSON]` creates JSON defaults while preserving
+existing files. Use `ravenl config explain` to inspect resolution and
+[the Raven runbook](raven/README.md#inspect-effective-configuration) for profiles,
+resource limits, precedence, and collection policy.
 
 `worker_mode` accepts `single` or `multi` (default). The toolbar and
 `:workers single|multi|toggle|status` control background concurrency at runtime.
@@ -808,8 +899,12 @@ the separate UI thread. A reduction drains running task groups and their
 callbacks before queued work starts under the new limit. See
 [Background workers](guides/background-workers.md) for the operating procedure.
 
-`~/.config/tower/config.toml` (or `.json`; `--config PATH`; `$TOWER_CONFIG`).  `tower --write-config` writes the
-commented defaults without replacing an existing config (JSON on Python 3.10, TOML on 3.11+).  Sections: top level (`user`, `account`, `ascii`, `color`, `history_days`, `log_lines`,
+### Legacy dashboard configuration
+
+Legacy inputs remain at `~/.config/tower/config.toml` or `config.json`, with
+`--config PATH` and `TOWER_CONFIG` supported for compatibility. Raven reads
+these inputs without rewriting them. Use the migration procedure to create a
+versioned Raven configuration. The native legacy format contains these sections: top level (`user`, `account`, `ascii`, `color`, `history_days`, `log_lines`,
 `gpu_sampling`, `bell`, `partitions`, `gpu_types`, `weather`, `weather_probes`, `budget`, `animations`, `startup_animation`, `smooth_scrolling`), `[research]`, `[logs]`, `[exports]`, `[clipboard]`, `[intervals]`, `[timeouts]`, `[thresholds]`, `[[alerts]]`, `[notify]`
 (`command` runs through the shell on the configured `events` with `TOWER_EVENT`, `TOWER_JOBID`, `TOWER_JOBNAME`
 and `TOWER_TEXT` in the environment: a Slack webhook, an e-mail, anything), `[keys]` (action = list of key names).
@@ -827,19 +922,26 @@ The index's relative file entries use its own directory and may explicitly name
 sibling locations. Exact absolute entries may name other directories; they retain
 their source-machine meaning after copying a run. See the
 [project log-index standard](PROJECT_STANDARD.md#log-locations-logsjson) and
-[schema](schemas/logs.v1.schema.json). Tower caches bounded catalog work on its
+[schema](schemas/logs.v1.schema.json). Raven caches bounded catalog work on its
 shared background worker and does not recursively scan directories.
 
 Set `exports.projects_root` to the existing local directory used by the History log destination picker.
 For example, use `"exports": {"projects_root": "/home/alex/projects"}` in JSON.
 An empty value uses the registered native project root, then `~/projects`.
 The picker confines traversal and folder creation to this root.
-Sources can reside at other registered locations; exported files are saved on the machine running Tower.
+Sources can reside at other registered locations; exported files are saved on the machine running Raven.
 See [History log exports](guides/log-view.md#export-logs-for-history-jobs) for controls, missing-output alerts, and bundle format.
 
-State lives in `~/.local/state/tower/`: `ui.json` (tab, sort, log lines, toggles) and `events.jsonl`, the append-only
-log of every transition and every action (an audit trail: what was cancelled, held or requeued, when, and whether
-Slurm accepted it).  `--no-state` reads and writes neither.
+### Persistent state
+
+Raven's default state base is `~/.local/state/raven/`, honoring `XDG_STATE_HOME`
+and `RAVEN_STATE_DIR`. Scoped `ui.json` files retain page and display preferences;
+`events.jsonl` records observed transitions and action outcomes. `--no-state`
+disables ordinary UI-state persistence. Durable execution receipts are a
+separate requirement for submission workflows.
+
+Legacy state under `~/.local/state/tower/` remains intact. The following
+`state_namespace` rules describe the native compatibility layout:
 
 Set `state_namespace` to isolate state for different scheduler environments.
 The default is an empty string, which retains the normal state directory.
@@ -885,14 +987,14 @@ The global `animations` switch and reader theme suppress motion without erasing 
 
 ## The twenty features at a glance
 
-This table describes the original monitoring features. The twenty new UI/UX
-improvements in Tower 3.0 have their own [workbench map](WORKBENCH.md#the-twenty-improvements).
+This table indexes the original monitoring features. Workbench interactions
+introduced in release 3.0 have their own [workbench map](WORKBENCH.md#the-twenty-improvements).
 
 | | feature | where |
 |---|---|---|
 | 1 | resource advisor: suggested `--mem` / `--cpus-per-task` / `--time`, idle core-hours, time against the longest run | Analytics › advisor, the selected panel, `:advise` |
 | 2 | clone and resubmit with overrides, the advisor's flags and an `sbatch --test-only` preview | `A`, `:resubmit`, `tower run resubmit` |
-| 3 | dependency chains as trees, chain cancel / hold / release | Deps tab, `:chain` |
+| 3 | dependency chains as trees, chain cancel / hold / release | Dependencies page, `:chain` |
 | 4 | alert rules (per job or over the snapshot) with rate limits: bell, event, notify, command | `[[alerts]]`, `--alert` |
 | 5 | queue weather: pending work ahead per partition, `sbatch --test-only` projections | Cluster tab |
 | 6 | allocation budget: used this month, limits, burn rate, month-end projection, by user | Cluster tab, header |
@@ -906,7 +1008,7 @@ improvements in Tower 3.0 have their own [workbench map](WORKBENCH.md#the-twenty
 | 14 | pins, tags and notes that persist; `#tag` filters | `p`, `:tag`, `:note` |
 | 15 | steps per job: tasks, CPU time, peak memory and where, the slowest rank; sacct steps of finished jobs | the panel, `i` |
 | 16 | the job's own GPU trace CSV in the panel and the charts | `logs/gpu-util-<id>.csv` |
-| 17 | log extras: grouped multi-location files, wrap, stderr, bookmarks | Log tab `O` `w` `e` `o` `m` `'` |
+| 17 | log extras: grouped multi-location files, wrap, stderr, bookmarks | Logs page `O` `w` `e` `o` `m` `'` |
 | 18 | scripted mode: one command, an expression, a wait | `tower run`, `--eval`, `--wait-for` |
 | 19 | plugins: commands, flags, tabs, hooks, sources | `~/.config/tower/plugins/` |
 | 20 | accessibility: a colour-blind palette and a plain-text reader theme; recordings as test fixtures | `T`, `theme cb`, `theme reader` |
@@ -939,7 +1041,11 @@ job. See [provider requirements](guides/phase-one.md#select-a-gpu-provider).
 
 ## Architecture
 
-```
+This inventory describes the native dashboard modules. Raven's launch, worker,
+policy, and storage ownership are described separately in the
+[implementation reference](raven/implementation.md#ownership).
+
+```text
 tower/
   layout.py      pure layout: columns fitted to a width (shrink flexible ones, drop the least useful, then a floor),
                  ellipsis clipping by display width, bars, sparklines, rules, boxes, painters to text / ANSI
@@ -997,19 +1103,26 @@ tower/
   plugins.py     the plugin API and loader
   advisor.py     the resource advisor: suggested --mem / --cpus-per-task / --time from finished and running jobs
   alerts.py      the alert rules engine (per job or over the snapshot, rate limits, bell / event / notify / command)
-  deps.py        dependency parsing, the chain graph (trees, upstream, downstream) behind the Deps tab and chain actions
+  deps.py        dependency parsing, the chain graph (trees, upstream, downstream) behind the Dependencies page and chain actions
   resubmit.py    clone and resubmit: sbatch flag parsing, overrides, the clone from a submit line or a record, the preview
   report.py      the ASCII report: complete terminal snapshots of every tab
 ```
 
-`tests/test_tower.py` runs the parsers on recorded output, the layout, the configuration, the store's transitions,
-the controller against the simulated cluster (marks, confirmations, every action, filter, sort, tabs, overlays,
-mouse), the one-frame and JSON outputs, the watch mode, the curses screen through a pseudo-terminal, the
-expression language (and what it refuses), a recording replayed through the whole dashboard, the ssh transport
-and remote file reads through a local shell, profiles, plugins (commands, flags, tabs, hooks, sources, a broken
-one), scripted mode and the themes; the advisor on finished and running jobs, alert rules (firing, rate limits, scopes,
-errors, the header and events, `--alert`), the dependency graph and chain cancel through the Deps tab, tags, pins,
-notes and the compare view; sbatch flag parsing and overrides, clones from a submit line and from a record, and a
-resubmission through the screen and the scripted mode (the fake cluster lists the new job); the ASCII report from the
-screen and the command line, the replay controls, scrub bar and seeks, and the log extras (wrap, stderr, the job's
-other files, bookmarks that persist).
+`tests/test_tower.py` exercises the core parsers, layout, configuration, Store
+transitions, and controller using recorded output and a simulated cluster.
+Controller checks cover selection, marks, action confirmations, sorting,
+filters, page changes, overlays, mouse input, tags, pins, and comparisons.
+
+Output checks cover one-frame and JSON output, ANSI watch mode, curses through
+a pseudo-terminal, themes, and complete ASCII reports. Transport and integration
+checks cover SSH through a local shell, remote file reads, profiles, plugins and
+ordinary plugin failures, scripted commands, notification rules, and their
+reported errors.
+
+The suite also checks restricted expressions and rejected syntax, recording and
+replay controls, seeks and scrub position, dependency-chain actions, resource
+advice, batch-flag parsing, clone reconstruction, and simulated resubmission.
+Log checks cover wrapping, stderr, registered job files, and persisted bookmarks.
+Specialist tests extend this coverage for current research, terminal, and Raven
+execution contracts. Test fixtures do not establish live-cluster compatibility;
+use the [qualification guide](QUALIFICATION.md) for site validation.

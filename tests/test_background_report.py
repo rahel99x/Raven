@@ -170,7 +170,7 @@ def test_published_report_is_complete_ascii_and_private(dashboard, tmp_path):
     path = Path(prepared.write(str(tmp_path / "published"), "complete.txt"))
     assert path.stat().st_mode & 0o777 == 0o600
     assert path.read_text().isascii()
-    assert path.read_text().endswith("End of report | Slurm Tower | Plain ASCII, no external resources.\n")
+    assert path.read_text().endswith("End of report | Raven | Plain ASCII, no external resources.\n")
     assert not list(path.parent.glob(".report-*.tmp"))
 
 

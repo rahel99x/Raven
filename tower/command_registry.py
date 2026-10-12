@@ -325,7 +325,7 @@ TOOLBAR_CONTROLS = MappingProxyType({
         Control('activity', 'Activity and background tasks', 'activity'),
         Control('inbox', 'Completed-job review inbox', 'inbox all'),
         Control('alerts', 'Alert and quiet-hour controls', 'alerts'),
-        Control('about', 'About Tower and update controls', local='about'),
+        Control('about', 'About Raven and update controls', local='about'),
     ),
 })
 

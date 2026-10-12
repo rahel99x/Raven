@@ -1,12 +1,14 @@
-# Tower project reporting schemas
+# Raven project reporting schemas
 
 These JSON Schemas describe the portable project convention in
 [PROJECT_STANDARD.md](../PROJECT_STANDARD.md). They use JSON Schema Draft 2020-12 and
 relative references so projects can copy this directory without changing URLs.
-Tower's runtime remains standard-library-only; it does not load these schema
-files or require a JSON Schema package.
+Raven's core runtime uses the standard library; it does not load these schema
+files or require a JSON Schema package. Optional terminal dependencies are
+separate from schema validation. Native readers remain authoritative for
+runtime identity, semantics, and bounded I/O.
 
-| File | Applies to | Current Tower reader |
+| File | Applies to | Current Raven reader |
 | --- | --- | --- |
 | [metrics.v1.schema.json](metrics.v1.schema.json) | Each object in `runs/<run_id>/metrics.jsonl` | Native incremental `MetricReader`; Experiment view |
 | [run.v1.schema.json](run.v1.schema.json) | `runs/<run_id>/run.json` | Bounded exact-job runtime discovery or explicit project/run selection |
@@ -59,7 +61,7 @@ Declared input/output paths are descriptive and are not opened.
 See [scientific array identities](../PROJECT_STANDARD.md#scientific-array-identities)
 for limits and reload rules.
 
-`run.json` and scientific `results` remain project-owned metadata. Tower reads
+`run.json` and scientific `results` remain project-owned metadata. Raven reads
 bounded direct inventories beneath a known project root or standard selected
 job WorkDir. Only an unambiguous exact `job_id` match binds automatically;
 explicit selection remains available for local runs and repeated scheduler IDs.
@@ -69,14 +71,14 @@ The view-specific declaration takes precedence over the shared source.
 An absent per-run planning report can use the exact `paths.planning` declaration
 in `.tower/project.json` (`tower.project/v1`). Both local and SSH readers pin the
 run identity and confined file descriptors before reading this shared report.
-SSH needs Python 3.10 or later on the selected host, with no Tower installation there.
+SSH needs Python 3.10 or later on the selected host, with no Raven installation there.
 Every discovery/report read runs in the background; rendering uses cached data.
 
 A project reporter creates aggregates from explicitly selected summaries;
-Tower does not choose a cohort or generate measurements. `paths.submit` binds
+Raven does not choose a cohort or generate measurements. `paths.submit` binds
 an intact captured native preflight for display. Its `plan_id` is checked, and
-the attachment cannot authorize submission. Tower passports retain their native
-schema and must be created through Tower's provenance commands. See the
+the attachment cannot authorize submission. Raven passports retain their native
+schema and must be created through Raven's provenance commands. See the
 [per-view reporting table](../PROJECT_STANDARD.md#files-for-every-research-view)
 for all twelve views and exact producer locations.
 
@@ -211,6 +213,6 @@ datasets, personal shell configuration, and generated run outputs out of the
 public project template.
 
 For optional development validation, use a Draft 2020-12 validator and resolve
-the sibling schema references from this directory. Native Tower readers remain
+the sibling schema references from this directory. Native Raven readers remain
 the final authority for runtime compatibility; the runnable project template
-demonstrates those checks without adding a dependency to Tower.
+demonstrates those checks without adding a dependency to Raven.

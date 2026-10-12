@@ -2,10 +2,14 @@
 
 [Operations](operations.md) · [Project reporting standard](../PROJECT_STANDARD.md)
 
-These operations connect explicit evidence, scientific checks and diagnostic
-experiments. Open **File → Research and cluster operations** and select the
-**Investigation** group. Each `:ops NAME` command opens the same form. Inspection
-runs outside rendering. Moving the mouse does not execute a scientific program.
+Use these operations to connect declared evidence, scientific checks, and
+diagnostic experiments. Provide exact attempt identities, readable source
+manifests, and project-defined acceptance criteria. Execution recipes also need
+the declared executable, dependencies, and a permitted local or Slurm runtime.
+
+Open **File → Research and cluster operations** and select the **Investigation**
+group. Each `:ops NAME` command opens the corresponding form. Inspection runs
+outside rendering. Diagnostic execution requires a separate action review.
 
 ## Controls and contracts
 
@@ -21,10 +25,11 @@ runs outside rendering. Moving the mouse does not execute a scientific program.
 | `:ops diagnostic-campaign` | `tower.diagnostic-campaign/v1`, kind `campaign` | Reviewed configuration trials and persistent measurement files |
 | `:ops minimize-reproducer` | `tower.diagnostic-campaign/v1`, kind `minimize` | A reduced input that retains the declared failure signature |
 
-The five analysis operations are read-only. Enter **Manifest** and select
-**Inspect**. The three execution operations also require a new **Destination** directory. Select
-**Action: launch**, inspect the exact resource/source review, then select
-**Confirm apply**. An inspection does not submit or run a program.
+The five analysis operations are read-only. Enter **Investigation manifest** and select
+**Inspect / prepare**. The three execution operations also require a new
+**Diagnostic workspace (new for launch)** directory. Select **Action: launch** and inspect the exact
+resource and source review. Select **Review action**, check the plan, then
+select **Confirm apply**. Inspection does not submit or run a program.
 For an existing workspace, select **Action: status**. A new recipe path is not
 required for status. Select **Action: cancel** to review cancellation of a local
 driver. Cancel a Slurm allocation through its reviewed Jobs action.
@@ -42,22 +47,22 @@ information, suggested diagnostics, execution state, and updated findings.
 Inspection runs in an operation worker. It does not collect data during paint
 or execute commands from capability files.
 
-1. Set **Workflow manifest**, leave **Stage** at `inspect`, and select **Inspect**.
+1. Set **Workflow manifest**, leave **Stage** at `inspect`, and select **Inspect / prepare**.
 2. Read the findings and excluded actions. Missing files and unknown findings do
    not satisfy the planner's prerequisites. The workflow computes available
    evidence from this inspection; it replaces the planner's `known_evidence` list.
 3. Choose an admitted **Diagnostic ID**, enter a new **Diagnostic workspace**,
-   and set **Stage** to `review-diagnostic`. Select **Inspect**. Read the nested
+   and set **Stage** to `review-diagnostic`. Select **Inspect / prepare**. Read the nested
    campaign, minimizer, or regression review and its actual resource limits.
-4. Select **Confirm apply** to run that reviewed diagnostic. The existing
-   operation receipt and source revalidation mechanisms still apply.
-5. Set **Stage** to `status` and select **Inspect**. Use the same diagnostic ID
+4. Select **Review action**, check the prepared plan, then select **Confirm apply**.
+   The existing receipt and source revalidation mechanisms still apply.
+5. Set **Stage** to `status` and select **Inspect / prepare**. Use the same diagnostic ID
    and workspace. This reads the retained outcome; it does not repeat execution.
 
 The manifest declares `identity` with `cluster`, exact numeric Slurm `job_id`
 (including a task or step suffix when needed), and producer `attempt`.
 When a job is selected, also supply `scheduler` with its exact `submit`, `start`
-and `user` strings. Tower refuses a mismatched cluster, ambiguous selection,
+and `user` strings. Raven refuses a mismatched cluster, ambiguous selection,
 changed scheduler anchor, or recommendation for another attempt. A producer's
 attempt label and measurement coverage remain declarations, not independent
 proof of source authenticity.
@@ -81,7 +86,7 @@ linked, reviewed diagnostic recipe. Planner costs are predictions; the nested
 execution review displays its actual enforced limits.
 
 A campaign link can declare `metrics` using the numerical-stability policies
-(`name`, `reference`, `absolute`, `relative`). On **status**, Tower reads each
+(`name`, `reference`, `absolute`, `relative`). On **status**, Raven reads each
 trial's real `result.json` and uses its top-level metric names. It maps repetitions
 to the declared campaign cases and runs the existing numerical analyzer. Missing
 files, unexecuted trials, and failed execution oracles remain missing measurements.
@@ -108,7 +113,7 @@ coverage/loss declarations, and a changed registered stream set require a new
 inspection. Open, truncated, invalid, missing-rank, or unsupported evidence remains
 unknown and cannot satisfy planner prerequisites. Cross-node timestamp order does
 not establish causality. A closed journal with no omitted records proves only its
-declared instrumented scope. Trace acquisition currently requires Tower on the
+declared instrumented scope. Trace acquisition currently requires Raven on the
 target host, as in the existing standalone trace tools.
 
 The offline generator also writes `workflow.json`. Its identity is explicitly
@@ -161,7 +166,7 @@ global optimum or queue-time guarantee. The planner does not execute actions.
 
 Declare a DAG of artifacts, attempts, claims, policies and validations. Each node
 has explicit dependencies and a `complete` coverage flag. Mark changed roots.
-Tower follows reverse edges, retains parent links explaining impact, and
+Raven follows reverse edges, retains parent links explaining impact, and
 propagates uncertainty from missing dependencies or incomplete coverage.
 
 Revalidation actions declare their covered nodes, required inputs, cost and
@@ -174,7 +179,7 @@ equivalence is not assumed transitive.
 ## Numerical measurements and performance regressions
 
 Numerical policies declare a reference and absolute/relative tolerances. A run
-has a unique ID, configuration and actual metrics. For each metric, Tower checks:
+has a unique ID, configuration and actual metrics. For each metric, Raven checks:
 
 ```text
 abs(value − reference) <= max(absolute, relative × abs(reference))
@@ -183,12 +188,12 @@ abs(value − reference) <= max(absolute, relative × abs(reference))
 The report gives observed minimum, maximum, mean, standard deviation, maximum
 absolute error, violating runs and missing runs. A single observation has no
 estimated standard deviation. `observed-pass` describes only the supplied
-observations. Tower does not inject numerical perturbations into a running job.
+observations. Raven does not inject numerical perturbations into a running job.
 Prepared campaign commands may invoke user-installed numerical tools or builds.
 
 Regression manifests name independent experimental units, a paired/independent
 design, ordered versions, a baseline and an absolute practical-change margin.
-Tower uses Student t intervals with a Bonferroni adjustment across comparisons.
+Raven uses Student t intervals with a Bonferroni adjustment across comparisons.
 Missing scientific validity, insufficient samples, zero observed variance, or
 intervals crossing the decision boundary remain inconclusive. A later recovery
 is shown as nonmonotonic evidence; the system does not assume binary-search
@@ -197,15 +202,15 @@ monotonicity or identify a causal source commit from timing alone.
 ## Run bounded diagnostics
 
 A recipe chooses `local-diagnostic` or `slurm` explicitly. Local mode executes
-on the host running Tower. Use it for a permitted workstation or allocated
+on the host running Raven. Use it for a permitted workstation or allocated
 interactive session, not expensive login-node experiments. Slurm mode prepares
 one node and one task with explicit CPU, memory and time limits, then uses
-Tower's existing native submission and passport path. It does not attach to or
+Raven's existing native submission and passport path. It does not attach to or
 change an existing production job.
 
 Local launch starts a detached Linux driver and returns promptly. It does not
 occupy Single mode's only background worker for the lifetime of the experiment.
-The driver continues if Tower closes; use its workspace with **Action: status**
+The driver continues if Raven closes; use its workspace with **Action: status**
 after reconnecting. A launch acknowledgment does not mean the experiment passed.
 
 The command is an argv array beginning with an absolute executable. Named
@@ -240,12 +245,12 @@ or GPU diagnostic admission is not implied.
 
 The workspace and explicit Python/executable paths must be available on the
 compute node. The staged driver is standard-library-only and runs with `-I -S`;
-it does not need the Tower package installed on that node. The application may
+it does not need the Raven package installed on that node. The application may
 still require its own packages, libraries, modules or site configuration.
 
 ## Minimize a reproducer
 
-The initial reducer removes whole input lines. Its oracle requires both an
+The reducer removes whole input lines. Its oracle requires both an
 exact exit code and a nonempty output signature. This prevents an unrelated
 nonzero exit from being counted as the intended failure. Repeated trials must
 agree. A timeout, signal, budget exhaustion or inconsistent repetition stops
@@ -268,7 +273,7 @@ hashes, the first revision's ID as `baseline`, `minimum_change` in seconds,
 Set at least three `repeats`. The command must use `{result}` and can address
 tracked source through `{repo:measure.py}` or another relative source path.
 
-Tower reads `git archive` snapshots and pins their exact bytes. It does not
+Raven reads `git archive` snapshots and pins their exact bytes. It does not
 switch branches, alter the index, create Git worktrees or replace dirty files.
 Snapshots are limited to 4 MiB and 10000 entries per revision. Full commit hashes
 are required; branches, tags, trees, symlinks, special files and path traversal
@@ -289,7 +294,7 @@ oracle:
 observed process time, including interpreter/launcher startup. Neither skips
 the required `scientific_valid` check. A false, absent or invalid check leaves
 that version incomparable. The application defines the scientific criterion;
-Tower does not infer it from an exit code.
+Raven does not infer it from an exit code.
 
 The completed report uses 2000 deterministic bootstrap resamples of independent
 median differences, with a Bonferroni family adjustment. It reports intervals,
@@ -324,7 +329,7 @@ confirm that it stopped; cancellation acknowledgment alone is not completion.
 Missing pidfd support causes a clear refusal. A remote compute-node driver is
 cancelled through Slurm, not by signaling a coincident local PID.
 
-Tower refuses to reuse that workspace or repeat an uncertain submission. Read
+Raven refuses to reuse that workspace or repeat an uncertain submission. Read
 the existing receipts and scheduler state before preparing an explicitly new
 campaign. A requeued driver also refuses to replay the same claim. This avoids
 duplicate experiments but does not provide automatic crash resumption.

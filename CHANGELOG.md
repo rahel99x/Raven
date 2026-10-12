@@ -1,6 +1,17 @@
 # Changelog
 
-## 7.0.0 — Project Raven
+## Unreleased
+
+- Use Raven consistently in documentation, command output, interface labels,
+  and package metadata; update repository links to `rahel99x/Raven`.
+- Document pipx installation of `ravenl` and `ravenh`, persistent local Slurm
+  configuration, and updates without shell aliases.
+- Add Bash helpers for reviewed, copy-only configuration migration and rollback.
+- Consolidate documentation around current implementation contracts and
+  distinguish historical measurements from current procedures.
+- Add software citation metadata in `CITATION.cff`.
+
+## 7.0.0 — Raven
 
 - Fix the intermittent extra `D` beside Details and use the same focus marker
   for Details and Terminal. Preserve scroll controls and narrow hit regions.

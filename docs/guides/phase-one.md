@@ -7,13 +7,14 @@
 See the [release validation report](phase-one-validation.md) for test coverage,
 performance measurements, and site checks.
 
-Tower 4.14 adds four features: a sampling inspector, optional GPU providers,
-local shell checks, and scientific array manifests. The remaining proposals
-are planned work. This release does not add a stack tracer.
+This guide covers the sampling inspector, optional GPU providers, local shell
+checks, and scientific array manifests introduced in the 4.14 release.
+For tracing added in later releases, read the
+[stack and distributed trace guide](stack-tracing.md).
 
-The core application still uses the Python standard library. External GPU
+The core application uses the Python standard library. External GPU
 commands and ShellCheck are optional. A missing command produces an explicit
-unavailable result; it does not prevent normal Tower use.
+unavailable result; it does not prevent normal Raven use.
 
 ## Update an existing installation
 
@@ -30,8 +31,9 @@ profile and operating rules. Existing managed `tower` aliases continue to use
 the checkout. A package installation must also be updated through the method
 used to install that package.
 
-These setup commands do not install vendor tools, alter scheduler services,
-or submit jobs. See the [runbook](../runbook.md) for installation variants.
+These setup commands prepare the checkout. Vendor tools and scheduler services
+require separate site configuration. See the [installation guide](../INSTALLATION.md)
+for package installations and the [runbook](../runbook.md) for other variants.
 
 ## Inspect sampling capabilities
 
@@ -57,17 +59,17 @@ The inspector separates:
 
 | Evidence | Meaning |
 | --- | --- |
-| Tower read interval | How often Tower requests an observation from that source |
+| Raven read interval | How often Raven requests an observation from that source |
 | Configured Slurm task interval | The controller's exposed task-accounting configuration |
 | Job-requested or inherited interval | A job override or inheritance supported by the returned job record |
-| Last successful Tower read | Collector health, not the age of every individual metric |
+| Last successful Raven read | Collector health, not the age of every individual metric |
 | Backoff and error | Why a collector can take longer than its requested interval |
 | Capability | Observed, configured, unsupported, disabled, or unknown evidence |
 
 The report includes CPU time, resident memory, virtual-memory capability, live
 GPU measurements, GPU trace files, and project metrics. CPU, RSS, and GPU rows
 use the selected job's read interval. The project-metrics row shows the baseline
-file-read interval; an individual graph can request faster reads. Tower does
+file-read interval; an individual graph can request faster reads. Raven does
 not add a virtual-memory graph through this inspector.
 
 Slurm's configured interval is not proof of the effective producer interval.
@@ -78,7 +80,7 @@ periodic collection; it is not an infinitely fast sampler.
 Reading at 500 ms does not make Slurm produce a fresh measurement every 500 ms.
 CPU rates require changing CPU-time observations. MaxRSS is a peak, so an
 unchanged value can be correct. Project metrics and trace files change when
-their producers write them; Tower does not infer a write interval from polling.
+their producers write them; Raven does not infer a write interval from polling.
 
 The inspection runs in the background. Configuration evidence is cached for up
 to 120 seconds per connection; Refresh bypasses that cache. A job report is
@@ -120,27 +122,27 @@ by default; the desktop profile enables it.
 
 The allocation helper also requires `python3` on the compute node. Installing
 a vendor command on the login node alone does not make it available inside a
-job. Tower does not install GPU drivers or vendor utilities.
+job. Raven does not install GPU drivers or vendor utilities.
 
 Changes apply to subsequent allocation samples. Existing recorded history is
 retained. Device records keep vendor and node identity; stable device IDs are
 used when exposed. Inventory reads are bounded and cached separately from
 measurement reads, for up to 30 seconds per node and job attempt.
 
-Tower checks the allocation identity before using a device observation.
+Raven checks the allocation identity before using a device observation.
 Stable UUID visibility evidence is preferred. Numeric Slurm GRES IDs do not
 establish vendor device order: a site can configure a different order.
 Numeric-only attribution is therefore restricted to an entire visible
 single-vendor device set whose size matches the allocation, without GPU
 partitions or mixed-vendor ambiguity. An opaque numeric subset on a shared
-multi-GPU node stays unavailable; this release does not infer its device mapping.
+multi-GPU node stays unavailable; the collector does not infer its device mapping.
 Common single-GPU desktop allocations and supported full-device-set allocations
 remain eligible. Missing or ambiguous allocation evidence stays unavailable.
 Unsupported or invalid counters remain
 unknown; measured zero remains zero. Device counter definitions can differ
 between vendors, so equal labels do not establish identical hardware behavior.
 Intel tile-only utilization is not silently averaged into a device-wide
-measurement. Tower does not fall back to unscoped node-wide SSH collection when
+measurement. Raven does not fall back to unscoped node-wide SSH collection when
 allocation ownership is unavailable.
 
 The existing file-based GPU traces retain their own format and producer
@@ -189,7 +191,7 @@ external-source expansion do not apply to this isolated check.
 
 Checks are explicitly local. SSH-backed and replay sessions reject this
 command, including explicit paths, to prevent a local file being mistaken for
-a remote job's script. Run Tower directly on the Slurm host to check scripts
+a remote job's script. Run Raven directly on the Slurm host to check scripts
 there, or start a separate local session for a reviewed local copy.
 
 A result with an unavailable analyzer is partial, not a complete pass.
@@ -231,7 +233,7 @@ Use one document for one cluster and array parent. For example:
 }
 ```
 
-Replace the example cluster and array ID with the identities Tower displays.
+Replace the example cluster and array ID with the identities Raven displays.
 An empty cluster matches only an empty cluster identity; it is not a wildcard.
 `array_id` is the parent job ID as a string. `index` is a nonnegative integer.
 Sparse indices are supported. Scientific `id` values and indices must each be
@@ -263,7 +265,7 @@ Enter opens the selected entry; `/` opens search. Esc returns from entry details
 or search to the list, and closes the list when already there. In the path or
 search prompt, Enter applies the text and Ctrl-U clears it.
 
-One manifest can be attached per session. The attachment is explicit. Tower
+One manifest can be attached per session. The attachment is explicit. Raven
 does not search arbitrary directories for a manifest or attach one by matching
 a job name. Relative manifest paths use the
 active file backend's path rules. Prefer an absolute path, especially over SSH.
@@ -271,20 +273,21 @@ Input and output paths inside an entry are declarations only: this feature
 does not open, copy, validate, or create those files.
 
 The attachment is scoped to the exact connection, cluster, and array parent.
-When submission timestamps are available, Tower also binds the observed
+When submission timestamps are available, Raven also binds the observed
 submission attempt. Conflicting timestamps or a reused parent hide labels and
 block mapped retries until explicit reattachment. When Slurm exposes no
 submission timestamp, the browser states that limit: identity is scoped to the
 connection and parent ID, without a verified submission-attempt distinction.
 
-Tower validates and freezes a content revision. Background checks examine the
+Raven validates and freezes a content revision. Background checks examine the
 source stat no faster than every five seconds and report changes. Backend
 limits and busy workers can delay the next check. They do not silently change
 the scientific identity of existing tasks. Explicitly reload after reviewing a
 replacement. A retry that uses the mapping must verify the
 source revision; changed evidence requires review. A new Slurm array parent
-needs its own explicit binding. This release does not automatically rewrite a
-manifest for a new submission.
+needs its own explicit binding. A manual attachment does not rewrite the source
+manifest for a new submission. The tracked reporter can create a new bound copy;
+see [array reporting](research-automation.md#arrays-dependency-graphs-and-retries).
 Resource edits retain the prepared plan's mapping metadata. The plan and
 receipt preserve the selected scientific entries and revision; the passport
 retains their source, revision, cluster, and original parent linkage. Existing

@@ -1,4 +1,4 @@
-# Project Raven profile; values are pilot defaults, not site qualification.
+# Raven profile; values are pilot defaults, not site qualification.
 schema = "raven.config/v1"
 profile = "example-slurm"
 

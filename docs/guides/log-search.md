@@ -1,16 +1,20 @@
-# Read and search complete log sources
+# Log source paging and search
 
-Tower can read older file content and search file content outside the retained
-live tail. These operations use the background reader. They do not change the
-job's files. Source pages have their own cursor and selection. A copy operation
-in a source page uses that page's exact source.
+[README](../../README.md) · [Controls](../CONTROLS.md) · [Log presentation](log-view.md)
+
+Read older log content and search beyond the retained live tail.
+These operations use Raven's background reader and leave source files unchanged.
+Each source page has its own cursor and selection. Copy operations retain that page's source identity.
+
+**Prerequisites:** Select a job or project run with an accessible, declared log source.
+The selected local or SSH file adapter determines where paths are read.
 
 Open the command palette with `:`. Use `Ctrl-A` to inspect progress. Use
 `:task cancel` to cancel an operation at the next bounded read.
 
 <a id="feature-16"></a>
 
-## 16. Read older log content
+## Read older log content
 
 1. Select a job in Jobs or History.
 2. Press `l`. Select its log file and press Enter.
@@ -55,7 +59,7 @@ the existing clipboard settings.
 
 <a id="feature-17"></a>
 
-## 17. Search a complete log source
+## Search a complete log source
 
 Enter `:logsearch ERROR` to search the selected file. The default search is a
 case-insensitive literal search. It includes the file prefix outside the live
@@ -72,10 +76,10 @@ keeps the prior view and does not publish a partial new search as complete.
 
 <a id="feature-18"></a>
 
-## 18. Search every declared job log
+## Search every declared job log
 
 Enter `:logsearch --all ERROR` to search the selected job or project run's cached
-log declarations. Tower searches at most 32 distinct paths. It includes stdout,
+log declarations. Raven searches at most 32 distinct paths. It includes stdout,
 stderr, registered worker files, and declared external locations. It does not
 recursively search unrelated directories.
 
@@ -86,7 +90,7 @@ unavailable or a source limit was reached.
 
 <a id="feature-19"></a>
 
-## 19. Select search modes
+## Select search modes
 
 Use these options with `:logsearch`:
 
@@ -108,7 +112,7 @@ Examples:
 :logsearch --literal -- --failed
 ```
 
-Regular expressions must have predictable backtracking. Tower rejects
+Regular expressions must have predictable backtracking. Raven rejects
 backreferences, look-around, nested repetitions, repeated alternatives, and
 multiple variable repetitions. A regular-expression search omits logical lines
 larger than 8 KiB and reports the omitted count as partial coverage. Use literal
@@ -123,13 +127,13 @@ whole-file searches use the options supplied to `:logsearch`.
 
 Large retained logs build their first search index in the background.
 The status shows indexing progress until the match count is available.
-Tower reuses this index for navigation and updates it when lines arrive.
+Raven reuses this index for navigation and updates it when lines arrive.
 File replacement or a changed query requires a new index.
 An incomplete index does not mean that the file has no matches.
 
 <a id="feature-20"></a>
 
-## 20. Browse search results
+## Browse search results
 
 A completed search opens the results browser. Use Up, Down, Page Up, Page Down,
 Home, and End to select a match. The browser shows context before and after the
@@ -146,7 +150,7 @@ a result before its source page is opened. Search the new file again.
 
 <a id="feature-21"></a>
 
-## 21. Go to an absolute source location
+## Go to an absolute source location
 
 Use one of these commands:
 
@@ -162,15 +166,15 @@ between zero and 100. A position at 100 percent opens the end of the inspected
 snapshot, which can be an empty page.
 
 A timestamp command selects the first reported ISO timestamp at or after the
-specified time, in source order. Tower reads timestamps near the beginning of
+specified time, in source order. Raven reads timestamps near the beginning of
 each line. It compares timezone-aware timestamps with timezone-aware requests,
 and local timestamps without an offset with requests that also have no offset.
 It does not invent an offset for ambiguous timestamps. If the scan budget ends
-before a location is found, Tower reports that limitation.
+before a location is found, Raven reports that limitation.
 
 <a id="feature-22"></a>
 
-## 22. Save and select named log marks
+## Save and select named log marks
 
 1. Move the cursor to an important line in the original log or a source page.
 2. Enter `:logmark first failure`.
@@ -179,7 +183,7 @@ before a location is found, Tower reports that limitation.
 5. Press Esc to return to the marks list.
 
 Use `d` or Delete in the marks list to remove a mark. Reusing a name for the
-same path updates that mark. Tower retains at most 256 named marks in the UI
+same path updates that mark. Raven retains at most 256 named marks in the UI
 state. A mark stores the exact path, source identity, byte position, and absolute
 line number when known. A replaced file requires a new mark. A mark from
 another connection requires that original connection profile.
@@ -189,15 +193,15 @@ Named marks use source byte positions and can point outside the retained tail.
 
 <a id="feature-23"></a>
 
-## 23. Return to each file's reading position
+## Return to each file's reading position
 
-Tower retains each open source's vertical cursor and following or paused state
+Raven retains each open source's vertical cursor and following or paused state
 for the session. It restores that state when you switch back to the same job,
 run, connection, and file. It starts each newly opened source at horizontal
 column zero.
 
 A file replacement, truncation, or change to the retained byte origin cancels a
-stale position. Tower keeps at most 64 source positions. It does not restore a
+stale position. Raven keeps at most 64 source positions. It does not restore a
 selection onto a different file or copy a stale retained-line range.
 
 ## Public API methods

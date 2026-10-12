@@ -129,6 +129,10 @@ multi-node transport, arbitrary MPI implementations, or GPU device stacks.
 
 ## Reproduce the checks
 
+Use the corresponding 6.0.0 source and a development installation to reproduce
+this record. Run from that release's repository root. Later releases require
+their own artifact version and validation record.
+
 ```bash
 python3 -m pip install -e '.[dev]'
 python3 -m pytest -q -ra

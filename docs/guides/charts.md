@@ -1,11 +1,18 @@
-# Read and adjust charts
+# Metric charts
 
-Tower draws charts with terminal characters.
+[README](../../README.md) · [Controls](../CONTROLS.md) · [Live workbench](live-workbench.md)
+
+Use Raven's charts to inspect recorded measurements, select time intervals, and compare jobs.
+Raven draws charts with terminal characters.
 Unicode curves use continuous Braille strokes with two horizontal and four vertical positions per cell.
 ASCII curves use directional strokes. Filled area graphs retain their block presentation.
 Both modes use the same samples, time windows, and scale limits.
 Chart display controls do not change source data.
-The separate polling control requests more frequent background measurements for an existing running job.
+The separate polling control requests background measurements for an existing running job.
+Requests remain subject to Raven's collection policy and the producer's measurement cadence.
+
+**Prerequisites:** Select a job with recorded resource samples or attach its reported application metrics.
+Missing measurements remain gaps; chart controls do not supply unavailable data.
 
 ## Open a chart
 
@@ -13,7 +20,7 @@ The separate polling control requests more frequent background measurements for 
 2. Open Experiment to load its application metrics, or use session resource data.
 3. Enter `:chart METRIC`. Use the exact metric ID. Quote an ID that has spaces.
 4. Use the arrow keys to select a sample. Use Home or End to select an endpoint.
-5. Press Tab or Shift-Tab to change the metric. Tower selects the nearest sample
+5. Press Tab or Shift-Tab to change the metric. Raven selects the nearest sample
    time in the new metric.
 6. Press Esc to return.
 
@@ -40,13 +47,13 @@ When a slider or directional button focus owns the keys, its controls take prior
 ## Point at a metric graph
 
 Move the pointer inside a visible metric plot with recorded data.
-Tower draws a thin crosshair at the pointer.
+Raven draws a thin crosshair at the pointer.
 The crosshair and selection outline use the active theme's accent color.
 They update when you change the theme.
 Unicode selectors use a Braille lattice with two horizontal positions and four vertical positions per terminal cell.
 Crossing strokes combine their Braille dots in the same cell.
 Their exact appearance depends on the terminal font.
-The guide preserves the graph's background and has no black outline.
+The crosshair preserves the graph's background and has no black outline.
 At an intersection, original curve, range-border, fitted-line, and annotation glyphs retain their styles.
 The selector can replace faint range-fill cells, which keeps it visible inside a dense band.
 It otherwise draws in unoccupied cells and does not punch holes in the curve.
@@ -58,7 +65,8 @@ Only its Braille dot phase moves within that cell, over at most 24 ms.
 This transition is visual only. Mouse events and selected bounds still use whole terminal cells.
 The lattice does not increase mouse accuracy or measurement precision.
 ASCII and reader modes use static `.` strokes with `+` intersections.
-Set `"animations": false` in JSON, or `animations = false` in TOML, to disable easing.
+Set `ui.animations` to `false` in a managed Raven profile to disable easing.
+The compatibility configuration uses `"animations": false` in JSON or `animations = false` in TOML.
 The Unicode selector remains available without motion.
 You can also open `:settings`, disable **Interface animations**, and apply the settings.
 That setting controls selector easing as well as completion motion.
@@ -78,10 +86,9 @@ A graph's ordinary full-history view and its Live window both use the delayed di
 This includes the full-screen chart opened with `:chart METRIC`, while it follows the running source automatically.
 An explicit zoom, pan, or time preset keeps its requested bounds.
 
-The buffer holds the visible edge behind the newest measurements.
-Tower can then advance that edge along a line between two observations it has already received.
-It does not have to reveal a complete new edge segment each time a source publishes data.
-The graph remains a view of measured history. Tower does not predict the next value or fill a measurement outage.
+The buffer keeps the visible edge behind the newest measurements.
+Raven advances that edge between observations it has already received, reducing jumps when a source publishes a batch.
+The graph remains a view of measured history. Raven does not predict the next value or fill a measurement outage.
 
 The target delay is twice the greater of the effective polling interval and the observed sample interval, with a maximum target of 30 seconds.
 For a source measured and polled every five seconds, the target is ten seconds.
@@ -110,7 +117,7 @@ A visible edge movement, a changed data boundary, or a changed view can advance 
 The reported lag includes this extra display hold.
 This also applies to the full-screen chart while it follows full history.
 Live windows and explicit zoom or drag selections keep their own update behavior.
-This is adaptive presentation; it does not claim that every intermediate raster would be identical.
+This presentation policy can omit intermediate rasters that would differ from the retained display.
 Original timestamps, measurements, and source corrections remain unchanged.
 
 Completed and historical jobs use their retained measured history without this delay.
@@ -129,7 +136,7 @@ Each metric has its own request. A curve and its filled companion share the same
 2. Click **Live off** to enable Live.
 3. Drag the first slider toward the left for 30 seconds, or toward the right for one second.
 4. Read the duration beside the toggle. Wider rows label the first slider **Delta**.
-5. Drag the second slider toward the left for five-second polling, or toward the right for 500-millisecond polling.
+5. Drag the second slider toward the left for a five-second request, or toward the right for a 500-millisecond request.
 6. Read **Set** for this slider's request and **Poll** for the shared effective interval.
 7. Click **Live ON** to return to the ordinary retained view.
 
@@ -146,9 +153,11 @@ Compact rows use `○` and `●`, or `o` and `+` in ASCII mode.
 The empty symbol is off; the filled symbol is on.
 Polling labels use `s`, `ms`, or `µs`; ASCII mode uses `us` for microseconds.
 **Set** changes with the slider and identifies its requested interval.
-**Poll** identifies the effective interval after global requests, other metrics on the same probe, and source limits are applied.
+**Poll** identifies the effective interval after global requests, other metrics on the same probe, and collection limits are applied.
+Managed launches apply collection floors, site policy, demand gating, and command budgets.
+The default queue and live-resource floors are 60 seconds; see [collection policy](../raven/README.md#collection-and-retention).
 In a compact row, the effective value precedes the polling track and `S` precedes the requested value after it.
-For example, `Poll 500ms Set 2s` means this metric requests two seconds, while a faster shared request keeps its probe at 500 milliseconds.
+On a connection whose policy permits 500-millisecond reads, `Poll 500ms Set 2s` means this metric requests two seconds while a faster shared request keeps its probe at 500 milliseconds.
 Changing **Set** in that case is still accepted even though **Poll** stays unchanged.
 The footer also reports the effective interval.
 Slider values and tracks update immediately during a drag.
@@ -185,7 +194,7 @@ Use these commands with that visible token:
 Tokens are session controls, not project metric IDs. Commands reject a hidden or nonrunning source.
 Previously set sampling requests remain active when their graphs move offscreen.
 They belong to the exact job, source, and run attempt; completion, departure, or a changed attempt invalidates them.
-Tower retains at most 128 metric identities. An evicted request returns to its default.
+Raven retains at most 128 metric identities. An evicted request returns to its default.
 Live and sampling preferences do not survive a restart.
 
 Live and the first slider change only the displayed interval.
@@ -201,7 +210,7 @@ Current resource captures retain their timestamp precision.
 Older saved captures can retain the earlier 0.1-second rounding.
 A precise capture timestamp does not establish equally frequent source measurements.
 
-During a rectangular selection, Tower holds both painted axis mappings fixed.
+During a rectangular selection, Raven holds both painted axis mappings fixed.
 The sampler continues to publish new observations.
 Automatic sample updates and changing data limits do not cancel the drag.
 Cancelling the selection resumes Live.
@@ -215,11 +224,12 @@ For position `N`, its requested interval is `5 × 10^(-(N - 1) / 99)` seconds.
 The global control uses the same range with positions one to 50.
 Its requested interval is `5 × 10^(-(N - 1) / 49)` seconds.
 Each scale reaches both endpoints and gives every native polling position a distinct interval.
-Tower uses the fastest request for an exact job and shared source; global and metric requests do not multiply.
+Raven uses the fastest request for an exact job and shared source; global and metric requests do not multiply.
 Repeated adjustments do not compound or change the configured base.
+Configured intervals slower than five seconds remain slow; collection policy can impose a longer effective interval.
 The control shows both its requested **Set** interval and the shared effective **Poll** interval after source limits are applied.
 
-| Source | Minimum interval for a faster metric request |
+| Source | Reader minimum before managed collection policy |
 | --- | --- |
 | Live CPU and memory probe | 0.5 seconds |
 | Live GPU probe | 0.5 seconds |
@@ -233,12 +243,13 @@ Reported application metrics can share a file reader; their fastest request sets
 Reading that file more often cannot make the application write measurements more often.
 The same limit applies to job-produced CSV traces.
 
-Jobs, CPU and memory probes, GPU probes, and local trace reads start with a five-second native polling request.
-Their controls cannot request more than two polls per second.
+The sliders request intervals from five seconds to 500 milliseconds.
+Managed launches retain configured source intervals and apply collection floors before collection.
+The default queue and live-resource floors are 60 seconds; log-follow reads have a five-second floor.
 Other global sources retain their configured bases, adjusted by the global speed ratio from one to ten.
 Remote file reads retain a 1.5-second minimum. Forecast and budget sources retain their 30-second minimums.
 Source errors retain retry backoff. Command duration, worker limits, and disabled-source settings still apply.
-Tower does not overlap reads to meet a shorter requested interval.
+Raven does not overlap reads to meet a shorter requested interval.
 The graph footer reports the effective polling interval, source age, and any relevant producer limits.
 Missing observations stay gaps. A short display window can be empty even when polling is enabled.
 
@@ -252,7 +263,7 @@ Missing observations stay gaps. A short display window can be empty even when po
 4. Release inside the same plot or its capture margin.
 
 **Expected result:** The selected interval fills the graph's horizontal extent.
-Tower calculates the vertical limits from the complete known curve inside that interval.
+Raven calculates the vertical limits from the complete known curve inside that interval.
 Both axes update to the new view.
 The selection must span at least two columns.
 A click without that width leaves the view unchanged.
@@ -268,7 +279,7 @@ the selected interval contains no original sample. The sample count still
 reports zero for that interval. Missing values and sampling outages remain gaps.
 
 Time labels show offsets from the selected start, using seconds, milliseconds, or microseconds.
-Tower selects the unit from the displayed span and the available space.
+Raven selects the unit from the displayed span and the available space.
 The note below the plot identifies the start timestamp and interval length.
 Very small finite spans can use scientific notation.
 Display precision does not imply a finer measurement cadence.
@@ -298,7 +309,7 @@ Right-click inside the plot still resets the graph.
 Each zoom belongs to an exact metric, source, job, and run attempt.
 Another job cannot inherit it.
 Zooms are session display state; they do not change files or sampler intervals.
-Tower retains at most 128 zoom entries and 16 undo steps per entry.
+Raven retains at most 128 zoom entries and 16 undo steps per entry.
 
 Press Esc before release to discard the preview.
 Moving beyond the margin discards the preview. A later release cannot commit it.
@@ -323,7 +334,7 @@ Press `t` to change the time window. The control row shows these presets:
 
 Use `:chart preset 5m`, `:chart preset 30m`, `:chart preset 2h`, or
 `:chart preset all` to select a preset directly. Use `:chart window SECONDS` for
-a custom window. Tower accepts a positive duration of up to 365 days. A preset
+a custom window. Raven accepts a positive duration of up to 365 days. A preset
 does not load samples that are outside the retained history.
 
 Use `+` or `-` to change the zoom. Use `[` or `]` to move the time window. Use
@@ -344,20 +355,20 @@ position from 0 to 1. Zero selects the beginning; one selects the end.
 The lower limit must be less than the upper limit. Both limits must be finite.
 For a logarithmic axis, both limits must be positive.
 
-Tower labels the active scale. It shows how many visible values are outside
+Raven labels the active scale. It shows how many visible values are outside
 fixed limits. On a logarithmic axis, zero and negative samples are undefined.
-Tower draws a gap for these samples and shows their count. The original values
+Raven draws a gap for these samples and shows their count. The original values
 remain available in the sample inspector and interval statistics.
 
 <a id="feature-43"></a>
 
-## Preserve spikes
+## Interpret compressed samples
 
-When samples share a terminal column, Tower retains the first, minimum, maximum,
+When samples share a terminal column, Raven retains the first, minimum, maximum,
 and last known values in source order. This envelope preserves short spikes.
 Unicode curves draw the range with continuous two-by-four Braille strokes. ASCII curves use
 `/`, `\`, `-`, `:`, and `+`; an isolated sample uses `.`. If a bucket contains an unknown sample, the bucket stays
-unknown. Tower does not draw a bridge through that bucket or a detected outage.
+unknown. Raven does not draw a bridge through that bucket or a detected outage.
 It connects known samples without smoothing their values. Fixed or zoomed
 vertical bounds clip a crossing line. A segment wholly outside those bounds stays
 blank instead of appearing as a flat measurement on the scale edge.
@@ -381,7 +392,7 @@ It stops at missing data, detected sampling outages, and equal-time jumps.
 A short or unsuitable run retains its measured curve.
 The fitted line uses a separate theme color; original curve and range-border cells keep priority where the lines meet.
 
-The fit is a display aid, not a measurement or a forecast.
+The fit provides a visual summary. It does not supply measurements or forecasts.
 It is recalculated for the visible window and drawing resolution, so zooming can change it.
 On a logarithmic axis, it operates on the displayed logarithmic values.
 Inspect an original sample or its interval statistics when an exact value is required.
@@ -409,7 +420,7 @@ No additional sampling request or dependency is needed.
 
 1. Move to the first sample of interest.
 2. Press `r` to set the start of the interval.
-3. Use the arrow keys to move to its end. Tower highlights the selected chart
+3. Use the arrow keys to move to its end. Raven highlights the selected chart
    interval. The statistics change as you move.
 4. Press `r` again to finish the selection.
 
@@ -417,14 +428,14 @@ Use `:chart range FIRST LAST` to select two visible sample numbers. Numbering
 starts at one. Endpoints are included. Use `:chart range clear` to remove the
 selection. The interval is attached to the metric ID and source timestamps.
 
-Tower reports the known sample count, missing sample count, minimum, median,
+Raven reports the known sample count, missing sample count, minimum, median,
 mean, maximum, and the 5th, 95th, and 99th percentiles. Percentiles use linear
 interpolation between sorted known samples. The mean uses finite arithmetic
 that avoids overflow for extreme values.
 
 Sample coverage is the fraction of selected samples with a known value. Time
 coverage is the fraction of the interval covered by adjacent known samples
-within 2.5 median sampling intervals. Tower calculates the median cadence from
+within 2.5 median sampling intervals. Raven calculates the median cadence from
 the complete retained series. It does not fill gaps. A single sample has no
 measurable time interval, so its time coverage is unavailable.
 
@@ -446,9 +457,9 @@ numbers, source paths, and original line numbers when they are available.
 Use `:chart events off` to hide the strip. Use `:chart events on` to show it.
 
 Phase changes, alerts, checkpoints, and log events appear only when a published
-observation includes a timestamp. Tower does not infer earlier phase changes or
+observation includes a timestamp. Raven does not infer earlier phase changes or
 checkpoint times. If an event has a source path but no original line number,
-Tower opens the exact file and reports that its exact line is unavailable.
+Raven opens the exact file and reports that its exact line is unavailable.
 
 <a id="feature-46"></a>
 
@@ -462,22 +473,24 @@ every compared job. Press `s` to toggle between shared and independent limits.
 You can also use `:chart shared on` or `:chart shared off`. The comparison shows
 the active setting. A fixed scale for a metric applies to all its curves.
 
-Tower compares measurements of the same metric. It does not combine CPU,
-memory, and GPU values into one scale. If a job has no measured samples, Tower
+Raven compares measurements of the same metric. It does not combine CPU,
+memory, and GPU values into one scale. If a job has no measured samples, Raven
 shows that condition instead of drawing a curve.
 
-## Read GPU utilisation and busy mean
+<a id="read-gpu-utilisation-and-busy-mean"></a>
 
-Job Series can show a GPU utilisation curve and an observed busy-mean curve for each available device.
-Utilisation is the recorded busy percentage.
-The busy mean is the cumulative mean of valid utilisation observations in the retained series.
-It is an activity indicator, not FLOP efficiency, throughput, or the fraction of allocated devices used.
+## Read GPU utilization and busy mean
+
+Job series can show a GPU utilization curve and an observed busy-mean curve for each available device.
+Utilization is the recorded busy percentage.
+The busy mean is the cumulative mean of valid utilization observations in the retained series.
+It indicates activity. It does not establish FLOP efficiency, throughput, or the fraction of allocated devices used.
 Missing and invalid device readings remain gaps and do not enter the mean.
 
-Session telemetry identifies devices by `node:index` and retains utilisation, used memory, and total memory.
+Session telemetry identifies devices by `node:index` and retains utilization, used memory, and total memory.
 An application's job trace uses `<WorkDir>/logs/gpu-util-<jobid>.csv` with rows
 `timestamp,index,utilisation_percent,memory_used_MiB`.
-Tower keeps that trace attached to the exact job.
+Raven keeps that trace attached to the exact job.
 An index-only trace cannot establish which node or allocated device produced a reading.
 See [GPU trace](../reference.md#the-gpu-trace) for the producer procedure.
 
@@ -485,7 +498,7 @@ The view shows at most four session devices and four trace indices.
 The corresponding stable graph IDs are `gpu:<node:index>:rate`,
 `gpu:<node:index>:busy-mean`, `gpu-trace:<index>:rate`, and `gpu-trace:<index>:busy-mean`.
 These graph identities remain stable as observations arrive or the glyph mode changes.
-Unavailable telemetry produces no invented utilisation or busy-mean measurement.
+Unavailable telemetry leaves utilization and busy-mean measurements unknown.
 
 <a id="feature-47"></a>
 
@@ -508,20 +521,20 @@ Use the exact metric ID with these commands:
 | `reset` | Remove the metric's display preferences. |
 
 These preferences change presentation only. They do not convert units or rewrite
-measurements. Declare a unit that matches the reported data. Tower does not infer
+measurements. Declare a unit that matches the reported data. Raven does not infer
 an application metric's unit from its name. Session CPU and GPU percentages use
 percent units. Session memory samples use GiB because their source bytes are
 divided by 1024 cubed; their existing metric ID remains `Memory (GB)` for saved
 view compatibility. The chart shows the original metric ID and the declared
 unit. Exact sample inspection always retains the original numeric precision.
 
-Tower saves labels, units, precision, axis limits, event visibility, and the
+Raven saves labels, units, precision, axis limits, event visibility, and the
 comparison scale setting. It does not restore a live chart, selected job, or
 temporary sample interval after a restart.
 
 ## Data limits
 
-- Tower uses published metric snapshots and in-memory resource samples.
+- Raven uses published metric snapshots and in-memory resource samples.
 - A metric chart retains at most 10,000 points. A dashboard has at most 64 metrics.
 - An event picker has at most 512 observed events.
 - Plot dimensions are limited to 2,048 terminal columns and 128 rows.
@@ -711,7 +724,7 @@ Its validation and interval calculations perform no scheduler or file I/O.
 | Method | Purpose and result |
 | --- | --- |
 | `validate_rate(value)` | Validate an integer polling position from one to 100. Reject Boolean, nonfinite, and fractional values. |
-| `interval(base, global_rate=1, metric_rate=1, ...)` | Select the fastest global or metric interval, with the source's lower limit. Native intervals span five seconds to 500 milliseconds. |
+| `interval(base, global_rate=1, metric_rate=1, ...)` | Calculate the fastest global or metric request while retaining reader bounds and configured slow bases. Actual collectors also apply managed policy. |
 | `format_interval(value, ascii_=False)` | Format seconds, milliseconds, or microseconds; return `?` for an invalid interval. |
 | `source(identity)` | Map a metric to its live resource, GPU, trace, or application-file collector. |
 | `attempt(job)`, `matches(identity, job)` | Identify and validate the exact running scheduler attempt. |
@@ -737,7 +750,7 @@ The stored `polling_multiplier` field keeps its existing name for compatibility.
 | --- | --- |
 | `poll_interval(value, maximum=50)` | Convert a whole-number position to a logarithmic interval from five seconds to 500 milliseconds. |
 | `poll_position(seconds, maximum=50)` | Return the nearest bounded position for a finite positive interval. |
-| `source_interval(base, value, *, source="")` | Use the requested interval directly for native jobs, live resources, GPU, and trace sources; adjust other configured bases by the global speed ratio. |
+| `source_interval(base, value, *, source="")` | Calculate a compatibility source request. Native bases up to five seconds use the slider interval; slower bases and other sources use the global speed ratio within reader bounds. |
 | `file_interval(base, value, *, remote=False)` | Adjust a file-reader base by the global speed ratio while retaining local or remote limits. |
 | `cadence(app, source, base=None)` | Return the source's effective global interval without reading the source. |
 

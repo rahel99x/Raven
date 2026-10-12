@@ -2,15 +2,18 @@
 
 [README](../../README.md) · [Allocation operations](operations-cluster.md) · [Project standard](../PROJECT_STANDARD.md)
 
-Use these commands in Tower's command palette. They start or prepare an explicit action.
-Moving the mouse or selecting another job does not change a shell's destination, directory, or input.
-Normal commands that you type in a terminal have the same authority as commands in a separate terminal window.
+Use Raven's command palette to open terminal sessions, review allocation targets, and prepare commands.
+Each action uses an explicit destination. Selecting another job does not change an existing shell's host or directory.
+Commands entered in an embedded terminal have the same authority as commands entered in a separate terminal window.
+
+**Prerequisites:** Install the optional terminal engine described in the [terminal guide](terminal-fusion.md).
+SSH, tmux, and container actions require their corresponding executables on the machine that runs Raven.
 
 ## Choose a destination
 
 | Command | Result |
 | --- | --- |
-| `:terminal new` | Start a local shell on the machine that runs Tower. |
+| `:terminal new` | Start a local shell on the machine that runs Raven. |
 | `:terminal cwd "/path/with spaces"` | Start a new local shell in an accessible directory. Use the configured terminal shell. |
 | `:terminal job-cwd 1234` | Start a local shell in that job's declared working directory. Refuse remote or ambiguous paths. |
 | `:terminal ssh cluster-alias` | Start SSH with your normal host alias, SSH configuration, host verification, and interactive authentication. |
@@ -31,12 +34,12 @@ Inspect the child terminal's authentication messages and prompt before sending i
 The tmux action uses a separate server socket so it does not attach to unrelated default-server sessions.
 Use **Ctrl-B**, then **D** to detach with tmux's default key map. If your tmux configuration changes that map, use its detach command.
 Closing an embedded tmux client leaves its tmux session running. A normal local shell does not have this persistence guarantee.
-To attach outside Tower, use `tmux -L tower-fusion attach-session -t analysis`.
+To attach outside Raven, use `tmux -L tower-fusion attach-session -t analysis`.
 
 ## Open a reviewed allocation terminal
 
 Use `:terminal job 1234` to inspect and review a shell in one running allocation that you own.
-Tower opens the existing Operations review. Read the review, select **Review**, and then select **Apply**.
+Raven opens the existing Operations review. Read the review, select **Review**, and then select **Apply**.
 
 | Command | Target |
 | --- | --- |
@@ -51,17 +54,17 @@ Tower opens the existing Operations review. Read the review, select **Review**, 
 The default display is `embedded`. You can also set `shell=/absolute/path` for a new shell step.
 The same options are available in the **Allocation shell or attach** Operations form.
 
-Tower checks ownership, submission identity, running attempt, and step or node membership during preparation and immediately before launch.
+Raven checks ownership, submission identity, running attempt, and step or node membership during preparation and immediately before launch.
 The review expires if the job is requeued, changes owner, leaves the running state, or its exact target becomes unavailable.
 An embedded launch is also refused if the completion callback is delayed for more than two seconds or the Operations view or connection changes.
 
 A new shell uses `srun --overlap --exact`, one node, one task, one CPU, and a bounded immediate-start request.
 It shares the existing allocation. It does not run `salloc` or submit another job.
 An attachment uses `sattach`. It can send input to an existing application. Read the target and effect before applying it.
-Task filtering requires the scheduler to expose a valid count for the exact numeric step. Tower refuses unknown ranks.
+Task filtering requires the scheduler to expose a valid count for the exact numeric step. Raven refuses unknown ranks.
 The `batch` and `extern` steps are not interactive attachment targets.
 
-For these reviewed Slurm actions, run Tower on the target cluster host. Tower does not reinterpret a remote Slurm data connection as permission to start a shell on the local workstation.
+For these reviewed Slurm actions, run Raven on the target cluster host. Raven does not reinterpret a remote Slurm data connection as permission to start a shell on the local workstation.
 An allocation session retains its original attempt identity. Job completion or ID reuse does not reassign it to a new attempt.
 
 ## Prepare commands without executing them
@@ -100,7 +103,7 @@ Use a separate trace preview when a trace manifest path is required.
 ## Save parameterized recipes
 
 Recipes store a command template and a shell profile. A parameter is one complete argument.
-Do not surround a parameter with template quotes or join it to another token. Tower quotes the parameter for the selected shell.
+Do not surround a parameter with template quotes or join it to another token. Raven quotes the parameter for the selected shell.
 
 ```text
 :terminal recipe save read-output "cat {path}" shell=bash
@@ -115,17 +118,17 @@ The active terminal's known shell must match the recipe shell.
 Bash, Zsh, Sh, Dash, Ksh, and Fish quoting are supported. Fish uses its own single-quote and backslash rules.
 Parameterized recipes refuse nested shell substitutions, formatted placeholders, attribute access, and ambiguous quoting.
 
-Recipes remain in the current Tower session until you export them.
+Recipes remain in the current Raven session until you export them.
 Export creates a new private file and refuses to replace an existing path.
 Use `:terminal recipe import PATH` to read a `tower.terminal-recipes/v1` regular JSON file.
 Imports are bounded and atomic: an invalid record, duplicate name, conflicting existing name, or limit violation leaves the existing recipe collection unchanged.
 Interactive file operations use a background worker and a short-lived helper process with a five-second deadline. They do not wait for project filesystem reads on the UI thread.
-If an export times out, inspect its destination before retrying. Tower does not replay an uncertain file write.
+If an export times out, inspect its destination before retrying. Raven does not replay an uncertain file write.
 An import is refused if the in-memory recipes change while the file operation is pending.
 There are at most 32 recipes and 16 parameters per recipe. Import never executes a command.
 Use `:terminal recipe delete NAME` before importing a replacement.
 
-## Insert into several shells deliberately
+## Review insertion into several shells
 
 Ordinary typing always has one recipient. For one explicit multi-session insertion, use:
 
@@ -135,11 +138,11 @@ Ordinary typing always has one recipient. For one explicit multi-session inserti
 
 Use exact session IDs from the session information. Choose two to four distinct, running sessions with known shell profiles.
 The preview lists every destination. Check that every target is at its shell prompt, then select **Insert**.
-Tower queues the text without Enter and disarms the broadcast. Enter each shell separately to execute or edit its prepared line.
+Raven queues the text without Enter and disarms the broadcast. Enter each shell separately to execute or edit its prepared line.
 Changing focus, page, or active session cancels the armed preview. `:terminal broadcast cancel` also discards it.
 
-Before sending any text, Tower rechecks every recipient's session identity, metadata, and running status.
-If queueing fails partway through, Tower reports the sessions whose input was already queued. It never retries or replays a partial broadcast.
+Before sending any text, Raven rechecks every recipient's session identity, metadata, and running status.
+If queueing fails partway through, Raven reports the sessions whose input was already queued. It never retries or replays a partial broadcast.
 Inspect each destination before preparing another insertion. Already queued bytes cannot be recalled.
 
 ## Validation scope

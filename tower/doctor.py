@@ -125,7 +125,7 @@ def diagnose(cfg, *, fake=False, host="", ssh_user=""):
 def render(result, *, as_json=False):
     if as_json:
         return json.dumps(result, indent=2)
-    lines = [f"Project Raven / {result['mode']} environment", ""]
+    lines = [f"Raven / {result['mode']} environment", ""]
     for check in result["checks"]:
         label = {"ok": "OK", "warning": "OPTIONAL", "error": "MISSING"}[check["status"]]
         lines.append(f"  {label:8} {check['name']}: {check['detail']}")

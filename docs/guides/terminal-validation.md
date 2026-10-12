@@ -1,11 +1,12 @@
-# Tower 6.3.0 terminal validation
+# Terminal validation: version 6.3.0
 
 [Terminal guide](terminal-fusion.md) · [Delivery matrix](../reference/terminal-fusion.md) ·
 [Qualification policy](../QUALIFICATION.md)
 
-The checks below run on a shared Linux cloud host. They exercise actual local
-PTYs and the installed optional engine. They do not establish live-cluster,
-physical-terminal, remote authentication or container-runtime qualification.
+This record documents validation on a shared Linux cloud host using local
+pseudo-terminals (PTYs) and the installed optional engine. The results cover the
+tested local configurations. Live clusters, physical terminals, remote
+authentication, and container runtimes require separate qualification.
 
 ## Regression scope
 
@@ -14,7 +15,7 @@ Python 3.12 in **408.76 seconds**. Three warnings came from the existing
 cross-process recovery test's multiprocessing fork fixture. The terminal
 broker uses a fresh executable process.
 
-After the complete run, shell-hook launch paths were hardened for aliases and
+After the complete run, shell-hook launch paths were corrected for aliases and
 empty `PATH` values. The final terminal suite was checked separately on the
 supported interpreter boundaries. These overlapping suites are not added to
 the complete-suite total:
@@ -49,7 +50,7 @@ notices, capability retirement and shutdown cleanup. Overlapping focused suites
 are not added to the final complete-suite total.
 
 An outer curses PTY test starts the complete application, opens the embedded
-shell, sends fragmented mouse reports and Tower shortcut characters, verifies
+shell, sends fragmented mouse reports and Raven shortcut characters, verifies
 the child's output and exits through the explicit focus escape. It passed and
 is included in the final terminal suite. Real Bash hook tests also pass with an
 empty `PATH`, helper paths containing spaces/apostrophes, and a working directory
@@ -69,9 +70,9 @@ outside the checkout; they verify command boundaries and preserved exit status.
   six real-PTY self-tests passed. Private profile export and comparison against
   a fresh probe passed as well.
 
-These checks used pyte 0.8.2 and wcwidth 0.9.2. They did not submit, cancel or
-attach to any live Slurm job. The CI matrix now installs the terminal extra and
-runs an installed-wheel terminal self-test in addition to core qualification.
+These checks used pyte 0.8.2 and wcwidth 0.9.2. They did not submit, cancel, or
+attach to any live Slurm job. The release CI matrix installed the terminal extra
+and ran an installed-wheel terminal self-test in addition to core qualification.
 
 ## Compatibility and measurement
 
@@ -132,7 +133,7 @@ so this is a bounded regression probe, not a long-duration stability claim.
   --live --workers single --switch-workers --switch-control toolbar
 ```
 
-The broker uses bounded parsing slices and separate execution from Tower's UI.
+The broker uses bounded parsing slices and separate execution from Raven's UI.
 The UI's paint measurements exclude physical terminal transport. Shared-host
 contention can increase wall time. In one deliberately overlapping development
 run, real-PTY deadline tests timed out while several suites competed; the

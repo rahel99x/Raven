@@ -1,5 +1,5 @@
 #!/bin/sh
-# Source launcher for Project Raven Heavy; placement is resolved before UI import.
+# Source launcher for Raven Heavy; placement is resolved before UI import.
 set -eu
 RAVEN_SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 if [ -x "$RAVEN_SOURCE_ROOT/.venv/bin/python" ]; then

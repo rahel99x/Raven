@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "raven.config/v1",
-  "title": "Project Raven configuration",
+  "title": "Raven configuration",
   "type": "object",
   "required": [
     "schema"

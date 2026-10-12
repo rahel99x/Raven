@@ -1,6 +1,15 @@
-<a id="feature-50"></a>
+# Artifact inspection
 
-# Artifact inspection guide
+[README](../../README.md) · [Project reporting](../PROJECT_STANDARD.md) · [Live workbench](live-workbench.md)
+
+Inspect declared text, CSV, and JSON outputs without modifying their source files.
+The browser preserves each artifact's run identity, source path, and inspected byte range.
+
+**Prerequisites:** Select a project run with an output contract, or attach a standalone contract and root.
+Use the local file adapter for local outputs or the supported SSH adapter for remote outputs.
+The SSH reader requires `python3` on the selected host.
+
+<a id="feature-50"></a>
 
 ## Open a declared output
 
@@ -12,7 +21,10 @@
 
 For a standalone output contract, attach it with `:artifacts CONTRACT ROOT`, then enter `:outputs`. Press Enter on a directory to expand or fold it. Press Left to fold its parent. Use `/` to filter the declared output list.
 
-Tower reads only exact files declared by the output contract. It anchors each read to the declared root. It refuses symlinks, special files, and traversal paths. It verifies file identity before it publishes a page. Output preview requires Tower to run locally on CARC with the local file adapter.
+**Expected result:** The preview identifies the declared file and the inspected byte range.
+Raven anchors each read to the contract's root and rejects symlinks, special files, and traversal paths.
+It verifies file identity before publishing a page.
+For SSH connections, paths refer to the selected remote host; a remote read does not fall back to a local path.
 
 ## Read adjacent pages
 
@@ -26,7 +38,7 @@ Use Up, Down, Page Up, and Page Down to scroll the loaded page. Press `]` to rea
 :artifact structured
 ```
 
-Refresh returns to the first page. `text` shows original text pages for a structured file. `structured` restores its declared format. These controls can inspect values inside a tree branch that reaches a display limit. Each page states its byte coverage. Pages retain exact byte positions. If a file changes between pages, Tower keeps the previous published page and asks you to reopen the file. Press Esc to return to the same output-list selection.
+Refresh returns to the first page. `text` shows original text pages for a structured file. `structured` restores its declared format. These controls can inspect values inside a tree branch that reaches a display limit. Each page states its byte coverage. Pages retain exact byte positions. If a file changes between pages, Raven keeps the previous published page and asks you to reopen the file. Press Esc to return to the same output-list selection.
 
 Text pages contain at most 128 display rows and approximately 256 KiB. An oversized line can continue on the next page. Byte boundaries preserve UTF-8 characters. Binary and invalid UTF-8 content have no text preview.
 
@@ -42,7 +54,7 @@ Use Left and Right to choose a header. The selected header has brackets. Press `
 :artifact columns all
 ```
 
-Column names are exact. Column numbers start at one. Quote names that contain spaces. Tower retains the original record number when it sorts data.
+Column names are exact. Column numbers start at one. Quote names that contain spaces. Raven retains the original record number when it sorts data.
 
 ## Sort CSV records
 
@@ -54,9 +66,9 @@ Choose a header with Left or Right. Press Enter to cycle ascending, descending, 
 :artifact sort loss off
 ```
 
-Tower sorts the complete inspected dataset before it divides that dataset into pages. Numeric values use numeric order. Text uses natural order. Missing values remain last in either direction. Off restores original file order.
+Raven sorts the complete inspected dataset before it divides that dataset into pages. Numeric values use numeric order. Text uses natural order. Missing values remain last in either direction. Off restores original file order.
 
-Global sorting supports files of at most 8 MiB and 50,000 data records. Tower refuses a sort that exceeds these bounds. It does not apply a partial sort. Use unsorted pages to read a larger file. Each page contains at most 128 complete records. Oversized or invalid CSV records produce a clear inspection error.
+Global sorting supports files of at most 8 MiB and 50,000 data records. Raven refuses a sort that exceeds these bounds. It does not apply a partial sort. Use unsorted pages to read a larger file. Each page contains at most 128 complete records. Oversized or invalid CSV records produce an inspection error.
 
 ## Expand JSON values
 
@@ -70,7 +82,7 @@ To change a node directly, use its JSON pointer:
 :artifact json /
 ```
 
-The last command changes the root node. JSON pointer escaping uses `~1` for `/` and `~0` for `~`. Each tree page displays at most 128 nodes. Use `[` and `]` to read adjacent node pages. A fold or expansion returns to the first page of the changed tree. Tree nesting is limited to 24 levels. A node path is limited to approximately 4096 characters. Tower labels branches that reach those bounds. Files above the structured-size limit use text pages, with a visible explanation.
+The last command changes the root node. JSON pointer escaping uses `~1` for `/` and `~0` for `~`. Each tree page displays at most 128 nodes. Use `[` and `]` to read adjacent node pages. A fold or expansion returns to the first page of the changed tree. Tree nesting is limited to 24 levels. A node path is limited to approximately 4096 characters. Raven labels branches that reach those bounds. Files above the structured-size limit use text pages, with a visible explanation.
 
 ## Preserve source evidence
 

@@ -1,8 +1,11 @@
-# Deploy Tower at a site
+# Raven site administration
 
-Tower is a user-space terminal client. The default installation does not install
+Raven is a user-space terminal client. The default installation does not install
 Slurm, change services, request elevated privileges, or expose a network server.
 Optional collectors and reviewed operations require separate site permission.
+Use this guide to define deployment policy, qualify the installation, and manage
+private operational records. Complete the [installation procedure](INSTALLATION.md)
+before starting a site pilot.
 
 ## Start with a read-only pilot
 
@@ -10,12 +13,12 @@ Optional collectors and reviewed operations require separate site permission.
 2. Install a reviewed source release or a locally built wheel. Keep its hash.
 3. Start with the conservative example profile and disabled optional collectors.
 4. Run `tower --doctor`, then the [qualification script](QUALIFICATION.md).
-5. Check a small existing allocation, accounting delay, logs and terminal behavior.
+5. Check a small existing allocation, accounting delay, logs, and terminal behavior.
 6. Enable one optional collector or operation at a time and record its cost.
 
-Keep site hostnames, account/QOS choices, partitions and credentials out of the
+Keep site hostnames, account/QOS choices, partitions, and credentials out of the
 public example configuration. Distribute your profile through the site's normal
-configuration mechanism. Tower honors existing SSH host-key verification and
+configuration mechanism. Raven honors existing SSH host-key verification and
 authentication; it does not bypass them.
 
 ## Define policy and collection budgets
@@ -31,10 +34,10 @@ operation allowlists, collection/resource limits, allocation requirements, and
 intrusive-tool permission. It produces a reason for admission or refusal.
 
 Open `:ops site-policy` to inspect a policy. Read the schema and operation's
-fields before preparing it; a policy file is a contract for cooperating Tower
+fields before preparing it; a policy file is a contract for cooperating Raven
 components. It is not an operating-system authorization mechanism. Use Slurm,
 filesystem permissions, process ownership, cgroups and your institution's
-controls for enforcement outside Tower.
+controls for enforcement outside Raven.
 
 Core source polling has independent collection limits and retry backoff. GPU
 probes, a trace recorder, a live runtime mailbox, and a scheduler query have
@@ -63,13 +66,13 @@ default.
 
 Runtime-control mailboxes use private, same-host node-local SQLite. Do not place
 them on shared network storage. A multi-node application must use its existing
-coordinator and collective protocol to distribute a decision safely. Tower does
+coordinator and collective protocol to distribute a decision safely. Raven does
 not manufacture a distributed barrier or inject a parameter update into an
 unprepared process.
 
 ## Reviewed changes
 
-Use the sequence **Inspect / prepare → Review action → Confirm apply → readback**.
+Use the sequence **Inspect / prepare → Review action → Confirm apply → verify the result**.
 Check job attempt, cluster, owner, files and exact command. Reopening a stale
 review must require fresh evidence. A partial or uncertain result is not success
 and is not permission to repeat a submission.

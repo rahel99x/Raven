@@ -408,6 +408,6 @@ def build(snap: dict, app, views, actions=None, title: str = "", width: int = 13
     else:
         out.append("No activity recorded yet. Job transitions, alerts and actions appear here.")
     _check_cancel(cancel)
-    out.extend(["", "-" * width, "End of report | Slurm Tower | Plain ASCII, no external resources."])
+    out.extend(["", "-" * width, "End of report | Raven | Plain ASCII, no external resources."])
     # Defensive final bound also covers explanatory text on narrow exports.
     return "\n".join(ascii_text(line)[:width] for block in out for line in block.split("\n")) + "\n"

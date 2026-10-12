@@ -782,7 +782,7 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
                 if args.json:
                     print(json.dumps(result, indent=2, allow_nan=False))
                 else:
-                    print("Project Raven / standalone desktop environment\nPrerequisites ready. Slurm is not required.\n" + result["qualification"])
+                    print("Raven / standalone desktop environment\nPrerequisites ready. Slurm is not required.\n" + result["qualification"])
                 return 0
             from .doctor import diagnose, render
             result = diagnose(cfg, fake=args.fake, host=args.host, ssh_user=args.ssh_user)

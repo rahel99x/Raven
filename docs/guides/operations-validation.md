@@ -2,9 +2,10 @@
 
 [Operations guide](operations.md) · [Roadmap](../ROADMAP.md)
 
-This report records the validation gates for the operations rollout. A passing
-offline test does not establish that a site permits an action or that an
-optional cluster service is installed.
+This report defines the validation gates for research operations and records
+the 4.15 rollout checks. Historical test totals apply to that artifact.
+Target installations still need their own permission, service, and hardware
+validation; an offline pass cannot establish those prerequisites.
 
 ## Required interaction checks
 

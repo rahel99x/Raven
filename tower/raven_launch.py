@@ -1,4 +1,4 @@
-"""Minimal Project Raven launchers. Heavy waits before loading the dashboard.
+"""Minimal Raven launchers. Heavy waits before loading the dashboard.
 
 Importing this module starts no process, collector, environment scan, or history
 reader. Public console entry points remain in the existing distribution.
@@ -21,7 +21,7 @@ from .raven_config import SCHEMA, Resolved, canonical, doctor, resolve, to_tower
 def _parser(heavy=False):
     name = "ravenh" if heavy else "ravenl"
     parser = argparse.ArgumentParser(prog=name, add_help=False,
-        description="Project Raven: " + ("explicit Heavy admission; waiting stays lightweight." if heavy else "bounded Light monitoring; opening never requests compute."))
+        description="Raven: " + ("explicit Heavy admission; waiting stays lightweight." if heavy else "bounded Light monitoring; opening never requests compute."))
     parser.add_argument("--site", help="Named configured profile; desktop must be explicit")
     parser.add_argument("--profile", help="Legacy named Tower profile (read-only compatibility)")
     parser.add_argument("--config", help="Versioned Raven config, or a read-only legacy view")
@@ -159,7 +159,7 @@ def _main(argv=None, *, heavy=False, compatibility=False):
         return 0
     if options.version:
         from . import __version__
-        print("Project Raven " + __version__)
+        print("Raven " + __version__)
         return 0
     if options.interface == "compute":
         print("Raven: allocation-first full-interface transfer is unavailable; use the persistent Light interface with an admitted worker.", file=sys.stderr)
@@ -258,7 +258,7 @@ def heavy_main(argv=None):
 
 def compatibility_main(argv=None):
     """Legacy console alias. Machine-readable stdout remains untouched."""
-    print("tower is the compatibility launcher for Project Raven Light; use ravenl or ravenh.", file=sys.stderr)
+    print("tower is the compatibility launcher for Raven Light; use ravenl or ravenh.", file=sys.stderr)
     return _main(argv, heavy=False, compatibility=True)
 
 

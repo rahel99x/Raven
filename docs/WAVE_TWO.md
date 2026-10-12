@@ -1,26 +1,37 @@
-# Wave two: evidence and experiment planning
+# Evidence and experiment planning
 
-Wave two adds six terminal research views: resource predictions, queue forecasts,
+This guide covers six terminal Research views: resource predictions, queue forecasts,
 scheduler blockers, submission tradeoffs, controlled scaling, and workflow
-critical paths. They use Tower's existing scheduler snapshot or an explicit JSON
+critical paths. They use Raven's existing scheduler snapshot or an explicit JSON
 file. Analysis runs in bounded background work so terminal redraws can continue.
 There are no extra scheduler queries per chart redraw.
 
 The [project reporting standard](PROJECT_STANDARD.md) defines how another
 application should organize its runs and export compatible planning evidence.
-Tower 3.0's [terminal workbench](WORKBENCH.md) adds interactive graph inspection,
+The [terminal workbench](WORKBENCH.md) provides interactive graph inspection,
 visual comparisons, a run picker, and a separately reviewed execution handoff.
 
-The new planners never submit jobs, change allocations, release holds, or execute
+Analysis and planning commands never submit jobs, change allocations, release
+holds, or execute
 batch scripts. A tradeoff choice can prepare one ordinary submission plan; the
 existing Submit view then requires a separate, explicit confirmation. Scaling
 and workflow planning commands produce review documents rather than bulk submission.
 The separate interactive `:orchestrate` command opens a complete execution
 review; only explicit confirmation of that review submits a batch.
 
+These examples preserve native planning formats and compatibility syntax.
+In managed Raven, bare `tower` starts Light. Scientific planning requires a
+supported admitted worker, and some execution handoffs remain deferred even
+after admission. Use the [execution contracts](raven/execution-contracts.md)
+to distinguish supported analysis, verified job-local work, and deferred actions.
+The standalone Python APIs at the end of this guide retain their behavior
+outside a managed session.
+
 ## Try the terminal views
 
-From a configured checkout, the `tower` alias continues to work:
+Install Raven or complete the source setup before running these commands.
+The examples use the `tower` compatibility entry point; `ravenl` also opens the
+Light interface. Installed entry points do not require a shell alias.
 
 ```bash
 tower --fake --tab research --research-view predict
@@ -33,7 +44,7 @@ tower --fake --tab research --research-view workflow
 
 The demo is explicitly simulated. Solid block ranges, comparison bars, scaling
 curves, and workflow timelines render with terminal characters. Use `--ascii`
-for a terminal that cannot display Unicode, or `--unicode` to select the richer
+for a terminal that cannot display Unicode, or `--unicode` to select block
 glyphs. In Research, Left/Right changes the view. Up/Down selects jobs in
 Resources, Forecast, and Blockers; PgUp/PgDn scrolls long results.
 
@@ -47,18 +58,19 @@ tower --fake --tab research --research-view workflow \
 ```
 
 The first command uses the real local backend unless you add `--fake`. On CARC,
-run Tower on the login node where your Slurm commands and project paths work.
+run Raven on the login node where your Slurm commands and project paths work.
 File preparation uses the local filesystem; run it on the cluster rather than
 asking an SSH viewer to inspect a different machine's files.
 
 ## Commands and result files
 
 `tower run` prints a JSON result suitable for inspection or redirection. The
-commands below using `--file` or a recipe path work offline, without contacting
-Slurm. A result can legitimately contain `null`, `insufficient`, `partial`, or
+file-backed analyses below use explicit observations or recipes rather than
+collecting scheduler data. Managed execution admission still applies. A result
+can legitimately contain `null`, `insufficient`, `partial`, or
 `blocked`: read its evidence and limitations before treating a number as usable.
 An invalid or blocked result can return exit status 1 while still printing its
-JSON evidence; a blocked job report does not mean Tower attempted a job action.
+JSON evidence; a blocked job report does not mean Raven attempted a job action.
 
 | Command | What it does |
 | --- | --- |
@@ -174,7 +186,7 @@ They are different quantities. A `memory_bytes` observation requires one of:
 
 Maximum task RSS is not total job memory. Multiplying individual peaks by a
 rank or node count does not establish a simultaneous allocation-wide peak.
-Tower withholds a memory interval when scopes are unknown or mixed and does
+Raven withholds a memory interval when scopes are unknown or mixed and does
 not turn task RSS into a safe `--mem` recommendation.
 
 ```bash
@@ -201,14 +213,14 @@ validation status, and observed coverage. Three 80% intervals do not establish
 80% joint coverage across runtime, CPU consumption, and memory.
 
 TIMEOUT and OOM observations are censored evidence. Their measured quantities
-provide lower bounds rather than completed runtimes. Tower retains them and
+provide lower bounds rather than completed runtimes. Raven retains them and
 withholds predictive intervals instead of fitting an optimistic completed-only
 cohort. Conflicting duplicate run IDs, ambiguous workloads, failed recent
 validation, and insufficient calibration are surfaced in the result.
 
 ## Queue forecasts
 
-The scheduler's current `squeue --start` projection is useful evidence. Tower
+The scheduler's current `squeue --start` projection is useful evidence. Raven
 labels it `scheduler_uncalibrated` until comparable, recorded **pre-start**
 predictions have actual outcomes. It does not manufacture a calibrated interval
 from the current point alone.
@@ -504,13 +516,13 @@ Any script preflight error prevents returning partial plans. Repeated identical
 script preflights reuse one detached snapshot. Individual plans retain
 `symbolic_dependencies`; they do **not** insert fake scheduler job IDs. These
 plans are sealed, marked `submittable: false`, and refused by the submission
-layer. The separate Tower 3.0 orchestration workbench creates concrete plans
+layer. The separate orchestration workbench creates concrete plans
 only after real upstream scheduler IDs exist, while leaving the offline
 planner's sealed documents unchanged.
 
 ## Explicit execution handoff and receipts
 
-Run Tower locally on the cluster with persistent state, then enter these
+Run Raven locally on the cluster with persistent state, then enter these
 commands after `:`:
 
 ```text
@@ -528,7 +540,7 @@ Execution is bounded to 64 reviewed jobs and 16 recorded attempts per node,
 with 16 MiB metadata receipts. Workflow dependencies use actual accepted IDs in
 `afterok`; scaling repeats keep their original scientific identity. Changed
 scripts are revalidated before any new submission. Private receipts under
-Tower state `executions/` record durable launching intent before each scheduler
+the configured state's `executions/` directory record durable launching intent before each scheduler
 call, actual accepted IDs, definitive rejection, and unknown outcomes. A
 failure or uncertain response stops later calls. While running, `c` stops
 further submissions; already accepted jobs keep running.
@@ -574,7 +586,7 @@ loading keeps the smaller shared file bound. Reaching a bound is reported as a
 limit, truncation, incomplete result, or validation error rather than silently
 pretending the entire input was analyzed.
 
-Forecast state can persist with Tower's ordinary UI state. The tracker stores
+Forecast state can persist with Raven's ordinary UI state. The tracker stores
 bounded first/latest issued projections and outcomes, not every redraw.
 `--no-state` disables state persistence. Replaying backwards clears future
 tracker evidence so it cannot calibrate an earlier projection.

@@ -1,8 +1,19 @@
-# Qualify a Tower installation
+# Qualify a Raven installation
 
-Use this guide to record what a specific installation can do. A passing offline
-check does not establish permission to attach a profiler, collect GPU data, or
-change jobs on a production cluster.
+Use this procedure to create an evaluation record for a specific Raven release,
+artifact, and environment. Offline checks validate local behavior. Site checks
+record the supported scheduler, transport, hardware, and authorization scope.
+See the [release validation record](raven/validation.md) for the published 7.0.0
+results and remaining target-system checks.
+
+## Prerequisites
+
+Use a POSIX environment with Python 3.10 or later, curses, and virtual-environment
+support. Run the checker from the source checkout. Distribution builds also
+require the development tools documented in [CONTRIBUTING](../CONTRIBUTING.md).
+Choose a new output path for each run; the checker preserves existing reports.
+Use the development environment's Python interpreter for the commands below.
+Live checks require an explicitly selected existing allocation and site permission.
 
 ## 1. Run the offline checks
 
@@ -24,13 +35,11 @@ applies only to the checks in the document. `production_qualified` remains false
 The report explicitly lists real GPU, multi-node, emulator, production SSH,
 external-user, and scientific-outcome checks as untested.
 
-The report path must be new. The script preserves an existing report.
-
 The repository CI is configured to run this qualification after its regression
 suite, generated-reference check, distribution build and installed-wheel smoke
 check for Python 3.10–3.14. The Python 3.12 job uploads the JSON qualification
-record with its distributions. This is the configured workflow; a local report
-does not establish that the hosted matrix passed or qualify a production site.
+record with its distributions. Record hosted CI results separately from local
+checker results.
 
 ## 2. Check a built wheel
 
@@ -39,10 +48,11 @@ Build with the optional development tools, then pass the actual wheel path:
 ```bash
 python3 -m build
 python3 scripts/qualify_flagship.py \
-  --wheel dist/slurm_tower-6.0.0-py3-none-any.whl \
+  --wheel dist/slurm_tower-7.0.0-py3-none-any.whl \
   --output /tmp/tower-wheel-qualification.json
 ```
 
+Use the actual artifact path when its version differs from the example.
 The checker creates a temporary environment and installs only that local wheel
 with `--no-index --no-deps`. It runs the installed package outside the checkout
 and records the wheel hash. This does not certify optional profiler tools or
@@ -51,7 +61,8 @@ their native libraries.
 ## 3. Check one existing allocation
 
 Create a manifest from a disposable allocation that you already started through
-your normal site procedure. Use its exact current Slurm timestamps:
+your normal site procedure. Use its exact current Slurm timestamps as reported
+by the scheduler; do not convert their time zone or add a UTC suffix:
 
 ```json
 {
@@ -78,7 +89,7 @@ or environment.
 
 ## 4. Record target-system evidence
 
-Use a small allocation and site-approved tools. Record Tower and Slurm versions,
+Use a small allocation and site-approved tools. Record Raven and Slurm versions,
 OS, Python, terminal and multiplexer, backend/tool versions, hardware and policy.
 Keep credentials and private datasets out of the report.
 
@@ -94,16 +105,34 @@ Keep credentials and private datasets out of the report.
 | Runtime controls | Application safe point, parameter epoch, expiration, failed handler and cooperative multi-rank coordination |
 
 Use [UI performance tools](guides/ui-performance.md) for measurements. Record
-terminal transport separately from Tower's processing. Proposed latency goals
-are not achieved results: an initial target is p95 ≤33 ms and p99 ≤75 ms on a
+terminal transport separately from Raven's processing. For a target-system
+evaluation, an initial acceptance target is p95 ≤33 ms and p99 ≤75 ms on a
 declared baseline workload, with no processing stall above 150 ms in a
-30-minute mixed-input run.
+30-minute mixed-input run. These are proposed criteria; compare each measured
+result with its declared target. The 7.0.0 local pointer fixtures use different
+workloads, durations, and thresholds, documented in the
+[validation record](raven/validation.md#local-pointer-response).
 
-## 5. External evaluation remains a release gate
+## 5. Evaluate user tasks and scientific outcomes
 
 Collect independent lab/site observations before claiming production coverage.
 Ask unfamiliar users to find a running job, diagnose a failed job, inspect
 results, connect a project, and prepare a reviewed rerun. Record task completion,
-errors, time, accessibility failures, and observer cost. Do not convert a
-passing fixture or self-reported preference into proof of scientific value or
-research novelty.
+errors, time, accessibility failures, and observer cost. Evaluate scientific
+outcomes against a stated hypothesis, baseline, and acceptance rule.
+
+## Preserve the evaluation record
+
+Publish enough information to reproduce each recorded check:
+
+| Record | Required contents |
+| --- | --- |
+| Artifact identity | Source commit, package version, wheel hash, and verified [release inventory](guides/release-inventory.md) |
+| Environment | OS, Python, terminal chain, optional dependencies, hardware, Slurm version, and site profile |
+| Procedure | Exact commands, fixture or dataset identity, durations, resource budgets, and acceptance criteria |
+| Outcomes | Passed, failed, skipped, and untested checks; corrected failures and rerun scope |
+| Evidence | Qualification JSON, retained benchmark reports, relevant logs, and declared exclusions |
+
+Keep original failed results alongside follow-up results. Remove credentials and
+private site or dataset information before sharing. Limit conclusions to the
+behaviors and workloads that the record actually exercises.

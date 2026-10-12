@@ -1,8 +1,9 @@
-# Tower 4.0: quality-of-life guide
+# Raven interaction guide index
 
 [README](../README.md) · [Controls](CONTROLS.md) · [Runbook](runbook.md)
 
-This index covers the 50 improvements requested for Tower 4.0.
+This index covers the 50 interaction features introduced in release 4.0.
+The identifiers connect each feature to its detailed operating guide.
 Use the guide in each row for prerequisites, controls, procedures, and limits.
 All displays use terminal characters.
 Each graphic has an ASCII fallback.
@@ -103,8 +104,8 @@ Read the [chart guide](guides/charts.md).
 Graphs use measured samples.
 Missing measurements remain gaps.
 Display preferences do not modify recorded values.
-Events identify observations available to Tower.
-They do not establish events that Tower did not observe.
+Events identify observations available to Raven.
+They do not establish events that Raven did not observe.
 
 ## Completion review and artifacts: improvements 48–50
 

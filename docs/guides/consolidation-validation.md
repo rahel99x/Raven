@@ -132,7 +132,11 @@ are separate experiments, not whole-application latency claims.
 
 ## Reproduce the checks
 
-From a development installation, run:
+Use the corresponding 6.1.0 source and a development installation to reproduce
+this record. For a later release, use its own artifact version and record new
+results rather than attributing them to this comparison.
+
+Run from that release's repository root:
 
 ```bash
 .venv/bin/python -m pytest -q -ra

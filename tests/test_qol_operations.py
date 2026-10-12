@@ -168,7 +168,7 @@ def test_report_export_publishes_completed_work_before_capturing_snapshot(tmp_pa
         assert len(exports) == 1
         text = exports[0].read_text()
         assert 'captured report job' in text and 'before publication' not in text
-        assert text.endswith('End of report | Slurm Tower | Plain ASCII, no external resources.\n')
+        assert text.endswith('End of report | Raven | Plain ASCII, no external resources.\n')
         assert app.activity.task['status'] == 'ready'
     finally:
         app.research.close()

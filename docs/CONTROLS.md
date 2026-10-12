@@ -1,4 +1,21 @@
-# Tower controls
+# Raven controls
+
+[README](../README.md) · [Interaction guides](QUALITY_OF_LIFE.md) · [Reference](reference.md)
+
+This guide lists launch methods, default keys, mouse actions, and command families.
+Use `?` in the active page for contextual help. Feature guides provide complete
+procedures and operating limits.
+
+Slider positions describe requested intervals. Raven applies collection floors,
+site policy, demand gating, and command budgets before collection. **Sources**
+and **Poll** show effective intervals; **Set** shows the request. See
+[collection and retention](raven/README.md#collection-and-retention) for the
+governed defaults.
+
+Some native command formats below require an admitted Heavy worker, a verified
+job-local target, or an adapter that is intentionally deferred in managed Raven.
+The [execution contracts](raven/execution-contracts.md) identify these paths.
+Opening a form or retaining a compatibility command does not grant execution.
 
 ## Raven execution controls
 
@@ -14,14 +31,11 @@ not change the selected job, active terminal, or destination of queued paste.
 See the [Raven runbook](raven/README.md) for profiles, limits, migration, and site
 qualification boundaries.
 
-
-Press Ctrl-C to exit Tower when Tower owns keyboard input. A configured Ctrl-C binding takes precedence.
-When an embedded terminal owns input, Ctrl-C goes to its foreground program.
-Press Ctrl-], then t, to return input to Tower.
+Press `Ctrl-C` to exit when Raven owns keyboard input. A configured `Ctrl-C`
+binding takes precedence. When an embedded terminal owns input, `Ctrl-C` goes to
+its foreground program. Press `Ctrl-]`, then `t`, to return input to Raven.
 The terminal test and keybinding tester record this key without exiting.
-Press Esc to leave either test.
-
-[README](../README.md) · [Feature guides](QUALITY_OF_LIFE.md) · [Reference](reference.md)
+Press `Esc` to leave either test.
 
 ## Embedded terminal
 
@@ -33,15 +47,15 @@ or `:terminal show`.
 
 | Control | Action |
 | --- | --- |
-| Ctrl-], then t | Return keyboard control to Tower |
-| Ctrl-], then Ctrl-] | Send a literal Ctrl-] to the child |
+| `Ctrl-]`, then `t` | Return keyboard control to Raven |
+| `Ctrl-]`, then `Ctrl-]` | Send a literal `Ctrl-]` to the child |
 | `:terminal show` / `:terminal details` | Select the secondary-pane view |
 | `:terminal new` / `:terminal sessions` | Create or choose a named shell |
 | `:terminal menu` | Open Tools; arrows and Enter select an action |
 | Copy | Enter or leave terminal copy mode |
-| v, then arrows, then y in copy mode | Select and copy retained lines |
+| `v`, then arrows, then `y` in copy mode | Select and copy retained lines |
 | Mouse drag in copy mode | Select terminal text without sending a child drag |
-| /, then n in copy mode | Search and move to the next result |
+| `/`, then `n` in copy mode | Search and move to the next result |
 | Home / End in copy mode | Move to the first or last retained line |
 | Esc in a terminal dialog or copy mode | Close that mode; do not exit the shell |
 | `:terminal close` | Terminate the selected owned session; Details only hides it |
@@ -51,9 +65,6 @@ uses the existing Copy/Yank destination setting. Read the
 [terminal guide](guides/terminal-fusion.md) and
 [workflow guide](guides/terminal-workflows.md) for all commands and limits.
 
-This guide lists launch methods, default keys, mouse actions, and command families.
-Use `?` inside Tower for contextual help.
-Use the feature guides for complete procedures and operating limits.
 Use [Mouse and button navigation](guides/pointer-navigation.md) for hover feedback, directional focus, dragging, and motion preferences.
 Use [Adjustable workspaces and job advice](guides/adaptive-workspaces.md) for dividers, Recents, launch groups, history panels, and Quick Advisor.
 
@@ -86,18 +97,23 @@ Key bindings in configuration can replace the defaults below.
 
 | Method | Command | Purpose |
 | --- | --- | --- |
+| Installed Light entry point | `ravenl` | Open the governed interface without requesting compute |
+| Installed Heavy entry point | `ravenh` | Request verified worker admission before opening the interface |
+| Installed compatibility entry point | `tower` | Open Light with compatibility command syntax |
 | Checkout launcher | `./scripts/tower` | Use the checkout's virtual environment when available |
 | Python module | `python3 -m tower` | Run directly from the checkout |
-| Bash alias | `tower` | Use the launcher installed with `scripts/install_shell.py` |
-| Installed entry point | `tower` | Use the Python package installed in the active environment |
+| Optional managed Bash alias | `tower` | Use the checkout launcher configured by `scripts/install_shell.py` |
 | Demonstration | `tower --fake` | Run the simulated scheduler |
 | One frame | `tower --once --tab history` | Print a page and exit |
 | Updating text screen | `tower --watch` | Refresh an ANSI screen; Ctrl-C exits |
 | Scripted command | `tower run COMMAND ARGUMENTS` | Execute one palette command |
 | Bash Research reporting | `tower report COMMAND ARGUMENTS` | Publish job-linked reports; explicit `submit` launches a tracked Slurm job |
 
-Run `type tower` to identify which shell command will run.
-Use the [runbook](runbook.md#use-one-tower-shell-command) to install or inspect the managed alias.
+Use the [installation guide](INSTALLATION.md) to expose installed commands on
+`PATH` without aliases or shell-file changes. Run `type ravenl ravenh tower` to
+identify which commands the shell will use. The
+[compatibility runbook](runbook.md#use-one-tower-shell-command) describes the
+optional managed alias for an existing source installation.
 Use [Research reporting from Bash](guides/research-automation.md) for `init`,
 `submit`, `start`, `exec`, `finish`, `metric`, `research`, `log`, `passport`,
 `artifact`, and `aggregate`. These are command-line subcommands, not palette commands.
@@ -113,6 +129,10 @@ pending transitions, result collection, and limits.
 
 ### Select a local setup profile
 
+The commands below use legacy example profiles. `--profile desktop` means local
+Slurm; Raven's `--site desktop` means standalone operation without Slurm. For new
+installed configurations, follow [Choose a site](raven/README.md#choose-a-site).
+
 | Command | Function |
 | --- | --- |
 | `python3 scripts/setup.py --mode local` | Set up the default CARC profile |
@@ -120,7 +140,7 @@ pending transitions, result collection, and limits.
 | `python3 scripts/install_shell.py --profile desktop` | Preview the desktop alias |
 | `python3 scripts/install_shell.py --profile desktop --apply` | Back up `.bashrc` and install the desktop alias |
 
-Source the updated `.bashrc` to load the alias.
+If you install the optional alias, source the updated `.bashrc` to load it.
 Use `tower --version`, `tower --doctor`, and `tower --once --tab sources` to inspect the installation.
 Use the [Fedora desktop guide](DESKTOP.md) when Slurm is installed directly on your desktop.
 Use the [runbook](runbook.md#3-adapt-setup-to-your-environment) for other setup modes.
@@ -150,7 +170,7 @@ Use the [runbook](runbook.md#3-adapt-setup-to-your-environment) for other setup 
 | `/` | Filter the current list or search the current log |
 | `?` | Open contextual searchable help |
 | `Esc` | Close an overlay, end a selection, or clear the current filter or marks |
-| `q` | Exit Tower |
+| `q` | Exit Raven |
 
 Use `:maximize` for the panel layout action on Logs.
 The [navigation guide](guides/navigation.md) describes Forward, saved locations, jump search, settings, and command editing.
@@ -188,11 +208,11 @@ Menu actions use the same commands and reviews as their keyboard equivalents.
 | Up / Down, page keys, Home / End in a menu | Select a menu choice |
 | Enter / Space, or click a menu choice | Activate the choice |
 | Esc, `q`, F10, or move the pointer outside the dropdown | Dismiss the menu |
-| Click `x` | Exit Tower |
+| Click `x` | Exit Raven |
 | Click Copy / Yank | Switch between clipboard copying and a running local Vim/Neovim target |
 | Edit → Switch to Vim/Neovim yanking / Switch to clipboard copying | Change the same copy destination |
 | Click or drag the update track | Request a fetching interval; the label shows the effective Jobs interval |
-| Right-click the update track, interval, or step buttons | Restore five-second polling and preserve selections |
+| Right-click the update track, interval, or step buttons | Restore the five-second polling request and preserve selections |
 | Click `[-]` / `[+]`, or use the wheel over the update control | Move one polling position toward five seconds or 500 milliseconds |
 | Click the interval, or View → Focus update-rate slider | Focus slider keyboard controls |
 | Arrows, `-` / `+` with slider focus | Move one polling position |
@@ -301,7 +321,7 @@ Esc cancels the draft.
 The Polling interval row controls the native global request from five seconds to 500 milliseconds.
 Separate live, GPU, and trace interval rows are not shown.
 Esc restores the exact previous polling position; unaccepted previews are not saved.
-See [Settings](guides/navigation.md#32-change-settings-with-a-preview) for source bases and launch overrides.
+See [Settings](guides/navigation.md#change-settings-with-a-preview) for source bases and launch overrides.
 
 In key bindings, `e` or Enter edits the selected action.
 Use `t` to test a key.
@@ -361,6 +381,8 @@ See [Navigation](guides/navigation.md#feature-35) for multiline input and quotin
 | `S` | Reverse the legacy sort |
 | `=` / `_` | Increase or decrease the accounting and Analytics day window |
 
+### Mark, group, and select jobs
+
 Marked jobs are the target of supported group actions.
 When no jobs are marked, the selected job is the target.
 Click one job, then Shift-click another to mark the inclusive range in either direction.
@@ -379,7 +401,7 @@ Press `g` to group the marked jobs in the focused list.
 On Jobs, this includes marked rows from both Main and Recents. Other workspaces use the focused list only.
 Open the group, mark specific members, and press `u` to detach those members.
 Select its closed summary and press `u` to dissolve the group.
-The membership keys and Alt-drag change Tower's display organization only.
+The membership keys and Alt-drag change Raven's display organization only.
 If the terminal intercepts Alt-drag, use the equivalent right-click group menu.
 See [Manual groups](guides/batch-launches.md#create-a-manual-group) for focus, identity, and persistence rules.
 Right-click a selected or marked job, including its group chevron, for **Create Group** (at least two targets), **Ungroup** (grouped targets), and applicable **Add to GROUP NAME** choices.
@@ -407,12 +429,17 @@ Focus changes preserve marks. Right-click clearing cancels unfinished drags and 
 In History, right-click a selected or marked row and choose **Export logs** to open the log-export menu.
 Right-click elsewhere inside that job list retains the direct log-export control.
 Right-click outside that list to clear the selection without activating another surface.
+
+### Review scheduler actions
+
 Inspect the complete target list in the action review.
 Use Tab to choose Cancel or Confirm.
 Press Enter to activate the selected review control.
 For ordinary action reviews, `y` confirms and `n` or `Esc` cancels.
 Use `:inspect section Overview\|Resources\|Steps\|Files\|Evidence` to select a section in an open structured inspector.
 The inspector's section buttons also accept mouse clicks.
+
+### Sort jobs and read progress
 
 Click column headings for cascading sorts.
 Drag a heading's thin separator to resize that column. Right-click the separator to restore automatic width.
@@ -917,7 +944,8 @@ A running metric can show **Live off/ON** and two adjacent sliders.
 Compact rows use empty/filled Live symbols, or `o`/`+` in ASCII mode.
 The first slider controls the display window. Drag left for 30 seconds or right for one second.
 The second slider controls polling. Drag left for five seconds or right for 500 milliseconds.
-Both scales use logarithmic steps. Native polling requests do not have a flat region caused by a lower-limit clamp.
+Both scales use logarithmic steps. The requested value continues to change even
+when a governed collection floor keeps the effective interval unchanged.
 **Set** shows that slider's requested interval; **Poll** shows the shared effective interval.
 Compact rows show the effective interval before the polling track and `S` plus the request after it.
 Labels use `s`, `ms`, or `µs`; ASCII mode uses `us`.
@@ -944,7 +972,7 @@ Shared probes use the fastest requested rate: CPU and memory share a resource pr
 The requests do not multiply. Another job keeps its global cadence and its own sampling request.
 Job-produced files retain their own writing cadence.
 A valid rectangular zoom turns Live off. A cancelled rectangle resumes it.
-Completed jobs have no active Live or sampling controls. Metric preferences reset when Tower restarts.
+Completed jobs have no active Live or sampling controls. Metric preferences reset when Raven restarts.
 
 See [Charts](guides/charts.md) for coverage, axis restrictions, and declared units.
 
@@ -1110,19 +1138,23 @@ The [plugin reference](reference.md#plugins) defines the extension interface.
 
 ## Command-line options
 
-Run `tower --help` for the parser's complete current syntax.
+Run `ravenl --help`, `ravenh --help`, or `tower --help` for current syntax.
+The table includes compatibility dashboard options; execution and configuration
+selection are governed by the Raven launcher.
 
 | Option | Purpose |
 | --- | --- |
 | `-h`, `--help` | Print command-line help |
 | `--version` | Print the application version |
 | `--config FILE` | Select TOML or JSON configuration |
-| `--write-config` | Create commented defaults without replacing an existing file |
+| `--write-config [NEW_JSON]` | Create Raven JSON defaults without replacing an existing file |
+| `--site NAME` | Select a Raven profile; `desktop` explicitly selects standalone operation |
+| `--plan` | Explain startup without allocating compute or writing state |
 | `--doctor` | Inspect demo, local, or remote prerequisites |
 | `--gpu-check [JOBID]` | Inspect GPU detection; omit JOBID to check current individual jobs |
 | `--gpu-check-output DIRECTORY` | Save a GPU check to a new private directory |
 | `--ui-trace FILE` | Record bounded interactive UI timings and page transitions; save to a new private JSON file on exit |
-| `--profile NAME` | Apply a configured cluster profile |
+| `--profile NAME` | Select a legacy configuration profile; use `--site` for Raven profiles |
 | `--host HOST` | Run scheduler commands and log reads through SSH |
 | `--ssh-user USER` | Select the remote SSH login |
 | `--user USER` | Select the scheduler user |
@@ -1169,7 +1201,10 @@ See the [scripted-mode reference](reference.md#scripted-mode-and-expressions) fo
 
 ## Configuration and environment variables
 
-Use `--config`, `TOWER_CONFIG`, or the default file under `~/.config/tower/`.
+Use `--config`, `RAVEN_CONFIG`, or the default Raven file under
+`~/.config/raven/`, honoring `XDG_CONFIG_HOME`. `TOWER_CONFIG` and files under
+`~/.config/tower/` remain read-only compatibility inputs. Use
+`ravenl config explain` to inspect which source and profile are active.
 Use `NO_COLOR=1` to disable color.
 Use `--account ACCOUNT` for a single launch override.
 
@@ -1194,8 +1229,11 @@ Editor destination variables are separate from the managed alias settings:
 
 See [Pane navigation](guides/pane-navigation.md#send-text-to-vim-or-neovim) for discovery, timeouts, and clipboard fallback.
 
-The normal persistent state base is `~/.local/state/tower/`.
-The desktop profile uses `state_namespace = "desktop"` to separate connection state.
-See [Desktop state](DESKTOP.md#keep-desktop-state-separate) for the default directory layout.
+The normal Raven state base is `~/.local/state/raven/`, honoring `XDG_STATE_HOME`
+and `RAVEN_STATE_DIR`. Connection-scoped state remains separate. Legacy state
+under `~/.local/state/tower/` is preserved until explicit migration. See
+[migration](raven/README.md#migrate-without-changing-evidence) for the copy and
+rollback workflow, and [Desktop state](DESKTOP.md#keep-desktop-state-separate)
+for the legacy desktop layout.
 The [configuration reference](reference.md#configuration) defines profiles, intervals, timeouts, thresholds, alerts, clipboard options, and plugins.
 The [documentation style](DOCUMENTATION_STYLE.md) defines the terminology used in these guides.

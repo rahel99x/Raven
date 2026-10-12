@@ -6,6 +6,9 @@
 Validation date: 2026-10-10. The comparison baseline is Tower 4.13.0,
 commit `b636f23d31af8ee1e18e52fb263104c15a521299`.
 
+This is a historical release record. Test totals and performance measurements
+describe the 4.14.0 artifact; they do not qualify later Raven releases.
+
 ## Release checks
 
 | Check | Result |
@@ -80,7 +83,7 @@ system scheduling variation, not a claim of a statistically significant speedup.
 The benchmark measures application work with a counting paint sink. It excludes
 terminal transport and scheduler or hardware latency.
 
-To repeat the current-version measurement:
+To repeat the 4.14.0 candidate measurement, run from that release's source:
 
 ```bash
 python3 -S scripts/benchmark_changing_ui.py \

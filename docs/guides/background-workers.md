@@ -1,7 +1,10 @@
 # Background workers
 
-Use the toolbar worker switch to change background concurrency during a session.
-The display keeps its separate UI thread in both modes.
+[README](../../README.md) · [Controls](../CONTROLS.md) · [Display performance](ui-performance.md)
+
+Raven supports sequential and concurrent execution of background tasks.
+Use the toolbar worker switch to change modes during a session.
+The display uses a separate UI thread in both modes.
 
 | Mode | Result |
 | --- | --- |
@@ -35,7 +38,9 @@ The View menu also provides worker controls.
 2. If the control shows a pending change, continue using the interface.
 3. Read the final mode after running work completes.
 
-Tower retains accepted tasks and their results. A change to Single first lets
+**Expected result:** The control shows the applied mode after any pending transition finishes.
+
+Raven retains accepted tasks and their results. A change to Single first lets
 running task groups finish, including their GPU child tasks and result
 callbacks. Queued tasks then run with the Single limit. Switching does not
 cancel, restart, or repeat those tasks. A second toggle changes the requested
@@ -47,8 +52,19 @@ it does not make a Python rendering operation parallel.
 
 ## Save a preference
 
-The interactive preference is saved with the session settings. To set a
-configuration default, add this top-level TOML entry:
+The interactive preference is saved with the session settings.
+In a managed Raven profile, set `ui.worker_mode`:
+
+```json
+{
+  "ui": {
+    "worker_mode": "single"
+  }
+}
+```
+
+Add that field to the existing profile; see [effective configuration](../raven/README.md#inspect-effective-configuration).
+The compatibility `tower` configuration uses a top-level TOML entry:
 
 ```toml
 worker_mode = "single"
@@ -61,11 +77,11 @@ saved preference for that launch.
 ## Diagnose a pending change
 
 Use `:workers status` to inspect running and queued work. Open Sources to check
-slow or failed scheduler commands. A pending reduction waits for running work
-to return; Tower cannot safely interrupt arbitrary Python plugin code.
+slow or failed scheduler commands. A pending change to Single waits for running work
+to return; Raven cannot safely interrupt arbitrary Python plugin code.
 Native Slurm and GPU commands retain their configured timeouts.
 
-A mode change governs Tower's background executor work. The UI and timer
+A mode change governs Raven's background executor work. The UI and timer
 coordinator remain separate. External commands and plugins can create their
 own processes or threads. Their internal concurrency is outside this switch.
 

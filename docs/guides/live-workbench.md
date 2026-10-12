@@ -2,9 +2,9 @@
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Project standard](../PROJECT_STANDARD.md)
 
-Use this guide for the toolbar, inline job inspection, and update-rate control.
-All controls run inside the terminal.
-Use the current job ID and source path to check the identity of displayed evidence.
+Inspect job evidence and project reports through Raven's toolbar and Details panel.
+This guide covers project attachment, inline inspection, menus, and polling controls.
+Check the displayed job ID and source path before interpreting evidence or starting an action.
 
 ## Connect a project to its jobs
 
@@ -15,8 +15,8 @@ Use the [copyable reporter](../../examples/project-template/README.md) to write 
 Automatic attachment uses the selected job's cached scheduler WorkDir.
 Set that directory to the project root or a directory beneath `PROJECT/runs/<run_id>/`.
 Register a root with `:project PROJECT` when the scheduler cannot supply that path.
-Tower performs this bounded project discovery locally.
-For SSH viewing, run Tower on the scheduler host to use the project picker and automatic attachment.
+Raven performs bounded project discovery through the selected file connection.
+Local connections read local project paths. Supported SSH connections read paths on the selected host and require remote `python3`.
 
 1. Create one directory at `runs/<run_id>/` for each execution attempt.
 2. Write `run.json` with the run ID and actual scheduler job ID.
@@ -24,19 +24,19 @@ For SSH viewing, run Tower on the scheduler host to use the project picker and a
 4. Register required log files in `logs.json`.
 5. Write final results to `summary.json`.
 6. Declare any additional Research reports in that run's source paths.
-7. Start Tower in the environment that owns the project files.
+7. Start Raven with the connection that provides access to the project files.
 8. Open the project with `:project /absolute/project/path`.
 9. Select the job in Jobs, Recents, or History.
 10. Open Research and select the required workspace.
 
 **Expected result:** An unambiguous exact job ID links the attempt's reports to the selected job.
 The source paths identify that execution attempt.
-Changing jobs updates the attachment without restarting Tower.
+Changing jobs updates the attachment without restarting Raven.
 
-Use the same steps on CARC and native Fedora.
-For CARC, start Tower on the login node where the project paths are available.
-For native Fedora, select the desktop profile.
-An absolute path identifies a file on the machine that owns the scheduler connection.
+Use the same steps for local and supported SSH connections.
+On CARC, use an SSH profile or run Raven on the login node that can access the project paths.
+For a local Slurm scheduler, use a Slurm site with local transport.
+An absolute path identifies a file on the host associated with the selected file connection.
 
 The twelve source routes cover Experiment, Arrays, Evidence, Artifacts, Passport, Submit,
 Resources, Forecast, Blockers, Tradeoffs, Scaling, and Workflow.
@@ -63,9 +63,9 @@ python3 reporting.py report workflow .tower/definitions/workflow.json --run runs
 Run that command from the copied project's root.
 Replace the view, source file, and run directory with the actual values.
 The reporter validates the source and records the destination in the run inventory.
-See [Report publication](../PROJECT_STANDARD.md#publish-a-per-view-source-without-a-tower-dependency) for all supported views.
+See [Report publication](../PROJECT_STANDARD.md#publish-a-per-view-source-without-a-raven-dependency) for all supported views.
 
-Tower rechecks inventories and bound source files in its background worker.
+Raven rechecks inventories and bound source files in its background worker.
 The normal Research interval is five seconds before the global speed ratio is applied.
 Late-created metrics, log indexes, contracts, planning reports, and verified passports can appear during the session.
 Atomic replacements update subsequent reads.
@@ -106,7 +106,7 @@ The Details panel provides seven buttons:
 | Inspector | Inspect job identity, requests, resources, steps, paths, and source status |
 | Logs | Read the exact job's available log sources |
 | Investigate | Inspect bounded failure evidence and its source coverage |
-| Research | Inspect all twelve project and planning workspaces inside the current job page |
+| Research | Inspect all thirteen Research workspaces inside the current job page |
 | Analytics | Inspect Job series, History, Timeline, Advisor, and Compare inside the current job page |
 | Quick Advisor | Request a summary of allocation and measured resource behaviour for the exact job |
 | Off | Hide inspection content |
@@ -230,7 +230,7 @@ Metric dashboards rasterize visible cards as you scroll.
 
 | Group | Inline subviews |
 | --- | --- |
-| Research | Experiment, Arrays, Evidence, Artifacts, Passport, Submit, Resources, Forecast, Blockers, Tradeoffs, Scaling, Workflow |
+| Research | Experiment, Arrays, Evidence, Artifacts, Passport, Submit, Resources, Forecast, Blockers, Tradeoffs, Scaling, Workflow, Operations |
 | Analytics | Job series, History, Timeline, Advisor, Compare |
 
 Use `predict` as the Resources command identifier.
@@ -239,6 +239,7 @@ For example, `:jobpanel research workflow` opens Workflow inside Details.
 Use `:jobpanel analytics job` for the selected job's recorded series.
 
 Research uses the exact selected job and its bound project reports.
+Its twelve report-backed workspaces share the project source routes; Operations provides the operation catalog.
 Job series keeps that exact job ID even when no recorded samples are available.
 Compare includes the selected job and the available explicit comparison or marked jobs.
 History, Timeline, and Advisor keep their accounting-window context.
@@ -284,7 +285,7 @@ The scale is logarithmic and uses positions one to 50 internally.
 These positions select intervals; they do not act as frequency multipliers.
 It changes fetching intervals without changing recorded timestamps or metric values.
 
-1. Click the slider track to choose a rate.
+1. Click the slider track to choose a polling request.
 2. Keep the left mouse button pressed and drag horizontally to adjust the rate.
 3. Click `[-]` or `[+]` to move one position.
 4. Use the mouse wheel over the control for one-step changes.
@@ -293,7 +294,8 @@ It changes fetching intervals without changing recorded timestamps or metric val
 7. Press Home for five seconds or End for 500 milliseconds.
 8. Press Esc to return input to the current page.
 
-**Expected result:** The interval label and effective source cadences update during the session.
+**Expected result:** The requested position updates during the session.
+The interval label shows the effective Jobs interval after collection floors and configured intervals are applied.
 View → Focus update-rate slider provides keyboard entry.
 Enter or Tab also releases slider focus.
 Release the mouse button to finish dragging.
@@ -304,17 +306,19 @@ Use a track click or `:rate N` if the terminal cannot report drag events.
 | --- | --- |
 | `:rate` | Show the effective Jobs polling interval |
 | `:rate N` | Select a polling position from 1 to 50; position 1 requests five seconds and position 50 requests 500 milliseconds |
-| `:rate reset` | Restore five-second polling |
+| `:rate reset` | Restore the five-second slider request; collection policy still applies |
 
-For example, `:rate 50` requests 500-millisecond Jobs polling.
-Jobs, live CPU and memory probes, GPU probes, and local trace reads use this interval directly.
+For example, `:rate 50` selects the 500-millisecond slider request.
+Raven applies configured intervals, collection floors, site policy, demand gating, and command budgets before collection.
+The default queue and live-resource floors are 60 seconds, so selecting this position does not establish 500-millisecond collection.
+See [collection policy](../raven/README.md#collection-and-retention) for the defaults and scope.
 Other sources and supported file readers use the resulting speed ratio: five seconds divided by the requested interval.
 That ratio spans one to ten and adjusts their configured bases, subject to source limits.
-Tower keeps each configured base unchanged, so repeated adjustments do not compound.
+Raven keeps each configured base unchanged, so repeated adjustments do not compound.
 
 ### Read the limits
 
-| Source | Minimum effective interval when speeding up |
+| Source | Reader minimum before managed collection policy |
 | --- | --- |
 | Ordinary Slurm and plugin sources | 0.5 seconds |
 | GPU sampling inside an allocation | 0.5 seconds |
@@ -322,28 +326,32 @@ Tower keeps each configured base unchanged, so repeated adjustments do not compo
 | Local file readers | 0.5 seconds |
 | Remote file readers | 1.5 seconds |
 
-The native sources listed above start with a five-second polling request.
-Other sources retain their configured bases at the default setting.
+The slider's default position requests five seconds.
+Managed launches retain configured collection intervals, including values slower than that request.
+The table describes underlying reader bounds; managed collection floors can be longer.
 Source errors retain their existing retry backoff.
 A shorter requested interval does not start overlapping reads or increase the worker count.
 Disabled sources remain disabled.
 
 Sources shows effective fetching intervals.
 Use that page to verify the actual cadence.
-Every native polling position selects a distinct interval between five seconds and 500 milliseconds.
+Every polling position selects a distinct request between five seconds and 500 milliseconds.
+Several positions can produce the same effective interval when a collection floor applies.
 Remote file limits, expensive-source limits, and retry backoff can delay those sources further.
 The preference persists with normal UI state and follows the selected state namespace.
 Use the top-level `polling_multiplier` configuration field to set a launch default.
 A valid saved position overrides that default.
 The configuration field keeps its existing name for compatibility and now stores a position from one to 50.
 Use `tower --rate N` to override the saved position at launch.
-Use `tower --interval SECONDS` to choose the nearest position within five seconds to 500 milliseconds.
+Use `tower --interval SECONDS` to set a compatibility launch interval.
+Intervals slower than five seconds retain their configured cadence instead of becoming a faster slider request.
 An explicit `--rate N` takes precedence over `--interval`.
 Use `:rate reset` to restore the default request in the active session.
 Settings → Polling interval changes the same native request.
 Cancelling its preview restores the exact previous position; accepting the draft saves it.
-Positive legacy `intervals.jobs`, `intervals.live`, `intervals.gpu`, and `intervals.trace` values do not set actual native cadences.
-See [Settings](navigation.md#32-change-settings-with-a-preview) for compatibility and preview controls.
+Compatibility `intervals.jobs`, `intervals.live`, `intervals.gpu`, and `intervals.trace` values remain inputs to the requested cadence.
+Managed Raven configuration uses the `collection` settings and applies policy before collection.
+See [Settings](navigation.md#change-settings-with-a-preview) for compatibility and preview controls.
 
 ### Set one metric's interval
 
@@ -360,16 +368,16 @@ Right-click the first slider to restore 30 seconds.
 Right-click the second to restore its five-second polling request.
 These resets preserve the other slider, Live state, graph zoom, and job selection.
 Sampling requests apply while Live is off and can remain active after the graph moves offscreen.
-They reset when Tower restarts or the exact job attempt ends.
+They reset when Raven restarts or the exact job attempt ends.
 
 The fastest global or per-metric request sets the shared interval. Requests do not multiply.
 CPU and memory share one job probe. GPU curves share another.
 Other jobs retain their global cadence and their own requests.
-CPU, memory, GPU, and local application-file polling retain a half-second minimum.
+CPU, memory, GPU, and local application-file readers retain a half-second lower bound before managed collection policy.
 Remote application-file reads retain a 1.5-second minimum.
-Command duration and retry backoff still apply.
+Managed collection floors, demand gating, command budgets, command duration, and retry backoff still apply.
 
-The sampling control changes how often Tower reads an application metrics file or CSV trace.
+The sampling control changes how often Raven reads an application metrics file or CSV trace.
 It cannot increase how often the producing job writes that file.
 Read the effective polling interval and source age below the graph before interpreting an empty window.
 See [Charts](charts.md#follow-a-running-metric) for commands, keyboard controls, and limits.
@@ -379,7 +387,7 @@ See [Charts](charts.md#follow-a-running-metric) for commands, keyboard controls,
 The first display row contains File, Edit, View, Help, copy and worker switches, and a quit control.
 Use the menus for file workflows, preferences, navigation, and diagnostics.
 Job-changing actions retain their existing review and confirmation.
-The worker switch changes background concurrency without restarting Tower.
+The worker switch changes background concurrency without restarting Raven.
 See [Background workers](background-workers.md) for Single, Multi, and pending changes.
 
 ### Open and traverse a menu
@@ -417,8 +425,8 @@ Dismiss the menu before using those dialogs' editing or review controls.
 About replaces the dropdown with its own panel.
 Focus update-rate slider leaves the menu and focuses the slider.
 
-Click the top-left `x`, or choose File → Quit Tower, to exit.
-Esc closes a menu; it does not exit Tower.
+Click the top-left `x`, or choose **File → Quit Raven**, to exit.
+Esc closes a menu; it does not exit Raven.
 Click **Copy** to switch text delivery to **Yank**, or click **Yank** to restore clipboard copying.
 Narrow terminals use `C` and `Y` for the same switch.
 Yank targets a running local Vim or Neovim server; unavailable delivery retains the export and uses clipboard fallback.
@@ -442,7 +450,7 @@ See [Pane navigation](pane-navigation.md#send-text-to-vim-or-neovim) for server 
 | Export library | Browse available exports |
 | Execution receipts... | Complete an `execution` command to inspect or recover a receipt |
 | Switch connection profile... | Enter `profile NAME` |
-| Quit Tower | Exit the application |
+| Quit Raven | Exit the application |
 
 The project inventory requires an open project.
 Run artifacts require a selected project run.
@@ -512,8 +520,8 @@ See [Tables](tables.md), [Log display](log-view.md), and [Navigation](navigation
 | Plain ASCII reader mode | Select the reader theme |
 | Theme: each available theme | Select that theme |
 
-The page and workspace names match the [page table](../../README.md#5-select-a-page).
-The theme choices are default, dark, light, terminal, mono, high, and cb.
+See [workflows](../../README.md#workflows) for the main pages and their purposes.
+The theme choices include `default`, `darcula`, `modnokai`, `gruvbox-dark`, `dark`, `light`, `terminal`, `mono`, `high`, and `cb`.
 Reader provides plain ASCII text and static notices.
 Reader also uses immediate scrolling and skips the welcome.
 Refreshing or speeding up fetching does not enable disabled sources.
@@ -531,7 +539,7 @@ See [Mouse and button navigation](pointer-navigation.md) for focus, startup, and
 | Activity and background tasks | Open Activity |
 | Completed-job review inbox | Open the completion inbox, including reviewed items |
 | Alert and quiet-hour controls | Open alert preferences |
-| About Tower and update controls | Show the version and toolbar operating instructions |
+| About Raven and update controls | Show the version and toolbar operating instructions |
 
 Use `:about` to open the About panel directly.
 Esc, Enter, or `q` closes that panel and restores the underlying screen.

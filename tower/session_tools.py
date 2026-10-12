@@ -221,7 +221,7 @@ def run_command(app, args):
     elif command == "terminaltest":
         if values == ["clipboard"]:
             from . import clipboard
-            app.say(clipboard.copy("Slurm Tower clipboard test", app.state_dir,
+            app.say(clipboard.copy("Raven clipboard test", app.state_dir,
                 **clipboard.options(app)))
             state["probe_events"].append("Clipboard delivery requested. Paste into your terminal to verify the result.")
         elif values:

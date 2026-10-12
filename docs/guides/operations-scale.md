@@ -8,9 +8,9 @@ configuration. Use the operation form to select its source. Run the inspection
 again when you need a fresh snapshot. The result contains readable rows and
 structured data that you can copy or export with the Operations controls.
 
-Open **File > Research and cluster operations**, or enter `:ops catalog`.
+Open **File → Research and cluster operations**, or enter `:ops catalog`.
 Enter `:ops bottlenecks`, `:ops clusters`, `:ops incidents`, or `:ops energy`
-to open a feature form. Set the fields, then select **Inspect**. Direct
+to open a feature form. Set the fields, then select **Inspect / prepare**. Direct
 inspection also accepts explicit fields, for example:
 
 ```text
@@ -37,26 +37,26 @@ The [example](../../examples/scale-profiler.json) contains two ranks.
    the cluster, job ID, exact Slurm submit time, rank, phase, and node.
 2. Set `attempt` to the exact Slurm `SubmitTime/StartTime`. The start time
    distinguishes requeues. Use only `SubmitTime` when the start time is unknown.
-   Tower checks the selected snapshot and reports an unknown cluster identity
+   Raven checks the selected snapshot and reports an unknown cluster identity
    when full connection verification is unavailable.
 3. Include `expected_ranks` so that missing ranks can be detected. Include each
    rank/phase pair once. Missing measurements must be absent or `null`.
 4. Open the file in the operation form and run the inspection.
 
-Tower shows the slowest rank, median phase duration, maximum-to-median skew,
+**Expected result:** Raven shows the slowest rank, median phase duration, maximum-to-median skew,
 MPI wall-time fraction, I/O wall-time fraction, and per-rank byte rates. The
 result preserves the normalized records for charting and further analysis.
 Threaded CPU time can exceed wall time. MPI and I/O time may overlap; do not add
 their fractions. Missing counters do not become zero.
 
 When all expected ranks have each measured phase and
-`ordered_barrier_phases=true`, Tower computes the sum of phase maxima. This is
+`ordered_barrier_phases=true`, Raven computes the sum of phase maxima. This is
 the declared barrier-phase envelope. It is not an asynchronous critical-path
 reconstruction. Do not set the declaration for overlapping pipeline phases.
 Skew or a high I/O fraction does not establish a network or storage failure.
 
-For Darshan, export text with `darshan-parser` outside Tower. Choose **darshan**
-and enter the source cluster, job ID, and attempt in the form. Tower reads
+For Darshan, export text with `darshan-parser` outside Raven. Choose **darshan**
+and enter the source cluster, job ID, and attempt in the form. Raven reads
 POSIX bytes and read/write/metadata duration counters. It does not execute the
 parser. Shared-file rank `-1` cannot identify individual ranks and is rejected;
 export unaggregated records. Missing per-file counters keep the rank total
@@ -71,13 +71,13 @@ matrix, which can otherwise grow quadratically.
 ## Concurrent cluster workspace
 
 Select **Concurrent cluster workspace**. Leave **Workspace JSON** empty to use
-configured Tower profiles, or provide
+configured Raven profiles, or provide
 [tower.cluster-workspace/v1](../schemas/cluster-workspace.schema.json).
 Adapt the [example](../../examples/scale-clusters.json) to your login hosts.
 
 Each source needs a unique display name. A source can refer to a configured
 `profile`, or set `host`, `ssh_user`, `user`, and an optional Slurm `cluster`.
-An empty explicit `host` means the machine running Tower. A profile inherits
+An empty explicit `host` means the machine running Raven. A profile inherits
 the base host and trusted SSH options. JSON cannot add SSH transport options.
 `cluster` selects Slurm's `-M` option; omit it when the login host has one
 default cluster. The source `user` selects the Slurm owner. The form's **Slurm
@@ -94,7 +94,7 @@ Results retain a connection descriptor and the identity
 The cluster key includes the configured endpoint and source. To read all
 captured fields for one job, enter its **Inspect source name**, **Inspect job
 ID**, and, when ambiguous, its exact **Inspect submit/start identity**. The
-active Tower connection remains unchanged. Cross-cluster rows cannot issue
+active Raven connection remains unchanged. Cross-cluster rows cannot issue
 scheduler mutations through this view.
 
 There are at most eight sources and four concurrent readers. Single-worker
@@ -115,14 +115,14 @@ job records in the exported result.
 
 ## Historical incident correlation
 
-Select a job, then open **Historical incident correlation**. Tower uses the
+Select a job, then open **Historical incident correlation**. Raven uses the
 captured job nodes and actual start/end interval. For an active job, the end is
 the current time, not the requested time limit. Pending jobs without a known
 allocation cannot be correlated. Reused job IDs with ambiguous attempts are
 rejected. Set explicit start/end overrides only when the recorded interval
 needs correction; use timestamps with a timezone.
 
-With no file path, Tower requests read-only node events from `sacctmgr`. It
+With no file path, Raven requests read-only node events from `sacctmgr`. It
 does not ask for administrator access. If accounting permissions or event
 retention prevent the query, export site-provided notices as
 [tower.incidents/v1](../schemas/incidents.schema.json) and set **Events JSON**.
@@ -130,12 +130,12 @@ The [example](../../examples/scale-incidents.json) uses an explicit UTC interval
 Use exact expanded hostnames in the file. An absent or null event end means the
 incident is ongoing. The cluster name must match the selected job connection.
 
-Tower requires both node overlap and time overlap. Adjacent intervals with no
+Raven requires both node overlap and time overlap. Adjacent intervals with no
 shared time do not match. Reports show the overlap duration, matched nodes,
 state, and reason. An overlap is evidence for an investigation; it does not
 prove why a job failed. An empty result does not prove infrastructure health.
-Slurm timestamps without offsets are interpreted in Tower's local timezone.
-When the login host and Tower use different timezones, use an explicit-offset
+Slurm timestamps without offsets are interpreted in Raven's local timezone.
+When the login host and Raven use different timezones, use an explicit-offset
 event export and interval overrides.
 
 ## Energy per useful result
@@ -143,7 +143,7 @@ event export and interval overrides.
 Select **Energy per useful result** and load
 [tower.energy/v1](../schemas/energy.schema.json). Start with the
 [campaign example](../../examples/scale-energy.json). The producer defines the
-scientific acceptance rule and the unit of useful work. Tower does not infer
+scientific acceptance rule and the unit of useful work. Raven does not infer
 accepted output from a successful scheduler exit code.
 
 Include every attempt, including failures and retries, once under its unique
@@ -168,12 +168,12 @@ The first and last samples must match those boundaries. Sample timestamps
 must strictly increase. The default maximum sample gap is 300 seconds; set
 `max_gap_s` to the producer's meaningful gap limit.
 
-Missing samples, long gaps, and counter-reset intervals remain unknown. Tower
+Missing samples, long gaps, and counter-reset intervals remain unknown. Raven
 does not interpolate across them or assume that a reset value is additional
 energy. It continues integrating the valid intervals and labels the result
 partial. A partial measurement window cannot be presented as whole-job energy.
 
-Tower reports observed attributed joules, energy spent in non-success attempts,
+Raven reports observed attributed joules, energy spent in non-success attempts,
 accepted work, and joules per accepted unit. The ratio is unavailable if any
 attempt has missing energy or work evidence, incomplete coverage, or a shared
 measurement. A campaign with mixed job/node/GPU boundaries also has no ratio.

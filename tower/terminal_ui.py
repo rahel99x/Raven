@@ -1146,7 +1146,7 @@ def _render(app, width, height, x, y):
             hits.append((body_y+index,'control',{'id':'terminal:tool:'+str(index),'label':label,'left':0,'right':count,
                 'action':('command',shlex.join(args))}))
     elif state.error and not snap:
-        content = [[(' Terminal unavailable: '+state.error,'red')], [(' Install Tower with its terminal extra, then retry [+].','dim')]]
+        content = [[(' Terminal unavailable: '+state.error,'red')], [(' Install Raven with its terminal extra, then retry [+].','dim')]]
     elif not snap:
         content = [[(' Select [+] to start an interactive local shell.','dim')]]
     elif state.copy_mode or not state.follow:
@@ -1174,7 +1174,7 @@ def _render(app, width, height, x, y):
     if len(rows)<height:
         hint = (' Copy mode · v select · arrows extend · y copy · Esc shell' if state.copy_mode else
                 ' Esc closes panel · ↑↓ scroll' if state.report or state.menu else
-                ' Terminal focus · Ctrl-] t: Tower' if focused(app) else ' Click terminal to type · Ctrl-] t: Tower')
+                ' Terminal focus · Ctrl-] t: Raven' if focused(app) else ' Click terminal to type · Ctrl-] t: Raven')
         if state.dialog or state.preview or state.menu or state.report:
             action='accept' if state.dialog else 'insert' if state.preview else 'accept-clipboard' if state.clipboard_preview else 'cancel'
             label='Accept' if state.dialog else 'Insert' if state.preview else 'Copy' if state.clipboard_preview else 'Close'

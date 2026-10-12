@@ -1,10 +1,18 @@
 # Experiment and research workflows
 
-Tower's Research workspace connects application progress, run evidence, batch
+Raven's Research workspace connects application progress, run evidence, batch
 submission, arrays, failure investigation, and declared outputs. Everything runs
-in a terminal. The scientific result comes from your application; Tower reads
+in a terminal. The scientific result comes from your application; Raven reads
 job-bound reports and scheduler evidence rather than guessing convergence from
 CPU or GPU utilization.
+
+Use Light to inspect bounded job and run evidence. Request Heavy in the same
+interface before using supported scientific-analysis adapters. The shell
+examples below retain native compatibility syntax; bare `tower` starts Light,
+so computational commands can return a deferred result. Provenance capture
+requires a verified job-local target in managed Raven. See the
+[execution contracts](raven/execution-contracts.md) for supported and deferred
+paths. Standalone Python APIs retain their behavior outside a managed session.
 
 For a common layout and reporting contract across your own projects, use the
 [project reporting standard](PROJECT_STANDARD.md), its
@@ -36,7 +44,7 @@ The regular Jobs and History views remain the place to select a job.
 Place each attempt under `PROJECT/runs/<run_id>` and publish its actual Slurm
 `job_id` in `run.json`. Make the job's scheduler WorkDir the project root or a
 directory beneath that standard attempt. A known project root registered with
-`:project PROJECT` also enables bounded discovery. Tower attaches an
+`:project PROJECT` also enables bounded discovery. Raven attaches an
 unambiguous exact match and refreshes declared sources in the background.
 Array task IDs and retry attempts remain distinct. Missing identity, ambiguous
 attempts, or incomplete discovery coverage require explicit selection.
@@ -45,7 +53,7 @@ The [per-view source table](PROJECT_STANDARD.md#files-for-every-research-view)
 specifies concrete file locations and fields for all twelve views. Publish
 metrics in `runs/<run_id>/metrics.jsonl`, logs in the declared `logs.json`, and
 planning sources under that attempt's `reports/`. The copied reporter publishes
-and binds native sources without importing Tower:
+and binds native sources without importing Raven:
 
 ```bash
 python3 reporting.py report workflow .tower/definitions/workflow.json --run runs/my-run
@@ -81,7 +89,10 @@ full-batch regression gradients using sufficient statistics in
 `O(samples + steps)` work. `--delay` only makes its progress easier to watch.
 It refuses an existing output directory, protecting previous runs.
 
-Validate the results and inspect a snapshot:
+The following native commands express artifact validation, provenance capture,
+and submission preparation. Managed Light can defer validation, and capture
+requires the verified job-local target described above. File-view and preparation
+commands do not themselves authorize submission:
 
 ```bash
 scripts/tower run validate examples/research/contract.json "$demo_dir/run"
@@ -95,11 +106,12 @@ scripts/tower --fake run prepare examples/research/sample.sbatch --workdir "$PWD
 `--fake` explicitly identifies simulated scheduler data. Attached metric files
 are still your actual files. The simulated application curves used when no file
 is attached are demonstration data, not measurements of a CARC job. Passports,
-contracts, and local preparation do not require a Slurm installation.
+contracts, and native local preparation do not inherently require a Slurm
+installation. Managed execution admission remains a separate requirement.
 
 ## Application metrics
 
-Report only the values you want Tower to inspect. A stream is UTF-8 JSONL: one
+Report only the values you want Raven to inspect. A stream is UTF-8 JSONL: one
 object per newline, with a finite epoch timestamp `t`, a `metrics` object, and
 optional `step`, `phase`, and `progress`:
 
@@ -195,7 +207,7 @@ selected. Parameters and resource objects also reject secret-like field names.
 Do not put credential values under other field names. A passport describes
 observed local metadata, not an exhaustive or verified compute-node environment.
 
-Records are immutable through Tower's API, published atomically with mode
+Records are immutable through Raven's API, published atomically with mode
 `0600`, and limited to 1 MiB. Equivalent evidence shares an ID despite different
 capture timestamps; saving it again reuses the original record. A separate
 checksum covers the entire record, including its timestamp, and is verified on
@@ -233,7 +245,7 @@ tower run submit examples/research/sample.sbatch --workdir "$PWD" \
 Choose a partition or other resources appropriate to your site if necessary.
 The example uses a single CPU, 256 MiB, and five minutes; its output directory is
 `runs/JOBID` below the submitted working directory. It executes the checkout's
-own `.venv/bin/python` and imports Tower's reporter. Array submissions use
+own `.venv/bin/python` and imports Raven's reporter. Array submissions use
 `runs/JOBID_TASKID` and a distinct seed per task.
 
 Interactive `:prepare SCRIPT --workdir DIR [flags]` reviews a plan in the Submit
@@ -246,7 +258,7 @@ choose another directory. Passports are explicit run artifacts, independent of
 the dashboard's `--no-state` option. Heavy palette preparation, capture and
 validation run on the single Research worker; results appear on the next UI tick.
 An accepted response without an unambiguous ID, or a transport timeout, requires
-queue inspection before retrying; Tower does not automatically repeat it.
+queue inspection before retrying; Raven does not automatically repeat it.
 
 Programmatic callers use the same separation:
 
@@ -342,7 +354,7 @@ checks, optional ShellCheck, and handling of remote paths.
 ## Evidence-based failure investigation
 
 Select a job from Jobs or History, then open Evidence, or use
-`:investigate JOBID`. Tower ranks candidate explanations from scheduler state,
+`:investigate JOBID`. Raven ranks candidate explanations from scheduler state,
 exit code/signal, available resource observations, selected stdout/stderr tails,
 and job-scoped events. Each hypothesis links to supporting evidence,
 contradictory observations, and useful next checks. A recovered warning in a
@@ -418,7 +430,7 @@ and `error` and records per-check observations independently of Slurm's state.
 
 ## CARC and remote operation
 
-Install and run Tower on a CARC login node for local submission and confined
+Install and run Raven on a CARC login node for local submission and confined
 output validation. Keep application work inside allocations; the example's
 offline experiment is deliberately small. The CARC profile slows scheduler
 polling and avoids enabling GPU job steps or scheduling probes automatically.

@@ -59,7 +59,7 @@ def test_local_setup_checks_and_prints_selected_profile_without_running_slurm(tm
         command += ["--profile", requested]
     result = subprocess.run(command, cwd=tmp_path, env=env, capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "Project Raven / local environment" in result.stdout and "Ready (local)" in result.stdout
+    assert "Raven / local environment" in result.stdout and "Ready (local)" in result.stdout
     launch = next(line.strip() for line in result.stdout.splitlines() if line.startswith("  ") and "--profile " in line)
     args = shlex.split(launch)
     assert args[args.index("--profile") + 1] == expected and "--fake" not in args

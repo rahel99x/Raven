@@ -1,14 +1,15 @@
 # Automate Research reporting from Bash
 
-Use `tower report` in the launcher and the batch script. Tower records the actual
-Slurm job ID, experiment, dependencies, array identity, and each restart attempt.
-Research refreshes these records while Tower remains open. Reporting has no
-Python package dependencies beyond Tower and Python 3.10 or later.
+Use `tower report` in the launcher and batch script to publish native Research
+records. The reporter retains the actual Slurm job ID, experiment, dependencies,
+array identity, and restart attempt. Research refreshes these records while
+Raven is open. Reporting requires Python 3.10 or later and an installed Raven
+package, with no additional Python package dependencies.
 
 The reporting commands run only when your script calls them. Reading Research
 never submits a job or executes a project file.
 
-For guided setup inside Tower, use `:projectguide /path/to/project`. The
+For guided setup inside Raven, use `:projectguide /path/to/project`. The
 [project connection guide](project-connection.md) explains how to validate one
 real sample and copy a quoted Bash hook without executing it from the interface.
 
@@ -16,7 +17,7 @@ real sample and copy a quoted Bash hook without executing it from the interface.
 
 Keep the source and the batch script in a project directory. Use an absolute
 project path on storage that the submission host and compute nodes can access.
-Tower must be on `PATH` in both environments.
+The `tower` command must be on `PATH` in both environments.
 
 Create `launch.sh`:
 
@@ -42,7 +43,8 @@ Create `batch.sh`:
 tower report exec -- python3 solve.py
 ```
 
-The application receives `TOWER_RUN_DIR`. Write scientific files there:
+The application receives `TOWER_RUN_DIR`. Write scientific files there.
+This fragment assumes the application has computed `residual`:
 
 ```python
 import json
@@ -50,11 +52,11 @@ import os
 from pathlib import Path
 
 run = Path(os.environ["TOWER_RUN_DIR"])
-(run / "outputs" / "result.json").write_text(json.dumps({"residual": 0.002}))
+(run / "outputs" / "result.json").write_text(json.dumps({"residual": residual}))
 ```
 
 The application remains responsible for actual progress and scientific metrics.
-Tower does not substitute wall-time usage for scientific progress or fabricate
+Raven does not substitute wall-time usage for scientific progress or fabricate
 missing CPU, memory, GPU, or result measurements.
 
 `exec` returns the command's exit status. It records nonzero exits and forwards
@@ -65,12 +67,12 @@ every MPI rank. Use one coordinator per job or array task.
 
 ## Use Bash functions
 
-Optionally source `scripts/tower-report.sh` from your Tower checkout:
+Optionally source `scripts/tower-report.sh` from your Raven checkout:
 
 ```bash
-source "$HOME/Slurm-Tower/scripts/tower-report.sh"
+source "$HOME/Raven/scripts/tower-report.sh"
 # If only the interactive alias exists, use the checkout executable explicitly:
-export TOWER_BIN="$HOME/Slurm-Tower/scripts/tower"
+export TOWER_BIN="$HOME/Raven/scripts/tower"
 first=$(tower_submit preprocess.sbatch --job-name=prepare)
 second=$(tower_submit train.sbatch --dependency="afterok:${first%%;*}")
 last=$(tower_submit summarize.sbatch --dependency="afterany:${second%%;*}")
@@ -78,7 +80,7 @@ last=$(tower_submit summarize.sbatch --dependency="afterany:${second%%;*}")
 
 The helper provides `tower_submit SCRIPT [SBATCH_OPTIONS]`, `tower_run COMMAND
 [ARGS]`, `tower_metric`, and `tower_artifact`. It changes no shell options or
-traps. Set `TOWER_BIN` to an exact Tower executable path if needed. An interactive
+traps. Set `TOWER_BIN` to an exact `tower` executable path if needed. An interactive
 shell alias alone is not available inside batch scripts.
 
 Submission options use `--option=value` syntax. Use the root and script options
@@ -147,7 +149,7 @@ tower report passport --input=data.csv
 These commands use `TOWER_RUN_DIR`, or accept `--run /exact/attempt/path`.
 Logs may have explicit external paths. Artifact and Research source bindings
 remain inside the run directory. Unknown node/rank substitutions such as `%N`
-and `%t` require explicit log declarations; Tower does not guess the files.
+and `%t` require explicit log declarations; Raven does not guess the files.
 
 `--parameters '{"seed":7}'` and `--resources '{"cpus":4}'` on `submit` record
 declared scientific parameters and known resource requests. They do not alter
@@ -187,8 +189,8 @@ The default `--export=ALL` works. An isolated export list must contain the names
 without assigning different values. Incompatible `NONE`, `NIL`, and export-file
 policies are refused before submission. For an existing, untracked launcher with
 `--export=NONE`, set the three project/experiment/script declarations explicitly
-in the batch script and use `start`/`finish` or `exec`. Load the Python/Tower module in the script if your site requires it.
-All declared paths must be visible on the machine that runs Tower.
+in the batch script and use `start`/`finish` or `exec`. Load the Python/Raven module in the script if your site requires it.
+All declared paths must be visible on the machine that runs Raven.
 
 ## Files and limits
 
@@ -231,20 +233,20 @@ reports take priority over this project default. Aggregation is bounded to 1 MiB
 retains failed attempts. It does not fit models when the required scientific
 data is absent. The standalone `examples/project-template/reporting.py` remains
 available for Python projects that need to emit the format without installing
-Tower.
+Raven.
 
 ## Automatic reads and SSH
 
-Select a job in Jobs or History. Tower checks its registered project root and
+Select a job in Jobs or History. Raven checks its registered project root and
 the scheduler WorkDir in the background. It reads the exact job index when one
 exists, then validates the selected attempt before it attaches reports. A
 cluster collision, incomplete index, or changed identity produces a notice;
-Tower does not guess a run. A known scheduler restart count selects the matching
+Raven does not guess a run. A known scheduler restart count selects the matching
 restart. Otherwise use `:runs` to select the exact attempt explicitly.
 
 The same automatic reads work with `tower --host HOST`. The selected host needs
-Python 3.10 or later. Tower sends its read-only stdlib helper through the existing SSH
-connection; a remote Tower installation is not required. The helper installs
+Python 3.10 or later. Raven sends its read-only stdlib helper through the existing SSH
+connection; a remote Raven installation is not required. The helper installs
 nothing and does not execute project code. It uses the same confined file
 checks as local reads. A missing remote helper or connection error does not
 fall back to files on the local computer. Use absolute remote project paths.

@@ -1,8 +1,9 @@
 # Join evidence for a job
 
-The investigation timeline puts scheduler transitions, log lines and registered
-trace events in one report. Collection runs on a background worker. Mouse hover
-and screen rendering do not read files or query Slurm.
+The investigation timeline joins scheduler transitions, log lines, and registered
+trace events for one job attempt. Use a connection with a declared cluster name
+and readable job evidence. Collection runs on a background worker; pointer
+movement and rendering use the retained report.
 
 ## Collect the selected job
 
@@ -11,13 +12,16 @@ and screen rendering do not read files or query Slurm.
    investigation events** from `:workbench`.
 3. Leave **Optional timeline manifest** empty. The selected job ID is filled in.
 4. If the project uses a separate reporting root, set **Optional registered
-   project root**. Tower also checks the root associated with the scheduler's
+   project root**. Raven also checks the root associated with the scheduler's
    working directory. It does not search arbitrary ancestor directories.
 5. Select **Inspect / prepare**. Use **Refresh** to collect a new observation.
 
-The connection must have a cluster name. Tower verifies the selected submit and
+**Expected result:** The report shows the collected events, their source identity,
+and any unavailable or bounded sources.
+
+Raven verifies the selected submit and
 start identity against a fresh controller response. If the controller no longer
-retains the job, Tower tries accounting. A changed job ID, attempt, owner or
+retains the job, Raven tries accounting. A changed job ID, attempt, owner or
 cluster cannot silently select another execution.
 
 The collector joins these sources:
@@ -40,7 +44,7 @@ If Slurm has discarded a historical log path, the report lists that missing
 source. It does not substitute another running job's files. Local automatic log
 reads reject symlink parents and file replacement. SSH reads use the configured
 remote file connection and compare file identity before and after collection.
-Registered trace journals currently require Tower on the journal host; remote
+Registered trace journals currently require Raven on the journal host; remote
 views never substitute local files.
 
 ## Read clocks and identity correctly
@@ -61,8 +65,8 @@ the current execution.
 
 ## Import a declared timeline
 
-Set **Optional timeline manifest** to a JSON file to inspect supplied evidence
-instead of collecting the job. A manifest uses `tower.timeline/v1` and contains
+Set **Optional timeline manifest** to a JSON file and select **Inspect / prepare**
+to inspect supplied evidence. A manifest uses `tower.timeline/v1` and contains
 at most 20,000 events. Each event declares:
 
 - `id`, `source`, `cluster`, `job_id` and `attempt` for its namespace.

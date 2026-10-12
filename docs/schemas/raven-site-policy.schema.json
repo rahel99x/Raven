@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "raven.site-policy/v1",
-  "title": "Project Raven restrictive site policy",
+  "title": "Raven restrictive site policy",
   "type": "object",
   "required": [
     "schema"

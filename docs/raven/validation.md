@@ -1,8 +1,11 @@
 # Raven 7.0.0 validation record
 
-This record describes local checks, corrected failures, and measured limits.
-It is not a production Slurm qualification. The [implementation map](implementation.md) and
-[execution contracts](execution-contracts.md) state the supported scope.
+This record reports Raven 7.0.0's local regression checks, artifact validation,
+controlled workload measurements, and unresolved targets. The evidence uses
+local subprocesses, pseudo-terminals, and simulated scheduler data.
+Target-system Slurm qualification remains outstanding. The
+[implementation map](implementation.md) and
+[execution contracts](execution-contracts.md) define the supported scope.
 
 ## Regression and compatibility
 
@@ -55,7 +58,7 @@ pressure, source budgets, retention, migration, and exact-job advice.
 
 ## Distribution and terminal checks
 
-The wheel and source archive build successfully. All 233 Python modules in the
+The recorded wheel and source archive builds succeeded. All 233 Python modules in the
 wheel match the checkout. The source archive includes the source launchers,
 schemas, and TOML examples.
 
@@ -149,7 +152,7 @@ statistics calls because the fixture used the Jobs summary and inspector,
 without visible metric demand. This does not compare all-metric sampling at
 equal cadence. Light used four threads; the baseline used twelve.
 
-The CPU headline uses cumulative owned-process CPU divided by the full measured
+The reported mean CPU uses cumulative owned-process CPU divided by the full measured
 elapsed time. CPU percentile samples have varying intervals: sampling delays
 can be followed by short catch-up intervals, where Linux CPU-tick resolution
 exaggerates apparent peaks. Do not interpret those percentiles as uniformly
@@ -218,8 +221,8 @@ switch run observed both modes and finished in settled Multi mode with no
 queued or running work.
 
 All 15 rate fixtures met the local p95 < 100 ms and p99 < 250 ms goals for
-decoded reports and latest-pointer flushes. **This is not spike-free latency:**
-Single mode with 100 jobs at 1,000 reports/s had a 235.29 ms worst flush age and
+decoded reports and latest-pointer flushes. The measured tail still includes
+spikes: Single mode with 100 jobs at 1,000 reports/s had a 235.29 ms worst flush age and
 197.13 ms decoded-report p99 (234.47 ms maximum). The raw distributions and the
 coalescing/physical-terminal limitations are part of the result.
 

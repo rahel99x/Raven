@@ -1,7 +1,11 @@
-# Embedded terminal and CLI fusion
+# Embedded terminal
 
 [README](../../README.md) · [Controls](../CONTROLS.md) ·
 [Terminal workflows](terminal-workflows.md) · [Delivery matrix](../reference/terminal-fusion.md)
+
+Run local shells and explicit remote or allocation sessions in Raven's terminal pane.
+The pane shares the application layout while retaining each session's host, directory, and process identity.
+This guide covers installation, focus, copying, shell reporting, evidence export, and replay.
 
 ## Install and open
 
@@ -13,14 +17,14 @@ python3 scripts/setup.py --mode demo --terminal
 ```
 
 The setup installs `pyte` and `wcwidth` in `.venv`. It validates simulated data
-and preserves your existing alias and connection profile. Start Tower with your
+and preserves your existing alias and connection profile. Start Raven with your
 normal command. Select **Terminal** beside **Details** in Jobs, History,
 Analytics, Dependencies, Logs or Research. The first explicit opening starts a
 local shell. Drawing a page or restoring a saved layout does not start one.
 On very short screens, some pages omit the pane buttons. Use **View → Open
 embedded terminal** or `:terminal show` instead.
 
-Tower's source remains MIT licensed. The separately installed pyte dependency
+Raven's source remains MIT licensed. The separately installed pyte dependency
 uses LGPLv3; wcwidth uses MIT. Their distributions retain their own license files.
 
 To install from this checkout with another interpreter, use:
@@ -29,12 +33,12 @@ To install from this checkout with another interpreter, use:
 python -m pip install '.[terminal]'
 ```
 
-For an offline host, transfer the Tower wheel and compatible `pyte` and
+For an offline host, transfer the Raven wheel and compatible `pyte` and
 `wcwidth` wheels, then run
 `python -m pip install --no-index --find-links DIR 'slurm-tower[terminal]'`.
 The core application still works without these packages.
 
-The shell runs on the machine that runs Tower. An SSH Slurm data connection does
+The shell runs on the machine that runs Raven. An SSH Slurm data connection does
 not change this destination. The pane displays the session label, destination
 and process state. A running SSH process does not prove successful authentication.
 
@@ -42,7 +46,7 @@ and process state. A running SSH process does not prove successful authenticatio
 
 Click the terminal body to assign keyboard input. Hover only highlights controls.
 While the terminal owns input, ordinary keys and Ctrl-C go to its child program.
-Press **Ctrl-]**, then **t**, to return input to Tower. Press **Ctrl-]** twice to
+Press **Ctrl-]**, then **t**, to return input to Raven. Press **Ctrl-]** twice to
 send one literal prefix. This release uses a fixed prefix.
 
 Select **Details** to hide the terminal. Its directory, environment and command
@@ -71,7 +75,7 @@ A resize that hides the terminal revokes its keyboard focus.
 | `:terminal cancel-input` | Cancel remaining queued input and report that already delivered bytes cannot be recalled |
 | `:terminal health` | Inspect current session state and limits |
 
-Closing a normal terminal or exiting Tower ends its owned process group.
+Closing a normal terminal or exiting Raven ends its owned process group.
 Hiding the pane does not. Durable work requires an explicit tmux session or a
 scheduler-managed job. See [terminal workflows](terminal-workflows.md) for
 tmux detach, SSH collections, containers, directory actions and allocation shells.
@@ -79,7 +83,7 @@ tmux detach, SSH collections, containers, directory actions and allocation shell
 ## Copy, paste and scroll
 
 Select **Copy** to enter copy mode. Drag across lines, or press **v**, move with
-arrows, and press **y**. Tower copies only the pinned selection. New output cannot
+arrows, and press **y**. Raven copies only the pinned selection. New output cannot
 replace selected text. Soft wraps join without inserting false newlines.
 The existing Copy/Yank toolbar destination also applies here.
 
@@ -108,8 +112,9 @@ Links do not launch a browser or execute a command automatically.
 
 ## Configure the shell
 
-The following keys are available in Tower's configuration. TOML requires Python
-3.11 or later; use JSON on Python 3.10.
+The following keys belong to the compatibility `tower` configuration.
+Managed Raven profiles apply terminal budgets through `resources.light`.
+TOML requires Python 3.11 or later; use JSON on Python 3.10.
 
 ```toml
 [terminal]
@@ -124,17 +129,28 @@ paste_preview = true
 The equivalent JSON object is:
 
 ```json
-{"terminal": {"shell": "", "login": false, "history_lines": 2000,
-              "max_sessions": 8, "paste_limit_bytes": 1048576, "paste_preview": true}}
+{
+  "terminal": {
+    "shell": "",
+    "login": false,
+    "history_lines": 2000,
+    "max_sessions": 8,
+    "paste_limit_bytes": 1048576,
+    "paste_preview": true
+  }
+}
 ```
 
 Use an executable path for `shell`, not a command with arguments. Sessions inherit
 the normal environment and shell startup policy. An invalid configured path or
 `$SHELL` produces a launch error; it does not silently select another shell.
-Tower does not modify dotfiles
-or source a batch launcher. The hard session limit is eight and the maximum
+Raven does not modify dotfiles or source a batch launcher.
+The hard session limit is eight and the maximum
 paste payload is 1 MiB. Configuration cannot increase those hard limits.
 The emulator viewport is bounded at 160 rows by 400 columns per session.
+Managed launches also apply Raven's light-mode resource budget.
+Its default terminal limit is two sessions, configured by `resources.light.max_terminal_sessions`.
+Use `ravenl config explain` to inspect the effective budget.
 
 ## Connect shell activity to research
 
@@ -192,7 +208,7 @@ in-application reference.
 | `:terminal compare LEFT RIGHT trailing-space` | Compare blocks; omit the last argument for exact comparison |
 | `:terminal evidence-preview ID... exclude=TEXT` | Review the complete export, with optional explicit exclusions |
 | `:terminal evidence-export NEW_FILE` | Export the reviewed snapshot to a new private file |
-| `:terminal environment capture NAME` | Capture an allowlisted summary of Tower's process environment |
+| `:terminal environment capture NAME` | Capture an allowlisted summary of Raven's process environment |
 | `:terminal environment diff BEFORE AFTER` | Compare named captures |
 | `:terminal handoffs` | Inspect declared project and artifact observations |
 | `:terminal handoff project SESSION` | Open a validated declared project |
@@ -208,7 +224,7 @@ output merges stdout and stderr; the hook and output channels are independent.
 Reports preserve unknown clock skew and missing metadata. A nonzero status alone
 does not establish a scientific failure cause.
 
-The palette's environment capture reads Tower's process environment. To capture
+The palette's environment capture reads Raven's process environment. To capture
 changes in a child shell, run `tower terminal report environment --label NAME`
 from that shell. Both routes use an allowlist. Module/package versions are
 unavailable unless an explicit report supplies them.
@@ -247,11 +263,11 @@ recorded output as terminal data and never executes recorded commands.
 `tower terminal inspect FILE` reports recording metadata. `tower terminal replay
 FILE` uses the player on a TTY and an inert text summary when redirected.
 Seeking rebuilds terminal state in bounded slices; large recordings can take
-time to catch up. Playback processing is separate from Tower's UI.
+time to catch up. Playback processing is separate from Raven's UI.
 
 `:terminal share NEW_FILE` writes a private, redacted, read-only screen snapshot.
-`:terminal share-read FILE` opens it. This release supports same-user snapshots,
-not authenticated cross-user live streaming or remote control.
+`:terminal share-read FILE` opens it. Snapshot sharing supports the same user.
+Cross-user live streaming and remote control are outside the supported scope.
 
 ## Diagnose compatibility and performance
 
@@ -268,8 +284,8 @@ from tools actually tested.
 
 The engine supports normal and alternate screens, tested xterm key and mouse
 modes, ANSI/256/RGB color, wide characters and bounded combining marks. Explicit
-child colors are retained; default colors and pane chrome follow Tower's theme.
-ASCII fallback applies to Tower chrome, not arbitrary child output.
+child colors are retained; default colors and pane chrome follow Raven's theme.
+ASCII fallback applies to Raven chrome, not arbitrary child output.
 
 Known limits: no image protocols, no complex emoji shaping, no extended keyboard
 negotiation and no normal-buffer text reflow on resize. A requested bar cursor
@@ -279,7 +295,7 @@ display=fullscreen` and review the original terminal handoff.
 
 The broker processes PTYs independently of the sampler pool. It rotates ready
 sessions, parses bounded slices, publishes visible screens at up to 30 Hz and
-hidden screens at up to 1 Hz. Tower paints changed rows without rebuilding jobs
+hidden screens at up to 1 Hz. Raven paints changed rows without rebuilding jobs
 or graphs for each output update. Backpressure preserves protocol order and can
 slow a high-volume producer. Terminal throughput is not unlimited.
 

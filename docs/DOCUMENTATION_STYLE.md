@@ -14,7 +14,7 @@ Treat commands, file paths, key names, Slurm terms, and metric identifiers as te
 
 | Term | Meaning |
 | --- | --- |
-| Tower | The Slurm Tower application |
+| Raven | The application; `slurm-tower` is the distribution and `tower` is its import namespace and compatibility command |
 | Page | A main application view, such as Jobs or History |
 | Workspace | A Research subview, such as Experiment or Workflow |
 | Panel | A separately focused area within a page |
@@ -57,7 +57,7 @@ Avoid decorative claims and unexplained adjectives.
 | --- | --- |
 | The configuration should then be loaded by the user. | Open the configuration file. |
 | Simply press the appropriate shortcut. | Press `Ctrl-B`. |
-| This seamlessly restores everything. | Tower restores the selected job, filter, and scroll position. |
+| This seamlessly restores everything. | Raven restores the selected job, filter, and scroll position. |
 | The metric is bad. | The sample is unavailable. Inspect Sources for the read error. |
 | Copy the log. | Press `Y` to copy the entire selected log file. |
 
@@ -112,7 +112,15 @@ Do not claim that a chart proves an unobserved event.
 
 Document implemented behavior.
 Do not present an intention, prototype, or stub as a completed feature.
-Match examples to actual command parsing and help text.
+Match examples to actual command parsing and help text. Use Raven consistently
+in current product prose. Keep historical release names, literal command and
+module identifiers, and published evidence-schema identifiers intact.
+
+For research and evaluation documents, distinguish implementation, measured
+results, and hypotheses. State the workload, runtime, baseline, sample scope,
+and limitations needed to reproduce a result. Cite existing records rather
+than inventing paper titles, venue acceptance, external evaluations, or novelty
+claims. Keep documentation suitable for review as a software artifact.
 
 ## Review documentation changes
 

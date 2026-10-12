@@ -1,14 +1,25 @@
 # Platform evidence and site integration examples
 
-Run these examples from the repository root. These fixtures do not contact a
-cluster. Replace the example cluster, job ID, execution attempt and paths before
+Use these examples to inspect portable evidence, collection policy, telemetry,
+adapter contracts, and support bundles. Run the commands from the repository
+root in an installed Raven session. Inspecting the supplied fixtures does not
+contact a cluster. A telemetry query or reviewed adapter run performs the
+explicit operation described below.
+
+These fixtures also document native adapter contracts. In managed Raven,
+file-based analysis requires a supported admitted worker. Live telemetry Query
+and external adapter Apply remain deferred until their governed transports are
+implemented; Heavy admission does not enable them. See the
+[execution contracts](../../docs/raven/execution-contracts.md).
+
+Replace the example cluster, job ID, execution attempt, and paths before
 using them for a real job. An attempt is the exact submit/start identity, not
 only the reusable Slurm job number.
 
 ## Inspect and exchange evidence
 
-Open **File → Research and cluster operations → Platform**, or use these Tower
-commands:
+Open **File → Research and cluster operations → Platform**, or use these Raven
+palette commands:
 
 ```text
 :ops run evidence path=examples/platform/evidence.json
@@ -23,7 +34,7 @@ only after reviewing the change.
 
 In **Portable research evidence**, set the source format, source path, exact
 cluster, job ID and attempt. Set an export format and a **new** destination
-directory. Inspect the result, review the action, and apply it. Tower verifies
+directory. Inspect the result, review the action, and apply it. Raven verifies
 that the source did not change and writes a private bundle containing
 `tower-evidence.json` plus the selected export. Existing destinations are
 refused. Original external artifacts are referenced; they are not copied or
@@ -50,7 +61,7 @@ Runtime validation also checks cross-field constraints and document bounds.
 
 ## Configure a site collection policy
 
-Copy and review [site-policy.json](site-policy.json). In the Tower configuration:
+Copy and review [site-policy.json](site-policy.json). In the Raven configuration:
 
 ```toml
 site_policy = "/absolute/path/to/site-policy.json"
@@ -60,9 +71,9 @@ collection_cache_dir = "/private/host-local/path/tower-collection"
 The cache directory must be owned by the current user with mode `0700`, on a
 host-local filesystem. Symbolic-link paths and known network filesystems
 (including NFS, Lustre and GPFS) are refused. The same host/user's
-Tower sessions can share scheduler read results. The cache binds scope, query,
+Raven sessions can share scheduler read results. The cache binds scope, query,
 capabilities, policy revision and host boot identity. A different host or boot
-requires a fresh directory. Without `collection_cache_dir`, Tower selects a
+requires a fresh directory. Without `collection_cache_dir`, Raven selects a
 host/boot-specific path under its state directory; verify that the state storage
 is local before enabling this option.
 
@@ -87,15 +98,15 @@ and `collection-request.json` can be inspected with `site-policy.json`:
 ```text
 :ops run site-policy policy=examples/platform/site-policy.json capabilities=examples/platform/capabilities.json request=examples/platform/collection-request.json
 ```
- These are configuration and
-observed capability contracts, not proof of administrator authorization.
+These contracts describe configuration and observed capabilities. They do not
+establish administrator authorization.
 
 ## Read an existing Prometheus site service
 
 Edit [prometheus-query.json](prometheus-query.json). Set an explicit site-approved
 HTTPS endpoint and PromQL expression. Every returned series must contain the
 configured labels for the exact cluster, job ID and execution attempt. Add these
-labels at the exporter/recording-rule layer if your service lacks them; Tower
+labels at the exporter/recording-rule layer if your service lacks them; Raven
 does not infer attempts from a reused job number.
 
 ```text
@@ -103,8 +114,9 @@ does not infer attempts from a reused job number.
 :ops run site-telemetry manifest=/absolute/path/query.json action=query
 ```
 
-Inspect performs no HTTP request. Query fetches this one declared range from the
-Tower host, through a local connection context. Remote SSH contexts cannot
+Inspect performs no HTTP request. The native Query contract fetches the declared
+range from the Raven host through a local connection context. Managed Raven
+currently defers Query pending a governed network transport. Remote SSH contexts cannot
 silently substitute local credentials. Metric names, units and gauge/counter/rate
 semantics are explicit. `NaN` and infinite samples remain missing. The evaluation
 step does not establish the exporter's real sampling interval.
@@ -150,7 +162,7 @@ and example script:
 python examples/platform/make_adapter_manifest.py > /tmp/tower-adapter.json
 ```
 
-Then use:
+Then enter these commands in the Raven palette:
 
 ```text
 :ops run adapter manifest=/tmp/tower-adapter.json action=inspect
@@ -158,12 +170,12 @@ Then use:
 :ops run adapter manifest=/tmp/tower-adapter.json action=run request=examples/platform/adapter-request.json
 ```
 
-Describe, Validate and Run prepare an action for review. They execute only after
-Apply. The example computes a SHA256 of explicit text. The process receives a
+The native Describe, Validate, and Run contract prepares an action for review
+before Apply. Managed Raven currently defers external adapter Apply. The example computes a SHA256 of explicit text. The process receives a
 minimal environment plus the manifest's declared variables. Pin the executable
 and any absolute file arguments; changed hashes require a new manifest/review.
 Offline installation can provide the same pinned executable/assets in an
-isolated environment. Tower does not resolve or download dependencies.
+isolated environment. Raven does not resolve or download dependencies.
 
 The protocol is newline-delimited JSON. Requests contain `schema`, `id`,
 `method` and object `params`. Responses contain the same schema/id plus either

@@ -1,9 +1,9 @@
 # Validate the 4.16 workspace and reporting update
 
-This release adds table resizing, shared Jobs/Recents layout, explicit grouping
-controls, reviewed queue ordering, revised job selection, and Bash Research
-reporting. The implementation retains the existing terminal event loop and
-background workers.
+This record describes the 4.16 release checks for table resizing, shared
+Jobs/Recents layout, explicit grouping, reviewed queue ordering, job selection,
+and Bash Research reporting. The release retained the terminal event loop and
+background workers. These results qualify the recorded artifact only.
 
 ## Regression coverage
 
@@ -59,7 +59,8 @@ perceived smoothness. The measurements do not establish a universal speedup.
 
 ## Repeat the checks
 
-From a developer checkout:
+Use the corresponding 4.16.0 source and a development installation. Run from
+that release's repository root:
 
 ```bash
 python -m pytest -q
@@ -74,7 +75,7 @@ python -S scripts/benchmark_changing_ui.py \
 ```
 
 The schema audit requires the optional developer package `jsonschema`; it is
-not a Tower runtime dependency.
+not a Raven runtime dependency.
 
 ## Deployment limits
 

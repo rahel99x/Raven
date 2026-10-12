@@ -1,14 +1,14 @@
-# Terminal fusion delivery matrix
+# Terminal fusion implementation matrix
 
 [User guide](../guides/terminal-fusion.md) · [Workflows](../guides/terminal-workflows.md) ·
 [Original 100-entry design](../design/terminal-fusion.md)
 
-This record describes version 6.3.0. All four delivery stages have implementation
-paths. The original entries overlap; they are not 100 independent products or
-100 claims of universal compatibility. Each row below identifies the delivered
-mechanism and any narrower form than the design proposed.
+This record maps the version 6.3.0 terminal implementation to its design and
+regression sources. All four delivery stages have implementation paths. Some
+design entries overlap. Each row identifies the implemented mechanism and its
+scope; the matrix does not establish universal terminal compatibility.
 
-## Pane, process and interaction
+## Pane, process, and interaction
 
 | Design IDs | Delivered mechanism and scope | Primary regression source |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ mechanism and any narrower form than the design proposed.
 | TF19, TF20 | Tested application cursor/keypad, function, Control and Alt encodings. Unsupported extended keyboard negotiations are not advertised | `test_terminal_emulator.py`, `test_terminal_input.py` |
 | TF21, TF22 | Framed decoder, original session/focus/geometry identity, bounded paste and incomplete-protocol containment | `test_terminal_input.py`, `test_terminal_fusion_integration.py`, `test_terminal_curses.py` |
 | TF23, TF24, TF25, TF26 | Pane-local mouse protocols, explicit copy-mode override, original gesture capture and child-motion preservation | `test_terminal_input.py`, `test_terminal_ui.py` |
-| TF27, TF28 | Child focus events and Tower modal ownership; stale releases and hidden input leases rejected | `test_terminal_input.py`, `test_terminal_fusion_integration.py` |
+| TF27, TF28 | Child focus events and Raven modal ownership; stale releases and hidden input leases rejected | `test_terminal_input.py`, `test_terminal_fusion_integration.py` |
 | TF29, TF30, TF31 | Exact bounded paste, queued short writes, visible rejection/cancellation and configurable multiline preview; cancellation cannot undo delivered bytes | `test_terminal_service.py`, `test_terminal_ui.py` |
 | TF32, TF33, TF34 | Explicit selection-only copy, frozen text identity and actual soft-wrap metadata; ordinary shell y stays input | `test_terminal_ui.py`, `test_terminal_emulator.py` |
 | TF35, TF36 | Line and byte bounds, coherent paged scrollback, rail/follow/top/bottom, retained search and visible eviction boundary | `test_terminal_service.py`, `test_terminal_ui.py` |
@@ -50,7 +50,7 @@ dependent-delta loss; it does not serialize a screen per output byte.
 | TF56, TF57 | Ordered bytes, bounded input/IPC/history/parser/record queues, explicit rejection and eviction; producer backpressure is possible | `test_terminal_service.py`, `test_terminal_emulator.py`, `test_terminal_recording.py` |
 | TF58 | Parser duration, queue/output diagnostics, cached feedback and sustained-pointer measurements. These do not measure physical end-to-end Termius latency | `test_terminal_input.py`, existing pointer benchmark |
 
-## HPC, shell context and evidence
+## HPC, shell context, and evidence
 
 | Design IDs | Delivered mechanism and scope | Primary regression source |
 | --- | --- | --- |
@@ -82,7 +82,7 @@ interaction tests, Python 3.10/3.12/3.14 checks, the complete repository suite,
 package qualification and sustained-pointer regression measurements. See the
 [validation record](../guides/terminal-validation.md) for measured results.
 
-This environment has no live Slurm allocation or authenticated remote cluster.
+The recorded validation environment had no live Slurm allocation or authenticated remote cluster.
 Live SSH authentication, site-specific srun/sattach policy, multi-node execution,
 container deployments, physical Termius/tmux/screen chains, and unavailable
 applications require installation-specific testing. Test fixtures and adapter

@@ -1,29 +1,64 @@
-# Flagship implementation and qualification ledger
+# Raven flagship implementation and qualification ledger
 
-This file maps the [research dossier](research/flagship-strategy.md) to executable
-mechanisms, controls and remaining qualification work. The dossier is an archived
-proposal against version 4.16.1; its statements about future work describe that
-baseline. This ledger describes the current implementation.
+This ledger maps the [archived research strategy](research/flagship-strategy.md)
+to mechanisms, controls, evaluation procedures, and remaining qualification work
+in Raven 7.0.0. The strategy proposed changes against version 4.16.1. Its future
+release language describes that historical baseline.
 
-**Implemented** means a supported mechanism exists. **Partial** means the
-mechanism covers only the stated subset. **External gate** means it requires
-real site, user or research evidence that cannot be produced by an offline test.
-An implementation does not establish production certification or novelty.
+The [Raven implementation map](raven/implementation.md) and
+[execution contracts](raven/execution-contracts.md) define current Light/Heavy
+placement, admission, and deferred operations. The
+[7.0 validation record](raven/validation.md) links release evidence. Use the
+[6.0 validation record](guides/flagship-validation.md) for the earlier foundation
+measurements.
+
+| Status | Meaning |
+| --- | --- |
+| Supported mechanism | An implementation exists within the stated scope. |
+| Partial | The mechanism delivers only the stated subset of the proposal. |
+| External gate | Qualification requires a real site, device, terminal chain, or independent users. |
+| Research gate | The claimed scientific or decision benefit still requires an evaluated comparison. |
+
+Rows 39 and 40 provide evaluation procedures. They do not report completed user
+studies or research results. Mechanism delivery and qualification remain separate
+claims throughout the tables.
 
 The [6.1 consolidation](guides/consolidation.md) assigns these overlapping
 requirements to [eight owning areas](reference/capabilities.md) and shares
 publication, collection, presentation, investigation, trial, and action
-mechanisms. Each of the 56 original entries has one primary owner; related
-entries remain references to overlap. This changes implementation ownership,
-not the scientific, site, or external-adoption gate claims below. Consolidation
-does not turn a supported subset into the unrestricted original proposal.
+mechanisms. The 56 entries comprise forty investments, five research hypotheses,
+ten advanced proposals, and one tracing proposal. Each has one primary owner;
+related entries identify overlap. This ownership map preserves the supported
+subsets and qualification gates below.
 
-## Open the relevant task
+## Managed Raven execution
 
-Use `:workbench run|investigate|compare|results|connect|all`, or the task controls
-in Research and cluster operations. Select a feature and fill its declared
-fields. **Inspect / prepare** produces a report. Mutations require
-**Review action → Confirm apply** and preserve a receipt or explicit failure.
+The tables retain the delivery scope of inherited mechanisms and project-owned
+standalone tools. In a managed Raven session, the current execution contracts
+determine which path can run:
+
+| Work | Current execution requirement |
+| --- | --- |
+| Scientific analysis and planning | An admitted named Heavy adapter with bounded inputs and results |
+| Scheduler mutations | The existing exact-attempt review and governed scheduler target |
+| External diagnostic, reproducer, and regression drivers; campaign submissions; transfers; plugin execution | A declared owned execution adapter and reviewed target handoff; the managed path remains deferred when that handoff is absent |
+| Live multi-cluster collection, site telemetry queries, or detached collectors | A governed source adapter or collection owner |
+| Python/native program recording | Verified owned Slurm job/step placement for managed launch; bounded viewing and SDK generation remain available without compute |
+
+The [deferred-path record](raven/execution-contracts.md#explicit-deferred-paths)
+states the remaining handoffs. Preparing a plan or inspecting an artifact does
+not mean that its external action or collection ran.
+
+## Use the task controls
+
+1. Open a task control in Research and cluster operations, or enter
+   `:workbench investigate`. Other workspace choices are `run`, `compare`,
+   `results`, `connect`, `pinned`, and `all`.
+2. Select a feature and fill its declared fields.
+3. Select **Inspect / prepare** to produce a report.
+4. If the operation changes a job, file, service, or application state, use
+   **Review action → Confirm apply**. The operation preserves a receipt or an
+   explicit failure.
 
 Jobs and History Details retain their existing inspectors, logs, analytics and
 research views. The Trace control inspects prepared recordings and supported
@@ -31,9 +66,9 @@ capture paths; it does not silently attach an arbitrary debugger.
 
 ## Forty investments
 
-| ID | Scope delivered | Remaining boundary or validation |
+| ID | Mechanism or procedure delivered | Remaining boundary or validation |
 | --- | --- | --- |
-| 01 Task workspaces | Shared task descriptors filter the searchable operation catalog; durable pinned tools have keyboard/mouse controls and reopen with current job context. | **External gate:** newcomer task study; no measured usability improvement claimed. |
+| 01 Task workspaces | Shared task descriptors filter the searchable operation catalog; durable pinned tools have keyboard/mouse controls and reopen with current job context. | **External gate:** newcomer task study; task completion and usability effects remain unevaluated. |
 | 02 Context/navigation | Back/Forward and scoped saved locations remain available. Cached breadcrumbs show known cluster, matched project/run attempt and declared source; changed scheduler attempts suppress stale bindings. | Session back stacks remain transient; narrow screens omit optional context before hiding the current page/job. |
 | 03 Command model | Shared command descriptors supply command names, usage, palette search/completion, toolbar action metadata, task controls and generated command help; installed operation specifications supply forms and field choices. | **Partial:** contextual input handlers, raw-key dispatch and specialist controls remain module-owned with their own validation; trusted plugins keep their separate dispatch contract. |
 | 04 Project guide | `:projectguide ROOT` / `project-guide` checks declaration coverage and one exact sample's metrics, summary, output contents and bounded logs through confined local/SSH readers; executable Bash hooks and reviewed descriptor initialization. | Sample coverage is bounded and source-specific; native Research analyses still establish scientific applicability. |
@@ -44,7 +79,7 @@ capture paths; it does not silently attach an arbitrary debugger.
 | 09 Immutable publication | Store-owned revisioned immutable metric publications and CPU/GPU histories feed shared native-series, resource-column, comparison and Advisor preparations. Supported nested corrections invalidate source revisions; publication and preparation retention have bounded shared limits. | **Partial:** unmanaged extension writes retain exact content checking or uncached fallback; other Store fields and full document composition are not universally incremental. |
 | 10 Virtual documents | Explicit pane contexts replace whole-App copies. Research and Analytics Details and native Job Series share document transforms for rows, controls, charts and scrollbars, with bounded visible-band rendering and first-publication, growth, resize and attempt-change handling. | Bounded documents may recompose to establish valid geometry after a first publication or scrolled resize. Other panes retain specialized renderers; no unbounded or universally incremental document promise. |
 | 11 Work admission | Nested cluster readers use the shared scheduler and cooperative child gathering; settings use one coalesced background writer. | Adapter/service processes retain their explicit resource contracts; not every external tool obeys Python worker counts. |
-| 12 Latency budgets | Existing bounded UI timings, p95/p99, sustained-input and changing-UI harnesses; new snapshot comparison and qualification controls. | **External gate:** release-target performance on actual terminals and SSH; targets are not results. |
+| 12 Latency budgets | Bounded UI timings, p95/p99, sustained-input and changing-UI harnesses, snapshot comparison and qualification controls. | **External gate:** physical-terminal and SSH response qualification; local PTY results are linked below. |
 | 13 State/reconnect | Atomic versioned/checksummed UI state, last-good recovery, older-state compatibility, future-schema preservation and final background-save drain. | Filesystem/node failure can still lose uncommitted state; external transports have separate replay contracts. |
 | 14 Incident reproduction | Existing replay, input traces, source fixtures and sequential input regressions; bounded support evidence and qualification reports. | **Partial:** no deterministic recording of every OS scheduling event or arbitrary external application. |
 | 15 Evidence records | `evidence` reads versioned identity, provenance, clock, unit, coverage and integrity records. | A valid schema checks supplied evidence; it cannot prove a producer measured correctly. |
@@ -72,7 +107,7 @@ capture paths; it does not silently attach an arbitrary debugger.
 | 37 Reliability corpus | Existing public source/input/performance fixtures plus persistence, nested-budget, partial trace, adapter and diagnostic-process regressions. | **External gate:** publish target-system tail latency, memory/RPC cost and real workload outcomes. |
 | 38 Support policy | Documented schema/API boundaries, deprecation/fixture expectations and separate trusted-plugin contract. | Maintainer capacity and long-term compatibility depend on actual maintained releases. |
 | 39 External adoption | Qualification procedure and five-user-journey evaluation protocol are provided. | **External gate:** independent labs/operators have not been recruited or evaluated by this implementation. |
-| 40 Outcome evaluation | Research hypotheses retain explicit baselines, assumptions, negative-result and evaluation requirements in the dossier. | **External gate:** no scientific study, superiority result or world-first claim has been established. |
+| 40 Outcome evaluation | Research hypotheses retain explicit baselines, assumptions, negative-result and evaluation requirements in the dossier. | **Research gate:** independent outcome studies and comparisons are still required. |
 
 ## Five research hypotheses
 
@@ -84,7 +119,7 @@ capture paths; it does not silently attach an arbitrary debugger.
 | R4 Compile diagnostic intent | `diagnostic-recipe` checks `tower.diagnostic-intent/v1` against supplied site capabilities. | Execute reviewed recipes on independently configured sites; portability of JSON alone is not diagnostic equivalence. |
 | R5 Query-preserving summaries | `information-query` checks supported declared summaries and answers against their contract. | Validate query families against complete reference data and rare events; cannot answer arbitrary discarded-history queries. |
 
-## Trace delivery contract
+## Ten advanced proposals
 
 The earlier ten proposals map to these delivered operation families:
 
@@ -101,12 +136,13 @@ The earlier ten proposals map to these delivered operation families:
 | Lineage impact | `scientific-impact` | Conservative impact propagation and revalidation over declared lineage |
 | Observability planner | `investigation-plan` | Budgeted selection among declared configuration, repeat, trace and validation actions |
 
-These are bounded implementations of the proposals. Their existence does not
-establish unrestricted language/hardware support, optimum planning, or measured
-scientific benefit across real clusters.
+Each control implements the scope stated in its row. Scientific benefit and
+target-system support remain subject to the corresponding evaluation gates.
 
-The recording pipeline is **prepared, scoped instrumentation**, not a universal
-lossless tracer. Preferred Python recording uses CPython 3.12+ monitoring events.
+## Prepared tracing contract
+
+The recording pipeline uses **prepared, scoped instrumentation**. Preferred
+Python recording uses CPython 3.12+ monitoring events.
 An explicit older-Python profile fallback has weaker event semantics. Native
 recording uses explicit instrumentation and private inherited local channels.
 
@@ -122,22 +158,34 @@ Read [stack tracing](guides/stack-tracing.md),
 [scientific investigation](guides/scientific-investigation.md), and
 [runtime research](guides/runtime-research.md) for exact setup and controls.
 
-## Validation evidence and limits
+## Foundation evidence
 
 Foundation checks completed during development: 822 combined existing/new tests;
 476 focused pointer, fragmented-input and sequential-control tests; and 88
 asynchronous persistence/worker-switch checks. These sets overlap and must not
-be added as a unique test count. Release-wide results and measured limitations
-are in the [6.0 validation record](guides/flagship-validation.md).
+be added as a unique test count. The
+[6.0 validation record](guides/flagship-validation.md) retains the release-wide
+results and measured limitations of this foundation.
 
 A snapshot-only microbenchmark used 2,000 histories with 600 values each and 120
 calls on the same shared host. Mutable history copying took a 12.436 ms median;
 cached immutable render histories took 0.333 ms. Maxima were 25.197 ms and 1.370
-ms. This isolates one data-publication stage; it is not an end-to-end terminal
-latency claim, a measured reduction of every lag source, or a universal speedup.
+ms. This measures one data-publication stage. End-to-end terminal latency and
+other sources of lag require separate measurements.
 
-The cloud workspace has no production Slurm controller, hardware GPU allocation,
-multi-node workload or production SSH endpoint. Offline tests use controlled
-responses and real local files/processes/PTYs where stated. Use
+## Current release evidence and remaining gates
+
+The [Raven 7.0 validation record](raven/validation.md) retains regression and
+compatibility results, installed-package checks, offline collection qualification,
+and local resource and pointer measurements. It also records the corrected PTY
+test failure and the unmet 1% idle CPU goal. The linked reports define the
+measured workload, host, and coverage; local success does not complete a site
+pilot or a research evaluation.
+
+The recorded cloud validation did not exercise a production Slurm controller,
+hardware GPU allocation, multi-node workload, or production SSH endpoint.
+Offline tests use controlled responses and real local files/processes/PTYs where stated. Use
 [qualification](QUALIFICATION.md) to retain the untested target-system and
-external evaluation gates.
+external evaluation gates. Follow the
+[site rollout criteria](raven/implementation.md#site-rollout-and-stop-criteria)
+before a production pilot.

@@ -2,94 +2,9 @@
 
 [README](../../README.md) · [Mouse and button navigation](pointer-navigation.md) · [Reference](../reference.md)
 
-Tower 4.3.1 introduced the cached pointer display and bounded long inline views.
-Tower 4.4.0 retains that path for draggable workspaces, shared launch groups, history browsers, and Quick Advisor.
-Tower 4.5.0 extends it to current-viewport directional focus and metric crosshair feedback.
-Tower 4.7.0 adds pane scrollbars, pinned rendered-line selections, and finer continuous Braille curves.
-Tower 4.8.2 separates protocol-safe pointer input from keyboard shortcuts and repaints changed cells.
-Tower 4.8.3 restores saved metrics in the background, releases the data lock before persistence,
-and limits inline Job Series raster work to the visible metric bands.
-Tower 4.9.0 adds one byte decoder, reusable native metric preparations, indexed
-Live windows, shorter observer critical sections, and a bounded pointer check before paint.
-Tower 4.11.0 buffers the display time of running metric graphs.
-This reduces visible edge jumps when measurements arrive in batches; it does not increase source sampling or make a delayed measurement current.
-See [Buffered running graphs](charts.md#read-buffered-running-graphs) for delay and outage behavior.
-Theme changes repaint the document with the selected canvas and surfaces.
-Live metric windows use display deadlines while source sampling retains its own limits.
-Hover, smooth scrolling, drag selection, menus, and live job updates remain available.
-The display changes do not increase Slurm sampling rates.
-
-Tower 6.1 shares revisioned metric publications across source consumers, copies
-only visible cached job rows, and defers hidden telemetry heatmaps. An additional
-bounded cache reuses exact time buckets when chart presentation changes. The
-Advisor working set can retain more small sources under the same byte budget.
-Pane geometry and pointer capture ownership use shared contracts. Read the
-[consolidation guide](consolidation.md) and the
-[6.1 measurements](consolidation-validation.md) for the implemented scope,
-regression checks, and remaining latency limits.
-
-## Manual group identity checks in 4.12.0
-
-Job marks retain their submission and cluster identity. This prevents a refreshed or reused job ID from moving a manual group to another execution.
-Pointer movement uses published rows and does not read scheduler sources or rebuild group inference.
-Unchanged frames reuse selection tokens. Frame preparation still checks the underlying identity fields, including conflicting records from different sources.
-Cluster, Nodes, and Sources pages skip job-selection identity publication.
-
-Local CPU measurements of the unchanged inference-plus-selection stage were 14.81 ms for 10,000 known jobs, compared with 12.07 ms in 4.11.0.
-Stress cases with 10,000 missing-submission records or duplicate source records took 33.34 ms and 40.49 ms, respectively.
-These measurements exclude graph rendering and terminal paint; they are not input latency promises.
-With grouping off, the added selection-provenance stage took 3.41 ms for 10,000 records and 22.77 ms for 50,000 records after optimization.
-This validation has a real cost on large lists. The cache does not skip in-place corrections or weaken attempt checks to remove that cost.
-See [Manual groups](batch-launches.md) for identity rules, limits, and reset controls.
-
-## Job drag and menu checks in 4.13.0
-
-Job moves use the last painted row geometry and exact source and destination
-identities. A pointer report does not query the Store or infer groups.
-Each document preparation publishes only visible destination spans and reuses
-unchanged destination evidence, including members hidden by collapsed groups.
-Opening a menu and committing a move still validate the current identities.
-Ungroup validates selected collapsed destinations in one batch.
-Menu feedback reuses its action list. A changed hover updates the bounded menu
-controls; an unchanged hover reuses that overlay.
-
-The local comparison used 1,000 or 10,000 jobs with known submission times,
-a 180-column by 52-row Jobs page, and six collapsed groups of 20 members each.
-After three warm-up calls, 25 calls measured median process CPU time for each
-publication stage. The 4.12.0 baseline was commit
-`fd57016423f0d3ca7e45eb9d3c63a808be16630a`. Times below are milliseconds.
-
-| Stage | 1,000 jobs | 10,000 jobs |
-| --- | ---: | ---: |
-| 4.12 selection publication | 0.20 | 3.45 |
-| 4.13 selection and destination publication | 0.37 | 4.12 |
-| 4.13 destination publication alone | 0.10 | 0.26 |
-| Explicit menu opening, five-call median | 1.25 | 15.76 |
-
-The input check used the actual `_FrameCache`, terminal input dispatcher, and
-cached feedback. At each source size it dispatched 360 held drag reports and
-360 menu hover reports. Hooks rejected any Store snapshot, document composition,
-group inference, token rescan, or job-record lookup during these reports.
-All checks passed, with no pointer-induced document invalidation.
-The scheduler clock was fixed during each input check to exclude independently
-due maintenance; process CPU timing remained active. Scheduled data updates
-continue to require document work in normal operation.
-
-For three measured 60-report bursts after warm-up, median input-plus-feedback
-CPU time was 20.82/21.15 ms for dragging and 51.53/50.40 ms for menu hover,
-at 1,000/10,000 jobs respectively. These checks omit terminal transport,
-terminal painting, fresh data, and large destination menus. The shared test
-host adds measurement variation. They establish neither zero overhead nor
-a maximum interactive delay. Run the focused input regressions with:
-
-```bash
-python3 -m pytest -q tests/test_job_group_drag.py \
-  tests/test_job_group_menu.py tests/test_job_group_mouse_integration.py
-```
-
-The measured 4.13 runtime digest was
-`3a7bdadcdf7d0320a648fbc0dfd9c74e28534b52c4d29147cf2deb56038709d5`.
-It is the SHA-256 of the concatenated `tower/*.py` contents in filename order.
+This guide describes Raven's display pipeline, reproducible performance checks, and recorded measurements.
+Operational procedures appear first; the versioned records preserve benchmark fixtures, results, and limitations.
+Measurements of UI computation or pseudo-terminal behavior exclude physical-display and network latency unless stated otherwise.
 
 ## Check pointer feedback
 
@@ -111,7 +26,7 @@ See [Mouse and button navigation](pointer-navigation.md) for the complete contro
 
 ## Keep the display responsive
 
-Tower retains the last published page while pointer feedback changes.
+Raven retains the last published page while pointer feedback changes.
 It updates the affected terminal cells instead of rebuilding the whole page for each movement report.
 The page still refreshes for changed data, deliberate input, resize, and active animations.
 Continuous pointer movement does not postpone background-result publication.
@@ -123,14 +38,15 @@ Only the Braille dot phase uses a bounded 24 ms transition inside that cell.
 Curve, range-border, fitted-line, and annotation glyphs retain their original styles at selector intersections.
 The faint decorative interior of a range band allows selector strokes, so the crosshair remains visible inside the band.
 Mouse coordinates remain whole terminal cells despite the finer Braille stroke positions.
-ASCII and reader modes keep static feedback. Disabling `animations` also disables selector easing.
+ASCII and reader modes keep static feedback. Disabling **Interface animations** also disables selector easing.
 During a graph drag, both painted axis mappings stay fixed while new sampler results remain available.
 Automatic sample updates do not cancel capture.
 A valid rectangular release changes display bounds and requests a fresh document.
 Each zoom belongs to the exact metric, source, job, and attempt.
 Running graphs advance their buffered edge at a bounded display rate.
 Live moves a rolling window with that edge; the ordinary view retains the older history.
-Its window spans 30 seconds to one second; the separate polling control spans five seconds to 500 milliseconds.
+Its window spans 30 seconds to one second; the separate polling control requests intervals from five seconds to 500 milliseconds.
+Managed collection floors, site policy, demand gating, and command budgets determine effective collection intervals.
 Changing the window alone does not change scheduler polling.
 A moving metric slider updates its control immediately while graph previews are limited to 20 rebuilds per second.
 Release applies the final slider position immediately.
@@ -184,12 +100,151 @@ Disabling smoothing does not make Slurm commands complete sooner.
 3. Keep the source rate appropriate for the cluster and connection.
 4. Check Sources for slow commands, unavailable data, or retry backoff.
 
-**Expected result:** Tower uses immediate viewport movement and a simpler display.
+**Expected result:** Raven uses immediate viewport movement and a simpler display.
 The requested source rate remains subject to source minimum intervals and backoff.
 
 Terminal rendering, SSH transport, tmux, and Slurm command duration can each add delay.
-The display optimizations reduce Tower's repeated work.
+The display optimizations reduce Raven's repeated work.
 They do not impose a universal response-time guarantee.
+
+## Validate a source change
+
+Use the reproducible benchmark to measure UI work on your computer:
+
+```bash
+python3 scripts/benchmark_ui.py \
+  --scenario jobs --gesture chart-hover \
+  --jobs 1000 --history 3000 --points 4000 --width 200 --height 60 \
+  --glyphs both --repeats 300 --output jobs-graph-hover.json
+
+python3 scripts/benchmark_ui.py \
+  --scenario advisor --gesture hover \
+  --jobs 500 --history 2000 --width 120 --height 36 \
+  --glyphs both --repeats 20 --output advisor-hover.json
+
+python3 scripts/benchmark_ui.py \
+  --scenario advisor --gesture wheel \
+  --jobs 500 --history 2000 --width 120 --height 36 \
+  --glyphs both --repeats 20 --output advisor-wheel.json
+```
+
+The benchmark uses synthetic data in memory.
+It does not connect to Slurm or read personal configuration.
+Its times exclude terminal and network transport.
+The report includes median and 95th-percentile frame times, work counts, and attempted I/O.
+Use identical options on the same computer when comparing revisions.
+Use `--scenario research --metrics 64 --points 10000` to exercise metric charts.
+Use `--scenario analytics --gesture chart-hover` to exercise native Analytics curves.
+Jobs `chart-hover` alternates between the selected job row and its published Details graphs.
+The benchmark rejects a changed page or selected job during that crossing.
+Use `--gesture render` to measure a full document refresh.
+Use `--source-root PATH --label REVISION` to benchmark a separate source checkout.
+
+Run the focused regression checks from the repository:
+
+```bash
+python3 scripts/setup.py --mode demo --dev
+.venv/bin/python -m pytest -q \
+  tests/test_hover_render_budget.py \
+  tests/test_responsive_input.py \
+  tests/test_ui_state_budget.py \
+  tests/test_workspace_render_budget.py \
+  tests/test_advisor_render_budget.py \
+  tests/test_advisor_document.py \
+  tests/test_chart_render_budget.py \
+  tests/test_fine_curves.py \
+  tests/test_selector_responsiveness.py \
+  tests/test_scrollbar_core.py \
+  tests/test_scrollbar_tables.py \
+  tests/test_scrollbar_documents.py \
+  tests/test_modal_scrollbars.py \
+  tests/test_text_selection.py \
+  tests/test_editor_yank.py \
+  tests/test_chart_interaction.py \
+  tests/test_readable_curve.py \
+  tests/test_metric_live.py \
+  tests/test_reported_metric_live.py \
+  tests/test_theme_coherence.py \
+  tests/test_table_filter_budget.py \
+  tests/test_pane_dividers.py \
+  tests/test_adaptive_recents.py \
+  tests/test_job_launch_groups.py \
+  tests/test_history_browser.py \
+  tests/test_quick_advisor.py \
+  tests/test_job_progress.py
+```
+
+The checks cover bounded work, cache invalidation, input ordering, and continued publication.
+Use [Contribution guidance](../../CONTRIBUTING.md) for the complete test suite.
+Validate mouse behavior in an actual interactive terminal after changing input or painting code.
+Include narrow and wide terminals, Unicode and ASCII, and tmux-compatible terminal types.
+
+## Record a desktop latency report
+
+Use this procedure when a normal terminal and an SSH client both show pauses.
+The recorder measures Raven's foreground phases. It does not increase source polling.
+
+1. Start `tower --ui-trace ui-trace.json`. Use a new file name for each run.
+2. Open the affected job and graph view.
+3. Move and drag the pointer across the job list and plots for 20–30 seconds.
+4. Include a few source updates and a scroll through the Details graphs.
+5. Quit Raven normally. The report is written after the interactive session exits.
+6. Inspect `phases`, `slowest`, and `transitions` in the JSON file.
+
+The file is created with owner-only permissions. An existing file is not overwritten.
+The report contains timing statistics, terminal type, display size, event categories,
+known shortcut action names, and page/mode transitions. It excludes typed text, raw input bytes,
+job IDs, source paths, and log contents. Recording stays in bounded memory during the session;
+there are no report-file writes in the input or paint loop. A forced process kill can leave an empty report.
+Profile changes remain in the same report.
+
+| Phase | What a long duration identifies |
+| --- | --- |
+| `input_dispatch` | Event handling or the action triggered by an event |
+| `maintenance` | Foreground state maintenance and background-result publication |
+| `snapshot` | Shared state access and snapshot preparation |
+| `compose` | Page and graph construction |
+| `feedback` | Pointer, selection, and control feedback |
+| `paint` | Changed-cell preparation and curses drawing calls |
+| `terminal_flush` | Terminal output through `curses.doupdate()` |
+| `input_wait` | Waiting for input, including the normal idle timeout |
+
+Each phase reports mean, maximum, and p50/p95/p99 wall duration, plus total UI-thread CPU time.
+A high wall duration with little UI CPU time indicates waiting or scheduling; it does not prove
+which external component caused the wait. CPU time excludes worker threads.
+Parent phases include child phases. Do not add their totals.
+`input_wait` is excluded from the slow-processing list because idle waits are expected.
+Event context records the most recent input and its age; it does not establish causation.
+Percentiles retain the latest 2,048 samples per phase. Totals and maxima cover the full run.
+The recorder retains at most 32 phases, 64 slow events, and 128 page transitions.
+
+## Implementation history
+
+Tower 4.3.1 introduced the cached pointer display and bounded long inline views.
+Tower 4.4.0 extended that path for draggable workspaces, shared launch groups, history browsers, and Quick Advisor.
+Tower 4.5.0 extended it to current-viewport directional focus and metric crosshair feedback.
+Tower 4.7.0 added pane scrollbars, pinned rendered-line selections, and finer continuous Braille curves.
+Tower 4.8.2 separated protocol-safe pointer input from keyboard shortcuts and repainted changed cells.
+Tower 4.8.3 restored saved metrics in the background, released the data lock before persistence,
+and limited inline Job series raster work to the visible metric bands.
+Tower 4.9.0 added one byte decoder, reusable native metric preparations, indexed
+Live windows, shorter observer critical sections, and a bounded pointer check before paint.
+Tower 4.11.0 added buffering for the display time of running metric graphs.
+This reduces visible edge jumps when measurements arrive in batches; it does not increase source sampling or make a delayed measurement current.
+See [Buffered running graphs](charts.md#read-buffered-running-graphs) for delay and outage behavior.
+Theme changes repaint the document with the selected canvas and surfaces.
+Live metric windows use display deadlines while source sampling retains its own limits.
+Hover, smooth scrolling, drag selection, menus, and live job updates remain available.
+The display changes do not increase Slurm sampling rates.
+
+Tower 6.1 introduced shared revisioned metric publications across source consumers, copied
+only visible cached job rows, and deferred hidden telemetry heatmaps. An additional
+bounded cache reuses exact time buckets when chart presentation changes. The
+Advisor working set can retain more small sources under the same byte budget.
+Pane geometry and pointer capture ownership use shared contracts. Read the
+[consolidation guide](consolidation.md) and the
+[6.1 measurements](consolidation-validation.md) for the implemented scope,
+regression checks, and remaining latency limits.
 
 ## Tower 4.3.1 release measurements
 
@@ -299,7 +354,7 @@ The wheel settings included smooth scrolling and the same Details Advisor docume
 | Reverse through 820 wheel reports, then complete a focus command | 1,202.54 ms | 814.02 ms | 25 / 22 |
 
 The direct Details wheel route removes repeated input dispatch before the next viewport publication.
-The forward-wheel measurement stops when Tower accepts the target; smooth motion settles afterward.
+The forward-wheel measurement stops when Raven accepts the target; smooth motion settles afterward.
 The reverse-wheel measurement requires the visible focus change after the queued command.
 The hover result is a three-burst median; each other row describes one observed burst.
 These observations include queued input and exclude SSH transport and terminal-emulator presentation.
@@ -334,121 +389,10 @@ Changing only the old cache bounds to the release bounds reduced unchanged raste
 Observed maintenance composition decreased from 138.73 ms to 46.70 ms in that fixture.
 The source values, chart cards, live controls, and graph geometry remained available.
 
-## Validate a source change
-
-Use the reproducible benchmark to measure UI work on your computer:
-
-```bash
-python3 scripts/benchmark_ui.py \
-  --scenario jobs --gesture chart-hover \
-  --jobs 1000 --history 3000 --points 4000 --width 200 --height 60 \
-  --glyphs both --repeats 300 --output jobs-graph-hover.json
-
-python3 scripts/benchmark_ui.py \
-  --scenario advisor --gesture hover \
-  --jobs 500 --history 2000 --width 120 --height 36 \
-  --glyphs both --repeats 20 --output advisor-hover.json
-
-python3 scripts/benchmark_ui.py \
-  --scenario advisor --gesture wheel \
-  --jobs 500 --history 2000 --width 120 --height 36 \
-  --glyphs both --repeats 20 --output advisor-wheel.json
-```
-
-The benchmark uses synthetic data in memory.
-It does not connect to Slurm or read personal configuration.
-Its times exclude terminal and network transport.
-The report includes median and 95th-percentile frame times, work counts, and attempted I/O.
-Use identical options on the same computer when comparing revisions.
-Use `--scenario research --metrics 64 --points 10000` to exercise metric charts.
-Use `--scenario analytics --gesture chart-hover` to exercise native Analytics curves.
-Jobs `chart-hover` alternates between the selected job row and its published Details graphs.
-The benchmark rejects a changed page or selected job during that crossing.
-Use `--gesture render` to measure a full document refresh.
-Use `--source-root PATH --label REVISION` to benchmark a separate source checkout.
-
-Run the focused regression checks from the repository:
-
-```bash
-python3 scripts/setup.py --mode demo --dev
-.venv/bin/python -m pytest -q \
-  tests/test_hover_render_budget.py \
-  tests/test_responsive_input.py \
-  tests/test_ui_state_budget.py \
-  tests/test_workspace_render_budget.py \
-  tests/test_advisor_render_budget.py \
-  tests/test_advisor_document.py \
-  tests/test_chart_render_budget.py \
-  tests/test_fine_curves.py \
-  tests/test_selector_responsiveness.py \
-  tests/test_scrollbar_core.py \
-  tests/test_scrollbar_tables.py \
-  tests/test_scrollbar_documents.py \
-  tests/test_modal_scrollbars.py \
-  tests/test_text_selection.py \
-  tests/test_editor_yank.py \
-  tests/test_chart_interaction.py \
-  tests/test_readable_curve.py \
-  tests/test_metric_live.py \
-  tests/test_reported_metric_live.py \
-  tests/test_theme_coherence.py \
-  tests/test_table_filter_budget.py \
-  tests/test_pane_dividers.py \
-  tests/test_adaptive_recents.py \
-  tests/test_job_launch_groups.py \
-  tests/test_history_browser.py \
-  tests/test_quick_advisor.py \
-  tests/test_job_progress.py
-```
-
-The checks cover bounded work, cache invalidation, input ordering, and continued publication.
-Use [Contribution guidance](../../CONTRIBUTING.md) for the complete test suite.
-Validate mouse behavior in an actual interactive terminal after changing input or painting code.
-Include narrow and wide terminals, Unicode and ASCII, and tmux-compatible terminal types.
-
-## Record a desktop latency report
-
-Use this procedure when a normal terminal and an SSH client both show pauses.
-The recorder measures Tower's foreground phases. It does not increase source polling.
-
-1. Start `tower --ui-trace ui-trace.json`. Use a new file name for each run.
-2. Open the affected job and graph view.
-3. Move and drag the pointer across the job list and plots for 20–30 seconds.
-4. Include a few source updates and a scroll through the Details graphs.
-5. Quit Tower normally. The report is written after the interactive session exits.
-6. Inspect `phases`, `slowest`, and `transitions` in the JSON file.
-
-The file is created with owner-only permissions. An existing file is not overwritten.
-The report contains timing statistics, terminal type, display size, event categories,
-known shortcut action names, and page/mode transitions. It excludes typed text, raw input bytes,
-job IDs, source paths, and log contents. Recording stays in bounded memory during the session;
-there are no report-file writes in the input or paint loop. A forced process kill can leave an empty report.
-Profile changes remain in the same report.
-
-| Phase | What a long duration identifies |
-| --- | --- |
-| `input_dispatch` | Event handling or the action triggered by an event |
-| `maintenance` | Foreground state maintenance and background-result publication |
-| `snapshot` | Shared state access and snapshot preparation |
-| `compose` | Page and graph construction |
-| `feedback` | Pointer, selection, and control feedback |
-| `paint` | Changed-cell preparation and curses drawing calls |
-| `terminal_flush` | Terminal output through `curses.doupdate()` |
-| `input_wait` | Waiting for input, including the normal idle timeout |
-
-Each phase reports mean, maximum, and p50/p95/p99 wall duration, plus total UI-thread CPU time.
-A high wall duration with little UI CPU time indicates waiting or scheduling; it does not prove
-which external component caused the wait. CPU time excludes worker threads.
-Parent phases include child phases. Do not add their totals.
-`input_wait` is excluded from the slow-processing list because idle waits are expected.
-Event context records the most recent input and its age; it does not establish causation.
-Percentiles retain the latest 2,048 samples per phase. Totals and maxima cover the full run.
-The recorder retains at most 32 phases, 64 slow events, and 128 page transitions.
-
 ## Tower 4.8.3 spike audit
 
 The earlier warm-cache hover benchmark did not exercise all periodic update work.
-The follow-up audit also tests cold saved histories, delayed file I/O, fresh samples,
+The follow-up audit also tested cold saved histories, delayed file I/O, fresh samples,
 Live windows, and mouse reports split immediately after their initial Escape byte.
 A real curses pseudo-terminal reproduced delayed report bytes becoming keyboard events in 4.8.2.
 The `[` byte selected the previous tab; an `r` coordinate could also request a refresh.
@@ -490,7 +434,6 @@ Frames use a counting paint sink with published memory fixtures; the benchmark f
 It excludes terminal output, network latency, and external data producers. Use the real `--ui-trace` procedure
 for those conditions. Compare identical options on the same machine, without competing benchmark processes.
 
-
 The final quiet comparison ran 4.8.2 and 4.8.3 sequentially on the same Python 3.12 Linux runner,
 using the default fixture above at 320 columns by 52 rows and 200 frames per case.
 These observed frame durations include UI computation and a counting paint sink; they exclude terminal transport.
@@ -514,13 +457,13 @@ A separate 120-frame End/Home case retained visible graph controls in every fram
 
 The audit reproduced a mouse report that opened Logs. Ncurses consumed a legacy
 mouse header and part of a UTF-8 coordinate. The remaining coordinate byte was `l`.
-Tower now owns the complete input byte stream and uses terminal keyboard capabilities
+The corrected decoder owns the complete input byte stream and uses terminal keyboard capabilities
 without delegating mouse framing to ncurses. See [the input audit](input-audit.md)
 for delayed reports, Unicode, paste, resize, and legacy-format limits.
 
 The same report also failed in the tested pre-4.8.0 revision. The comparison did
 not establish that 4.8.0 introduced this fault. Separate timing tests identified
-work that caused repeated pauses in the current display:
+work that caused repeated pauses in the tested display:
 
 | Cause | Change |
 | --- | --- |
@@ -609,7 +552,7 @@ The one-second and 30-second cases reduced total measured document CPU by 26.3%
 and 21.4%, respectively. The 30-second case prepared fewer documents, but each
 was more expensive at the median and p95. Full-history total document CPU rose
 by 1.3%, with a larger observed p95 and maximum paint gap. These results do not
-establish that every mode is faster or that large-history rendering is seamless.
+establish that every mode is faster or that large-history rendering is free of pauses.
 They are short runs on a shared cloud host, not terminal-independent latency limits.
 
 A separate unchanged-source check used the same populated history, two initial
@@ -650,3 +593,66 @@ the [fixture correction](#sustained-input-benchmark-correction) applies to earli
 Use the [worker benchmark procedure](background-workers.md#diagnose-a-pending-change)
 to repeat either control path. These tests improve coverage; they do not prove
 that every terminal, history size, or input burst has a fixed maximum delay.
+
+## Manual group identity checks in 4.12.0
+
+Job marks retain their submission and cluster identity. This prevents a refreshed or reused job ID from moving a manual group to another execution.
+Pointer movement uses published rows and does not read scheduler sources or rebuild group inference.
+Unchanged frames reuse selection tokens. Frame preparation still checks the underlying identity fields, including conflicting records from different sources.
+Cluster, Nodes, and Sources pages skip job-selection identity publication.
+
+Local CPU measurements of the unchanged inference-plus-selection stage were 14.81 ms for 10,000 known jobs, compared with 12.07 ms in 4.11.0.
+Stress cases with 10,000 missing-submission records or duplicate source records took 33.34 ms and 40.49 ms, respectively.
+These measurements exclude graph rendering and terminal paint; they are not input latency promises.
+With grouping off, the added selection-provenance stage took 3.41 ms for 10,000 records and 22.77 ms for 50,000 records after optimization.
+Identity validation adds measurable work on large lists. The cache does not skip in-place corrections or weaken attempt checks to remove that cost.
+See [Manual groups](batch-launches.md) for identity rules, limits, and reset controls.
+
+## Job drag and menu checks in 4.13.0
+
+Job moves use the last painted row geometry and exact source and destination
+identities. A pointer report does not query the Store or infer groups.
+Each document preparation publishes only visible destination spans and reuses
+unchanged destination evidence, including members hidden by collapsed groups.
+Opening a menu and committing a move still validate the current identities.
+Ungroup validates selected collapsed destinations in one batch.
+Menu feedback reuses its action list. A changed hover updates the bounded menu
+controls; an unchanged hover reuses that overlay.
+
+The local comparison used 1,000 or 10,000 jobs with known submission times,
+a 180-column by 52-row Jobs page, and six collapsed groups of 20 members each.
+After three warm-up calls, 25 calls measured median process CPU time for each
+publication stage. The 4.12.0 baseline was commit
+`fd57016423f0d3ca7e45eb9d3c63a808be16630a`. Times below are milliseconds.
+
+| Stage | 1,000 jobs | 10,000 jobs |
+| --- | ---: | ---: |
+| 4.12 selection publication | 0.20 | 3.45 |
+| 4.13 selection and destination publication | 0.37 | 4.12 |
+| 4.13 destination publication alone | 0.10 | 0.26 |
+| Explicit menu opening, five-call median | 1.25 | 15.76 |
+
+The input check used the actual `_FrameCache`, terminal input dispatcher, and
+cached feedback. At each source size it dispatched 360 held drag reports and
+360 menu hover reports. Hooks rejected any Store snapshot, document composition,
+group inference, token rescan, or job-record lookup during these reports.
+All checks passed, with no pointer-induced document invalidation.
+The scheduler clock was fixed during each input check to exclude independently
+due maintenance; process CPU timing remained active. Scheduled data updates
+continue to require document work in normal operation.
+
+For three measured 60-report bursts after warm-up, median input-plus-feedback
+CPU time was 20.82/21.15 ms for dragging and 51.53/50.40 ms for menu hover,
+at 1,000/10,000 jobs respectively. These checks omit terminal transport,
+terminal painting, fresh data, and large destination menus. The shared test
+host adds measurement variation. They establish neither zero overhead nor
+a maximum interactive delay. Run the focused input regressions with:
+
+```bash
+python3 -m pytest -q tests/test_job_group_drag.py \
+  tests/test_job_group_menu.py tests/test_job_group_mouse_integration.py
+```
+
+The measured 4.13 runtime digest was
+`3a7bdadcdf7d0320a648fbc0dfd9c74e28534b52c4d29147cf2deb56038709d5`.
+It is the SHA-256 of the concatenated `tower/*.py` contents in filename order.

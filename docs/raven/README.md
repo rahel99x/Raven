@@ -1,8 +1,13 @@
-# Project Raven runbook
+# Raven runbook
 
-[README](../../README.md) · [Implementation and qualification](implementation.md) ·
+[README](../../README.md) · [Installation](../INSTALLATION.md) · [Implementation and qualification](implementation.md) ·
 [Validation record](validation.md) · [Controls](../CONTROLS.md) ·
 [Project reporting](../PROJECT_STANDARD.md)
+
+Use this runbook to install Raven, configure an execution target, and operate
+the Light interface and Heavy worker. Light owns the interface and governed
+collection. Heavy adds explicitly admitted analysis tasks on a verified target.
+See the [validation record](validation.md) for release-specific evidence.
 
 ## Install or update
 
@@ -10,38 +15,65 @@ Use Linux, Python 3.10 or later, and the Python curses and venv modules.
 The core has no third-party runtime dependency. The optional terminal uses
 `pyte` and `wcwidth`.
 
+Install pipx through your operating system's package manager first. Its command
+directory, normally `~/.local/bin`, must already be on `PATH`. The
+[installation guide](../INSTALLATION.md) covers an existing writable directory
+on `PATH` and an administrator installation. Pipx exposes installed executables
+without aliases, environment activation, or shell-file edits.
+
+Install the package and check it from outside the checkout:
+
 ```bash
-git pull --ff-only
-python3 scripts/setup.py --mode demo
-./scripts/ravenl --fake --no-state --no-plugins
+git clone https://github.com/rahel99x/Raven.git
+cd Raven
+pipx install '.[terminal]'
+cd "$HOME"
+ravenl --version
+ravenl doctor
+ravenh --plan
 ```
 
-The source launchers use the checkout's `.venv` when it exists. To install all
-three public commands into an existing virtual environment:
+Use `pipx install .` for the core without the embedded terminal.
+The version commands identify the installed release. Doctor reports local
+capabilities; the Heavy plan makes no allocation.
+
+Update the original checkout and reinstall the installed package:
 
 ```bash
-python -m pip install .
-# Optional embedded terminal:
-python -m pip install '.[terminal]'
+cd /path/to/Raven
+git pull --ff-only
+pipx reinstall slurm-tower
 ```
 
 Use the `slurm-tower` distribution. Do not co-install another distribution that
 owns the `tower` package. `ravenl`, `ravenh`, and `tower` come from the same wheel.
-For offline installation, build/download the wheel and optional dependencies on
+The installed commands launch independently of the source checkout; updates
+from the recorded local source need that checkout. For source development,
+`python3 scripts/setup.py --mode demo` and
+`./scripts/ravenl --fake --no-state --no-plugins` remain the offline workflow.
+Source launchers use the checkout's `.venv` when it exists. Installing with
+`python -m pip install .` into an existing virtual environment is also supported;
+its `bin` directory must be on `PATH` to use bare command names.
+For offline installation, build or download the wheel and optional dependencies on
 an approved connected machine, then install with `--no-index --find-links`.
 
 ## Choose a site
 
 `ravenl` means Light; it does not allocate compute. `ravenh` explicitly requests
 Heavy. The default site is Slurm, even when Slurm commands are missing.
+For Slurm installed directly on your workstation, keep this local Slurm mode.
+Create a new persistent configuration with `ravenl --write-config`, then review
+its scheduler settings. Both commands load `~/.config/raven/config.json`, or
+`$XDG_CONFIG_HOME/raven/config.json`, automatically. Existing files are preserved.
 
 ```bash
-./scripts/ravenl --config docs/examples/raven/slurm.json config explain
-./scripts/ravenl --config docs/examples/raven/slurm.json doctor
-./scripts/ravenh --config docs/examples/raven/slurm.json --plan
+ravenl config explain
+ravenl doctor
+ravenh --plan
 ```
 
-Copy the Slurm example to a private configuration path and set:
+Use the [Slurm example](../examples/raven/slurm.json) as a reference, replacing
+its placeholder account, partition and cluster identity. Set:
 
 - The cluster identity and local or SSH connection.
 - The account, partition, QOS if required, CPUs, memory, and time limit.
@@ -58,14 +90,14 @@ resource grant, or policy. Missing compute-node software is an explicit failure.
 A standalone desktop with no Slurm needs explicit selection:
 
 ```bash
-./scripts/ravenl --site desktop
-./scripts/ravenh --site desktop --plan
-./scripts/ravenh --site desktop
+ravenl --site desktop
+ravenh --site desktop --plan
+ravenh --site desktop
 ```
 
-For Fedora **with** local Slurm, use a Slurm profile. The name `desktop` in a new
-Raven profile means standalone local execution, not automatic Slurm detection.
-Legacy Tower `--profile desktop` retains its original local-Slurm meaning.
+For Fedora **with** local Slurm, use a Slurm profile. Raven's `--site desktop`
+selects standalone local execution. The legacy Slurm Tower `--profile desktop`
+continues to select local Slurm.
 
 ## Inspect effective configuration
 
@@ -75,9 +107,9 @@ TOML input uses the standard-library parser on Python 3.11 and later.
 
 ```bash
 raven_review_dir="$(mktemp -d)"
-./scripts/ravenl --site desktop --write-config "$raven_review_dir/desktop.json"
-./scripts/ravenl --config "$raven_review_dir/desktop.json" config explain
-./scripts/ravenl --config "$raven_review_dir/desktop.json" config explain --show-paths
+ravenl --site desktop --write-config "$raven_review_dir/desktop.json"
+ravenl --config "$raven_review_dir/desktop.json" config explain
+ravenl --config "$raven_review_dir/desktop.json" config explain --show-paths
 ```
 
 `--write-config` creates a new file; it does not replace an existing file.
@@ -209,8 +241,8 @@ startup. Use explicit migration for new config and selected state:
 
 ```bash
 raven_migration_dir="$(mktemp -d)"
-./scripts/ravenl migrate --plan --save-plan "$raven_migration_dir/plan.json"
-./scripts/ravenl migrate --apply --plan-file "$raven_migration_dir/plan.json"
+ravenl migrate --plan --save-plan "$raven_migration_dir/plan.json"
+ravenl migrate --apply --plan-file "$raven_migration_dir/plan.json"
 ```
 
 Inspect the plan first. It lists source and destination paths and hashes.
@@ -234,7 +266,7 @@ and owner scope. Otherwise groups remain readable in the archive. Terminals,
 active tasks, log bookmarks, and forecast observations are not adopted.
 
 ```bash
-./scripts/ravenl migrate --rollback /path/to/migration-journal.json
+ravenl migrate --rollback /path/to/migration-journal.json
 ```
 
 Rollback removes only unchanged migration-owned outputs. If an output has changed,
@@ -245,11 +277,13 @@ Do not run old and new packages from the same environment during replacement.
 ## Validate locally
 
 ```bash
-./scripts/ravenl doctor
-./scripts/ravenl qualify --offline > /tmp/raven-offline.json
-./scripts/ravenl terminal selftest
-python -m pytest
+ravenl doctor
+ravenl qualify --offline > /tmp/raven-offline.json
+ravenl terminal selftest
 ```
+
+For contributor regression checks, use the checkout's development environment
+as described in [CONTRIBUTING](../../CONTRIBUTING.md).
 
 The offline cohort report exercises actual admission with distinct synthetic
 user scopes at 1, 10, 50, 200, and 256 users. It sends no scheduler commands.

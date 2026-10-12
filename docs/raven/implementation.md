@@ -1,9 +1,10 @@
 # Raven implementation and qualification
 
-This record maps the supplied [implementation handout](../design/project-raven-implementation-handout.md)
-to release 7.0.0. It separates implemented behavior, local evidence, and site
-qualification. It does not treat a working menu or a passing mock as proof of
-production readiness.
+This record maps the [architecture specification](../design/project-raven-implementation-handout.md)
+to Raven 7.0.0. It identifies each requirement's implementation owner, recorded
+evidence, and remaining qualification work. Use the
+[runbook](README.md) for operation and the [validation record](validation.md)
+for measured results.
 
 ## Ownership
 
@@ -33,12 +34,12 @@ scheduler mutation. Uncertain allocation cleanup remains visible.
 | R03 Useful bounded Light | `raven_collection.py`, `raven_limits.py`, existing views | Explicit retention and admission tests; measured resource report required for numerical CPU/RSS claims |
 | R04 Allocated Heavy | `raven_allocation*`, `raven_resources.py`, `raven_worker*` | Real local tasks and synthetic Slurm faults; real Slurm placement remains untested here |
 | R05 Allocation controls | `raven_ui.py`, toolbar, interaction graph | Request/review/cancel/release, stale actions, modal/focus preservation, reuse receipt tests |
-| R06 Lightweight wait | `raven_launch.py`, isolated helper | Dashboard import follows ready admission; help/version/plan do not wait or allocate |
+| R06 Allocation wait | `raven_launch.py`, isolated helper | Dashboard import follows ready admission; help/version/plan do not wait or allocate |
 | R07 Configurable sites | `raven_config.py`, structured adapters | No CARC-specific defaults; local/SSH argv and policy tests; every real site needs qualification |
 | R08 Standalone desktop | Explicit desktop profile and process adapter | No Slurm inference; real fresh-process task/cancel/drain tests |
 | R09 Separate budgets | Collection ledger and execution router | Heavy readiness does not change collection floors or reset request records |
-| R10 Honest cadence | `refresh_rate.py`, `metric_sampling.py`, Sampler | Slow configured bases survive neutral controls; collection floors remain authoritative |
-| R11 No automatic amplification | Sampler, managed Slurm methods | GPU step/weather sources disabled; declared existing telemetry remains readable |
+| R10 Governed cadence | `refresh_rate.py`, `metric_sampling.py`, Sampler | Slow configured bases survive neutral controls; collection floors remain authoritative |
+| R11 Automatic probe controls | Sampler, managed Slurm methods | GPU step/weather sources disabled; declared existing telemetry remains readable |
 | R12 Sharing scope | Existing acquisition and private host-local cache | Same-user/host/connection tests; no cross-user or cluster-wide sharing claim |
 | R13 Bounded recovery | Ledger, source scheduler | Rolling quotas, jitter, idle demand, burst limits, circuits, refresh floods, reserved validation lane |
 | R14 Ownership/expiry | Allocation helper, private receipt/lock, reuse review | Cancel/grant race, duplicate launch, wrong owner/attempt, stale receipt, idle/time limit, uncertain cleanup tests |
@@ -70,9 +71,9 @@ user-supplied executable handlers.
 
 ## Explicit unsupported cases
 
-- A production site-operated observation service is optional in the handout and
-  is not shipped. Its configuration is rejected, not treated as direct-query
-  permission. Standalone private host-local coordination is implemented.
+- A site-operated observation service is a design extension, not a shipped
+  adapter. Its configuration is rejected. Standalone private host-local
+  coordination is implemented.
 - The portable adapter cannot claim hard aggregate cgroup enforcement. Policies
   that require it fail before starting a worker. Portable RLIMIT/process-group
   limits and their weaker aggregate guarantees are disclosed.
@@ -86,8 +87,7 @@ user-supplied executable handlers.
 - A configuration change is validated for the next launch. Runtime connection
   retargeting is not implicit. Close the session and select the new profile.
 
-These are deliberate exposed boundaries, not evidence of a completed site-wide
-rollout. R04, R07, R19, and the site part of R20 require external qualification.
+R04, R07, R19, and the site part of R20 require target-system qualification.
 
 ## Validation scope
 
@@ -110,8 +110,8 @@ and bounded CLI attempts do not prove an acceptable Slurm RPC load.
 The resource harness measures a real curses PTY and its local descendants against
 the retained 6.3.0 source baseline. It records CPU, summed RSS, PSS where available,
 threads, processes, descriptors, terminal output, and emitted fake collection
-commands. A five-minute fixture is a local comparison; it is not a multi-hour
-soak, an SSH benchmark, or a site capacity test.
+commands. Its five-minute fixture provides a local comparison. Multi-hour soaks,
+SSH measurements, and site capacity tests are separate qualification tasks.
 
 ## Site rollout and stop criteria
 

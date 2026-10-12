@@ -590,7 +590,7 @@ def control_descriptors(app):
 def _about_lines(app):
     from . import __version__, refresh_rate
     return [
-        [(" Project Raven " + __version__, "accent+bold")],
+        [(" Raven " + __version__, "accent+bold")],
         [(" Terminal workspace for Slurm, project runs, and research evidence.", "text")],
         [(" Menus: F10; Left/Right changes menu; Up/Down chooses; Enter opens.", "text")],
         [(" Mouse menus stay open for repeated choices; move outside or Esc closes.", "text")],

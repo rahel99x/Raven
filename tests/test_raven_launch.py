@@ -133,7 +133,7 @@ def test_version_never_allocates_or_resolves_configuration(monkeypatch,entry,cap
     monkeypatch.setattr(L,'resolve',Mock(side_effect=AssertionError('version resolves nothing')))
     monkeypatch.setattr(L,'_allocation',Mock(side_effect=AssertionError))
     assert entry(['--version'])==0
-    assert capsys.readouterr().out.startswith('Project Raven ')
+    assert capsys.readouterr().out.startswith('Raven ')
 
 
 def test_explicit_reuse_waits_for_opaque_receipt(monkeypatch,tmp_path):

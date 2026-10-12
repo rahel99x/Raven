@@ -439,7 +439,7 @@ def render(result):
     def plain(value):
         # Captured control sequences must never execute in a diagnostic terminal.
         return "".join(char if char == "\n" or char.isprintable() and char != "\x1b" else "?" for char in _text(value))
-    lines = [f"Slurm Tower {plain(result['tower_version'])} / GPU detection check", plain(result["scope"]),
+    lines = [f"Raven {plain(result['tower_version'])} / GPU detection check", plain(result["scope"]),
              f"User: {plain(result['user'])}  Profile: {plain(result['profile'] or 'default')}  Job: {plain(result['requested_job'])}", ""]
     for check in result["checks"]:
         lines.append(f"{plain(check['status']).upper():7} {plain(check['code'])}" + (f" [{plain(check['job_id'])}]" if check.get("job_id") else ""))

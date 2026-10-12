@@ -1,20 +1,38 @@
-# Tower implementation roadmap
+# Raven implementation roadmap
 
-[README](../README.md) · [Phase one guide](guides/phase-one.md) · [Project standard](PROJECT_STANDARD.md)
+[README](../README.md) · [Implementation ledger](FLAGSHIP_IMPLEMENTATION.md) · [Project standard](PROJECT_STANDARD.md)
 
-This roadmap tracks all thirty proposals from both research lists. Release
-4.14.0 delivered four measurement and submission additions. Release 4.15.0
-adds operation forms and supported adapters for the other twenty-six. The
-tables state the implementation boundary; an adapter does not imply universal
-application, site, hardware, or workflow-engine support. The original phase
-groups remain below as a navigation aid.
+This roadmap records the delivered scope of the thirty original measurement,
+submission, and research operation proposals. The phase tables retain the
+original proposal IDs and groupings. Each row names a supported mechanism and
+its dependencies or limits.
 
-Release 6.0 extends this foundation with scoped recording, scientific
-investigation, cooperative runtime controls, task workspaces and evidence
-integration. The [flagship ledger](FLAGSHIP_IMPLEMENTATION.md) tracks the newer
-forty investments, five research hypotheses and ten advanced proposals. Read the
-[6.0 validation record](guides/flagship-validation.md) for measured results and
-remaining qualification.
+Raven 7.0.0 carries this catalog forward with governed collection, bounded Light
+monitoring, and explicit Heavy execution. The [Raven implementation map](raven/implementation.md)
+and [execution contracts](raven/execution-contracts.md) define current placement,
+admission, and deferred operations. A catalog entry does not establish support
+for every application, site, device, or workflow engine.
+The phase tables describe each mechanism's original delivery. Managed Raven
+sessions require the current execution target and governed handoff; external
+campaign drivers, transfers, and live service connectors can remain deferred.
+
+## Release scope and evidence
+
+| Release | Delivered scope | Record |
+| --- | --- | --- |
+| 4.14.0 | Four measurement and submission additions | [Phase one guide](guides/phase-one.md) |
+| 4.15.0 | Operation forms and supported adapters for the other twenty-six proposals | [Operations validation](guides/operations-validation.md) |
+| 6.0 | Scoped recording, scientific investigation, cooperative runtime controls, task workspaces, and evidence integration | [6.0 validation](guides/flagship-validation.md) |
+| 6.1 | Shared mechanisms and eight primary owning areas for the overlapping proposals | [Consolidation guide](guides/consolidation.md) and [capability map](reference/capabilities.md) |
+| Raven 7.0.0 | Light/Heavy launchers, governed collection, execution placement, bounded recovery, migration, and packaged distribution | [7.0 validation](raven/validation.md) |
+
+The [flagship ledger](FLAGSHIP_IMPLEMENTATION.md) tracks forty later investments,
+five research hypotheses, ten advanced proposals, and the earlier tracing
+proposal. It separates delivered mechanisms from site qualification and research
+evaluation. The [archived strategy](research/flagship-strategy.md) describes the
+4.16.1 baseline rather than the current release.
+
+## Use the operation catalog
 
 Open **File → Research and cluster operations**, or enter `:ops catalog`.
 Read the [complete operation guide](guides/operations.md) for controls, every
@@ -22,9 +40,9 @@ feature key, project contracts, and action review. Read the
 [validation record](guides/operations-validation.md) for automated checks and
 target-system verification requirements.
 
-Tower remains a terminal application. Optional adapters must not become
-requirements for the core application. Scheduler actions require an exact job
-identity and a reviewable scope. Missing evidence must remain unknown.
+Raven remains a terminal application with optional adapters. Scheduler actions
+require an exact job identity and a reviewable scope. Missing evidence remains
+unknown.
 
 ## Phase one: measurement and submission confidence
 
@@ -35,7 +53,7 @@ Release 4.14.0 implements four focused additions:
 | A03 | Shell-body correctness checks | Explicit local syntax and optional ShellCheck analysis; no script execution |
 | A13 | AMD and Intel GPU telemetry | Optional command adapters alongside NVIDIA; preserve unsupported counters as unknown |
 | A14 | Scientific array manifests | Explicit array-index mappings with validation and bounded reads |
-| A16 | Sampling capability inspector | Separate Tower reads from upstream collection and show missing configuration evidence |
+| A16 | Sampling capability inspector | Separate application reads from upstream collection and show missing configuration evidence |
 
 Read the [phase one guide](guides/phase-one.md) for supported controls and limits.
 These four additions remain independent of the 4.15 operation workbench.
@@ -61,7 +79,7 @@ Implemented in 4.15 through the [science operations](guides/operations-science.m
 
 | Proposal | Addition | Dependency or important limit |
 | --- | --- | --- |
-| A01 | Recreate software environments | Hash-locked Python recreation bundle, optional immutable Apptainer identity, explicit compute-host evidence; no installation from Tower |
+| A01 | Recreate software environments | Hash-locked Python recreation bundle, optional immutable Apptainer identity, explicit compute-host evidence; no installation by the application |
 | A02 | CPU, NUMA, and GPU placement verification | Allocation-process evidence through bounded probes; requested and observed placement remain separate |
 | A04 | Scientific acceptance tests | Project-defined tolerances; missing results cannot pass |
 | A07 | Statistical comparisons | Independent experimental units, explicit pairing, uncertainty, and small-sample limits |
@@ -84,7 +102,7 @@ and [service operations](guides/operations-services.md):
 | A11 | Workflow-engine connectors | Native Nextflow trace and Snakemake DAG/runtime observation; the engine retains retry, resume, and cancellation ownership |
 | A12 | Heterogeneous allocations | Component resource requests, coupled `srun` launch, reviewed submission; site support required |
 
-Tower already has reviewed workflow execution and durable submission receipts.
+Raven retains reviewed workflow execution and durable submission receipts.
 These proposals extend their scope. They do not describe those existing
 capabilities as missing.
 
@@ -101,14 +119,31 @@ Implemented in 4.15 through the [scale diagnostics](guides/operations-scale.md):
 
 ## Stack tracing: delivered scope in 6.0
 
-The earlier 5.0 proposal is implemented through the Trace control in Jobs and
-History Details. Supported paths include prepared CPython events, explicit
-native instrumentation, scoped PMPI collectives and reviewed local Python
+The earlier 5.0 proposal has a scoped implementation through the Trace control
+in Jobs and History Details. Supported paths include prepared CPython events,
+explicit native instrumentation, scoped PMPI collectives and reviewed local Python
 snapshots. Results bind to the execution identity and state their coverage.
 Incremental collection runs outside the UI thread. An unprepared arbitrary
 program cannot supply complete retrospective history; GPU-device stacks and
 universal lossless tracing are not implied. Read the
 [stack tracing guide](guides/stack-tracing.md) before selecting a capture path.
+Current Raven launch and admission requirements are in the
+[execution contracts](raven/execution-contracts.md#existing-project-commands).
+
+## Remaining qualification
+
+The released mechanisms have local regression, packaging, and PTY evidence.
+The [Raven 7.0 validation record](raven/validation.md) links the retained reports
+and states their workload and measurement limits. Its local resource comparison
+meets the provisional monitoring and RSS goals; the 1% idle CPU goal remains
+unmet.
+
+Real Slurm placement, production SSH, hardware GPUs, multiple nodes, long-running
+recovery, and physical terminal chains need target-system qualification.
+Independent user studies and scientific outcome comparisons remain research
+gates. Use the [qualification procedure](QUALIFICATION.md) and
+[site rollout criteria](raven/implementation.md#site-rollout-and-stop-criteria)
+to record those results.
 
 ## Compatibility and validation gates
 

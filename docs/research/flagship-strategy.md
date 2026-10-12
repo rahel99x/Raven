@@ -1,14 +1,31 @@
-# Slurm Tower: flagship product and research strategy
+# Raven research strategy: archived Slurm Tower 4.16.1 proposal
 
 Research snapshot: 10 October 2026, America/Los_Angeles. Repository baseline: **4.16.1**, commit `fd1c68304e3adbf5c11d715bb9851d0d2b187510`.
 
-This is a proposal and a targeted review of primary project documentation and source. It is not an implementation report, competitive benchmark, exhaustive literature review, patent search, or claim of unprecedented invention. The 5.0 tracer and the ten previously discussed 6.0 capabilities remain proposals. No new application code was changed or tests rerun for this research.
+This archived strategy proposes product and research work from the 4.16.1
+baseline. At that baseline, the 5.0 tracer and the ten previously discussed 6.0
+capabilities were proposals. The findings, priorities, and acceptance targets
+below retain that historical scope. In this document, **Tower** refers to the
+application under review, then named Slurm Tower.
+
+Supported subsets have since been delivered. Read the
+[implementation ledger](../FLAGSHIP_IMPLEMENTATION.md) for their scope and
+remaining gates, and the [Raven 7.0 validation record](../raven/validation.md) for
+current release evidence.
+
+The original study reviewed selected primary documentation and source. It did
+not install competing products, run a comparative benchmark, or perform an
+exhaustive literature or patent search. No application code was changed and no
+tests were rerun for that study.
 
 ## 1. The product thesis
 
 **Tower should help a researcher determine what happened, what evidence supports an explanation, what to measure or change next, and which scientific results remain trustworthy.**
 
-The terminal is a valuable delivery mechanism: ordinary SSH, limited deployment requirements, keyboard operation, and access from a workstation or cluster. Flagship status would come from dependable investigations, interoperability, administrator trust, and demonstrated user outcomes.
+The terminal supports ordinary SSH, keyboard operation, and access from a
+workstation or cluster with limited deployment requirements. The proposed
+product value depends on dependable investigations, interoperability,
+administrator trust, and demonstrated user outcomes.
 
 A representative complete journey is:
 
@@ -22,13 +39,17 @@ Unexpected scientific result
   -> reproducible explanation or explicit unresolved question
 ```
 
-Every arrow is useful independently. Together they provide a clear product identity. Tower need not replace the scheduler, workflow engine, profiler, provenance system, or scientific visualization stack to deliver this journey.
+Each stage produces a useful result. The complete journey connects the
+scheduler, workflow engine, profiler, provenance system, and scientific
+visualization stack through a common investigation context.
 
 Define success through real users: shorter time to a correct diagnosis, fewer invalid recommendations, lower effort to connect a project, less wasted allocation time, and predictable monitoring cost. Feature count and terminal animation complexity are secondary measures.
 
 ## 2. What established tools already do
 
-These are capabilities confirmed in the cited primary sources. An unmentioned feature is **not** evidence that a competing tool lacks it. We did not install and benchmark these products against Tower.
+The cited primary sources confirm the capabilities below. A feature omitted
+from this review may still exist in a tool; the table is a selected source
+review rather than a comparative test.
 
 | Ecosystem | Established capabilities | Implication for Tower |
 | --- | --- | --- |
@@ -45,13 +66,18 @@ These are capabilities confirmed in the cited primary sources. An unmentioned fe
 | lnav | Merged chronological logs, structured parsing, error navigation, histograms and SQL queries in a terminal. [S17] | Tower can learn from mature log investigation workflows and connect their results to exact jobs. |
 | SENSEI and openPMD | In-situ analysis infrastructure and scientific data access conventions. [S18] | Rich scientific field inspection should consume bounded derived data rather than pull entire datasets into the UI. |
 
-The opportunity is a connected, portable, evidence-aware research workflow. Whether Tower would outperform an existing combination of these tools must be evaluated, not assumed.
+The proposed opportunity is a connected, portable research workflow that retains
+evidence identity and coverage. Its advantage over an existing combination of
+these tools requires evaluation.
 
-## 3. Concrete findings in Tower today
+## 3. Implementation findings at the 4.16.1 baseline
 
-Tower already has substantial foundations: terminal input decoding, differential painting, caches, background workers, reviewed actions, job-attempt identity, project contracts, reporting automation and extensive offline regression coverage. Preserve these while improving their boundaries.
+The inspected release provides terminal input decoding, differential painting,
+caches, background workers, reviewed actions, job-attempt identity, project
+contracts, reporting automation, and offline regression coverage. The proposed
+revisions preserve these foundations while improving their boundaries.
 
-| Observation from the current implementation | Proposed revision | What this does and does not establish |
+| Observation at the inspected revision | Proposed revision | Evidence scope |
 | --- | --- | --- |
 | `Store.snapshot()` copies retained CPU/GPU histories while holding the store lock; `_FrameCache.rebuild()` requests that snapshot before composition. | Publish immutable, revisioned source slices and update only dependent panes. | A concrete repeated-work opportunity; it is not proof that this explains every latency spike. |
 | Raw input decoding is centralized, but gesture precedence and mouse routing are distributed across `screen.py` and `controller.py`. | One typed event router with explicit focus, capture ownership, geometry generation and cancellation. | A structural way to reduce recurring interaction bugs while retaining the existing decoder. |
@@ -62,12 +88,16 @@ Tower already has substantial foundations: terminal input decoding, differential
 
 Code anchors at the inspected revision:
 
-- [Store snapshot and settings](https://github.com/rahel99x/Slurm-Tower/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/model.py#L951).
-- [Frame rebuild](https://github.com/rahel99x/Slurm-Tower/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/screen.py#L1321).
-- [Screen event routing](https://github.com/rahel99x/Slurm-Tower/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/screen.py#L838) and [controller routing](https://github.com/rahel99x/Slurm-Tower/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/controller.py#L1950).
-- [Multi-cluster collection](https://github.com/rahel99x/Slurm-Tower/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/scale_clusters.py#L121) and [plugin API](https://github.com/rahel99x/Slurm-Tower/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/plugins.py#L21).
+- [Store snapshot and settings](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/model.py#L951).
+- [Frame rebuild](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/screen.py#L1321).
+- [Screen event routing](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/screen.py#L838) and [controller routing](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/controller.py#L1950).
+- [Multi-cluster collection](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/scale_clusters.py#L121) and [plugin API](https://github.com/rahel99x/Raven/blob/fd1c68304e3adbf5c11d715bb9851d0d2b187510/tower/plugins.py#L21).
 
-The recorded 4.16 validation reports 12,516 passing tests and two skips, but no live Slurm controller or production SSH host. Its changing-UI benchmark records low median work alongside a 294 ms maximum frame, excluding transport. These are useful results and explicit limits, not a completed production qualification.
+The recorded 4.16 validation reports 12,516 passing tests and two skips. It
+does not exercise a live Slurm controller or production SSH host. Its changing-UI
+benchmark records low median work alongside a 294 ms maximum frame, excluding
+transport. These historical results identify validation coverage and remaining
+production gates.
 
 ## 4. Forty investments, organized by outcome
 
@@ -75,7 +105,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 
 ### A. Make the product understandable
 
-| ID | Investment | Concrete behavior and completion evidence | Priority |
+| ID | Investment | Proposed behavior and acceptance evidence | Priority |
 | --- | --- | --- | --- |
 | 01 | Task-oriented home and workspaces | Offer Run, Investigate, Compare and Results entry points. Keep expert tools searchable and pinnable. Validate five core tasks with unfamiliar users. | A |
 | 02 | Persistent context and navigation | Show cluster → project → run attempt → job/task → source. Back/forward navigation restores the intended view, not a stale job. Context changes invalidate gestures and actions. | A |
@@ -87,7 +117,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 
 ### B. Make responsiveness and correctness architectural properties
 
-| ID | Investment | Concrete behavior and completion evidence | Priority |
+| ID | Investment | Proposed behavior and acceptance evidence | Priority |
 | --- | --- | --- | --- |
 | 08 | Explicit gesture state machines | One capture owner and lifecycle for graph zoom, table resizing, selection, group drag and menus. Test arbitrary fragmented mouse streams and stale releases. | A |
 | 09 | Incremental immutable data publication | Publish source revisions and changed identities. Unrelated data must not rebuild every pane or copy every history. Preserve corrections to older measurements. | A |
@@ -99,7 +129,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 
 ### C. Make data and integrations durable
 
-| ID | Investment | Concrete behavior and completion evidence | Priority |
+| ID | Investment | Proposed behavior and acceptance evidence | Priority |
 | --- | --- | --- | --- |
 | 15 | Versioned evidence records | Common identity, units, time domains, coverage, loss, aggregation, provenance and source-version semantics. Preserve backend-specific evidence rather than flattening it away. | A |
 | 16 | Capability and coverage manifests | Each adapter states what it can observe, under which runtime/build/site conditions, and with what missingness. UI distinguishes absent, unsupported, stale and zero. | A |
@@ -111,7 +141,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 
 ### D. Turn observation into scientific investigation
 
-| ID | Investment | Concrete behavior and completion evidence | Priority |
+| ID | Investment | Proposed behavior and acceptance evidence | Priority |
 | --- | --- | --- | --- |
 | 22 | Causal delay and protocol diagnosis | Implement the earlier causal explorer and collective auditor with certified runtime scopes. Explain supported edges and abstain when missing evidence prevents attribution. | B |
 | 23 | Reproducers and regression experiments | Combine exact failed-attempt evidence with bounded input reduction or controlled revision/configuration comparisons. Require a failure oracle and retain inconclusive results. | B |
@@ -123,7 +153,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 
 ### E. Earn administrator and operator trust
 
-| ID | Investment | Concrete behavior and completion evidence | Priority |
+| ID | Investment | Proposed behavior and acceptance evidence | Priority |
 | --- | --- | --- | --- |
 | 29 | Negotiated site policy | Document allowed collectors/actions, resource ownership, rate ceilings, retention and approved tools. Show effective limits. A user profile alone is not an OS-enforced security boundary. | A |
 | 30 | Observability admission and accounting | Preview scope, supported delivery behavior, storage and resource reservations. Attribute observer cost. Reject incompatible requests; never silently weaken strict trace fidelity. | A |
@@ -134,7 +164,7 @@ Priority **A** means foundation or immediate product value; **B** means build af
 
 ### F. Make the project sustainable and useful beyond its authors
 
-| ID | Investment | Concrete behavior and completion evidence | Priority |
+| ID | Investment | Proposed behavior and acceptance evidence | Priority |
 | --- | --- | --- | --- |
 | 35 | Task-based documentation | Short README, first-success tutorial, five core journeys, administrator guide, stable reference and separate release history. Generate repetitive control/schema reference. | A |
 | 36 | Integration starter kits | Small Python, native MPI, GPU-training and Bash examples that publish real metrics and artifacts. Specify tested combinations and optional dependencies precisely. | B |
@@ -143,9 +173,11 @@ Priority **A** means foundation or immediate product value; **B** means build af
 | 39 | External user and site program | Recruit independent labs and operators, observe unassisted tasks, record missing capabilities and quantify diagnosis time. Treat installation failures as product failures. | A |
 | 40 | Research and outcome evaluation | Benchmark flagship investigations against documented expert/tool baselines. Publish failed hypotheses, uncertainty and negative results alongside successes. | R |
 
-This is a broad portfolio, not a commitment to forty simultaneous implementations. The shared architecture should eliminate duplicated collectors, workflows and controls as features arrive.
+The portfolio groups related work rather than prescribing forty simultaneous
+implementations. Shared mechanisms should reduce duplicated collectors,
+workflows, and controls as features arrive.
 
-## 5. A coherent architecture
+## 5. Proposed shared architecture
 
 ```text
 Application hooks / scheduler / site telemetry / native profiler records
@@ -167,7 +199,9 @@ Application hooks / scheduler / site telemetry / native profiler records
 
 The UI subscribes to relevant revisions. It never starts filesystem scans, scheduler requests or analysis because the mouse crossed a graph. One command descriptor drives keyboard and mouse activation. Any external mutation revalidates exact identity and produces an outcome receipt.
 
-Heavy optional engines can run in separate processes or allocated jobs. This does not require rewriting Tower in another language. Move a hot path only after profiling shows that an algorithmic fix, indexing or cache invalidation cannot meet its budget.
+Optional analysis engines can run in separate processes or allocated jobs.
+Move a hot path to another language only after profiling shows that an algorithmic
+fix, indexing, or cache invalidation cannot meet its budget.
 
 Two interoperability details matter:
 
@@ -184,11 +218,16 @@ Keep three claims separate:
 
 The first is an engineering target. The second needs backend-specific qualification and conditions. The third is not a realistic universal guarantee. Score-P documents runtime/compiler limitations and the measurement disturbance of trace flushes; Caliper documents sampling/overhead tradeoffs. [S07–S08]
 
-The user's strict-recording requirement must never silently become sampling or selective capture. If a strict scope cannot be admitted or maintained, show that explicitly. Separately selected diagnostic modes may use targeted instrumentation and summaries with their own coverage contract.
+The proposal's strict-recording requirement needs an explicit result if its
+declared scope cannot be admitted or maintained. Separately selected diagnostic
+modes may use targeted instrumentation and summaries with their own coverage
+contract. A fallback must disclose any change in collection semantics.
 
-## 6. Five research hypotheses worth investigating
+## 6. Five research hypotheses and evaluation plans
 
-The ideas below are not established world-first claims. Their building blocks have substantial prior art. The research contribution would have to be a precise mechanism, demonstrated advantage and properly scoped guarantee.
+The hypotheses below combine established building blocks. A research
+contribution requires a precise mechanism, a demonstrated advantage, and a
+guarantee scoped to explicit assumptions.
 
 ### R1. A recommendation whose validity can be checked and expires
 
@@ -212,7 +251,7 @@ Example: two configurations differ slightly in runtime, but the faster one's sci
 
 **Closest prior art:** GPTune's constrained, multi-fidelity and transfer learning; active learning and value-of-information research; Score-P capture planning. The candidate novelty is the joint choice among instrumentation, replication, validation and configuration exploration with exact execution provenance.
 
-**Evaluation:** Compare with constrained tuning, fixed measurement schedules and expert plans. Measure time/node-hours to a verified improvement, decision regret, false acceptance, budget adherence and robustness to bad queue estimates. This is one of the strongest algorithmic research candidates.
+**Evaluation:** Compare with constrained tuning, fixed measurement schedules and expert plans. Measure time/node-hours to a verified improvement, decision regret, false acceptance, budget adherence and robustness to bad queue estimates.
 
 ### R3. Compute a conservative scientific revalidation plan
 
@@ -250,7 +289,7 @@ This is not a substitute for a strict full-event recording. It is a separate mod
 
 **Evaluation:** Compare query answers with complete reference traces across normal runs and seeded anomalies. Measure bytes, CPU, answer error and false assertions of completeness. Include adversarial rare events, missing ranks and questions outside the declared family.
 
-## 7. Three flagship demonstrations
+## 7. Three proposed end-to-end demonstrations
 
 ### Demonstration A: a distributed stall explained
 
@@ -264,7 +303,9 @@ A failed campaign becomes a smaller input/configuration witness through bounded 
 
 A scientific output changes after a software or parser revision. Tower connects the result to its exact evidence, compares candidates, proposes a test, and prepares only the justified revalidation work. Show cases where the correct answer is to retain uncertainty.
 
-These demonstrations join existing and proposed modules into observable user outcomes. They are more persuasive than demonstrating ten disconnected advanced panels.
+Each demonstration joins existing and proposed mechanisms into an observable
+user outcome. Evaluate the complete investigation, including unresolved cases,
+rather than the number of available panels.
 
 ## 8. Validation gates and rollout
 
@@ -290,7 +331,7 @@ Recommended sequence:
 
 Release numbers should follow these gates; they should not imply maturity merely because the feature inventory grew.
 
-## 9. What to avoid
+## 9. Design risks and exclusions
 
 - Another wave of independent tabs without common context, commands and evidence semantics.
 - An unmeasured rewrite of the renderer or a premature requirement to rewrite everything in Rust/C++.
@@ -300,15 +341,18 @@ Release numbers should follow these gates; they should not imply maturity merely
 - Duplicating established profiler, workflow or provenance engines solely to claim feature breadth.
 - Treating a read-only query as free, or treating a process boundary as a security sandbox.
 - Claiming novelty from a terminal presentation, a feature combination, or absence of a feature in competitors' README files.
-- Shipping forty new capabilities before external users can reliably complete the five core journeys.
+- Expanding the feature inventory without evaluating whether external users can complete the five core journeys.
 
-## 10. A defensible novelty process
+## 10. Research claim evaluation
 
 For each research candidate, write a one-sentence claim naming the mechanism, assumptions and measurable outcome. Search scientific literature and tool manuals for that exact problem, including adaptive profiling, active experimental design, scientific workflow validity, trace compression and measurement perturbation. Request review from relevant maintainers and HPC researchers. Compare against the strongest reasonable baseline, not an artificially weak one.
 
 Keep three labels in the roadmap: **established technique**, **new Tower integration**, and **research hypothesis**. Promote a hypothesis only after evaluation; a useful negative result is still progress.
 
-A targeted primary-source review supports the strategy in this report. It cannot establish that nobody has ever built a similar system. The most credible flagship claim would be demonstrated ability to make difficult HPC investigations faster, more reproducible and more scientifically reliable within a transparent cluster cost.
+The primary-source review identifies relevant building blocks and evaluation
+baselines. It does not establish priority of invention. Evaluate whether the
+proposed mechanisms make HPC investigations faster, more reproducible, and more
+scientifically reliable at a disclosed cluster cost.
 
 ## Primary-source ledger
 

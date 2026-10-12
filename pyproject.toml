@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "slurm-tower"
 version = "7.0.0"
-description = "Project Raven: a terminal research workbench with governed collection and explicit compute ownership"
+description = "Raven: a terminal research workbench with governed collection and explicit compute ownership"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -31,10 +31,10 @@ dev = ["pytest>=8,<10", "build>=1,<2", "jsonschema>=4.18,<5"]
 terminal = ["pyte>=0.8.2,<0.9", "wcwidth>=0.2.13,<1"]
 
 [project.urls]
-Homepage = "https://github.com/rahel99x/Slurm-Tower"
-Documentation = "https://github.com/rahel99x/Slurm-Tower/blob/main/docs/runbook.md"
-Repository = "https://github.com/rahel99x/Slurm-Tower"
-Issues = "https://github.com/rahel99x/Slurm-Tower/issues"
+Homepage = "https://github.com/rahel99x/Raven"
+Documentation = "https://github.com/rahel99x/Raven/blob/main/docs/raven/README.md"
+Repository = "https://github.com/rahel99x/Raven"
+Issues = "https://github.com/rahel99x/Raven/issues"
 
 [project.scripts]
 tower = "tower.raven_launch:legacy_main"

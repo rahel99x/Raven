@@ -2,10 +2,13 @@
 
 [README](../../README.md) · [Controls](../CONTROLS.md) · [Tables](tables.md) · [Mouse navigation](pointer-navigation.md)
 
-Tower 4.4.0 adds adjustable dividers, scrollable Recents, launch groups, history panels, Quick Advisor, and a compact job-progress column.
-These controls use terminal characters and the existing mouse and keyboard input.
-They do not change the Slurm fetching rate.
-Tower 4.5.0 adds refreshed job-row focus, source-specific graph zoom, coherent runtime palettes, and a leftmost progress field.
+Configure Raven's panel layout, recent-job browser, launch groups, and job inspection tools.
+These controls use the terminal's mouse and keyboard input.
+Layout and navigation changes preserve the selected job and do not change scheduler polling.
+
+**Prerequisites:** Run Raven in an interactive terminal.
+Divider and graph dragging require mouse press, movement, and release reports.
+Each section also describes keyboard alternatives.
 
 ## Change panel size
 
@@ -70,7 +73,7 @@ Jobs Main has independently usable active-job and Recents sections.
 The grey horizontal divider controls their relative height.
 Its default gives Recents about 35 percent of the available data rows.
 Unused active-queue space flows into Recents until you choose a split.
-After a divider drag, Tower retains the selected queue height even when that area has few jobs.
+After a divider drag, Raven retains the selected queue height even when that area has few jobs.
 
 1. Open Jobs.
 2. Drag the divider between the active jobs and Recents upward.
@@ -79,7 +82,7 @@ After a divider drag, Tower retains the selected queue height even when that are
 5. Click an older job to inspect its exact ID in Details.
 
 **Expected result:** A larger Recents section displays more history.
-Scrolling reaches older matching records without restarting Tower.
+Scrolling reaches older matching records without restarting Raven.
 The active queue retains at least one data row when both sections contain jobs.
 The Recents split is limited to 10–90 percent of the available data space.
 
@@ -92,7 +95,7 @@ Up at the first recent job returns to the last active job.
 The wheel stays within Recents instead of switching to the active queue.
 Home selects the first matching recent job.
 End loads the matching history needed to reach its last job.
-The available history remains limited to Tower's current accounting window and filters.
+The available history remains limited to Raven's current accounting window and filters.
 
 The `:recents 5`, `:recents 10`, and `:recents 25` choices set the initial preview size.
 They do not prevent a larger panel or scrolling from showing older matching records.
@@ -101,7 +104,7 @@ Use `:recents window DURATION` or `:recents window all` to change the completion
 Use `:days N` or the History range controls when the accounting source must fetch an older interval.
 See [Recents controls](tables.md#feature-09) for filtering and sorting.
 
-Tower grows the loaded candidate prefix in bounded pages as you navigate.
+Raven grows the loaded candidate prefix in bounded pages as you navigate.
 It does not scan all accounting history for the default preview.
 Newly departed jobs appear as awaiting accounting until Slurm reports their terminal state.
 Jobs and Recents retain separate filters and cascading sorts.
@@ -125,10 +128,11 @@ Right-click inside the plot to restore its full view and turn off that metric's 
 The graph keeps the exact selected job and source.
 
 A running metric can show its own Live toggle and a window slider from 30 seconds to one second.
-Its adjacent polling slider spans five seconds to 500 milliseconds.
+Its adjacent polling slider requests intervals from five seconds to 500 milliseconds.
 **Set** identifies that slider's request; **Poll** identifies the shared effective interval.
 Compact rows put the effective value before the polling track and `S` plus the requested value after it.
-The requested label changes even if a faster shared request keeps the effective interval unchanged.
+The requested label changes even if shared requests or collection floors keep the effective interval unchanged.
+Managed launches apply the [collection policy](../raven/README.md#collection-and-retention) before reading sources.
 Live and the window slider change the displayed interval. The polling slider changes source-read requests.
 A valid rectangular zoom turns Live off.
 GPU utilisation and observed busy mean use recorded device observations and retain missing-data gaps.
@@ -137,7 +141,7 @@ See [Charts](charts.md) for scale controls, Live procedures, safe cancellation, 
 
 ## Fold related launches
 
-Tower groups jobs when the published evidence supports a shared launch.
+Raven groups jobs when the published evidence supports a shared launch.
 Grouping is enabled by default, and new groups start open.
 The fold setting is shared by Jobs, Recents, History, Group, Dependencies, and the job-history browsers.
 
@@ -159,7 +163,7 @@ Use `:jobgroup open GROUP_ID`, `:jobgroup close GROUP_ID`, or `:jobgroup toggle 
 A simple unscoped array also accepts its numeric parent ID in this command.
 Normal UI state retains grouping and closed-group preferences.
 
-### Understand the deduction
+### Interpret grouping evidence
 
 | Evidence | Group basis |
 | --- | --- |
@@ -222,7 +226,7 @@ Logs opens that job's own registered or scheduler log paths.
 Research selects that job's project evidence.
 Dependencies selects that job for the dependency context.
 Unavailable historical data remains unavailable.
-Tower does not substitute a currently running job.
+Raven does not substitute a currently running job.
 
 ### Move the history panel
 
@@ -282,7 +286,7 @@ It does not apply recommendations to Slurm.
 5. Check the evidence coverage and unavailable measurements.
 6. Select Refresh analysis when newer observations need a new report.
 
-**Expected result:** A readable report stays attached to the requested job ID.
+**Expected result:** The report stays attached to the requested job ID.
 The loading box leaves pointer feedback, navigation, and background publication available.
 Analysis begins only when you request it.
 Opening Jobs or restoring a saved Quick Advisor mode does not start analysis.
@@ -340,7 +344,7 @@ ASCII uses `p =>--` and `t =>--` respectively.
 The underlying fraction remains available for numeric sorting.
 When animation is enabled, a running time symbol cycles through `◴`, `◷`, `◶`, and `◵` every 0.4 seconds.
 A pending symbol alternates between `⧗` and `⧖` every 0.8 seconds.
-These are single-cell characters; Tower does not use double-width emoji in this column.
+These are single-cell characters; Raven does not use double-width emoji in this column.
 ASCII, reader mode, disabled animations, and noninteractive output use static symbols.
 The clock or `t` value measures used allocation time.
 It does not measure completed work or predict when the application will finish.
@@ -354,7 +358,7 @@ Publish the standard top-level progress object in a linked job's `metrics.jsonl`
 ```
 
 Use finite numbers, `0 <= completed <= total`, and `total > 0`.
-For integrations that already use numeric metric names, Tower also accepts `progress_fraction` from zero to one, `progress_pct` from zero to one hundred, or the pair `completed_steps` and `total_steps` with the same completed/total rules.
+For integrations that already use numeric metric names, Raven also accepts `progress_fraction` from zero to one, `progress_pct` from zero to one hundred, or the pair `completed_steps` and `total_steps` with the same completed/total rules.
 Keep those names stable across records.
 The [metric-stream standard](../PROJECT_STANDARD.md) describes the file identity, fields, and bounds.
 
@@ -372,7 +376,7 @@ Use `:columns jobs` to hide other optional fields, or enlarge Main when the term
 Click the column heading for its cascading sort, or use `:sortby jobs progress asc`, `desc`, or `off`.
 Sorting uses the underlying numeric fraction.
 
-## Resolve a workspace problem
+## Troubleshoot workspace controls
 
 | Symptom | Action |
 | --- | --- |
@@ -389,3 +393,10 @@ Sorting uses the underlying numeric fraction.
 
 Use [Display and input performance](ui-performance.md) for checks and connection limits.
 Use [Controls](../CONTROLS.md) for the complete command syntax.
+
+## Implementation history
+
+Version 4.4.0 introduced adjustable dividers, scrollable Recents, launch groups,
+history panels, Quick Advisor, and the compact job-progress column.
+Version 4.5.0 added refreshed job-row focus, source-specific graph zoom,
+runtime palettes, and the leftmost progress field.

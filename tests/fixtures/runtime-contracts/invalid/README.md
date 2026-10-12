@@ -1,6 +1,7 @@
 # Invalid runtime contract examples
 
-These documents are deliberately invalid. Do not use them as project templates.
+This corpus exercises structural and native runtime validation failures.
+The documents are deliberately invalid. Do not use them as project templates.
 `tests/test_runtime_schemas.py` checks rejection by the Draft 2020-12 schemas
 and by the corresponding native runtime reader.
 

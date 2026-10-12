@@ -1,14 +1,20 @@
 # Connect and validate a project
 
+Use the project guide to inspect a native reporting project, validate one sample
+run, and prepare reporting hooks. The project root and declared sources must be
+readable through the active connection.
+
 Open `:projectguide /absolute/project/path`, or choose **Connect → Connect and
 validate a research project**. The form reads a bounded inventory and identifies
-which declared sources can populate each Research view. It does not submit a
-job, run project code, or write to the project during inspection.
+which declared sources can populate each Research view. Inspection is read-only.
 
 ## Validate an actual sample
 
-Set **Sample run ID** to one directory name under `runs/`, then choose
-**Inspect / prepare**. For example:
+1. Open the project guide with the project's absolute path.
+2. Set **Sample run ID** to one directory name under `runs/`.
+3. Select **Inspect / prepare** and read each check's status.
+
+The equivalent explicit inspection is:
 
 ```text
 :ops run project-guide root="/project/solver" run_id=job-1234-a1
@@ -21,9 +27,9 @@ The guide therefore does not choose a run from job ID alone. If no job is
 selected, it can use a project's sole run. An ambiguous selection or an unknown
 explicit run is never replaced with a different attempt.
 
-The report distinguishes path declarations from checked content:
+**Expected result:** The report distinguishes declared paths from checked content:
 
-| Check | What Tower verifies |
+| Check | What Raven verifies |
 | --- | --- |
 | Inventory | Run directory, ID, attempt, job identity and native path rules |
 | Metrics | Complete records from one confined 256 KiB read, up to 128 retained points per series |
@@ -65,7 +71,7 @@ application source with a generated batch hook.
 
 The **Application metric/output hooks** use actual application variables and
 declared files. Rename `loss`, `LOSS` and `STEP` for your scientific measurement.
-Undefined values fail explicitly; Tower does not insert example measurements.
+Undefined values fail explicitly; Raven does not insert example measurements.
 
 The **Manual lifecycle alternative** is for an existing launcher that already
 owns its traps and exit handling. It provides `report start` and `report finish`
@@ -74,10 +80,13 @@ the automatic `report exec` lifecycle or the manual lifecycle; do not nest them.
 
 ## Initialize the optional descriptor
 
-Set **Prepare project descriptor** to `yes`, inspect, then review and confirm
-the action. This creates only the standard descriptor through the existing
-reporter. Existing data is preserved. It does not repair failed sample checks
-or execute the generated hooks.
+1. Set **Prepare project descriptor** to `yes`.
+2. Select **Inspect / prepare**, then **Review action**.
+3. Check the destination and select **Confirm apply**.
+
+**Expected result:** The reporter creates the standard descriptor and preserves
+existing data. Descriptor creation does not repair failed sample checks or
+execute the generated hooks.
 
 Read [Bash automation](research-automation.md), the
 [project standard](../PROJECT_STANDARD.md), and the

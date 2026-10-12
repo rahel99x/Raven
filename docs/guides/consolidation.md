@@ -1,17 +1,19 @@
 # Consolidation in 6.1
 
-Tower 6.1 consolidates shared mechanisms behind the existing terminal interface.
-Repeated views can reuse prepared observations and analyses. Pane state stays
-local to its view. Source collection, scientific analysis, and reviewed actions
+This guide describes the shared mechanisms introduced in Tower 6.1 and retained
+in Raven. Views reuse prepared observations and analyses while keeping their
+pane state local. Source collection, scientific analysis, and reviewed actions
 retain separate identities and lifecycles.
 
 The [capability map](../reference/capabilities.md) assigns each of the 56 original
-proposal entries to one primary owning area. Related entries identify overlap;
+proposal entries to one primary area. Related entries identify overlap;
 they do not count the same operation as another implementation. The
 [implementation ledger](../FLAGSHIP_IMPLEMENTATION.md) retains the scope limits
 and qualification requirements of the original proposals.
 
-## Eight owning areas
+<a id="eight-owning-areas"></a>
+
+## Architecture ownership
 
 | Area | Shared responsibility |
 | --- | --- |
@@ -86,7 +88,7 @@ Retention remains bounded:
   composition to establish a valid map.
 
 These are targeted reuse mechanisms. They do not establish that every Store
-field or every document in Tower is incrementally composed.
+field or every document in Raven is incrementally composed.
 
 ## Pane and pointer ownership
 
@@ -145,9 +147,9 @@ for older owners to drain. Changed policy or connection scope cannot reuse a
 result authorized under a different identity. Only explicitly read-only requests
 enter this path; scheduler mutations bypass it and invalidate observations.
 
-The mechanism covers the connected governed read paths. It is not an
-institution-wide authenticated monitoring service, a new background daemon, or
-a promise that every optional external tool follows Tower's worker count.
+The mechanism covers connected reads that use the governed acquisition path.
+It does not provide an institution-wide monitoring service or enforce Raven's
+worker budget on every optional external tool.
 See [background workers](background-workers.md) for worker-mode controls.
 
 ## A connected investigation
@@ -192,7 +194,7 @@ A trial checks its remaining budget after staging and writing its intent, before
 starting a child. Cancellation, time exhaustion, or failed publication cannot
 silently start an unbudgeted retry. Interrupted work requires receipt inspection
 and an explicitly reviewed new workspace. The standalone driver remains usable
-inside a reviewed Slurm workspace without installing Tower there.
+inside a reviewed Slurm workspace without installing Raven there.
 
 Reviewed operations share `action_lifecycle.execute`. It captures the reviewed
 plan, validates its exact scope, records an intent when state storage is enabled,

@@ -2,11 +2,16 @@
 
 [README](../../README.md) · [Project standard](../PROJECT_STANDARD.md)
 
-These optional operations use declared evidence. They do not attach a debugger,
-change scheduler policy, or require a service with administrator permissions.
-Open the research operations workbench and select the Runtime group. Each
-operation also has an `:ops` key shown below. All JSON examples are in
-[`examples/runtime`](../../examples/runtime).
+These operations model execution scenarios, compile diagnostic intents,
+summarize supplied evidence, display scientific fields, and coordinate
+application control or I/O. Each operation requires its declared input contract.
+Cooperative control also requires an application that uses the runtime SDK and
+a supported local mailbox filesystem.
+
+Open the research operations workbench and select the **Runtime** group.
+Each operation also has an `:ops` key shown below. JSON examples are in
+[`examples/runtime`](../../examples/runtime). Model inspection and compilation
+do not execute the proposed workload or change scheduler policy.
 
 ## Execution scenario laboratory
 
@@ -18,16 +23,16 @@ The simulator executes a deterministic nonpreemptive resource DAG. Each resource
 is one serial server. Independent resources overlap. A resource has a work rate
 and an optional latency. A rank placement change is accepted only if every
 required route exists. The input workload, dependency graph, and rank count stay
-fixed. This is a runnable model, not a universal MPI or GPU simulator. It does
-not predict scheduler waiting time, application branches, cache effects, packet
-contention, or changes to problem size.
+fixed. The model covers only the declared resource DAG. It excludes scheduler
+waiting time, application branches, cache effects, packet contention, and changes
+to problem size; it does not provide general MPI or GPU simulation.
 
 Calibration observations fit a scalar ratio between modeled and measured run
 durations. Separate validation observations report residuals and relative errors.
 Declare `domain.max_validation_relative_error` between 0 and 1 to state the
 acceptance threshold; for example, 0.05 permits at most 5% relative error in
 **each** held-out observation. Set this policy before evaluating the observations.
-Tower checks the declared policy but cannot certify when the project chose it or
+Raven checks the declared policy but cannot certify when the project chose it or
 whether the declared held-out cases are independent of fitting.
 
 Merely supplying an observation does not validate a model. The validation state
@@ -46,8 +51,9 @@ declared-domain restrictions still apply. A model permits at most 20,000 events,
 resources, 4,096 ranks, and 64 observations. Timeline rows are bounded in the
 report; its structured data retains the modeled event records.
 
-To retain a prediction, enter a new prediction-record directory and review Apply.
-Tower verifies the reviewed source and writes `model.json`, `scenario.json`,
+To retain a prediction, enter a new prediction-record directory. Inspect the
+inputs, select **Review action**, check the plan, then select **Confirm apply**.
+Raven verifies the reviewed source and writes `model.json`, `scenario.json`,
 `prediction.json`, and its completion receipt without overwriting existing files.
 The record includes the model digest, fit digest, prediction ID, held-out evidence
 revision, applicability, residuals, acceptance policy, and qualification outcome.
@@ -64,7 +70,7 @@ the runtime fingerprints, and the CPU, memory, storage, and duration budgets.
 Each adapter declares provided observations, runtime requirements, conflicts,
 site permission, estimated cost, and a proposed argument vector.
 
-Tower chooses a compatible set of up to 16 declared adapters. It prefers exact
+Raven chooses a compatible set of up to 16 declared adapters. It prefers exact
 observations to explicitly permitted approximations, then minimizes relative
 resource costs. Missing mandatory evidence, conflicting adapters, or exhausted
 budgets cause a clear failure. Costs and capabilities are declared evidence,
@@ -93,11 +99,11 @@ at most 32 fields. Existing operation file limits apply before computation.
 
 Use `scientific-field` with `scientific-field.json`. Supply a row-major flattened
 array, a 1D, 2D, or 3D shape, units, and optional axis labels. For 3D data, set
-the zero-based slice axis and index. Tower shows a terminal field, distribution,
+the zero-based slice axis and index. Raven shows a terminal field, distribution,
 full-data extrema, slice extrema, and original flat indices.
 
 The reader permits at most 262,144 cells. Extract larger or native-format datasets
-using their own readers before passing them to Tower. Each display tile preserves
+using their own readers before passing them to Raven. Each display tile preserves
 minimum, maximum, mean, valid count, and gap count. Mixed missing tiles use a
 distinct glyph; no observation is invented. These JSON views do not imply native
 HDF5, netCDF, mesh, or arbitrary-volume support.
@@ -105,8 +111,8 @@ HDF5, netCDF, mesh, or arbitrary-volume support.
 ## Cooperative application control
 
 The application opts in. It declares commands and calls the SDK at a safe point.
-Tower queues a typed request. The application performs its own synchronization,
-applies the change, and returns an acknowledgment. Tower never injects code,
+Raven queues a typed request. The application performs its own synchronization,
+applies the change, and returns an acknowledgment. Raven never injects code,
 sends a stop signal, or changes application memory externally.
 
 Initialize a new mailbox on node-local storage:
@@ -150,7 +156,7 @@ A successful acknowledgment advances the epoch. An old-epoch request becomes
 stale. An unclaimed expired request cannot apply.
 
 If an application crashes after claiming a command, its side effects can be
-unknown. Tower marks it uncertain and prevents another command for that attempt
+unknown. Raven marks it uncertain and prevents another command for that attempt
 from overtaking it. The application must reconcile the claim using `ack` or
 `acknowledge`. It must not claim that a failed callback had no effects without
 checking its state. This is not an exactly-once guarantee across arbitrary
@@ -171,7 +177,7 @@ Archive completed receipts and create a new mailbox when the bound is reached.
 
 The same mailbox coordinates discretionary I/O across its authorized attempts.
 Declare permit capacity and maximum lease duration in the configuration. Select
-`io-coordination` with `io-request.json` to review a permit request. Tower queues
+`io-coordination` with `io-request.json` to review a permit request. Raven queues
 it with **no asserted arrivals**. Only the application reports its own arrivals.
 
 The application calls `permit(request_id, participants=[...], arrived=[...],
@@ -183,7 +189,7 @@ Use `renew(request_id, token, seconds)` before expiry, and call
 
 For a multi-node or collective application, use its existing control rank to
 gather arrivals, request a permit on that rank's host, and broadcast **one**
-decision before collective I/O. Tower does not implement an MPI barrier, detect
+decision before collective I/O. Raven does not implement an MPI barrier, detect
 failed ranks, or allow nodes to share this SQLite database. Each rank must follow
 the application's existing collective failure protocol. A group that misses
 participants is marked incomplete; it never gets permission to start half of a
@@ -196,7 +202,7 @@ reported as `bypass`, not a normal grant. This policy protects application
 checkpoints; it does not promise a strict throughput cap during emergency output.
 
 An expired active lease becomes uncertain and continues to occupy capacity.
-The writer may still be performing I/O. Tower does not free that capacity until
+The writer may still be performing I/O. Raven does not free that capacity until
 the application releases the token after reconciliation. This prevents expired
 leases from silently admitting overlapping writers. The service does not control
 other users or filesystem-wide fairness.
@@ -231,7 +237,7 @@ succeeds everywhere, `commit_update(staged_value)` applies each local update.
 Successful outcomes produce one durable receipt and a shared incremented epoch.
 
 If a commit fails after some ranks change state, all ranks receive an uncertain
-outcome and `CollectiveControlError`. Tower cannot roll back arbitrary application
+outcome and `CollectiveControlError`. Raven cannot roll back arbitrary application
 state. The application must stop that algorithm phase and use its own recovery
 procedure. The request is never automatically replayed. MPI or process-group
 transport failures follow the application's existing failure policy; this API
@@ -265,7 +271,7 @@ reports completed GPU stream intervals, allocated/reserved/peak allocator bytes,
 pending samples, and skipped samples when its queue is full. These measurements
 are not GPU utilization, device-wide memory use, kernel instruction traces, or
 a lossless record. CPU mode reports CUDA unavailable and invents no GPU values.
-Pass `--run-dir` to publish bounded numeric samples into an existing Tower
+Pass `--run-dir` to publish bounded numeric samples into an existing Raven
 Research run with the standard reporting API. Only rank zero publishes that
 example's measurements; it does not imply all-rank aggregation.
 

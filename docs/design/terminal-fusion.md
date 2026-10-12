@@ -1,21 +1,25 @@
-# CLI fusion: embedded terminal design
+# Embedded terminal architecture and design
 
 [README](../../README.md) · [Workspaces](../guides/adaptive-workspaces.md) · [Allocation operations](../guides/operations-cluster.md) · [Selection](../guides/pane-navigation.md)
 
-**Status: implemented in 6.3.0 with the explicit scope recorded in the
-[delivery matrix](../reference/terminal-fusion.md).**
-Use the [terminal guide](../guides/terminal-fusion.md) for current installation
-and controls. This document retains the original design catalog and acceptance
-criteria; a proposed variant is not a promise of universal application support.
+This specification defines the embedded terminal's process ownership, input
+routing, rendering, and resource limits. The terminal was introduced in release
+6.3.0. The [delivery matrix](../reference/terminal-fusion.md) records each original
+design requirement's implemented form and limitations.
+
+Use the [terminal guide](../guides/terminal-fusion.md) for operating controls and
+[Raven execution contracts](../raven/execution-contracts.md) for the current
+managed workflow restrictions. The 100-entry catalog below defines design
+mechanisms; the delivery matrix and release validation define tested support.
 
 ## Intended experience
 
-Add a shared **Details | Terminal** control above the secondary pane.
+The shared **Details | Terminal** control sits above the secondary pane.
 Details retains the existing job inspector, Logs, Research, Analytics, and other contextual views.
-Terminal shows a real interactive shell while Tower continues to display jobs and metrics.
+Terminal shows a real interactive shell while Raven continues to display jobs and metrics.
 
 ```text
-File  Edit  View  Help                              Updates: 1s
+File  Edit  View  Help                             Updates: 60s
 Jobs  History  Analytics  Dependencies  Logs  Research
 +----------------------------+--------------------------------+
 | Jobs / Recents             | [ Details ] [ Terminal ]       |
@@ -24,7 +28,7 @@ Jobs  History  Analytics  Dependencies  Logs  Research
 |                            |                                |
 |                            |                                |
 +----------------------------+--------------------------------+
- Terminal focused | local host | bash | Ctrl-] then t: Tower
+ Terminal focused | local host | bash | Ctrl-] then t: Raven
 ```
 
 The drawing illustrates the pane arrangement. It is not a screenshot.
@@ -37,8 +41,8 @@ Do not create one shell for every selected job.
 Selecting another row must not change an existing shell's host, working directory, environment, or input destination.
 Offer an explicit **Open for selected job** action instead.
 
-The terminal runs on the machine that runs Tower.
-For example, Tower inside an SSH connection to a login node starts its local shell on that login node.
+The terminal runs on the machine that runs Raven.
+For example, Raven inside an SSH connection to a login node starts its local shell on that login node.
 A remote Slurm data connection does not silently turn this into a shell on the remote cluster.
 Always display the actual terminal destination separately from the scheduler connection.
 
@@ -48,7 +52,7 @@ Always display the actual terminal destination separately from the scheduler con
 Outer terminal input
   -> one framing decoder
   -> explicit focus and gesture owner
-       -> existing Tower controls
+       -> existing Raven controls
        -> session-bound semantic input -> broker input encoder
 
 Owned terminal broker process
@@ -58,7 +62,7 @@ Owned terminal broker process
   -> bounded, ordered screen changes and terminal-mode updates
   -> immutable IPC messages
 
-Tower UI thread
+Raven UI thread
   -> verify session, geometry, screen epoch and update sequence
   -> clip changed cells to the secondary pane
   -> existing differential painter
@@ -66,18 +70,18 @@ Tower UI thread
 
 Use a real pseudo-terminal, or PTY. Pipes alone do not provide interactive shell job control.
 Use an established VT terminal emulator to interpret the child output.
-Only Tower's UI thread can write to curses or change the outer terminal's modes.
-Child output never goes directly to Tower's physical terminal.
+Only Raven's UI thread can write to curses or change the outer terminal's modes.
+Child output never goes directly to Raven's physical terminal.
 
-An isolated broker is the preferred starting design.
-It separates terminal parsing from Python UI execution and from Slurm collection workers.
+A separate broker owns terminal parsing outside the Python UI and Slurm
+collection workers.
 One selector can service several PTYs; a shell does not require a permanent sampler worker or a polling thread.
-Benchmark IPC costs before selecting the final transport and snapshot format.
+Measure IPC costs before changing the transport or snapshot format.
 Do not serialize the complete terminal grid for every output byte.
 
 Launch the broker with a fresh executable process.
 Use a clean child launcher to establish the controlling TTY and execute the selected shell.
-Avoid Python `preexec_fn` and direct `pty.fork()` in Tower after its background threads have started.
+Avoid Python `preexec_fn` and direct `pty.fork()` in Raven after its background threads have started.
 Set the child session, controlling TTY, descriptors and process groups correctly.
 `start_new_session=True` alone does not establish every controlling-TTY requirement.
 
@@ -96,26 +100,30 @@ If an update is missing or its geometry is obsolete, request a fresh complete sc
 Do not combine cells from different sessions or resize epochs.
 Encode keys and paste in the broker using its latest parsed child-mode state.
 The UI must not encode input from an obsolete copy of application-cursor or paste modes.
-Coalesce complete rendered states only when the receiver can recover their contents.
-PTY bytes and dependent screen deltas cannot be dropped arbitrarily.
+The implemented broker coalesces immutable full-screen snapshots after damage
+detection. The UI paints changed rows and can recover without receiving every
+intermediate snapshot. Ordered PTY bytes remain intact; dependent screen deltas
+cannot be dropped arbitrarily.
 
 ### Emulator choice
 
-| Candidate | Advantage | Required proof before selection |
+| Engine or transport | Role | Evaluation requirements |
 | --- | --- | --- |
-| Maintained libvterm adapter | Native terminal state, keyboard/mouse encoding, cursor and damage callbacks | Supported upstream release, maintained binding, Unicode and protocol coverage, wheel/offline installation, license review, crash containment |
-| pyte adapter | Python implementation; easier platform deployment and experimentation | Actual alternate-screen, input-mode, query, Unicode and application compatibility; output-flood CPU and memory measurements |
-| tmux-backed transport | Sessions can survive Tower disconnection or exit | Explicit session/socket ownership and attach lifecycle; an embedded terminal still needs an emulator |
+| pyte adapter | Selected optional Python terminal engine with wcwidth | Alternate-screen, input-mode, query, Unicode and application checks; output-flood CPU and memory measurements |
+| Maintained libvterm adapter | Alternative native engine; no native adapter is shipped | Supported upstream release, maintained binding, Unicode and protocol coverage, wheel/offline installation, license review, crash containment |
+| tmux-backed transport | Explicit persistence mechanism for owned sessions | Session/socket ownership and attach lifecycle; the embedded view still requires a terminal emulator |
 
-Prefer the native engine if its conformance and packaging checks pass.
+Raven uses pyte 0.8.x with wcwidth. A future engine change requires conformance,
+resource, and packaging evidence against the supported applications.
 Use a small adapter contract so that the pane host does not depend on one engine's private API.
-Keep the core Tower installation usable without the optional terminal engine.
+Keep the core Raven installation usable without the optional terminal engine.
 A fallback engine must report its supported capabilities rather than silently changing behavior.
 Do not assume that an ANSI color parser can support Vim or interactive job control.
 
-The `neovim/libvterm` repository currently directs development to Neovim's bundled implementation.
+The `neovim/libvterm` repository directs development to Neovim's bundled implementation.
 Do not select that older fork solely because of its repository name.
-Select and pin an actively maintained, embeddable implementation after the feasibility work.
+Select and pin an actively maintained, embeddable implementation before adding
+a native adapter.
 
 ## Capability catalog
 
@@ -142,7 +150,7 @@ Stages mean: **A** = local terminal foundation; **B** = interaction and compatib
 | ID | Stage | Capability and mechanism |
 | --- | --- | --- |
 | TF09 | A | **Real interactive shell.** Support a configured executable and tested Bash, Zsh and Fish launch profiles. |
-| TF10 | A | **Normal user environment.** Preserve shell completion, history, functions, modules, virtual environments and Conda without copying an entire environment into saved Tower state. |
+| TF10 | A | **Normal user environment.** Preserve shell completion, history, functions, modules, virtual environments and Conda without copying an entire environment into saved Raven state. |
 | TF11 | A | **Startup-file policy.** Define interactive versus login-shell behavior. Do not edit user dotfiles or source a batch submission script automatically. |
 | TF12 | A | **Controlling terminal.** Give the child a real controlling PTY with correct descriptors, session and foreground process groups. |
 | TF13 | A | **Job control.** Test foreground/background jobs, pipelines, `Ctrl-Z`, `fg`, `bg`, terminal echo and raw/canonical modes. |
@@ -154,8 +162,8 @@ Stages mean: **A** = local terminal foundation; **B** = interaction and compatib
 
 | ID | Stage | Capability and mechanism |
 | --- | --- | --- |
-| TF17 | A | **Exclusive keyboard owner.** Route terminal input before Tower's global quit, tab, grouping, copy, palette and graph bindings. |
-| TF18 | A | **Escape prefix.** Provide a configurable prefix for Tower focus and a way to send that prefix literally. Avoid capturing every `Esc` or `Ctrl-W`. |
+| TF17 | A | **Exclusive keyboard owner.** Route terminal input before Raven's global quit, tab, grouping, copy, palette and graph bindings. |
+| TF18 | A | **Escape prefix.** Provide an explicit prefix for Raven focus and a way to send that prefix literally. Avoid capturing every `Esc` or `Ctrl-W`. The current prefix is fixed; remapping remains a design extension. |
 | TF19 | B | **Application key modes.** Encode arrows, Home/End, function keys and keypad input according to the child's requested modes. |
 | TF20 | B | **Modifier compatibility.** Test Alt/Escape ambiguity, Control keys and supported extended keyboard protocols; advertise only tested modes. |
 | TF21 | A | **Session-bound input.** Tag queued input with its original session and focus generation. A page change must never redirect queued bytes. |
@@ -164,8 +172,8 @@ Stages mean: **A** = local terminal foundation; **B** = interaction and compatib
 | TF24 | B | **Selection override.** Provide an explicit copy mode or modifier so users can select text when Vim or another child owns the mouse. |
 | TF25 | B | **Gesture capture.** A terminal drag cannot activate graph zoom, job grouping, a divider or a different tab. Handle release outside the pane. |
 | TF26 | B | **Application-aware batching.** Preserve meaningful child drag/button events; coalesce only events whose semantics allow it. |
-| TF27 | B | **Focus negotiation.** Send supported focus-in/out notifications to the child; keep the physical terminal reporting modes owned by Tower. |
-| TF28 | B | **Modal arbitration.** Tower menus and dialogs get an explicit focus lease. Restore the previous terminal only after consuming stale releases and pending prefix state. |
+| TF27 | B | **Focus negotiation.** Send supported focus-in/out notifications to the child; keep the physical terminal reporting modes owned by Raven. |
+| TF28 | B | **Modal arbitration.** Raven menus and dialogs get an explicit focus lease. Restore the previous terminal only after consuming stale releases and pending prefix state. |
 
 ### Paste, selection and scrollback
 
@@ -190,7 +198,7 @@ Stages mean: **A** = local terminal foundation; **B** = interaction and compatib
 | TF40 | B | **Unicode cell policy.** Define behavior for wide characters, combining marks, ambiguous width, malformed bytes and complex emoji; expose tested limits. |
 | TF41 | A | **Terminal capabilities.** Set a matching `TERM` and provide terminfo where needed. Terminal queries receive supported replies from the emulator. |
 | TF42 | B | **Terminal color policy.** Theme pane chrome and default colors; preserve explicit application colors. Approximate RGB only when the outer renderer requires it. |
-| TF43 | B | **Cursor rendering.** Display the child cursor at the clipped cell; support tested shapes and blinking without disturbing Tower's own cursor. |
+| TF43 | B | **Cursor rendering.** Display the child cursor at the clipped cell; support tested shapes and blinking without disturbing Raven's own cursor. |
 | TF44 | A | **Resize propagation.** Send the actual PTY viewport size through `TIOCSWINSZ`; deliver the resulting resize notification and verify application redraw. |
 | TF45 | B | **Resize stability.** Coalesce redundant sizes, preserve screen epochs and define normal-buffer reflow separately from alternate-screen resize. |
 | TF46 | A | **Control-string containment.** Bound OSC/DCS payloads and consume unsupported sequences as framed data; never let them change outer input modes or window geometry. |
@@ -227,7 +235,7 @@ Stages mean: **A** = local terminal foundation; **B** = interaction and compatib
 | TF67 | C | **Resource awareness.** A diagnostic shell shares allocation resources. Default helpers must not reserve every CPU/GPU or launch expensive login-node work. |
 | TF68 | C | **Working-directory action.** Open a declared, accessible job directory in a new session or insert an explicit directory-change command into a known shell prompt. |
 | TF69 | C | **Shell-aware insertion.** Quote selected job IDs, paths and artifacts for the actual shell. Do not assume Bash quoting is valid in every REPL or editor. |
-| TF70 | C | **Preserved user authority.** Commands typed by the user behave like ordinary shell commands. Tower-generated scheduler changes retain Tower's existing review controls. |
+| TF70 | C | **Preserved user authority.** Commands typed by the user behave like ordinary shell commands. Raven-generated scheduler changes retain Raven's existing review controls. |
 
 ### CLI and research fusion
 
@@ -236,7 +244,7 @@ Stages mean: **A** = local terminal foundation; **B** = interaction and compatib
 | TF71 | C | **Optional shell hooks.** Capture prompt boundaries, command start/end, exit status and cwd with supported Bash/Zsh/Fish integration. The terminal also works without hooks. |
 | TF72 | C | **Private context bridge.** Use a versioned, bounded local socket/pipe API with session ownership checks. Avoid exposing an unauthenticated network control endpoint. |
 | TF73 | C | **Command blocks.** Navigate one completed command and its output, copy that block, and show duration and exit status when hooks establish them. |
-| TF74 | C | **Submission linking.** A reporting wrapper can publish the exact `sbatch --parsable` result and run identity. Validate the job before linking it to Tower. |
+| TF74 | C | **Submission linking.** A reporting wrapper can publish the exact `sbatch --parsable` result and run identity. Validate the job before linking it to Raven. |
 | TF75 | C | **Project handoff.** Launch reporting helpers from the terminal and update Research from their declared manifests using the existing project standard. |
 | TF76 | C | **Artifact handoff.** Explicitly open recognized output files in Logs or Research; resolve paths against the captured host and cwd. |
 | TF77 | C | **Job-reference links.** Turn validated job references into explicit navigation actions without changing the user's current page as output arrives. |
@@ -257,7 +265,7 @@ Stages mean: **A** = local terminal foundation; **B** = interaction and compatib
 | TF87 | D | **Search across sessions.** Query retained command blocks by project, host, job, exit status or text without scanning remote files on each keystroke. |
 | TF88 | D | **Redacted reproduction bundle.** Export selected commands, environment summaries and declared artifacts with exclusions. Do not claim this reproduces every shell side effect. |
 | TF89 | D | **Opt-in recording and replay.** Record bounded terminal output with resize/time events; replay never re-executes recorded commands. |
-| TF90 | D | **Durable tmux sessions.** Offer explicit create/attach/detach for owned sessions so work can survive Tower exit. Show persistence capability separately from normal PTY sessions. |
+| TF90 | D | **Durable tmux sessions.** Offer explicit create/attach/detach for owned sessions so work can survive Raven exit. Show persistence capability separately from normal PTY sessions. |
 | TF91 | D | **Session health view.** Show PTY state, foreground process group, parser modes, queue lengths, memory and unsupported protocol counters without logging secret input. |
 | TF92 | D | **Compatibility profiles.** Store tested application and outer-terminal combinations; give a direct handoff option for unsupported behavior. |
 | TF93 | D | **Multi-node session collections.** Organize explicit node/rank sessions under one allocation, with connection and concurrency limits. |
@@ -279,8 +287,8 @@ Bounded memory, an arbitrarily fast producer and unlimited lossless retained out
 Preserve the parser stream, evict old parsed scrollback with a visible boundary, and apply backpressure when required.
 Backpressure can slow a writing program. Optional recording has its own disk budget and failure policy.
 
-A normal PTY session can continue while the user changes Tower pages.
-It does not guarantee survival after Tower crashes or its SSH connection ends.
+A normal PTY session can continue while the user changes Raven pages.
+It does not guarantee survival after Raven crashes or its SSH connection ends.
 Durable remote work requires an explicit persistence backend or a scheduler-managed job.
 An `srun` or `sattach` connection also has Slurm-specific exit and signal behavior; test and describe each mode separately.
 
@@ -294,36 +302,37 @@ No emulator choice establishes universal application compatibility.
 
 ## Repository integration
 
-| Existing area | Planned change |
+| Integration area | Responsibility |
 | --- | --- |
-| `workspace_layout.py` and page-specific layout paths | Add the shared secondary-pane host, geometry and page preference; preserve browser and Details layout behavior |
-| `job_panels.py` | Remain the existing Details implementation under the new host |
-| `screen.py` input decoder and `_apply_input` | Preserve complete framed terminal events and route them to the explicit owner before global Tower shortcuts |
+| `workspace_layout.py` and page-specific layout paths | Shared secondary-pane host, geometry and page preference; preserved browser and Details layout behavior |
+| `job_panels.py` | Existing Details implementation within the shared host |
+| `screen.py` input decoder and `_apply_input` | Preserve complete framed terminal events and route them to the explicit owner before global Raven shortcuts |
 | `pointer_routing.py` and `interaction.py` | Register terminal focus, selection and application-mouse capture; preserve stale-release guards |
 | `_FrameCache` and `_DifferentialPainter` | Apply terminal damage without recomputing graphs or job documents |
-| `controller.py` | Add explicit terminal actions and focus routing; protect Ctrl-C, paste and normal child keys from Tower command interpretation |
+| `controller.py` | Explicit terminal actions and focus routing; protection of Ctrl-C, paste and normal child keys from Raven command interpretation |
 | `cli.Session.close()` | Shut down the owned broker and collect session results without abandoned descriptors, children or waits |
 | `worker_scheduler.py` | Keep scheduler worker mode independent of terminal lifetime; do not submit permanent read loops |
 | `ops_cluster.py` / `ops_ui.py` | Reuse reviewed allocation and exact-attempt validation through a terminal-session launch result |
 | `text_selection.py` and clipboard adapters | Give terminal selection its own source identity and copy mode; preserve the 6.2.1 selection-only guarantees |
-| New terminal backend modules | Own transport, emulator adapter, protocol policy, immutable publication and bounded session state |
+| `terminal_service.py`, `terminal_emulator.py`, `terminal_ui.py` | Transport, emulator adapter, protocol policy, immutable publication and bounded session state |
 
 ## Delivery and acceptance
 
-Implement the foundation before the advanced catalog.
-Each stage must have a working end-to-end path and measured limits.
+The stages organize the original rollout and the regression requirements for
+later changes. Each affected path requires functional validation and measured
+limits. The delivery matrix records the scope actually implemented.
 
-1. **Feasibility gate.** Compare candidate emulator engines with a real PTY and Tower-sized viewport. Test shell job control, Vim, less, output floods, resize, Unicode and installation on the supported Python/Linux targets. Choose the engine from that evidence.
-2. **Stage A.** Deliver one persistent local session, Details/Terminal switching, explicit focus, correct resize, exit cleanup, input isolation and bounded output handling.
-3. **Stage B.** Complete scrollback, paste, selection, application mouse mode, Unicode/color behavior, named sessions and compatibility diagnostics.
-4. **Stage C.** Add explicit SSH/allocation sessions and the project/reporting bridge using the existing review and identity mechanisms.
-5. **Stage D.** Add advanced features independently. Recording, sharing, persistence and broadcasting stay optional; none is a prerequisite for an ordinary shell.
+1. **Engine evaluation.** Compare candidate engines with a real PTY and the application's viewport. Test shell job control, Vim, less, output floods, resize, Unicode, and installation on the supported Python/Linux targets.
+2. **Stage A: local foundation.** Verify session lifetime, Details/Terminal switching, focus, resize, exit cleanup, input isolation, and bounded output.
+3. **Stage B: interaction.** Verify scrollback, paste, selection, application mouse modes, Unicode/color behavior, named sessions, and diagnostics.
+4. **Stage C: workflow integration.** Verify SSH/allocation sessions and project/reporting handoffs against their review and identity contracts.
+5. **Stage D: optional capabilities.** Evaluate recording, sharing, persistence, and broadcasting independently of the ordinary shell workflow.
 
 Use the following release gates:
 
 | Gate | Required validation |
 | --- | --- |
-| Input isolation | `q`, `:`, `g`, `u`, `y`, Ctrl-C, Escape, arrows and function keys never activate Tower while the child owns input |
+| Input isolation | `q`, `:`, `g`, `u`, `y`, Ctrl-C, Escape, arrows and function keys never activate Raven while the child owns input |
 | Focus races | Change job, page, session, layout and worker mode during queued writes, fragmented UTF-8, paste and mouse drag; bytes retain their original recipient |
 | Protocol framing | Split each representative escape/paste/mouse sequence at every byte boundary; test malformed, oversized and unterminated control strings |
 | PTY semantics | Foreground process groups, Ctrl-Z/fg, echo changes, exec failure, EOF/EIO, stopped jobs, exit during writes and descriptor/child leak tests |
@@ -334,7 +343,7 @@ Use the following release gates:
 | Remote/allocation | Authentication, disconnect, uncertain command delivery, no replay, exact array/step identity, job completion/requeue and allocation expiry |
 | Applications | Document tested Bash/Zsh/Fish, Vim/Neovim, less, top/htop, Python/IPython, SSH and tmux behavior; distinguish absent optional tools from passing tests |
 | Outer terminals | Test a regular terminal, Termius, tmux/screen and SSH combinations; account for protocols that those layers cannot transmit |
-| Lifecycle | Repeated open/hide/show/close, Tower shutdown with running sessions, explicit detach and broker failure recovery |
+| Lifecycle | Repeated open/hide/show/close, Raven shutdown with running sessions, explicit detach and broker failure recovery |
 
 Set numerical latency and memory budgets from the feasibility measurements.
 Publish percentile latency and workload details rather than a blanket claim of zero lag.
@@ -345,7 +354,7 @@ Keep existing copy, group, graph and raw-mouse regression suites in every stage.
 - [Python PTY documentation](https://docs.python.org/3.12/library/pty.html): controlling-terminal behavior and the limits of `pty.spawn`.
 - [Python termios documentation](https://docs.python.org/3.12/library/termios.html): terminal modes and window sizing.
 - [Python process documentation](https://docs.python.org/3.12/library/os.html#os.fork): constraints on forking after threads exist.
-- [pyte documentation and source](https://github.com/selectel/pyte): an in-memory terminal emulator candidate, with protocol coverage to verify.
+- [pyte documentation and source](https://github.com/selectel/pyte): the selected optional in-memory terminal engine; supported protocol behavior is recorded in the delivery matrix.
 - [libvterm API declaration](https://github.com/neovim/libvterm/blob/master/include/vterm.h): screen-damage, cursor, keyboard, mouse and selection interfaces; this older fork is a reference, not a selected dependency.
 - [Neovim libvterm repository notice](https://github.com/neovim/libvterm): current implementation location and maintenance warning.
-- Tower's current `screen._operation_terminal`, `ops_cluster._allocation_shell`, input decoder, pane geometry and collection-worker code.
+- Raven's current `screen._operation_terminal`, `ops_cluster._allocation_shell`, input decoder, pane geometry and collection-worker code.

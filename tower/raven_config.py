@@ -663,7 +663,7 @@ def schema_document():
         return output
     root = properties(DEFAULTS)
     partial = {"type": "object", "additionalProperties": False, "properties": {key: value for key, value in root.items() if key != "profiles"}}
-    return {"$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "raven.config/v1", "title": "Project Raven configuration",
+    return {"$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "raven.config/v1", "title": "Raven configuration",
             "type": "object", "required": ["schema"], "additionalProperties": False,
             "properties": root, "$defs": {"profile": partial},
             "$comment": "Runtime validation also enforces placement, units, policy intersection and available adapters before admission."}

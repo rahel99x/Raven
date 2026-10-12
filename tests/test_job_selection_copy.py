@@ -32,7 +32,7 @@ def test_pointer_single_and_drag_selection_copies_only_selected_jobs(dashboard, 
     app.handle("y")
     assert copied_ids(copied) == [str(i) for i in range(4, 4 + count)]
     assert all(len(line.split("\t")) == 8 for line in copied[0].splitlines())
-    assert "Details" not in copied[0] and "Slurm Tower" not in copied[0]
+    assert "Details" not in copied[0] and "Raven" not in copied[0]
 
 
 @pytest.mark.parametrize("tab,kind,identifiers", [
