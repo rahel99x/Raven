@@ -238,6 +238,8 @@ def _scope(app):
             if mode == "operations" else None,
             tuple(_state(app, "setup_ui_state").get(key) for key in ("page", "generation", "revision", "editing"))
             if mode == "setup" else None,
+            tuple(_state(app, "telemetry_settings_ui_state").get(key) for key in ("generation", "revision", "page", "editing"))
+            if mode == "telemetry_settings" else None,
             tuple(_state(app, "notification_ui_state").get(key) for key in ("severity", "selected", "details", "revision"))
             if mode == "notifications" else None,
             tuple(_state(app, "data_export_state").get(key) for key in ("generation", "revision", "stage", "editing"))
@@ -317,6 +319,8 @@ def _context(app):
             if getattr(app, "mode", "main") == "operations" else None,
             tuple(_state(app, "setup_ui_state").get(key) for key in ("page", "generation", "revision", "editing"))
             if getattr(app, "mode", "main") == "setup" else None,
+            tuple(_state(app, "telemetry_settings_ui_state").get(key) for key in ("generation", "revision", "page", "editing"))
+            if getattr(app, "mode", "main") == "telemetry_settings" else None,
             _notification_context(app),
             tuple(_state(app, "data_export_state").get(key) for key in ("generation", "revision", "stage", "editing"))
             if getattr(app, "mode", "main") == "data_export" else None)
@@ -525,7 +529,8 @@ def _modal_controls(app, rows, width, height, spans):
                    "telemetry": "telemetry_state", "shell_checks": "shell_checks_state",
                    "arraymap": "array_manifest_state", "gpu_provider": "gpu_provider_state",
                    "operations": "ops_state", "raven": "raven_ui_state", "setup": "setup_ui_state",
-                   "notifications": "notification_ui_state", "data_export": "data_export_state"}
+                   "notifications": "notification_ui_state", "data_export": "data_export_state",
+                   "telemetry_settings": "telemetry_settings_ui_state"}
     # The log workbench uses additional mode names; only current modal data may
     # contribute controls, never a previous hidden panel's registries.
     state_name = state_names.get(mode)

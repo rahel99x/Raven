@@ -66,7 +66,9 @@ The reporter validates the source and records the destination in the run invento
 See [Report publication](../PROJECT_STANDARD.md#publish-a-per-view-source-without-a-raven-dependency) for all supported views.
 
 Raven rechecks inventories and bound source files in its background worker.
-The normal Research interval is five seconds before the global speed ratio is applied.
+Light reads Research files every five seconds by default. Active Heavy uses
+its telemetry preset: Default requests one-second reads. The managed queue
+slider leaves this reader unchanged.
 Late-created metrics, log indexes, contracts, planning reports, and verified passports can appear during the session.
 Atomic replacements update subsequent reads.
 The reader keeps the current page and selection under your control.
@@ -279,79 +281,57 @@ See [Mouse and button navigation](pointer-navigation.md) for mouse support and d
 ## Set the update rate
 
 The top-right update control shows the effective Jobs polling interval.
-Its value and endpoints use `s`, `ms`, or `µs`; ASCII mode uses `us` for microseconds.
-Move right toward 500 milliseconds. Move left toward five seconds.
-The scale is logarithmic and uses positions one to 50 internally.
-These positions select intervals; they do not act as frequency multipliers.
-It changes fetching intervals without changing recorded timestamps or metric values.
+Its value and endpoints use `s`, `ms`, or `µs`; ASCII mode uses `us`.
+The logarithmic scale uses positions one to 50. In managed `raven`, `ravenl`,
+and `ravenh` sessions it changes queue cadence; the other readers retain their
+own settings. **Setup → Heavy telemetry update settings** provides live presets
+and a Custom editor for those readers. See [telemetry updates](telemetry-updates.md).
 
-1. Click the slider track to choose a polling request.
-2. Keep the left mouse button pressed and drag horizontally to adjust the rate.
-3. Click `[-]` or `[+]` to move one position.
-4. Use the mouse wheel over the control for one-step changes.
-5. Click the interval label to focus keyboard controls.
-6. Use arrows or `-` / `+` to adjust the request.
-7. Press Home for five seconds or End for 500 milliseconds.
-8. Press Esc to return input to the current page.
+1. Click the slider track to choose an interval.
+2. Hold the left mouse button and drag horizontally to adjust it.
+3. Click `[-]` or `[+]`, or use the wheel over the control, for one-step changes.
+4. Click the interval label to focus keyboard controls.
+5. Use arrows or `-` / `+` to adjust the interval; Home and End select its endpoints.
+6. Press Esc, Enter, or Tab to release keyboard focus.
 
-**Expected result:** The requested position updates during the session.
-The interval label shows the effective Jobs interval after collection floors and configured intervals are applied.
-View → Focus update-rate slider provides keyboard entry.
-Enter or Tab also releases slider focus.
-Release the mouse button to finish dragging.
-The pointer position stays inside the track.
-Use a track click or `:rate N` if the terminal cannot report drag events.
+The displayed interval and endpoint labels use the same calculation as the
+collector. The range starts at the active queue base and ends at a tenfold
+faster request, subject to site policy. With starter settings, Light spans
+60–6 seconds and Default Heavy spans 5–0.5 seconds. If a mandatory minimum
+fixes the whole range, the label reports that minimum. Selecting a Heavy preset
+resets the slider to the preset's base.
+
+**View → Focus update-rate slider** provides keyboard entry. Release the mouse
+button to finish dragging. Use a track click or `:rate N` when the terminal
+cannot report drag events.
 
 | Command | Function |
 | --- | --- |
-| `:rate` | Show the effective Jobs polling interval |
-| `:rate N` | Select a polling position from 1 to 50; position 1 requests five seconds and position 50 requests 500 milliseconds |
-| `:rate reset` | Restore the five-second slider request; collection policy still applies |
+| `:rate` | Show the effective Jobs interval |
+| `:rate N` | Select a position from 1 (base) to 50 (fastest permitted endpoint) |
+| `:rate reset` | Restore the active queue base |
 
-For example, `:rate 50` selects the 500-millisecond slider request.
-Raven applies configured intervals, collection floors, site policy, demand gating, and command budgets before collection.
-The default queue and live-resource floors are 60 seconds, so selecting this position does not establish 500-millisecond collection.
-See [collection policy](../raven/README.md#collection-and-retention) for the defaults and scope.
-Other sources and supported file readers use the resulting speed ratio: five seconds divided by the requested interval.
-That ratio spans one to ten and adjusts their configured bases, subject to source limits.
-Raven keeps each configured base unchanged, so repeated adjustments do not compound.
+Request budgets, demand, idle slowdown, errors, and command duration can defer
+an individual read. Changing the slider does not reset rolling usage, overlap
+reads, or enable a disabled source. Read the effective interval and source age
+in Sources to distinguish the requested cadence from actual observations.
 
-### Read the limits
+The slider position persists with normal UI state and its selected namespace.
+The compatibility field `polling_multiplier` stores this position; it is not a
+frequency multiplier. A saved position overrides that configured default.
+`raven --rate N` overrides the saved position at launch. `--interval SECONDS`
+remains a compatibility launch option; an explicit `--rate` takes precedence.
+Settings → Polling interval changes the same position. Cancelling its preview
+restores the previous position; accepting it saves the preference.
 
-| Source | Reader minimum before managed collection policy |
-| --- | --- |
-| Ordinary Slurm and plugin sources | 0.5 seconds |
-| GPU sampling inside an allocation | 0.5 seconds |
-| Queue forecast probes and allocation-budget reads | 30 seconds |
-| Local file readers | 0.5 seconds |
-| Remote file readers | 1.5 seconds |
-
-The slider's default position requests five seconds.
-Managed launches retain configured collection intervals, including values slower than that request.
-The table describes underlying reader bounds; managed collection floors can be longer.
-Source errors retain their existing retry backoff.
-A shorter requested interval does not start overlapping reads or increase the worker count.
-Disabled sources remain disabled.
-
-Sources shows effective fetching intervals.
-Use that page to verify the actual cadence.
-Every polling position selects a distinct request between five seconds and 500 milliseconds.
-Several positions can produce the same effective interval when a collection floor applies.
-Remote file limits, expensive-source limits, and retry backoff can delay those sources further.
-The preference persists with normal UI state and follows the selected state namespace.
-Use the top-level `polling_multiplier` configuration field to set a launch default.
-A valid saved position overrides that default.
-The configuration field keeps its existing name for compatibility and now stores a position from one to 50.
-Use `raven --rate N` to override the saved position at launch.
-Use `raven --interval SECONDS` to set a compatibility launch interval.
-Intervals slower than five seconds retain their configured cadence instead of becoming a faster slider request.
-An explicit `--rate N` takes precedence over `--interval`.
-Use `:rate reset` to restore the default request in the active session.
-Settings → Polling interval changes the same native request.
-Cancelling its preview restores the exact previous position; accepting the draft saves it.
-Compatibility `intervals.jobs`, `intervals.live`, `intervals.gpu`, and `intervals.trace` values remain inputs to the requested cadence.
-Managed Raven configuration uses the `collection` settings and applies policy before collection.
-See [Settings](navigation.md#change-settings-with-a-preview) for compatibility and preview controls.
+Native compatibility sessions retain their existing global behavior: the scale
+requests five seconds through 500 milliseconds for ordinary native sources.
+Slower configured bases are accelerated by at most ten, subject to source
+limits. Remote file readers retain a 1.5-second minimum; local readers and live
+probes retain a half-second minimum. Forecast and budget sources retain their
+30-second minimums. Managed sessions use versioned `collection` settings and
+Heavy telemetry preferences instead of accelerating every reader with the queue
+slider.
 
 ### Set one metric's interval
 
@@ -362,7 +342,7 @@ The second requests reads from five seconds to 500 milliseconds for that exact j
 Both use logarithmic scales. Numeric metric polling commands use positions one to 100.
 **Set** shows that slider's requested interval; **Poll** shows the shared effective interval.
 Compact rows put the effective value before the polling track and `S` plus the requested value after it.
-Moving the slider updates its requested value even when a faster global or companion request keeps the effective interval unchanged.
+Moving the slider updates its requested value even when another request for the same source keeps the effective interval unchanged.
 
 Right-click the first slider to restore 30 seconds.
 Right-click the second to restore its five-second polling request.
@@ -370,9 +350,11 @@ These resets preserve the other slider, Live state, graph zoom, and job selectio
 Sampling requests apply while Live is off and can remain active after the graph moves offscreen.
 They reset when Raven restarts or the exact job attempt ends.
 
-The fastest global or per-metric request sets the shared interval. Requests do not multiply.
+The fastest reader or per-metric request sets the shared interval, subject to
+collection policy. Requests do not multiply. The managed queue slider does not
+change these metric requests.
 CPU and memory share one job probe. GPU curves share another.
-Other jobs retain their global cadence and their own requests.
+Other jobs retain their reader cadence and their own requests.
 CPU, memory, GPU, and local application-file readers retain a half-second lower bound before managed collection policy.
 Remote application-file reads retain a 1.5-second minimum.
 Managed collection floors, demand gating, command budgets, command duration, and retry backoff still apply.
@@ -514,7 +496,7 @@ See [Tables](tables.md), [Log display](log-view.md), and [Navigation](navigation
 | Use one background worker | Request Single after running task groups finish |
 | Use concurrent background workers | Request Multi within shared limits |
 | Background worker status | Show applied mode, pending change, and work counts |
-| Reset queue polling to INTERVAL | Restore the default global fetching request; the label shows the resulting Jobs interval |
+| Reset queue polling to INTERVAL | Restore the active queue base; the label shows the resulting Jobs interval |
 | Navigate buttons with arrow keys (F8) | Focus visible buttons and links for directional navigation |
 | Enable / Disable smooth scrolling | Toggle mouse-wheel viewport smoothing |
 | Enable / Disable startup animation | Toggle the interactive welcome display |

@@ -83,7 +83,9 @@
     "filesystem_metadata_per_minute": 120,
     "file_bytes_per_minute": 16777216,
     "local_processes_per_minute": 60,
-    "service_failure": "cached-only"
+    "service_failure": "cached-only",
+    "research_seconds": 5,
+    "trace_seconds": 1
   },
   "resources": {
     "light": {
@@ -133,5 +135,27 @@
     "density": "comfortable",
     "worker_mode": "multi"
   },
-  "profiles": {}
+  "profiles": {},
+  "telemetry": {
+    "preset": "default",
+    "custom": {
+      "queue_seconds": 5.0,
+      "starts_seconds": 15.0,
+      "history_seconds": 30.0,
+      "inventory_seconds": 60.0,
+      "details_seconds": 10.0,
+      "live_seconds": 2.0,
+      "account_seconds": 300.0,
+      "log_follow_seconds": 1.0,
+      "research_seconds": 1.0,
+      "trace_seconds": 1.0,
+      "controller_requests_per_minute": 180,
+      "controller_burst": 4,
+      "accounting_requests_per_minute": 12,
+      "statistics_requests_per_minute": 60,
+      "filesystem_metadata_per_minute": 240,
+      "file_bytes_per_minute": 16777216,
+      "local_processes_per_minute": 300
+    }
+  }
 }

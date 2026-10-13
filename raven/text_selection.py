@@ -22,7 +22,7 @@ MAX_PANES = 128
 from .interaction import ROW_KINDS
 PROTECTED_KINDS = ROW_KINDS | frozenset(("log_line", "node_cell"))
 EDIT_MODES = frozenset(("palette", "filter", "confirm", "bindings_editor", "terminal_probe",
-                        "log_tools_page", "log_tools_results", "log_tools_marks"))
+                        "log_tools_page", "log_tools_results", "log_tools_marks", "telemetry_settings"))
 
 
 @dataclass(frozen=True)

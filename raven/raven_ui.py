@@ -59,6 +59,8 @@ def _collect(app):
         if old_frame != _frame(app):
             state['control_hits'] = []
             state['painted'] = None
+        from .telemetry_settings import sync as sync_telemetry
+        sync_telemetry(app)
     pending=state.get('reuse_pending')
     if pending:
         result=value.get('reuse_review',{})

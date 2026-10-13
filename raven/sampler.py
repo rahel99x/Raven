@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import concurrent.futures
 from copy import deepcopy
+import math
 import re
 import threading
 import time
@@ -57,6 +58,9 @@ class Sampler(threading.Thread):
         self.trace_status: Dict[str, dict] = {}
         self.telemetry_binding = None
         self.retained_telemetry = {}
+        self._trace_requested = 0
+        self._trace_handled = 0
+        self._retained_trace_floor = 0.
         # Positive allocation evidence omitted by %b, never persisted. Access
         # and queue reapplication share Store.lock with sampler publication.
         self._gpu_allocation_cache: Dict[str, dict] = {}
@@ -135,20 +139,72 @@ class Sampler(threading.Thread):
             self.kick.set()
         return value
 
-    def effective_interval(self, name):
+    def set_collection_settings(self, collection, intervals=None, *, retained_trace_floor=0.):
+        """Retune the existing scheduler without restarting or losing evidence.
+
+        Successful completion deadlines follow the new cadence immediately.
+        Failed/deferred work retains its recovery deadline, while an in-flight
+        source completes once and schedules its successor using the new policy.
+        """
+        from .raven_collection import settings
+        updated = settings(collection)
+        new_intervals = dict(self.intervals if intervals is None else intervals)
+        if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0
+               for value in new_intervals.values()):
+            raise ValueError("Source intervals must be finite nonnegative seconds")
+        if type(retained_trace_floor) not in (int, float) or not math.isfinite(retained_trace_floor) or retained_trace_floor < 0:
+            raise ValueError("Retained telemetry floor must be finite nonnegative seconds")
+        with self._schedule_lock:
+            if (self.collection == updated and self.intervals == new_intervals
+                    and self._retained_trace_floor == retained_trace_floor):
+                return False
+            self.collection, self.intervals = updated, new_intervals
+            self._retained_trace_floor = float(retained_trace_floor)
+            import random
+            now = time.time()
+            for name in self.sources:
+                health = self.health(name)
+                if health.inflight or health.backoff or name in self._collection_deferred:
+                    continue
+                cadence = self.effective_interval(name)
+                jitter = 0. if name == "trace" and self.telemetry_binding else random.SystemRandom().uniform(0., cadence * min(1., updated["jitter_fraction"]))
+                self._collection_not_before[name] = (health.last_ok or now) + cadence + jitter
+            self.prime_collection_snapshot()
+        self.kick.set()
+        return True
+
+    def _requested_interval(self, name, rate=1):
         from .metric_sampling import interval
+        if self.collection is not None:
+            # Managed profiles already carry the exact requested seconds. The
+            # slider is resolved into that policy once; passing a 1 s preset
+            # through the legacy native slider would turn it back into 5 s.
+            from .raven_collection import FLOORS
+            requested = float(self.intervals.get(name, self.collection.get(FLOORS.get(name), 30.)))
+            if name == "trace":
+                from .refresh_rate import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
+                requested = max(requested, REMOTE_FILE_FLOOR if getattr(self.files, "remote", False) else LOCAL_FILE_FLOOR)
+            return requested
+        return interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
+                        file=name == "trace", remote=bool(getattr(self.files, "remote", False)))
+
+    def effective_interval(self, name):
         with self._schedule_lock:
             rate = max(self._active_metric_rates_locked(name).values(), default=1)
-            requested = interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
-                                 file=name == "trace", remote=bool(getattr(self.files, "remote", False)))
-            return self._collection_interval(name, requested)
+            return self._collection_interval(name, self._requested_interval(name, rate))
 
     def _collection_interval(self, name, requested):
+        if name == "trace" and self.telemetry_binding:
+            from .refresh_rate import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
+            transport = REMOTE_FILE_FLOOR if getattr(self.files, "remote", False) else LOCAL_FILE_FLOOR
+            # Existing recordings stay fresh independently of Slurm polling or
+            # an older generic trace cadence. Mandatory site floors still win.
+            return max(self._retained_trace_floor, transport, min(2., requested))
         if self.collection is None:
             return requested
         from .raven_collection import interval
         result = interval(self.collection, name, requested)
-        if time.monotonic() - self._collection_activity >= self.collection["idle_after_seconds"]:
+        if (name != "trace" and time.monotonic() - self._collection_activity >= self.collection["idle_after_seconds"]):
             result *= max(1., self.collection["idle_interval_factor"])
         return result
 
@@ -167,6 +223,9 @@ class Sampler(threading.Thread):
             self._collection_demand = demand
             if active:
                 self._collection_activity = time.monotonic()
+            if changed and demand["selected"] != getattr(self, "_trace_selected", None):
+                self._trace_selected = demand["selected"]
+                self._trace_requested += 1
         if changed:
             self.prime_collection_snapshot()
         if changed or active:
@@ -203,7 +262,7 @@ class Sampler(threading.Thread):
                     and (tab == "analytics" or "live" in demand["sources"]))
         if name == "trace":
             retained = self.telemetry_binding and self.telemetry_binding.get("job_id") in (selected, self.want_trace)
-            return ((self.collection["gpu"] != "off" or retained) and bool(selected or self.want_trace)
+            return bool(retained) or (self.collection["gpu"] != "off" and bool(selected or self.want_trace)
                     and (tab in ("analytics", "research") or "trace" in demand["sources"]))
         if name == "details":
             return bool(self.want_detail)
@@ -218,9 +277,7 @@ class Sampler(threading.Thread):
 
     def _baseline_interval(self, name):
         """Use the same source bounds for scheduling and displayed cadences."""
-        from .metric_sampling import interval
-        return self._collection_interval(name, interval(self.intervals.get(name, 30.0), self.polling_multiplier, 1, source=name,
-                        file=name == "trace", remote=bool(getattr(self.files, "remote", False))))
+        return self._collection_interval(name, self._requested_interval(name))
 
     @staticmethod
     def _metric_attempt(job):
@@ -299,15 +356,13 @@ class Sampler(threading.Thread):
 
     def sampling_interval(self, name, jid, attempt=None):
         """Return the actual safe cadence for one job's shared metric source."""
-        from .metric_sampling import interval
         jid = str(jid)
         with self._schedule_lock:
             record = self._metric_jobs.get(jid)
             rate = self._metric_rate_locked(name, jid)
             if attempt is not None and (record is None or attempt not in (record[1], "scheduler:" + record[1], record[2])):
                 rate = 1
-            return self._collection_interval(name, interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
-                            file=name == "trace", remote=bool(getattr(self.files, "remote", False))))
+            return self._collection_interval(name, self._requested_interval(name, rate))
 
     def _sampling_targets(self, name, jobs):
         """Gate scheduled probes; direct source calls retain their old behavior."""
@@ -316,6 +371,9 @@ class Sampler(threading.Thread):
             return jobs
         now = time.monotonic()
         with self._schedule_lock:
+            if name == "trace" and context.get("trace_requested", 0) > self._trace_handled:
+                context["baseline"] = True
+                return jobs
             rates = self._active_metric_rates_locked(name)
             base = self._baseline_interval(name)
             last = self._baseline_completed.get(name)
@@ -387,12 +445,15 @@ class Sampler(threading.Thread):
 
     def due(self, name: str, now: float) -> bool:
         h = self.health(name)
+        immediate_trace = (name == "trace" and self._trace_requested > self._trace_handled
+                           and not h.backoff and name not in self._collection_deferred)
         if self.collection is not None:
-            if not self._collection_needed(name) or now < self._collection_not_before.get(name, 0.):
+            if (not self._collection_needed(name)
+                    or not immediate_trace and now < self._collection_not_before.get(name, 0.)):
                 return False
         if not h.enabled or h.inflight:
             return False
-        if h.calls == 0:
+        if h.calls == 0 and not (name == "trace" and self.telemetry_binding):
             for dependency in self.dependencies.get(name, ()):
                 prerequisite = self.health(dependency)
                 if prerequisite.enabled and (prerequisite.calls == 0 or prerequisite.inflight):
@@ -411,6 +472,8 @@ class Sampler(threading.Thread):
             return False
         if self.collection is not None and name in self._collection_deferred:
             return now >= self._collection_not_before.get(name, 0.)
+        if immediate_trace:
+            return True
         regular = now - self.last_run[name] >= self.effective_interval(name) + h.backoff
         if name in self._metric_scheduled_sources and h.calls and not h.backoff:
             regular = self._metric_source_due(name)
@@ -444,6 +507,10 @@ class Sampler(threading.Thread):
         h = self.health(name)
         previous_context = getattr(self._sampling_context, "current", None)
         context = {"source": name, "targets": {}, "baseline": False}
+        if name == "trace":
+            with self._schedule_lock:
+                context["trace_requested"] = self._trace_requested
+                context["trace_identity"] = self._telemetry_identity(self.telemetry_binding)
         if name == "gpu":
             context["provider_generation"] = getattr(self.slurm, "gpu_provider_generation", 0)
         self._sampling_context.current = context
@@ -452,6 +519,8 @@ class Sampler(threading.Thread):
         try:
             self.sources[name]()
             with self.store.lock:
+                if name == "trace" and context["trace_identity"] != self._telemetry_identity(self.telemetry_binding):
+                    return
                 if (name == "gpu" and context["provider_generation"]
                         != getattr(self.slurm, "gpu_provider_generation", 0)):
                     return
@@ -463,13 +532,17 @@ class Sampler(threading.Thread):
         except Deferred as e:
             # Admission deferral is observable but is not a failed scheduler
             # command and must not trip the source's failure circuit.
-            context["deferred"] = True
-            context["retry_after"] = e.retry_after
             with self.store.lock:
+                if name == "trace" and context["trace_identity"] != self._telemetry_identity(self.telemetry_binding):
+                    return
+                context["deferred"] = True
+                context["retry_after"] = e.retry_after
                 h.calls += 1
                 h.error = str(e)
         except CommandError as e:
             with self.store.lock:
+                if name == "trace" and context["trace_identity"] != self._telemetry_identity(self.telemetry_binding):
+                    return
                 if (name == "gpu" and context["provider_generation"]
                         != getattr(self.slurm, "gpu_provider_generation", 0)):
                     return
@@ -479,6 +552,8 @@ class Sampler(threading.Thread):
                 h.backoff = min(300.0, max(self.intervals.get(name, 30.0), 2 * h.backoff))
         except Exception as e:                            # a bug in a source never stops the others
             with self.store.lock:
+                if name == "trace" and context["trace_identity"] != self._telemetry_identity(self.telemetry_binding):
+                    return
                 if (name == "gpu" and context["provider_generation"]
                         != getattr(self.slurm, "gpu_provider_generation", 0)):
                     return
@@ -487,28 +562,34 @@ class Sampler(threading.Thread):
                 h.error = f"{type(e).__name__}: {e}"
                 h.backoff = min(300.0, max(self.intervals.get(name, 30.0), 2 * h.backoff))
         finally:
-            if self.collection is not None:
-                import random
-                failed = bool(h.error) and not context.get("deferred")
-                failures = self._collection_failures.get(name, 0) + 1 if failed else 0
-                self._collection_failures[name] = failures
-                if context.get("deferred"):
-                    self._collection_deferred.add(name)
-                else:
-                    self._collection_deferred.discard(name)
-                if failures >= self.collection["circuit_failures"]:
-                    h.backoff = max(h.backoff, self.collection["circuit_seconds"])
-                cadence = self.effective_interval(name)
-                jitter = random.SystemRandom().uniform(0., cadence * min(1., self.collection["jitter_fraction"]))
-                self._collection_not_before[name] = time.time() + (context.get("retry_after", 5.) if context.get("deferred") else cadence + jitter + h.backoff)
-            if context["baseline"] and not context.get("deferred") and name in ("live", "gpu", "trace"):
-                with self._schedule_lock:
+            with self._schedule_lock:
+                stale_trace = (name == "trace" and context["trace_identity"]
+                               != self._telemetry_identity(self.telemetry_binding))
+                if name == "trace":
+                    self._trace_handled = max(self._trace_handled, context["trace_requested"])
+                if self.collection is not None and not stale_trace:
+                    import random
+                    failed = bool(h.error) and not context.get("deferred")
+                    failures = self._collection_failures.get(name, 0) + 1 if failed else 0
+                    self._collection_failures[name] = failures
+                    if context.get("deferred"):
+                        self._collection_deferred.add(name)
+                    else:
+                        self._collection_deferred.discard(name)
+                    if failures >= self.collection["circuit_failures"]:
+                        h.backoff = max(h.backoff, self.collection["circuit_seconds"])
+                    cadence = self.effective_interval(name)
+                    jitter = 0. if name == "trace" and self.telemetry_binding else random.SystemRandom().uniform(0., cadence * min(1., self.collection["jitter_fraction"]))
+                    self._collection_not_before[name] = time.time() + (context.get("retry_after", 5.) if context.get("deferred") else cadence + jitter + h.backoff)
+                if context["baseline"] and not context.get("deferred") and not stale_trace and name in ("live", "gpu", "trace"):
                     if (name != "gpu" or context["provider_generation"]
                             == getattr(self.slurm, "gpu_provider_generation", 0)):
                         self._baseline_completed[name] = time.monotonic()
+                # Publish completion and the new deadline as one scheduler
+                # update, so a live policy change cannot miss a finishing task.
+                with self.store.lock:
+                    h.inflight = False
             self._sampling_context.current = previous_context
-            with self.store.lock:
-                h.inflight = False
 
     def round(self, now: Optional[float] = None, wait: bool = False):
         """Submit every due source; ``wait`` blocks until they finish (used by --once and the tests)."""
@@ -519,9 +600,17 @@ class Sampler(threading.Thread):
             with self._schedule_lock:
                 if self.stop.is_set():
                     break
-                for name in self.sources:
-                    if self.collection is not None and sum(self.health(source).inflight for source in self.sources) >= max(1, self.collection["max_inflight"] - 1):
-                        break
+                order = ("trace", *(name for name in self.sources if name != "trace")) if self.telemetry_binding else self.sources
+                for name in order:
+                    # Retained files do not consume a Slurm command slot. They
+                    # share the bounded worker pool but remain eligible while
+                    # a scheduler command is waiting on a slow controller.
+                    independent_trace = name == "trace" and self.telemetry_binding
+                    if (self.collection is not None and not independent_trace
+                            and sum(self.health(source).inflight for source in self.sources
+                                    if source != "trace" or not self.telemetry_binding)
+                            >= max(1, self.collection["max_inflight"] - 1)):
+                        continue
                     if name not in submitted and self.due(name, now):
                         previous = self.last_run[name]
                         health = self.health(name)
@@ -547,10 +636,15 @@ class Sampler(threading.Thread):
     def run(self):
         while not self.stop.is_set():
             self.round()
-            # Local metric files can safely request a quarter-second cadence.
-            # Avoid spinning or changing the ordinary half-second wakeup.
-            self.kick.wait(min(0.5, max(0.05, self.effective_interval("trace"))))
+            self.kick.wait(self.wake_interval())
             self.kick.clear()
+
+    def wake_interval(self):
+        """Wake often enough for every subscribed source's advertised cadence."""
+        with self._schedule_lock:
+            shortest = min((self.effective_interval(name) for name in self.sources
+                            if self.health(name).enabled and self._collection_needed(name)), default=.5)
+        return min(.5, max(.05, shortest))
 
     def refresh_all(self):
         if self.collection is not None:
@@ -971,12 +1065,22 @@ class Sampler(threading.Thread):
     def bind_telemetry(self, binding):
         """Publish one exact project binding; all disk reads remain in src_trace."""
         binding = deepcopy(binding) if binding else None
-        with self.store.lock:
+        with self._schedule_lock, self.store.lock:
             prior = self.telemetry_binding
             if self._telemetry_identity(prior) != self._telemetry_identity(binding):
                 self.retained_telemetry = {}
                 if prior and prior.get("job_id"):
                     self.store.trace.pop(prior["job_id"], None)
+                self._trace_requested += 1
+                # Recovery belongs to the exact file binding. A new run gets
+                # one immediate attempt; the shared ledger still retains all
+                # endpoint budgets and circuits for actual admitted operations.
+                health = self.health("trace")
+                health.backoff, health.error = 0., ""
+                self._collection_failures.pop("trace", None)
+                self._collection_deferred.discard("trace")
+                self._collection_not_before["trace"] = 0.
+                self._baseline_completed.pop("trace", None)
                 self.kick.set()
             self.telemetry_binding = binding
 
@@ -994,21 +1098,24 @@ class Sampler(threading.Thread):
         return ""
 
     def src_trace(self):
-        """The nvidia-smi CSV the job writes itself (timestamp, index, utilization.gpu, memory.used; one line per GPU per minute; the README says how a job writes it) for every
-        running GPU job and the job the analytics view shows."""
+        """Read selected retained CPU/GPU recordings and optional NVIDIA CSVs."""
+        from .raven_collection import Deferred
         if self.collection is not None and not self._collection_needed("trace"):
             return
         with self.store.lock:
             want = [j.id for j in self.store.jobs if not j.pending and j.gpus]
         if self.want_trace and self.want_trace not in want:
             want.append(self.want_trace)
+        binding = self.telemetry_binding
+        if binding and binding.get("job_id") and binding["job_id"] not in want:
+            want.append(binding["job_id"])
         if self.collection is not None:
             subscribed = {self.want_trace, self._collection_demand["selected"]}
             want = [jid for jid in want if jid in subscribed][:2]
         selected = self._sampling_targets("trace", want)
         with self.store.lock:
             contexts = {jid: self._trace_context_locked(jid) for jid in selected}
-        traces, failures = {}, []
+        traces, failures, deferrals = {}, [], {}
         statuses, retained_reads = {}, {}
         for jid in selected:
             try:
@@ -1019,9 +1126,15 @@ class Sampler(threading.Thread):
                     retained = read_bound_telemetry(binding, files=self.files)
                     retained_reads[jid] = retained
                     traces[jid] = display_gpu_rows(retained["gpu"])
-                    source = next((item for item in retained["index"]["sources"] if item["family"] == "gpu"), {})
-                    status = {"path": binding["telemetry_index"], "state": "ready" if traces[jid] else "empty",
-                              "reason": source.get("reason", "GPU recording was not requested for this run."), "rows": len(traces[jid])}
+                    family_rows = {family: len(retained.get(family, ())) for family in ("cpu-memory", "gpu")}
+                    errors = retained.get("errors", {})
+                    reasons = [f"{family}: {reason}" for family, reason in errors.items()]
+                    if not sum(family_rows.values()) and not reasons:
+                        reasons = [item["reason"] for item in retained["index"]["sources"] if item.get("reason")]
+                    status = {"path": binding["telemetry_index"],
+                              "state": "partial" if errors and sum(family_rows.values()) else "error" if errors else "ready" if sum(family_rows.values()) else "empty",
+                              "reason": "; ".join(reasons), "rows": len(traces[jid]),
+                              "family_rows": family_rows, "sample_rows": sum(family_rows.values())}
                     statuses[jid] = status
                     continue
                 path = self.trace_path(jid)
@@ -1040,8 +1153,12 @@ class Sampler(threading.Thread):
                     status.update(state="empty", reason="The trace is empty or contains no valid NVIDIA timestamp/index rows.")
             except (OSError, CommandError, ValueError) as exc:
                 status = statuses.setdefault(jid, {})
-                status.update(state="error", reason=str(exc)[:400])
-                failures.append(f"job {jid}: {status['reason']}")
+                transient = exc if isinstance(exc, Deferred) else exc.__cause__ if isinstance(exc.__cause__, Deferred) else None
+                status.update(state="deferred" if transient else "error", reason=str(exc))
+                if transient:
+                    deferrals[jid] = transient
+                else:
+                    failures.append(f"job {jid}: {status['reason']}")
             finally:
                 self._sampling_complete("trace", jid)
         with self.store.lock:
@@ -1049,17 +1166,20 @@ class Sampler(threading.Thread):
             retained = {jid: status for jid, status in self.trace_status.items() if jid in want}
             retained.update({jid: status for jid, status in statuses.items() if jid in valid})
             self.trace_status = retained
-            self.retained_telemetry = {jid: value for jid, value in self.retained_telemetry.items() if jid in want and jid not in valid}
+            self.retained_telemetry = {jid: value for jid, value in self.retained_telemetry.items()
+                                       if jid in want and (jid not in valid or jid in deferrals)}
             self.retained_telemetry.update({jid: value for jid, value in retained_reads.items() if jid in valid})
             for jid, rows in traces.items():
                 if jid in valid:
                     self.store.trace[jid] = rows
             # A fast tick for one requested job must retain untouched traces
             # and statuses for the other jobs on their original cadence.
-            for k in [k for k in self.store.trace if k not in want or k in valid and k not in traces]:
+            for k in [k for k in self.store.trace if k not in want or k in valid and k not in traces and k not in deferrals]:
                 del self.store.trace[k]
         if failures:
-            raise CommandError(f"GPU trace read failed for {len(failures)}/{len(want)} jobs: {failures[0]}")
+            raise CommandError(f"Telemetry read failed for {len(failures)}/{len(want)} jobs: {failures[0]}")
+        if deferrals:
+            raise max(deferrals.values(), key=lambda value: value.retry_after)
 
     def _trace_context_locked(self, jid):
         record, _ = self.store.record_context(jid)
@@ -1161,7 +1281,8 @@ class Sampler(threading.Thread):
                 self.kick.set()
 
     def select_trace(self, jid: Optional[str]):
-        if jid != self.want_trace:
-            self.want_trace = jid
-            self.last_run["trace"] = 0.0
-            self.kick.set()
+        with self._schedule_lock:
+            if jid != self.want_trace:
+                self.want_trace = jid
+                self._trace_requested += 1
+                self.kick.set()

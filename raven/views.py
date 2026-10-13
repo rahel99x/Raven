@@ -485,6 +485,24 @@ def _prepare_retained_process_metrics(rows):
             ("Observed local process RSS sum (shared pages may repeat)", memory, None, "G", times, stamps, interval, "retained-rss")]
 
 
+def _retained_status_rows(app, jid, retained, width):
+    """Show retained evidence and complete read diagnostics, including CPU-only runs."""
+    sampler = getattr(app, "sampler", None)
+    binding = getattr(sampler, "telemetry_binding", None) or {}
+    if not retained and binding.get("job_id") != jid:
+        return []
+    from .workspace_layout import _wrap_row
+    status = getattr(sampler, "trace_status", {}).get(jid, {})
+    stale = status.get("state") in ("deferred", "error")
+    label = "Retained samples loaded" + (" (last successful read)" if stale and retained else "")
+    notes = [(f" {label}: {len(retained.get('cpu-memory', []))} CPU/memory, {len(retained.get('gpu', []))} GPU.", "dim")]
+    if status.get("state") in ("deferred", "error") and status.get("reason"):
+        notes.append((" Retained telemetry read: " + display_text(str(status["reason"])), "yellow"))
+    for family, error in retained.get("errors", {}).items():
+        notes.append((" Retained " + family + " read: " + display_text(str(error)), "yellow"))
+    return [row for note in notes for row in _wrap_row([note], width)]
+
+
 def _scroll_rule(glyphs, width, title):
     """Keep jump controls in the title strip, outside the table columns."""
     return [("    ", "")] + rule(glyphs, max(0, width - 4), title) if width >= 6 else rule(glyphs, width, title)
@@ -2714,6 +2732,13 @@ class Views:
             if i not in seen:
                 ids.append(i)
                 seen.add(i)
+        binding = getattr(getattr(app, "sampler", None), "telemetry_binding", None) or {}
+        retained_job = binding.get("job_id")
+        if retained_job and retained_job not in seen:
+            # A selected retained run remains readable after scheduler history
+            # expires, or before its first scheduler response has arrived.
+            ids.append(retained_job)
+            seen.add(retained_job)
         chosen = getattr(app, "analytics_job", None)
         if chosen and chosen not in ids and any(record.id == chosen for record in
                 list(snap.get("jobs", ())) + list(snap.get("finished", ())) + list(snap.get("departed_jobs", {}).values())):
@@ -2994,13 +3019,17 @@ class Views:
         pos = ids.index(jid)
         job = next((j for j in snap["jobs"] if j.id == jid), None)
         fin = next((f for f in snap["finished"] if f.id == jid), None)
-        name = job.name if job else (fin.name if fin else "")
-        state = job.state.lower() if job else (fin.state.lower() if fin else "no longer listed")
+        binding = getattr(getattr(app, "sampler", None), "telemetry_binding", None) or {}
+        binding = binding if binding.get("job_id") == jid else {}
+        name = job.name if job else (fin.name if fin else binding.get("run_id", ""))
+        state = job.state.lower() if job else (fin.state.lower() if fin else str(binding.get("state", "no longer listed")).lower())
         record = job or fin
         attempt = "|".join(str(getattr(record, name, None) or "") for name in ("submit", "start")) if record else None
         req = job.mem_bytes if job else (fin.req_mem if fin else 0)
         intervals = self.cfg["intervals"]
-        samples = _series_publication(app, jid)
+        # Without scheduler attempt evidence, an old native archive for a
+        # reused job ID must not be mixed into the explicitly attached run.
+        samples = [] if binding and record is None else _series_publication(app, jid)
         native = self._native_sources.remember(
             ("native", getattr(app.store, "_series_scope", id(app.store)), jid, attempt, req, g.ascii, intervals["live"], intervals["gpu"]), samples,
             lambda owned: _prepare_native_metrics(owned, req, g.ascii, intervals, owned=True))
@@ -3021,6 +3050,7 @@ class Views:
             head[1].append((f"   {job.partition} {g.dot} {job.nodelist or 'pending'} {g.dot} {job.cpus} cpus" + (f" {g.dot} {job.gpu_text}" if job.gpus else "") + f" {g.dot} {job.elapsed} of {job.limit}", "dim"))
         if series_notice:
             head.append([(" " + series_notice[0], series_notice[1])])
+        head.extend(_retained_status_rows(app, jid, retained, width))
         if retained:
             head.append([(" Retained telemetry: local observed scope; export reads the full retained stream, not this chart tail.", "dim")])
             for source in retained.get("index", {}).get("sources", []):

@@ -197,18 +197,50 @@ def test_exact_attempt_reader_and_sampler_auto_attach_retained_sources(run, monk
         sampler.shutdown()
 
 
-def test_changed_attempt_and_symlink_stream_are_rejected(run, monkeypatch, tmp_path):
+def test_changed_attempt_rejected_and_symlink_stream_cannot_hide_safe_family(run, monkeypatch, tmp_path):
     binding = publish(run, monkeypatch)
     path = run / "telemetry/gpu.jsonl"
     path.unlink()
     path.symlink_to(tmp_path / "unrelated")
-    with pytest.raises((OSError, ValueError)):
-        projects.read_bound_telemetry(binding)
+    result = projects.read_bound_telemetry(binding)
+    assert result["gpu"] == [] and result["errors"]["gpu"]
+    assert result["cpu-memory"]
     manifest = json.loads((run / "run.json").read_text())
     manifest["attempt"] = 2
     (run / "run.json").write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match="attempt identity"):
         projects.read_bound_telemetry(binding)
+
+
+def test_gpu_read_error_preserves_cpu_memory_and_exact_diagnostic(run, monkeypatch):
+    binding = publish(run, monkeypatch)
+    original = projects._open_local
+    message = "GPU recording is temporarily unreadable on /shared/lab/recordings"
+    def opened(root, path, *args, **kwargs):
+        if path == "telemetry/gpu.jsonl":
+            raise PermissionError(message)
+        return original(root, path, *args, **kwargs)
+    monkeypatch.setattr(projects, "_open_local", opened)
+    result = projects.read_bound_telemetry(binding)
+    assert result["gpu"] == []
+    assert result["cpu-memory"]
+    assert result["errors"] == {"gpu": message}
+
+
+def test_remote_admission_retry_preserves_type_message_and_deadline(run, monkeypatch):
+    from raven.project_remote import identity
+    from raven.raven_collection import Deferred
+    from raven.remote import RemoteFiles
+    binding = publish(run, monkeypatch)
+    retry = Deferred("Read admission is busy; retry later", retry_after=1.25)
+    def busy(*args):
+        raise retry
+    files = RemoteFiles(SimpleNamespace(run=busy))
+    binding["remote_identity"] = identity(files)
+    with pytest.raises(Deferred) as failure:
+        projects.read_bound_telemetry(binding, files=files)
+    assert failure.value is retry
+    assert failure.value.retry_after == 1.25
 
 
 def test_dashboard_tail_is_bounded_and_drops_incomplete_last_row(run, monkeypatch):
@@ -381,3 +413,114 @@ def test_fresh_dashboard_reopens_completed_attempt_and_renders_retained_cpu_gpu(
     finally:
         sampler.shutdown()
         app.research.close()
+
+
+@pytest.mark.parametrize("gpu_state", ["unavailable", "read-error", "deferred"])
+def test_attached_run_renders_cpu_memory_counts_and_errors_without_scheduler_record(run, monkeypatch, gpu_state):
+    from raven import project_ui, layout
+    from raven.config import Config
+    from raven.controller import App
+    from raven.raven_collection import Deferred
+    from raven.research import ResearchHub
+    from raven.views import Views
+    publish(run, monkeypatch)
+    path = run / "telemetry/gpu.jsonl"
+    if gpu_state == "unavailable":
+        index_path = run / "telemetry/index.json"
+        index = json.loads(index_path.read_text())
+        gpu = next(item for item in index["sources"] if item["family"] == "gpu")
+        gpu.update(status="unavailable", reason="No GPU provider is installed")
+        index_path.write_text(json.dumps(index))
+        path.unlink()
+    elif gpu_state == "read-error":
+        path.unlink()
+        path.symlink_to(run / "untrusted-recording")
+    store = Store(persist=False)
+    sampler = Sampler(SimpleNamespace(), store, {}, [], workers=1,
+                      collection={"gpu": "off", "jitter_fraction": 0})
+    app = App(store, sampler, None, Config(), "tester", interactive=False)
+    app.research = ResearchHub(app.cfg)
+    views = Views(layout.Glyphs(False), app.cfg)
+    app.views_ref = views
+    plotted = []
+    def curve(app, values, width, height, identity, **kwargs):
+        plotted.append((identity[2], list(values)))
+        return []
+    monkeypatch.setattr(views, "metric_curve", curve)
+    try:
+        project_ui._apply_run(app, projects.select_run(str(run.parent.parent), run.name))
+        sampler.set_collection_demand("research", "7")
+        sampler.run_source("trace")
+        if gpu_state == "deferred":
+            def busy(*args, **kwargs):
+                raise Deferred("Filesystem admission is occupied; retry later", retry_after=1.)
+            monkeypatch.setattr(projects, "read_bound_telemetry", busy)
+            sampler.run_source("trace")
+            assert not sampler.health("trace").errors and not sampler.health("trace").backoff
+        app.tab, app.analytics_job = "analytics", "7"
+        text = layout.to_text(views.analytics_job(store.snapshot(), app, 100, None), 100)
+        assert any(key == "retained-cpu-seconds" and values for key, values in plotted)
+        assert any(key == "retained-rss" and values for key, values in plotted)
+        assert "Retained samples loaded" in text and "1 CPU/memory" in text
+        if gpu_state == "unavailable":
+            assert "No GPU provider is installed" in text and "0 GPU" in text
+        elif gpu_state == "read-error":
+            assert "Retained gpu read:" in text and "symlinks" in text
+        else:
+            assert "last successful read" in text and "Filesystem admission is occupied; retry later" in text
+    finally:
+        sampler.shutdown()
+        app.research.close()
+
+
+@pytest.mark.parametrize("managed", [False, True])
+def test_attaching_run_reads_immediately_then_refreshes_without_slurm(run, monkeypatch, managed):
+    from raven import project_ui
+    from raven.config import Config
+    from raven.controller import App
+    from raven.research import ResearchHub
+    publish(run, monkeypatch)
+    store = Store(persist=False)
+    sampler = Sampler(SimpleNamespace(), store, {"trace": 600., "live": 600.}, [], workers=2,
+                      collection={"gpu": "off", "trace_seconds": 600., "jitter_fraction": 0} if managed else None)
+    app = App(store, sampler, None, Config(), "tester", interactive=False)
+    app.research = ResearchHub(app.cfg)
+    for name in sampler.sources:
+        sampler.health(name).enabled = name == "trace"
+    # A prior successful read's long scheduler cadence cannot postpone a new
+    # run selection. No Slurm backend methods exist in this integration test.
+    sampler.last_run["trace"] = time.time()
+    sampler.health("trace").calls = 1
+    sampler._collection_not_before["trace"] = time.time() + 600.
+    sampler.start()
+    try:
+        started = time.monotonic()
+        project_ui._apply_run(app, projects.select_run(str(run.parent.parent), run.name))
+        sampler.set_collection_demand("research", "7")
+        wait_for(lambda: bool(sampler.retained_telemetry.get("7", {}).get("cpu-memory")))
+        assert time.monotonic() - started < 1.
+        count = len(sampler.retained_telemetry["7"]["cpu-memory"])
+        path = run / "telemetry/cpu-memory.jsonl"
+        row = json.loads(path.read_text().splitlines()[-1])
+        row["timestamp"] += 1
+        row["cpu_seconds"] += .5
+        with path.open("a") as stream:
+            stream.write(json.dumps(row) + "\n")
+        wait_for(lambda: len(sampler.retained_telemetry.get("7", {}).get("cpu-memory", [])) > count)
+        assert all(not sampler.health(name).calls for name in sampler.sources if name != "trace")
+    finally:
+        sampler.shutdown()
+        sampler.join(timeout=3)
+        app.research.close()
+
+
+def test_retained_error_wraps_without_losing_diagnostic_tail():
+    from raven import layout
+    from raven.views import _retained_status_rows
+    reason = "recording read failed: " + "shared-filesystem-detail/" * 60 + "ACTIONABLE_END"
+    sampler = SimpleNamespace(telemetry_binding={"job_id": "7"},
+                              trace_status={"7": {"state": "error", "reason": reason}})
+    rows = _retained_status_rows(SimpleNamespace(sampler=sampler), "7", {}, 60)
+    assert all(layout.vlen(layout.row_text(row)) <= 60 for row in rows)
+    text = "".join(layout.row_text(row) for row in rows)
+    assert "ACTIONABLE_END" in text and "shared-filesystem-detail/" * 60 in text

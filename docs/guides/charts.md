@@ -155,7 +155,7 @@ Polling labels use `s`, `ms`, or `µs`; ASCII mode uses `us` for microseconds.
 **Set** changes with the slider and identifies its requested interval.
 **Poll** identifies the effective interval after global requests, other metrics on the same probe, and collection limits are applied.
 Managed launches apply collection floors, site policy, demand gating, and command budgets.
-The default queue and live-resource floors are 60 seconds; see [collection policy](../raven/README.md#collection-and-retention).
+Light and Heavy use different reader settings; see [telemetry updates](telemetry-updates.md).
 In a compact row, the effective value precedes the polling track and `S` precedes the requested value after it.
 On a connection whose policy permits 500-millisecond reads, `Poll 500ms Set 2s` means this metric requests two seconds while a faster shared request keeps its probe at 500 milliseconds.
 Changing **Set** in that case is still accepted even though **Poll** stays unchanged.
@@ -222,9 +222,10 @@ Enabling Live again clears that metric's completed rectangular zoom.
 Raven Light and Heavy request CPU and memory measurements for the selected job
 when its Inspector or resource charts are visible. The first observation is
 eligible immediately; subsequent reads follow the configured collection policy.
-The starter profile uses a 60-second live-statistics interval, with up to 20%
-jitter. Slurm's own accounting interval can be shorter without changing Raven's
-read interval. CPU rate needs two observations; cumulative CPU efficiency and
+Light starts with a 60-second live-statistics interval. Default Heavy requests
+selected live statistics every two seconds; its other presets and Custom values
+apply without a restart. Slurm's own accounting interval controls when new
+measurements exist, independently of Raven's read interval. CPU rate needs two observations; cumulative CPU efficiency and
 memory can appear after the first. Memory observations remain usable when CPU
 accounting is unavailable.
 
@@ -233,39 +234,42 @@ An accounting summary supplies totals and peaks, but cannot reconstruct a missin
 timeline. GPU graphs in managed sessions use existing job telemetry; see
 [GPU collection and diagnostics](gpu-detection.md).
 
-The polling slider uses positions one to 100 internally.
-For position `N`, its requested interval is `5 × 10^(-(N - 1) / 99)` seconds.
-The global control uses the same range with positions one to 50.
-Its requested interval is `5 × 10^(-(N - 1) / 49)` seconds.
-Each scale reaches both endpoints and gives every native polling position a distinct interval.
-Raven uses the fastest request for an exact job and shared source; global and metric requests do not multiply.
-Repeated adjustments do not compound or change the configured base.
-Configured intervals slower than five seconds remain slow; collection policy can impose a longer effective interval.
-The control shows both its requested **Set** interval and the shared effective **Poll** interval after source limits are applied.
+Selecting or attaching a reported run requests its retained telemetry immediately.
+The local reader checks accessible recordings every second by default; remote
+reads use at least 1.5 seconds. This reader runs independently of Slurm queue
+and accounting polling. Job series reports **Retained samples loaded: N
+CPU/memory, M GPU** and the actual read error. When a later read is deferred or
+fails, cached counts identify the last successful read. Temporary “retry later”
+notices preserve existing samples and retry without adding failure backoff.
+Available CPU and memory curves remain visible if GPU recording is unavailable.
 
-| Source | Reader minimum before managed collection policy |
+The per-metric polling slider uses positions one to 100 internally.
+For position `N`, its requested interval is `5 × 10^(-(N - 1) / 99)` seconds.
+**Set** shows that request; **Poll** shows the shared effective interval after
+source limits. CPU and memory share one probe, and GPU curves share another;
+the fastest request for a shared source applies to that exact job. Requests do
+not multiply. Managed collection settings and site policy still apply.
+
+The top-right queue slider is separate. Managed `raven`, `ravenl`, and `ravenh`
+sessions use the active queue base and site-policy endpoints and leave metric
+readers at their own cadence. Use **Setup → Heavy telemetry update settings**
+for live changes to Heavy readers and request budgets; see
+[telemetry updates](telemetry-updates.md). Native compatibility sessions retain
+the existing global five-second to 500-millisecond request.
+
+| Source | Reader minimum before site policy |
 | --- | --- |
 | Live CPU and memory probe | 0.5 seconds |
 | Live GPU probe | 0.5 seconds |
 | Local application metrics or CSV traces | 0.5 seconds |
 | Remote application metrics or CSV traces | 1.5 seconds |
 
-CPU and memory measurements share one job probe, so the fastest request for either metric sets that probe's interval.
-GPU utilization and busy-mean curves share a GPU probe and use their fastest request.
-Other jobs retain the global cadence and their own per-metric requests.
-Reported application metrics can share a file reader; their fastest request sets the reader's interval for that exact run.
-Reading that file more often cannot make the application write measurements more often.
-The same limit applies to job-produced CSV traces.
-
-The sliders request intervals from five seconds to 500 milliseconds.
-Managed launches retain configured source intervals and apply collection floors before collection.
-The default queue and live-resource floors are 60 seconds; log-follow reads have a five-second floor.
-Other global sources retain their configured bases, adjusted by the global speed ratio from one to ten.
-Remote file reads retain a 1.5-second minimum. Forecast and budget sources retain their 30-second minimums.
-Source errors retain retry backoff. Command duration, worker limits, and disabled-source settings still apply.
-Raven does not overlap reads to meet a shorter requested interval.
-The graph footer reports the effective polling interval, source age, and any relevant producer limits.
-Missing observations stay gaps. A short display window can be empty even when polling is enabled.
+Reading more often cannot make an application or recorder write measurements
+more often. Shared budgets, real source errors, command duration, and disabled
+sources can delay observations. Raven does not overlap reads to meet a shorter
+interval. The graph footer reports the effective interval, source age, and
+producer limits. Missing observations stay gaps; a short display window can be
+empty even when reading is enabled.
 
 <a id="zoom-a-rectangular-area"></a>
 
@@ -757,8 +761,10 @@ These methods change requests without reading files immediately.
 
 ### `raven.refresh_rate`
 
-This layer stores the global polling position and maps it to requested intervals.
-The stored `polling_multiplier` field keeps its existing name for compatibility.
+This layer stores the polling position. Managed sessions map it to queue
+intervals through `telemetry_settings`; native compatibility sessions retain
+global source scaling. The stored `polling_multiplier` field keeps its name
+for compatibility.
 
 | Method | Purpose and result |
 | --- | --- |
@@ -766,7 +772,8 @@ The stored `polling_multiplier` field keeps its existing name for compatibility.
 | `poll_position(seconds, maximum=50)` | Return the nearest bounded position for a finite positive interval. |
 | `source_interval(base, value, *, source="")` | Calculate a compatibility source request. Native bases up to five seconds use the slider interval; slower bases and other sources use the global speed ratio within reader bounds. |
 | `file_interval(base, value, *, remote=False)` | Adjust a file-reader base by the global speed ratio while retaining local or remote limits. |
-| `cadence(app, source, base=None)` | Return the source's effective global interval without reading the source. |
+| `cadence(app, source, base=None)` | Return the source's effective interval without reading the source. |
+| `candidate_cadence(app, source, value)` | Return an endpoint or candidate interval using the same mode and policy calculation as the active reader. |
 
 ### `raven.analysis_ui`
 

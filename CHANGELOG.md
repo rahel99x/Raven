@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fix the queue update slider across `raven`, `ravenl`, and `ravenh`, with
+  displayed intervals matching live collector scheduling and site limits.
+- Add live Heavy telemetry presets and a validated Custom configuration editor
+  with typing-time intensity colors, explicit saving, and no worker restart.
+- Load retained recordings immediately on selection and refresh them independently
+  of Slurm polling. Show sample counts and read errors, preserve temporary retry
+  notices, and render CPU/memory data when GPU recording is unavailable.
 - Add existing-script launches with read-only previews, Research feature aliases,
   captured settings, exact attempt records, and an application tracing hook.
 - Retain supported job-owned CPU/memory and GPU observations independently of the

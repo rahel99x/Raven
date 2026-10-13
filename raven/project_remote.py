@@ -122,6 +122,11 @@ def request(files, operation, *args, **kwargs):
         runner = getattr(files, "project_command", ssh.run)
         output, _ = runner(["python3", "-I", "-S", "-c", _BOOTSTRAP, encoded, *payload], files.timeout)
     except Exception as exc:
+        from .raven_collection import Deferred
+        if isinstance(exc, Deferred):
+            # Admission deferral is a retry instruction, not a failed SSH
+            # read. Preserve its message and deadline for the sampler.
+            raise
         raise OSError("SSH project reader: " + str(exc)[:512]) from exc
     if files.ssh is not ssh or identity(files) != request_identity:
         raise ValueError("SSH project connection changed during its read; refresh this job")

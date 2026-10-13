@@ -17,6 +17,14 @@ dashboard and exposes device and node coverage; see
 The dashboard polling policy described below remains separate. Selecting a
 finished job cannot create measurements that were never recorded.
 
+Selecting or attaching a retained run triggers an immediate read. Accessible
+recordings refresh independently of Slurm, every second locally by default
+(at least 1.5 seconds remotely). Job series shows loaded CPU/memory and GPU
+sample counts, cached-read status, and actual read errors. A failed or absent
+GPU recording does not suppress available CPU and memory curves. Use
+**Setup → Heavy telemetry update settings** to change reader intervals while
+Heavy is active; see [telemetry updates](telemetry-updates.md).
+
 The installed `raven`, `ravenl`, and `ravenh` commands use managed collection.
 With `collection.gpu = "existing-telemetry"`, GPU rate graphs read the selected
 job's existing `<WorkDir>/logs/gpu-util-<jobid>.csv` NVIDIA trace. The job must
