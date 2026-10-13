@@ -518,7 +518,7 @@ def read_bound_telemetry(binding, *, files=None, max_bytes=8 * 1024 * 1024):
     with bound_run_root(binding) as (_, run_fd, current):
         data, _ = _read(run_fd, "telemetry/index.json", MAX_INDEX_BYTES)
         index = validate_index(_json(data), binding["run_id"])
-        result = {"index": index, "gpu": [], "cpu-memory": [], "warnings": []}
+        result = {"index": index, "gpu": [], "cpu-memory": [], "warnings": [], "errors": {}}
         for source in index["sources"]:
             try:
                 fd, parent, name = _open_local(run_fd, source["path"])
@@ -546,9 +546,15 @@ def read_bound_telemetry(binding, *, files=None, max_bytes=8 * 1024 * 1024):
                 finally:
                     os.close(fd)
                     os.close(parent)
-            except FileNotFoundError:
+            except FileNotFoundError as exc:
                 if source.get("status") not in ("unavailable", "failed"):
+                    result["errors"][source["family"]] = str(exc)
                     result["warnings"].append(source["family"] + ": retained stream is missing")
+            except (OSError, ValueError) as exc:
+                # Each declared stream has an independent confined read. A
+                # broken GPU stream must not discard accessible CPU/memory,
+                # and an error is never fabricated as a measured zero.
+                result["errors"][source["family"]] = str(exc)
         return result
 
 

@@ -16,6 +16,7 @@ import re
 import time
 import uuid
 import math
+import threading
 
 from . import evidence as E
 from .shared_collection import _host, _process_start
@@ -25,7 +26,7 @@ from .slurm import CommandError
 DEFAULTS = {
     "queue_seconds": 60., "starts_seconds": 120., "history_seconds": 300.,
     "inventory_seconds": 300., "details_seconds": 60., "live_seconds": 60.,
-    "account_seconds": 900., "log_follow_seconds": 5., "idle_after_seconds": 300.,
+    "account_seconds": 900., "log_follow_seconds": 5., "trace_seconds": 5., "idle_after_seconds": 300.,
     "idle_interval_factor": 5., "jitter_fraction": .2, "max_inflight": 2,
     "controller_requests_per_minute": 12, "controller_burst": 2,
     "accounting_requests_per_minute": 2, "statistics_requests_per_minute": 4,
@@ -40,13 +41,15 @@ DEFAULTS = {
 FLOORS = {"jobs": "queue_seconds", "starts": "starts_seconds", "finished": "history_seconds",
           "nodes": "inventory_seconds", "partitions": "inventory_seconds", "details": "details_seconds",
           "fin_details": "details_seconds", "live": "live_seconds", "gpu": "live_seconds",
-          "trace": "log_follow_seconds", "share": "account_seconds", "account": "account_seconds",
+          "trace": "trace_seconds", "share": "account_seconds", "account": "account_seconds",
           "budget": "account_seconds", "weather": "inventory_seconds"}
 
 
 def settings(value):
     result = dict(DEFAULTS)
     result.update(value or {})
+    if not value or "trace_seconds" not in value:
+        result["trace_seconds"] = result["log_follow_seconds"]
     for key, default in DEFAULTS.items():
         if isinstance(default, (int, float)) and not isinstance(default, bool):
             number = result[key]
@@ -60,7 +63,8 @@ def settings(value):
 
 
 def interval(config, source, requested):
-    return max(float(requested), float(config.get(FLOORS.get(source, "details_seconds"), 60.)))
+    fallback = config.get("log_follow_seconds", 5.) if source == "trace" else 60.
+    return max(float(requested), float(config.get(FLOORS.get(source, "details_seconds"), fallback)))
 
 
 @dataclass(frozen=True)
@@ -292,6 +296,7 @@ class Ledger:
         # and authority. Read-cache identities still include the complete scope.
         quota_scope = {key: value for key, value in scope.items() if key not in ("profile", "mode", "generation", "policy_digest")}
         self.cache, self.scope, self.config, self.now = cache, E.digest(quota_scope), settings(config), now
+        self._config_lock = threading.RLock()
         self.counts = {"admitted": 0, "deferred": 0, "failed": 0}
         with cache._connection() as db:
             db.executescript("""
@@ -321,7 +326,22 @@ class Ledger:
                 db.execute("ROLLBACK")
                 raise
 
+    def reconfigure(self, config):
+        """Replace future admission limits without resetting spent or live work.
+
+        Mode changes share the same database, identity, source clocks, failure
+        circuits and reservations. An already admitted command keeps its slot
+        until it returns, even when the new policy is more restrictive.
+        """
+        updated = settings(config)
+        with self._config_lock:
+            self.config = updated
+
     def _admit(self, descriptor, argv, validation):
+        with self._config_lock:
+            return self._admit_locked(descriptor, argv, validation)
+
+    def _admit_locked(self, descriptor, argv, validation):
         now, cfg = self.now(), self.config
         source = E.digest({"family": descriptor.family, "argv": list(argv)})
         endpoint = descriptor.endpoint
@@ -455,8 +475,12 @@ class GovernedFiles:
     def __init__(self, files, backend):
         self.inner, self.ledger = files, backend.ledger
         self.remote = bool(getattr(files, "remote", False))
-        self.min_refresh = max(float(getattr(files, "min_refresh", 0)), self.ledger.config["log_follow_seconds"])
         self.project_delegate = files if self.remote else None
+
+    @property
+    def min_refresh(self):
+        """Live file cadence follows the current policy without rebinding readers."""
+        return max(float(getattr(self.inner, "min_refresh", 0)), self.ledger.config["log_follow_seconds"])
 
     def __getattr__(self, name):
         return getattr(self.inner, name)
@@ -508,15 +532,12 @@ class GovernedFiles:
         if not self.remote or list(argv[:5]) != ["python3", "-I", "-S", "-c", _BOOTSTRAP]:
             raise OSError("Raven project adapter received an unclassified helper")
         limit = min(2 << 20, int(self.ledger.config["max_response_bytes"]))
-        try:
-            with self.ledger.admit(Descriptor("project-reader", "file-bytes", "trace", cost=limit), ["project-reader", argv[5]]):
-                start = time.monotonic()
-                raw = _backend_command(self.inner.ssh, argv, timeout, limit, None)
-                if len(raw.encode("utf-8")) > limit:
-                    raise OSError("Remote project reply exceeds the Light byte budget")
-                return raw, time.monotonic() - start
-        except Deferred as exc:
-            raise OSError(str(exc)) from exc
+        with self.ledger.admit(Descriptor("project-reader", "file-bytes", "trace", cost=limit), ["project-reader", argv[5]]):
+            start = time.monotonic()
+            raw = _backend_command(self.inner.ssh, argv, timeout, limit, None)
+            if len(raw.encode("utf-8")) > limit:
+                raise OSError("Remote project reply exceeds the Light byte budget")
+            return raw, time.monotonic() - start
 
     def manifest_signature(self, path):
         """Retain the catalog's no-symlink rule behind typed admission."""

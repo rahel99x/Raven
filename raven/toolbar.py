@@ -60,8 +60,11 @@ def _polling_field_width(app, ascii_):
 
 def _rate_help(app):
     slowest, fastest = _polling_label(app, 1), _polling_label(app, 50)
-    return (f"Update slider: arrows change one step; Home {slowest}; End {fastest}; "
-            f"right-click resets to {slowest}; Esc returns.")
+    message = (f"Queue update slider: arrows change one step; Home {slowest}; End {fastest}; "
+               f"right-click resets to {slowest}; Esc returns.")
+    if getattr(app, "cfg", {}).get("raven", {}).get("managed"):
+        message += " Setup > Telemetry updates controls all other sampling."
+    return message
 
 
 def command_names():

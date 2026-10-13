@@ -303,6 +303,16 @@ Reopening after the dashboard was closed selects retained evidence, including
 the independent recording/export outcomes. Launch readiness describes the
 request; runtime coverage describes what the producer actually recorded.
 
+Selecting or attaching a run requests its accessible retained telemetry
+immediately. It refreshes independently of Slurm polling, every second locally
+by default and at least every 1.5 seconds over a remote connection. Analytics
+Job series and the corresponding Jobs inspector show **Retained samples loaded**
+for CPU/memory and GPU, plus the actual read error. A deferred or failed read
+retains the last successful samples and identifies those counts as cached.
+Temporary “retry later” notices do not increase failure backoff. CPU and memory
+curves remain available when GPU recording is missing or failed. See
+[telemetry updates](telemetry-updates.md) to adjust Heavy readers live.
+
 ## 7. Export retained data from the command line
 
 Use the exact run ID printed by the launch receipt or selected in Results.

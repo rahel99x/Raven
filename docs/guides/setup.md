@@ -15,6 +15,7 @@ page; while editing a field, Esc cancels that edit.
 
 | Setup entry | Purpose |
 | --- | --- |
+| Heavy telemetry update settings | Apply Default, Medium, High, Ultra, or Custom reader intervals live; edit Custom and save preferences. |
 | Heavy allocation settings | Discover the connected user's Slurm associations and save account, partition, QoS, CPU, memory, GPU, and time preferences. |
 | Project launch and recording defaults | Bind native measurements and declared files, select recording/Research features, and save launch recipes or completion-export preferences. |
 | Project connection and reporting | Connect a project and select an exact reported run; inspect its files before attaching them. |
@@ -28,6 +29,18 @@ a bounded account-discovery task on the existing connection. Rendering,
 hovering, and editing do not query Slurm. Discovery retains source admission,
 timeouts, and shared caching; a busy or restricted scheduler can leave a field
 unavailable.
+
+## Set telemetry update intervals
+
+Open **Setup → Heavy telemetry update settings**, or enter
+`:telemetrysettings`. Presets apply immediately while Heavy is active and can
+be staged from Light. Custom starts at Default; its gear button opens a
+validated editor with a white-to-pink intensity scale that updates while typing.
+Select **Save settings** to keep the choice for later launches.
+
+The queue slider is separate from the telemetry readers. See
+[telemetry updates](telemetry-updates.md) for preset values, Custom controls,
+retained recording refresh, and site-policy limits.
 
 ## Configure a student's lab allocation
 

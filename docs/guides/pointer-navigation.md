@@ -123,14 +123,15 @@ See [Graph interaction](charts.md#zoom-a-time-interval) for keyboard commands, s
 
 **Expected result:** The slider updates the requested position.
 The label shows the effective Jobs interval in `s`, `ms`, or `µs`; ASCII mode uses `us`.
-The logarithmic request endpoints are five seconds and 500 milliseconds.
-Configured intervals, collection floors, site policy, demand gating, command budgets, and retry backoff determine actual collection.
-The default managed queue floor is 60 seconds, so the label can remain unchanged across several positions.
-Right-click the update control to restore the five-second request without clearing the selected job or lines.
+The logarithmic endpoints follow the active queue base and site policy.
+Managed Light starts at 60–6 seconds; Default Heavy starts at 5–0.5 seconds.
+Request budgets, demand, command duration, and retry backoff can defer a read.
+Right-click restores the active queue base without clearing selection.
 
 Use a direct track click when the terminal does not report dragging.
 Use the wheel, `[-]` and `[+]`, or `:rate N` for exact one-step or numeric control.
-The command accepts positions from one to 50; position one requests five seconds and position 50 requests 500 milliseconds.
+The command accepts positions from one to 50. Managed sessions change queue
+cadence only; native compatibility sessions retain the global slider behavior.
 See [Update rate](live-workbench.md#set-the-update-rate) for source limits and saved preferences.
 
 ## Resize a panel by dragging

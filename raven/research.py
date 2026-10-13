@@ -73,6 +73,7 @@ class ResearchHub:
         if isinstance(interval, bool) or not isinstance(interval, (int, float)) or not 1 <= interval <= 86400:
             raise ValueError("research.interval must be finite and between 1 and 86400 seconds")
         self.interval = float(interval)
+        self._managed_refresh_interval = None
         from .refresh_rate import validate_multiplier
         self.polling_multiplier = validate_multiplier(cfg.get("polling_multiplier", 1))
         self.lock = threading.RLock()
@@ -148,6 +149,29 @@ class ResearchHub:
         with self.lock:
             self.polling_multiplier = value
 
+    def set_refresh_interval(self, seconds, *, managed=False):
+        """Apply a live read cadence without discarding a cache or active reader."""
+        import math
+        if type(seconds) not in (int, float) or not math.isfinite(seconds) or not .1 <= seconds <= 31536000:
+            raise ValueError("Research refresh must be finite and between .1 and 31536000 seconds")
+        with self.lock:
+            self.interval = float(seconds)
+            self._managed_refresh_interval = float(seconds) if managed else None
+
+    def _refresh_interval(self, rate):
+        from .metric_sampling import interval
+        remote = bool(getattr(self.files, "remote", False))
+        requested = interval(self.interval, self.polling_multiplier, rate, source="research", file=True,
+                             remote=remote)
+        if self._managed_refresh_interval is not None:
+            requested = max(.5, requested, self._managed_refresh_interval)
+        # Remote metadata cannot safely be sampled faster than its transport.
+        # A profile change affects the next read without replacing file handles.
+        if remote:
+            from .refresh_rate import REMOTE_FILE_FLOOR
+            requested = max(REMOTE_FILE_FLOOR, requested)
+        return requested
+
     def set_metric_sampling(self, requests):
         """Replace bounded metric-file polling demands without starting reads."""
         from .metric_sampling import MAX_REQUESTS, source, validate_rate
@@ -162,22 +186,19 @@ class ResearchHub:
             self.metric_sampling = accepted
 
     def refresh_interval(self, context=None):
-        from .metric_sampling import interval, research_matches
+        from .metric_sampling import research_matches
         with self.lock:
             rate = max((value for identity, value in self.metric_sampling.items()
                         if context and context.get("view") == "experiment" and research_matches(identity, context)), default=1)
-            return interval(self.interval, self.polling_multiplier, rate, source="research", file=True,
-                            remote=bool(getattr(self.files, "remote", False)))
+            return self._refresh_interval(rate)
 
     def sampling_interval(self, identity):
         """Display the shared file-reader cadence, separate from producer timing."""
-        from .metric_sampling import interval
         with self.lock:
             rate = max((value for key, value in self.metric_sampling.items()
                         if key[1] == identity[1] and key[4:] == identity[4:]
                         and key[7] == self.generation), default=1)
-            return interval(self.interval, self.polling_multiplier, rate, source="research", file=True,
-                            remote=bool(getattr(self.files, "remote", False)))
+            return self._refresh_interval(rate)
 
     def start_task(self, fn, completion):
         """Explicit UI commands share the single worker, without an unbounded queue."""

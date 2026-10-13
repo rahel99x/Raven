@@ -122,12 +122,15 @@ schema identifiers require explicit conversion before use by this implementation
 | Heavy worker | Executes supported admitted tasks after target and resource ownership are verified. |
 | Project evidence | Associates logs, metrics, results, and artifacts with an exact job attempt. |
 
-Compute admission and collection permission are independent. A larger
-allocation does not increase scheduler polling rates. The starter Slurm policy
-uses a 60-second queue interval and a 300-second history interval; controls
-report both requested and admitted intervals. Automatic GPU steps and weather
-probes are disabled. Existing telemetry and project metric files remain
-available.
+Compute admission and collection permission are independent. Light starts with
+a 60-second queue interval and a 300-second history interval. Active Heavy uses
+its selected telemetry preset; Default requests queue reads every five seconds
+and live CPU/memory reads every two seconds. **Setup → Heavy telemetry update
+settings** applies presets and Custom values without a restart. The queue slider
+changes queue cadence independently. Site policy and request budgets still apply;
+automatic GPU steps and weather probes remain disabled. See
+[telemetry updates](docs/guides/telemetry-updates.md) for effective intervals,
+retained recordings, and saved preferences.
 
 The Light/Heavy toolbar control and **View → Compute allocation** expose
 allocation review, request, cancellation, and release. Pending and draining

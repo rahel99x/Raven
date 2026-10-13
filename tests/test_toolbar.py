@@ -729,6 +729,73 @@ def test_global_slider_every_visible_drag_position_changes_poll_interval():
     assert R.cadence(app, "jobs") == .5 and not app.toolbar_state["dragging"]
 
 
+@pytest.mark.parametrize("launcher,slow,fast", [("raven", 60., 6.), ("ravenl", 60., 6.), ("ravenh", 5., .5)])
+def test_managed_launcher_slider_updates_real_scheduler_and_label(launcher, slow, fast, tmp_path, monkeypatch):
+    """Exercise the public launch path with allocation/transport IO replaced."""
+    from raven import cli, raven_config, raven_launch, telemetry_settings
+    from raven.sampler import Sampler
+
+    monkeypatch.setattr(raven_launch, "resolve", lambda *args, **kwargs: raven_config.resolve(
+        launcher=kwargs["launcher"], env={"HOME": str(tmp_path)}, system_policy_paths=[]))
+    manager = SimpleNamespace(shutdown=lambda: None, snapshot=lambda: {"state": "heavy", "mode": "heavy"})
+    monkeypatch.setattr(raven_launch, "_allocation", lambda _: manager)
+    monkeypatch.setattr(raven_launch, "configure_placement", lambda *_: None)
+    monkeypatch.setattr(raven_launch, "_wait_heavy", lambda *_: None)
+    monkeypatch.setattr("raven.sampler.time.time", lambda: 1000.)
+    seen = []
+
+    def dashboard(argv, *, raven, raven_allocation):
+        app = instance()
+        app.cfg = Config(raven_config.to_raven_config(raven))
+        app.cfg.data["raven"]["collection"]["jitter_fraction"] = 0.
+        app.raven_allocation_manager = raven_allocation
+        app.raven_ui_state = {"snapshot": {"state": "heavy" if raven_allocation else "light",
+                                            "mode": "heavy" if raven_allocation else "light"}}
+        app.research = SimpleNamespace(polling_multiplier=1, set_refresh_interval=lambda _, **kwargs: None)
+        worker = Sampler(SimpleNamespace(), Store(persist=False), app.cfg["intervals"], [],
+                         collection=app.cfg["raven"]["collection"])
+        app.sampler = worker
+        try:
+            telemetry_settings.sync(app)
+            R.set_multiplier(app, 1)
+            worker.health("jobs").calls = 1
+            worker.health("jobs").last_ok = 1000.
+            worker.last_run["jobs"] = 1000.
+            T.render_bar(views(), app, 140)
+            assert click(app, target(app, "rate"))
+            readings, labels, geometries = [], [], []
+            for position in range(1, 51):
+                assert R.multiplier(app) == position
+                row = T.render_bar(views(), app, 140)
+                actual = worker.effective_interval("jobs")
+                assert R.candidate_cadence(app, "jobs", position) == pytest.approx(actual)
+                labels.append(T._polling_label(app))
+                assert labels[-1] in L.row_text(row)
+                readings.append(actual)
+                geometries.append([(hit[1], hit[2], hit[3], hit[4]) for hit in app.toolbar_state["hits"]])
+                assert app.research.polling_multiplier == app.logs.polling_multiplier == 1
+                assert not worker.due("jobs", 1000. + actual - .000001)
+                assert worker.due("jobs", 1000. + actual + .000001)
+                T.handle_key(app, "right")
+            assert readings[0] == slow and readings[-1] == fast
+            assert all(left > right for left, right in zip(readings, readings[1:]))
+            assert len(set(labels)) == 50
+            assert all(geometry == geometries[0] for geometry in geometries)
+            assert T.handle_key(app, "home")
+            assert worker.effective_interval("jobs") == slow
+            assert T.handle_key(app, "end")
+            assert worker.effective_interval("jobs") == fast
+            seen.append(launcher)
+            return 0
+        finally:
+            worker.shutdown()
+
+    monkeypatch.setattr(cli, "main", dashboard)
+    entry = raven_launch.heavy_main if launcher == "ravenh" else raven_launch.light_main
+    assert entry([]) == 0
+    assert seen == [launcher]
+
+
 def test_toolbar_uses_live_sampler_queue_cadence_not_stale_configuration():
     app = instance()
     app.sampler = SimpleNamespace(intervals={"jobs": 10.0},
@@ -839,6 +906,6 @@ def test_actual_curses_paint_keeps_global_bar_visible_above_tiny_confirmation(te
     # last; this verifies the final cells, rather than only renderer call order.
     top = "".join(window.rows[0])
     assert ("File" in top and "Edit" in top) or (" F " in top and " E " in top)
-    assert "5s" in top and "Light" in top
+    assert "60s" in top and "Light" in top
     assert top.lstrip().startswith("x")
     assert not app.command_state["confirm_controls_visible"]

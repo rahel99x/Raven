@@ -311,7 +311,10 @@ def run_command(app, args):
     state = initialize(app)
     parts = list(args[1:]) or ["overview"]
     action = parts[0]
-    if action in ("research", "analytics") and len(parts) == 2:
+    if parts == ["updates"]:
+        from .telemetry_settings_ui import open_settings
+        open_settings(app)
+    elif action in ("research", "analytics") and len(parts) == 2:
         _open(app, action + "." + parts[1])
     elif action in ("overview", "allocation", "project", "exports", "telemetry", "installation") and len(parts) == 1:
         _open(app, action)

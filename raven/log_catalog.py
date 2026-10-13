@@ -352,7 +352,10 @@ class LogCatalog:
                 self.active = key
             entry = self.cache.get(key)
             from .refresh_rate import file_interval
-            interval = file_interval(self.ttl, self.polling_multiplier, remote=bool(getattr(self.files, "remote", False)))
+            policy = getattr(getattr(self.files, "ledger", None), "config", None)
+            base = policy["log_follow_seconds"] if policy is not None else self.ttl
+            interval = file_interval(base, self.polling_multiplier, remote=bool(getattr(self.files, "remote", False)))
+            interval = max(interval, float(getattr(self.files, "min_refresh", 0.)))
             if not force and entry and time.monotonic() - entry[0] < interval:
                 self.cache.move_to_end(key)
                 return entry[1]

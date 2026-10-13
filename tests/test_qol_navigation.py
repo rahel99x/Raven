@@ -284,6 +284,37 @@ def test_settings_polling_caption_and_help_show_requested_domain(native_polling,
     assert not any("Sample interval · " + source in text for source in ("live", "gpu", "trace"))
 
 
+def test_managed_settings_open_shared_telemetry_controls_without_legacy_interval_edits(dashboard, monkeypatch):
+    from raven.raven_config import DEFAULTS
+    app, views, store = dashboard
+    app.cfg.set("raven", {**copy.deepcopy(DEFAULTS), "managed": True})
+    original = dict(app.cfg["intervals"])
+    original_gpu = app.gpu
+    N.restore(app, {"settings": {"intervals.live": 1, "intervals.jobs": .5,
+                                  "gpu_sampling": not original_gpu}})
+    assert app.cfg["intervals"] == original and app.gpu == original_gpu
+    N._open_settings(app)
+    keys = N._setting_keys(app)
+    assert not any(key.startswith("intervals.") or key == "gpu_sampling" for key in keys)
+    state = N.initialize(app)
+    assert state["polling_preview_backup"] is None
+    state["cursor"] = keys.index(N.TELEMETRY_SETTING)
+    rows = N.overlay(views, store.snapshot(), app, 140, 30)
+    text = "\n".join(row_text(row) for _, _, row in rows)
+    assert "Telemetry updates" in text and "Enter opens live telemetry" in text
+    commands = []
+    monkeypatch.setattr(app, "run_command", commands.append)
+    N.handle_key(app, "enter")
+    assert commands == ["telemetrysettings"]
+    assert state["preview_backup"] is not None
+    N.handle_key(app, "D")
+    assert N.TELEMETRY_SETTING in state["draft"]
+    assert not any(key.startswith("intervals.") for key in state["draft"])
+    state["cursor"] = keys.index("theme")
+    N.handle_key(app, "enter")
+    assert N.TELEMETRY_SETTING not in N.save(app)["settings"]
+
+
 def test_keybinding_conflicts_test_and_apply_are_real(dashboard):
     app, _, _ = dashboard
     app.run_command("keybindings")

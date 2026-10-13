@@ -18,6 +18,8 @@ import socket
 import stat
 import sys
 
+from .telemetry_profiles import DEFAULTS as TELEMETRY_DEFAULTS, PRESETS, validate_custom
+
 SCHEMA = "raven.config/v1"
 POLICY_SCHEMA = "raven.site-policy/v1"
 MAX_CONFIG = 262144
@@ -39,6 +41,7 @@ DEFAULTS = {
         "queue_seconds": 60, "starts_seconds": 120, "history_seconds": 300, "inventory_seconds": 300,
         "details_seconds": 60, "live_statistics": "selected-on-demand", "live_seconds": 60,
         "gpu": "existing-telemetry", "weather_probes": False, "account_seconds": 900, "log_follow_seconds": 5,
+        "research_seconds": 5, "trace_seconds": 1,
         "idle_after_seconds": 300, "idle_interval_factor": 5, "jitter_fraction": .20, "max_inflight": 2,
         "controller_requests_per_minute": 12, "controller_burst": 2, "accounting_requests_per_minute": 2,
         "step_launches_per_minute": 6, "step_launch_interval_seconds": 10, "statistics_requests_per_minute": 4,
@@ -56,6 +59,7 @@ DEFAULTS = {
                   "enforcement": "best-available", "cpu_seconds": 3600, "wall_seconds": 3600,
                   "input_bytes": 8388608, "output_bytes": 8388608}},
     "storage": {"state_dir": "", "coordination_dir": "auto-host-local", "durable_results": ""},
+    "telemetry": copy.deepcopy(TELEMETRY_DEFAULTS),
     "ui": {"theme": "terminal", "show_execution_target": True, "show_observation_age": True,
            "ascii": False, "animations": True, "density": "comfortable", "worker_mode": "multi"},
     "profiles": {},
@@ -65,6 +69,7 @@ DESKTOP = {"profile": "desktop", "site": {"kind": "desktop"}, "connection": {"tr
            "allocation": {"adapter": "desktop"}, "collection": {"slurm_enabled": False}}
 
 _ENUMS = {
+    "telemetry.preset": set(PRESETS),
     "site.kind": {"slurm", "desktop"}, "connection.transport": {"none", "local", "ssh"},
     "execution.startup": {"light", "heavy"}, "execution.heavy_target": {"slurm", "local"},
     "execution.desktop_execution": {"disabled", "explicit"}, "execution.on_allocation_end": {"light"},
@@ -193,6 +198,12 @@ def validate(document, *, partial=False):
                 if path == "schema" and item != SCHEMA:
                     raise ValueError("Expected " + SCHEMA)
     walk(document, DEFAULTS)
+    def telemetry_checks(value):
+        if "custom" in value.get("telemetry", {}):
+            validate_custom(value["telemetry"]["custom"], partial=True)
+        for profile in value.get("profiles", {}).values():
+            telemetry_checks(profile)
+    telemetry_checks(document)
     if not partial:
         if document.get("schema") != SCHEMA:
             raise ValueError("Expected " + SCHEMA)
@@ -376,6 +387,7 @@ class Resolved:
     source: str = ""
     legacy_source: str = ""
     legacy_profile: str = ""
+    source_telemetry: dict | None = None
 
     @property
     def digest(self):
@@ -498,8 +510,11 @@ def resolve(config_path=None, *, site=None, legacy_profile=None, launcher="light
     for rule in restrictions:
         if "path" in rule:
             origins[rule["path"]] = "site restriction"
+    source_telemetry = merge(TELEMETRY_DEFAULTS, merge(supplied.get("telemetry", {}),
+        supplied.get("profiles", {}).get(profile_name, {}).get("telemetry", {})))
     return Resolved(data, origins, tuple(restrictions), tuple(warnings), source, legacy_source,
-                    profile_name if legacy_source and profile_name in supplied.get("profiles", {}) else "")
+                    profile_name if legacy_source and profile_name in supplied.get("profiles", {}) else "",
+                    source_telemetry)
 
 
 def admission_config(config, *, system_policy_paths=None):
@@ -645,6 +660,11 @@ def schema_document():
                 output[name] = {"const": False} if path in _FALSE_ONLY else {"type": "boolean"}
             elif path == "collection.step_launch_interval_seconds":
                 output[name] = {"type": "number", "minimum": .1, "maximum": 31536000}
+            elif path.startswith("telemetry.custom."):
+                from .telemetry_profiles import BY_KEY
+                field = BY_KEY[name]
+                output[name] = {"type": "integer" if field["type"] == "int" else "number",
+                                "minimum": field["min"], "maximum": field["max"]}
             elif isinstance(value, (int, float)):
                 kind = "number" if isinstance(value, float) or path.endswith("_seconds") else "integer"
                 lower = 0 if path == "allocation.gpus" or path.endswith(("_per_minute", "jitter_fraction")) else .001 if kind == "number" else 1

@@ -327,8 +327,11 @@ Space changes a Boolean value.
 Use `D` to preview defaults.
 Enter applies the draft.
 Esc cancels the draft.
-The Polling interval row controls the native global request from five seconds to 500 milliseconds.
-Separate live, GPU, and trace interval rows are not shown.
+The Polling interval row changes the queue slider in managed sessions.
+Its endpoints follow the active mode and site policy.
+Use **Setup → Heavy telemetry update settings** for live reader presets and
+Custom values; see [telemetry updates](guides/telemetry-updates.md).
+Native compatibility sessions retain the global five-second to 500-millisecond request.
 Esc restores the exact previous polling position; unaccepted previews are not saved.
 See [Settings](guides/navigation.md#change-settings-with-a-preview) for source bases and launch overrides.
 

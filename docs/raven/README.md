@@ -192,7 +192,10 @@ under the user's control. See [terminal controls](../guides/terminal-fusion.md).
 ## Collection and retention
 
 Compute limits and collection permission are separate. The starter Slurm profile
-uses these intervals and rolling ceilings:
+uses these Light intervals and rolling ceilings. Active Heavy applies the selected
+[telemetry preset](../guides/telemetry-updates.md); its Default requests queue
+reads every five seconds and live CPU/memory reads every two seconds. Presets
+and Custom values change live through **Setup → Heavy telemetry update settings**.
 
 | Source or resource | Default |
 | --- | ---: |
@@ -202,7 +205,9 @@ uses these intervals and rolling ceilings:
 | Nodes and partitions | 300 s |
 | Selected details/live statistics | 60 s, on demand |
 | Account/share | 900 s |
-| Log follow | At least 5 s |
+| Log follow | 5 s |
+| Research files | 5 s |
+| Retained telemetry | 1 s local; at least 1.5 s remote |
 | Controller attempts | 12/minute, burst 2 |
 | Accounting attempts | 2/minute |
 | Managed Slurm step attempts | At least 10 s apart; 6 per rolling minute |
@@ -222,9 +227,11 @@ Immutable Store publications have a separate 128-entry, 24 MiB guard. Archive
 limits apply to each instance's owned storage; they are not a cross-process disk
 quota. Light's two-worker ceiling applies across its background lanes combined.
 
-Sliders cannot bypass these floors. Configured slow values remain slow; `60 s`
-does not become `5 s`. Sampling, display windows, and plot animation are distinct.
-Manual refresh, reconnect, and Heavy mode do not reset allowances. Failures count
+The queue slider adjusts the active queue base through a tenfold faster request;
+the starter Light range is 60–6 seconds. Heavy presets control the other readers
+and budgets. Mandatory site floors remain effective, and the controls show their
+admitted intervals. Sampling, display windows, and plot animation are distinct.
+Manual refresh, reconnect, and Heavy mode do not reset used allowances. Failures count
 as attempts. The first visible snapshot is requested immediately, including when
 a previously unopened view needs its first sample. Shared admission still applies.
 Periodic collections use jitter, idle intervals, demand gating, and endpoint

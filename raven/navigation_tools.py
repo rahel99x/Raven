@@ -383,6 +383,7 @@ SETTING_LABELS = {"theme": "Theme", "workspace.density": "Density", "color": "Te
                   "bell": "Terminal bell", "mouse": "Mouse input", "gpu_sampling": "GPU sampling",
                   "clipboard.osc52": "Terminal clipboard (OSC 52)", "clipboard.tools": "Local clipboard tools",
                   "intervals.jobs": "Polling interval (seconds)"}
+TELEMETRY_SETTING = "telemetry_settings"
 SETTING_HELP = {"theme": "Preview colors and contrast. Reader uses ASCII and static feedback.",
                 "color": "Allow terminal colors; disable for a plain display.",
                 "workspace.density": "Preview panel spacing. Compact shows more rows; focused enlarges the active panel.",
@@ -394,8 +395,14 @@ SETTING_HELP = {"theme": "Preview colors and contrast. Reader uses ASCII and sta
                 "intervals.jobs": "Global native polling request: 0.5 to 5 seconds. Changes update Jobs, CPU, GPU and trace polling; source limits and per-metric requests still apply."}
 
 
+def _managed_settings(app):
+    return bool(app.cfg.get("raven", {}).get("managed"))
+
+
 def _setting_keys(app):
     from .refresh_rate import NATIVE_SOURCES
+    if _managed_settings(app):
+        return [key for key in SETTING_LABELS if key not in ("gpu_sampling", "intervals.jobs")] + [TELEMETRY_SETTING]
     return list(SETTING_LABELS) + ["intervals." + name for name in app.cfg["intervals"]
                                  if name not in NATIVE_SOURCES][:32]
 
@@ -411,6 +418,8 @@ def _valid_setting(key, value):
 
 
 def _read_setting(app, key):
+    if key == TELEMETRY_SETTING:
+        return "Open profiles and Custom settings"
     if key == "intervals.jobs":
         from .refresh_rate import cadence
         return cadence(app, "jobs")
@@ -434,6 +443,10 @@ def _apply_settings(app, values, *, polling=True):
     locked = _locked_settings(app)
     applied = {}
     for key, value in values.items():
+        if _managed_settings(app) and (key == "gpu_sampling" or isinstance(key, str) and key.startswith("intervals.")):
+            # Old generic settings snapshots must not replace the live
+            # profile or bypass its shared collector and site policy.
+            continue
         if key in locked or not _valid_setting(key, value):
             continue
         if key.startswith("intervals.") and key.split(".", 1)[1] not in app.cfg["intervals"]:
@@ -466,7 +479,7 @@ def _apply_settings(app, values, *, polling=True):
 def _open_settings(app):
     state = initialize(app)
     from .refresh_rate import multiplier
-    state["polling_preview_backup"] = multiplier(app)
+    state["polling_preview_backup"] = None if _managed_settings(app) else multiplier(app)
     state["preview_backup"] = {key: _read_setting(app, key) for key in _setting_keys(app)}
     state["draft"] = dict(state["preview_backup"])
     _open(app, "settings_editor")
@@ -476,7 +489,10 @@ def _settings_default(app):
     from .config import Config, DEFAULTS
     defaults = Config(DEFAULTS)
     values = {key: defaults.get(key, True) for key in _setting_keys(app)}
-    values["intervals.jobs"] = 5.0
+    if _managed_settings(app):
+        values[TELEMETRY_SETTING] = _read_setting(app, TELEMETRY_SETTING)
+    else:
+        values["intervals.jobs"] = 5.0
     values["mouse"] = True
     for key in _locked_settings(app):
         if key in values:
@@ -487,6 +503,9 @@ def _settings_default(app):
 def _settings_key(app, key):
     state = initialize(app)
     keys = _setting_keys(app)
+    if keys[state["cursor"]] == TELEMETRY_SETTING and key in ("left", "right", "space", "enter"):
+        app.run_command("telemetrysettings")
+        return
     if key == "esc":
         _apply_settings(app, state["preview_backup"] or {})
         if state.get("polling_preview_backup") is not None and "intervals.jobs" not in _locked_settings(app):
@@ -497,7 +516,8 @@ def _settings_key(app, key):
         app.mode = state["return_mode"]
         app.say("Settings preview cancelled")
     elif key == "enter":
-        state["settings"].update({key: value for key, value in state["draft"].items() if key not in _locked_settings(app)})
+        state["settings"].update({key: value for key, value in state["draft"].items()
+                                  if key != TELEMETRY_SETTING and key not in _locked_settings(app)})
         _apply_settings(app, state["draft"])
         state["preview_backup"] = None
         state["polling_preview_backup"] = None
@@ -1046,11 +1066,13 @@ def overlay(views, snap, app, width, height):
     if app.mode == "settings_editor":
         keys = _setting_keys(app)
         locked = _locked_settings(app)
-        rows = [(SETTING_LABELS.get(key, key.replace("intervals.", "Sample interval · ")),
+        rows = [("Telemetry updates" if key == TELEMETRY_SETTING else SETTING_LABELS.get(key, key.replace("intervals.", "Sample interval · ")),
                  (f"{state['draft'][key]:.3g}" if key == "intervals.jobs" else str(state["draft"][key]))
                  + (" [launch option]" if key in locked else "")) for key in keys]
         field = keys[min(state["cursor"], len(keys) - 1)]
         explanation = SETTING_HELP.get(field, "Seconds between existing source samples; from 1 to 3600 seconds.")
+        if field == TELEMETRY_SETTING:
+            explanation = "Enter opens live telemetry profiles and Custom settings. The toolbar slider changes queue polling."
         if field in locked:
             explanation = "This value is fixed by the launch options or environment. Restart Raven to change it."
         return _list_overlay(views, app, width, height, "Settings · live preview", rows, explanation,

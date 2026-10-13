@@ -305,6 +305,8 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
         bind_limits(app, store=store, views=views, logs=app.logs)
         from .raven_diagnostics import bind as bind_diagnostics
         bind_diagnostics(app)
+        from .telemetry_settings import sync as sync_telemetry
+        sync_telemetry(app)
     if args.rate is not None or args.interval:
         from .refresh_rate import set_multiplier
         set_multiplier(app, requested_rate)

@@ -120,6 +120,7 @@ def multiplier(app):
 
 def _sync(app, value):
     cfg = getattr(app, "cfg", None)
+    managed = bool(cfg and cfg.get("raven", {}).get("managed"))
     if cfg is not None:
         setter = getattr(cfg, "set", None)
         if callable(setter):
@@ -130,14 +131,22 @@ def _sync(app, value):
         target = getattr(app, name, None)
         if target is None:
             continue
+        # Managed telemetry profiles own non-queue cadence. A queue slider
+        # gesture must not silently accelerate research scans or log reads.
+        target_value = 1 if managed and name != "sampler" else value
         setter = getattr(target, "set_polling_multiplier", None)
         if callable(setter):
-            setter(value)
+            setter(target_value)
         else:
-            target.polling_multiplier = value
+            target.polling_multiplier = target_value
     catalog = getattr(getattr(app, "logs", None), "catalog", None)
     if catalog is not None:
-        catalog.polling_multiplier = value
+        catalog.polling_multiplier = 1 if managed else value
+    # Managed sources also have policy intervals and shared cache lifetimes.
+    # Updating the legacy multiplier alone left every position pinned to the
+    # original collection floor; publish the live managed request as well.
+    from . import telemetry_settings
+    telemetry_settings.slider_changed(app)
 
 
 def initialize(app):
@@ -191,6 +200,10 @@ def cadence(app, source, base=None):
     effective = getattr(sampler, "effective_interval", None)
     if callable(effective):
         return effective(source)
+    from . import telemetry_settings
+    managed = telemetry_settings.candidate_cadence(app, source, multiplier(app))
+    if managed is not None:
+        return managed
     intervals = getattr(sampler, "intervals", None)
     if isinstance(intervals, dict) and source in intervals:
         base = intervals[source]
@@ -204,11 +217,16 @@ def cadence(app, source, base=None):
 def cadence_summary(app):
     from .metric_sampling import format_interval
     return (f"Jobs poll every {format_interval(cadence(app, 'jobs'), ascii_=True)}; "
-            "source floors and error backoff still apply")
+            "request limits, idle slowdown and error backoff still apply")
 
 
 def candidate_cadence(app, source, value):
     """Slider labels use the same configured cadence and policy as collection."""
+    value = validate_multiplier(value)
+    from . import telemetry_settings
+    managed = telemetry_settings.candidate_cadence(app, source, value)
+    if managed is not None:
+        return managed
     sampler = getattr(app, "sampler", None)
     cfg = getattr(app, "cfg", {}) or {}
     intervals = getattr(sampler, "intervals", cfg.get("intervals", {}))

@@ -846,8 +846,9 @@ MEM EFF are what `seff` reports, computed from sacct.
 
 ## Sources and cadences
 
-The following table gives the starter Raven Slurm profile's collection intervals.
-A configured slower interval or restrictive site policy takes precedence.
+The following table gives the starter Slurm profile's Light intervals before
+queue-slider adjustment. Active Heavy uses its selected telemetry preset.
+Mandatory site limits remain effective.
 Optional sources require their stated capability and explicit activation.
 
 | Source | Command or input | Starter interval / condition |
@@ -864,7 +865,7 @@ Optional sources require their stated capability and explicit activation.
 | `details` | `scontrol show job` for the selected job | 60 s; selected on demand |
 | `weather` | Cluster-wide pending queue and declared `sbatch --test-only` probes | Automatic probes disabled |
 | `budget` | `sreport` usage and `sacctmgr` association limits | Automatic queries disabled |
-| `trace` | Job-produced GPU trace CSV through the selected file backend | 60 s governed read interval; production cadence remains independent |
+| `trace` | Job-produced GPU CSV or exact-run retained recordings | 1 s local by default; at least 1.5 s remote; independent of Slurm polling |
 | `fin_details` | `sacct -j` for selected-job details | 60 s; selected on demand |
 
 Sources use bounded background workers, per-command timeouts, and independent
@@ -872,23 +873,26 @@ failure backoff. A source does not overlap its own collection. Its failure
 appears in Sources and the header without stopping unrelated readers. Terminal
 rendering consumes published snapshots rather than waiting for Slurm.
 
-The global slider and `:rate N` use positions 1–50. Position 1 requests five
-seconds; position 50 requests 500 milliseconds, with logarithmic intermediate
-steps. Per-metric sampling uses positions 1–100 across the same request range.
-These positions do not bypass Raven collection floors, demand gating, retry
-backoff, or command budgets. Manual refresh and a Heavy worker also retain those
-limits. See [collection and retention](raven/README.md#collection-and-retention).
+The queue slider and `:rate N` use positions 1–50. Managed sessions span the
+active queue base through a tenfold faster request, subject to site policy.
+Light starts at 60–6 seconds; Default Heavy starts at 5–0.5 seconds. Heavy presets
+and Custom control other readers independently and apply without a restart.
+Per-metric sampling uses positions 1–100 from five seconds to 500 milliseconds.
+Native compatibility sessions retain the existing global request across that
+range. No control resets used budgets or overrides mandatory source limits.
+See [telemetry updates](guides/telemetry-updates.md) and
+[collection and retention](raven/README.md#collection-and-retention).
 
 **Set** shows a metric's requested interval. **Poll** shows the effective shared
 interval, and Sources' **EVERY** column shows the effective collector cadence.
-A faster global or companion-metric request can leave a metric's effective
+A faster request sharing the same source can leave a metric's effective
 interval unchanged. CPU and memory share a job probe; GPU curves share a GPU
 probe. Requests for the same exact job and source coalesce rather than multiply.
 
 Native readers retain their own lower limits before policy is applied: 0.5 s
-for ordinary local reads and 1.5 s for remote file reads. Raven log follow has a
-five-second floor. Job-produced metrics and CSV traces keep their own writing
-cadence; more frequent reads do not create measurements. Use Sources and the
+for ordinary local reads and 1.5 s for remote file reads. Light log follow starts
+at five seconds; Heavy presets use shorter intervals. Job-produced metrics and
+CSV traces keep their own writing cadence; more frequent reads do not create measurements. Use Sources and the
 sampling inspector to distinguish read interval, source age, and upstream
 measurement cadence. See [Update rate](guides/live-workbench.md#set-the-update-rate)
 for the controls and saved preferences.
@@ -971,23 +975,30 @@ The default is `false`, which retains the existing relevant-partition display.
 The desktop profile enables this option to show idle CPU-only partitions.
 A nonempty `partitions` list still restricts the displayed partition names.
 
-Set `polling_multiplier` to a whole number from 1 to 50.
-The default is `1`.
-The field name is retained for compatibility; its value selects a logarithmic polling position.
-Position one requests five seconds and position 50 requests 500 milliseconds.
-Use `:rate N` or the update slider to change the active preference.
-The saved position uses the same scoped UI state as other preferences.
-A valid saved position overrides the configured launch default.
-An explicit `--rate N` startup argument overrides the saved position.
+Set `polling_multiplier` to a whole number from 1 to 50; the default is `1`.
+The compatibility field name denotes a logarithmic slider position. In managed
+`raven`, `ravenl`, and `ravenh`, it adjusts queue cadence from the active base
+through a tenfold faster request, bounded by site policy. The control displays
+the resulting endpoints. Other readers retain their collection settings.
 
-Positive values in `intervals.jobs`, `intervals.live`, `intervals.gpu`, and `intervals.trace` remain accepted for configuration compatibility.
-They no longer set the actual native polling interval.
-Use `polling_multiplier`, the top-right slider, or Settings → Polling interval to choose that interval.
-`--interval SECONDS` selects the nearest position in the five-second to 500-millisecond domain; `--rate N` takes precedence.
-Settings retains `intervals.jobs` as a compatibility key for its Polling interval row and omits separate editable live, GPU, and trace rows.
-Other `intervals` values still set source bases, adjusted by the global speed ratio and source limits.
-Settings previews take effect during editing. Esc restores the exact previous position, and Enter saves the accepted preference.
-An unaccepted preview is not written to saved UI state.
+Use `:rate N`, the update slider, or Settings → Polling interval to change the
+position. It persists in scoped UI state. A saved value overrides the launch
+default, and explicit `--rate N` overrides the saved position. The compatibility
+`--interval SECONDS` option remains available; explicit `--rate` takes precedence.
+Settings previews apply during editing. Esc restores the exact previous position;
+Enter saves the accepted preference. Unaccepted previews are not persisted.
+
+Native compatibility sessions retain global five-second to 500-millisecond
+requests for ordinary native sources. Slower configured `intervals` bases are
+scaled by at most ten, subject to source limits.
+
+Versioned Raven configuration uses `collection` for base reader intervals and
+`telemetry.preset` / `telemetry.custom` for active Heavy preferences. Open
+**Setup → Heavy telemetry update settings** for live changes and explicit
+configuration saving. `collection.research_seconds` controls Research reads;
+`collection.trace_seconds` controls trace reads independently of queue polling.
+See [telemetry updates](guides/telemetry-updates.md) for exact preset values,
+Custom bounds, retained read diagnostics, and Light/Heavy behavior.
 
 Set `startup_animation = true` to enable the interactive welcome by default.
 Set `smooth_scrolling = true` to enable mouse-wheel viewport interpolation by default.

@@ -109,25 +109,30 @@ The editor provides these settings:
 | GPU sampling | Enable or disable the existing GPU sampler. |
 | Terminal clipboard | Enable or disable OSC 52 clipboard output. |
 | Local clipboard tools | Enable or disable installed clipboard utilities. |
-| Polling interval | Select a global polling request from five seconds to 500 milliseconds, subject to collection policy. |
+| Polling interval | Change the queue slider position using the active mode and site-policy range. |
 | Other source intervals | Change the configured base for sources such as accounting, nodes, and forecast probes. |
 
-The **Polling interval** row selects the nearest position on the top-right control's logarithmic scale.
-It supplies requests for Jobs, live CPU and memory probes, GPU probes, and trace reads.
-Raven applies configured intervals, collection floors, site policy, demand gating, and command budgets before collection.
-Several slider positions can therefore share the same effective interval.
-See [collection policy](../raven/README.md#collection-and-retention) for managed defaults.
-Separate editable rows for live, GPU, and trace intervals are not shown.
-Other source intervals range from 1 to 3,600 seconds.
-Left decreases an interval by 20 percent; Right increases it by 25 percent.
-Polling changes stay within 500 milliseconds to five seconds and snap to the nearest supported position.
-GPU sampling can use a small job allocation step.
-The editor updates the active sampler when you preview a change.
-Cancel restores its previous settings and exact polling position.
-Unaccepted previews are not saved. Enter accepts the draft and saves its polling preference.
-Compatibility configuration values in `intervals.jobs`, `intervals.live`, `intervals.gpu`, and `intervals.trace` remain inputs to the requested cadence.
-Configured intervals slower than five seconds remain slow, and managed collection policy can lengthen them further.
-Use the Polling interval row, `polling_multiplier`, `--rate`, or `--interval` to choose the active native interval.
+The **Polling interval** row selects the nearest position on the top-right
+control's logarithmic scale. For managed `raven`, `ravenl`, and `ravenh`, it changes
+queue cadence while the other readers keep their own settings. The endpoints
+follow the active queue base and mandatory site limits. Native compatibility
+sessions retain the existing global five-second to 500-millisecond request,
+with slower configured bases scaled by at most ten.
+
+Use **Setup → Heavy telemetry update settings** to select Default, Medium, High,
+Ultra, or Custom, and its gear button to edit individual reader intervals and
+budgets. Heavy changes apply live; **Save settings** persists them. See
+[telemetry updates](telemetry-updates.md) for values, mode transitions, and limits.
+Separate live, GPU, and trace interval rows are not shown in the general editor.
+Other source rows range from 1 to 3,600 seconds; Left decreases by 20 percent
+and Right increases by 25 percent. Managed readers follow their collection
+configuration and selected telemetry preset.
+
+The general settings editor previews changes in the active sampler.
+Cancel restores its previous values and exact queue-slider position.
+Unaccepted previews are not saved; Enter accepts the draft and saves the polling
+preference. GPU sampling remains subject to managed collection policy and does
+not enable automatic allocation probes.
 Explicit launch options and environment overrides retain priority over saved settings.
 A locked row shows `[launch option]`.
 Restart Raven with different launch options to change that value.

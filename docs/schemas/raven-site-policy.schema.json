@@ -394,6 +394,16 @@
               "enum": [
                 "cached-only"
               ]
+            },
+            "research_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "trace_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
             }
           }
         },
@@ -619,6 +629,112 @@
           "additionalProperties": {
             "$ref": "#/$defs/profile"
           }
+        },
+        "telemetry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preset": {
+              "enum": [
+                "custom",
+                "default",
+                "high",
+                "medium",
+                "ultra"
+              ]
+            },
+            "custom": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "queue_seconds": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 3600.0
+                },
+                "starts_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "history_seconds": {
+                  "type": "number",
+                  "minimum": 1.0,
+                  "maximum": 86400.0
+                },
+                "inventory_seconds": {
+                  "type": "number",
+                  "minimum": 1.0,
+                  "maximum": 86400.0
+                },
+                "details_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "live_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "account_seconds": {
+                  "type": "number",
+                  "minimum": 5.0,
+                  "maximum": 86400.0
+                },
+                "log_follow_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "research_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "trace_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "controller_requests_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3600
+                },
+                "controller_burst": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                },
+                "accounting_requests_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 600
+                },
+                "statistics_requests_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1200
+                },
+                "filesystem_metadata_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "file_bytes_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1073741824
+                },
+                "local_processes_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -750,6 +866,16 @@
               "maximum": 31536000
             },
             "collection.step_launch_interval_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "collection.research_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "collection.trace_seconds": {
               "type": "number",
               "minimum": 0.1,
               "maximum": 31536000
@@ -1011,6 +1137,91 @@
               "maximum": 1099511627776
             },
             "resources.heavy.output_bytes": {
+              "type": "integer",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "telemetry.custom.queue_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.starts_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.history_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.inventory_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.details_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.live_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.account_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.log_follow_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.research_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.trace_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "telemetry.custom.controller_requests_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "telemetry.custom.accounting_requests_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "telemetry.custom.statistics_requests_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "telemetry.custom.filesystem_metadata_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "telemetry.custom.file_bytes_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1099511627776
+            },
+            "telemetry.custom.local_processes_per_minute": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "telemetry.custom.controller_burst": {
               "type": "integer",
               "minimum": 0.001,
               "maximum": 1099511627776
@@ -1403,6 +1614,16 @@
               "enum": [
                 "cached-only"
               ]
+            },
+            "research_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "trace_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
             }
           }
         },
@@ -1619,6 +1840,112 @@
                 "multi",
                 "single"
               ]
+            }
+          }
+        },
+        "telemetry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preset": {
+              "enum": [
+                "custom",
+                "default",
+                "high",
+                "medium",
+                "ultra"
+              ]
+            },
+            "custom": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "queue_seconds": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 3600.0
+                },
+                "starts_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "history_seconds": {
+                  "type": "number",
+                  "minimum": 1.0,
+                  "maximum": 86400.0
+                },
+                "inventory_seconds": {
+                  "type": "number",
+                  "minimum": 1.0,
+                  "maximum": 86400.0
+                },
+                "details_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "live_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "account_seconds": {
+                  "type": "number",
+                  "minimum": 5.0,
+                  "maximum": 86400.0
+                },
+                "log_follow_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "research_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "trace_seconds": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 3600.0
+                },
+                "controller_requests_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3600
+                },
+                "controller_burst": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                },
+                "accounting_requests_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 600
+                },
+                "statistics_requests_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1200
+                },
+                "filesystem_metadata_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                },
+                "file_bytes_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1073741824
+                },
+                "local_processes_per_minute": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 10000
+                }
+              }
             }
           }
         }
