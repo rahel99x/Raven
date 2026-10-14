@@ -66,6 +66,10 @@ class Notification:
     occurrences: int
     truncated: bool
     diagnosis: Diagnostic
+    run: tuple = ()
+    setting: str = ""
+    resolved_at: float = 0.0
+    resolution: str = ""
 
 
 @dataclass(frozen=True)
@@ -141,7 +145,7 @@ def diagnose(text, source=""):
             "Slurm reported an account, partition, QoS, or association problem.",
             ("The selected account may not have an association with this user, cluster, partition, or QoS.",
              "A lab account can require a different partition or QoS than the user's default account."),
-            ("Open Setup > Heavy allocation settings and refresh the available account associations.",
+            ("Open Setup > Connections and accounts, then Heavy allocation settings, and refresh the available account associations.",
              "Select an allowed account, partition, and QoS combination; ask the lab or cluster administrator if the required association is missing."))
     if any(token in folded for token in ("outside the verified allocation", "verified allocation", "worker host", "allocation expired")):
         return Diagnostic(
@@ -154,7 +158,7 @@ def diagnose(text, source=""):
             "The message concerns GPU collection or a GPU metric source.",
             ("The selected job may not expose GPU accounting counters or an existing GPU trace.",
              "Driver access, an unavailable Slurm GPU plugin, or a missing trace can produce different failures; the exact cause is not established here."),
-            ("Open Setup's CPU, memory, and GPU telemetry guide and inspect the job's available sources.",
+            ("Open Setup > Recordings and metrics and inspect the job's available CPU, memory, and GPU sources.",
              "Check the job's GPU allocation and existing trace configuration. Cluster GPU accounting changes require the cluster administrator."))
     if any(token in folded for token in ("configuration", "config", "invalid json", "toml", "schema")):
         return Diagnostic(
@@ -187,6 +191,8 @@ class NotificationCenter:
         self._keys = {}
         self._sizes = {}
         self._conditions = OrderedDict()
+        self._condition_ids = {}
+        self._condition_observed = {}
         self._counts = dict.fromkeys(SEVERITIES, 0)
         self._bytes = 0
         self._sequence = 0
@@ -209,6 +215,8 @@ class NotificationCenter:
                 self._keys.clear()
                 self._sizes.clear()
                 self._conditions.clear()
+                self._condition_ids.clear()
+                self._condition_observed.clear()
                 self._counts = dict.fromkeys(SEVERITIES, 0)
                 self._bytes = self._evicted = 0
                 self._changed()
@@ -223,11 +231,12 @@ class NotificationCenter:
             return False
         self._index.pop(self._keys.pop(identity), None)
         self._bytes -= self._sizes.pop(identity)
-        self._counts[notice.severity] -= 1
+        if not notice.resolved_at:
+            self._counts[notice.severity] -= 1
         self._changed()
         return True
 
-    def post(self, text, level="error", *, source="", job="", task="", path="", now=None):
+    def post(self, text, level="error", *, source="", job="", task="", path="", run=(), setting="", now=None):
         if level not in ("error", "warning", *SEVERITIES):
             return None
         safe, truncated = message_text(text)
@@ -236,27 +245,38 @@ class NotificationCenter:
             return None
         source, job, task, path = (message_text(value, limit)[0] for value, limit in
                                    ((source, 256), (job, 256), (task, 256), (path, 4096)))
+        run = tuple(run) if isinstance(run, (tuple, list)) and len(run) == 6 else ()
+        if run and (any(not isinstance(value, (str, int, type(None))) for value in run)
+                    or any(isinstance(value, str) and (len(value) > 4096 or not value.isprintable()) for value in run)):
+            run = ()
+        setting = setting if setting in ("connections", "allocation", "refresh", "recordings", "diagnostics") else ""
         # The full message is stored once. Fixed-size keys avoid a second copy
         # and keep the index bounded even for unusually large scheduler errors.
         digest = hashlib.blake2b(safe.encode("utf-8"), digest_size=20).digest()
-        key = severity, source, job, task, path, digest
+        key = severity, source, job, task, path, run, setting, digest
         timestamp = time.time() if now is None else now
         with self._lock:
             self._ensure_scope()
             identity = self._index.get(key)
             if identity is not None:
                 previous = self._notices[identity]
+                if previous.resolved_at:
+                    self._counts[previous.severity] += 1
+                    self._bytes -= len(previous.resolution.encode("utf-8"))
+                    self._sizes[identity] -= len(previous.resolution.encode("utf-8"))
                 self._notices[identity] = replace(previous, last_seen=timestamp,
                                                  occurrences=previous.occurrences + 1,
-                                                 truncated=previous.truncated or truncated)
+                                                 truncated=previous.truncated or truncated,
+                                                 resolved_at=0.0, resolution="")
                 self._notices.move_to_end(identity)
                 self._changed()
                 return identity
             self._sequence += 1
             identity = f"notice-{self._sequence}"
             notice = Notification(identity, severity, safe, source, job, task, path,
-                                  timestamp, timestamp, 1, truncated, diagnose(safe, source))
-            size = len(safe.encode("utf-8")) + sum(len(v.encode("utf-8")) for v in (source, job, task, path))
+                                  timestamp, timestamp, 1, truncated, diagnose(safe, source), run, setting)
+            size = len(safe.encode("utf-8")) + sum(len(v.encode("utf-8")) for v in (source, job, task, path, setting))
+            size += sum(len(str(v).encode("utf-8")) for v in run)
             self._notices[identity] = notice
             self._index[key], self._keys[identity], self._sizes[identity] = identity, key, size
             self._counts[severity] += 1
@@ -267,7 +287,7 @@ class NotificationCenter:
             self._changed()
             return identity
 
-    def condition(self, key, text, *, level="error", source="", job="", task=""):
+    def condition(self, key, text, *, level="error", source="", job="", task="", run=(), setting="", observed_at=None):
         """Publish a changed observed condition; keep a dismissed failure quiet."""
         # Ordinary unchanged errors compare immutable strings without formatting
         # or hashing. Unusually large messages use fixed-size keys instead of a
@@ -276,20 +296,60 @@ class NotificationCenter:
         raw = raw[:MAX_MESSAGE_BYTES]
         evidence = raw if len(raw) <= CONDITION_INLINE_CHARS else hashlib.blake2b(
             raw.encode("utf-8", "replace"), digest_size=20).digest()
-        signature = evidence, level, str(source)[:256], str(job)[:256], str(task)[:256]
+        signature = evidence, level, str(source)[:256], str(job)[:256], str(task)[:256], tuple(run), setting
         with self._lock:
             self._ensure_scope()
             if not raw.strip():
                 self._conditions.pop(key, None)
+                self._condition_ids.pop(key, None)
+                self._condition_observed.pop(key, None)
                 return None
             previous = self._conditions.get(key)
             if previous == signature:
+                if observed_at is not None and observed_at > self._condition_observed.get(key, 0):
+                    self._condition_observed[key] = observed_at
+                    # Count a newly observed failed attempt once, not a repaint.
+                    identity = self._condition_ids.get(key)
+                    if identity in self._notices:
+                        return self.post(text, level, source=source, job=job, task=task,
+                                         run=run, setting=setting, now=observed_at)
                 return None
             self._conditions[key] = signature
             self._conditions.move_to_end(key)
             while len(self._conditions) > MAX_CONDITIONS:
-                self._conditions.popitem(last=False)
-            return self.post(text, level, source=source, job=job, task=task)
+                expired, _ = self._conditions.popitem(last=False)
+                self._condition_ids.pop(expired, None)
+                self._condition_observed.pop(expired, None)
+            identity = self.post(text, level, source=source, job=job, task=task, run=run, setting=setting)
+            self._condition_ids[key] = identity
+            self._condition_observed[key] = observed_at or time.time()
+            return identity
+
+    def resolve_condition(self, key, evidence, *, observed_at):
+        """Only a producer's newer successful observation resolves its episode."""
+        if not evidence or not isinstance(observed_at, (int, float)):
+            return False
+        with self._lock:
+            self._ensure_scope()
+            identity = self._condition_ids.get(key)
+            item = self._notices.get(identity)
+            if observed_at <= self._condition_observed.get(key, 0):
+                return False
+            if item is not None and not item.resolved_at:
+                resolution = message_text(evidence, 4096)[0]
+                self._notices[identity] = replace(item, resolved_at=observed_at, resolution=resolution)
+                size = len(resolution.encode("utf-8"))
+                self._sizes[identity] += size
+                self._bytes += size
+                self._counts[item.severity] -= 1
+                while self._bytes > MAX_RETAINED_BYTES:
+                    self._remove(next(iter(self._notices)))
+                    self._evicted += 1
+                self._changed()
+            self._conditions.pop(key, None)
+            self._condition_ids.pop(key, None)
+            self._condition_observed.pop(key, None)
+            return item is not None
 
     def retain_conditions(self, keys):
         """A vanished/disabled source ends its episode, allowing a future alert."""
@@ -297,6 +357,8 @@ class NotificationCenter:
             for key in tuple(self._conditions):
                 if key not in keys:
                     del self._conditions[key]
+                    self._condition_ids.pop(key, None)
+                    self._condition_observed.pop(key, None)
 
     def snapshot(self):
         with self._lock:
@@ -356,14 +418,28 @@ def sync(app, snap):
         value = item.get if isinstance(item, dict) else lambda key, default: getattr(item, key, default)
         key = ("health", str(name)[:256])
         keys.add(key)
-        center.condition(key, value("error", "") if value("enabled", True) else "", source=str(name))
+        enabled, error = value("enabled", True), value("error", "")
+        if enabled and not error and value("last_ok", 0) and value("last_ok", 0) >= value("last_try", 0):
+            center.resolve_condition(key, "The source completed a newer successful refresh.", observed_at=value("last_ok", 0))
+        if enabled and error:
+            center.condition(key, error, source=str(name), setting="refresh",
+                             observed_at=value("last_try", 0) or None)
+        else:
+            center.condition(key, "")  # End suppression; this does not claim recovery.
     other = (("collection", snap.get("error", "") if isinstance(snap, dict) else ""),
              ("logs", getattr(getattr(app, "logs", None), "error", "")),
              ("compute", getattr(app, "raven_ui_state", {}).get("snapshot", {}).get("error", "")))
     for name, error in other:
         key = ("cached", name)
         keys.add(key)
-        center.condition(key, error, source=name)
+        setting = "allocation" if name == "compute" else "connections" if name == "collection" else ""
+        run = ()
+        if name == "logs":
+            binding = getattr(app, "project_state", {}).get("binding") or {}
+            if binding and binding.get("job_id") == getattr(app, "log_job", None):
+                from .run_home import identity
+                run = identity(binding)
+        center.condition(key, error, source=name, setting=setting, run=run)
     engine = getattr(getattr(app, "store", None), "alerts", None)
     # The rule engine already evaluated conditions and retained its last fifty
     # events. Reading these records never evaluates rules or sends notifications.
@@ -381,5 +457,8 @@ def sync(app, snap):
         key = ("rule-error", str(name)[:256])
         keys.add(key)
         center.condition(key, error, source="alert rule: " + str(name))
+    # Other producers retain their own exact-run episodes. Source disappearance
+    # or disabling is not evidence of recovery and must not mark alerts resolved.
+    keys.update(key for key in center._conditions if isinstance(key, tuple) and key[0] in ("run-home", "run-home-source"))
     center.retain_conditions(keys)
     return center.snapshot()

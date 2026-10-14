@@ -246,6 +246,9 @@ def test_setup_rendered_account_save_updates_real_cli_profile_without_allocating
 
         app.run_command("menu Setup")
         paint()
+        y, left, _, _ = next(hit for hit in app.toolbar_state["menu_hits"] if hit[3] == "setup-connections")
+        assert workbench.handle_mouse(app, y, left)
+        paint()
         y, left, _, _ = next(hit for hit in app.toolbar_state["menu_hits"] if hit[3] == "setup-allocation")
         assert workbench.handle_mouse(app, y, left)
         assert app.mode == "setup"

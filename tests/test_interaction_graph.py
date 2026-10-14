@@ -476,6 +476,10 @@ def test_actual_controller_all_secondary_view_buttons_mouse_activate_and_keep_fo
     app.views_ref = views
     app.enter_tab(tab)
     choices = dict({"nodes": NODES_VIEWS, "analytics": ANALYTICS_VIEWS, "research": RESEARCH_VIEWS}[tab])
+    if tab == "research":
+        # Experienced users can pin every workspace and retain direct buttons.
+        from raven import toolbar
+        toolbar.restore(app, {"favorites": ["research:" + key for key in choices]})
     try:
         for key in choices:
             views.compose(store.snapshot(), app, width, 60)

@@ -37,7 +37,7 @@ ravenl
 ```
 
 Setup checks local command availability, offers environment and account choices,
-and reviews configuration before saving. **Setup → Getting started** opens the
+and reviews configuration before saving. **Setup → Installation and diagnostics → Getting started** opens the
 dashboard workflow. Follow [Getting started](guides/getting-started.md) for a
 local Slurm workstation, a cluster submission host, or explicit standalone
 execution.
@@ -136,7 +136,7 @@ account, or partition. A workstation with Slurm already installed uses this
 mode. The installation does not install or start Slurm services.
 
 For guided configuration, run `raven setup`. Save and select named sites through
-**Setup → Sites and lab profiles**. A profile can use local Slurm on either a
+**Setup → Connections and accounts → Sites and lab profiles**. A profile can use local Slurm on either a
 workstation or a cluster submission host, an SSH monitoring connection, or
 explicit standalone execution. Saving a profile affects future launches and
 does not switch the active connection or request compute.

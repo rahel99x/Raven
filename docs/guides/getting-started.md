@@ -33,7 +33,7 @@ raven setup
 ```
 
 Inside Raven, the same workflow is available through **Setup → Getting
-started**. Use **Setup → Sites and lab profiles** to return to saved connection
+started**. Use **Setup → Connections and accounts → Sites and lab profiles** to return to saved connection
 and account choices.
 
 A first bare interactive launch of `raven`, `ravenl`, or `ravenh` without an
@@ -160,24 +160,31 @@ automatic switch to standalone execution.
 
 ## 5. Inspect the run and add measurements
 
-After submission, **Open recorded run** selects that exact attempt. If its
-files are still initializing, retry that action after startup. Use Jobs to
+After submission, **Open run home** follows that exact attempt through startup,
+completion, and results. If its files are still initializing, its recovery
+action can retry the read without resubmitting. Use Jobs to
 inspect queue state and logs, then select the exact recorded run to
 inspect its retained evidence. A recording is separate from a live scheduler
 query: retained CPU/memory can be available even when GPU measurements are not.
 
 Lifecycle and execution identity need no application changes. Scientific values
 such as loss, accuracy, residual, and throughput need real application output.
-Use **Setup → Project launch and recording defaults** to bind supported files
+Use **Setup → Launch defaults** to bind supported files
 and save named launch recipes. The [reporting guide](automated-reporting-exports.md#4-add-scientific-measurements-when-needed)
 provides copyable helper calls and exact JSONL examples; the
 [metric catalog](../reference/project-reporting-metrics.md) lists the sources
 required by every Research and Analytics view.
 
+Use **Setup → Recordings and metrics → Connect data** to validate an existing
+metrics file, preview actual values, or copy a Bash/Python application hook.
+CPU/memory, GPU, scientific metrics, and tracing show independent readiness.
+
 Heavy is optional for submitting a job. If you need its supported analysis
 capabilities, review `ravenh --plan` or the dashboard's compute controls before
 requesting it. The scientific job and Raven's Heavy allocation have independent
-lifecycles and billing settings.
+lifecycles and billing settings. Configured interactive `ravenh` opens the
+dashboard while its worker queues and starts. The Heavy status control provides
+progress, cancellation, and recovery; job inspection remains available.
 
 Closing Raven does not cancel an accepted workload. For a standalone launch
 from the dashboard, the receipt identifies the local supervisor and retained

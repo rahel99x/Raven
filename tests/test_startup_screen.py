@@ -143,14 +143,14 @@ def test_actual_loop_skips_welcome_for_noninteractive_or_preferences(terminal, r
 def test_first_mouse_click_dismisses_and_opens_the_clicked_page(terminal):
     active_at_click = []
 
-    def click_cluster():
+    def click_history():
         active_at_click.append(startup.active(terminal.app))
-        y, left, right, _ = next(hit for hit in terminal.app.tab_hits if hit[3] == "cluster")
+        y, left, right, _ = next(hit for hit in terminal.app.tab_hits if hit[3] == "history")
         return "mouse", (0, left, y, 0, curses.BUTTON1_CLICKED)
 
-    terminal.run([click_cluster, ("ctrl-c", None)])
+    terminal.run([click_history, ("ctrl-c", None)])
     assert active_at_click == [True]
-    assert terminal.app.tab == "cluster"
+    assert terminal.app.tab == "history"
     assert not startup.active(terminal.app)
     assert "Any key continues" in frame_text(terminal.window.frames[0])
     assert "Any key continues" not in frame_text(terminal.window.frames[-1])
@@ -168,9 +168,10 @@ def test_welcome_expires_during_normal_frames_without_input_or_restart(terminal)
 
 def test_preview_paints_below_open_dropdown_without_closing_it(terminal, monkeypatch):
     startup.restore(terminal.app, {"enabled": False})
-    items = toolbar.menu_items(terminal.app, "View")
+    toolbar.run_command(terminal.app, ["preferences"])
+    items = toolbar.menu_items(terminal.app, "Setup")
     cursor = next(index for index, item in enumerate(items) if item.key == "startup-preview")
-    toolbar.initialize(terminal.app).update(menu=2, cursor=cursor)
+    toolbar.initialize(terminal.app).update(cursor=cursor)
     overlays = []
     original = startup.overlay
 
@@ -182,7 +183,7 @@ def test_preview_paints_below_open_dropdown_without_closing_it(terminal, monkeyp
     monkeypatch.setattr(startup, "overlay", observe_overlay)
     terminal.run([("enter", None), None, ("ctrl-c", None)])
     assert startup.save(terminal.app) == {"enabled": False}
-    assert terminal.app.toolbar_state["menu"] == 2
+    assert terminal.app.toolbar_state["menu"] == 3
     assert overlays[0] is None
     welcome_frame = next(frame for frame, welcome in zip(terminal.window.frames, overlays) if welcome)
     assert "Any key continues" in frame_text(welcome_frame)

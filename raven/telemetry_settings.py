@@ -88,6 +88,10 @@ def _calculate(app, state, position):
     if heavy:
         requested = state["custom"] if state["preset"] == "custom" else VALUES[state["preset"]]
         value["collection"].update(requested)
+    from .refresh_rate import recordings_interval
+    recordings = recordings_interval(app)
+    if recordings is not None:
+        value["collection"]["trace_seconds"] = recordings
     policies = _policies(state)
     # Apply once to discover the queue's mandatory floor. Interpolation spans
     # the available range instead of leaving most of the slider clamped.
@@ -117,9 +121,10 @@ def _calculate(app, state, position):
 
 
 def _effective(app, state, position=None):
-    from .refresh_rate import multiplier, validate_multiplier
+    from .refresh_rate import multiplier, recordings_interval, validate_multiplier
     position = validate_multiplier(multiplier(app) if position is None else position)
-    key = (_heavy(app), state["revision"], state["preset"], tuple(state["custom"].items()), position)
+    key = (_heavy(app), state["revision"], state["preset"], tuple(state["custom"].items()), position,
+           recordings_interval(app))
     cache = state.setdefault("effective_cache", {})
     if key not in cache:
         if len(cache) >= 128:
@@ -133,8 +138,9 @@ def sync(app):
     state = initialize(app)
     if state is None:
         return False
-    from .refresh_rate import multiplier
+    from .refresh_rate import multiplier, recordings_interval
     signature = (_heavy(app), state["revision"], multiplier(app),
+                 recordings_interval(app),
                  id(getattr(app, "sampler", None)), id(getattr(app, "research", None)),
                  id(getattr(app, "files", None)), id(getattr(app, "logs", None)))
     if state["signature"] == signature:

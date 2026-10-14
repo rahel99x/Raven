@@ -25,7 +25,7 @@ def app():
 
 def toolbar(app):
     B.render_bar(SimpleNamespace(g=L.Glyphs(False)), app, app.width)
-    return [hit for hit in B.initialize(app)["hits"] if hit[3] == "track"]
+    return B.initialize(app)["hits"]
 
 
 def divider(app):
@@ -83,9 +83,10 @@ def test_divider_cancelled_before_repaint_does_not_resume_on_hover(app, reason):
 
 
 @pytest.mark.parametrize("reason", ["tab", "mode", "resize"])
-def test_toolbar_drag_cancels_context_change_before_next_paint(app, reason):
-    tracks = toolbar(app)
-    assert B.handle_mouse(app, 0, tracks[-1][1], "press")
+def test_toolbar_press_cancels_context_change_before_next_paint(app, reason):
+    y, left, _, _, _ = next(hit for hit in toolbar(app) if hit[3] == "menu")
+    assert B.handle_mouse(app, y, left, "press")
+    assert B.initialize(app)["pressed"]
     before = R.multiplier(app)
     if reason == "tab":
         app.tab = "research"
@@ -93,9 +94,9 @@ def test_toolbar_drag_cancels_context_change_before_next_paint(app, reason):
         app.mode = "help"
     else:
         app.width = 80
-    assert not B.handle_mouse(app, 20, tracks[0][1], "motion")
-    assert R.multiplier(app) == before and not B.initialize(app)["dragging"]
-    assert B.handle_mouse(app, 20, tracks[0][1], "release")
+    app.click(20, left, [], button="motion")
+    assert R.multiplier(app) == before and not B.initialize(app)["pressed"]
+    assert B.handle_mouse(app, 20, left, "release")
     assert R.multiplier(app) == before
 
 
@@ -113,13 +114,25 @@ def test_toolbar_fixed_quit_still_available_when_modal_changes(app):
     assert app.quit and app.mode == "confirm"
 
 
-def test_stationary_slider_capture_does_not_resynchronize_collectors(app, monkeypatch):
-    tracks = toolbar(app)
-    assert B.handle_mouse(app, 0, tracks[-1][1], "press")
-    monkeypatch.setattr(R, "_sync", lambda *args: pytest.fail("Unchanged thumb resynchronized collectors"))
+def test_stationary_refresh_control_reports_do_not_resynchronize_collectors(app, monkeypatch):
+    from raven import telemetry_settings_ui as refresh
+    views = SimpleNamespace(g=L.Glyphs(False))
+    y, left, _, _, _ = next(hit for hit in toolbar(app) if hit[3] == "refresh-settings")
+    assert B.handle_mouse(app, y, left, "press")
+    assert app.mode == refresh.MODE
+    refresh.overlay(views, {}, app, app.width, app.height)
+    y, _, control = next(hit for hit in app.telemetry_settings_ui_state["control_hits"]
+                         if hit[2]["action"] == ("command", "refreshsettings queue faster"))
+    initial_rate = R.multiplier(app)
+    assert refresh.handle_mouse(app, y, control["left"], "press")
+    refresh.overlay(views, {}, app, app.width, app.height)
+    rate = R.multiplier(app)
+    assert rate > initial_rate
+    monkeypatch.setattr(R, "_sync", lambda *args: pytest.fail("Stationary refresh motion resynchronized collectors"))
     for _ in range(200):
-        assert B.handle_mouse(app, 0, tracks[-1][1], "motion")
-    assert B.handle_mouse(app, 0, tracks[-1][1], "release")
+        assert refresh.handle_mouse(app, y, control["left"], "motion")
+    assert refresh.handle_mouse(app, y, control["left"], "release")
+    assert R.multiplier(app) == rate
 
 
 @pytest.mark.parametrize("reason", ["tab", "mode", "resize", "menu", "escape"])

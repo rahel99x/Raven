@@ -80,8 +80,8 @@ Create a new persistent configuration with `ravenl --write-config`, then review
 its scheduler settings. Both commands load `~/.config/raven/config.json`, or
 `$XDG_CONFIG_HOME/raven/config.json`, automatically. Existing files are preserved.
 
-The guided alternative is `raven setup`, or **Setup → Getting started** in the
-dashboard. **Setup → Sites and lab profiles** saves named choices for future
+The guided alternative is `raven setup`, or **Setup → Installation and diagnostics → Getting started** in the
+dashboard. **Setup → Connections and accounts → Sites and lab profiles** saves named choices for future
 launches. After saving, **Use this profile** reopens Light with that connection;
 it does not request Heavy. The [Setup reference](../guides/setup.md) describes profile review,
 account discovery, readable resource units, and the separation between Raven
@@ -173,9 +173,13 @@ The worker stops at its time limit or idle deadline; Raven does not auto-renew.
 Run `ravenh` from a normal terminal with access to the configured Slurm commands.
 On a fresh installation with no configuration, a bare interactive `ravenh`
 opens setup in Light first and requests no allocation. Once configured,
-it requests a new allocation with `salloc`, starts the worker through `srun`, and
-verifies placement before opening the dashboard. An existing allocation is not
-required. `--plan` makes no submission. An interrupted wait drains the owned helper.
+it opens the dashboard and requests a new allocation with `salloc` in the
+background. Jobs and logs remain usable while the worker starts through `srun`;
+Heavy capabilities become available only after placement is verified. The compute
+control shows progress and provides cancellation or an explicit retry after a
+recoverable failure. An existing allocation is not required. One-shot commands
+still wait for the readiness they need. `--plan` makes no submission. Closing
+the session drains its owned helper according to the existing cleanup policy.
 `--help` and `--version` never allocate. Use `ravenh --allocation JOBID` for an
 explicit reuse review. This checks current ownership, attempt, resources, and
 placement before starting an owned step. A reuse `--plan` reports an unverified
@@ -202,7 +206,7 @@ not make an undeclared adapter available.
 
 Select Terminal beside Details to open the optional shell. A shell remains an
 explicit user-controlled session on its displayed host. Switching Light/Heavy
-or Single/Multi does not move it. Generated execution helpers pass the same
+or changing worker concurrency does not move it. Generated execution helpers pass the same
 admission checks as other managed actions; ordinary typed shell commands remain
 under the user's control. See [terminal controls](../guides/terminal-fusion.md).
 
@@ -212,7 +216,7 @@ Compute limits and collection permission are separate. The starter Slurm profile
 uses these Light intervals and rolling ceilings. Active Heavy applies the selected
 [telemetry preset](../guides/telemetry-updates.md); its Default requests queue
 reads every five seconds and live CPU/memory reads every two seconds. Presets
-and Custom values change live through **Setup → Heavy telemetry update settings**.
+and Custom values change live through **Setup → Refresh and performance → Refresh settings**.
 
 | Source or resource | Default |
 | --- | ---: |
@@ -244,7 +248,7 @@ Immutable Store publications have a separate 128-entry, 24 MiB guard. Archive
 limits apply to each instance's owned storage; they are not a cross-process disk
 quota. Light's two-worker ceiling applies across its background lanes combined.
 
-The queue slider adjusts the active queue base through a tenfold faster request;
+The queue controls adjust the active queue base through a tenfold faster request;
 the starter Light range is 60–6 seconds. Heavy presets control the other readers
 and budgets. Mandatory site floors remain effective, and the controls show their
 admitted intervals. Sampling, display windows, and plot animation are distinct.

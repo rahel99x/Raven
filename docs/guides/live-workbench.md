@@ -68,7 +68,7 @@ See [Report publication](../PROJECT_STANDARD.md#publish-a-per-view-source-withou
 Raven rechecks inventories and bound source files in its background worker.
 Light reads Research files every five seconds by default. Active Heavy uses
 its telemetry preset: Default requests one-second reads. The managed queue
-slider leaves this reader unchanged.
+control leaves this reader unchanged.
 Late-created metrics, log indexes, contracts, planning reports, and verified passports can appear during the session.
 Atomic replacements update subsequent reads.
 The reader keeps the current page and selection under your control.
@@ -280,30 +280,24 @@ See [Mouse and button navigation](pointer-navigation.md) for mouse support and d
 
 ## Set the update rate
 
-The top-right update control shows the effective Jobs polling interval.
-Its value and endpoints use `s`, `ms`, or `µs`; ASCII mode uses `us`.
-The logarithmic scale uses positions one to 50. In managed `raven`, `ravenl`,
-and `ravenh` sessions it changes queue cadence; the other readers retain their
-own settings. **Setup → Heavy telemetry update settings** provides live presets
-and a Custom editor for those readers. See [telemetry updates](telemetry-updates.md).
+The toolbar's queue/recording summary opens **Refresh settings**. Queue polling
+and reading recorded samples have independent controls in the same panel.
+**Setup → Refresh and performance → Refresh settings** opens it too, alongside
+Heavy presets and the Custom editor. See [telemetry updates](telemetry-updates.md).
 
-1. Click the slider track to choose an interval.
-2. Hold the left mouse button and drag horizontally to adjust it.
-3. Click `[-]` or `[+]`, or use the wheel over the control, for one-step changes.
-4. Click the interval label to focus keyboard controls.
-5. Use arrows or `-` / `+` to adjust the interval; Home and End select its endpoints.
-6. Press Esc, Enter, or Tab to release keyboard focus.
+1. Open the summary or enter `:refreshsettings`.
+2. Use the queue's **Faster**, **Slower**, or **Preset rate** action.
+3. Choose Automatic, one-second, or two-second recording reads.
+4. Inspect actual sample/read age and any source or policy limits.
+5. Use Esc to return to the previous view.
 
-The displayed interval and endpoint labels use the same calculation as the
+The displayed queue interval uses the same calculation as the
 collector. The range starts at the active queue base and ends at a tenfold
 faster request, subject to site policy. With starter settings, Light spans
 60–6 seconds and Default Heavy spans 5–0.5 seconds. If a mandatory minimum
 fixes the whole range, the label reports that minimum. Selecting a Heavy preset
-resets the slider to the preset's base.
-
-**View → Focus update-rate slider** provides keyboard entry. Release the mouse
-button to finish dragging. Use a track click or `:rate N` when the terminal
-cannot report drag events.
+resets the queue control to the preset's base. The recording-read choice remains
+independent. Existing `:rate N` commands retain their one-to-50 scale.
 
 | Command | Function |
 | --- | --- |
@@ -312,11 +306,11 @@ cannot report drag events.
 | `:rate reset` | Restore the active queue base |
 
 Request budgets, demand, idle slowdown, errors, and command duration can defer
-an individual read. Changing the slider does not reset rolling usage, overlap
+an individual read. Changing queue cadence does not reset rolling usage, overlap
 reads, or enable a disabled source. Read the effective interval and source age
 in Sources to distinguish the requested cadence from actual observations.
 
-The slider position persists with normal UI state and its selected namespace.
+The queue preference persists with normal UI state and its selected namespace.
 The compatibility field `polling_multiplier` stores this position; it is not a
 frequency multiplier. A saved position overrides that configured default.
 `raven --rate N` overrides the saved position at launch. `--interval SECONDS`
@@ -331,7 +325,7 @@ limits. Remote file readers retain a 1.5-second minimum; local readers and live
 probes retain a half-second minimum. Forecast and budget sources retain their
 30-second minimums. Managed sessions use versioned `collection` settings and
 Heavy telemetry preferences instead of accelerating every reader with the queue
-slider.
+control.
 
 ### Set one metric's interval
 
@@ -351,7 +345,7 @@ Sampling requests apply while Live is off and can remain active after the graph 
 They reset when Raven restarts or the exact job attempt ends.
 
 The fastest reader or per-metric request sets the shared interval, subject to
-collection policy. Requests do not multiply. The managed queue slider does not
+collection policy. Requests do not multiply. The managed queue control does not
 change these metric requests.
 CPU and memory share one job probe. GPU curves share another.
 Other jobs retain their reader cadence and their own requests.
@@ -366,21 +360,28 @@ See [Charts](charts.md#follow-a-running-metric) for commands, keyboard controls,
 
 ## Use the terminal toolbar
 
-The first display row contains File, Edit, View, Setup, Help, copy and worker switches, and a quit control.
-Use the menus for file workflows, preferences, navigation, setup, and diagnostics.
-**Setup** includes Heavy allocation settings and named Research/Analytics guides.
-See [Setup](setup.md) for account discovery and the complete configuration walkthrough.
-Job-changing actions retain their existing review and confirmation.
-The worker switch changes background concurrency without restarting Raven.
-See [Background workers](background-workers.md) for Single, Multi, and pending changes.
+The first row contains File, Edit, View, Setup, Help, **Launch**, a quit control,
+the managed Light/Heavy status, and the queue/recording summary. The next rows
+identify the site, login, and attached project, then provide the main page tabs
+and any notifications. The default layout fits an 80-column terminal.
+
+**Setup** has five categories: Connections and accounts, Launch defaults,
+Recordings and metrics, Refresh and performance, and Installation and diagnostics.
+Research and Analytics provide **Set up this view** beside their own content.
+See [Everyday workflow](everyday-workflow.md) for the launch-to-results path.
+
+Change Single/Multi background concurrency through **Setup → Refresh and
+performance → Advanced preferences**, or `:preferences`. It is independent of
+Light/Heavy and applies without restarting Raven. See
+[Background workers](background-workers.md) for pending transitions and limits.
 
 ### Open and traverse a menu
 
 1. Click a menu label or press F10.
-2. Use Left or Right to select another menu.
+2. Use Left or Right to select another top-level menu; Right opens a selected submenu.
 3. Use Up, Down, or page keys to select a choice.
 4. Press Enter or Space to activate the selected choice.
-5. Press Esc to close the menu without activating a choice.
+5. Press Left or Esc to return from a submenu; Esc at the top level closes the menu.
 
 **Expected result:** Opening a menu preserves the underlying screen.
 Browsing menu choices does not execute an action.
@@ -398,21 +399,20 @@ Unavailable choices appear dimmed.
 Their activation reports the required job, project, file, or page context.
 Close an unfinished job-action review before starting another reviewed action.
 The toolbar remains above overlays.
-On narrow terminals, it abbreviates menu labels and compresses the slider to its interval label.
+On narrow terminals, menu labels shorten and the queue/recording summary becomes **Refresh** or **R**.
 F10 keeps all five menus accessible.
 Move the pointer over a menu choice to highlight it without activating it.
-Direct choices leave the dropdown open while the pointer remains inside it.
-This permits several setting changes without reopening the menu.
+Local presentation choices can leave the dropdown open for repeated changes.
+Guided setup, Launch, Connect data, Run home, and Refresh settings close it when opened.
 Move the pointer outside the dropdown to dismiss it.
 Prompts and reviews remain beneath the dropdown while it keeps keyboard focus.
 Dismiss the menu before using those dialogs' editing or review controls.
 About replaces the dropdown with its own panel.
-Focus update-rate slider leaves the menu and focuses the slider.
 
 Click the top-left `x`, or choose **File → Quit Raven**, to exit.
-Esc closes a menu; it does not exit Raven.
-Click **Copy** to switch text delivery to **Yank**, or click **Yank** to restore clipboard copying.
-Narrow terminals use `C` and `Y` for the same switch.
+Esc returns from a submenu or closes the top-level menu; it does not exit Raven.
+Use **Edit → Switch to Vim/Neovim yanking** or **Switch to clipboard copying**
+to change text delivery.
 Yank targets a running local Vim or Neovim server; unavailable delivery retains the export and uses clipboard fallback.
 See [Pane navigation](pane-navigation.md#send-text-to-vim-or-neovim) for server discovery and complete-payload limits.
 
@@ -420,6 +420,7 @@ See [Pane navigation](pane-navigation.md#send-text-to-vim-or-neovim) for server 
 
 | Choice | Result or editable command |
 | --- | --- |
+| Launch job... | Choose a project and script, review resources and recordings, then submit |
 | Open project... | Enter a project path with `project PATH` |
 | Project runs and attempts | Open the selected project's run inventory |
 | Run output artifacts | Browse declared artifacts for the selected run |
@@ -474,42 +475,31 @@ See [Tables](tables.md), [Log display](log-view.md), and [Navigation](navigation
 
 | Choice | Result |
 | --- | --- |
-| Each of the ten page names | Open that page |
-| Research: each workspace name | Open one of the thirteen Research workspaces |
-| Search Research workspaces | Open the searchable workspace picker |
-| Jump to job, run, file, or view | Open universal jump search |
-| Back to previous location | Restore the previous destination |
-| Forward to next location | Restore the next destination after Back |
-| Comfortable panel density | Select the comfortable panel layout |
-| Compact panel density | Select the compact layout |
-| Focused panel density | Select the focused layout |
-| Focus job / main panel | Focus Main |
-| Focus Details panel | Focus Details |
-| Maximize / restore focused panel | Toggle the focused panel's maximized layout |
-| Saved workspace layouts | List saved layouts |
-| Pause inspection / Resume inspection | Freeze or resume the inspected snapshot; sampling continues |
-| Pause / follow current log | Change follow mode on the full Logs page |
-| Wrap / unwrap current log | Change wrapping on the full Logs page |
-| Refresh all sources now | Request an immediate source refresh |
-| Focus update-rate slider | Focus the polling control's keyboard controls |
-| Switch background workers to Single / Multi | Toggle the requested background concurrency mode |
-| Use one background worker | Request Single after running task groups finish |
-| Use concurrent background workers | Request Multi within shared limits |
-| Background worker status | Show applied mode, pending change, and work counts |
-| Reset queue polling to INTERVAL | Restore the active queue base; the label shows the resulting Jobs interval |
-| Navigate buttons with arrow keys (F8) | Focus visible buttons and links for directional navigation |
-| Enable / Disable smooth scrolling | Toggle mouse-wheel viewport smoothing |
-| Enable / Disable startup animation | Toggle the interactive welcome display |
-| Preview startup animation | Preview the welcome without changing its saved preference |
-| Plain ASCII reader mode | Select the reader theme |
-| Theme: each available theme | Select that theme |
+| Jobs, History, Analytics, Log, Research | Open a primary page |
+| Run home | Follow the selected run from submission through outputs |
+| Research workspaces | Choose any Research destination |
+| Analytics views | Choose job series, history, timeline, advisor, or compare |
+| Cluster and diagnostics | Open Cluster, Nodes, Group, Deps, Sources, or a plugin page |
+| Favorites | Pin the current page or subview and reopen a saved destination |
+| Pinned tools | Open the existing operation favorites |
+| Display and navigation | Back/Forward, jump, panel density and focus, terminal tools, layouts, freeze, and log controls |
 
-See [workflows](../../README.md#workflows) for the main pages and their purposes.
-The theme choices include `default`, `darcula`, `modnokai`, `gruvbox-dark`, `dark`, `light`, `terminal`, `mono`, `high`, and `cb`.
-Reader provides plain ASCII text and static notices.
-Reader also uses immediate scrolling and skips the welcome.
-Refreshing or speeding up fetching does not enable disabled sources.
-See [Mouse and button navigation](pointer-navigation.md) for focus, startup, and scrolling preferences.
+The default tab row shows Jobs, History, Analytics, Research, and Log. A secondary
+page remains visible while active; pinned pages can remain in the row. Research
+shows common workspaces, the current workspace, and saved favorites; **All views**
+opens its searchable picker. Favorites store destination identities without
+retaining a selected job, path, or account.
+
+**Display and navigation → Advanced preferences** and **Setup → Refresh and
+performance → Advanced preferences** open the same preferences menu. It contains
+background worker controls, terminal and clipboard preferences, smooth scrolling,
+startup controls, and themes. `:preferences` opens it directly.
+
+Themes include `default`, `darcula`, `modnokai`, `gruvbox-dark`, `dark`, `light`,
+`terminal`, `mono`, `high`, and `cb`. Plain ASCII reader mode uses static feedback,
+immediate scrolling, and no welcome animation. See
+[Navigation](navigation.md) for saved destinations and settings, and
+[Mouse and button navigation](pointer-navigation.md) for directional focus.
 
 ### Help menu
 

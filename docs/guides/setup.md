@@ -7,8 +7,8 @@ included in the installed application; no browser or repository checkout is
 needed to read them.
 
 For a first installation, follow [Getting started](getting-started.md) or run
-`raven setup`. Inside the dashboard, open **Setup → Getting started**, or enter
-`:gettingstarted`. **Setup → Setup overview**, or `:setup`, opens the reference.
+`raven setup`. Inside the dashboard, open **Setup → Installation and diagnostics → Getting started**, or enter
+`:gettingstarted`. The command `:setup` opens the reference.
 Press F10 to reach the
 toolbar without a mouse. Use Left/Right to change menus, Up/Down to choose an
 entry, and Enter to open it. Setup pages support clickable controls, arrow-key
@@ -19,16 +19,11 @@ page; while editing a field, Esc cancels that edit.
 
 | Setup entry | Purpose |
 | --- | --- |
-| Getting started | Choose workstation Slurm, a cluster connection, or explicit standalone execution; review installation and configuration. |
-| Sites and lab profiles | Save named connection and Heavy allocation profiles without changing the active connection. |
-| Heavy telemetry update settings | Apply Default, Medium, High, Ultra, or Custom reader intervals live; edit Custom and save preferences. |
-| Heavy allocation settings | Discover the connected user's Slurm associations and save account, partition, QoS, CPU, memory, GPU, and time preferences. |
-| Project launch and recording defaults | Bind native measurements and declared files, select recording/Research features, and save launch recipes or completion-export preferences. |
-| Project connection and reporting | Connect a project and select an exact reported run; inspect its files before attaching them. |
-| Research: each named view | Read its prerequisites, exact source conventions, and available attachment controls. |
-| Analytics: each named view | Identify its scheduler or retained-series inputs, measured units, and missing-data checks. |
-| CPU, memory, and GPU telemetry | Distinguish job-produced GPU traces, native CPU/memory accounting, application metrics, and collection policy. |
-| Installation, terminal, and diagnostics | Find installation and connection checks; open preferences for terminal and collection settings. |
+| Connections and accounts | Start guided setup, choose a named site or lab profile, or review Heavy allocation preferences. |
+| Launch defaults | Save workload resources, recording features, and reusable project recipes. |
+| Recordings and metrics | Connect a real data file, validate samples, preview a chart, and inspect independent source readiness. |
+| Refresh and performance | Adjust queue and recording-read cadence, select a Heavy preset, and find advanced performance preferences. |
+| Installation and diagnostics | Check installation, terminal behavior, connection health, and effective settings. |
 
 Opening a guide reads embedded instructions. Opening allocation settings starts
 a bounded account-discovery task on the existing connection. Rendering,
@@ -38,7 +33,7 @@ unavailable.
 
 ## Save a named site or lab profile
 
-Open **Setup → Sites and lab profiles**, or enter `:profiles`. Give the profile
+Open **Setup → Connections and accounts → Sites and lab profiles**, or enter `:profiles`. Give the profile
 a descriptive label and choose local Slurm, SSH Slurm, or standalone execution.
 The saved profile has a stable identifier for `--site`; its label can describe
 the site or lab in ordinary words.
@@ -94,13 +89,16 @@ a project from the local machine.
 
 ## Set telemetry update intervals
 
-Open **Setup → Heavy telemetry update settings**, or enter
-`:telemetrysettings`. Presets apply immediately while Heavy is active and can
+Open **Setup → Refresh and performance**, or enter
+`:refreshsettings`. The legacy `:telemetrysettings` command opens the same panel.
+Presets apply immediately while Heavy is active and can
 be staged from Light. Custom starts at Default; its gear button opens a
 validated editor with a white-to-pink intensity scale that updates while typing.
 Select **Save settings** to keep the choice for later launches.
 
-The queue slider is separate from the telemetry readers. See
+The same panel contains independent queue and retained-recording reader controls.
+It distinguishes requested intervals from actual source freshness and the job's
+recording frequency. See
 [telemetry updates](telemetry-updates.md) for preset values, Custom controls,
 retained recording refresh, and site-policy limits.
 
@@ -111,7 +109,7 @@ lab account. The student remains the authenticated user and owner of the job.
 The allocation's `--account` option selects the account charged by Slurm.
 
 1. Start `ravenl` with the intended local or cluster profile.
-2. Open **Setup → Heavy allocation settings**.
+2. Open **Setup → Connections and accounts → Heavy allocation settings**.
 3. Check the detected login, cluster, and any discovery notices.
 4. Open **Choose personal / lab association** and select the actual assigned
    account. The list shows the available cluster, partition, and QoS context.
@@ -177,7 +175,8 @@ Slurm services, site policy, or another user's configuration.
 
 ## Set up a Research or Analytics view
 
-Choose its name directly from **Setup**. For example:
+Open the relevant Research or Analytics view and choose **Set up this view**.
+The same guides remain directly available by command. For example:
 
 ```text
 :setup research experiment
@@ -199,8 +198,7 @@ For complete application hooks and file examples, use
 
 ## Save an existing-script integration
 
-Connect the intended project, then open **Setup → Project launch and recording
-defaults**, or enter `:launchsetup`. This editor saves project choices without
+Connect the intended project, then open **Setup → Launch defaults**, or enter `:launchsetup`. This editor saves project choices without
 launching a job. Configure only the bindings your application actually supplies:
 
 - Its native metric file and explicit artifact paths.

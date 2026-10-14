@@ -298,10 +298,9 @@ def test_export_button_and_setup_actions_available_on_all_views(app, ascii_, wid
         app.tab = tab
         row = toolbar.render_bar(SimpleNamespace(g=L.Glyphs(ascii_)), app, width)
         assert L.vlen(L.row_text(row)) == width
-        if width == 120:
-            assert 'Export data' in L.row_text(row)
-        elif width == 24:
-            assert not any(hit[3] == 'export-data' for hit in app.toolbar_state['hits'])
+        assert not any(hit[3] == 'export-data' for hit in app.toolbar_state['hits'])
+        if width >= 24:
+            assert 'Launch' in L.row_text(row)
         assert any(item.command == 'exportdata' for item in toolbar.menu_items(app, 'File'))
     assert any(item.command == 'launchsetup' for item in toolbar.menu_items(app, 'Setup'))
 
@@ -392,6 +391,7 @@ def test_launch_setup_long_form_is_reachable_at_narrow_width(app):
     from raven import launch_setup_ui as S
     S.open_setup(app)
     app.research.finish()
+    S.activate(app, 'setup:toggle:trace')
     app.width, app.height = 24, 7
     state = app.data_export_state
     choices = [key for _, key in U._document(app) if key]

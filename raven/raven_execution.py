@@ -133,6 +133,7 @@ LIGHT_BACKGROUND_MODULES = frozenset({
     "job_progress", "views", "array_manifest_ui", "planning_commands", "trace_ui",
     "quick_advisor", "analysis_ui", "log_tools", "log_workbench", "history_log_export", "data_export_ui", "auto_export_ui", "setup_ui",
     "onboarding_ui", "launch_wizard_ui", "launch_wizard",
+    "connect_data_ui", "connect_data", "run_home_ui", "run_home",
 })
 HEAVY_BACKGROUND_MODULES = frozenset({"log_tools", "log_workbench", "quick_advisor",
                                       "analysis_ui", "history_log_export"})

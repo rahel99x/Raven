@@ -22,7 +22,7 @@ recordings refresh independently of Slurm, every second locally by default
 (at least 1.5 seconds remotely). Job series shows loaded CPU/memory and GPU
 sample counts, cached-read status, and actual read errors. A failed or absent
 GPU recording does not suppress available CPU and memory curves. Use
-**Setup → Heavy telemetry update settings** to change reader intervals while
+**Setup → Refresh and performance → Refresh settings** to change reader intervals while
 Heavy is active; see [telemetry updates](telemetry-updates.md).
 
 The installed `raven`, `ravenl`, and `ravenh` commands use managed collection.

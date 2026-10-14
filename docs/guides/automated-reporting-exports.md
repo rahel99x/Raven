@@ -35,7 +35,7 @@ cluster. Use Raven on the permitted cluster submission host instead, with the
 project on storage visible to the execution nodes. Select standalone local
 execution only when you intend to run the workload on that machine.
 
-The advanced **Setup → Project launch and recording defaults** editor remains
+The advanced **Setup → Launch defaults** editor remains
 available for measurement bindings, scientific context, recipes, and completion
 exports. It is separate from both the launch review and the Export data screen.
 
@@ -105,7 +105,7 @@ raven launch test.sh --account LabX \
 `LabX` illustrates a professor's allocation; it is not a universal account
 name. The submitting user remains the student. `--account` after `launch`
 controls this workload's billing and does not change Raven Heavy's saved
-account. **Setup → Sites and lab profiles** saves the connection and Heavy
+account. **Setup → Connections and accounts → Sites and lab profiles** saves the connection and Heavy
 preferences; workload defaults belong to the project and are saved separately
 through the guided launch workflow. Desktop Slurm users can omit the workload
 account when their scheduler supplies the

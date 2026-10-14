@@ -443,6 +443,32 @@ def test_explicit_clear_invalidates_pending_run_selection(app, tmp_path):
     assert project_ui.selected_binding(app) is None and app.selected_id == "manual-new-job"
 
 
+@pytest.mark.parametrize("destination", ["main", "setup", "project_runs"])
+def test_closed_run_home_request_does_not_reopen_or_replace_selection(app, tmp_path, destination):
+    make_run(tmp_path)
+    execute(app, ["project", str(tmp_path)])
+    app.selected_id = "other-job"
+    assert project_ui.run_command(app, ["run", "home", "fit-a1"])
+    assert app.research.pending and app.mode == "project_runs"
+    assert project_ui.handle_key(app, "esc")
+    app.mode = destination
+    app.research.finish()
+    assert app.mode == destination and app.selected_id == "other-job"
+    assert project_ui.selected_binding(app) is None
+    assert app.research.pending is None
+
+
+def test_run_picker_opens_home_only_after_exact_binding_is_read(app, tmp_path):
+    make_run(tmp_path)
+    execute(app, ["project", str(tmp_path)])
+    assert project_ui.run_command(app, ["run", "home", "fit-a1"])
+    assert app.mode == "project_runs" and project_ui.selected_binding(app) is None
+    app.research.finish()
+    assert app.mode == "run_home"
+    assert app.run_home_state["binding"]["run_id"] == "fit-a1"
+    assert project_ui.selected_binding(app)["run_id"] == "fit-a1"
+
+
 def test_restored_project_requires_revalidation_before_binding(app, tmp_path):
     project_ui.restore(app, {"project_root": str(tmp_path), "run_id": "fit-a1"})
     assert app.research.pending is None and project_ui.selected_binding(app) is None

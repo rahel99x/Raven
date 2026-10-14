@@ -19,7 +19,7 @@ def send(dashboard, route, point, button):
 
 
 @pytest.mark.parametrize("route", ["native", "direct"])
-def test_selection_owner_keeps_release_across_toolbar_and_new_slider_owns_next(dashboard, route):
+def test_selection_owner_keeps_release_across_toolbar_and_new_menu_button_owns_next(dashboard, route):
     app = dashboard.app
     send(dashboard, route, dashboard.point("70"), "press")
     lease = app.pointer_routing_state["lease"]
@@ -27,31 +27,34 @@ def test_selection_owner_keeps_release_across_toolbar_and_new_slider_owns_next(d
     send(dashboard, route, dashboard.point("72"), "drag")
     selected = set(app.marks)
     toolbar.render_bar(dashboard.views, app, app.width)
-    track = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "track")
-    point = track[0], track[1]
+    menu = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "menu")
+    point = menu[0], menu[1]
     send(dashboard, route, point, "release")
     assert app.marks == selected and not app.toolbar_state["dragging"]
+    assert app.mode == "main" and app.toolbar_state["menu"] is None
     assert app.pointer_routing_state["lease"] is None
     send(dashboard, route, point, "press")
     assert app.pointer_routing_state["lease"].owner.name == "toolbar"
+    assert app.mode == "main" and app.toolbar_state["menu"] is not None
     assert app.pointer_routing_state["lease"].generation > lease.generation
     send(dashboard, route, dashboard.point("74"), "release")
     assert app.marks == selected and not P.active(app)
 
 
 @pytest.mark.parametrize("route", ["native", "direct"])
-def test_lost_release_then_fresh_slider_commits_marks_and_revokes_old_owner(dashboard, route):
+def test_lost_release_then_fresh_menu_button_commits_marks_and_revokes_old_owner(dashboard, route):
     app = dashboard.app
     send(dashboard, route, dashboard.point("70"), "press")
     send(dashboard, route, dashboard.point("72"), "drag")
     selected = set(app.marks)
     toolbar.render_bar(dashboard.views, app, app.width)
-    track = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "track")
-    send(dashboard, route, (track[0], track[1]), "press")
+    menu = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "menu")
+    send(dashboard, route, (menu[0], menu[1]), "press")
     assert app.pointer_routing_state["lease"].owner.name == "toolbar"
+    assert app.mode == "main" and app.toolbar_state["menu"] is not None
     assert not job_selection.active(app)
     assert not any(getattr(app, name, {}).get(marker) for name, marker in P.RELEASE_MARKERS)
-    send(dashboard, route, (track[0], track[2] - 1), "release")
+    send(dashboard, route, (menu[0], menu[2] - 1), "release")
     assert app.marks == selected and app.pointer_routing_state["lease"] is None
 
 
@@ -73,9 +76,9 @@ def test_cancelled_owner_tombstone_does_not_consume_fresh_owner_release(dashboar
     P.cancel_capture(app, reason="unheld")
     assert P.route_capture(app, P.PointerEvent(1, 1, "drag"))
     toolbar.render_bar(dashboard.views, app, app.width)
-    track = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "track")
-    send(dashboard, "direct", (track[0], track[1]), "press")
-    send(dashboard, "direct", (track[0], track[2] - 1), "release")
+    menu = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "menu")
+    send(dashboard, "direct", (menu[0], menu[1]), "press")
+    send(dashboard, "direct", (menu[0], menu[2] - 1), "release")
     assert not P.active(app) and app.pointer_routing_state["lease"] is None
 
 
@@ -135,8 +138,8 @@ def test_captured_motion_updates_cosmetic_pointer_without_activating_hovered_con
 def test_toolbar_context_cancel_consumes_original_release(dashboard, change):
     app = dashboard.app
     toolbar.render_bar(dashboard.views, app, app.width)
-    track = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "track")
-    send(dashboard, "direct", (track[0], track[1]), "press")
+    menu = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "menu")
+    send(dashboard, "direct", (menu[0], menu[1]), "press")
     assert app.pointer_routing_state["lease"].owner.name == "toolbar"
     setattr(app, change, {"tab": "research", "mode": "confirm", "width": 120, "height": 30}[change])
     assert P.route_capture(app, P.PointerEvent(10, 10, "release"))
@@ -147,14 +150,23 @@ def test_toolbar_context_cancel_consumes_original_release(dashboard, change):
 def test_unheld_toolbar_tombstone_is_consumed_and_cannot_steal_fresh_row_release(dashboard):
     app = dashboard.app
     toolbar.render_bar(dashboard.views, app, app.width)
-    track = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "track")
-    send(dashboard, "direct", (track[0], track[1]), "press")
+    menu = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "menu")
+    send(dashboard, "direct", (menu[0], menu[1]), "press")
     P.cancel_capture(app, reason="unheld")
     assert app.toolbar_state["discard_release"]
     assert toolbar.handle_mouse(app, 10, 10, button="release")
     assert app.pointer_routing_state["lease"] is None
-    send(dashboard, "direct", (track[0], track[1]), "press")
+    app.handle("esc")
+    assert app.mode == "main"
+    dashboard.draw()
+    send(dashboard, "direct", (menu[0], menu[1]), "press")
     P.cancel_capture(app, reason="unheld")
+    app.handle("esc")
+    assert app.mode == "main"
+    dashboard.draw()
+    # Closing the dropdown does not fabricate the missing release. The
+    # next real row gesture must revoke that toolbar tombstone itself.
+    assert app.toolbar_state["discard_release"]
     send(dashboard, "direct", dashboard.point("70"), "press")
     send(dashboard, "direct", dashboard.point("72"), "drag")
     send(dashboard, "direct", dashboard.point("72"), "release")

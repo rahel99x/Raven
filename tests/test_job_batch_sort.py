@@ -224,13 +224,14 @@ def test_default_mode_and_validated_state_roundtrip():
     assert not grouping_toolbar.execute(other, "sort-max", {"jobs": []}).changed
 
 
-def test_sort_buttons_follow_collapse_and_highlight_current_choice():
+def test_sort_menu_reports_current_choice_beside_view_and_groups():
     from raven.layout import row_text
     value = app()
     rows, hits = grouping_toolbar.controls(value, Glyphs(False), 180)
-    assert [hit[2]["id"] for hit in hits][-3:] == ["grouping:collapse", "grouping:sort-min", "grouping:sort-max"]
-    assert any("Sort Min" in text and "sel" in style for row in rows for text, style in row)
-    assert "Sort Max" in "".join(row_text(row) for row in rows)
+    assert [hit[2]["id"] for hit in hits] == ["joblist:jobs:view", "joblist:jobs:order", "joblist:jobs:groups"]
+    assert "Fewest running first" in "".join(row_text(row) for row in rows)
+    assert "Grouped" in "".join(row_text(row) for row in rows)
+
 
 
 @pytest.mark.parametrize("ascii_", [False, True])
@@ -250,21 +251,22 @@ def test_all_jobs_controls_are_visible_and_clickable_at_80_by_24(ascii_, density
     invoked = []
     original = dashboard.run_command
     monkeypatch.setattr(dashboard, "run_command", lambda command: (invoked.append(command), original(command))[1])
-    keys = ("auto", "undo", "clear", "expand", "collapse", "sort-min", "sort-max")
+    keys = ("view", "order", "groups")
     try:
         for key in keys:
             rows, hits = views.compose(store.snapshot(), dashboard, 80, 24)
             controls = {value["id"]: (y, value) for y, kind, value in hits
-                        if kind == "control" and value.get("group") == "grouping-toolbar"}
-            assert set(controls) == {"grouping:" + item for item in keys}
+                        if kind == "control" and value.get("group") == "job-list-controls" and value["id"].startswith("joblist:jobs:")}
+            assert set(controls) == {"joblist:jobs:" + item for item in keys}
             assert len({y for y, _ in controls.values()}) == 1
-            y, control = controls["grouping:" + key]
+            y, control = controls["joblist:jobs:" + key]
             assert 0 <= y < 24 and 0 <= control["left"] < control["right"] <= 80
             assert row_text(rows[y])[control["left"]:control["right"]].strip()
             dashboard.click(y, control["left"], hits, button="press")
             dashboard.click(y, control["left"], hits, button="release")
-            assert invoked[-1] == "grouping " + key
-        assert dashboard.table_state["jobs_batch_sort"] == "max"
+            assert invoked[-1] == "joblistmenu jobs " + key
+            from raven.job_list_menu import close
+            close(dashboard)
     finally:
         if dashboard.research:
             dashboard.research.close()

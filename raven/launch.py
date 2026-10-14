@@ -402,7 +402,7 @@ def _completion_request(value, scope=None):
     return request
 
 
-def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=None):
+def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=None, captured_settings=None):
     """Resolve a JSON-serializable plan. No scheduler calls or filesystem writes."""
     args = parse(argv) if not isinstance(argv, argparse.Namespace) else argv
     env = dict(os.environ if environ is None else environ)
@@ -481,7 +481,15 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
             explicit["auto_export"] = _completion_request(presets[name])
         else:
             explicit["auto_export"] = {"include": ["all"], "destination": {"mode": "project", "path": "", "host": socket.gethostname()}, "layout": "category"}
-    settings, setting_sources = S.resolve_settings(root, recipe=args.recipe, user_defaults=user, explicit=explicit)
+    if captured_settings is None:
+        settings, setting_sources = S.resolve_settings(root, recipe=args.recipe, user_defaults=user, explicit=explicit)
+    else:
+        # Run again starts from the validated retained settings, without
+        # silently adopting newly saved defaults or mutating project recipes.
+        settings = S._launch(captured_settings)
+        settings.update(explicit)
+        setting_sources = {key: "retained run settings" for key in settings}
+        setting_sources.update({key: "explicit launch option" for key in explicit})
     if settings.get("auto_export") is not None and settings.get("auto_export") is not False:
         settings["auto_export"] = _completion_request(settings["auto_export"], settings.get("auto_export_scope"))
     settings.setdefault("features", list(F.DEFAULT_FEATURES))

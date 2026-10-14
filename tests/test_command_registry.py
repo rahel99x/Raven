@@ -63,7 +63,7 @@ def test_theme_completion_validation_execution_and_menu_agree(app, theme):
     assert not status
     app.run_command("theme " + theme)
     assert app.command_ok
-    menu_commands = {item.command for item in toolbar.menu_items(app, "View")}
+    menu_commands = {item.command for item in toolbar.submenu_items(app, "advanced")}
     assert "theme " + app.theme in menu_commands
 
 
@@ -137,9 +137,9 @@ def test_static_toolbar_controls_are_shared_but_dynamic_changes_do_not_leak(app)
     assert first is not second and all(a is b for a, b in zip(first, second))
     with pytest.raises(FrozenInstanceError):
         first[0].label = "modified"
-    before = {item.key: item for item in toolbar.menu_items(app, "View")}
+    before = {item.key: item for item in toolbar.submenu_items(app, "display")}
     app.table_tools_state["freeze"] = True
-    after = {item.key: item for item in toolbar.menu_items(app, "View")}
+    after = {item.key: item for item in toolbar.submenu_items(app, "display")}
     assert before["freeze"].label == "Pause inspection (sampling continues)"
     assert after["freeze"].label == "Resume inspection"
     assert before["back"] is after["back"]

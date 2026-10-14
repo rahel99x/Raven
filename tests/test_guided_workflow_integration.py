@@ -171,9 +171,11 @@ def test_fresh_heavy_setup_can_choose_billing_before_required_account_policy(mon
 def test_launch_and_setup_are_discoverable_in_menus_and_palette():
     app = App(Store(persist=False), None, None, Config(), "student")
     known = set(app.commands())
-    assert {"launchjob", "gettingstarted", "profiles"} <= known
+    assert {"launchjob", "gettingstarted", "profiles", "connectdata", "runhome", "refreshsettings"} <= known
     assert toolbar.menu_items(app, "File")[0].command == "launchjob"
-    assert {"gettingstarted", "profiles"} <= {item.command for item in toolbar.menu_items(app, "Setup")}
+    assert len(toolbar.menu_items(app, "Setup")) == 5
+    assert "profiles" in {item.command for item in toolbar.submenu_items(app, "connections")}
+    assert "gettingstarted" in {item.command for item in toolbar.submenu_items(app, "installation")}
     assert workbench.INSPECTION_MODES["launch_job"] == "launch_wizard_ui"
     assert workbench.INSPECTION_MODES["onboarding"] == "onboarding_ui"
 
@@ -191,7 +193,51 @@ def test_primary_launch_button_opens_only_the_wizard(monkeypatch):
     opened.assert_called_once_with(app)
 
 
-@pytest.mark.parametrize("mode,module_name", [("onboarding", "onboarding_ui"), ("launch_job", "launch_wizard_ui"), ("launch_setup", "data_export_ui")])
+def test_toolbar_keyboard_labels_explain_the_visible_actions():
+    from raven import interaction
+    app = App(Store(persist=False), None, None, Config(), "student")
+    toolbar.render_bar(SimpleNamespace(g=Glyphs(True)), app, 80)
+    labels = {control.id: control.label for control in interaction._toolbar_controls(app)}
+    assert labels["toolbar:menu:0"] == "File"
+    assert labels["toolbar:launch-job:None"] == "Launch job"
+    assert labels["toolbar:refresh-settings:None"].startswith("Refresh settings: Queue:")
+
+
+def test_launch_receipt_opens_the_continuous_exact_run_home(monkeypatch):
+    from raven import launch_wizard_ui, run_home_ui
+    app = App(Store(persist=False), None, None, Config(), "student")
+    launch_wizard_ui.open_launch(app)
+    receipt = {"project_root": "/project", "run_id": "trial-a2", "job_id": "123", "token": "unique-attempt"}
+    app.launch_wizard_state.update(stage="done", receipt=receipt)
+    opened = Mock()
+    monkeypatch.setattr(run_home_ui, "open_receipt", opened)
+    assert workbench.run_command(app, ["launchjob", "action", "open-run"])
+    opened.assert_called_once_with(app, receipt)
+    assert opened.call_args.args[1] is not receipt
+
+
+def test_run_again_enters_review_flow_without_writing_project_defaults(monkeypatch):
+    from raven import launch_wizard_ui
+    app = App(Store(persist=False), None, None, Config(), "student")
+    app.mode = "run_home"
+    draft = {"project": "/project", "script": "batch.sh", "captured_plan": {
+        "effective_options": {"account": "lab-x"}, "settings": {"recordings": {}}}}
+    assert launch_wizard_ui.open_from_run(app, draft)
+    state = app.launch_wizard_state
+    assert app.mode == "launch_job" and state["stage"] == "resources"
+    assert state["review"] is None and state["receipt"] is None
+    assert not state["busy"] and state["pending"] is None and not state["attempted"]
+    assert state["draft"]["captured_plan"] == draft["captured_plan"]
+    state["draft"]["captured_plan"]["effective_options"]["account"] = "another-lab"
+    assert draft["captured_plan"]["effective_options"]["account"] == "lab-x"
+    save = Mock(side_effect=AssertionError("must not overwrite project defaults"))
+    monkeypatch.setattr(launch_wizard_ui, "_save_recipe", save)
+    workbench.run_command(app, ["launchjob", "action", "save-recipe"])
+    assert "prior run" in state["error"]
+    save.assert_not_called()
+
+
+@pytest.mark.parametrize("mode,module_name", [("onboarding", "onboarding_ui"), ("launch_job", "launch_wizard_ui"), ("launch_setup", "data_export_ui"), ("connect_data", "connect_data_ui")])
 def test_paste_is_routed_to_the_visible_form(monkeypatch, mode, module_name):
     from importlib import import_module
     app = App(Store(persist=False), None, None, Config(), "student")

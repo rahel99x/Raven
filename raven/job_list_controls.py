@@ -51,34 +51,32 @@ def restore(state, data):
 
 def controls(app, g, width, context):
     from .control_rows import buttons
-    labels = (("sort-min", "Sort Min"), ("sort-max", "Sort Max"),
-              ("grouped", "Grouped"), ("sequential", "Sequential"))
-    if width < 44:
-        labels = (("sort-min", "Min"), ("sort-max", "Max"),
-                  ("grouped", "Group" if width >= 25 else "G"),
-                  ("sequential", "Seq" if width >= 25 else "S"))
-    rows, hits = buttons(g, width, [(key, label, ("command", f"joblist {context} {key}"))
+    from .layout import vlen
+    view = mode(app, context).title()
+    order = {"min": "Fewest running first", "max": "Most running first"}.get(batch_mode(app, context), "Column order")
+    # Three bounded menus replace nine competing actions. At narrow split-pane
+    # widths the full current value stays available in the semantic label/menu.
+    labels = [("view", "View: " + view), ("order", "Order: " + order), ("groups", "Groups")]
+    if sum(vlen(label) + 2 for _, label in labels) + 2 > width:
+        labels = [("view", "View: " + view), ("order", "Order"), ("groups", "Groups")]
+    if sum(vlen(label) + 2 for _, label in labels) + 2 > width:
+        labels = [("view", "View"), ("order", "Order"), ("groups", "Groups")]
+    rows, hits = buttons(g, width, [(key, label, ("command", f"joblistmenu {context} {key}"))
                                    for key, label in labels],
-                         group="job-list-controls", prefix=f"joblist:{context}:")
-    selected = {mode(app, context)}
-    if mode(app, context) == "grouped" and batch_mode(app, context):
-        selected.add("sort-" + batch_mode(app, context))
-    selected_labels = {label for key, label in labels if key in selected}
-    rows = [[(text, "sel+bold" if text.strip() in selected_labels else style) for text, style in row]
-            for row in rows]
-    full = {"sort-min": "Sort Min: fewer active jobs, then fewer total jobs",
-            "sort-max": "Sort Max: more active jobs, then fewer total jobs",
-            "grouped": "Grouped: contiguous batches", "sequential": "Sequential: individual job rows"}
+                         group="job-list-controls", prefix=f"joblist:{context}:", gap=0)
+    full = {"view": "View: " + view + "; change presentation without removing assignments",
+            "order": "Order: " + order + "; batch order applies in Grouped view",
+            "groups": "Groups: expand, collapse, or manage shared assignments"}
     for _, _, value in hits:
         value["label"] = full[value["id"].rsplit(":", 1)[-1]]
     return rows, hits
 
 
-def run_command(app, args):
+def run_command(app, args, *, preserve_view=False):
     if not args or args[0] != "joblist":
         return False
-    if len(args) != 3 or args[1] not in CONTEXTS or args[2] not in (*MODES, "sort-min", "sort-max"):
-        app.say("Use joblist <jobs|recent|history|group|history:PAGE> <grouped|sequential|sort-min|sort-max>")
+    if len(args) != 3 or args[1] not in CONTEXTS or args[2] not in (*MODES, "sort-min", "sort-max", "column-order"):
+        app.say("Use joblist <jobs|recent|history|group|history:PAGE> <grouped|sequential|sort-min|sort-max|column-order>")
         return True
     context, action = args[1:]
     if context == "recent" and action in MODES:
@@ -86,19 +84,24 @@ def run_command(app, args):
         return recent_command(app, ["recents", action])
     from . import grouping_toolbar, table_sort
     table = app.table_state
-    if action.startswith("sort-"):
+    if action == "column-order":
+        if context == "jobs":
+            app.say("Jobs use Fewest or Most running first; choose either order")
+            return True
+        table.get("job_list_sorts", {}).pop(context, None)
+    elif action.startswith("sort-"):
         choice = action[5:]
         if context == "jobs":
             table["jobs_batch_sort"] = choice
         else:
             table.setdefault("job_list_sorts", {})[context] = choice
-        if context == "recent":
-            table["recents_mode"] = "grouped"
-        else:
-            table.setdefault("job_list_modes", {})[context] = "grouped"
+        if not preserve_view:
+            if context == "recent":
+                table["recents_mode"] = "grouped"
+            else:
+                table.setdefault("job_list_modes", {})[context] = "grouped"
     else:
         table.setdefault("job_list_modes", {})[context] = action
-        table.get("job_list_sorts", {}).pop(context, None)
         if context == "history":
             table_sort.reset_sort(app, context)
     # Keep an older admitted recent record across a preference-cache reset.
@@ -120,7 +123,8 @@ def run_command(app, args):
         getattr(app, "analytics_scroll_offsets", {}).pop("advisor", None)
     detail = ("fewer active jobs, then fewer total jobs" if action == "sort-min" else
               "more active jobs, then fewer total jobs" if action == "sort-max" else
-              "contiguous batches" if action == "grouped" else "individual job rows")
+              "column order (completion time by default)" if action == "column-order" else
+              "contiguous batches" if action == "grouped" else "individual job rows; group assignments kept")
     app.say(context.replace("history:", "") + ": " + detail + "; preferences saved for this listing")
     app.save()
     return True

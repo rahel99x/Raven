@@ -303,8 +303,8 @@ def test_recent_only_columns_report_unavailable_instead_of_saving_unused_values(
 def test_group_controls_precede_table_and_keep_jump_header_and_rows_separate(dashboard, width):
     app, views = dashboard
     rows, hits = views.jobs_tab(app.store.snapshot(), app, None, width, 40)
-    buttons = [(y, value) for y, kind, value in hits if kind == "control" and value.get("group") == "grouping-toolbar"]
-    assert [value["id"] for _, value in buttons] == ["grouping:auto", "grouping:undo", "grouping:clear", "grouping:expand", "grouping:collapse", "grouping:sort-min", "grouping:sort-max"]
+    buttons = [(y, value) for y, kind, value in hits if kind == "control" and value.get("group") == "job-list-controls" and value["id"].startswith("joblist:jobs:")]
+    assert [value["id"] for _, value in buttons] == ["joblist:jobs:view", "joblist:jobs:order", "joblist:jobs:groups"]
     heading = min(y for y, kind, _ in hits if kind == "sort_header")
     assert max(y for y, _ in buttons) == heading - 2
     assert all(y >= heading + 1 for y, kind, _ in hits if kind == "job")

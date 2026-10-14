@@ -343,14 +343,31 @@ def _apply_run(app, value, *, automatic=False, refresh=False):
         app.say(state["summary"] + (f"; {len(value['warnings'])} binding notices (:runs)" if value["warnings"] else ""))
 
 
-def _select(app, run_id):
+def _select(app, run_id, *, home=False):
     state = initialize(app)
     if not state["root"]:
         raise ValueError("Choose a project first with :project PATH")
     root = state["root"]
     hub = _hub(app)
     files = hub.files
-    return _task(app, "Bind run " + clean(run_id), lambda: projects.select_run(root, run_id, files=files), lambda value: _apply_run(app, value))
+    origin = (getattr(app, "mode", "main"), getattr(app, "selected_id", None))
+    intent = object()
+    previous_intent = state.get("home_intent")
+    if home:
+        state["home_intent"] = intent
+    def selected(value):
+        if home and (state.get("home_intent") is not intent or getattr(app, "quit", False)
+                     or origin != (getattr(app, "mode", "main"), getattr(app, "selected_id", None))):
+            return
+        _apply_run(app, value)
+        if home:
+            from .run_home_ui import open_run
+            state["home_intent"] = None
+            open_run(app, binding=value["binding"])
+    started = _task(app, "Bind run " + clean(run_id), lambda: projects.select_run(root, run_id, files=files), selected)
+    if home and not started:
+        state["home_intent"] = previous_intent
+    return started
 
 
 def _target_job(app):
@@ -722,6 +739,8 @@ def run_command(app, args):
                 app.say("Run binding cleared; original research and log paths restored")
             elif len(rest) == 2 and rest[0] == "select":
                 _select(app, rest[1])
+            elif len(rest) == 2 and rest[0] == "home":
+                _select(app, rest[1], home=True)
             elif len(rest) == 2 and rest[0] == "passport":
                 binding = selected_binding(app)
                 if not binding:
@@ -764,6 +783,11 @@ def handle_key(app, key):
     if app.mode not in MODES:
         return False
     state = initialize(app)
+    if key == "h" and app.mode == "project_runs" and not state["filtering"] and not state["notices_open"]:
+        items = _visible_runs(state)
+        if items:
+            _select(app, items[min(state["run_cursor"], len(items) - 1)]["run_id"], home=True)
+        return True
     if key == "!" and app.mode == "project_runs":
         state["notices_open"] = not state["notices_open"]
         return True
@@ -789,6 +813,7 @@ def handle_key(app, key):
         state["run_cursor"], state["output_cursor"] = 0, 0
         return True
     if key == "esc":
+        state["home_intent"] = None
         if app.mode == "project_preview":
             app.mode = "project_outputs"
         else:
@@ -917,11 +942,17 @@ def overlay(views, snap, app, width, height):
             rendered = L.box(g, lines, width, height, "project notices")
             return B.boxed(app, "modal:project-notices", rendered, start=3, count=len(notices), page=page,
                            target=logical, painted=start, setter=lambda value: state.update(notices_scroll=value), context=context)
-        lines.append(row(" Enter binds | / filter | ! notices | r refresh | Esc back", "dim"))
+        lines.append(row(" Enter binds | h run home | / filter | ! notices | r refresh | Esc back", "dim"))
         lines.append(row(" Filter: " + state["filter"] + ("_" if state["filtering"] else ""), "cyan"))
         items = _visible_runs(state)
-        page = max(1, height - 11)
+        page = max(1, height - 12)
         cursor, top = _window(state, "run_cursor", "run_top", len(items), page)
+        if items:
+            label = " [Open selected run home]"
+            button_hits.append((len(lines), "control", {"id": "project-run-home", "label": "Open selected run home",
+                                "left": 0, "right": min(max(0, width - 8), L.vlen(label)),
+                                "action": ("command", "run home " + shlex.quote(items[cursor]["run_id"])), "group": "project_runs"}))
+            lines.append(row(label, "cyan+bold"))
         key = "modal:project-runs"
         context = ("project_runs", state["root"], state["filter"])
         logical, top = B.window(app, key, top, len(items), page, context=context, focus=cursor)

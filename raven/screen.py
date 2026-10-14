@@ -782,6 +782,7 @@ def _navigation_context(app):
     toolbar = getattr(app, "toolbar_state", {}) or {}
     panels = getattr(app, "job_panel_state", {}) or {}
     from .terminal_ui import input_identity
+    from .interaction import _guided_context
     return (app.mode, app.tab, analysis.get("modal"), analysis.get("chart_job"), analysis.get("metric"),
             table.get("modal"), table.get("tab"), table.get("node"), table.get("action_job"),
             page.get("path"), page.get("start"), page.get("end"), page.get("snapshot", {}).get("ident"),
@@ -797,6 +798,7 @@ def _navigation_context(app):
             if app.mode == "onboarding" else None,
             tuple(getattr(app, "launch_wizard_state", {}).get(key) for key in ("generation", "revision", "stage", "editing"))
             if app.mode == "launch_job" else None,
+            _guided_context(app),
             tuple(getattr(app, "data_export_state", {}).get(key) for key in ("generation", "revision", "stage", "editing"))
             if app.mode in ("data_export", "launch_setup") else None)
 
@@ -928,6 +930,10 @@ def _apply_input(app, event, hits, curses):
             if app.mode == "launch_job":
                 from .launch_wizard_ui import paste as launch_paste
                 launch_paste(app, mouse)
+                return
+            if app.mode == "connect_data":
+                from .connect_data_ui import paste as connect_data_paste
+                connect_data_paste(app, mouse)
                 return
             if app.mode == "operations":
                 from .ops_ui import paste as operation_paste

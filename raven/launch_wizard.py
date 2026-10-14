@@ -36,6 +36,10 @@ def arguments(draft):
     if execution == "local":
         argv.append("--local")
     else:
+        captured = draft.get("captured_plan")
+        if captured:
+            argv.extend("--sbatch=--" + key + ("=" + str(value) if value is not True else "")
+                        for key, value in captured.get("effective_options", {}).items() if value is not False)
         defaults = workload_defaults(account=draft.get("account", ""), partition=draft.get("partition", ""),
             qos=draft.get("qos", ""), cpus=draft.get("cpus") or None, memory=draft.get("memory") or None,
             time_limit=draft.get("time") or None, gpus=draft.get("gpus") or None)
@@ -55,7 +59,15 @@ def arguments(draft):
 def review(draft, *, environ=None, connection=None):
     env = dict(os.environ if environ is None else environ)
     project, argv = arguments(draft)
-    plan = launch.resolve_plan(argv, cwd=project, environ=env, connection=connection)
+    captured = draft.get("captured_plan")
+    launch_env = {key: value for key, value in env.items() if not key.startswith("SBATCH_")} if captured else env
+    plan = launch.resolve_plan(argv, cwd=draft.get("submit_dir") or project, environ=launch_env,
+        connection=connection, captured_settings=captured.get("settings", {}) if captured else None)
+    if captured and plan["script_sha256"] != captured.get("script_sha256"):
+        raise ValueError("The original script changed since this run. Start a fresh Launch job to review the changed source; Run again preserves the recorded script identity.")
+    if captured and any(value is False and plan["effective_options"].get(key) not in (None, False)
+                        for key, value in captured.get("effective_options", {}).items()):
+        raise ValueError("The recorded run disabled a script scheduler flag through its environment. Start a fresh Launch job to review that override explicitly.")
     if plan["execution"] == "local":
         for item in plan["readiness"]:
             if item["feature"] == "logs":
@@ -79,6 +91,8 @@ def submit(reviewed, draft, *, environ=None, connection=None, runner=None, cance
     if runner is None and shutil.which("sbatch", path=env.get("PATH")) is None:
         raise ValueError("Slurm sbatch is unavailable here. Run Raven on the submission host, or explicitly select Standalone workstation. Nothing was submitted.")
     options = {"environ": env}
+    if draft.get("captured_plan"):
+        options["environ"] = {key: value for key, value in env.items() if not key.startswith("SBATCH_")}
     if runner is not None:
         options["runner"] = runner
     return launch_runtime.execute_plan(current["plan"], **options)

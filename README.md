@@ -11,7 +11,7 @@ uses optional `pyte` and `wcwidth` dependencies.
 | Command | Behavior |
 | --- | --- |
 | `ravenl` | Opens Light without requesting compute. |
-| `ravenh` | With a configured site, requests Heavy and waits for a verified worker before loading the interface. A first bare interactive launch opens setup in Light. |
+| `ravenh` | Opens the dashboard while Heavy starts in the background; analysis becomes available after verification. A first bare interactive launch opens setup in Light. |
 | `raven` | Opens the governed Light interface; equivalent to `ravenl`. |
 | `raven setup` | Guides workstation or cluster setup and reviews configuration before saving. |
 | `raven launch SCRIPT` | Submits an existing shell script with retained run evidence; use `--local` for explicit workstation execution. |
@@ -63,8 +63,8 @@ User configuration and state remain separate from the installed package.
 ## Configuration
 
 A fresh installation defaults to local Slurm. Run `raven setup`, or open
-**Setup → Getting started**, to choose the environment and review persistent
-settings. **Setup → Sites and lab profiles** saves reusable connection and
+**Setup → Installation and diagnostics → Getting started**, to choose the environment and review persistent
+settings. **Sites and lab profiles** in the same category saves reusable connection and
 Heavy-account choices. Workload billing remains a separate launch setting.
 After saving, **Use this profile** opens Light on that profile; then choose
 **File → Launch job**. Saving alone requests no compute and leaves the current
@@ -134,27 +134,29 @@ schema identifiers require explicit conversion before use by this implementation
 Compute admission and collection permission are independent. Light starts with
 a 60-second queue interval and a 300-second history interval. Active Heavy uses
 its selected telemetry preset; Default requests queue reads every five seconds
-and live CPU/memory reads every two seconds. **Setup → Heavy telemetry update
-settings** applies presets and Custom values without a restart. The queue slider
-changes queue cadence independently. Site policy and request budgets still apply;
+and live CPU/memory reads every two seconds. **Setup → Refresh and performance → Refresh settings**
+opens queue, recording-read, and Heavy preset settings together. Changes apply
+without a restart; recording frequency and observed data freshness remain distinct.
+Site policy and request budgets still apply;
 automatic GPU steps and weather probes remain disabled. See
 [telemetry updates](docs/guides/telemetry-updates.md) for effective intervals,
 retained recordings, and saved preferences.
 
 The Light/Heavy toolbar control and **View → Compute allocation** expose
 allocation review, request, cancellation, and release. Pending and draining
-workers do not count as Heavy. **Single/Multi** separately controls background
-worker concurrency. Supported execution paths and deferred actions are listed
+workers do not count as Heavy. Background-worker concurrency lives in advanced
+preferences. Supported execution paths and deferred actions are listed
 in the [execution contracts](docs/raven/execution-contracts.md).
 
-Use **Setup** in the toolbar for embedded Research and Analytics setup guides,
-project connection, and Heavy allocation preferences. The
+Use **Setup** for connections, launch defaults, recordings, refresh, and diagnostics.
+Each Research and Analytics view provides its own setup action. The
 [Setup guide](docs/guides/setup.md) covers account discovery, personal and lab
 billing, and local Slurm defaults. Saving preferences is separate from requesting
 compute.
 
-Job lists offer saved **Grouped**, **Sequential**, **Sort Min**, and **Sort Max**
-choices, including History and the browsers beside Research and Analytics. See
+Job lists provide three controls: **View**, **Order**, and **Groups**, including
+History and the browsers beside Research and Analytics. Switching to Sequential
+preserves group assignments and the saved batch order. See
 [batch views](docs/guides/batch-launches.md) for ordering, readable group names,
 and selection behavior.
 
@@ -164,6 +166,12 @@ Open **File → Launch job**, or enter `:launchjob`, to select an existing scrip
 review its effective account and resources, choose recordings, and submit from
 the final review. The launcher preserves the script and displays an equivalent
 command. Previewing and saving preferences are separate from submission.
+
+After submission, **Run home** keeps the exact attempt's status, logs,
+recordings, outputs, and export actions together. **Run again** opens a new
+review with retained settings. **Connect data** validates an actual sample and
+provides application snippets with independent recording-readiness indicators.
+See the [everyday workflow](docs/guides/everyday-workflow.md).
 
 Run the launcher on the workstation or cluster submission host that owns the
 project. An SSH monitoring profile does not upload and submit a local project

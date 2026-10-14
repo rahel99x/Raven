@@ -78,6 +78,7 @@ def test_modes_and_batch_ranks_persist_independently_for_each_listing(app, conte
     app.run_command(f"joblist {context} sequential")
     table_ui.restore(restored, app.saved_preferences[-1])
     assert job_list_controls.mode(restored, context) == "sequential"
+    assert job_list_controls.batch_mode(restored, context) == "max"
     assert {other: job_list_controls.fingerprint(app, other) for other in before} == before
     app.run_command(f"joblist {context} sort-min")
     assert job_list_controls.fingerprint(app, context) == ("grouped", "min")
@@ -296,6 +297,9 @@ def button(rows, hits, ident, width, height):
 
 
 def click(app, size, ident):
+    context, action = ident.removeprefix("joblist:").rsplit(":", 1)
+    section = "order" if action.startswith("sort-") else "view"
+    ident = f"joblist:{context}:{section}"
     rows, hits = frame(app, *size)
     if ident.startswith("joblist:analytics:advisor:"):
         # At 80 columns the live-job section follows a scrollable historical
@@ -309,6 +313,8 @@ def click(app, size, ident):
     y, control = button(rows, hits, ident, *size)
     app.click(y, control["left"], hits, button="press")
     app.click(y, control["left"], hits, button="release")
+    from test_job_list_menu import choose
+    choose(app, size, action)
 
 
 @pytest.mark.parametrize("ascii_", [False, True])
@@ -324,7 +330,7 @@ def test_list_buttons_are_painted_and_dispatch_on_each_job_list(app, context, si
     for action in ("sequential", "sort-max", "grouped", "sort-min"):
         click(app, size, f"joblist:{context}:{action}")
         if action.startswith("sort-"):
-            assert job_list_controls.fingerprint(app, context) == ("grouped", action[5:])
+            assert job_list_controls.batch_mode(app, context) == action[5:]
         else:
             assert job_list_controls.mode(app, context) == action
     rows, _ = frame(app, *size)

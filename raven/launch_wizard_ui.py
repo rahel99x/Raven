@@ -81,7 +81,7 @@ def open_launch(app):
     if state["busy"] or state["pending"]:
         _say(app, "The previous launch action is still completing. Its receipt will be reported; do not submit again.", True)
         return False
-    if getattr(app, "mode", "main") not in ("main", "setup", "onboarding", "launch_job", "palette"):
+    if getattr(app, "mode", "main") not in ("main", "setup", "onboarding", "launch_job", "palette", "run_home"):
         _say(app, "Close the current dialog before launching a job.", True)
         return False
     project = getattr(app, "project_state", {})
@@ -102,6 +102,19 @@ def open_launch(app):
                    account="", partition="", qos="", cpus="", gpus="", memory="", time="",
                    gpu=None, cpu_memory=None, basic_research=False))
     app.mode = "launch_job"
+    _invalidate(state)
+    return True
+
+
+def open_from_run(app, draft):
+    """Copy retained choices into a new review; opening never submits a job."""
+    retained = copy.deepcopy(draft)
+    if not open_launch(app):
+        return False
+    state = initialize(app)
+    state["draft"].update(retained)
+    state.update(stage="resources", imported=copy.deepcopy(retained.get("captured_plan")),
+                 message="Retained resources and recording settings copied. Review before a new submission; the original source must still match.")
     _invalidate(state)
     return True
 
@@ -256,6 +269,8 @@ def _activate(app, action):
     if state["busy"] or state["pending"] or state["editing"]:
         return
     try:
+        if state["draft"].get("captured_plan") and (action in ("advanced", "save-recipe") or action.startswith("recipe:")):
+            raise ValueError("This review keeps the prior run's recording settings. Open a fresh Launch job to choose a different project recipe.")
         if action == "next":
             _advance(app)
         elif action == "back":
@@ -296,14 +311,8 @@ def _activate(app, action):
         elif action == "open-run" and state["receipt"]:
             if state["scope"] != _scope(app):
                 raise ValueError("The connection or project changed. Open this receipt's project on its original host.")
-            from . import projects, project_ui
-            receipt = copy.deepcopy(state["receipt"])
-            def bound(value):
-                project = project_ui.initialize(app)
-                project.update(root=receipt["project_root"], registered_root=receipt["project_root"])
-                project_ui._apply_run(app, value)
-            _queue(app, "Opening the exact recorded run...",
-                   lambda event: projects.select_run(receipt["project_root"], receipt["run_id"]), bound)
+            from .run_home_ui import open_receipt
+            open_receipt(app, copy.deepcopy(state["receipt"]))
     except (ValueError, OSError, KeyError) as exc:
         state["error"] = str(exc)
         _say(app, "Launch job: " + str(exc), True)
@@ -362,10 +371,13 @@ def _document(app):
                     description += " / QoS: " + ", ".join(association["qos"])
                 rows.append(("Use account: " + description, "account:" + str(index)))
             rows += [(error, None) for error in discovery.get("errors", [])]
-            rows += [("Use project defaults (no named profile)", "recipe:")]
-            rows += [(("[x] " if draft["recipe"] == name else "") + "Workload profile: " + name, "recipe:" + name)
-                     for name in state["options"].get("recipes", [])]
-            rows += [field("recipe_name", "Save resource profile as"), ("Save these resource defaults for this project", "save-recipe")]
+            if draft.get("captured_plan"):
+                rows.append(("Recording settings and advanced scheduler options come from the retained run. These resource fields are explicit overrides; start a fresh Launch job to use a different recipe.", None))
+            else:
+                rows += [("Use project defaults (no named profile)", "recipe:")]
+                rows += [(("[x] " if draft["recipe"] == name else "") + "Workload profile: " + name, "recipe:" + name)
+                         for name in state["options"].get("recipes", [])]
+                rows += [field("recipe_name", "Save resource profile as"), ("Save these resource defaults for this project", "save-recipe")]
         else:
             rows.append(("Standalone runs execute on this workstation. Slurm directives do not reserve or limit local resources.", None))
         plan = state.get("imported") or {}
@@ -378,8 +390,10 @@ def _document(app):
             value = {None: "Use saved/default setting", True: "On", False: "Off"}[draft[key]]
             rows.append((label + ": " + value, "toggle:" + key))
         rows += [("Research: " + ("Basic experiment and evidence" if draft["basic_research"] else "Use saved/default integrations"), "research"),
-                 ("GPU recording observes assigned devices; it does not request a GPU. Scientific metrics require an application producer.", None),
-                 ("Advanced project reporting settings", "advanced"), ("Back", "back"), ("Review launch", "next")]
+                 ("GPU recording observes assigned devices; it does not request a GPU. Scientific metrics require an application producer.", None)]
+        if not draft.get("captured_plan"):
+            rows.append(("Advanced project reporting settings", "advanced"))
+        rows += [("Back", "back"), ("Review launch", "next")]
     elif stage == "review":
         plan = state["review"]["plan"]
         rows += [("Project: " + plan["project_root"], None), ("Script: " + plan["script"], None),
@@ -392,7 +406,8 @@ def _document(app):
                  for key, value in plan["effective_options"].items()]
         rows += [(item["label"] + ": " + item["status"] + ". " + item["reason"], None) for item in plan["readiness"]]
         rows += [(text, None) for text in plan["compatibility"]]
-        rows += [("Equivalent command (run from " + plan["submit_dir"] + "): " + state["review"]["command"], None),
+        command_label = ("Base launch command; also apply the retained settings shown above" if draft.get("captured_plan") else "Equivalent command")
+        rows += [(command_label + " (run from " + plan["submit_dir"] + "): " + state["review"]["command"], None),
                  ("The original script stays unchanged. Launching creates a source snapshot and recorded attempt. Closing Raven leaves accepted workloads running.", None)]
         rows.append(("Back to recordings", "back"))
         if not state["attempted"]:
@@ -404,7 +419,7 @@ def _document(app):
         if receipt.get("pid"):
             rows.append(("Supervisor PID: " + str(receipt["pid"]) + ". To stop this still-running supervisor from a shell: kill -TERM " + str(receipt["pid"]) + ". Verify its identity before using a retained PID.", None))
         rows += [(stream + ": " + path, None) for stream, path in receipt.get("logs", {}).items()]
-        rows.append(("Open recorded run (retry after initialization if it is still starting)", "open-run"))
+        rows.append(("Open run home: status, logs, recordings, and results", "open-run"))
     return rows
 
 

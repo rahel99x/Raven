@@ -156,15 +156,17 @@ def test_mode_buttons_click_without_resizing_or_losing_full_wheel_rect(app, asci
         select(app, app.recent_ids[0])
         rows, hits = frame(app, *size)
     controls = {value["id"]: (y, value) for y, kind, value in hits
-                if kind == "control" and value.get("group") == "recents-modes"}
-    assert set(controls) == {"recents-mode:grouped", "recents-mode:sequential"}
-    y, button = controls["recents-mode:sequential"]
+                if kind == "control" and value.get("group") == "job-list-controls" and value["id"].startswith("joblist:recent:")}
+    assert set(controls) == {"joblist:recent:view", "joblist:recent:order", "joblist:recent:groups"}
+    y, button = controls["joblist:recent:view"]
     assert row_text(rows[y])[button["left"]:button["right"]].strip()
     state = recent_history.initialize(app)
     ratio = state.ratio
     assert state.rect.x <= button["right"] - 1 < state.rect.x + state.rect.width
     app.click(y, button["left"], hits, button="press")
     app.click(y, button["left"], hits, button="release")
+    from test_job_list_menu import choose
+    choose(app, size, "sequential")
     assert recents_ui.mode(app) == "sequential"
     assert state.ratio == ratio and not app.pane_drag_state["capture"]
 
@@ -291,9 +293,9 @@ def test_wrapped_grouping_toolbar_stays_above_queue_headers(app, ascii_, density
     app.store.apply_jobs([Job("301", "running", "cpu", "RUNNING"), Job("302", "queued", "cpu", "PENDING")])
     app.store.apply_finished([finished("52_2", 5), finished("71_1", 4), finished("52_1", 3), finished("71_0", 2)])
     rows, hits = frame(app, *size)
-    controls = [(y, value) for y, kind, value in hits if kind == "control" and value.get("group") == "grouping-toolbar"]
+    controls = [(y, value) for y, kind, value in hits if kind == "control" and value.get("group") == "job-list-controls" and value["id"].startswith("joblist:jobs:")]
     headers = [y for y, kind, value in hits if kind == "sort_header" and value[0] == "jobs"]
-    assert len(controls) == 7 and headers
+    assert len(controls) == 3 and headers
     assert max(y for y, _ in controls) < min(headers)
     for y, value in controls:
         assert row_text(rows[y])[value["left"]:value["right"]].strip()

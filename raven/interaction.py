@@ -244,6 +244,7 @@ def _scope(app):
             if mode == "onboarding" else None,
             tuple(_state(app, "launch_wizard_state").get(key) for key in ("generation", "revision", "stage", "editing"))
             if mode == "launch_job" else None,
+            _guided_context(app),
             tuple(_state(app, "notification_ui_state").get(key) for key in ("severity", "selected", "details", "revision"))
             if mode == "notifications" else None,
             tuple(_state(app, "data_export_state").get(key) for key in ("generation", "revision", "stage", "editing"))
@@ -329,6 +330,7 @@ def _context(app):
             if getattr(app, "mode", "main") == "onboarding" else None,
             tuple(_state(app, "launch_wizard_state").get(key) for key in ("generation", "revision", "stage", "editing"))
             if getattr(app, "mode", "main") == "launch_job" else None,
+            _guided_context(app),
             _notification_context(app),
             tuple(_state(app, "data_export_state").get(key) for key in ("generation", "revision", "stage", "editing"))
             if getattr(app, "mode", "main") in ("data_export", "launch_setup") else None)
@@ -337,6 +339,16 @@ def _context(app):
 def _notification_context(app):
     from .notification_ui import context
     return context(app)
+
+
+def _guided_context(app):
+    """Scope new workflow controls to the exact painted page and revision."""
+    name = {"connect_data": "connect_data_state", "run_home": "run_home_state",
+            "job_list_menu": "job_list_menu_state"}.get(getattr(app, "mode", ""))
+    if name is None:
+        return None
+    state = _state(app, name)
+    return tuple(state.get(key) for key in ("generation", "revision", "token", "page", "view", "editing", "context", "section"))
 
 
 def _current(app):
@@ -488,6 +500,11 @@ def _toolbar_controls(app):
     state = _state(app, "toolbar_state")
     if not state:
         return
+    from .toolbar import control_descriptors
+    try:
+        labels = {tuple(item["action"]): item["label"] for item in control_descriptors(app)}
+    except (TypeError, ValueError, IndexError, KeyError):
+        labels = {}
     tracks = []
     for hit in islice(state.get("hits", ()), MAX_CONTROLS):
         if not isinstance(hit, (tuple, list)) or len(hit) != 5:
@@ -499,7 +516,7 @@ def _toolbar_controls(app):
         if kind == "track":
             tracks.append(rect)
         else:
-            yield Control(f"toolbar:{kind}:{key}", str(key if kind == "menu" else "Export data" if kind == "export-data" else kind), rect,
+            yield Control(f"toolbar:{kind}:{key}", str(labels.get((kind, key), key if kind == "menu" else kind)), rect,
                           ("click", y, left), "toolbar", layer=3)
     if tracks:
         rect = Rect(tracks[0].top, min(r.left for r in tracks), tracks[-1].bottom,
@@ -515,7 +532,7 @@ def _toolbar_controls(app):
             rect = _rect((y, left, y + 1, right))
             if rect:
                 reason = disabled.get(key, "")
-                yield Control(f"toolbar:menu:{state['menu']}:{key}", str(key), rect,
+                yield Control(f"toolbar:menu:{state['menu']}:{key}", str(labels.get(("item", key), key)), rect,
                               ("click", y, left), "toolbar-menu", not bool(reason),
                               str(reason), layer=4)
 
@@ -525,6 +542,10 @@ def _modal_controls(app, rows, width, height, spans):
     from .job_group_menu import active as group_menu_active, controls as group_menu_controls
     if group_menu_active(app):
         yield from group_menu_controls(app)
+        return
+    from .job_list_menu import active as list_menu_active, controls as list_menu_controls
+    if list_menu_active(app):
+        yield from list_menu_controls(app)
         return
     from .history_log_export import active, controls
     if active(app):
@@ -540,7 +561,8 @@ def _modal_controls(app, rows, width, height, spans):
                    "notifications": "notification_ui_state", "data_export": "data_export_state",
                    "telemetry_settings": "telemetry_settings_ui_state",
                    "onboarding": "onboarding_ui_state", "launch_job": "launch_wizard_state",
-                   "launch_setup": "data_export_state"}
+                   "launch_setup": "data_export_state", "connect_data": "connect_data_state",
+                   "run_home": "run_home_state"}
     # The log workbench uses additional mode names; only current modal data may
     # contribute controls, never a previous hidden panel's registries.
     state_name = state_names.get(mode)
@@ -997,9 +1019,11 @@ def handle_key(app, key):
     state = initialize(app)
     if state["routing"]:
         return False
-    if (getattr(app, "mode", "main") == "operations"
+    if ((getattr(app, "mode", "main") == "operations"
             and (_state(app, "ops_state").get("editing") is not None
-                 or _state(app, "ops_state").get("catalog_search"))):
+                 or _state(app, "ops_state").get("catalog_search")))
+            or (getattr(app, "mode", "main") == "connect_data"
+                and _state(app, "connect_data_state").get("editing") is not None)):
         # Fields and catalog search own their text keys. Returning focus to
         # the graph here would turn Home/Enter or typed shortcuts into actions.
         state["active"] = False
