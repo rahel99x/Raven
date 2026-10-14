@@ -249,7 +249,7 @@ def test_lost_range_release_is_committed_before_details_control_activation(dashb
     assert app.selected_id == "5" and app.marks == marks
 
 
-@pytest.mark.parametrize("toolbar_kind", ["track", "menu"])
+@pytest.mark.parametrize("toolbar_kind", ["refresh-settings", "menu"])
 @pytest.mark.parametrize("new_gesture", ["press", "click"])
 def test_fresh_toolbar_gesture_commits_unreleased_range_before_global_capture(dashboard, monkeypatch, toolbar_kind, new_gesture):
     app = dashboard.app
@@ -260,6 +260,10 @@ def test_fresh_toolbar_gesture_commits_unreleased_range_before_global_capture(da
     y, left, right = hit[:3]
     monkeypatch.setattr(dashboard.store, "snapshot", forbidden)
     mouse(dashboard, y, (left + right - 1) // 2, new_gesture)
+    if toolbar_kind == "refresh-settings":
+        assert app.mode == "telemetry_settings"
+    else:
+        assert app.toolbar_state["menu"] is not None
     assert not S.active(app)
     assert app.marks == marks and app.selected_id == selected and app.cursor["jobs"] == cursor
     # A delayed release from the old range cannot adjust its endpoint or undo

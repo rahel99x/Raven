@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from raven import execution_ui, interaction, job_selection, layout as L, screen, toolbar
+from raven import execution_ui, interaction, job_selection, layout as L, screen, toolbar, refresh_rate
 from raven.config import Config
 from raven.controller import App
 from raven.model import Finished, Job, Store
@@ -203,18 +203,39 @@ def test_real_keyboard_graph_after_mouse_button_moves_focus_without_activation(d
     assert not interaction.initialize(app)["active"] and app.mode == "main"
 
 
-def test_screen_slider_press_drag_release_changes_rate_without_changing_selection(dashboard):
+def refresh_button(app, action):
+    return next(control for control in interaction.controls(app)
+                if control.action == ("command", "refreshsettings " + action))
+
+
+def test_screen_refresh_summary_opens_panel_and_requires_fresh_press_to_change_rate(dashboard):
     app = dashboard.app
-    track = next(control for control in interaction.controls(app) if control.id == "toolbar:track")
-    before = app.selected_id, set(app.marks)
-    dashboard.mouse(track.rect.top, track.rect.left, MOUSE.BUTTON1_PRESSED)
-    assert toolbar.initialize(app)["dragging"]
-    dashboard.mouse(track.rect.top + 8, track.rect.right + 50,
+    summary = next(control for control in interaction.controls(app) if control.id == "toolbar:refresh-settings:None")
+    app.marks = {"75"}
+    before = app.selected_id, dict(app.cursor), set(app.marks)
+    initial_rate = refresh_rate.multiplier(app)
+    initial_seconds = refresh_rate.cadence(app, "jobs")
+    dashboard.mouse(summary.rect.top, summary.rect.left, MOUSE.BUTTON1_PRESSED)
+    assert app.mode == "telemetry_settings" and not toolbar.initialize(app)["dragging"]
+    dashboard.draw()
+    faster = refresh_button(app, "queue faster")
+    # Moving the opening gesture onto an actual setting must not activate it.
+    dashboard.mouse(faster.rect.top, faster.rect.left,
                     MOUSE.REPORT_MOUSE_POSITION | MOUSE.BUTTON1_PRESSED)
-    assert app.cfg.get("polling_multiplier") == 50
-    dashboard.mouse(track.rect.top + 8, track.rect.right + 50, MOUSE.BUTTON1_RELEASED)
-    assert not toolbar.initialize(app)["dragging"]
-    assert (app.selected_id, app.marks) == before and not job_selection.active(app)
+    dashboard.mouse(faster.rect.top, faster.rect.left, MOUSE.BUTTON1_RELEASED)
+    assert not toolbar.initialize(app)["pressed"]
+    assert refresh_rate.multiplier(app) == initial_rate
+    assert (app.selected_id, app.cursor, app.marks) == before and not job_selection.active(app)
+    dashboard.mouse(faster.rect.top, faster.rect.left, MOUSE.BUTTON1_PRESSED)
+    dashboard.mouse(faster.rect.top, faster.rect.left, MOUSE.BUTTON1_RELEASED)
+    assert refresh_rate.multiplier(app) > initial_rate
+    assert refresh_rate.cadence(app, "jobs") < initial_seconds
+    dashboard.draw()
+    close = refresh_button(app, "close")
+    dashboard.mouse(close.rect.top, close.rect.left, MOUSE.BUTTON1_PRESSED)
+    dashboard.mouse(close.rect.top, close.rect.left, MOUSE.BUTTON1_RELEASED)
+    assert app.mode == "main"
+    assert (app.selected_id, app.cursor, app.marks) == before and not job_selection.active(app)
 
 
 def test_real_content_wheel_after_button_focus_restores_normal_content_keys(dashboard):

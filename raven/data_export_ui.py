@@ -51,7 +51,7 @@ def command_names():
 
 
 def active(app):
-    return getattr(app, "mode", "") == "data_export"
+    return getattr(app, "mode", "") in ("data_export", "launch_setup")
 
 
 def _invalidate(state, *, content=True):
@@ -81,7 +81,7 @@ def _failure(app, error):
     state.update(error=str(error), stage=state.get("return_stage", "form"), message="")
     _invalidate(state)
     # App.fail feeds the retained notification center; no renderer truncation.
-    _feedback(app, "Export data: " + str(error), True)
+    _feedback(app, ("Launch settings: " if getattr(app, "mode", "") == "launch_setup" else "Export data: ") + str(error), True)
 
 
 def _host(app):
@@ -295,7 +295,7 @@ def cancel(app, close=False):
     if close:
         state["generation"] += 1
         state.update(pending=None, running=False, cancel=None)
-        app.mode = state["return_mode"] if state["return_mode"] != "data_export" else "main"
+        app.mode = state["return_mode"] if state["return_mode"] not in ("data_export", "launch_setup") else "main"
     elif state["pending"]:
         state.update(pending=None, cancel=None, stage="form", message="Cancelled; selections retained.")
     elif state["running"]:
@@ -966,7 +966,7 @@ def overlay(views, snap, app, width, height):
         rows.append([(text, style)])
     if height >= 5:
         rows.append([(L.cut("Tab/Arrows: choose | Enter/Space: apply | PgUp/PgDn: scroll | Esc: close", inner, views.g.ascii), "muted")])
-    rendered = L.box(views.g, rows, width, height, "Project launch setup" if state["stage"] == "setup" else "Export data", min_width=10)
+    rendered = L.box(views.g, rows, width, height, "Project launch setup" if getattr(app, "mode", "") == "launch_setup" or state["stage"] == "setup" else "Export data", min_width=10)
     state["control_hits"] = place_hits(hits, rendered[1:-2] if height >= 5 else rendered[1:-1], offset=state["top"])
     state["painted"] = _frame(app)
     return rendered

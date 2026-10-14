@@ -428,6 +428,12 @@ def test_every_utf8_mouse_byte_boundary_remains_framed_after_300ms(tmp_path, ter
             os.write(master, report[:split])
             await_file(prefix)
             time.sleep(.3)
+            if split == 1:
+                # Sleeping in the parent does not guarantee the child has
+                # received CPU time to expire Escape. Acknowledge that branch
+                # before sending the late body so this exercises recovery on
+                # busy CI runners as well as on an idle workstation.
+                await_file(escaped)
             os.write(master, report[split:])
             await_file(warmup, split + 1)
         os.write(master, b"q")

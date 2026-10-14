@@ -115,23 +115,22 @@ A changed job, source, page, axis mode, layout, menu, or terminal size also canc
 The operation changes display bounds and preserves measured values.
 See [Graph interaction](charts.md#zoom-a-time-interval) for keyboard commands, source scope, logarithmic axes, and limits.
 
-## Adjust the update slider by dragging
+## Open refresh controls
 
-1. Press the left mouse button on the top-right slider track.
-2. Keep the button pressed and move the pointer horizontally.
-3. Release the button at the required interval.
+1. Click the toolbar's **Queue · Recordings** summary.
+2. Choose the queue's Faster or Slower control, or select a recording-read interval.
+3. Inspect the effective value and source freshness before closing the panel.
 
-**Expected result:** The slider updates the requested position.
-The label shows the effective Jobs interval in `s`, `ms`, or `µs`; ASCII mode uses `us`.
-The logarithmic endpoints follow the active queue base and site policy.
+**Expected result:** The chosen reader interval changes without changing the
+selected job, marks, or viewport. The summary is a button: dragging over it
+does not change a rate or activate a control beneath the pointer after it opens.
+The underlying queue range follows the active base and site policy.
 Managed Light starts at 60–6 seconds; Default Heavy starts at 5–0.5 seconds.
 Request budgets, demand, command duration, and retry backoff can defer a read.
-Right-click restores the active queue base without clearing selection.
 
-Use a direct track click when the terminal does not report dragging.
-Use the wheel, `[-]` and `[+]`, or `:rate N` for exact one-step or numeric control.
-The command accepts positions from one to 50. Managed sessions change queue
-cadence only; native compatibility sessions retain the global slider behavior.
+The compatibility command `:rate N` accepts positions from one to 50.
+Managed sessions change queue cadence only; native compatibility sessions
+retain their existing rate-command behavior.
 See [Update rate](live-workbench.md#set-the-update-rate) for source limits and saved preferences.
 
 ## Resize a panel by dragging

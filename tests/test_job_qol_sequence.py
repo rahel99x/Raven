@@ -33,10 +33,19 @@ def test_dynamic_grouping_selection_resize_graph_and_stale_queue_sequence(dashbo
         assert app.tab == "jobs" and app.mode == "main"
 
     def click_control(key):
+        from test_job_list_menu import choose
+        action = key.removeprefix("grouping:")
         position = next((y, value["left"]) for y, kind, value in ui.hits
-                        if kind == "control" and value["id"] == key)
+                        if kind == "control" and value["id"] == "joblist:jobs:groups")
         send(ui, position, "press", route)
         send(ui, position, "release", route)
+        def menu_send(point, button):
+            send(ui, point, button, route)
+        if action in ("auto", "undo", "clear"):
+            choose(app, (300, 100), "manage", send=menu_send)
+        if action == "clear":
+            choose(app, (300, 100), "remove", send=menu_send)
+        choose(app, (300, 100), action, send=menu_send)
         redraw()
 
     def index():

@@ -168,26 +168,35 @@ def test_clipboard_preferences_are_captured_independently_per_app():
     assert clipboard.options(second) == dict(use_osc52=True, use_tools=False, destination="copy")
 
 
-def test_toolbar_switch_is_mouse_selectable_and_does_no_editor_probe(monkeypatch):
+def test_edit_menu_switch_is_mouse_selectable_and_does_no_editor_probe(monkeypatch):
     app = SimpleNamespace(cfg={}, mode="main", tab="analytics", width=120, height=40, messages=[])
     app.say = app.messages.append
     monkeypatch.setattr(E, "discover", lambda *a: pytest.fail("toggle probed a process"))
-    toolbar.render_bar(SimpleNamespace(g=L.Glyphs(False)), app, 120)
-    hit = next(h for h in app.toolbar_state["hits"] if h[3] == "copy-mode")
+    views = SimpleNamespace(g=L.Glyphs(False))
+    toolbar.render_bar(views, app, 120)
+    toolbar.run_command(app, ["menu", "Edit"])
+    toolbar.overlay(views, {}, app, 120, 40)
+    hit = next(h for h in app.toolbar_state["menu_hits"] if h[3] == "copy-destination")
     assert toolbar.handle_mouse(app, hit[0], hit[1], button="left")
     assert E.mode(app) == "yank"
-    toolbar.render_bar(SimpleNamespace(g=L.Glyphs(False)), app, 120)
-    assert any(c["id"] == "toolbar:copy-mode" for c in toolbar.control_descriptors(app))
-    assert "Yank" in L.row_text(toolbar.render_bar(SimpleNamespace(g=L.Glyphs(False)), app, 120))
+    toolbar.overlay(views, {}, app, 120, 40)
+    control = next(c for c in toolbar.control_descriptors(app) if c["id"] == "toolbar:menu:1:copy-destination")
+    assert control["label"] == "Switch to clipboard copying"
+    assert not any(h[3] == "copy-mode" for h in app.toolbar_state["hits"])
 
 
-def test_real_config_toolbar_switch_uses_supported_config_api():
+def test_real_config_edit_menu_switch_uses_supported_config_api():
     app = SimpleNamespace(cfg=Config(), mode="main", tab="analytics", width=120, height=40, messages=[])
     app.say = app.messages.append
-    toolbar.render_bar(SimpleNamespace(g=L.Glyphs(False)), app, 120)
-    hit = next(h for h in app.toolbar_state["hits"] if h[3] == "copy-mode")
+    views = SimpleNamespace(g=L.Glyphs(False))
+    toolbar.render_bar(views, app, 120)
+    toolbar.run_command(app, ["menu", "Edit"])
+    toolbar.overlay(views, {}, app, 120, 40)
+    hit = next(h for h in app.toolbar_state["menu_hits"] if h[3] == "copy-destination")
     assert toolbar.handle_mouse(app, hit[0], hit[1], button="left")
     assert app.cfg.get("clipboard.destination") == "yank"
     assert clipboard.options(app)["destination"] == "yank"
+    toolbar.overlay(views, {}, app, 120, 40)
+    hit = next(h for h in app.toolbar_state["menu_hits"] if h[3] == "copy-destination")
     assert toolbar.handle_mouse(app, hit[0], hit[1], button="left")
     assert app.cfg.get("clipboard.destination") == "copy"

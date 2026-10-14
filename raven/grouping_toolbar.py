@@ -5,48 +5,37 @@ from . import job_groups as G, manual_job_groups as M
 
 
 def initialize(app):
-    pass
+    from .job_list_menu import initialize as menu_initialize
+    menu_initialize(app)
 
 
 def handle_key(app, key):
-    return False
+    from .job_list_menu import handle_key as menu_key
+    return menu_key(app, key)
+
+
+def handle_mouse(app, y, x, button="left", shift=False):
+    from .job_list_menu import handle_mouse as menu_mouse
+    return menu_mouse(app, y, x, button=button, shift=shift)
+
+
+def tick(app):
+    from .job_list_menu import tick as menu_tick
+    menu_tick(app)
 
 
 def overlay(views, snap, app, width, height):
-    return None
+    from .job_list_menu import overlay as menu_overlay
+    return menu_overlay(views, snap, app, width, height)
 
 
 def command_names():
-    return ["grouping", "joblist"]
+    return ["grouping", "joblist", "joblistmenu"]
 
 
 def controls(app, g, width):
-    from .control_rows import buttons
-    from .job_batch_sort import mode
-    from .job_list_controls import mode as list_mode
-    choices = (("view-grouped", "Grouped"), ("view-sequential", "Sequential"),
-               ("auto", "Auto Group"), ("undo", "Undo Auto"), ("clear", "Ungroup All"),
-               ("expand", "Expand All"), ("collapse", "Collapse All"),
-               ("sort-min", "Sort Min"), ("sort-max", "Sort Max"))
-    # The normal 80-column split layout can spare only one toolbar row. Keep
-    # both sort choices together instead of wrapping the last one into a row
-    # which the queue's minimum-height reservation would hide.
-    compact = {"view-grouped": "Group", "view-sequential": "Seq", "auto": "Auto", "undo": "Undo",
-               "clear": "Ungroup", "expand": "Expand", "collapse": "Collapse"}
-    full_width = sum(len(label) + 2 for _, label in choices) + len(choices) - 1
-    rows, hits = buttons(g, width, [(key, compact.get(key, label) if width < full_width else label,
-                                   ("command", "joblist jobs " + key[5:] if key.startswith("view-") else "grouping " + key)) for key, label in choices],
-        selected="sort-" + mode(app) if list_mode(app, "jobs") == "grouped" else None,
-        group="grouping-toolbar", prefix="grouping:", gap=0 if width < full_width else 1)
-    chosen = "view-" + list_mode(app, "jobs")
-    selected_label = compact.get(chosen, dict(choices)[chosen]) if width < full_width else dict(choices)[chosen]
-    rows = [[(text, "sel+bold" if text.strip() == selected_label else style) for text, style in row] for row in rows]
-    full_labels = dict(choices)
-    for _, _, descriptor in hits:
-        descriptor["label"] = full_labels[descriptor["id"].removeprefix("grouping:")]
-        if descriptor["id"].startswith("grouping:view-"):
-            descriptor.update(id="joblist:jobs:" + descriptor["id"][14:], group="job-list-controls")
-    return rows, hits
+    from .job_list_controls import controls as list_controls
+    return list_controls(app, g, width, "jobs")
 
 
 def _invalidate(app):
@@ -85,8 +74,8 @@ def execute(app, action, snap=None):
         callback = getattr(app, "table_sort_changed", None)
         if callable(callback):
             callback("jobs", persist=False)
-        message = ("Sort Min: fewer active jobs, then fewer total queue jobs per batch" if chosen == "min" else
-                   "Sort Max: more active jobs, then fewer total queue jobs per batch")
+        message = ("Fewest running first: fewer active jobs, then fewer total queue jobs per batch" if chosen == "min" else
+                   "Most running first: more active jobs, then fewer total queue jobs per batch")
         return M.Result(changed, message + "; Raven Heavy first")
     elif action == "auto":
         before = dict(enabled=table.get("groups", True), auto=table.get("auto_groups", True),
@@ -187,6 +176,9 @@ def execute(app, action, snap=None):
 
 
 def run_command(app, args):
+    from .job_list_menu import run_command as menu_command
+    if args and args[0] == "joblistmenu":
+        return menu_command(app, args)
     from .job_list_controls import run_command as job_list_command
     if args and args[0] == "joblist":
         return job_list_command(app, args)

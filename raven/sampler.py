@@ -61,6 +61,7 @@ class Sampler(threading.Thread):
         self._trace_requested = 0
         self._trace_handled = 0
         self._retained_trace_floor = 0.
+        self._recordings_interval = None
         # Positive allocation evidence omitted by %b, never persisted. Access
         # and queue reapplication share Store.lock with sampler publication.
         self._gpu_allocation_cache: Dict[str, dict] = {}
@@ -139,6 +140,17 @@ class Sampler(threading.Thread):
             self.kick.set()
         return value
 
+    def set_recordings_interval(self, seconds):
+        """Set an independent legacy file-read cadence, preserving source health."""
+        if seconds is not None and (type(seconds) not in (int, float) or seconds not in (1., 2.)):
+            raise ValueError("Recording reads must use Automatic, 1 second or 2 seconds")
+        with self._schedule_lock:
+            changed = self._recordings_interval != seconds
+            self._recordings_interval = seconds
+        if changed:
+            self.kick.set()
+        return seconds
+
     def set_collection_settings(self, collection, intervals=None, *, retained_trace_floor=0.):
         """Retune the existing scheduler without restarting or losing evidence.
 
@@ -194,6 +206,10 @@ class Sampler(threading.Thread):
             return self._collection_interval(name, self._requested_interval(name, rate))
 
     def _collection_interval(self, name, requested):
+        if name == "trace" and self.collection is None and self._recordings_interval is not None:
+            from .refresh_rate import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
+            transport = REMOTE_FILE_FLOOR if getattr(self.files, "remote", False) else LOCAL_FILE_FLOOR
+            return max(transport, self._recordings_interval)
         if name == "trace" and self.telemetry_binding:
             from .refresh_rate import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
             transport = REMOTE_FILE_FLOOR if getattr(self.files, "remote", False) else LOCAL_FILE_FLOOR

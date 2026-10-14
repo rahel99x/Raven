@@ -45,6 +45,9 @@ def _collect(app):
         value = manager.snapshot()
         if not isinstance(value, dict) or value.get('state') not in STATES:
             raise ValueError('invalid allocation publication')
+        startup = getattr(manager, 'background_startup', None)
+        if startup is not None:
+            value = startup.publication(value)
         value = copy.deepcopy(value)
         # A pending/reconciling allocation is never advertised as ready.
         value['mode'] = 'heavy' if value['state'] == 'heavy' and not value.get('cleanup_uncertain') else 'light'
@@ -86,6 +89,9 @@ def tick(app):
         return False
     try:
         manager.tick()
+        startup = getattr(manager, 'background_startup', None)
+        if startup is not None:
+            startup.tick()
     except (OSError, RuntimeError, ValueError) as exc:
         state = initialize(app)
         state['message'] = 'Allocation connection: ' + str(exc)[:512]
@@ -95,7 +101,8 @@ def tick(app):
 def shutdown(app):
     manager = getattr(app, 'raven_allocation_manager', None)
     if manager is not None:
-        manager.shutdown()
+        from .raven_launch import shutdown_heavy
+        shutdown_heavy(manager)
 
 
 def status(app):
@@ -125,14 +132,28 @@ def _target(app):
 
 def summary(app):
     snap = status(app)
-    state = 'cleanup uncertain' if snap.get('cleanup_uncertain') else snap.get('state', 'light')
-    return f"Compute: {state}; target {_target(app)}; job {_text(snap.get('job_id') or '-')}; host {_text(snap.get('host') or 'unverified')}."
+    return f"{_label(snap)}; target {_target(app)}; job {_text(snap.get('job_id') or '-')}; host {_text(snap.get('host') or 'unverified')}."
+
+
+def _label(snap):
+    if snap.get('cleanup_uncertain'):
+        return 'Heavy cleanup uncertain'
+    if snap.get('startup', {}).get('phase') == 'reviewing':
+        return 'Heavy verifying allocation'
+    if snap.get('state') == 'light':
+        if snap.get('error'):
+            return 'Heavy unavailable'
+        if snap.get('startup', {}).get('phase') == 'cancelled':
+            return 'Heavy cancelled'
+        return 'Light'
+    return {'preparing': 'Heavy preparing', 'pending': 'Heavy allocation queued',
+            'starting': 'Heavy verifying worker', 'heavy': 'Heavy ready',
+            'draining': 'Heavy releasing', 'reconciling': 'Heavy cleanup uncertain'}.get(snap.get('state'), 'Light')
 
 
 def headline(app):
     snap = status(app)
-    label = 'Uncertain' if snap.get('cleanup_uncertain') else snap.get('state', 'light').title()
-    return label + '/' + _target(app)
+    return _label(snap) + '/' + _target(app)
 
 
 def observation_notice(app, snapshot):
@@ -171,9 +192,16 @@ def button(app, available):
     if available < 10:
         return None
     snap = status(app)
-    label = 'Uncertain' if snap.get('cleanup_uncertain') else snap.get('state', 'light').title()
+    label = ('Uncertain' if snap.get('cleanup_uncertain') else
+             'Retry Heavy' if snap.get('startup', {}).get('retryable') else
+             {'pending': 'Heavy queued', 'starting': 'Heavy starting', 'heavy': 'Heavy ready',
+              'preparing': 'Heavy starting', 'draining': 'Heavy releasing'}.get(snap.get('state'), 'Light'))
     size = 23 if available >= 23 else 15 if available >= 15 else 10
-    content = label + '/' + _target(app) if size == 23 else label
+    compact = ('Check' if snap.get('cleanup_uncertain') else
+               'Retry' if snap.get('startup', {}).get('retryable') else
+               {'pending': 'Queued', 'starting': 'Verify', 'heavy': 'Heavy',
+                'preparing': 'Start', 'draining': 'Drain'}.get(snap.get('state'), 'Light'))
+    content = label + '/' + _target(app) if size == 23 else compact if size == 10 else label
     text = ' [' + L.pad(L.cut(content, size-4, True), size-4) + '] '
     style = ('warning' if snap.get('cleanup_uncertain') or snap.get('state') in ACTIVE-{'heavy'}
              else 'accent') + '+bold+bg:surface-sunken'
@@ -230,7 +258,8 @@ def _choices(app):
     if snap.get('cleanup_uncertain'):
         pass  # Inspection only until ownership/cleanup has been reconciled.
     elif snap.get('state') == 'light':
-        choices.append(('request', 'Request compute'))
+        choices.append(('retry', 'Retry Heavy') if snap.get('startup', {}).get('retryable')
+                       else ('request', 'Request compute'))
         if getattr(app,'raven_allocation_manager',None) is not None:
             choices.append(('reuse','Reuse allocation'))
     elif snap.get('state') in ('preparing', 'pending', 'starting'):
@@ -251,7 +280,7 @@ def run_command(app, args):
     state = initialize(app)
     action = args[1] if len(args) > 1 else 'status'
     if len(args) > 2 and action != 'reuse':
-        _say(app, 'Use raven status|request|cancel|release|inspect|close.', True)
+        _say(app, 'Use raven status|request|retry|cancel|release|inspect|close.', True)
         return True
     if action == 'close':
         if getattr(app, 'mode', '') == 'raven':
@@ -301,7 +330,7 @@ def run_command(app, args):
         _open(app)
         _say(app, 'Compute is unavailable: start Raven with an explicit site profile.', True)
         return True
-    if action in ('request', 'cancel', 'release'):
+    if action in ('request', 'retry', 'cancel', 'release'):
         _collect(app)
         snap = status(app)
         if action not in {item[0] for item in _choices(app)}:
@@ -309,7 +338,7 @@ def run_command(app, args):
             _say(app, 'Allocation state changed; inspect the current request before acting.', True)
             return True
         try:
-            plan = manager.plan() if action == 'request' else None
+            plan = manager.plan() if action in ('request', 'retry') else None
             state['review'] = {'action': action, 'identity': _identity(app), 'plan': copy.deepcopy(plan),
                                'snapshot': copy.deepcopy(snap), 'tab': getattr(app, 'tab', '')}
             state.update(cursor=0, top=0, message='')
@@ -337,13 +366,24 @@ def run_command(app, args):
                 if review.get('expires_at') and time.monotonic()>=review['expires_at']:
                     state['reuse_edit']=review['reuse_job']
                     return run_command(app,['raven','verify'])
+                startup = getattr(manager, 'background_startup', None)
+                if startup is not None:
+                    startup.close()
                 result=manager.request(reuse=review['reuse_token'],plan=review['plan'])
-            elif action == 'request':
+            elif action in ('request', 'retry'):
                 if status(app).get('state') != 'light' or status(app).get('cleanup_uncertain'):
                     raise ValueError('allocation is no longer idle')
-                result = manager.request(plan=review['plan'])
+                if action == 'retry':
+                    startup = getattr(manager, 'background_startup', None)
+                    if startup is None:
+                        raise ValueError('No Heavy startup is available to retry.')
+                    result = startup.retry(plan=review['plan'])
+                else:
+                    result = manager.request(plan=review['plan'])
             elif action in ('cancel', 'release'):
-                result = getattr(manager, action)(generation=review['snapshot'].get('generation'))
+                startup = getattr(manager, 'background_startup', None)
+                result = (startup.cancel(generation=review['snapshot'].get('generation')) if startup is not None
+                          else getattr(manager, action)(generation=review['snapshot'].get('generation')))
             if result is False:
                 raise ValueError('manager refused this request; inspect current allocation state')
             _collect(app)
@@ -351,7 +391,7 @@ def run_command(app, args):
         except (OSError, RuntimeError, ValueError, TypeError) as exc:
             _say(app, 'Compute action refused: ' + str(exc)[:512], True)
         return True
-    _say(app, 'Use raven status|request|cancel|release|inspect|close.', True)
+    _say(app, 'Use raven status|request|retry|cancel|release|inspect|close.', True)
     return True
 
 
@@ -359,7 +399,11 @@ def _lines(app):
     state = initialize(app)
     review = state['review']
     snap = review['snapshot'] if review else status(app)
-    lines = [summary(app), 'Light/Heavy controls placement. Single/Multi controls concurrency.']
+    lines = [summary(app), 'Inspect jobs and logs while Heavy starts; analysis becomes available after verification.']
+    if snap.get('state') in ('preparing', 'pending', 'starting'):
+        lines.append('Use Cancel request to stop startup. Closing this panel keeps startup running.')
+    if snap.get('startup', {}).get('retryable'):
+        lines.append('Use Retry Heavy after correcting the issue; every retry repeats admission and verification.')
     if state.get('reuse_edit') is not None:
         lines.insert(0,'Exact Slurm allocation JobID: '+state['reuse_edit']+'_')
         lines.insert(1,'Reuse verifies ownership and reserved resources. It never cancels the parent allocation.')
@@ -367,7 +411,7 @@ def _lines(app):
         lines.insert(0,'Verifying allocation '+state['reuse_pending']['job_id']+' in the background.')
     if review:
         lines.insert(0, 'Review ' + review['action'] + ': no action occurs until Confirm.')
-        if review['action'] in ('request','reuse'):
+        if review['action'] in ('request','retry','reuse'):
             plan = review['plan'] or {}
             for key in ('target', 'site', 'site_kind', 'cluster_id', 'transport', 'ownership', 'backend', 'qualification', 'requested_resources', 'resources'):
                 if key in plan:
@@ -379,6 +423,8 @@ def _lines(app):
             lines.append('Only the owned worker step is released; the parent allocation remains intact.' if review['action']=='reuse'
                          else 'Local Heavy consumes the declared desktop CPU and memory budget.' if plan.get('site_kind')=='desktop'
                          else 'Dedicated compute can charge the configured account while reserved.')
+            if review['action'] == 'retry' and snap.get('startup', {}).get('reuse_job'):
+                lines.append('Reverify and reuse allocation '+_text(snap['startup']['reuse_job'])+'; never request a replacement allocation.')
         else:
             lines.append('Only this Raven request and its owned worker are targeted.')
     for key in ('generation', 'request_id', 'job_id', 'host', 'remaining_seconds', 'ownership', 'resources', 'qualification', 'error'):

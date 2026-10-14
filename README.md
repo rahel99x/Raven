@@ -11,8 +11,9 @@ uses optional `pyte` and `wcwidth` dependencies.
 | Command | Behavior |
 | --- | --- |
 | `ravenl` | Opens Light without requesting compute. |
-| `ravenh` | Requests Heavy and waits for a verified worker before loading the interface. On Slurm, the worker runs in the requested allocation. |
+| `ravenh` | Opens the dashboard while Heavy starts in the background; analysis becomes available after verification. A first bare interactive launch opens setup in Light. |
 | `raven` | Opens the governed Light interface; equivalent to `ravenl`. |
+| `raven setup` | Guides workstation or cluster setup and reviews configuration before saving. |
 | `raven launch SCRIPT` | Submits an existing shell script with retained run evidence; use `--local` for explicit workstation execution. |
 | `raven export-data` | Exports selected retained measurements without opening the dashboard. |
 
@@ -20,32 +21,33 @@ The Python distribution and import namespace are **`raven`**. Current evidence
 schemas use the `raven.*` namespace. Install from this repository or a wheel
 built from it; an identically named package on an index is not this implementation.
 
-[Installation](docs/INSTALLATION.md) · [Configuration migration](docs/MIGRATION.md) ·
+[Getting started](docs/guides/getting-started.md) · [Installation](docs/INSTALLATION.md) · [Configuration migration](docs/MIGRATION.md) ·
 [Runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
 [Implementation status](docs/raven/implementation.md) · [Validation](docs/raven/validation.md)
 
 ## Installation
 
-Install Python 3.10+ and `pipx` through your operating system's package manager,
-then install from a checkout:
+With Python 3.10+ available, install from a checkout:
 
 ```bash
 git clone https://github.com/rahel99x/Raven.git
 cd Raven
-pipx install '.[terminal]'
-ravenl --version
-ravenl doctor
-ravenh --plan
+python3 scripts/install.py
+ravenl
 ```
 
-Pipx installs the commands in an isolated application environment. Run them
-from any directory without activating a virtual environment or adding aliases.
-Use `pipx install .` for the core without the embedded terminal.
+The installer creates a private application environment for your user, without
+pipx or administrator access. It reports the installed command paths and any
+PATH change needed for the current shell. It preserves commands owned by other
+installations and opens guided setup when run in an interactive terminal. Run
+`raven setup` to reopen setup later. Existing pipx users can continue with `pipx reinstall raven`
+after updating their original checkout.
 
 The executable directory must be on your shell's `PATH`; user installations
 normally use `~/.local/bin`. The [installation guide](docs/INSTALLATION.md)
-covers other existing `PATH` directories, administrator installation, and
-updates without shell-startup edits.
+covers installer options, pipx, administrator installation, and updates without
+shell-startup edits. The [first-job guide](docs/guides/getting-started.md) walks
+through local Slurm, a cluster lab account, and explicit standalone execution.
 
 For an offline demonstration from the source checkout:
 
@@ -56,22 +58,29 @@ python3 scripts/setup.py --mode demo
 
 The demonstration uses simulated jobs and submits no work. Source setup
 prepares the checkout's launchers; it does not expose commands on `PATH`.
-After updating a pipx installation's original checkout, run
-`pipx reinstall raven`. User configuration and state remain separate.
+User configuration and state remain separate from the installed package.
 
 ## Configuration
 
-A fresh installation defaults to local Slurm. Create persistent defaults once:
+A fresh installation defaults to local Slurm. Run `raven setup`, or open
+**Setup → Installation and diagnostics → Getting started**, to choose the environment and review persistent
+settings. **Sites and lab profiles** in the same category saves reusable connection and
+Heavy-account choices. Workload billing remains a separate launch setting.
+After saving, **Use this profile** opens Light on that profile; then choose
+**File → Launch job**. Saving alone requests no compute and leaves the current
+connection unchanged.
+
+For direct configuration inspection:
 
 ```bash
-ravenl --write-config
 ravenl config explain
 ravenh --plan
 ```
 
 Both launchers read `~/.config/raven/config.json`, or
-`$XDG_CONFIG_HOME/raven/config.json`. The write command preserves existing
-files. Review the cluster identity, account, partition, QOS, resource request,
+`$XDG_CONFIG_HOME/raven/config.json`. The lower-level `ravenl --write-config`
+command creates defaults without replacing an existing file. Review the cluster
+identity, account, partition, QOS, resource request,
 and worker Python path for your site before starting Heavy. The worker must
 have the same Raven release available on the selected compute nodes.
 
@@ -125,31 +134,48 @@ schema identifiers require explicit conversion before use by this implementation
 Compute admission and collection permission are independent. Light starts with
 a 60-second queue interval and a 300-second history interval. Active Heavy uses
 its selected telemetry preset; Default requests queue reads every five seconds
-and live CPU/memory reads every two seconds. **Setup → Heavy telemetry update
-settings** applies presets and Custom values without a restart. The queue slider
-changes queue cadence independently. Site policy and request budgets still apply;
+and live CPU/memory reads every two seconds. **Setup → Refresh and performance → Refresh settings**
+opens queue, recording-read, and Heavy preset settings together. Changes apply
+without a restart; recording frequency and observed data freshness remain distinct.
+Site policy and request budgets still apply;
 automatic GPU steps and weather probes remain disabled. See
 [telemetry updates](docs/guides/telemetry-updates.md) for effective intervals,
 retained recordings, and saved preferences.
 
 The Light/Heavy toolbar control and **View → Compute allocation** expose
 allocation review, request, cancellation, and release. Pending and draining
-workers do not count as Heavy. **Single/Multi** separately controls background
-worker concurrency. Supported execution paths and deferred actions are listed
+workers do not count as Heavy. Background-worker concurrency lives in advanced
+preferences. Supported execution paths and deferred actions are listed
 in the [execution contracts](docs/raven/execution-contracts.md).
 
-Use **Setup** in the toolbar for embedded Research and Analytics setup guides,
-project connection, and Heavy allocation preferences. The
+Use **Setup** for connections, launch defaults, recordings, refresh, and diagnostics.
+Each Research and Analytics view provides its own setup action. The
 [Setup guide](docs/guides/setup.md) covers account discovery, personal and lab
 billing, and local Slurm defaults. Saving preferences is separate from requesting
 compute.
 
-Job lists offer saved **Grouped**, **Sequential**, **Sort Min**, and **Sort Max**
-choices, including History and the browsers beside Research and Analytics. See
+Job lists provide three controls: **View**, **Order**, and **Groups**, including
+History and the browsers beside Research and Analytics. Switching to Sequential
+preserves group assignments and the saved batch order. See
 [batch views](docs/guides/batch-launches.md) for ordering, readable group names,
 and selection behavior.
 
 ## Workflows
+
+Open **File → Launch job**, or enter `:launchjob`, to select an existing script,
+review its effective account and resources, choose recordings, and submit from
+the final review. The launcher preserves the script and displays an equivalent
+command. Previewing and saving preferences are separate from submission.
+
+After submission, **Run home** keeps the exact attempt's status, logs,
+recordings, outputs, and export actions together. **Run again** opens a new
+review with retained settings. **Connect data** validates an actual sample and
+provides application snippets with independent recording-readiness indicators.
+See the [everyday workflow](docs/guides/everyday-workflow.md).
+
+Run the launcher on the workstation or cluster submission host that owns the
+project. An SSH monitoring profile does not upload and submit a local project
+to a remote cluster.
 
 Open **File → Research and cluster operations**, or enter `:workbench`.
 Select Run, Investigate, Compare, Results, or Connect. `:workbench all` opens
@@ -158,6 +184,7 @@ current project and job context.
 
 | Task | Guide |
 | --- | --- |
+| Install Raven, choose a site/account, and launch a first job | [Getting started](docs/guides/getting-started.md) |
 | Inspect running jobs, history, and resource views | [Adaptive workspaces](docs/guides/adaptive-workspaces.md) |
 | Read full errors, dismiss notices, and review suggested fixes | [Notifications](docs/guides/notifications.md) |
 | Diagnose an exact failed or cancelled attempt | [Logs](docs/guides/log-view.md) · [Retained rerun](docs/guides/operations-cluster.md#rerun-one-cancelled-job) |

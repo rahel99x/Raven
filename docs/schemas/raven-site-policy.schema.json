@@ -620,6 +620,11 @@
                 "multi",
                 "single"
               ]
+            },
+            "profile_label": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[^\\u0000\\r\\n]*$"
             }
           }
         },
@@ -1840,6 +1845,11 @@
                 "multi",
                 "single"
               ]
+            },
+            "profile_label": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[^\\u0000\\r\\n]*$"
             }
           }
         },

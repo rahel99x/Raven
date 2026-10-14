@@ -133,8 +133,8 @@ def custom(app):
 
 def test_menu_and_command_discoverability(app):
     from raven import command_registry, toolbar, workbench
-    items = toolbar.menu_items(app, "Setup")
-    item = next(item for item in items if item.command == "setup updates")
+    items = toolbar.submenu_items(app, "performance")
+    item = next(item for item in items if item.command == "refreshsettings")
     toolbar._activate(app, item)
     assert app.mode == UI.MODE
     assert UI.COMMAND in workbench.command_names()
@@ -359,11 +359,19 @@ def test_real_model_roundtrip_preserves_budget_integers_and_unrelated_configurat
     assert saved["telemetry"]["preset"] == "custom"
 
 
-def test_unmanaged_session_reports_configuration_need_without_crashing(app, monkeypatch):
+def test_unmanaged_session_retains_live_refresh_controls_without_heavy_presets(app, monkeypatch):
     from raven import telemetry_settings as model
     monkeypatch.setattr(UI, "_model", lambda: model)
     command(app)
-    assert app.mode == "main"
+    assert app.mode == UI.MODE
+    contents = text(render(app))
+    assert "managed site profile" in contents
+    assert "Queue polling:" in contents
+    command(app, "queue", "faster")
+    assert UI.refresh_snapshot(app)["queue"] < 5.
+    command(app, "recordings", "2")
+    assert UI.refresh_snapshot(app)["recordings"] == 2.
+    command(app, "preset", "high")
     assert "managed site profile" in app.telemetry_settings_ui_state["error"]
 
 
@@ -423,3 +431,63 @@ def test_compact_editor_opens_with_visible_focused_field_and_value(app):
     assert "5 s" in contents
     UI.handle_key(app, "enter")
     assert app.telemetry_settings_ui_state["editing"][0] == "queue_seconds"
+
+
+def test_refresh_panel_and_old_command_share_one_state_and_live_controls(app, monkeypatch):
+    from raven import raven_config, telemetry_settings, refresh_rate
+    app.cfg.set("raven", {**copy.deepcopy(raven_config.DEFAULTS), "managed": True})
+    app.research.set_refresh_interval = lambda seconds, **kwargs: None
+    monkeypatch.setattr(UI, "_model", lambda: telemetry_settings)
+    assert UI.run_command(app, ["telemetrysettings"])
+    state = app.telemetry_settings_ui_state
+    before = UI.refresh_snapshot(app)["queue"]
+    command(app, "queue", "faster")
+    assert UI.refresh_snapshot(app)["queue"] < before
+    command(app, "recordings", "1")
+    assert refresh_rate.recordings_interval(app) == 1.
+    assert UI.refresh_snapshot(app)["recordings"] == 1.
+    command(app, "queue", "reset")
+    assert UI.refresh_snapshot(app)["queue"] == before
+    assert UI.refresh_snapshot(app)["recordings"] == 1.
+    assert app.telemetry_settings_ui_state is state
+    contents = text(render(app))
+    assert "Refresh settings" in contents
+    assert "Queue polling:" in contents and "Read recordings:" in contents
+    assert "Queue:" in UI.summary(app) and "Recordings: 1s" in UI.summary(app)
+    assert UI.summary(app, ascii_=True).isascii()
+
+
+def test_refresh_snapshot_separates_writer_rate_sample_age_and_read_age(app, monkeypatch):
+    retained = {"cpu-memory": [{"timestamp": 90., "interval_seconds": 5., "rss_bytes": 256}], "gpu": [],
+                "errors": {"gpu": "GPU provider was unavailable"}, "index": {"sources": [
+                    {"family": "cpu-memory", "status": "recording", "coverage": {"interval_seconds": 5.}},
+                    {"family": "gpu", "status": "unavailable", "coverage": {"interval_seconds": 5.}}]}}
+    app.sampler = SimpleNamespace(telemetry_binding={"job_id": "17"}, retained_telemetry={"17": retained},
+                                  effective_interval=lambda source: 5. if source == "jobs" else 1.)
+    app.store.health["trace"] = SimpleNamespace(last_ok=99., error="retry after 2s")
+    monkeypatch.setattr(UI.time, "time", lambda: 100.)
+    snapshot = UI.refresh_snapshot(app)
+    assert snapshot["recordings"] == 1. and snapshot["read_age"] == 1.
+    cpu, gpu = snapshot["sources"]
+    assert cpu["count"] == 1 and cpu["age"] == 10. and cpu["writer_seconds"] == 5.
+    assert gpu["count"] == 0 and gpu["age"] is None
+    assert "unavailable" in gpu["error"]
+    command(app)
+    app.height = 80
+    contents = text(render(app))
+    assert "1 retained samples; latest 10s ago" in contents
+    assert "Job recording frequency: 5s" in contents
+    assert "GPU provider was unavailable" in contents
+    assert "retry after 2s" in contents
+
+
+def test_refresh_summary_and_overview_do_not_access_files(app, monkeypatch):
+    from pathlib import Path
+    command(app)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Refresh paint attempted filesystem I/O")
+    monkeypatch.setattr("builtins.open", forbidden)
+    monkeypatch.setattr(Path, "open", forbidden)
+    monkeypatch.setattr(Path, "stat", forbidden)
+    assert UI.summary(app)
+    assert "Queue polling" in text(render(app))

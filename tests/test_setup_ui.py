@@ -91,15 +91,14 @@ def action(app, command):
     S.run_command(app, ["setup", "action", str(index)])
 
 
-def test_setup_menu_contains_every_named_view_and_opens_internal_page(app):
-    from raven.research import RESEARCH_VIEWS
-    from raven.views import ANALYTICS_VIEWS
+def test_setup_menu_is_short_and_contextual_pages_remain_available(app):
     items = T.menu_items(app, "Setup")
-    commands = {item.command for item in items}
-    assert all("setup research " + key in commands for key, _ in RESEARCH_VIEWS)
-    assert all("setup analytics " + key in commands for key, _ in ANALYTICS_VIEWS)
+    assert [item.label for item in items] == [
+        "Connections and accounts", "Launch defaults", "Recordings and metrics",
+        "Refresh and performance", "Installation and diagnostics"]
+    assert not any(item.command.startswith("setup research") for item in items)
     app.mode = "help"
-    T._activate(app, next(item for item in items if item.command == "setup research experiment"))
+    S.run_command(app, ["setup", "research", "experiment"])
     assert app.mode == "setup" and app.setup_ui_state["page"] == "research.experiment"
     assert not app.test_service.calls and not app.research.pending
     S.handle_key(app, "esc")
@@ -194,6 +193,43 @@ def test_field_editor_uses_units_and_preserves_old_value_on_escape(app):
     S.handle_key(app, "esc")
     assert app.setup_ui_state["form"]["memory_mib"] == "8192"
     assert app.cfg.get("raven.allocation.memory_mib") == 4096
+
+
+def test_human_resource_units_stage_normalized_values_only_on_explicit_save(app):
+    open_allocation(app)
+    for field, text in (("memory_mib", "8 GiB"), ("walltime_seconds", "1h")):
+        S.run_command(app, ["setup", "edit", field])
+        S.handle_key(app, "ctrl-u")
+        for char in text:
+            S.handle_key(app, "space" if char == " " else char)
+        S.handle_key(app, "enter")
+        assert app.setup_ui_state["form"][field] == text
+    assert app.cfg.get("raven.allocation.memory_mib") == 4096
+    assert app.test_service.calls == ["discover"]
+    action(app, "setup save")
+    assert app.test_service.calls == ["discover"]
+    app.research.finish()
+    assert app.test_service.calls[-2:] == [
+        ("stage", {"memory_mib": 8192, "walltime_seconds": 3600}),
+        ("save", {"memory_mib": 8192, "walltime_seconds": 3600})]
+    assert app.cfg.get("raven.allocation.memory_mib") == 8192
+    assert app.cfg.get("raven.allocation.walltime_seconds") == 3600
+
+
+@pytest.mark.parametrize("field,text", [("memory_mib", "8 XB"), ("walltime_seconds", "1 fortnight")])
+def test_invalid_human_units_leave_form_without_starting_save(app, field, text):
+    open_allocation(app)
+    S.run_command(app, ["setup", "edit", field])
+    S.handle_key(app, "ctrl-u")
+    for char in text:
+        S.handle_key(app, "space" if char == " " else char)
+    S.handle_key(app, "enter")
+    action(app, "setup save")
+    assert app.research.pending is None
+    assert app.test_service.calls == ["discover"]
+    assert app.setup_ui_state["form"][field] == text
+    assert field in app.setup_ui_state["dirty"]
+    assert "Cannot save allocation settings" in app.message
 
 
 def test_saving_blocks_new_account_edits_and_compute_review(app):

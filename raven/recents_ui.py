@@ -27,7 +27,7 @@ def order(records, index):
 
 
 def divider(app, g, row, width):
-    """Fit all four list choices on the divider, leaving a drag handle."""
+    """Fit the three list menus on the divider, leaving a drag handle."""
     from .job_list_controls import controls
     from .pane_drag import _replace
     # The rightmost six cells belong to the existing header scroll controls.
@@ -35,7 +35,7 @@ def divider(app, g, row, width):
     # Keep the section title intact: workspace partitioning and the resize
     # handle both rely on this being the Recents divider, even in split panes.
     rows, hits = controls(app, g, max(0, available - 16), "recent")
-    if len(rows) != 1 or len(hits) != 4:
+    if len(rows) != 1 or len(hits) != 3:
         return row, [], width
     required = L.vlen(L.row_text(rows[0]))
     left = max(0, available - required)
@@ -48,10 +48,6 @@ def divider(app, g, row, width):
     result = []
     for y, kind, value in hits:
         value = dict(value, left=value["left"] + offset, right=value["right"] + offset)
-        choice = value["id"].rsplit(":", 1)[-1]
-        if choice in MODES:
-            value.update(id="recents-mode:" + choice, label=choice.title() + " Recents",
-                         action=("command", "recents " + choice), group="recents-modes")
         result.append((y, kind, value))
     return row, result, max(1, offset - 1)
 
@@ -68,7 +64,6 @@ def run_command(app, args):
     if selected and any(record.id == selected for record in state.loaded):
         state.transition_anchor = selected
     app.table_state["recents_mode"] = args[1]
-    app.table_state.get("job_list_sorts", {}).pop("recent", None)
     table_sort.reset_sort(app, "recent")
     grouping_toolbar._invalidate(app)
     # The normal sorting callback preserves exact identity. A folded Recents

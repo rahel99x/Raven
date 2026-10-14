@@ -15,35 +15,43 @@ Use Linux, Python 3.10 or later, and the Python curses and venv modules.
 The core has no third-party runtime dependency. The optional terminal uses
 `pyte` and `wcwidth`.
 
-Install pipx through your operating system's package manager first. Its command
-directory, normally `~/.local/bin`, must already be on `PATH`. The
-[installation guide](../INSTALLATION.md) covers an existing writable directory
-on `PATH` and an administrator installation. Pipx exposes installed executables
-without aliases, environment activation, or shell-file edits.
+The repository installer creates a user-owned application environment without
+pipx or administrator access. Its command directory must be on `PATH`; the
+installer prints paths and guidance without editing shell files. The
+[installation guide](../INSTALLATION.md) also covers existing pipx installations,
+custom command directories, and administrator deployment.
 
 Install the package and check it from outside the checkout:
 
 ```bash
 git clone https://github.com/rahel99x/Raven.git
 cd Raven
-pipx install '.[terminal]'
+python3 scripts/install.py --no-setup
 cd "$HOME"
 ravenl --version
-ravenl doctor
-ravenh --plan
+raven setup
 ```
 
-Use `pipx install .` for the core without the embedded terminal.
-The version commands identify the installed release. Doctor reports local
-capabilities; the Heavy plan makes no allocation.
+Follow [Getting started](../guides/getting-started.md) to choose a workstation or
+cluster, save account preferences, and launch an existing script. The setup
+checks establish local tool presence; they do not verify a compute node or
+account permissions. `ravenl doctor` reports local capabilities, and
+`ravenh --plan` prints the Heavy request without allocating compute.
 
 Update the original checkout and reinstall the installed package:
 
 ```bash
 cd /path/to/Raven
 git pull --ff-only
-pipx reinstall raven
+python3 scripts/install.py --no-setup
 ```
+
+If pipx already owns the installation, retain that method and use
+`pipx reinstall raven` instead of the repository installer. For a new pipx
+installation, `pipx install '.[terminal]'` includes the embedded terminal;
+`pipx install .` installs only the core. See the
+[update and migration procedures](../INSTALLATION.md#update-the-installed-package)
+before changing installation methods.
 
 Use the `raven` distribution. Do not co-install another distribution that
 owns the `raven` package. `ravenl`, `ravenh`, and `raven` come from the same wheel.
@@ -71,6 +79,13 @@ For Slurm installed directly on your workstation, keep this local Slurm mode.
 Create a new persistent configuration with `ravenl --write-config`, then review
 its scheduler settings. Both commands load `~/.config/raven/config.json`, or
 `$XDG_CONFIG_HOME/raven/config.json`, automatically. Existing files are preserved.
+
+The guided alternative is `raven setup`, or **Setup → Installation and diagnostics → Getting started** in the
+dashboard. **Setup → Connections and accounts → Sites and lab profiles** saves named choices for future
+launches. After saving, **Use this profile** reopens Light with that connection;
+it does not request Heavy. The [Setup reference](../guides/setup.md) describes profile review,
+account discovery, readable resource units, and the separation between Raven
+Heavy billing and scientific-workload billing.
 
 ```bash
 ravenl config explain
@@ -156,9 +171,15 @@ or job name. Unknown cleanup remains Reconciling and blocks automatic retry.
 The worker stops at its time limit or idle deadline; Raven does not auto-renew.
 
 Run `ravenh` from a normal terminal with access to the configured Slurm commands.
-It requests a new allocation with `salloc`, starts the worker through `srun`, and
-verifies placement before opening the dashboard. An existing allocation is not
-required. `--plan` makes no submission. An interrupted wait drains the owned helper.
+On a fresh installation with no configuration, a bare interactive `ravenh`
+opens setup in Light first and requests no allocation. Once configured,
+it opens the dashboard and requests a new allocation with `salloc` in the
+background. Jobs and logs remain usable while the worker starts through `srun`;
+Heavy capabilities become available only after placement is verified. The compute
+control shows progress and provides cancellation or an explicit retry after a
+recoverable failure. An existing allocation is not required. One-shot commands
+still wait for the readiness they need. `--plan` makes no submission. Closing
+the session drains its owned helper according to the existing cleanup policy.
 `--help` and `--version` never allocate. Use `ravenh --allocation JOBID` for an
 explicit reuse review. This checks current ownership, attempt, resources, and
 placement before starting an owned step. A reuse `--plan` reports an unverified
@@ -185,7 +206,7 @@ not make an undeclared adapter available.
 
 Select Terminal beside Details to open the optional shell. A shell remains an
 explicit user-controlled session on its displayed host. Switching Light/Heavy
-or Single/Multi does not move it. Generated execution helpers pass the same
+or changing worker concurrency does not move it. Generated execution helpers pass the same
 admission checks as other managed actions; ordinary typed shell commands remain
 under the user's control. See [terminal controls](../guides/terminal-fusion.md).
 
@@ -195,7 +216,7 @@ Compute limits and collection permission are separate. The starter Slurm profile
 uses these Light intervals and rolling ceilings. Active Heavy applies the selected
 [telemetry preset](../guides/telemetry-updates.md); its Default requests queue
 reads every five seconds and live CPU/memory reads every two seconds. Presets
-and Custom values change live through **Setup → Heavy telemetry update settings**.
+and Custom values change live through **Setup → Refresh and performance → Refresh settings**.
 
 | Source or resource | Default |
 | --- | ---: |
@@ -227,7 +248,7 @@ Immutable Store publications have a separate 128-entry, 24 MiB guard. Archive
 limits apply to each instance's owned storage; they are not a cross-process disk
 quota. Light's two-worker ceiling applies across its background lanes combined.
 
-The queue slider adjusts the active queue base through a tenfold faster request;
+The queue controls adjust the active queue base through a tenfold faster request;
 the starter Light range is 60–6 seconds. Heavy presets control the other readers
 and budgets. Mandatory site floors remain effective, and the controls show their
 admitted intervals. Sampling, display windows, and plot animation are distinct.

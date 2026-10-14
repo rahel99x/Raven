@@ -61,7 +61,7 @@ DEFAULTS = {
     "storage": {"state_dir": "", "coordination_dir": "auto-host-local", "durable_results": ""},
     "telemetry": copy.deepcopy(TELEMETRY_DEFAULTS),
     "ui": {"theme": "terminal", "show_execution_target": True, "show_observation_age": True,
-           "ascii": False, "animations": True, "density": "comfortable", "worker_mode": "multi"},
+           "ascii": False, "animations": True, "density": "comfortable", "worker_mode": "multi", "profile_label": ""},
     "profiles": {},
 }
 DESKTOP = {"profile": "desktop", "site": {"kind": "desktop"}, "connection": {"transport": "none", "host": "", "user": "", "credential_reference": "", "ssh_options": []},
@@ -84,7 +84,8 @@ _FALSE_ONLY = {"execution.allow_login_heavy", "allocation.auto_request_on_light_
 _STRINGS = {"profile": 128, "site.cluster_id": 128, "site.policy_file": 4096, "connection.host": 256,
             "connection.user": 128, "connection.credential_reference": 512, "execution.worker_python": 4096,
             "allocation.account": 128, "allocation.partition": 128, "allocation.qos": 128,
-            "storage.state_dir": 4096, "storage.coordination_dir": 4096, "storage.durable_results": 4096, "ui.theme": 64}
+            "storage.state_dir": 4096, "storage.coordination_dir": 4096, "storage.durable_results": 4096, "ui.theme": 64,
+            "ui.profile_label": 128}
 
 
 def canonical(value):
@@ -388,6 +389,7 @@ class Resolved:
     legacy_source: str = ""
     legacy_profile: str = ""
     source_telemetry: dict | None = None
+    extra_policy_path: str = ""
 
     @property
     def digest(self):
@@ -514,7 +516,7 @@ def resolve(config_path=None, *, site=None, legacy_profile=None, launcher="light
         supplied.get("profiles", {}).get(profile_name, {}).get("telemetry", {})))
     return Resolved(data, origins, tuple(restrictions), tuple(warnings), source, legacy_source,
                     profile_name if legacy_source and profile_name in supplied.get("profiles", {}) else "",
-                    source_telemetry)
+                    source_telemetry, site_policy_path or env.get("RAVEN_SITE_POLICY", ""))
 
 
 def admission_config(config, *, system_policy_paths=None):
@@ -639,6 +641,7 @@ def reload_config(current, **options):
     else:
         options.setdefault("site", current.data["profile"])
     options.setdefault("launcher", current.data["execution"]["startup"])
+    options.setdefault("site_policy_path", current.extra_policy_path or None)
     return resolve(**options)
 
 

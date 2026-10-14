@@ -17,8 +17,8 @@ FIELDS = (
     ("partition", "Partition", "Slurm default"),
     ("qos", "Quality of service (QOS)", "Slurm default"),
     ("cpus_per_task", "CPUs per task", "2"),
-    ("memory_mib", "Memory (MiB)", "4096"),
-    ("walltime_seconds", "Time limit (seconds)", "3600"),
+    ("memory_mib", "Memory (e.g. 8 GiB; bare MiB)", "4096"),
+    ("walltime_seconds", "Time limit (e.g. 1h; bare seconds)", "3600"),
     ("nodes", "Nodes", "1"),
     ("tasks", "Tasks", "1"),
     ("gpus", "GPUs", "0"),
@@ -185,9 +185,17 @@ def _save(app):
         _say(app, "No allocation settings have changed.")
         return
     try:
+        from .setup_profiles import parse_duration_seconds, parse_memory_mib
         service = _service(app)
-        changes = {key: int(state["form"][key]) if key in NUMERIC_FIELDS else state["form"][key].strip()
-                   for key in state["dirty"]}
+        changes = {}
+        for key in state["dirty"]:
+            value = state["form"][key]
+            if key == "memory_mib":
+                changes[key] = parse_memory_mib(value)
+            elif key == "walltime_seconds":
+                changes[key] = parse_duration_seconds(value)
+            else:
+                changes[key] = int(value) if key in NUMERIC_FIELDS else value.strip()
     except (ValueError, TypeError) as exc:
         _say(app, "Cannot save allocation settings: " + str(exc), error=True)
         return
@@ -483,6 +491,8 @@ def handle_key(app, key):
         return False
     state = initialize(app)
     if state["editing"] is not None:
+        if key == "space":
+            key = " "
         field, value = state["editing"]
         if key == "esc":
             state["editing"] = None

@@ -252,7 +252,7 @@ not multiply. Managed collection settings and site policy still apply.
 
 The top-right queue slider is separate. Managed `raven`, `ravenl`, and `ravenh`
 sessions use the active queue base and site-policy endpoints and leave metric
-readers at their own cadence. Use **Setup → Heavy telemetry update settings**
+readers at their own cadence. Use **Setup → Refresh and performance → Refresh settings**
 for live changes to Heavy readers and request budgets; see
 [telemetry updates](telemetry-updates.md). Native compatibility sessions retain
 the existing global five-second to 500-millisecond request.

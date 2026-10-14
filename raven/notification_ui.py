@@ -86,6 +86,8 @@ def run_command(app, args):
         open_notifications(app, values[0] if values else "all")
     elif values == ["back"]:
         _back(app)
+    elif len(values) == 2 and values[0] == "related":
+        _open_related(app, values[1])
     elif len(values) == 2 and values[0] in ("open", "dismiss"):
         if values[0] == "open":
             _open_detail(app, values[1])
@@ -94,6 +96,39 @@ def run_command(app, args):
     else:
         app.fail("Use notifications [critical|moderate|mild|all].")
     return True
+
+
+def _open_related(app, identity):
+    """Use typed retained context, never execute message contents as commands."""
+    if getattr(app, "mode", "") != "notifications":
+        return
+    item = _center(app).get(identity)
+    if item is None:
+        return
+    if item.run:
+        from .run_home_ui import open_run
+        root, run_id, attempt, job, cluster, token = item.run
+        open_run(app, dict(project_root=root, run_id=run_id, attempt=attempt, job_id=job,
+                          launch=dict(cluster=cluster, submission_token=token)))
+    elif item.setting:
+        command = {"connections": "profiles", "allocation": "setup allocation", "refresh": "refreshsettings",
+                   "recordings": "setup telemetry", "diagnostics": "setup installation"}[item.setting]
+        app.mode = "main"
+        from .workbench import run_command
+        run_command(app, command.split())
+    elif item.job:
+        # A bare scheduler job ID cannot establish a recorded attempt. Only
+        # navigate to a currently cached record; no file association is guessed.
+        record = getattr(app, "job_record", lambda job: None)(item.job)
+        if record is not None:
+            from .model import stamp
+            submitted = stamp(getattr(record, "submit", ""))
+            if submitted is not None and submitted > item.last_seen:
+                record = None
+        if record is None:
+            app.fail("This job is not in the current connection's cache. Reconnect its original site or select its retained run.")
+            return
+        app.selected_id, app.tab, app.mode = item.job, "jobs", "main"
 
 
 def _back(app):
@@ -122,7 +157,7 @@ def _notices(app):
     key = (snapshot.revision, severity)
     if state["notices_key"] != key:
         state["notices"] = (snapshot.notices if severity == "all" else
-                            tuple(item for item in snapshot.notices if item.severity == severity))
+                            tuple(item for item in snapshot.notices if item.severity == severity and not item.resolved_at))
         state["notices_key"] = key
     return snapshot, state["notices"]
 
@@ -219,7 +254,7 @@ def text_rows(app, width, ascii_=False):
         return []
     rows = [[], [("Notifications", "accent+bold")]]
     for item in notices:
-        heading = item.severity.title()
+        heading = "Resolved" if item.resolved_at else item.severity.title()
         if item.source:
             heading += " | " + item.source
         if item.job:
@@ -270,6 +305,11 @@ def _document(app, width, ascii_):
         if item.task:
             lines.append(("Task: " + item.task, "dim"))
         lines.append((f"Occurrences: {item.occurrences}", "dim"))
+        if item.run:
+            lines.extend((("Run: " + str(item.run[1]) + " / attempt " + str(item.run[2]), "dim"),
+                          ("Project: " + str(item.run[0]), "dim")))
+        if item.resolved_at:
+            lines.extend((("Resolved after verified recovery", "green+bold"), (item.resolution, "text")))
         if item.truncated:
             lines.append(("Retention limit: this message exceeded 64 KiB. Check the original source for the remainder.", "yellow"))
         blocks, starts, total = [], [], 0
@@ -393,6 +433,10 @@ def overlay(views, snap, app, width, height):
     if state["details"]:
         choices.append(("dismiss", "Dismiss " + ("x" if views.g.ascii else "×"),
                         ("command", "notifications dismiss "+state["selected"])))
+        item = _center(app).get(state["selected"])
+        if item is not None and (item.run or item.setting or item.job):
+            label = "Open affected run" if item.run else "Open related settings" if item.setting else "Open affected job"
+            choices.append(("related", label, ("command", "notifications related "+item.id)))
     rows, hits = buttons(views.g, inner, choices, selected=state["severity"], group="notifications",
                          prefix="notification-filter:")
     header = len(rows)
@@ -424,12 +468,12 @@ def overlay(views, snap, app, width, height):
         selected = item.id == state["selected"]
         if offset == 0:
             timestamp = time.strftime("%H:%M:%S", time.localtime(item.last_seen))
-            label = f" {item.severity.upper()}  {timestamp}"
+            label = f" {'RESOLVED' if item.resolved_at else item.severity.upper()}  {timestamp}"
             if item.occurrences > 1:
                 label += f"  ({item.occurrences} occurrences)"
             label = L.truncate(label, max(0, inner-3))
             left = max(0, inner-3)
-            rows.append([(label.ljust(left), "sel+bold" if selected else STYLES[item.severity]+"+bold"),
+            rows.append([(label.ljust(left), "sel+bold" if selected else ("green" if item.resolved_at else STYLES[item.severity])+"+bold"),
                          (" "+symbol+" ", "red+bold")])
             hits.append((row_index, "control", dict(id="notification-dismiss:"+item.id, label="Dismiss notification",
                 left=left, right=inner, action=("command", "notifications dismiss "+item.id), group="notifications")))

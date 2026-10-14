@@ -147,7 +147,8 @@ def test_real_scheduler_pending_switch_returns_before_active_collection_finishes
         assert status["mode"] == "multi" and status["target"] == "single"
         assert status["pending"] and status["draining"] == 1
         row = toolbar.render_bar(ui(), app, 120)
-        assert "→Single" in layout.row_text(row)
+        assert "Single" not in layout.row_text(row)
+        assert any("switch pending" in item.label for item in toolbar.submenu_items(app, "advanced"))
         app.run_command("workers toggle")
         assert worker_ui.status(app)["mode"] == "multi" and not worker_ui.status(app)["pending"]
         assert future.running() and len(calls) == 1
@@ -170,7 +171,7 @@ def test_unavailable_or_invalid_scheduler_fails_without_changing_preferences(bad
     rows = toolbar.render_bar(ui(), app, 120)
     assert layout.vlen(layout.row_text(rows)) == 120
     assert not any(hit[3] == "workers" for hit in app.toolbar_state["hits"])
-    item = next(item for item in toolbar.menu_items(app, "View") if item.key == "workers-toggle")
+    item = next(item for item in toolbar.submenu_items(app, "advanced") if item.key == "workers-toggle")
     assert "unavailable" in toolbar._blocked(app, item)
 
 
@@ -181,7 +182,7 @@ def test_closed_scheduler_exposes_status_but_refuses_new_work():
     assert "stopped" in app.failures[-1] and not app.worker_scheduler.requests
     worker_ui.run_command(app, ["workers", "status"])
     assert "stopped" in app.messages[-1]
-    entries = {item.key: item for item in toolbar.menu_items(app, "View")}
+    entries = {item.key: item for item in toolbar.submenu_items(app, "advanced")}
     assert toolbar._blocked(app, entries["workers-toggle"])
     assert not toolbar._blocked(app, entries["workers-status"])
 
@@ -208,10 +209,8 @@ def test_toolbar_mode_and_pending_switch_never_displace_controls(width, ascii_):
         assert all(a[2] <= b[1] for a, b in zip(hits, hits[1:]))
         geometries.append(tuple((y, left, right, kind, key) for y, left, right, kind, key in hits))
         if width >= 8:
-            assert any(hit[3] == "rate" for hit in hits)
-        if width >= 16:
-            worker = next(hit for hit in hits if hit[3] == "workers")
-            assert worker[2] - worker[1] in (5, 11)
+            assert any(hit[3] == "refresh-settings" for hit in hits)
+        assert not any(hit[3] == "workers" for hit in hits)
         if ascii_:
             assert layout.row_text(row).isascii()
     assert geometries[0] == geometries[1] == geometries[2]
@@ -221,7 +220,9 @@ def test_toolbar_mode_and_pending_switch_never_displace_controls(width, ascii_):
 def test_nonprimary_toolbar_reports_cannot_change_worker_mode(button):
     app = instance()
     toolbar.render_bar(ui(), app, 120)
-    y, left, *_ = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "workers")
+    toolbar.run_command(app, ["preferences"])
+    toolbar.overlay(ui(), {}, app, 120, 40)
+    y, left, _, _ = next(hit for hit in app.toolbar_state["menu_hits"] if hit[3] == "workers-toggle")
     toolbar.handle_mouse(app, y, left, button=button)
     assert not app.worker_scheduler.requests and app.cfg["worker_mode"] == "multi"
 
@@ -232,13 +233,15 @@ def test_toolbar_switch_preserves_pending_job_review_and_release_is_not_a_second
     review = app.confirm = {"ids": ["7"], "command": "cancel"}
     app.mode = "confirm"
     toolbar.render_bar(ui(), app, 120)
-    y, left, *_ = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "workers")
+    toolbar.run_command(app, ["preferences"])
+    toolbar.overlay(ui(), {}, app, 120, 40)
+    y, left, _, _ = next(hit for hit in app.toolbar_state["menu_hits"] if hit[3] == "workers-toggle")
     assert toolbar.handle_mouse(app, y, left, button=button)
     toolbar.handle_mouse(app, y, left, button="release")
     assert app.worker_scheduler.requests == ["single"]
     assert app.mode == "confirm" and app.confirm is review
     assert app.tab == "jobs" and app.marks == {"7"} and app.selected_id == "7"
-    item = next(item for item in toolbar.menu_items(app, "View") if item.key == "workers-toggle")
+    item = next(item for item in toolbar.submenu_items(app, "advanced") if item.key == "workers-toggle")
     assert not toolbar._blocked(app, item)
     toolbar._activate(app, item)
     assert app.worker_scheduler.requests == ["single", "multi"] and app.mode == "confirm"
@@ -256,6 +259,7 @@ def test_real_published_toolbar_supports_mouse_and_arrow_navigation(ascii_):
 
     def draw():
         views.compose(store.snapshot(), app, 160, 42)
+        views.overlay(store.snapshot(), app, 160, 42)
         return interaction.initialize(app)["graph"]
 
     graph = draw()
@@ -264,31 +268,34 @@ def test_real_published_toolbar_supports_mouse_and_arrow_navigation(ascii_):
     app.handle("f8")
     assert app.interaction_state["focused"] == before.id
     app.handle("right")
-    assert app.interaction_state["focused"] == "toolbar:workers:None"
-    app.handle("enter")
-    assert app.worker_scheduler.requests == ["single"] and app.tab == "jobs"
-    assert app.selected_id == "7" and not app.quit
+    assert app.interaction_state["focused"] == "toolbar:launch-job:None"
+    app.handle("right")
+    assert app.interaction_state["focused"] == "toolbar:refresh-settings:None"
+    assert graph.get("toolbar:workers:None") is None
+    app.handle("esc")
+    app.run_command("preferences")
     graph = draw()
-    target = graph.get("toolbar:workers:None")
-    assert target and target.rect == graph.get(app.interaction_state["focused"]).rect
-    app.click(target.rect.top, target.rect.left, app.last_hits, button="left")
-    assert app.worker_scheduler.requests == ["single", "multi"]
-    assert app.tab == "jobs" and app.job_panel_state["mode"] == "inspector"
-    assert any(item["id"] == "toolbar:workers" for item in toolbar.control_descriptors(app))
+    control = next(c for c in graph.controls if c.id.endswith(":workers-toggle"))
+    app.click(control.rect.top, control.rect.left, app.last_hits, button="left")
+    assert app.worker_scheduler.requests == ["single"] and app.selected_id == "7"
+    assert app.tab == "jobs" and app.mode == "main"
+
 
 
 @pytest.mark.parametrize('ascii_',[False,True])
 @pytest.mark.parametrize('managed',[False,True])
-def test_eighty_column_toolbar_retains_readable_refresh_and_worker_controls(ascii_,managed):
+def test_eighty_column_toolbar_prioritizes_launch_and_refresh_over_worker_preferences(ascii_,managed):
     app=instance()
     if managed:
         app.cfg.data['raven']={'managed':True,'execution':{'heavy_target':'slurm'}}
     row=toolbar.render_bar(ui(ascii_),app,80)
     text=layout.row_text(row)
-    assert 'Updates' in text and 'Multi' in text
+    assert 'Queue:' in text and 'Recordings:' in text and 'Launch' in text
+    assert 'Multi' not in text
     assert all(name in text for name in toolbar.MENUS)
     kinds={hit[3] for hit in app.toolbar_state['hits']}
-    assert {'workers','copy-mode','rate','minus','plus','track'}<=kinds
+    assert {'launch-job','refresh-settings'} <= kinds
+    assert not {'workers','copy-mode','track','export-data'} & kinds
     assert ('raven' in kinds)==managed
     assert ('Light' in text)==managed
     assert layout.vlen(text)==80

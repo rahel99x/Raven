@@ -47,9 +47,11 @@ def _component_styles():
     result.append(("divider-line", next(style for text, style in canvas[0] if text == "│"), "border"))
     bar = toolbar.render_bar(views, app, 160)
     for text, style in bar:
-        if text == "[-] " or text == "[+]":
-            result.append(("toolbar-step-" + text, style, "accent"))
-        elif "[x]" in text:
+        if "[Launch]" in text:
+            result.append(("toolbar-launch", style, "accent"))
+        elif "Queue:" in text:
+            result.append(("toolbar-refresh", style, "accent"))
+        elif text.strip() == "x":
             result.append(("toolbar-quit", style, "danger"))
     app.toolbar_state.update(menu=3, cursor=0)
     menu = toolbar.overlay(views, {}, app, 160, 40)
@@ -78,6 +80,8 @@ def test_every_cursor_token_form_inherits_the_current_accent(theme):
 def test_actual_cached_control_and_status_glyphs_follow_runtime_theme_switches(theme):
     app, styles = _component_styles()
     assert len(styles) >= 12
+    assert {"toolbar-launch", "toolbar-refresh", "toolbar-quit", "live-slider",
+            "divider-diamond", "menu-selection", "selected-line-marker"} <= {name for name, _, _ in styles}
     for _, style, _ in styles:
         P.resolve(P.cell_style(style, app.theme), app.theme)
     app.run_command("theme " + theme)

@@ -155,12 +155,48 @@ def materialize(plan, *, token=None):
     plan.update(token=token, runtime_bundle=str(archive), runtime_sha256=digest,
                 report_python=interpreter, source_snapshot=str(payload.relative_to(root)),
                 run_id_base="launch-" + token, filesystem_host=filesystem["origin_host"], filesystem_id=filesystem["id"])
+    if plan.get("ui_capture_logs") and plan["execution"] == "local":
+        plan["local_logs"] = {stream: str(folder / (stream + ".log")) for stream in ("stdout", "stderr")}
+        for path in plan["local_logs"].values():
+            _exclusive(Path(path), b"", mode=0o600)
     _exclusive(folder / "plan.json", R._encoded(plan))
     header = "#!/bin/sh\n" + "".join(line.rstrip("\r\n") + "\n" for line in plan.get("sbatch_header", []))
     command = [interpreter, "-I", str(archive), "supervise", str(folder / "plan.json")]
     _exclusive(folder / "batch.sh", (header + "exec " + shlex.join(command) + "\n").encode(), 0o500)
     os.chmod(folder, 0o500)
     return plan
+
+
+def start_local_plan(plan, *, environ=None):
+    """Start the existing supervisor independently of the terminal UI.
+
+    The returned receipt means the supervisor was started, not that the
+    application succeeded. Its exact run retains the eventual outcome. Closing
+    Raven leaves it running; no dashboard thread installs signal handlers.
+    """
+    if plan.get("execution") != "local":
+        raise ValueError("Background local execution requires explicit standalone selection")
+    plan = materialize(dict(plan, ui_capture_logs=True))
+    folder = Path(plan["runtime_bundle"]).parent
+    streams = []
+    try:
+        for name in ("stdout", "stderr"):
+            fd = os.open(plan["local_logs"][name], os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW)
+            streams.append(os.fdopen(fd, "wb"))
+        process = subprocess.Popen([plan["report_python"], "-I", plan["runtime_bundle"], "supervise", str(folder / "plan.json")],
+            cwd=plan["submit_dir"], env=dict(os.environ if environ is None else environ),
+            stdin=subprocess.DEVNULL, stdout=streams[0], stderr=streams[1], start_new_session=True)
+    finally:
+        for stream in streams:
+            stream.close()
+    # Reap the child independently; the shared reader remains available for
+    # telemetry while the workload executes.
+    import threading
+    threading.Thread(target=process.wait, name="raven-local-reaper", daemon=True).start()
+    return {"schema": "raven.launch-receipt/v1", "execution": "local", "status": "supervisor-started",
+            "pid": process.pid, "token": plan["token"], "run_id": plan["run_id_base"] + "-a1",
+            "run_dir": str(Path(plan["project_root"]) / "runs" / (plan["run_id_base"] + "-a1")),
+            "project_root": plan["project_root"], "logs": plan["local_logs"], "readiness": plan.get("readiness", [])}
 
 
 def _request(plan):
@@ -265,7 +301,8 @@ def _initialize_run(plan, env):
             "schema": "raven.automation/v1", "plan": plan_inventory(plan), "project_root": str(root),
             "filesystem_id": plan["filesystem_id"], "filesystem_host": plan.get("filesystem_host", socket.gethostname()), "runtime_host": socket.gethostname(), "execution": plan["execution"],
             "source_semantics": "$0 and BASH_SOURCE identify the immutable payload; source-relative discovery needs an explicit application hook",
-            "logs": "Inherited scheduler streams" if plan["execution"] == "slurm" else "Inherited local streams; no automatic local copy",
+            "logs": ("Inherited scheduler streams" if plan["execution"] == "slurm" else
+                     "Captured local stdout/stderr" if plan.get("local_logs") else "Inherited local streams; no automatic local copy"),
             "application_outcome": "pending", "scheduler_outcome": "unknown",
             "warnings": list(manifest.get("metadata", {}).get("raven_launch", {}).get("log_warnings", []))}
         # begin_run's default run-local logs are unused when preserving the
@@ -277,6 +314,12 @@ def _initialize_run(plan, env):
         R._atomic_json(run / "logs.json", index, replace=True)
         R._atomic_json(run / "run.json", manifest, replace=True)
         _launch_report(run, plan, manifest)
+    for stream, path in plan.get("local_logs", {}).items():
+        if plan["execution"] == "local" and stream in ("stdout", "stderr"):
+            expected = str(Path(plan["runtime_bundle"]).parent / (stream + ".log"))
+            if path != expected:
+                raise ValueError("local log disagrees with the captured runtime")
+            R.register_log(run, "local." + stream, path, label="Local " + stream, group="Application")
     _attach_declarations(run, plan)
     request = _request(plan)
     if request:

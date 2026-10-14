@@ -646,7 +646,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             state["discard_release"] = False
         else:
             arguments = shlex.split(hit["action"][1])
-            if arguments[0] in ("jobgroup", "joblist"):
+            if arguments[0] in ("jobgroup", "joblist", "joblistmenu"):
                 app.run_command(hit["action"][1])
             else:
                 run_command(app, arguments)

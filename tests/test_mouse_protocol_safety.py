@@ -203,9 +203,9 @@ def test_proven_unheld_hover_finishes_lost_release_without_changing_page_or_mark
         app.click(control.slider.top, control.slider.right - 1, cache.hits, button="press")
         assert metric_live.active(app)
     elif owner == "toolbar":
-        y, left, _, _, _ = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "track")
+        y, left, _, _, _ = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "menu")
         app.click(y, left, cache.hits, button="press")
-        assert app.toolbar_state["dragging"]
+        assert app.toolbar_state["pressed"]
     elif owner == "divider":
         divider = next(item for item in app.pane_drag_state["dividers"].values() if item.axis == "vertical")
         assert pane_drag.handle_mouse(app, divider.y + divider.height // 2, divider.x, button="press")
@@ -229,7 +229,8 @@ def test_proven_unheld_hover_finishes_lost_release_without_changing_page_or_mark
     for name in ("job_selection_state", "text_selection_state", "chart_interaction_state",
                  "metric_live_state", "pane_drag_state", "scrollbar_state"):
         assert not getattr(app, name).get("capture")
-    assert not app.toolbar_state["dragging"] and not app.history_browser_state["drag"]
+    assert not app.toolbar_state["dragging"] and not app.toolbar_state["pressed"]
+    assert not app.history_browser_state["drag"]
     if owner == "text":
         assert app.text_selection_state["selection"]["end"] == 4
 

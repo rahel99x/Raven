@@ -22,8 +22,16 @@ def render(views, snap, app, width, height):
     own_document = height is not None and not getattr(app, "research_document_mode", False)
     card_width = width
     from .control_rows import buttons
-    nav, nav_hits = buttons(g, width, [(key, label, ("command", "view " + key)) for key, label in RESEARCH_VIEWS],
+    from .toolbar import visible_research_views
+    nav, nav_hits = buttons(g, width, [(key, label, ("command", "view " + key)) for key, label in visible_research_views(app)] +
+                            [("all", "All views", ("command", "workspaces"))],
                             selected=view, group="research_nav", prefix="research-view:")
+    setup, setup_hits = buttons(g, width,
+        [("setup", "Set up this view", ("command", "setup research " + view)),
+         ("connect-data", "Connect data", ("command", "connectdata"))],
+        group="research-setup", prefix="research-setup:")
+    nav_hits += [(y + len(nav), kind, data) for y, kind, data in setup_hits]
+    nav += setup
     if own_document and width >= 6:
         nav.append(L.clip_row([("    ", "")] + L.rule(g, max(0, width - 4), "Research / " + view), width))
     app.research_nav_rows = len(nav)

@@ -142,6 +142,10 @@ def _sync(app, value):
     catalog = getattr(getattr(app, "logs", None), "catalog", None)
     if catalog is not None:
         catalog.polling_multiplier = 1 if managed else value
+    if not managed:
+        setter = getattr(getattr(app, "sampler", None), "set_recordings_interval", None)
+        if callable(setter):
+            setter(recordings_interval(app))
     # Managed sources also have policy intervals and shared cache lifetimes.
     # Updating the legacy multiplier alone left every position pinned to the
     # original collection floor; publish the live managed request as well.
@@ -166,6 +170,39 @@ def set_multiplier(app, value):
     return value
 
 
+def recordings_interval(app):
+    """The independent retained-file preference; None follows the active preset."""
+    state = getattr(app, "refresh_rate_state", None)
+    value = state.get("recordings_seconds") if isinstance(state, dict) else None
+    return value if type(value) in (int, float) and value in (1., 2.) else None
+
+
+def set_recordings_interval(app, seconds):
+    """Retune existing file readers without changing the job's recording writer."""
+    if seconds is not None and (type(seconds) not in (int, float) or seconds not in (1., 2.)):
+        raise ValueError("Choose Automatic, 1 second or 2 seconds for reading recordings.")
+    if getattr(app, "replay", None):
+        raise ValueError("Live refresh changes are unavailable during replay.")
+    state = initialize(app)
+    from . import telemetry_settings
+    managed = telemetry_settings.initialize(app) is not None
+    previous = state.get("recordings_seconds")
+    state["recordings_seconds"] = seconds
+    try:
+        if managed:
+            telemetry_settings.sync(app)
+        else:
+            setter = getattr(getattr(app, "sampler", None), "set_recordings_interval", None)
+            if callable(setter):
+                setter(seconds)
+    except (ValueError, RuntimeError, OSError):
+        state["recordings_seconds"] = previous
+        if managed:
+            telemetry_settings.sync(app)
+        raise
+    return seconds
+
+
 def adjust(app, delta):
     if type(delta) not in (int, float) or (type(delta) is float and not math.isfinite(delta)) or delta != int(delta):
         raise ValueError("rate adjustment must be a finite whole number")
@@ -174,13 +211,20 @@ def adjust(app, delta):
 
 def restore(app, data):
     initialize(app)
-    if not isinstance(data, dict) or "multiplier" not in data:
+    if not isinstance(data, dict):
         return
-    try:
-        value = validate_multiplier(data["multiplier"])
-    except (TypeError, ValueError, OverflowError):
-        return
-    set_multiplier(app, value)
+    if "multiplier" in data:
+        try:
+            value = validate_multiplier(data["multiplier"])
+        except (TypeError, ValueError, OverflowError):
+            pass
+        else:
+            set_multiplier(app, value)
+    if "recordings_seconds" in data:
+        try:
+            set_recordings_interval(app, data["recordings_seconds"])
+        except (TypeError, ValueError, OverflowError):
+            pass
 
 
 def save(app):
@@ -191,7 +235,11 @@ def save(app):
             value = validate_multiplier(settings["polling_preview_backup"])
         except (KeyError, TypeError, ValueError, OverflowError):
             pass
-    return {"multiplier": value}
+    result = {"multiplier": value}
+    recordings = recordings_interval(app)
+    if recordings is not None:
+        result["recordings_seconds"] = recordings
+    return result
 
 
 def cadence(app, source, base=None):

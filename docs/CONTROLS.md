@@ -6,7 +6,7 @@ This guide lists launch methods, default keys, mouse actions, and command famili
 Use `?` in the active page for contextual help. Feature guides provide complete
 procedures and operating limits.
 
-Slider positions describe requested intervals. Raven applies collection floors,
+Refresh settings describe requested reader intervals. Raven applies collection floors,
 site policy, demand gating, and command budgets before collection. **Sources**
 and **Poll** show effective intervals; **Set** shows the request. See
 [collection and retention](raven/README.md#collection-and-retention) for the
@@ -19,12 +19,15 @@ Opening a form or retaining a compatibility command does not grant execution.
 
 ## Raven execution controls
 
-`ravenl` opens Light; `ravenh` requests an admitted worker before loading the UI.
+`ravenl` opens Light; interactive `ravenh` opens the UI while requesting an admitted
+worker in the background. Jobs and logs remain available while Heavy is queued.
 `raven` remains a compatibility route to Light. Open the Light/Heavy toolbar
 control or enter `:raven inspect` for mode, target, collection rates, queues, and
 retention coverage. Request, Cancel, and Release use a current identity-bound
 review. `:raven reuse JOBID` starts a fresh ownership/resource review; it does not
-trust a job number alone. Single/Multi controls background concurrency separately.
+trust a job number alone. Background concurrency is available in advanced
+preferences. **Refresh settings** (`:refreshsettings`) contains queue and
+recording-read cadence, Heavy presets, and observed freshness.
 
 Details and Terminal share one focus indicator. Switching execution modes does
 not change the selected job, active terminal, or destination of queued paste.
@@ -98,7 +101,7 @@ Key bindings in configuration can replace the defaults below.
 | Method | Command | Purpose |
 | --- | --- | --- |
 | Installed Light entry point | `ravenl` | Open the governed interface without requesting compute |
-| Installed Heavy entry point | `ravenh` | Request verified worker admission before opening the interface |
+| Installed Heavy entry point | `ravenh` | Open Light immediately while Heavy admission and verification proceed |
 | Installed compatibility entry point | `raven` | Open Light with compatibility command syntax |
 | Checkout launcher | `./scripts/raven` | Use the checkout's virtual environment when available |
 | Python module | `python3 -m raven` | Run directly from the checkout |
@@ -120,9 +123,10 @@ Use [Research reporting from Bash](guides/research-automation.md) for `init`,
 
 ### Background worker mode
 
-Click the toolbar worker switch, or use `:workers single`, `:workers multi`,
-`:workers toggle`, and `:workers status`. F8 includes the switch in directional
-button navigation. Single keeps one background worker and a separate UI thread.
+Open **Setup → Refresh and performance → Advanced preferences**, or enter
+`:preferences`, to change background concurrency. The commands `:workers single`,
+`:workers multi`, `:workers toggle`, and `:workers status` remain available.
+Single keeps one background worker and a separate UI thread.
 Start with `raven --workers single` or `raven --workers multi` to override the
 saved preference. See [Background workers](guides/background-workers.md) for
 pending transitions, result collection, and limits.
@@ -194,43 +198,45 @@ Use `:tab IDENTIFIER` to open a page by command.
 Use `:workspace NAME` to open a Research workspace.
 Use `:view NAME` to select an Analytics or Research subview.
 
-## Terminal toolbar and update slider
+<a id="terminal-toolbar-and-update-slider"></a>
 
-The first display row contains `x`, File, Edit, View, Setup, Help, the copy destination, and the update-rate control.
-The toolbar remains available above pages and overlays.
-Menu actions use the same commands and reviews as their keyboard equivalents.
+## Terminal toolbar and refresh settings
+
+The first row contains `x`, File, Edit, View, Setup, Help, **Launch**, the managed
+Light/Heavy status, and a queue/recording summary. Less common controls remain
+in menus. The toolbar stays available above pages and overlays.
 
 | Control | Function |
 | --- | --- |
 | Click a menu label, F10, or `:menu [File\|Edit\|View\|Setup\|Help]` | Open a menu |
-| Left / Right, Tab / Shift-Tab in a menu | Select the previous or next menu |
+| Left / Right, Tab / Shift-Tab in a top-level menu | Select another menu; Right opens a selected submenu |
 | `f`, `e`, `v`, `s`, `h` in a menu | Select File, Edit, View, Setup, or Help |
-| Up / Down, page keys, Home / End in a menu | Select a menu choice |
-| Enter / Space, or click a menu choice | Activate the choice |
-| Esc, `q`, F10, or move the pointer outside the dropdown | Dismiss the menu |
+| Up / Down, page keys, Home / End in a menu | Select a choice |
+| Enter / Space, or click a choice | Open the submenu or activate the choice |
+| Left / Esc in a submenu | Return to its parent |
+| Esc at the top level, F10, or move the pointer outside the dropdown | Dismiss the menu |
 | Click `x` | Exit Raven |
-| Click Copy / Yank | Switch between clipboard copying and a running local Vim/Neovim target |
-| Edit → Switch to Vim/Neovim yanking / Switch to clipboard copying | Change the same copy destination |
-| Click or drag the update track | Request a fetching interval; the label shows the effective Jobs interval |
-| Right-click the update track, interval, or step buttons | Restore the five-second polling request and preserve selections |
-| Click `[-]` / `[+]`, or use the wheel over the update control | Move one polling position toward five seconds or 500 milliseconds |
-| Click the interval, or View → Focus update-rate slider | Focus slider keyboard controls |
-| Arrows, `-` / `+` with slider focus | Move one polling position |
-| Home / End with slider focus | Request five seconds or 500 milliseconds |
-| Esc / Enter / Tab with slider focus | Return input to the page |
-| `:rate [N\|reset]` | Inspect the effective Jobs interval, select position 1 to 50, or restore five seconds |
+| **Launch**, or File → Launch job... | Choose a script, review its resources and recordings, then submit |
+| Light/Heavy status | Inspect allocation progress, cancellation, and recovery actions |
+| Queue/recording summary, or `:refreshsettings` | Open independent queue and recording-read controls, Heavy presets, and freshness evidence |
+| **Slower**, **Faster**, **Preset rate** in Refresh settings | Adjust queue cadence or restore its active base |
+| **Automatic**, **1s**, **2s** under Read recordings | Choose how often accessible retained samples are read |
+| `:rate [N\|reset]` | Inspect the effective queue interval, select position 1–50, or restore its active base |
+| Edit → Switch to Vim/Neovim yanking / Switch to clipboard copying | Change the copy destination |
+| View → Favorites → Pin this view, or `:favorite` | Save or remove the current navigation destination |
+| **Setup** | Open connections, launch defaults, recordings, refresh, and installation categories |
+| **Set up this view** beside Research or Analytics content | Open that view's evidence guide |
+| `:setup` | Open the compatibility setup overview |
 | `:about` | Open version and toolbar instructions |
-| **Setup**, `:setup` | Open allocation settings and per-view Research/Analytics guides |
 
-A menu choice ending in `...` opens an editable command prompt.
-Unavailable choices report their required context.
-Direct choices keep the dropdown available while the pointer stays inside it.
-An input prompt or action review remains beneath the dropdown.
-Dismiss the menu before editing that prompt or completing the review.
-Hover highlights a control without activating it.
-See [Live workbench](guides/live-workbench.md#use-the-terminal-toolbar) for every menu choice.
-See [Update rate](guides/live-workbench.md#set-the-update-rate) for source limits and saved preferences.
-See [Setup](guides/setup.md) for detected Slurm accounts, saved Heavy preferences, and embedded metric guides.
+Hover highlights a control without activating it. Unavailable choices explain
+their required context. A choice ending in `...` may open an editable command
+prompt; dismiss the dropdown before editing that prompt. Guided setup, Launch,
+Connect data, Run home, and Refresh settings close the dropdown when opened.
+
+See [Everyday workflow](guides/everyday-workflow.md) for the default layout,
+[Refresh settings](guides/telemetry-updates.md) for intervals and source limits,
+and [Setup](guides/setup.md) for accounts and configuration.
 
 When errors or warnings exist, the strip below the page tabs shows red Critical,
 orange Moderate, and yellow Mild count buttons. Click a count or enter
@@ -327,9 +333,9 @@ Space changes a Boolean value.
 Use `D` to preview defaults.
 Enter applies the draft.
 Esc cancels the draft.
-The Polling interval row changes the queue slider in managed sessions.
+The Polling interval row changes queue cadence in managed sessions.
 Its endpoints follow the active mode and site policy.
-Use **Setup → Heavy telemetry update settings** for live reader presets and
+Use **Setup → Refresh and performance → Refresh settings** for live reader presets and
 Custom values; see [telemetry updates](guides/telemetry-updates.md).
 Native compatibility sessions retain the global five-second to 500-millisecond request.
 Esc restores the exact previous polling position; unaccepted previews are not saved.
@@ -474,20 +480,20 @@ Recents leaves live-only progress and measurement slots empty. The completion cu
 
 | Control | Function |
 | --- | --- |
-| **Auto Group**, `:grouping auto` | Enable automatic detection and close its groups; keep manual groups and exclusions |
-| **Undo Auto**, `:grouping undo` | Undo the last Auto Group change without replacing later manual changes |
-| **Ungroup All**, `:grouping clear` | Remove manual groups and disable automatic grouping; keep all jobs |
-| **Expand All**, `:grouping expand` | Open all groups without changing membership |
-| **Collapse All**, `:grouping collapse` | Close groups without changing membership |
-| **Sort Min**, `:grouping sort-min` | Order Jobs batches by fewest running jobs, then fewest total jobs; initial default |
-| **Sort Max**, `:grouping sort-max` | Order Jobs batches by most running jobs, then fewest total jobs |
-| `:grouping restore` | Restore the last Ungroup All change if later grouping edits would not be overwritten |
+| **View → Grouped / Sequential** | Choose contiguous batches or individual rows without removing assignments |
+| **Order → Fewest running first** | Rank batches by fewest running jobs, then fewest total jobs; Jobs' initial default |
+| **Order → Most running first** | Rank batches by most running jobs, then fewest total jobs |
+| **Groups → Expand all groups / Collapse all groups** | Change shared folds without changing membership |
+| **Groups → Manage group assignments…** | Detect automatic groups, undo detection, remove assignments after review, or restore removed assignments |
+| `:grouping auto\|undo\|clear\|expand\|collapse\|sort-min\|sort-max\|restore` | Retain the existing grouping commands and guarded session restore |
 | Drag a group header's `↕` (`:` in ASCII) onto another Main group | Request placement before an earlier group or after a later group; release opens inspection and review |
 | Esc or right-click during a queue-order drag | Cancel without changing scheduler order |
 | `:ops queue-order` | Open the queue-order form without a mouse |
 
-The grouping buttons change shared display organization only. Their undo records last for the current session.
-The two sort buttons keep Jobs batches contiguous and remember the selected mode across launches.
+The three menus change display organization only. Membership and folds are
+shared; view and order preferences belong to each list. Undo records last for
+the current session. Batch orders keep grouped members contiguous and are
+remembered across launches.
 Counts use the unfiltered queue; filtering and collapsing do not change a batch's rank.
 Raven Heavy stays first when its current allocation identity is known.
 Column sorting orders jobs within each batch; Recents and History keep their own sorts.
@@ -611,11 +617,12 @@ Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, an
 | `:historyrange START END` | Select inclusive local calendar dates |
 | `:recents 5\|10\|25\|auto` | Select the initial Recents preview size |
 | `:recents expand\|collapse` | Change the Recents presentation |
-| **Grouped**, `:recents grouped` | Keep complete Recents batches together; restore newest-completion order |
-| **Sequential**, `:recents sequential` | Show individual recent jobs without folds; restore newest-completion order |
+| **View → Grouped** | Keep complete Recents batches together using the saved order |
+| **View → Sequential** | Show individual recent jobs by completion time without changing assignments or the saved batch order |
+| `:recents grouped\|sequential` | Select the legacy Recents view and restore newest-completion order |
 | `:jobgroups [on\|off]` | Reset list-specific grouping choices and set visibility across lists except Recents; retain batch ranks. Explicit `on` also enables automatic detection |
 | `:joblist CONTEXT grouped\|sequential\|sort-min\|sort-max` | Save presentation and batch ranking for an individual job list; see [contexts and defaults](guides/batch-launches.md#apply-grouping-and-sorting-in-other-job-lists) |
-| `:grouping auto\|undo\|clear\|expand\|collapse\|sort-min\|sort-max\|restore` | Use the Jobs Main grouping buttons and their guarded session restore |
+| `:grouping auto\|undo\|clear\|expand\|collapse\|sort-min\|sort-max\|restore` | Use the existing grouping commands and their guarded session restore |
 | `:jobgroup toggle\|open\|close GROUP_ID` | Fold or expand one known launch group |
 | `:jobgroup create` | Group at least two marked real jobs in the focused list |
 | `:jobgroup ungroup` | Dissolve targeted closed groups or detach targeted expanded members |
@@ -636,10 +643,11 @@ Drag the divider above Recents to change its visible size.
 The wheel inside Recents scrolls that list.
 Click a recent job, then use arrows, page keys, Home, or End to reach older matching history.
 The initial preview size does not cap that navigation.
-Use **Grouped** or **Sequential** on the divider to choose batch blocks or
-individual completion rows. The mode is saved; Grouped is the initial default.
-Switching modes restores newest-completion ordering; subsequent column sorts
-remain available. Grouped keeps each batch contiguous under either sort.
+Open **View** on the divider and choose **Grouped** or **Sequential**. The mode
+is saved; Grouped is the initial default. Sequential uses completion order,
+and returning to Grouped restores its remembered batch order. **Order → Use
+column order / completion time** restores chronological or column ordering.
+Grouped keeps each batch contiguous under every supported order.
 Sequential preserves saved group membership and shared folds for other views.
 See [Recents grouping](guides/batch-launches.md#choose-grouped-or-sequential-recents).
 
@@ -654,7 +662,7 @@ Manual groups use the same chevrons and state summaries.
 `g` creates one from at least two marked jobs; `u` removes the selected group or its selected expanded members.
 Alt-drag a job row or marked selection onto a group row to add those exact jobs.
 Right-click the selected row for equivalent group creation, removal, and destination choices.
-Manual membership uses natural job-ID order. Jobs orders complete batches with Sort Min or Sort Max and uses column sorting within each batch. Other lists retain their active sorts.
+Manual membership uses natural job-ID order. Jobs orders complete batches with Fewest running first or Most running first and uses column sorting within each batch. Other lists retain their active sorts.
 Use `U` when you only want to clear marks.
 These membership keys belong to the focused job list. Graph `u` still undoes zoom; text and menu controls retain their own input behavior.
 Their INFO badges use `run`, `pend`, `dep`, `never`, `done`, `fail`, `cancel`, and `other` for nonzero counts.

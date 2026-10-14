@@ -907,6 +907,10 @@ class Views:
         acc = snap.get("account", {})
         age = clock.now() - snap["t_jobs"] if snap.get("t_jobs") else None
         who = app.user + (f"@{app.host_label}" if getattr(app, "host_label", "") else "") + (f" [{app.profile_name}]" if getattr(app, "profile_name", "") else "")
+        project_root = getattr(app, "project_state", {}).get("root")
+        if project_root:
+            project_name = display_text(os.path.basename(str(project_root).rstrip(os.sep)))
+            who += " / " + cut(project_name, max(8, min(24, width // 4)), self.g.ascii)
         if getattr(app, "demo", False):
             who += " [DEMO]"
         from .raven_ui import headline as compute_headline
@@ -986,7 +990,8 @@ class Views:
     def tab_bar(self, snap: dict, app, width: int):
         """Fit a contiguous set of tabs, keeping the current page visible and mouse targets exact."""
         labels = []
-        for key, title in TABS:
+        from .toolbar import visible_tabs
+        for key, title in visible_tabs(app):
             n = {"jobs": len(snap["jobs"]), "history": len(snap.get("finished", [])), "nodes": len(snap.get("nodes", {})), "group": len(snap.get("group", [])),
                  "sources": sum(1 for h in snap.get("health", {}).values() if h.error)}.get(key)
             label = f" {title}" + (f" {n}" if n else "") + " "
@@ -2760,7 +2765,9 @@ class Views:
         selected_job = getattr(app, "analytics_job", None)
         diagnostic_command = "telemetry" + (" " + shlex.quote(str(selected_job)) if selected_job else "")
         controls, control_hits = buttons(g, width,
-            [("telemetry", "Metric sampling", ("command", diagnostic_command)),
+            [("setup", "Set up this view", ("command", "setup analytics " + view)),
+             ("connect-data", "Connect data", ("command", "connectdata")),
+             ("telemetry", "Metric sampling", ("command", diagnostic_command)),
              ("gpu-provider", "GPU source", ("command", "gpuprovider"))],
             group="analytics-tools", prefix="analytics-tools:")
         hits += [(y + len(out), kind, data) for y, kind, data in control_hits]
@@ -3376,7 +3383,8 @@ class Views:
                 y, value = divider
                 left, right = value["left"], value["right"]
                 mode_controls = [control for line, kind, control in hits if line == y and kind == "control"
-                                 and isinstance(control, dict) and control.get("group") == "recents-modes"]
+                                 and isinstance(control, dict) and control.get("group") == "job-list-controls"
+                                 and str(control.get("id", "")).startswith("joblist:recent:")]
                 # Only the visible handle resizes the panes. Mode buttons
                 # share its row, while wheel navigation spans all data cells.
                 content_right = max([right] + [control["right"] + 6 for control in mode_controls])

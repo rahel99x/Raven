@@ -6,6 +6,14 @@ Find cached data, restore inspection locations, and configure Raven's terminal p
 Unicode and ASCII modes use the same commands and key bindings.
 Open the command palette with `:`; type the command text without the leading colon.
 
+The default tabs are Jobs, History, Analytics, Research, and Log. Other pages
+remain available through **View** and stay visible while active. Choose
+**View → Favorites → Pin this view**, or enter `:favorite`, to save a page or
+Research/Analytics subview. `:favorite list` opens these saved destinations;
+`:favorite clear` removes the favorites without changing saved locations or job
+groups. Existing operation favorites remain under **View → Pinned tools**.
+See [Everyday workflow](everyday-workflow.md) for the complete navigation layout.
+
 <a id="feature-29"></a>
 
 ## Find a destination
@@ -109,17 +117,17 @@ The editor provides these settings:
 | GPU sampling | Enable or disable the existing GPU sampler. |
 | Terminal clipboard | Enable or disable OSC 52 clipboard output. |
 | Local clipboard tools | Enable or disable installed clipboard utilities. |
-| Polling interval | Change the queue slider position using the active mode and site-policy range. |
+| Polling interval | Change queue cadence using the active mode and site-policy range. |
 | Other source intervals | Change the configured base for sources such as accounting, nodes, and forecast probes. |
 
-The **Polling interval** row selects the nearest position on the top-right
-control's logarithmic scale. For managed `raven`, `ravenl`, and `ravenh`, it changes
+The **Polling interval** row selects the nearest supported queue interval.
+For managed `raven`, `ravenl`, and `ravenh`, it changes
 queue cadence while the other readers keep their own settings. The endpoints
 follow the active queue base and mandatory site limits. Native compatibility
 sessions retain the existing global five-second to 500-millisecond request,
 with slower configured bases scaled by at most ten.
 
-Use **Setup → Heavy telemetry update settings** to select Default, Medium, High,
+Use **Setup → Refresh and performance → Refresh settings** to select Default, Medium, High,
 Ultra, or Custom, and its gear button to edit individual reader intervals and
 budgets. Heavy changes apply live; **Save settings** persists them. See
 [telemetry updates](telemetry-updates.md) for values, mode transitions, and limits.
@@ -129,7 +137,7 @@ and Right increases by 25 percent. Managed readers follow their collection
 configuration and selected telemetry preset.
 
 The general settings editor previews changes in the active sampler.
-Cancel restores its previous values and exact queue-slider position.
+Cancel restores its previous values and exact queue preference.
 Unaccepted previews are not saved; Enter accepts the draft and saves the polling
 preference. GPU sampling remains subject to managed collection policy and does
 not enable automatic allocation probes.

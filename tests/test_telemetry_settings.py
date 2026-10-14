@@ -202,3 +202,88 @@ def test_site_recommended_preset_can_be_saved_without_false_conflict(session, tm
     T.apply_settings(app, "medium")
     T.save_settings(T.prepare_save(app))
     assert json.loads((tmp_path / "config.json").read_text())["telemetry"]["preset"] == "medium"
+
+
+@pytest.mark.parametrize("heavy", [False, True])
+def test_recording_reader_changes_independently_and_survives_presets(session, heavy):
+    app = session(heavy=heavy)
+    app.sampler.bind_telemetry({"job_id": "17", "run_id": "sample-run"})
+    sampler, pool = app.sampler, app.sampler.pool
+    automatic = sampler.effective_interval("trace")
+    queue = sampler.effective_interval("jobs")
+    refresh_rate.set_recordings_interval(app, 1.)
+    assert sampler.effective_interval("trace") == 1.
+    assert sampler.effective_interval("jobs") == queue
+    refresh_rate.set_multiplier(app, 50)
+    assert sampler.effective_interval("trace") == 1.
+    refresh_rate.set_recordings_interval(app, 2.)
+    T.apply_settings(app, "ultra")
+    assert sampler.effective_interval("trace") == 2.
+    assert sampler is app.sampler and pool is sampler.pool
+    saved = refresh_rate.save(app)
+    replacement = session(heavy=heavy)
+    refresh_rate.restore(replacement, saved)
+    assert refresh_rate.recordings_interval(replacement) == 2.
+    assert replacement.sampler.effective_interval("trace") == 2.
+    refresh_rate.set_recordings_interval(app, None)
+    assert sampler.effective_interval("trace") == (.5 if heavy else automatic)
+
+
+def test_recording_reader_override_cannot_bypass_policy_or_ssh_floor(session, tmp_path):
+    path = tmp_path / "recording-policy.json"
+    path.write_text(json.dumps({"schema": C.POLICY_SCHEMA, "restrictions": {
+        "floors": {"collection.trace_seconds": 3.}}}))
+    app = session(policies=[path])
+    app.sampler.bind_telemetry({"job_id": "17"})
+    refresh_rate.set_recordings_interval(app, 1.)
+    assert app.sampler.effective_interval("trace") == 3.
+    assert any("trace_seconds" in limit for limit in T.settings_snapshot(app)["limits"])
+    remote = session(document={"schema": C.SCHEMA, "connection": {"transport": "ssh", "host": "cluster.example"}})
+    refresh_rate.set_recordings_interval(remote, 1.)
+    assert remote.sampler.effective_interval("trace") == 1.5
+
+
+@pytest.mark.parametrize("bad", [True, .5, 0, -1, 3, "1", float("nan"), float("inf")])
+def test_recording_reader_bad_preferences_cannot_change_live_cadence(session, bad):
+    app = session()
+    refresh_rate.set_recordings_interval(app, 2.)
+    with pytest.raises(ValueError):
+        refresh_rate.set_recordings_interval(app, bad)
+    assert app.sampler.effective_interval("trace") == 2.
+    refresh_rate.restore(app, {"recordings_seconds": bad})
+    assert app.sampler.effective_interval("trace") == 2.
+
+
+def test_recording_preferences_preserve_reader_backoff_and_evidence(session):
+    app = session()
+    app.sampler.bind_telemetry({"job_id": "17"})
+    health = app.sampler.health("trace")
+    health.backoff = 8.
+    app.sampler._collection_not_before["trace"] = 12345.
+    app.sampler.retained_telemetry["17"] = {"cpu-memory": [{"timestamp": 100., "rss_bytes": 1234}]}
+    refresh_rate.set_recordings_interval(app, 1.)
+    assert health.backoff == 8.
+    assert app.sampler._collection_not_before["trace"] == 12345.
+    assert app.sampler.retained_telemetry["17"]["cpu-memory"][0]["rss_bytes"] == 1234
+
+
+def test_legacy_recording_reader_is_independent_of_polling_and_preserves_health():
+    cfg = Config()
+    sampler = Sampler(SimpleNamespace(), Store(persist=False), cfg["intervals"], [])
+    try:
+        app = SimpleNamespace(cfg=cfg, sampler=sampler)
+        refresh_rate.initialize(app)
+        sampler.bind_telemetry({"job_id": "17"})
+        health = sampler.health("trace")
+        health.backoff, health.error = 8., "read temporarily unavailable"
+        refresh_rate.set_recordings_interval(app, 2.)
+        refresh_rate.set_multiplier(app, 50)
+        assert sampler.effective_interval("jobs") == .5
+        assert sampler.effective_interval("trace") == 2.
+        assert (health.backoff, health.error) == (8., "read temporarily unavailable")
+        refresh_rate.set_recordings_interval(app, 1.)
+        assert sampler.effective_interval("trace") == 1.
+        refresh_rate.set_recordings_interval(app, None)
+        assert sampler.effective_interval("trace") == .5
+    finally:
+        sampler.shutdown()

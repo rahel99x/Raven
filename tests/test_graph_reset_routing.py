@@ -159,23 +159,24 @@ def test_jobs_divider_capture_is_cancelled_before_reset_and_delayed_release(dash
     assert current.value == original
 
 
-def test_jobs_rate_slider_capture_ends_before_graph_reset_and_delayed_release(dashboard):
-    from raven import toolbar
+def test_jobs_metric_rate_capture_ends_before_graph_reset_and_delayed_release(dashboard):
     d, app = dashboard, dashboard.app
     d.draw("jobs")
     chosen = _plots(d)[0]
     _zoom(d, chosen)
     d.draw("jobs")
     chosen = next(plot for plot in _plots(d) if plot.key == chosen.key)
-    state = toolbar.initialize(app)
-    y, left, right, _, _ = next(hit for hit in state["hits"] if hit[3] == "track")
-    assert toolbar.handle_mouse(app, y, left, button="press")
-    assert state["dragging"]
-    rate = app.cfg["polling_multiplier"]
+    state = M.initialize(app)
+    control = next(control for control in state["records"] if control.rate_slider is not None)
+    entry = state["entries"][M.canonical(control.key)]
+    original = entry["rate"]
+    assert M.handle_mouse(app, control.rate_slider.top, control.rate_slider.right - 1, button="press")
+    assert M.active(app) and entry["rate"] != original
+    selected = app.selected_id
     d.right(*_point(chosen))
-    assert not state["dragging"] and not state["pressed"]
+    assert not M.active(app) and C.bounds(app, chosen.key) is None
     d.release(chosen.visible.top, chosen.visible.right - 1)
-    assert app.cfg["polling_multiplier"] == rate
+    assert entry["rate"] == original and app.selected_id == selected
 
 
 @pytest.mark.parametrize("route", ["app", "pressed", "clicked"])
@@ -246,21 +247,28 @@ def test_jobs_outside_graph_clear_cancels_divider_without_a_delayed_resize(dashb
 
 
 @pytest.mark.parametrize("tab", ["jobs", "history"])
-def test_outside_graph_clear_cancels_update_slider_without_delayed_rate_change(dashboard, tab):
-    from raven import toolbar
+def test_outside_graph_clear_cancels_scrollbar_without_delayed_scroll(dashboard, tab):
+    from raven import scrollbars
     d, app = dashboard, dashboard.app
+    d.store.jobs.extend(Job(str(jid), "job-" + str(jid), "cpu", "RUNNING") for jid in range(100, 250))
+    d.store.finished.extend(Finished(str(jid), "past-" + str(jid), "COMPLETED") for jid in range(300, 450))
+    app.table_state["groups"] = False
     d.draw(tab)
-    state = toolbar.initialize(app)
-    y, left, right, _, _ = next(hit for hit in state["hits"] if hit[3] == "track")
-    assert toolbar.handle_mouse(app, y, left, button="press")
-    assert state["dragging"]
+    state = scrollbars.initialize(app)
+    pane = next(pane for pane in state["panes"] if pane.key == tab)
+    y, _, _ = scrollbars._thumb(pane)
+    x = pane.rect.right - 1
+    assert scrollbars.handle_mouse(app, y, x, button="press")
+    assert scrollbars.handle_mouse(app, y + 2, x, button="drag")
+    assert state["capture"]
+    assert scrollbars.manual(app, pane.key, context=pane.context) > 0
     app.marks = {"7", "8"} if tab == "jobs" else {"17", "18"}
-    rate = app.cfg["polling_multiplier"]
     d.right(0, 1)
-    retained = state["dragging"] or state["pressed"]
-    d.release(y, right - 1)
-    assert not retained, "Selection clearing retained an unfinished update-slider gesture"
-    assert app.cfg["polling_multiplier"] == rate
+    retained = state["capture"]
+    offset = scrollbars.manual(app, pane.key, context=pane.context)
+    d.release(pane.rect.bottom - 1, x)
+    assert not retained, "Selection clearing retained an unfinished scrollbar gesture"
+    assert scrollbars.manual(app, pane.key, context=pane.context) == offset
     assert app.selected_id is None and not app.marks and not app.quit
 
 

@@ -8,10 +8,13 @@ INSPECTION_MODES = {"telemetry": "telemetry_ui", "shell_checks": "shell_checks_u
                     "arraymap": "array_manifest_ui", "gpu_provider": "gpu_provider_ui",
                     "operations": "ops_ui", "raven": "raven_ui", "setup": "setup_ui",
                     "notifications": "notification_ui", "data_export": "data_export_ui",
-                    "telemetry_settings": "telemetry_settings_ui"}
+                    "telemetry_settings": "telemetry_settings_ui",
+                    "onboarding": "onboarding_ui", "launch_job": "launch_wizard_ui",
+                    "launch_setup": "data_export_ui", "job_list_menu": "grouping_toolbar",
+                    "connect_data": "connect_data_ui", "run_home": "run_home_ui"}
 
-FEATURES = ("startup", "terminal_ui", "job_group_menu", "job_group_drag", "group_queue_drag", "grouping_toolbar", "history_log_export", "data_export_ui", "refresh_rate", "worker_ui", "toolbar", "setup_ui", "telemetry_settings_ui", "notification_ui", "raven_ui", "scrollbars", "pane_drag", "metric_live", "chart_interaction", "history_browser", "job_selection", "interaction", "scrolling", "recent_history", "job_panels", "analytics_document", "workspace_layout", "navigation_ui", "command_ui", "navigation_tools",
-            "table_ui", "table_tools", "activity_ui", "session_tools", "project_ui",
+FEATURES = ("startup", "terminal_ui", "job_group_menu", "job_group_drag", "group_queue_drag", "grouping_toolbar", "history_log_export", "data_export_ui", "refresh_rate", "worker_ui", "toolbar", "onboarding_ui", "launch_wizard_ui", "setup_ui", "telemetry_settings_ui", "notification_ui", "raven_ui", "scrollbars", "pane_drag", "metric_live", "chart_interaction", "history_browser", "job_selection", "interaction", "scrolling", "recent_history", "job_panels", "analytics_document", "workspace_layout", "navigation_ui", "command_ui", "navigation_tools",
+            "table_ui", "table_tools", "activity_ui", "session_tools", "project_ui", "connect_data_ui", "run_home_ui",
             "log_workbench", "log_tools", "analysis_ui", "execution_ui", "job_progress",
             "telemetry_ui", "shell_checks_ui", "array_manifest_ui", "gpu_provider_ui", "ops_ui", "trace_ui")
 

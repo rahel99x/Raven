@@ -19,27 +19,27 @@ _GENERAL = {
     "overview": (
         "Setup Raven",
         (
-            "Start with the source you want to see. Each setup page explains the required evidence and provides its existing Raven controls.",
-            "1. Allocation settings: select the account, partition, and resources for Raven Heavy. Your login owns the job; the chosen personal or lab account pays for the allocation.",
-            "2. Project reporting: connect a project and select one exact run. Application measurements populate Research; native scheduler observations populate Analytics.",
-            "3. Research and Analytics: select a view by name to find its input files, units, and setup steps.",
-            "4. Telemetry: inspect CPU, memory, and GPU availability before changing collection settings.",
-            "5. Installation and preferences: check the worker environment, terminal, and source health.",
+            "Choose the task you want to configure. Each Research and Analytics view also has its own setup action.",
+            "1. Connections and accounts: choose a named site or lab profile and review Raven Heavy's allocation preferences.",
+            "2. Launch defaults: save reusable workload resources and recording choices for your project.",
+            "3. Recordings and metrics: connect a real data file, validate its format, preview measurements, or copy an application snippet.",
+            "4. Refresh and performance: inspect queue and recording read intervals, observed freshness, and advanced worker preferences.",
+            "5. Installation and diagnostics: check the worker environment, terminal, and source health.",
             "Raven Heavy is the dashboard's analysis worker. Its allocation settings do not change an application's existing sbatch script or the billing account of an existing job.",
             "On local Slurm, a blank account can use the scheduler default when permitted. On shared clusters, use an account assigned to you; an account label is not an access grant.",
             "Standalone desktop mode is for machines without Slurm. A workstation with personal Slurm still uses the Slurm site.",
         ),
-        (("Heavy allocation settings", "setup allocation", False),
-         ("Connect a project", "projectguide ", True),
-         ("Inspect telemetry", "telemetry", False),
-         ("Automated reporting and exports", "setup exports", False),
-         ("Installation preferences", "settings", False)),
+        (("Connections and accounts", "profiles", False),
+         ("Launch defaults", "launchsetup", False),
+         ("Recordings and metrics", "connectdata", False),
+         ("Refresh and performance", "refreshsettings", False),
+         ("Installation and diagnostics", "setup installation", False)),
     ),
     "exports": (
         "Automated reporting and exports",
         (
             "Run an existing Bash script with raven launch test.sh --research experiment --gpu. Preview prerequisites without writing or submitting using --check; local execution requires explicit --local.",
-            "Select the exact job or run in Results, Jobs, Recents, History, Research, or Analytics, then choose Export data in the toolbar or File menu. A collapsed group exports only its already admitted members.",
+            "Select the exact job or run in Results, Jobs, Recents, History, Research, or Analytics, then choose Export data in the File menu or Run home. A collapsed group exports only its already admitted members.",
             "Select available families and individual application metrics or GPU devices. Full recorded run is the default; Current chart range is available only with a known recorded epoch clock. Original retained records are exported, not chart pixels.",
             "Choose Job's project folder / exports, a path relative to that project, or an absolute path. Review the actual filesystem host, unique output paths, source cutoffs, and unavailable data before Export. Missing parents are created only when Export runs.",
             "Save project preferences or a named preset such as Paper figures. Absolute destinations are scoped to their filesystem host and login user. Presets contain no transient job IDs.",
@@ -73,7 +73,8 @@ _GENERAL = {
             '  "$RAVEN_REPORT_PYTHON" "$RAVEN_REPORT_HELPER" metric --value "loss=$loss" --step "$step" --completed "$step" --total "$total" --unit steps',
             "V2 names the integration guide revision. Keep the /v1 schema markers. Full copy/install recipes: https://github.com/rahel99x/Raven/blob/main/docs/PROJECT_REPORTING_V2.md",
         ),
-        (("Connect a project", "projectguide ", True),
+        (("Connect data and validate a sample", "connectdata", False),
+         ("Connect a project", "projectguide ", True),
          ("Attach a metric file", "metrics ", True),
          ("Open Experiment", "workspace experiment", False)),
     ),
@@ -93,7 +94,8 @@ _GENERAL = {
             "4. Application loss/progress belongs in metrics.jsonl. Naming an application metric cpu_pct or gpu_util does not populate native Analytics charts.",
             "Collection obeys site policy, polling floors, and demand limits. Changing chart zoom or opening Setup does not collect missing past samples.",
         ),
-        (("Inspect metric sampling", "telemetry", False),
+        (("Connect data and inspect recording readiness", "connectdata", False),
+         ("Inspect metric sampling", "telemetry", False),
          ("Choose GPU source", "gpuprovider", False),
          ("Check source health", "tab sources", False)),
     ),
@@ -375,12 +377,14 @@ def topic(key="overview"):
         view = key[9:]
         label, lines, actions = _RESEARCH[view]
         title = "Research / " + label
-        actions = (("Open " + label, "workspace " + view, False),) + actions
+        actions = (("Open " + label, "workspace " + view, False),
+                   ("Connect data and validate a sample", "connectdata", False)) + actions
     elif key.startswith("analytics.") and key[10:] in _ANALYTICS:
         view = key[10:]
         label, lines, actions = _ANALYTICS[view]
         title = "Analytics / " + label
-        actions = (("Open " + label, "view " + view, False),) + actions
+        actions = (("Open " + label, "view " + view, False),
+                   ("Inspect independent recording readiness", "connectdata", False)) + actions
     else:
         raise ValueError("Unknown setup topic: " + str(key))
     return {"title": title, "lines": list(lines), "actions": list(actions)}

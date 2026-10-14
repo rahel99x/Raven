@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- Open interactive Heavy sessions immediately while allocation admission and
+  worker verification proceed in the background, with visible progress and
+  reviewed cancellation or retry.
+- Simplify the default workspace for 80-column terminals, add saved navigation
+  favorites, and organize Setup into five task categories with view-specific help.
+- Replace repeated grouping buttons with View, Order, and Groups menus while
+  preserving assignments, ordering preferences, and precise pointer ownership.
+- Unify queue cadence, retained-recording reads, Heavy presets, and observed
+  freshness in Refresh settings; move worker concurrency into advanced preferences.
+- Add Connect data with real sample validation, chart previews, Bash/Python
+  reporting snippets, and independent recording-readiness indicators.
+- Add a continuous Run home with exact-attempt recovery, linked logs and outputs,
+  scoped exports, and reviewed reuse of captured launch settings. Link notifications
+  to affected runs/settings and mark recovery only after verified success.
+- Add a user-owned installer and guided first-run setup for workstation Slurm,
+  cluster connections, and standalone use, with reviewed settings and an offline demo.
+- Add named site and lab profiles, explicit profile switching, account discovery,
+  and readable resource units. Keep dashboard allocation billing separate from
+  workload resources and reusable project recipes.
+- Add a Launch job workflow for existing scripts, with recording options,
+  read-only review, explicit submission, and direct access to retained results.
+  Support supervised local runs and a clear submission-host handoff for SSH sites.
 - Fix the queue update slider across `raven`, `ravenl`, and `ravenh`, with
   displayed intervals matching live collector scheduling and site limits.
 - Add live Heavy telemetry presets and a validated Custom configuration editor

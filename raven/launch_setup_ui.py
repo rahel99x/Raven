@@ -1,4 +1,4 @@
-"""Small one-time reporting declarations editor, hosted by Export data's modal.
+"""Advanced reporting declarations in a dedicated launch-settings dialog.
 
 These settings describe producer inputs. Saving never launches a workload or
 claims that a declared scientific measurement has been observed.
@@ -18,15 +18,27 @@ FIELDS = (("application_metrics", "Application metrics JSONL file (project-relat
           ("recipe_name", "Save launch recipe name"))
 
 
-def open_setup(app):
+def visible_fields(form):
+    """Reveal declarations only when a feature that uses them is selected.
+
+    Hidden saved declarations are preserved, so toggling a feature is reversible.
+    """
+    features = set(form.get("features", ()))
+    requirements = {"application_metrics": {"experiment", "evidence"}, "artifact": {"artifacts"},
+                    "array_manifest": {"arrays"}, "workers": {"scaling", "resources", "tradeoffs"},
+                    "problem_size": {"scaling", "resources", "tradeoffs"}, "repeat": {"scaling", "resources", "tradeoffs"}}
+    return [(key, label) for key, label in FIELDS if key not in requirements or features.intersection(requirements[key])]
+
+
+def open_setup(app, *, root=None):
     from . import data_export_ui as UI
     from .launch_settings import load_settings
     project = getattr(app, "project_state", {})
-    root = (project.get("binding") or {}).get("project_root") or project.get("registered_root") or project.get("root")
+    root = root or (project.get("binding") or {}).get("project_root") or project.get("registered_root") or project.get("root")
     if not root:
         UI._feedback(app, "Open a project with File > Open project before saving its launch settings.", True)
         return False
-    if getattr(app, "mode", "main") not in ("main", "setup", "data_export"):
+    if getattr(app, "mode", "main") not in ("main", "setup", "data_export", "launch_setup", "launch_job"):
         UI._feedback(app, "Close the current dialog before configuring project launch settings.", True)
         return False
     state = UI.initialize(app)
@@ -34,15 +46,15 @@ def open_setup(app):
         UI._feedback(app, "Wait for or cancel the current export operation before configuring launch settings.", True)
         return False
     state.update(generation=state["generation"]+1, return_mode=getattr(app, "mode", "main"),
-                 setup_root=root, setup_form={}, setup_fields={}, editing=None, error="", message="", cursor=0, top=0)
-    app.mode = "data_export"
+                 stage="setup", setup_ready=False, setup_root=root, setup_form={}, setup_fields={}, editing=None, error="", message="", cursor=0, top=0)
+    app.mode = "launch_setup"
     files = getattr(app, "files", None) or getattr(getattr(app, "research", None), "files", None)
     if getattr(files, "remote", False):
         UI._failure(app, "Project launch preferences must be saved on the project host. Run Raven there; remote settings writes are unsupported.")
         return False
     def completed(value):
         launch = copy.deepcopy(value.get("launch", {}))
-        state.update(stage="setup", settings=value, setup_form=launch)
+        state.update(stage="setup", setup_ready=True, settings=value, setup_form=launch)
         _fields(state)
         UI._invalidate(state)
     UI._queue(app, "Read project launch preferences", lambda event, progress: load_settings(root), completed)
@@ -65,6 +77,10 @@ def document(app):
     from .launch_features import FEATURES
     state = initialize(app)
     form, fields = state["setup_form"], state["setup_fields"]
+    if not state.get("setup_ready", False):
+        return [("Close project setup", "close"),
+                ("Project: " + state["setup_root"], None),
+                (state.get("error") or "Reading project launch preferences...", None)]
     rows = [("Close project setup", "close"), ("Save project launch settings", "setup:save"),
             ("Job's project folder: " + state["setup_root"], None),
             ("Declarations are inputs, not observed measurements. Saving does not submit a job, allocate Heavy, or execute Operations. Future raven launch commands use these settings; explicit CLI choices take precedence.", None)]
@@ -72,12 +88,14 @@ def document(app):
         rows.append(("Issue: " + state["error"], None))
     if state["message"]:
         rows.append((state["message"], None))
-    for key, label in FIELDS:
+    for key, label in visible_fields(form):
         rows.append((label + ": " + (fields.get(key) or "[unset]"), "field:setup:" + key))
     for key, label in (("gpu", "GPU recording"), ("cpu_memory", "CPU/memory process recording"), ("trace", "Stack tracing (requires application hook)")):
         rows.append((("[x] " if form.get(key, key == "cpu_memory") else "[ ] ") + label, "setup:toggle:" + key))
-    rows.append(("Trace adapter: " + (form.get("trace_adapter") or "Not configured"), "setup:adapter"))
-    rows.append(("Source \"$RAVEN_SHELL_HELPER\" then use raven_exec python3 program.py in the script for the selected Python adapter. The Python monitoring adapter requires Python 3.12+; Python 3.10/3.11 needs explicit legacy-profile consent. Selecting trace alone cannot instrument every runtime.", None))
+    if form.get("trace"):
+        rows.append(("Trace adapter: " + (form.get("trace_adapter") or "Not configured"), "setup:adapter"))
+        rows.append(("Source \"$RAVEN_SHELL_HELPER\" then use raven_exec python3 program.py in the script for the selected Python adapter. The Python monitoring adapter requires Python 3.12+; Python 3.10/3.11 needs explicit legacy-profile consent. Selecting trace alone cannot instrument every runtime.", None))
+    rows.append(("Select a Research feature to reveal its optional scientific inputs. Hiding a feature preserves its saved declarations.", None))
     for item in FEATURES:
         name, label = item["name"], item["label"]
         rows.append((("[x] " if name in form.get("features", []) else "[ ] ") + label, "setup:feature:" + name))
@@ -86,8 +104,9 @@ def document(app):
             if "report:" + name in fields:
                 rows.append(("  Native " + label + " report (project-relative): " + (fields["report:" + name] or "[unset]"),
                              "field:setup:report:" + name))
-    for index, artifact in enumerate(form.get("artifacts", ())):
-        rows.append(("Remove artifact: " + str(artifact), "setup:remove:" + str(index)))
+    if "artifacts" in form.get("features", []):
+        for index, artifact in enumerate(form.get("artifacts", ())):
+            rows.append(("Remove artifact: " + str(artifact), "setup:remove:" + str(index)))
     rows.append(("Save named launch recipe", "setup:recipe-save"))
     for name in sorted(state["settings"].get("recipes", {})):
         rows.append(("Load launch recipe: " + name, "setup:recipe:" + name))

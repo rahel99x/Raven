@@ -1,15 +1,16 @@
 # Configure telemetry updates
 
 Raven separates queue updates, measurement reads, and the job's recording
-frequency. The top-right slider controls queue updates. **Setup → Heavy telemetry
-update settings** controls the other readers and their request budgets. These
+frequency. The compact toolbar summary opens **Refresh settings**; the same
+panel is available through **Setup → Refresh and performance** or
+`:refreshsettings`. It contains independent queue and recording-read controls,
+Heavy presets, and advanced overrides. These
 controls work in `raven`, `ravenl`, and `ravenh`; the active Light or Heavy mode
 determines which collection profile applies.
 
 ## Choose a Heavy preset
 
-1. Open **Setup → Heavy telemetry update settings**, or enter
-   `:telemetrysettings`.
+1. Open **Setup → Refresh and performance**, or enter `:refreshsettings`.
 2. Select **Default**, **Medium**, **High**, **Ultra**, or **Custom**.
 3. Read the effective intervals and any site-policy limits on the page.
 4. Select **Save settings** to keep the choice for future launches.
@@ -17,7 +18,7 @@ determines which collection profile applies.
 Selecting a preset changes the active Heavy readers immediately. No restart or
 replacement allocation is needed. In Light, the choice is staged until a
 verified Heavy worker becomes active; releasing Heavy restores the Light
-collection settings. Selecting a preset also resets the queue slider to that
+collection settings. Selecting a preset also resets the queue control to that
 preset's starting interval. Closing the page keeps live changes; saving is an
 explicit, separate action.
 
@@ -50,7 +51,7 @@ Presets also supply finite rolling budgets:
 | Collection subprocesses | 300 | 420 | 600 | 900 |
 
 The controller's short-window burst allowances are 4, 6, 8, and 12 requests per
-second respectively. These accommodate the queue slider while retaining the
+second respectively. These accommodate queue cadence changes while retaining the
 rolling limits above; mandatory site ceilings still apply.
 
 Existing budget usage survives a preset change. The editor reports mandatory
@@ -109,13 +110,19 @@ The editor writes the complete Custom selection. The
 and bounds. `collection.research_seconds` and `collection.trace_seconds` set
 the corresponding base readers outside Heavy; Heavy uses its selected preset.
 
-## Adjust the queue slider
+## Adjust queue and recording reads
 
-The top-right control reports the actual queue interval and labels both
-endpoints for the current mode and site policy. Move right for faster updates,
-left for slower updates. Click, drag, wheel, and keyboard controls use the same
-value. `:rate N` selects a position from 1 to 50; `:rate reset` restores the
-starting interval. The position is retained in normal UI state.
+Open the toolbar's **Queue · Recordings** summary, or `:refreshsettings`.
+Queue controls show the effective requested interval for the current mode and
+site policy. Faster and slower actions change only the queue cadence. The
+compatibility command `:rate N` selects a position from 1 to 50; `:rate reset`
+restores the starting interval. The choice is retained in normal UI state.
+
+Recording-read controls govern how often Raven checks an accessible retained
+recording. They do not change the frequency at which the application writes it.
+The panel also shows the latest available read/sample evidence; unavailable
+timestamps remain unknown. A configured one-second read is not proof that a new
+sample arrived every second.
 
 For managed `raven`, `ravenl`, and `ravenh` sessions, the range spans the active
 queue base through a tenfold faster request, subject to the site's minimum.
@@ -124,10 +131,10 @@ spans 5–0.5 seconds. A site minimum can narrow or fix the range. The displayed
 interval changes with the effective request; request admission can still defer
 a particular read. Other telemetry readers keep their own settings.
 
-Native compatibility sessions retain the existing global slider behavior:
+Native compatibility sessions retain the existing rate-command behavior:
 five seconds through 500 milliseconds for ordinary native sources, with slower
 configured bases scaled by at most ten. The Heavy editor requires a managed
-session. See [update controls](live-workbench.md#set-the-update-rate).
+session. The legacy `:telemetrysettings` command opens the unified panel.
 
 ## Read retained recordings
 

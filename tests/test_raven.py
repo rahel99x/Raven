@@ -257,7 +257,9 @@ def test_cli_once_json_and_watch_from_the_simulated_cluster():
     env = dict(os.environ, COLUMNS="150", USER="alex")
     r = subprocess.run([sys.executable, DASH, "--fake", "--once", "--ascii", "--no-color", "--no-state", "--width", "150"], env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    assert "Raven Light/slurm - alex" in r.stdout and "running 2 (40 cpus, 1 gpus)" in r.stdout and "-- selected" in r.stdout and "Sources" in r.stdout
+    assert "Raven Light/slurm - alex" in r.stdout and "running 2 (40 cpus, 1 gpus)" in r.stdout and "-- selected" in r.stdout
+    assert all(label in r.stdout.splitlines()[3] for label in ("Jobs", "History", "Analytics", "Research", "Log"))
+    assert "[Launch]" in r.stdout.splitlines()[0] and "Queue:" in r.stdout.splitlines()[0]
     r = subprocess.run([sys.executable, DASH, "--fake", "--json", "--no-state"], env=env, capture_output=True, text=True)
     assert r.returncode == 0 and json.loads(r.stdout)["account"]["account"] == "lab_01"
     r = subprocess.run(["timeout", "-s", "INT", "2", sys.executable, DASH, "--fake", "--watch", "--ascii", "--no-state", "--interval", "0.5"], env=env, capture_output=True, text=True)
@@ -461,7 +463,7 @@ def test_selection_copy_and_exports(tmp_path):
     app.handle("C"); path_c = app.message.split()[-1]
     app.handle("space"); app.handle("J"); path_j = app.message.split()[-1]
     exported = Path(path_t).read_text()
-    assert exported.splitlines()[0].startswith(" x  File  Edit  View  Setup  Help")
+    assert exported.splitlines()[0].split()[:7] == ["x", "File", "Edit", "View", "Setup", "Help", "[Launch]"]
     assert exported.splitlines()[1].startswith(" Raven Light/unconfigured - alex") and "-- selected" in exported
     assert Path(path_c).read_text().splitlines()[0].startswith("id,name,part") and "12477369" in Path(path_c).read_text()
     js = json.loads(Path(path_j).read_text())

@@ -1,12 +1,13 @@
 """Cancelled drag owners cannot steal subsequent toolbar or graph releases."""
 from collections import deque
+from importlib import import_module
 import curses
 
 import pytest
 
 from raven import screen, toolbar, refresh_rate
-from raven.pointer_routing import RELEASE_MARKERS, PointerEvent
-from test_pointer_integration import dashboard, MOUSE
+from raven.pointer_routing import OWNERS, RELEASE_MARKERS, PointerEvent, active as capture_active
+from test_pointer_integration import dashboard, MOUSE, refresh_button
 
 
 class RawWindow:
@@ -42,20 +43,22 @@ def raw_event(dashboard, x, y, button):
 
 @pytest.mark.parametrize("owner,marker", RELEASE_MARKERS)
 @pytest.mark.parametrize("route", ["native", "fragmented", "direct"])
-def test_new_toolbar_slider_press_owns_its_release_after_cancelled_capture(dashboard, monkeypatch, owner, marker, route):
+def test_new_refresh_summary_gesture_owns_its_release_after_cancelled_capture(dashboard, monkeypatch, owner, marker, route):
     app = dashboard.app
     toolbar.render_bar(dashboard.views, app, app.width)
     state = getattr(app, owner, None)
     if state is None:
-        # All native owners normally initialize with the App; the test also
-        # covers an optional owner's unpopulated state without starting work.
-        state = {}
-        setattr(app, owner, state)
+        # Optional surfaces initialize lazily. A cancelled gesture has its
+        # owner's real state shape even when the surface is no longer visible.
+        module = next(item.name for item in OWNERS if item.state == owner)
+        state = import_module("raven." + module).initialize(app)
     state[marker] = True
-    tracks = [hit for hit in app.toolbar_state["hits"] if hit[3] == "track"]
-    y, left = tracks[0][:2]
-    right = tracks[-1][2] - 1
-    before = (app.tab, app.mode, app.selected_id, set(app.marks))
+    y, left, _, _, _ = next(hit for hit in app.toolbar_state["hits"] if hit[3] == "refresh-settings")
+    app.marks = {"75"}
+    before = (app.tab, app.selected_id, dict(app.cursor), set(app.marks))
+    initial_rate = refresh_rate.multiplier(app)
+    initial_seconds = refresh_rate.cadence(app, "jobs")
+    snapshot = dashboard.store.snapshot()
     def forbid(*args, **kwargs):
         pytest.fail("Pointer dispatch must not copy Store or perform collection")
     monkeypatch.setattr(dashboard.store, "snapshot", forbid)
@@ -71,13 +74,39 @@ def test_new_toolbar_slider_press_owns_its_release_after_cancelled_capture(dashb
         else:
             app.click(y, x, app.last_hits, button=button)
     send(left, y, "press")
-    assert app.toolbar_state["dragging"]
-    send(right, y + 3, "drag")
-    send(right, y + 3, "release")
+    assert app.mode == "telemetry_settings" and not state[marker]
+    assert not app.toolbar_state["dragging"]
+    # Painting uses the admitted snapshot; opening and interacting with this
+    # local preference panel must not collect another scheduler snapshot.
+    dashboard.views.overlay(snapshot, app, app.width, app.height)
+    faster = refresh_button(app, "queue faster")
+    send(faster.rect.left, faster.rect.top, "drag")
+    send(faster.rect.left, faster.rect.top, "release")
     assert not app.toolbar_state["dragging"] and not app.toolbar_state["pressed"]
-    assert refresh_rate.multiplier(app) == 50
-    assert (app.tab, app.mode, app.selected_id, app.marks) == before
-    assert not state[marker]
+    assert not capture_active(app)
+    assert refresh_rate.multiplier(app) == initial_rate
+    assert (app.tab, app.selected_id, app.cursor, app.marks) == before
+    assert not state.get(marker, False)
+    # A fresh gesture reaches the new panel, including after a cancelled owner
+    # had retained its old release marker. Only this press changes cadence.
+    send(faster.rect.left, faster.rect.top, "press")
+    send(faster.rect.left, faster.rect.top, "release")
+    assert refresh_rate.multiplier(app) > initial_rate
+    assert refresh_rate.cadence(app, "jobs") < initial_seconds
+    queue_rate = refresh_rate.multiplier(app)
+    dashboard.views.overlay(snapshot, app, app.width, app.height)
+    recording = refresh_button(app, "recordings 1")
+    send(recording.rect.left, recording.rect.top, "press")
+    send(recording.rect.left, recording.rect.top, "release")
+    assert refresh_rate.recordings_interval(app) == 1.
+    assert refresh_rate.multiplier(app) == queue_rate
+    dashboard.views.overlay(snapshot, app, app.width, app.height)
+    close = refresh_button(app, "close")
+    send(close.rect.left, close.rect.top, "press")
+    send(close.rect.left, close.rect.top, "release")
+    assert app.mode == "main" and not capture_active(app)
+    assert (app.tab, app.selected_id, app.cursor, app.marks) == before
+    assert not state.get(marker, False)
 
 
 @pytest.mark.parametrize("button", [None, [], {}, 7, True, "unknown"])

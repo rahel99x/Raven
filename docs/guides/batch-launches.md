@@ -13,12 +13,12 @@ remove members. Scheduler actions require a separate review for exact job IDs.
 
 ## Sort complete batches in Jobs
 
-Use **Sort Min** or **Sort Max** beside **Collapse All** in Jobs Main:
+Open **Order** in Jobs Main and choose the batch order:
 
 | Mode | First comparison | Tie-breaker |
 | --- | --- | --- |
-| Sort Min, the initial default | Fewest running jobs first | Fewest total queue jobs first |
-| Sort Max | Most running jobs first | Fewest total queue jobs first |
+| Fewest running first, the initial default | Fewest running jobs first | Fewest total queue jobs first |
+| Most running first | Most running jobs first | Fewest total queue jobs first |
 
 These controls sort complete batches. All visible members of an expanded batch
 remain together; closing it leaves one real representative in the same batch
@@ -49,19 +49,22 @@ also disables saving the selection between launches.
 
 ## Apply grouping and sorting in other job lists
 
-**Grouped**, **Sequential**, **Sort Min**, and **Sort Max** are available in
+Three controls, **View**, **Order**, and **Groups**, are available in
 Jobs, Recents, History, Group account jobs, the Advisor job list, and the job
 browsers beside Analytics, Research, Logs, and Dependencies. Narrow panes use
-shorter labels. Scientific tables, charts, and dependency trees retain their
+compact summaries, with the complete choices in each menu. Scientific tables,
+charts, and dependency trees retain their
 domain-specific ordering.
 
-Each list saves its own choices. Jobs starts in Grouped with Sort Min. Other
+**View** chooses Grouped or Sequential. **Order** chooses the batch rank.
+**Groups** expands or collapses groups and opens less common membership actions.
+Removing assignments is an explicit action, separate from changing the view.
+
+Each list saves its own choices. Jobs starts in Grouped with Fewest running first. Other
 lists initially retain their existing chronological or column order while
-keeping grouped batches contiguous. Selecting Sort Min or Sort Max enables
-Grouped and applies the batch ranking above. Selecting Grouped or Sequential
-in those lists clears that additional rank; Sequential exposes every admitted
-record without collapsed headers. Jobs retains its saved Min/Max preference
-for the next grouped view.
+keeping grouped batches contiguous. Choosing an order in the menu preserves the
+current view. Sequential exposes every admitted record without collapsed headers;
+returning to Grouped restores the remembered order without deleting assignments.
 
 Batch counts use the complete observed queue in Jobs and Group. History,
 Recents, browsers, and Advisor count only records already admitted to that
@@ -84,7 +87,7 @@ The available contexts are `jobs`, `recent`, `history`, `group`,
 
 ## Choose Grouped or Sequential Recents
 
-Use **Grouped** or **Sequential** on the Recents divider. The choice is saved
+Open **View** on the Recents divider and choose **Grouped** or **Sequential**. The choice is saved
 with the connection's UI preferences; Grouped is the initial default.
 
 | View | Presentation |
@@ -98,15 +101,16 @@ jobs; it does not treat similar names alone as proof of a shared batch.
 An active job that disappears from the queue remains explicitly awaiting
 accounting until its terminal outcome is known.
 
-Switching modes restores completion ordering for Recents. You can then choose
-a column sort explicitly; Grouped keeps batches contiguous under that sort.
+Sequential uses completion ordering for Recents. A saved grouped batch order
+returns when Grouped is selected again. You can also choose the existing
+completion or column order explicitly; Grouped keeps batches contiguous.
 Jobs Main and History retain their own sorting choices. Sequential does not
 remove saved groups or change their shared fold preferences.
 Each list has its own saved visibility setting. The legacy `:jobgroups on|off`
 command resets those overrides and sets visibility across lists; Recents keeps
-its independent choice. Stored Min/Max ranks remain available. Lists still
+its independent choice. Saved batch ranks remain available. Lists still
 respect manual membership, exclusions, and the automatic-detection setting.
-**Ungroup All**
+**Groups → Manage group assignments… → Remove all group assignments…**
 therefore remains effective until groups are created or detection is enabled.
 
 The selected job remains an exact scheduler record when new completions arrive
@@ -185,7 +189,7 @@ Moving a member removes it from its previous manual group without changing other
 Adding a job already in the destination does not duplicate it.
 Manual membership uses natural job-ID order: `1`, `2`, ..., `9`, `10`, rather than the order in which members were added.
 Array task IDs also use natural order, such as `123_2` before `123_10`.
-Jobs orders complete batches by Sort Min or Sort Max and retains column sorting within each batch. Other lists follow their active sorts.
+Jobs orders complete batches by Fewest running first or Most running first and retains column sorting within each batch. Other lists follow their active sorts.
 Sort JOBID ascending to display the group in increasing numeric order; adding `7–9`, then `4–6`, to members `1–3` then displays `1–9`.
 
 Press Esc or right-click to cancel an unfinished move and keep the job marks.
@@ -530,27 +534,30 @@ The grouping layer reads supplied snapshots. It does not run Slurm commands or r
 
 ## Use the Main grouping controls
 
-The grouping buttons above Jobs Main use the same group preferences as the other
-job lists. Adjacent sort buttons apply to Jobs Main. Narrow panes wrap the
-controls without covering the table headings.
+Jobs Main provides **View**, **Order**, and **Groups**, matching the other job
+lists. Narrow panes shorten the three labels; their menus retain complete names.
 
-| Button | Result |
+| Menu choice | Result |
 | --- | --- |
-| **Auto Group** | Enable inferred launch groups and close the inferred groups currently found. Preserve manual membership and explicit exclusions. |
-| **Undo Auto** | Restore the inference setting and fold changes owned by the preceding Auto Group action. Preserve later disclosure clicks and manual membership edits. |
-| **Ungroup All** | Clear saved groups, folds, and exclusions, and disable automatic inference. Jobs remain individual until you group them manually or use Auto Group again. |
-| **Expand All** | Open the shared job groups without changing their membership. |
-| **Collapse All** | Close the shared job groups without changing their membership. |
-| **Sort Min** | Order complete batches by fewest running jobs, then fewest total jobs. |
-| **Sort Max** | Order complete batches by most running jobs, then fewest total jobs. |
+| View → Grouped / Sequential | Choose contiguous batches or individual rows. Keep assignments and the saved batch order. |
+| Order → Fewest running first | Rank batches by fewest running jobs, then fewest total jobs. |
+| Order → Most running first | Rank batches by most running jobs, then fewest total jobs. |
+| Groups → Expand all groups / Collapse all groups | Change shared folds without changing membership. |
+| Groups → Manage group assignments… → Detect automatic groups | Enable inferred groups and close those currently found. Preserve manual membership and exclusions. |
+| Groups → Manage group assignments… → Undo automatic grouping | Restore the preceding detection and fold changes while preserving later manual edits. |
+| Groups → Manage group assignments… → Remove all group assignments… | Review the shared scope, then confirm removal. This clears groups, folds, and exclusions and disables inference. |
+| Groups → Manage group assignments… → Restore removed assignments | Restore the session snapshot if no newer membership change would be overwritten. |
 
-The matching commands are `:grouping auto`, `:grouping undo`, `:grouping clear`,
-`:grouping expand`, `:grouping collapse`, `:grouping sort-min`, and
-`:grouping sort-max`. After Ungroup All, `:grouping restore` restores its
-session snapshot if no newer membership change would be overwritten.
-These controls affect the shared group presentation; they do not change Slurm.
-Collapse All uses the existing 256-group fold limit. If the known group count
-exceeds that limit, it reports the limit and leaves all folds unchanged.
+The compatibility commands remain `:grouping auto`, `:grouping undo`,
+`:grouping clear`, `:grouping expand`, `:grouping collapse`,
+`:grouping sort-min`, `:grouping sort-max`, and `:grouping restore`.
+They change display organization, not Slurm priority or job state. To hide
+headers while retaining assignments, choose **View → Sequential**.
+
+Collapse all groups retains the 256-group fold limit. If the known group count
+exceeds that limit, Raven reports it and leaves all folds unchanged.
+See [Everyday workflow](everyday-workflow.md#control-a-job-list-with-three-menus)
+for the concise overview.
 
 ## Review a group's queue order
 

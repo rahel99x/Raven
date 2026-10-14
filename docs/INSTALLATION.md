@@ -6,12 +6,67 @@ aliases, virtual-environment activation, or changes to `.bashrc`. They use the
 installed package, so launching them does not require the source checkout.
 
 Use Linux, macOS, or WSL with Python 3.10 or later and curses support. Install
-`pipx` through your operating system's package manager first; for example, on
-Fedora use `sudo dnf install pipx`. Package installation needs access to the
+Python's `venv` support if it is packaged separately by your operating system.
+The repository installer needs no pipx or administrator access. Package
+installation needs access to the
 configured Python package index. The core has no third-party runtime
 dependencies; the optional embedded terminal uses `pyte` and `wcwidth`.
 
 ## Install from a checkout
+
+```bash
+git clone https://github.com/rahel99x/Raven.git
+cd Raven
+python3 scripts/install.py
+```
+
+The installer creates an isolated application environment under
+`~/.local/share/raven/installations` (or `$XDG_DATA_HOME/raven/installations`)
+and exposes `raven`, `ravenl`, and `ravenh` in `~/.local/bin`. It checks for existing
+command ownership before installing; it does not replace a pipx installation or
+an unrelated command. Read the printed executable paths and PATH guidance.
+The installer does not edit shell-startup files or install Slurm services. It
+includes the optional embedded-terminal dependencies and starts guided setup
+when run in an interactive terminal.
+
+To reopen setup or launch the dashboard later:
+
+```bash
+raven setup
+ravenl
+```
+
+Setup checks local command availability, offers environment and account choices,
+and reviews configuration before saving. **Setup → Installation and diagnostics → Getting started** opens the
+dashboard workflow. Follow [Getting started](guides/getting-started.md) for a
+local Slurm workstation, a cluster submission host, or explicit standalone
+execution.
+
+| Installer option | Purpose |
+| --- | --- |
+| `--plan` | Check destination ownership and print paths without writing or downloading. |
+| `--prefix PATH` | Choose a dedicated user-owned directory for installed releases. |
+| `--bin-dir PATH` | Choose a user-owned command directory, preferably already on PATH. |
+| `--without-terminal` | Install the core without `pyte` and `wcwidth`. |
+| `--no-setup` | Install or update without entering guided setup afterward. |
+
+Use real directories rather than directory symlinks for installation paths.
+For example, preview a custom command directory before installing:
+
+```bash
+python3 scripts/install.py --bin-dir /absolute/path/to/existing/bin --plan
+python3 scripts/install.py --bin-dir /absolute/path/to/existing/bin
+```
+
+If the command directory is not on PATH, the installer prints an absolute setup
+command and a one-session `export PATH=...` command. Use either; rerunning an
+installer cannot change an already running parent shell's PATH.
+
+### Existing pipx users and alternative installation
+
+Keep using pipx if it already owns your Raven installation. For a new pipx
+installation, install pipx through your operating system's package manager
+first; for example, on Fedora use `sudo dnf install pipx`.
 
 Check that pipx is available and that its executable directory is already on
 your shell's `PATH`. Its normal user installation directory is `~/.local/bin`.
@@ -46,7 +101,7 @@ ravenh --plan
 
 Doctor reports local capabilities. `--plan` prints the Heavy request without
 submitting it. For an offline demonstration, run
-`ravenl --fake --no-state --no-plugins`. Press `q` to exit.
+`raven setup --demo`, or `ravenl --fake --no-state --no-plugins`. Press `q` to exit.
 
 ### Use an existing directory on PATH
 
@@ -80,7 +135,17 @@ The default Raven site uses local Slurm commands, with no configured SSH host,
 account, or partition. A workstation with Slurm already installed uses this
 mode. The installation does not install or start Slurm services.
 
-For a new user configuration, run:
+For guided configuration, run `raven setup`. Save and select named sites through
+**Setup → Connections and accounts → Sites and lab profiles**. A profile can use local Slurm on either a
+workstation or a cluster submission host, an SSH monitoring connection, or
+explicit standalone execution. Saving a profile affects future launches and
+does not switch the active connection or request compute.
+Select **Use this profile** after saving in the dashboard to reopen Light on
+that profile. Command-line setup prints the equivalent launch command. A first
+bare interactive `raven`, `ravenl`, or `ravenh` without configuration opens setup;
+this first-run `ravenh` path requests no Heavy allocation.
+
+For a new default configuration without the guided workflow, run:
 
 ```bash
 ravenl --write-config
@@ -137,6 +202,30 @@ directory name. Update an old remote from that checkout:
 git remote set-url origin https://github.com/rahel99x/Raven.git
 ```
 
+Close Raven before replacing its installed package. Check `command -v ravenl`
+and update through the same method that owns that executable. Configuration,
+project reporting files, and application state remain outside the installed
+package.
+
+For the repository installer, update its checkout and rerun it:
+
+```bash
+cd /path/to/Raven
+git pull --ff-only
+python3 scripts/install.py --no-setup
+hash -r
+```
+
+If Git reports local source edits, preserve or deliberately discard those edits
+before pulling. The installer does not reset the checkout. If you selected
+custom installation paths or `--without-terminal`, retain those choices for the
+update. Each successful installation builds and checks a fresh environment
+before switching the active release. The previous release is retained; a failed
+build leaves it selected. The stable worker interpreter is
+`PREFIX/current/bin/python`, using the release prefix shown by the installer.
+
+### Update a pipx installation
+
 Pipx records the source directory used during installation. Keep using that
 directory for updates; the repository rename does not require moving it.
 
@@ -156,6 +245,29 @@ use `sudo pipx reinstall --global raven`.
 Pulling source alone does not update a normally installed package. Reinstallation
 preserves user configuration and state; it needs the recorded source checkout.
 Repeat the version, doctor, and plan checks from outside the checkout afterward.
+
+### Move from pipx to the repository installer
+
+Changing installation methods is optional. The repository installer preserves
+pipx-owned command links and reports conflicts; it does not silently take them
+over. Keep the working pipx installation until you are ready to replace it.
+
+For a user-owned pipx installation, close Raven and release its owned Heavy
+worker, then use this sequence from the current checkout:
+
+```bash
+pipx list
+pipx uninstall raven
+python3 scripts/install.py
+hash -r
+```
+
+This removes the pipx environment, not Raven's configuration or project evidence.
+Review the saved worker Python path in setup: a path inside the removed pipx
+environment is no longer valid. Use the new interpreter path printed by the
+installer and verify compute-node access for Slurm. A global installation must
+be updated or removed by its administrator; the user installer does not replace
+system-owned commands.
 
 ### Replace an installation with the previous package name
 

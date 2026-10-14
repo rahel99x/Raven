@@ -1,11 +1,15 @@
 # Set up Raven from the toolbar
 
-Use **Setup** in the top toolbar to configure Heavy allocation preferences and
-find the data required by each Research and Analytics view. These pages are
+Use **Setup** in the top toolbar to choose an environment, save named site and
+lab profiles, configure Heavy allocation preferences, and find the data
+required by each Research and Analytics view. These pages are
 included in the installed application; no browser or repository checkout is
 needed to read them.
 
-Open **Setup → Setup overview**, or enter `:setup`. Press F10 to reach the
+For a first installation, follow [Getting started](getting-started.md) or run
+`raven setup`. Inside the dashboard, open **Setup → Installation and diagnostics → Getting started**, or enter
+`:gettingstarted`. The command `:setup` opens the reference.
+Press F10 to reach the
 toolbar without a mouse. Use Left/Right to change menus, Up/Down to choose an
 entry, and Enter to open it. Setup pages support clickable controls, arrow-key
 navigation, and scrolling. Esc returns from an account picker or closes the
@@ -15,14 +19,11 @@ page; while editing a field, Esc cancels that edit.
 
 | Setup entry | Purpose |
 | --- | --- |
-| Heavy telemetry update settings | Apply Default, Medium, High, Ultra, or Custom reader intervals live; edit Custom and save preferences. |
-| Heavy allocation settings | Discover the connected user's Slurm associations and save account, partition, QoS, CPU, memory, GPU, and time preferences. |
-| Project launch and recording defaults | Bind native measurements and declared files, select recording/Research features, and save launch recipes or completion-export preferences. |
-| Project connection and reporting | Connect a project and select an exact reported run; inspect its files before attaching them. |
-| Research: each named view | Read its prerequisites, exact source conventions, and available attachment controls. |
-| Analytics: each named view | Identify its scheduler or retained-series inputs, measured units, and missing-data checks. |
-| CPU, memory, and GPU telemetry | Distinguish job-produced GPU traces, native CPU/memory accounting, application metrics, and collection policy. |
-| Installation, terminal, and diagnostics | Find installation and connection checks; open preferences for terminal and collection settings. |
+| Connections and accounts | Start guided setup, choose a named site or lab profile, or review Heavy allocation preferences. |
+| Launch defaults | Save workload resources, recording features, and reusable project recipes. |
+| Recordings and metrics | Connect a real data file, validate samples, preview a chart, and inspect independent source readiness. |
+| Refresh and performance | Adjust queue and recording-read cadence, select a Heavy preset, and find advanced performance preferences. |
+| Installation and diagnostics | Check installation, terminal behavior, connection health, and effective settings. |
 
 Opening a guide reads embedded instructions. Opening allocation settings starts
 a bounded account-discovery task on the existing connection. Rendering,
@@ -30,15 +31,74 @@ hovering, and editing do not query Slurm. Discovery retains source admission,
 timeouts, and shared caching; a busy or restricted scheduler can leave a field
 unavailable.
 
+## Save a named site or lab profile
+
+Open **Setup → Connections and accounts → Sites and lab profiles**, or enter `:profiles`. Give the profile
+a descriptive label and choose local Slurm, SSH Slurm, or standalone execution.
+The saved profile has a stable identifier for `--site`; its label can describe
+the site or lab in ordinary words.
+
+Review the host and login separately from the Heavy account and partition.
+After opening the saved profile, use **Heavy allocation settings** for QoS and
+the worker's CPU, memory, GPU, and time limits. An SSH profile uses your existing
+SSH configuration; do not put
+passwords or private keys in Raven settings. Available account associations
+belong to the current connection. Save and reconnect to a new host before using
+its account-discovery results.
+
+The profile review is read-only. Explicitly saving preserves unrelated settings
+and shows the saved profile. Saving does not switch the active connection, alter
+an active worker, submit a workload, or request an allocation. Select **Use this
+profile** to close the old Light session and reopen Light on the saved profile,
+then choose **File → Launch job**. Existing profiles provide **Use saved profile
+(without saving edits)**. Release or cancel Heavy and resolve any pending launch
+before switching. Command-line setup prints the equivalent
+`ravenl --config PATH --site PROFILE_NAME` command.
+
+The command-line setup supports the same review/save separation. For example,
+review a local Slurm profile, then explicitly save it as the default:
+
+```bash
+raven setup --kind local-slurm --name 'My workstation' --review
+raven setup --kind local-slurm --name 'My workstation' --save --default
+```
+
+Use `--config PATH` when extending a specific configuration. `raven setup
+--check` prints local installation checks without modifying settings;
+`--json` supplies machine-readable checks or explicit review/save output.
+Interactive setup supports saving a draft with `:draft` and resuming it with
+`raven setup --resume`.
+
+The profile's account and resources configure Raven Heavy. Project launch
+defaults are saved separately in `.raven/automation.json` and configure
+scientific workloads. Use **File → Launch job** to review and save those choices
+in the intended project; use **Project launch and recording defaults** for
+advanced reporting bindings and launch recipes.
+
+Resource fields in the guided launch workflow accept readable
+units. Bare memory values mean MiB; `8 GiB` means 8192 MiB, while `8 GB` uses
+decimal units and rounds upward to MiB. Time accepts seconds, `1h 30m`,
+`01:30:00`, or `1-00:00:00`. The final review shows normalized values. These
+conventions do not change Slurm's interpretation of directives already in a
+script.
+
+For a remote cluster, SSH monitoring and project launching remain separate:
+run the guided launcher on the approved submission host where the project and
+Slurm commands are accessible. Saving an SSH profile does not upload or submit
+a project from the local machine.
+
 ## Set telemetry update intervals
 
-Open **Setup → Heavy telemetry update settings**, or enter
-`:telemetrysettings`. Presets apply immediately while Heavy is active and can
+Open **Setup → Refresh and performance**, or enter
+`:refreshsettings`. The legacy `:telemetrysettings` command opens the same panel.
+Presets apply immediately while Heavy is active and can
 be staged from Light. Custom starts at Default; its gear button opens a
 validated editor with a white-to-pink intensity scale that updates while typing.
 Select **Save settings** to keep the choice for later launches.
 
-The queue slider is separate from the telemetry readers. See
+The same panel contains independent queue and retained-recording reader controls.
+It distinguishes requested intervals from actual source freshness and the job's
+recording frequency. See
 [telemetry updates](telemetry-updates.md) for preset values, Custom controls,
 retained recording refresh, and site-policy limits.
 
@@ -49,7 +109,7 @@ lab account. The student remains the authenticated user and owner of the job.
 The allocation's `--account` option selects the account charged by Slurm.
 
 1. Start `ravenl` with the intended local or cluster profile.
-2. Open **Setup → Heavy allocation settings**.
+2. Open **Setup → Connections and accounts → Heavy allocation settings**.
 3. Check the detected login, cluster, and any discovery notices.
 4. Open **Choose personal / lab association** and select the actual assigned
    account. The list shows the available cluster, partition, and QoS context.
@@ -115,7 +175,8 @@ Slurm services, site policy, or another user's configuration.
 
 ## Set up a Research or Analytics view
 
-Choose its name directly from **Setup**. For example:
+Open the relevant Research or Analytics view and choose **Set up this view**.
+The same guides remain directly available by command. For example:
 
 ```text
 :setup research experiment
@@ -137,8 +198,7 @@ For complete application hooks and file examples, use
 
 ## Save an existing-script integration
 
-Connect the intended project, then open **Setup → Project launch and recording
-defaults**, or enter `:launchsetup`. This editor saves project choices without
+Connect the intended project, then open **Setup → Launch defaults**, or enter `:launchsetup`. This editor saves project choices without
 launching a job. Configure only the bindings your application actually supplies:
 
 - Its native metric file and explicit artifact paths.
