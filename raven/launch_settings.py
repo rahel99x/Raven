@@ -181,7 +181,7 @@ def _save_locked(fd, value):
     return json.loads(data)
 
 
-def update_settings(project, changes, *, replace=False, replace_sections=()):
+def update_settings(project, changes, *, replace=False, replace_sections=(), expected=None):
     """Serialize explicit preference edits with a bounded local metadata lock."""
     from .research_reporting import _lock
     from .projects import _root
@@ -194,7 +194,10 @@ def update_settings(project, changes, *, replace=False, replace_sections=()):
         try:
             fd = os.open(".raven", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
             try:
-                current = defaults() if replace else _read_at(fd, "automation.json")
+                observed = _read_at(fd, "automation.json")
+                if expected is not None and observed != validate_settings(expected):
+                    raise ValueError("Project launch settings changed since review; reopen the launch review before saving.")
+                current = defaults() if replace else observed
                 for key, value in changes.items():
                     if not replace and key not in replace_sections and key in ("launch", "recipes", "export_presets", "export_preferences") and isinstance(value, dict):
                         current[key] = dict(current.get(key, {}), **deepcopy(value))

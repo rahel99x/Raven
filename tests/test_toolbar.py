@@ -195,7 +195,7 @@ def test_mouse_menu_uses_actual_item_and_clears_old_targets_after_change():
     assert click(app, target(app, "menu", 0))
     T.overlay(views(), {}, app, 120, 30)
     first = app.toolbar_state["menu_hits"][0]
-    assert first[-1] == "project"
+    assert first[-1] == "launch-job"
     # Switch menu before the next paint. The old File menu has no live targets.
     assert T.handle_key(app, "right")
     assert not app.toolbar_state["menu_hits"]
@@ -368,7 +368,7 @@ def test_all_menu_commands_resolve_to_real_capabilities_with_no_scheduler_mutati
 def test_parameterized_project_action_opens_editable_prompt_and_never_executes():
     app = App(Store(persist=False), None, None, Config(), "tester")
     app.mode = "help"
-    T._activate(app, T.menu_items(app, "File")[0])
+    T._activate(app, next(item for item in T.menu_items(app, "File") if item.key == "project"))
     assert app.mode == "palette" and app.palette_edit == "project "
     assert app.command_state["origin_mode"] == "help"
     assert not app.project_state["root"]

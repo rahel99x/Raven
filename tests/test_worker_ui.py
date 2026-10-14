@@ -264,6 +264,8 @@ def test_real_published_toolbar_supports_mouse_and_arrow_navigation(ascii_):
     app.handle("f8")
     assert app.interaction_state["focused"] == before.id
     app.handle("right")
+    assert app.interaction_state["focused"] == "toolbar:launch-job:None"
+    app.handle("right")
     assert app.interaction_state["focused"] == "toolbar:workers:None"
     app.handle("enter")
     assert app.worker_scheduler.requests == ["single"] and app.tab == "jobs"

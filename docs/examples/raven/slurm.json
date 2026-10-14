@@ -133,7 +133,8 @@
     "ascii": false,
     "animations": true,
     "density": "comfortable",
-    "worker_mode": "multi"
+    "worker_mode": "multi",
+    "profile_label": ""
   },
   "profiles": {},
   "telemetry": {

@@ -240,10 +240,14 @@ def _scope(app):
             if mode == "setup" else None,
             tuple(_state(app, "telemetry_settings_ui_state").get(key) for key in ("generation", "revision", "page", "editing"))
             if mode == "telemetry_settings" else None,
+            tuple(_state(app, "onboarding_ui_state").get(key) for key in ("generation", "revision", "page", "editing"))
+            if mode == "onboarding" else None,
+            tuple(_state(app, "launch_wizard_state").get(key) for key in ("generation", "revision", "stage", "editing"))
+            if mode == "launch_job" else None,
             tuple(_state(app, "notification_ui_state").get(key) for key in ("severity", "selected", "details", "revision"))
             if mode == "notifications" else None,
             tuple(_state(app, "data_export_state").get(key) for key in ("generation", "revision", "stage", "editing"))
-            if mode == "data_export" else None)
+            if mode in ("data_export", "launch_setup") else None)
 
 
 def _viewport(app):
@@ -321,9 +325,13 @@ def _context(app):
             if getattr(app, "mode", "main") == "setup" else None,
             tuple(_state(app, "telemetry_settings_ui_state").get(key) for key in ("generation", "revision", "page", "editing"))
             if getattr(app, "mode", "main") == "telemetry_settings" else None,
+            tuple(_state(app, "onboarding_ui_state").get(key) for key in ("generation", "revision", "page", "editing"))
+            if getattr(app, "mode", "main") == "onboarding" else None,
+            tuple(_state(app, "launch_wizard_state").get(key) for key in ("generation", "revision", "stage", "editing"))
+            if getattr(app, "mode", "main") == "launch_job" else None,
             _notification_context(app),
             tuple(_state(app, "data_export_state").get(key) for key in ("generation", "revision", "stage", "editing"))
-            if getattr(app, "mode", "main") == "data_export" else None)
+            if getattr(app, "mode", "main") in ("data_export", "launch_setup") else None)
 
 
 def _notification_context(app):
@@ -530,7 +538,9 @@ def _modal_controls(app, rows, width, height, spans):
                    "arraymap": "array_manifest_state", "gpu_provider": "gpu_provider_state",
                    "operations": "ops_state", "raven": "raven_ui_state", "setup": "setup_ui_state",
                    "notifications": "notification_ui_state", "data_export": "data_export_state",
-                   "telemetry_settings": "telemetry_settings_ui_state"}
+                   "telemetry_settings": "telemetry_settings_ui_state",
+                   "onboarding": "onboarding_ui_state", "launch_job": "launch_wizard_state",
+                   "launch_setup": "data_export_state"}
     # The log workbench uses additional mode names; only current modal data may
     # contribute controls, never a previous hidden panel's registries.
     state_name = state_names.get(mode)

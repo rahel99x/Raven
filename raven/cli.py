@@ -42,6 +42,26 @@ from .slurm import Backend, CommandError, FakeBackend, Slurm
 from .views import TABS, Views
 
 
+class _Reconnect(Exception):
+    """A reviewed profile change, handled after the old session is closed."""
+
+    def __init__(self, path, profile):
+        self.path, self.profile = path, profile
+        super().__init__(profile)
+
+
+class _OpenDemo(Exception):
+    """Open simulated observations after closing the real connection."""
+
+
+def _reconnect_config(current, request):
+    from .raven_config import resolve
+    # Keep an explicit extra policy across reconnects. A profile's own policy
+    # is resolved from the newly selected profile, as at ordinary startup.
+    return resolve(request.path or current.source or None, site=request.profile,
+                   launcher="light", site_policy_path=current.extra_policy_path or None)
+
+
 class Session:
     """Everything one run of the dashboard holds; ``close`` stops the sampler and the recorder."""
 
@@ -60,6 +80,8 @@ class Session:
         cancel_log_export(self.app, close=True)
         from .data_export_ui import cancel as cancel_data_export
         cancel_data_export(self.app, close=True)
+        from .launch_wizard_ui import cancel as cancel_launch
+        cancel_launch(self.app, close=True)
         from .execution_ui import close
         close(self.app)
         from .shell_checks_ui import close as close_shell_checks
@@ -350,6 +372,10 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
         app.gpu = False
     if args.bell:
         app.bell = True
+    if (getattr(args, "getting_started", False) and app.interactive
+            and not args.fake and not args.replay):
+        from .onboarding_ui import open_setup
+        open_setup(app)
     return Session(user, store, sampler, actions, views, app, backend, files, api)
 
 
@@ -531,6 +557,7 @@ def parse(argv):
     ap.add_argument("--csv", action="store_true", help="the tab's table (jobs by default, or --tab history / nodes / sources) as CSV and exit")
     ap.add_argument("--watch", action="store_true", help="the animated non-interactive screen")
     ap.add_argument("--fake", action="store_true", help="a simulated cluster (no Slurm needed)")
+    ap.add_argument("--getting-started", action="store_true", help="open guided workstation or cluster setup")
     ap.add_argument("--record", default="", help="record every command and its answer to this file (.jsonl or .jsonl.gz)")
     ap.add_argument("--replay", default="", help="play a recording back instead of talking to Slurm")
     ap.add_argument("--speed", type=float, default=1.0, help="with --replay: how many recorded seconds pass per second")
@@ -673,6 +700,31 @@ def main(argv=None, *, raven=None, raven_allocation=None):
         return 2
     if raven is None:
         return _dispatch_main(argv)
+    while True:
+        try:
+            return _managed_main(argv, raven=raven, raven_allocation=raven_allocation)
+        except _OpenDemo:
+            try:
+                raven = _reconnect_config(raven, _Reconnect(raven.source, raven.data["profile"]))
+            except (OSError, ValueError, RuntimeError) as exc:
+                print("Raven: could not open the demo: " + str(exc), file=sys.stderr)
+                return 2
+            raven_allocation = None
+            argv = ["--fake", "--no-state", "--no-plugins"]
+        except _Reconnect as request:
+            try:
+                raven = _reconnect_config(raven, request)
+            except (OSError, ValueError, RuntimeError) as exc:
+                print("Raven: could not open the saved profile: " + str(exc), file=sys.stderr)
+                return 2
+            raven_allocation = None
+            # Connection overrides and first-run flags belong to the old
+            # session. Keep explicit privacy/presentation choices only.
+            argv = [arg for arg in (sys.argv[1:] if argv is None else argv)
+                    if arg in {"--no-state", "--no-plugins", "--no-color", "--ascii"}]
+
+
+def _managed_main(argv, *, raven, raven_allocation=None):
     from .raven_execution import configure_process, process_router, reset_process, cli_admission, needs_job_local
     previous = process_router()
     from .raven_config import to_raven_config
@@ -877,9 +929,11 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
                 pass
         finally:
             s.close()
+        if getattr(app, "start_demo", False) and raven is not None:
+            raise _OpenDemo()
         if app.switch_profile and raven is not None:
-            print("Raven: session closed; select the new connection with --site before launching again.", file=sys.stderr)
-            return 0
+            raise _Reconnect(getattr(app, "switch_profile_config", "") or raven.source,
+                             app.switch_profile)
         if app.switch_profile:                              # :profile <name>: the same screen on another cluster
             profile = app.switch_profile
             continue

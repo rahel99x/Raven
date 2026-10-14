@@ -196,6 +196,43 @@ def test_field_editor_uses_units_and_preserves_old_value_on_escape(app):
     assert app.cfg.get("raven.allocation.memory_mib") == 4096
 
 
+def test_human_resource_units_stage_normalized_values_only_on_explicit_save(app):
+    open_allocation(app)
+    for field, text in (("memory_mib", "8 GiB"), ("walltime_seconds", "1h")):
+        S.run_command(app, ["setup", "edit", field])
+        S.handle_key(app, "ctrl-u")
+        for char in text:
+            S.handle_key(app, "space" if char == " " else char)
+        S.handle_key(app, "enter")
+        assert app.setup_ui_state["form"][field] == text
+    assert app.cfg.get("raven.allocation.memory_mib") == 4096
+    assert app.test_service.calls == ["discover"]
+    action(app, "setup save")
+    assert app.test_service.calls == ["discover"]
+    app.research.finish()
+    assert app.test_service.calls[-2:] == [
+        ("stage", {"memory_mib": 8192, "walltime_seconds": 3600}),
+        ("save", {"memory_mib": 8192, "walltime_seconds": 3600})]
+    assert app.cfg.get("raven.allocation.memory_mib") == 8192
+    assert app.cfg.get("raven.allocation.walltime_seconds") == 3600
+
+
+@pytest.mark.parametrize("field,text", [("memory_mib", "8 XB"), ("walltime_seconds", "1 fortnight")])
+def test_invalid_human_units_leave_form_without_starting_save(app, field, text):
+    open_allocation(app)
+    S.run_command(app, ["setup", "edit", field])
+    S.handle_key(app, "ctrl-u")
+    for char in text:
+        S.handle_key(app, "space" if char == " " else char)
+    S.handle_key(app, "enter")
+    action(app, "setup save")
+    assert app.research.pending is None
+    assert app.test_service.calls == ["discover"]
+    assert app.setup_ui_state["form"][field] == text
+    assert field in app.setup_ui_state["dirty"]
+    assert "Cannot save allocation settings" in app.message
+
+
 def test_saving_blocks_new_account_edits_and_compute_review(app):
     open_allocation(app)
     action(app, "setup accounts")

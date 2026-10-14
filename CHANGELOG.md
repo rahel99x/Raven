@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add a user-owned installer and guided first-run setup for workstation Slurm,
+  cluster connections, and standalone use, with reviewed settings and an offline demo.
+- Add named site and lab profiles, explicit profile switching, account discovery,
+  and readable resource units. Keep dashboard allocation billing separate from
+  workload resources and reusable project recipes.
+- Add a Launch job workflow for existing scripts, with recording options,
+  read-only review, explicit submission, and direct access to retained results.
+  Support supervised local runs and a clear submission-host handoff for SSH sites.
 - Fix the queue update slider across `raven`, `ravenl`, and `ravenh`, with
   displayed intervals matching live collector scheduling and site limits.
 - Add live Heavy telemetry presets and a validated Custom configuration editor

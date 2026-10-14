@@ -11,6 +11,39 @@ Use **Run** to start work, **Results** to inspect retained evidence, and
 **Export data** to choose what to save. A feature selection requests an
 integration; its readiness explains whether that integration has data.
 
+## Guided launch in the dashboard
+
+Open **File → Launch job**, use the Launch toolbar button when visible, or
+enter `:launchjob`. Choose the project and script, review the workload account
+and resources, select recordings, then inspect the final request before
+submitting. The review includes an equivalent command for repeated or scripted
+use. The [first-job guide](getting-started.md) includes installation and site
+selection.
+
+The launcher reads supported `#SBATCH` directives without rewriting the script.
+It explains effective values and their sources, including inherited scheduler
+environment settings. Blank resource fields inherit those choices; values
+entered in the form become explicit launch overrides. Saving a named workload
+profile is separate from submission, and its defaults fill missing settings on
+later launches without replacing explicit script or environment choices.
+Selecting GPU recording does not itself request a GPU allocation;
+scientific measurements still need application output.
+
+Run this workflow on the host that owns the project and can submit its job.
+An SSH monitoring connection cannot launch a local project on that remote
+cluster. Use Raven on the permitted cluster submission host instead, with the
+project on storage visible to the execution nodes. Select standalone local
+execution only when you intend to run the workload on that machine.
+
+The advanced **Setup → Project launch and recording defaults** editor remains
+available for measurement bindings, scientific context, recipes, and completion
+exports. It is separate from both the launch review and the Export data screen.
+
+Standalone launches from the dashboard run under a detached supervisor and
+retain stdout/stderr files. Closing the dashboard does not stop the accepted
+workload. The receipt provides its PID, log paths, and stop instructions.
+Command-line local launches retain their foreground behavior described below.
+
 ## 1. Preview an existing script
 
 From the directory where you normally submit the script:
@@ -72,14 +105,18 @@ raven launch test.sh --account LabX \
 `LabX` illustrates a professor's allocation; it is not a universal account
 name. The submitting user remains the student. `--account` after `launch`
 controls this workload's billing and does not change Raven Heavy's saved
-account. Desktop Slurm users can omit it when their scheduler supplies the
+account. **Setup → Sites and lab profiles** saves the connection and Heavy
+preferences; workload defaults belong to the project and are saved separately
+through the guided launch workflow. Desktop Slurm users can omit the workload
+account when their scheduler supplies the
 appropriate default. See [site recipes](project-reporting-sites.md) for the
 distinction between a username, a Slurm account, a partition, and an allocation.
 
 Use one repeated `--sbatch=TOKEN` per scheduler argument, preferably a complete
 `--option=value` token. Slurm's precedence is preserved: command-line options,
 then `SBATCH_*` environment settings, then effective `#SBATCH` directives.
-Project resource defaults fill unspecified settings. Only directives before
+Project or selected-recipe resource defaults fill unspecified settings; they
+do not override existing directives or `SBATCH_*` environment choices. Only directives before
 the script's first executable line are part of the Slurm header.
 
 The project root is a reporting and export anchor. It does not replace the

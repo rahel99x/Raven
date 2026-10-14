@@ -21,7 +21,7 @@ MAX_ARGUMENT_BYTES = 1 << 20
 # Both entry-point layers use this exact boundary, including dashboard values.
 GLOBAL_VALUES = frozenset("--site --profile --config --host --ssh-user --account --site-policy --allocation --interface --user --interval --rate --days --tab --research-view --metrics-file --contract --workdir --passport --planning-file --record --replay --speed --run --eval --wait-for --timeout --poll --alert --width --ui-trace --workers --gpu-check-output".split())
 GLOBAL_OPTIONAL = frozenset(("--gpu-check", "--report", "--write-config"))
-KNOWN_COMMANDS = frozenset(("run", "report", "trace", "runtime", "terminal", "migrate", "config", "doctor", "qualify", "launch", "export-data"))
+KNOWN_COMMANDS = frozenset(("run", "report", "trace", "runtime", "terminal", "migrate", "config", "doctor", "qualify", "launch", "export-data", "setup"))
 _ALIASES = {"A": "account", "J": "job-name", "D": "chdir", "o": "output", "e": "error", "a": "array", "d": "dependency", "p": "partition", "q": "qos", "t": "time", "N": "nodes", "n": "ntasks", "c": "cpus-per-task", "G": "gpus"}
 _FLAGS = {"exclusive", "oversubscribe", "requeue", "no-requeue", "hold", "parsable", "contiguous", "spread-job", "use-min-nodes", "verbose", "quiet", "overcommit", "no-kill", "no-requeue"}
 _FORBIDDEN = {"wrap", "wait", "test-only", "help", "version", "clusters", "export-file", "het-group", "batch", "usage"}
@@ -67,10 +67,10 @@ def parser():
     ap.add_argument("--local", action="store_true", help="Explicitly execute here without Slurm")
     ap.add_argument("--account", help="Workload submission account; does not alter monitoring/Heavy preferences")
     ap.add_argument("--sbatch", action="append", default=[], metavar="TOKEN", help="One exact scheduler token, e.g. --sbatch=--mem=8G; repeatable")
-    for name, explanation in (("gpu", "Request supported device recording inside the job; no allocation is added"), ("trace", "Request application tracing through the explicit raven_exec hook")):
+    for name, explanation in (("gpu", "Request supported device recording inside the job; no allocation is added"), ("cpu-memory", "Record supported CPU and memory process measurements"), ("trace", "Request application tracing through the explicit raven_exec hook")):
         group = ap.add_mutually_exclusive_group()
-        group.add_argument("--" + name, dest=name, action="store_true", default=None, help=explanation)
-        group.add_argument("--no-" + name, dest=name, action="store_false", help="Explicitly disable " + name + " recording")
+        group.add_argument("--" + name, dest=name.replace("-", "_"), action="store_true", default=None, help=explanation)
+        group.add_argument("--no-" + name, dest=name.replace("-", "_"), action="store_false", help="Explicitly disable " + name + " recording")
     ap.add_argument("--trace-adapter", choices=("python-monitoring", "python-legacy-profile", "native-cooperative", "mpi"))
     ap.add_argument("--metrics-file", help="Declared project-relative native application JSONL producer")
     ap.add_argument("--artifact", action="append", default=None, help="Explicit project-relative output path; repeatable")
@@ -425,7 +425,9 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
         receipt_path = str(receipt)
     if args.local and args.json and not args.check and not receipt_path:
         raise ValueError("--local --json requires --receipt-file PATH; workload stdout remains unchanged")
-    if connection and connection.get("transport") not in (None, "local"):
+    if connection and connection.get("transport") == "none" and not args.local:
+        raise ValueError("This site is a standalone workstation. Explicitly choose --local to execute here, or select a Slurm site before submitting.")
+    if connection and connection.get("transport") not in (None, "local", "none"):
         host = connection.get("host") or "SUBMISSION_HOST"
         command = shlex.join(["raven", "launch", *getattr(args, "raven_argv", [args.script])])
         raise ValueError("Remote workload launch is unsupported. Run on submission host " + host + ": " + command + ". No local fallback was started.")
@@ -437,7 +439,7 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
     if args.research is not None:
         values = [value for group in args.research for value in (group or F.DEFAULT_FEATURES)]
         explicit["features"] = F.normalize_features(values)
-    for key in ("gpu", "trace", "trace_adapter"):
+    for key in ("gpu", "cpu_memory", "trace", "trace_adapter"):
         if getattr(args, key) is not None:
             explicit[key] = getattr(args, key)
     if args.metrics_file is not None:
@@ -490,6 +492,9 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
     _declared_paths(settings, root)
     header = _script_header(text)
     effective, option_sources, sbatch = effective_scheduler(header, args.sbatch, env, settings.get("sbatch_defaults"), args.account)
+    for option, source in tuple(option_sources.items()):
+        if source == "project resource default":
+            option_sources[option] = "resource default (" + setting_sources.get("sbatch_defaults", "project setting") + ")"
     if settings.get("array_manifest"):
         if args.local or not effective.get("array"):
             raise ValueError("A declared array manifest requires a Slurm --array option or directive")

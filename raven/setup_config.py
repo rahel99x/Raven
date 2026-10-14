@@ -396,7 +396,8 @@ class AllocationSetup:
                 else:
                     origins["allocation." + key] = ("profile:" + profile if target is not document else "file:" + str(self.path))
             updated = C.Resolved(candidate, origins, self.resolved.restrictions, self.resolved.warnings, str(self.path),
-                                 source_telemetry=copy.deepcopy(self.resolved.source_telemetry))
+                                 source_telemetry=copy.deepcopy(self.resolved.source_telemetry),
+                                 extra_policy_path=self.resolved.extra_policy_path)
             manager = self.manager
             # Hold the same lock as request() while checking state, writing,
             # and swapping the Light manager's detached launch preferences.

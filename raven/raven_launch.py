@@ -126,7 +126,7 @@ def _wait_heavy(manager, resolved, reuse=None):
 
 def _help(parser):
     parser.print_help()
-    print("\nCommands: config explain; doctor; migrate --plan|--apply; qualify --offline.")
+    print("\nCommands: setup; config explain; doctor; migrate --plan|--apply; qualify --offline.")
     print("Dashboard options remain available: --once, --watch, --fake, --tab, --interval, --host, run COMMAND.")
     print("Use ravenl for Light. ravenh explicitly requests admission; missing Slurm never selects desktop Heavy.")
 
@@ -142,7 +142,7 @@ def _main(argv=None, *, heavy=False):
         print("Raven: " + str(exc), file=sys.stderr)
         return 2
     parser = _parser(heavy)
-    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run"}
+    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run", "setup"}
     # Global options stop at the subcommand. A nested --help/--config belongs
     # to that command, even when a global --site precedes it. Skip option values
     # so a hostname or profile named 'terminal' is not mistaken for a command.
@@ -179,6 +179,20 @@ def _main(argv=None, *, heavy=False):
     if remaining[:1] == ["migrate"]:
         from .raven_migration import cli as migrate
         return migrate(remaining[1:])
+    if remaining[:1] == ["setup"]:
+        # Setup is available before collection/admission, including from
+        # ravenh. Its nested flags must never become bootstrap mutations.
+        if (options.host or options.ssh_user or options.account is not None
+                or options.site_policy or options.allocation or options.plan
+                or options.write_config is not None or options.profile):
+            print("Raven: use setup's connection and account fields after 'setup'; "
+                  "only --config, --site, and --json may precede this command.", file=sys.stderr)
+            return 2
+        from .onboarding import run_setup
+        setup_args = remaining[1:]
+        if options.json and "--json" not in setup_args:
+            setup_args = [*setup_args, "--json"]
+        return run_setup(setup_args, config_path=options.config, site=options.site)
     try:
         if heavy and "--fake" in remaining:
             raise ValueError("ravenh --fake cannot request a real allocation. Use ravenl --fake for simulated monitoring or ravenh --plan for a read-only startup plan.")
@@ -192,10 +206,21 @@ def _main(argv=None, *, heavy=False):
         # Help is a read-only operation under either launcher. Never request an
         # allocation merely to display a subcommand's controls.
         help_only = bool(remaining and remaining[0] in passthrough and any(x in ("--help", "-h") for x in remaining[1:]))
-        admission = heavy and not help_only
+        admission = heavy and not help_only and "--getting-started" not in remaining
+        # A bare first launch may need account setup even when a mandatory
+        # site policy requires billing before Heavy admission. Resolve Light
+        # first for that candidate, then validate the real Heavy intent once
+        # we know it is an already configured or noninteractive launch.
+        setup_candidate = admission and not argv
         resolved = resolve(options.config, site=options.site, legacy_profile=options.profile,
-                           launcher="heavy" if admission else "light", site_policy_path=options.site_policy,
+                           launcher="heavy" if admission and not setup_candidate else "light", site_policy_path=options.site_policy,
                            cli_overrides=overrides or None)
+        from .onboarding import should_offer_first_run
+        first_run = should_offer_first_run(resolved, argv=argv)
+        if setup_candidate and not first_run:
+            resolved = resolve(options.config, site=options.site, legacy_profile=options.profile,
+                               launcher="heavy", site_policy_path=options.site_policy,
+                               cli_overrides=overrides or None)
         for message in resolved.warnings:
             print("Raven: " + message, file=sys.stderr)
         if remaining[:2] == ["config", "explain"]:
@@ -230,6 +255,10 @@ def _main(argv=None, *, heavy=False):
                      "configuration": resolved.explain(show_paths=options.show_paths), "allocation": allocation,
                      "mutations": 0, "dashboard_imported": False})
             return 0
+        if first_run and admission:
+            # A fresh interactive installation must choose its site and
+            # billing preferences before a Heavy allocation is requested.
+            admission = False
         manager = None
         if admission:
             manager = _allocation(resolved)
@@ -244,6 +273,8 @@ def _main(argv=None, *, heavy=False):
         # No dashboard, scientific, terminal, or collector imports before ready.
         from . import cli
         try:
+            if first_run:
+                remaining.append("--getting-started")
             return cli.main(remaining, raven=resolved, raven_allocation=manager)
         finally:
             if manager is not None:

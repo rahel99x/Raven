@@ -1,4 +1,4 @@
-"""Small one-time reporting declarations editor, hosted by Export data's modal.
+"""Advanced reporting declarations in a dedicated launch-settings dialog.
 
 These settings describe producer inputs. Saving never launches a workload or
 claims that a declared scientific measurement has been observed.
@@ -18,15 +18,15 @@ FIELDS = (("application_metrics", "Application metrics JSONL file (project-relat
           ("recipe_name", "Save launch recipe name"))
 
 
-def open_setup(app):
+def open_setup(app, *, root=None):
     from . import data_export_ui as UI
     from .launch_settings import load_settings
     project = getattr(app, "project_state", {})
-    root = (project.get("binding") or {}).get("project_root") or project.get("registered_root") or project.get("root")
+    root = root or (project.get("binding") or {}).get("project_root") or project.get("registered_root") or project.get("root")
     if not root:
         UI._feedback(app, "Open a project with File > Open project before saving its launch settings.", True)
         return False
-    if getattr(app, "mode", "main") not in ("main", "setup", "data_export"):
+    if getattr(app, "mode", "main") not in ("main", "setup", "data_export", "launch_setup", "launch_job"):
         UI._feedback(app, "Close the current dialog before configuring project launch settings.", True)
         return False
     state = UI.initialize(app)
@@ -34,15 +34,15 @@ def open_setup(app):
         UI._feedback(app, "Wait for or cancel the current export operation before configuring launch settings.", True)
         return False
     state.update(generation=state["generation"]+1, return_mode=getattr(app, "mode", "main"),
-                 setup_root=root, setup_form={}, setup_fields={}, editing=None, error="", message="", cursor=0, top=0)
-    app.mode = "data_export"
+                 stage="setup", setup_ready=False, setup_root=root, setup_form={}, setup_fields={}, editing=None, error="", message="", cursor=0, top=0)
+    app.mode = "launch_setup"
     files = getattr(app, "files", None) or getattr(getattr(app, "research", None), "files", None)
     if getattr(files, "remote", False):
         UI._failure(app, "Project launch preferences must be saved on the project host. Run Raven there; remote settings writes are unsupported.")
         return False
     def completed(value):
         launch = copy.deepcopy(value.get("launch", {}))
-        state.update(stage="setup", settings=value, setup_form=launch)
+        state.update(stage="setup", setup_ready=True, settings=value, setup_form=launch)
         _fields(state)
         UI._invalidate(state)
     UI._queue(app, "Read project launch preferences", lambda event, progress: load_settings(root), completed)
@@ -65,6 +65,10 @@ def document(app):
     from .launch_features import FEATURES
     state = initialize(app)
     form, fields = state["setup_form"], state["setup_fields"]
+    if not state.get("setup_ready", False):
+        return [("Close project setup", "close"),
+                ("Project: " + state["setup_root"], None),
+                (state.get("error") or "Reading project launch preferences...", None)]
     rows = [("Close project setup", "close"), ("Save project launch settings", "setup:save"),
             ("Job's project folder: " + state["setup_root"], None),
             ("Declarations are inputs, not observed measurements. Saving does not submit a job, allocate Heavy, or execute Operations. Future raven launch commands use these settings; explicit CLI choices take precedence.", None)]

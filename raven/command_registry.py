@@ -132,6 +132,9 @@ COMMANDS = (
     Command('history-job', 'Select a job from the history browser', owner='history_browser'),
     Command('history-scroll', 'Scroll the job history browser', owner='history_browser'),
     Command('launchsetup', 'Save project reporting declarations and launch recipes', owner='data_export_ui'),
+    Command('launchjob', 'Review and launch an existing job script', owner='launch_wizard_ui', review='required'),
+    Command('gettingstarted', 'Set up Raven for a workstation or cluster', owner='onboarding_ui'),
+    Command('profiles', 'Create and review named site and lab profiles', owner='onboarding_ui'),
     Command('exportdata', 'Export retained measurements for exact recorded attempts', usage='exportdata [chart|close]', arguments=('chart', 'close'), owner='data_export_ui'),
     Command('historylogs', 'Export all registered logs for selected historical jobs', owner='history_log_export'),
     Command('historyrange', 'Choose the accounting history interval', owner='table_tools'),
@@ -243,6 +246,7 @@ TASKS = (
 
 TOOLBAR_CONTROLS = MappingProxyType({
     'File': (
+        Control('launch-job', 'Launch job...', 'launchjob'),
         Control('project', 'Open project...', 'project ', True, description='Discover a standard project and its run inventory.'),
         Control('workbench', 'Task workbench', 'workbench'),
         Control('project-guide', 'Connect and validate a project', 'projectguide'),
@@ -326,6 +330,8 @@ TOOLBAR_CONTROLS = MappingProxyType({
         Control('reader', 'Plain ASCII reader mode', 'theme reader'),
     ),
     'Setup': (
+        Control('setup-start', 'Getting started', 'gettingstarted'),
+        Control('setup-profiles', 'Sites and lab profiles', 'profiles'),
         Control('setup-updates', 'Heavy telemetry update settings', 'setup updates'),
         Control('setup-launch', 'Project launch and recording defaults', 'launchsetup'),
         Control('setup-exports', 'Automated reporting and exports', 'setup exports'),

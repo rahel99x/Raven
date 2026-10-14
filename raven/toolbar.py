@@ -290,18 +290,23 @@ def render_bar(views, app, width, y=0):
     managed=isinstance(getattr(app,'cfg',{}).get('raven'),dict) or getattr(app,'raven_allocation_manager',None) is not None
     compute_space = 10 if managed and width >= minimum_slider + worker_space + 12 else 0
     copy_space=4 if width >= 80 else 0
-    # A direct export shortcut is optional; full menu names and existing
-    # worker/compute controls remain readable at 80 columns. File always
-    # includes Export data when its dedicated button does not fit.
+    # Launch is the primary project action. Optional shortcuts only occupy
+    # spare space; the complete actions remain in File at narrow widths.
+    launch_space = 10 if width >= 100 else 0
     export_space=14 if width >= 100 else 9 if width >= 80 else 0
     named_menu_space=len(forms[1][0]) + sum(map(len, forms[1][1]))
-    if width - minimum_slider - worker_space - compute_space - copy_space - named_menu_space < export_space:
+    spare = width - minimum_slider - worker_space - compute_space - copy_space - named_menu_space
+    if spare < launch_space:
+        launch_space = 0
+    if spare - launch_space < export_space:
         export_space=0
-    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space - copy_space - export_space), forms[-1])
+    quit_label, labels = next((form for form in forms if len(form[0]) + sum(map(len, form[1])) <= width - minimum_slider - worker_space - compute_space - copy_space - export_space - launch_space), forms[-1])
     append(quit_label, "danger+bold+bg:surface-raised", "quit")
     for index, label in enumerate(labels):
         selected = state["menu"] == index if len(labels) == len(MENUS) else state["menu"] is not None
         append(label, "accent+bold+bg:surface-sunken" if selected else BAR_STYLE, "menu", index)
+    if launch_space:
+        append(" [Launch] ", "accent+bold+bg:surface-raised", "launch-job")
     compute_button = raven_ui.button(app, width-x-minimum_slider-worker_space-copy_space-export_space) if managed else None
     if compute_button is not None:
         append(*compute_button, 'raven')
@@ -519,6 +524,10 @@ def handle_mouse(app, y, x, button="left", shift=False):
             _close(app)
             from .data_export_ui import open_export
             open_export(app)
+        elif kind == "launch-job":
+            _close(app)
+            from .launch_wizard_ui import open_launch
+            open_launch(app)
         elif kind == "copy-mode":
             from .editor_yank import toggle
             toggle(app)
@@ -583,7 +592,8 @@ def control_descriptors(app):
     polling_label = _polling_label(app)
     labels = {"quit": "Quit", "rate": "Queue polling: " + polling_label,
               "minus": "Increase polling interval", "plus": "Decrease polling interval",
-              "copy-mode": "Switch clipboard copy / editor yank"}
+              "copy-mode": "Switch clipboard copy / editor yank",
+              "launch-job": "Launch job", "export-data": "Export recorded data"}
     if any(hit[3] == "workers" for hit in state["hits"]):
         from .worker_ui import summary
         labels["workers"] = summary(app)
