@@ -65,7 +65,7 @@
   "limits": "This is a local evidence and consistency audit, not a hosted CI run, signature, production deployment or human usability result.",
   "documentation": {
     "documents": 162,
-    "local_links": 1606,
+    "local_links": 1608,
     "external_urls": "not tested"
   }
 }

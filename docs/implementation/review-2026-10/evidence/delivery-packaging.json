@@ -1,0 +1,305 @@
+{
+  "schema": "raven.delivery-packaging/v1",
+  "recorded_utc": "2026-10-18T03:09:17.353960+00:00",
+  "status": "passed",
+  "documentation_build_commit": "59221f794591d2807a3d0e9080d22f66cfabd14c",
+  "implementation_commit": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "qualified_source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "checks": 25,
+  "gate_report": "raw/final-ci/py3.12-delivery/gates.json",
+  "artifacts": {
+    "SHA256SUMS": {
+      "bytes": 180,
+      "sha256": "2358a0c31b915fe44837e97c319530b8552bcd417974c35a36a859552f91685e"
+    },
+    "raven-7.0.0-py3-none-any.whl": {
+      "bytes": 1854583,
+      "sha256": "8fd26a21b01b4dc9ce289367563616ac609e10d47ac6af98f60cee0cf0d29c53"
+    },
+    "raven-7.0.0.tar.gz": {
+      "bytes": 12590548,
+      "sha256": "d48948a4d4d42f747c01729215274c1091854dfc82c93ce6fd10a14b04f0a8c6"
+    },
+    "raven.spdx.json": {
+      "bytes": 2299,
+      "sha256": "9eb17f7bb42629948c4217da4f29872f66bb2db6ca1028d66b58e48d3997db45"
+    },
+    "release-inventory.json": {
+      "bytes": 624918,
+      "sha256": "f842af50e693198fe59f065d7f0da16bc8a90adc948afc514014cb1be559fff4"
+    }
+  },
+  "artifact_workspace_directory": "/workspace/raven-qualification-results/final/py3.12-delivery/dist",
+  "archives": [
+    {
+      "original_relative_path": "build.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/build.log.gz",
+      "original_bytes": 351511,
+      "original_sha256": "b25073c3620675c051b056e7f4bb838bdf3cb896b4ab71aa06976e57efc5db9a",
+      "retained_sha256": "9289edb4f104753fe9c2af28cfbe2a0b237bb8b6415c20c3edac583696fcac66",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "capability-reference.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/capability-reference.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "clean-venv.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/clean-venv.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "demo.txt",
+      "retained_path": "raw/final-ci/py3.12-delivery/demo.txt.gz",
+      "original_bytes": 46170,
+      "original_sha256": "cf6ae5dd0e81a1ebf8e252934d62f393eed309b05107fa0909e44b08fc57fd3e",
+      "retained_sha256": "e4f5a0d01bc8421b2948b856ebaa9915ce8336c6e1cca7d8364d470c6c443d5e",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "dist/SHA256SUMS",
+      "retained_path": "raw/final-ci/py3.12-delivery/dist/SHA256SUMS",
+      "original_bytes": 180,
+      "original_sha256": "2358a0c31b915fe44837e97c319530b8552bcd417974c35a36a859552f91685e",
+      "retained_sha256": "2358a0c31b915fe44837e97c319530b8552bcd417974c35a36a859552f91685e",
+      "gzip": false
+    },
+    {
+      "original_relative_path": "dist/raven.spdx.json",
+      "retained_path": "raw/final-ci/py3.12-delivery/dist/raven.spdx.json",
+      "original_bytes": 2299,
+      "original_sha256": "9eb17f7bb42629948c4217da4f29872f66bb2db6ca1028d66b58e48d3997db45",
+      "retained_sha256": "9eb17f7bb42629948c4217da4f29872f66bb2db6ca1028d66b58e48d3997db45",
+      "gzip": false
+    },
+    {
+      "original_relative_path": "dist/release-inventory.json",
+      "retained_path": "raw/final-ci/py3.12-delivery/dist/release-inventory.json",
+      "original_bytes": 624918,
+      "original_sha256": "f842af50e693198fe59f065d7f0da16bc8a90adc948afc514014cb1be559fff4",
+      "retained_sha256": "f842af50e693198fe59f065d7f0da16bc8a90adc948afc514014cb1be559fff4",
+      "gzip": false
+    },
+    {
+      "original_relative_path": "doctor-fake.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/doctor-fake.log.gz",
+      "original_bytes": 1085,
+      "original_sha256": "e7575a4b0588bdac6bd39d24b0c7d5c5166f53dcb60b69e1fe24bfa313f27914",
+      "retained_sha256": "a62ad1d780e44f581504551d91b2f4c0095fdfc2462013106334ae992526638a",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "fake-report.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/fake-report.log.gz",
+      "original_bytes": 30,
+      "original_sha256": "6b445252fa07ee4b6b27c608100361dcf576930595004a7fa9ffeee354b7993d",
+      "retained_sha256": "75e53385222dad6badd0b23ba683ae03fbff55bc57aad19ee9ed3d8a7c6ed91d",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "flagship.json",
+      "retained_path": "raw/final-ci/py3.12-delivery/flagship.json",
+      "original_bytes": 5200,
+      "original_sha256": "b6fb4a0756c49ce96a702b6c5538023b2a65a91651373fab13a7612e4bdab2bf",
+      "retained_sha256": "b6fb4a0756c49ce96a702b6c5538023b2a65a91651373fab13a7612e4bdab2bf",
+      "gzip": false
+    },
+    {
+      "original_relative_path": "flagship.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/flagship.log.gz",
+      "original_bytes": 65,
+      "original_sha256": "2ce087a0e855724b0a976d6e30a5070f285b69d81595ab623812b9c911977486",
+      "retained_sha256": "5cc75091363db8372225069b0f8516ff8726f6ca027dc4b58d4b21c43b7749b4",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "gates.json",
+      "retained_path": "raw/final-ci/py3.12-delivery/gates.json",
+      "original_bytes": 16655,
+      "original_sha256": "d805c6fb13e8d0e9f2a8273ab2ce19e40e0f5f8809be4b1cdd3464053d7460b0",
+      "retained_sha256": "d805c6fb13e8d0e9f2a8273ab2ce19e40e0f5f8809be4b1cdd3464053d7460b0",
+      "gzip": false
+    },
+    {
+      "original_relative_path": "heavy-mcp-help.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/heavy-mcp-help.log.gz",
+      "original_bytes": 383,
+      "original_sha256": "4e78b1ea054f792f50ec6ae0b84c92bdd3464809ae55caea49d5f72842fa43fa",
+      "retained_sha256": "cd468eda9c3c7e37cb316f8a86068d45c86aceca60688c9e37348aa224c3d713",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "heavy-plan.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/heavy-plan.log.gz",
+      "original_bytes": 13560,
+      "original_sha256": "a38a9aa4499846b61c80f194fe4b9a895a66da34fc5ef1b805d24a95cd83455d",
+      "retained_sha256": "9245112330115715404f1c5c1bd521eb10d3b0d7009a79967712943aa8cb9f21",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "install-terminal.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/install-terminal.log.gz",
+      "original_bytes": 1056,
+      "original_sha256": "0ce9eacf4fd432fb44e56c7ae39c8ed9c34e77f418adf6fbce50419cea2ea7db",
+      "retained_sha256": "21d6ac8e4786b7211fb41f1a41b696ab7fc56d62b4f4c837c15591341ff4e28b",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "install-wheel.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/install-wheel.log.gz",
+      "original_bytes": 291,
+      "original_sha256": "e69103ba27bde5381a4aefc37d9674bd3b5346018f6dce85f2ea373b9536dba5",
+      "retained_sha256": "006f9ea922b958d14df5da99dfa8f47338765b7b88bda573253ae6308e31c355",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "installed-location.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/installed-location.log.gz",
+      "original_bytes": 77,
+      "original_sha256": "3c57f1c3cd892d3e0a0a03c54f54227165879eff05b4c1aeaed4ee1fca02d981",
+      "retained_sha256": "9326295ed3ee76cabd0fe37892412dfb81a7b9b7a299dc3e5346b61d1b42e330",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "inventory-create.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/inventory-create.log.gz",
+      "original_bytes": 50,
+      "original_sha256": "3785d7a255970a533d15fa1bc5f81d9ec680e534e6e272b699bc0876d2571ab2",
+      "retained_sha256": "33e079f888a037ab8fcb841c5834b3192d6715d1a0521eff734b867d10a5b97f",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "inventory-policy.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/inventory-policy.log.gz",
+      "original_bytes": 94,
+      "original_sha256": "ec31229a52d0ee43577c859fd35c6bf073489707567134dea4e6dc8c47af5378",
+      "retained_sha256": "e3f723cbc2a2f58bbe30c9ba300a46047c0cdb0ff36bb893cab2d0f73f4789d7",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "inventory-verify.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/inventory-verify.log.gz",
+      "original_bytes": 64,
+      "original_sha256": "ba148ebe2cd6b284a401d1f7558b0c94328a5bce65925fbdeec48812b76b9f74",
+      "retained_sha256": "e3e8199ac02106962caa2b7a0dace1aae30c32d7cb9f07cc7f1b3dd680d4b11f",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "light-doctor.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/light-doctor.log.gz",
+      "original_bytes": 1320,
+      "original_sha256": "02df7ed3b97e285162a9c87b516f4847698d75e0fb41e0cddfc4d2d62ebf798e",
+      "retained_sha256": "ae3c1ce78236f284e4d66936d630e6cedaa82a532dc73a1edb2e443751d28b95",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "light-mcp-help.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/light-mcp-help.log.gz",
+      "original_bytes": 383,
+      "original_sha256": "4e78b1ea054f792f50ec6ae0b84c92bdd3464809ae55caea49d5f72842fa43fa",
+      "retained_sha256": "cd468eda9c3c7e37cb316f8a86068d45c86aceca60688c9e37348aa224c3d713",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "mcp-help.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/mcp-help.log.gz",
+      "original_bytes": 383,
+      "original_sha256": "4e78b1ea054f792f50ec6ae0b84c92bdd3464809ae55caea49d5f72842fa43fa",
+      "retained_sha256": "cd468eda9c3c7e37cb316f8a86068d45c86aceca60688c9e37348aa224c3d713",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "offline-setup.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/offline-setup.log.gz",
+      "original_bytes": 1682,
+      "original_sha256": "22373f94b89c36c3fba72698235eadad78e6fe0f6fca48cdb15009d36094956a",
+      "retained_sha256": "0ad7440d7b075a0387fc6c6c7e2e892d22e7832ef2bd045e3cf828b0e3d6e3e6",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "operation-reference.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/operation-reference.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "qualify-offline.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/qualify-offline.log.gz",
+      "original_bytes": 189416,
+      "original_sha256": "8bf22e7d38764b13e75d072d7716ecaf43f8985e568328a23a99de44b5ca786d",
+      "retained_sha256": "d929f91abecd2d57e7788a86992310ed25a7e884b252a3062f3d564e40ae7c1e",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "quality.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/quality.log.gz",
+      "original_bytes": 1034,
+      "original_sha256": "4c24f5bcae28e02164779331145f931c0821b1a14f9ad623ac395d41f3032926",
+      "retained_sha256": "8398a52ec17ca67ae528a25853c5bfc92e0baafac73f037d90fe30a5daee3003",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "schemas.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/schemas.log.gz",
+      "original_bytes": 1863,
+      "original_sha256": "24e5e0c996f1a8b07b29d062c9496f79389bcf291e1ba5aca871e8a92f85cf2b",
+      "retained_sha256": "3f5d6cec776fbaf827ce883928456d5c4ef19d17a929e9ba80c201cdee27f35c",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "sdist-fixtures.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/sdist-fixtures.log.gz",
+      "original_bytes": 99,
+      "original_sha256": "7637183fbdf7eb3ca5ef3f450c410ddf8a1bc9211c7543ed9d0934e0781f5913",
+      "retained_sha256": "d6624693092afc71d7416dd27d3604cb54dec51219e153e568789054284e835e",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "sdist-location.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/sdist-location.log.gz",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "sources.json",
+      "retained_path": "raw/final-ci/py3.12-delivery/sources.json",
+      "original_bytes": 95556,
+      "original_sha256": "0596770ab35219fd5709308dd20fbefca9a50526062c3cec1e1feb9ed23d4305",
+      "retained_sha256": "0596770ab35219fd5709308dd20fbefca9a50526062c3cec1e1feb9ed23d4305",
+      "gzip": false
+    },
+    {
+      "original_relative_path": "terminal-selftest.log",
+      "retained_path": "raw/final-ci/py3.12-delivery/terminal-selftest.log.gz",
+      "original_bytes": 668,
+      "original_sha256": "ee0fca3f76f70d3d4ef1a65f4c1298aa30e18f03cbcce987b665c115258efe03",
+      "retained_sha256": "f4edfca6f29261a7961f8366f07ee351784a8960a50e667377fe09ca6542e49d",
+      "gzip": true
+    },
+    {
+      "original_relative_path": "wheel.txt",
+      "retained_path": "raw/final-ci/py3.12-delivery/wheel.txt.gz",
+      "original_bytes": 46116,
+      "original_sha256": "3b07c0a06de4fcbc62e9eb36243d8a8c560446e31b05884ec9fe7f4bc2f563a0",
+      "retained_sha256": "6fab5c8386a82b64f7e201e2d93f4c6d578dda2a9e08bf16feed302a003d6489",
+      "gzip": true
+    }
+  ],
+  "scope": "Sequential clean wheel/sdist, extracted-source, schemas, references, installed-command, terminal, flagship and inventory gates on the committed complete handback. The five-interpreter regressions remain bound to e3c7183; runtime/tests/scripts/schemas/metadata/CI are unchanged. This outer delivery receipt and evidence-index refresh are added after building and do not claim to be inside their own artifacts.",
+  "limits": [
+    "Local verification only; no hosted CI, publication, signature, push or merge.",
+    "The binary artifacts reside in the workspace; exact digests, sizes, inventories and lossless logs are retained in the repository."
+  ]
+}

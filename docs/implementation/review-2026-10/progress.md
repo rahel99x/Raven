@@ -204,3 +204,7 @@ deployment participation, or consenting human workflow evidence and subsequent
 workflow-led core decomposition. macOS persistent state remains unsupported in
 this revision and is documented separately. No push, PR, release or merge was
 performed. The final handback, raw gate receipts and artifact index are review-ready.
+
+## Final delivery packaging
+
+All 25 sequential Python 3.12 delivery gates passed on documentation commit `59221f794591d2807a3d0e9080d22f66cfabd14c`. The completed handback was included in the wheel/source qualification; the exact artifacts, inventories and lossless logs are bound in [the delivery receipt](evidence/delivery-packaging.json). Runtime, tests, scripts, schemas, packaging metadata and CI remain identical to the final five-interpreter-qualified revision. The receipt is outer verification metadata, added after building; no hosted run or publication is implied.

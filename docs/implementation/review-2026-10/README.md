@@ -134,6 +134,11 @@ corresponding checks, including extracted-source testing; hosted execution remai
 unclaimed. The experimental full/core/lab installation qualification is retained
 separately under W42.
 
+A final [delivery packaging receipt](evidence/delivery-packaging.json) records
+25 additional passing checks on distributions built from the completed
+documentation commit `59221f7`. The five-interpreter regression binding
+above remains unchanged. This outer receipt was added after the build.
+
 The original Python 3.10 API failure, Python 3.13 watch-timeout failure and
 Python 3.14 shared-directory fixture failure remain in the archived evidence.
 Their corrections preserve behavioral assertions and retain independent reviews.

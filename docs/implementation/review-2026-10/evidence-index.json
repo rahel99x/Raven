@@ -5,8 +5,8 @@
   "files": [
     {
       "path": "README.md",
-      "bytes": 27230,
-      "sha256": "dffa352b41a8f611a679451818bf6a015d51d74cf49564fb93bf0ae61a1278a8"
+      "bytes": 27524,
+      "sha256": "88697693b5784a4c8a24af9e31c1586de8f3a62490ddab9f5097d35192863859"
     },
     {
       "path": "coverage.json",
@@ -889,9 +889,14 @@
       "sha256": "91b9a9e163efc5e302eae41d37a79c90cf92de1b3cbd77419d009e1881c2544c"
     },
     {
+      "path": "evidence/delivery-packaging.json",
+      "bytes": 14391,
+      "sha256": "75876a06d3c8283c17d52ffa666517a5b0df6a77ba6bed08de1dce5029b35884"
+    },
+    {
       "path": "evidence/final-audit.json",
       "bytes": 2346,
-      "sha256": "1cd012c480f6ba077fa54076823f18fbb4f4a07e255654f1550e63d39f8a1427"
+      "sha256": "db72854082f1365779b4bcff0abf217a2b1ee9414ba1c4ae19879f3c9bcfaaef"
     },
     {
       "path": "evidence/final-functional-refresh.json",
@@ -2374,6 +2379,171 @@
       "sha256": "2b5eb0c9a551eb74116a4ede1b061a7df23b941dd6fa0539d5433a0f67d060c1"
     },
     {
+      "path": "evidence/raw/final-ci/py3.12-delivery/build.log.gz",
+      "bytes": 23001,
+      "sha256": "9289edb4f104753fe9c2af28cfbe2a0b237bb8b6415c20c3edac583696fcac66"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/capability-reference.log.gz",
+      "bytes": 20,
+      "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/clean-venv.log.gz",
+      "bytes": 20,
+      "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/demo.txt.gz",
+      "bytes": 9887,
+      "sha256": "e4f5a0d01bc8421b2948b856ebaa9915ce8336c6e1cca7d8364d470c6c443d5e"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/dist/SHA256SUMS",
+      "bytes": 180,
+      "sha256": "2358a0c31b915fe44837e97c319530b8552bcd417974c35a36a859552f91685e"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/dist/raven.spdx.json",
+      "bytes": 2299,
+      "sha256": "9eb17f7bb42629948c4217da4f29872f66bb2db6ca1028d66b58e48d3997db45"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/dist/release-inventory.json",
+      "bytes": 624918,
+      "sha256": "f842af50e693198fe59f065d7f0da16bc8a90adc948afc514014cb1be559fff4"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/doctor-fake.log.gz",
+      "bytes": 611,
+      "sha256": "a62ad1d780e44f581504551d91b2f4c0095fdfc2462013106334ae992526638a"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/fake-report.log.gz",
+      "bytes": 50,
+      "sha256": "75e53385222dad6badd0b23ba683ae03fbff55bc57aad19ee9ed3d8a7c6ed91d"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/flagship.json",
+      "bytes": 5200,
+      "sha256": "b6fb4a0756c49ce96a702b6c5538023b2a65a91651373fab13a7612e4bdab2bf"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/flagship.log.gz",
+      "bytes": 83,
+      "sha256": "5cc75091363db8372225069b0f8516ff8726f6ca027dc4b58d4b21c43b7749b4"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/gates.json",
+      "bytes": 16655,
+      "sha256": "d805c6fb13e8d0e9f2a8273ab2ce19e40e0f5f8809be4b1cdd3464053d7460b0"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/heavy-mcp-help.log.gz",
+      "bytes": 256,
+      "sha256": "cd468eda9c3c7e37cb316f8a86068d45c86aceca60688c9e37348aa224c3d713"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/heavy-plan.log.gz",
+      "bytes": 2717,
+      "sha256": "9245112330115715404f1c5c1bd521eb10d3b0d7009a79967712943aa8cb9f21"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/install-terminal.log.gz",
+      "bytes": 482,
+      "sha256": "21d6ac8e4786b7211fb41f1a41b696ab7fc56d62b4f4c837c15591341ff4e28b"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/install-wheel.log.gz",
+      "bytes": 224,
+      "sha256": "006f9ea922b958d14df5da99dfa8f47338765b7b88bda573253ae6308e31c355"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/installed-location.log.gz",
+      "bytes": 91,
+      "sha256": "9326295ed3ee76cabd0fe37892412dfb81a7b9b7a299dc3e5346b61d1b42e330"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/inventory-create.log.gz",
+      "bytes": 67,
+      "sha256": "33e079f888a037ab8fcb841c5834b3192d6715d1a0521eff734b867d10a5b97f"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/inventory-policy.log.gz",
+      "bytes": 99,
+      "sha256": "e3f723cbc2a2f58bbe30c9ba300a46047c0cdb0ff36bb893cab2d0f73f4789d7"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/inventory-verify.log.gz",
+      "bytes": 77,
+      "sha256": "e3e8199ac02106962caa2b7a0dace1aae30c32d7cb9f07cc7f1b3dd680d4b11f"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/light-doctor.log.gz",
+      "bytes": 391,
+      "sha256": "ae3c1ce78236f284e4d66936d630e6cedaa82a532dc73a1edb2e443751d28b95"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/light-mcp-help.log.gz",
+      "bytes": 256,
+      "sha256": "cd468eda9c3c7e37cb316f8a86068d45c86aceca60688c9e37348aa224c3d713"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/mcp-help.log.gz",
+      "bytes": 256,
+      "sha256": "cd468eda9c3c7e37cb316f8a86068d45c86aceca60688c9e37348aa224c3d713"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/offline-setup.log.gz",
+      "bytes": 897,
+      "sha256": "0ad7440d7b075a0387fc6c6c7e2e892d22e7832ef2bd045e3cf828b0e3d6e3e6"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/operation-reference.log.gz",
+      "bytes": 20,
+      "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/qualify-offline.log.gz",
+      "bytes": 9726,
+      "sha256": "d929f91abecd2d57e7788a86992310ed25a7e884b252a3062f3d564e40ae7c1e"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/quality.log.gz",
+      "bytes": 446,
+      "sha256": "8398a52ec17ca67ae528a25853c5bfc92e0baafac73f037d90fe30a5daee3003"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/schemas.log.gz",
+      "bytes": 483,
+      "sha256": "3f5d6cec776fbaf827ce883928456d5c4ef19d17a929e9ba80c201cdee27f35c"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/sdist-fixtures.log.gz",
+      "bytes": 52,
+      "sha256": "d6624693092afc71d7416dd27d3604cb54dec51219e153e568789054284e835e"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/sdist-location.log.gz",
+      "bytes": 20,
+      "sha256": "f61f27bd17de546264aa58f40f3aafaac7021e0ef69c17f6b1b4cd7664a037ec"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/sources.json",
+      "bytes": 95556,
+      "sha256": "0596770ab35219fd5709308dd20fbefca9a50526062c3cec1e1feb9ed23d4305"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/terminal-selftest.log.gz",
+      "bytes": 297,
+      "sha256": "f4edfca6f29261a7961f8366f07ee351784a8960a50e667377fe09ca6542e49d"
+    },
+    {
+      "path": "evidence/raw/final-ci/py3.12-delivery/wheel.txt.gz",
+      "bytes": 9893,
+      "sha256": "6fab5c8386a82b64f7e201e2d93f4c6d578dda2a9e08bf16feed302a003d6489"
+    },
+    {
       "path": "evidence/raw/final-ci/py3.12-r2/build.log.gz",
       "bytes": 20517,
       "sha256": "ea17b7663c73bd8ca1e5afe105995bcbc347f21fb57bcc466fa15ac981138cc7"
@@ -3174,6 +3344,11 @@
       "sha256": "459d795e3e3e3569bba7cadd92b1312dcb99d43d07e774ef3073aa0ff981bba7"
     },
     {
+      "path": "evidence/raw/finalize_delivery.py.txt",
+      "bytes": 4482,
+      "sha256": "d0b4b5381793162a63b3ae25e563c411aad24523437ffaf2813bfd3ba4b7b212"
+    },
+    {
       "path": "evidence/raw/finalize_handback.py.txt",
       "bytes": 6737,
       "sha256": "54794305172e667caab0df810eefe592b43b1d90b8ac23a29aaa642eebec7116"
@@ -3895,8 +4070,8 @@
     },
     {
       "path": "progress.md",
-      "bytes": 14866,
-      "sha256": "52857e078305246d4bb49d1edbfbe20a1fc365b3d6d330d7183e4c6b4a9d3565"
+      "bytes": 15443,
+      "sha256": "fb2b12d0aeb3212d4840c43e20714e6ba0c78935c9bfd7cf8e604240ef3c7be5"
     },
     {
       "path": "refresh-coverage.py",
