@@ -172,12 +172,20 @@ def test_once_and_watch_keep_theme_and_narrow_width(monkeypatch):
     views = SimpleNamespace(compose=compose)
     assert screen.once_text(app, views, store, None, 40, True) == "\033[1mstatus\033[0m"
     stdout = io.StringIO()
+    sleeps = []
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        if len(sleeps) == 2:
+            raise KeyboardInterrupt
+
     monkeypatch.setattr(screen.sys, "stdout", stdout)
     monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback: SimpleNamespace(columns=40, lines=12))
-    monkeypatch.setattr(screen.time, "sleep", lambda seconds: (_ for _ in ()).throw(KeyboardInterrupt))
+    monkeypatch.setattr(screen.time, "sleep", sleep)
     screen.run_watch(app, views, None, store, None, {}, 1, True)
     assert widths[-1] == (40, None) and app.width == 40
-    assert stdout.getvalue() == "\033[1mstatus\033[0m\n"
+    assert widths[-2:] == [(40, None), (40, None)] and sleeps == [1, 1]
+    assert stdout.getvalue() == "\033[1mstatus\033[0m\n" * 2
 
 
 def test_animated_watch_updates_only_changed_lines_and_restores_cursor(monkeypatch):

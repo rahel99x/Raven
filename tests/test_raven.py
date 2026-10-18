@@ -254,6 +254,9 @@ def test_flags_thresholds_and_once_outputs(tmp_path, monkeypatch):
 
 # ------------------------------------------------------------------------------------------------ the processes
 def test_cli_once_json_and_watch_from_the_simulated_cluster():
+    import selectors
+    import signal
+
     env = dict(os.environ, COLUMNS="150", USER="alex")
     r = subprocess.run([sys.executable, DASH, "--fake", "--once", "--ascii", "--no-color", "--no-state", "--width", "150"], env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
@@ -262,8 +265,55 @@ def test_cli_once_json_and_watch_from_the_simulated_cluster():
     assert "[Launch]" in r.stdout.splitlines()[0] and "Queue:" in r.stdout.splitlines()[0]
     r = subprocess.run([sys.executable, DASH, "--fake", "--json", "--no-state"], env=env, capture_output=True, text=True)
     assert r.returncode == 0 and json.loads(r.stdout)["account"]["account"] == "lab_01"
-    r = subprocess.run(["timeout", "-s", "INT", "2", sys.executable, DASH, "--fake", "--watch", "--ascii", "--no-state", "--interval", "0.5"], env=env, capture_output=True, text=True)
-    assert r.stdout.count("Raven Light/slurm - alex") >= 2 and "\x1b" not in r.stdout and "Traceback" not in r.stderr
+    output = {"stdout": bytearray(), "stderr": bytearray()}
+    title = b"Raven Light/slurm - alex"
+    with selectors.DefaultSelector() as ready:
+        process = subprocess.Popen(
+            [sys.executable, DASH, "--fake", "--watch", "--ascii", "--no-state", "--interval", "0.5"],
+            env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0, start_new_session=True,
+        )
+        try:
+            ready.register(process.stdout, selectors.EVENT_READ, "stdout")
+            ready.register(process.stderr, selectors.EVENT_READ, "stderr")
+
+            def receive_until(predicate, deadline, label):
+                while not predicate():
+                    remaining = deadline - time.monotonic()
+                    assert remaining > 0 and ready.get_map(), (label, process.poll(), output)
+                    for key, _ in ready.select(remaining):
+                        data = os.read(key.fd, 65536)
+                        if not data:
+                            ready.unregister(key.fileobj)
+                            continue
+                        output[key.data].extend(data)
+                        assert sum(map(len, output.values())) <= 512 * 1024, "Watch output exceeded fixture bound"
+
+            # Startup/import time is separate from repaint cadence. A pipe may
+            # coalesce frames, so exact sleep values are checked in test_palette.
+            receive_until(lambda: title in output["stdout"], time.monotonic() + 10, "First watch frame")
+            receive_until(lambda: output["stdout"].count(title) >= 2, time.monotonic() + 3, "Second watch frame")
+            os.killpg(process.pid, signal.SIGINT)
+            shutdown = time.monotonic() + 5
+            receive_until(lambda: not ready.get_map(), shutdown, "Watch shutdown")
+            process.wait(timeout=max(0, shutdown - time.monotonic()))
+            assert process.returncode == 0, output
+            assert output["stdout"].count(title) >= 2 and b"\x1b" not in output["stdout"] and b"Traceback" not in output["stderr"]
+        finally:
+            if process.poll() is None:
+                for signum in (signal.SIGTERM, signal.SIGKILL):
+                    try:
+                        os.killpg(process.pid, signum)
+                    except ProcessLookupError:
+                        pass
+                    try:
+                        process.wait(timeout=2)
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue
+                assert process.poll() is not None, "Owned watch process did not exit after SIGKILL"
+            process.stdout.close()
+            process.stderr.close()
 
 
 @pytest.mark.skipif(os.name != "posix", reason="needs a POSIX pseudo-terminal")
