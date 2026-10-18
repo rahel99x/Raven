@@ -1,7 +1,7 @@
+import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
 import signal
 import socket
 import subprocess
@@ -76,15 +76,43 @@ def test_foreign_owned_original_component_is_refused(tmp_path, monkeypatch):
         M.file_identity(link)
 
 
-def test_standard_system_alternatives_remain_trusted():
-    path = shutil.which("mpicc") or shutil.which("python3")
-    if not path:
-        pytest.skip("No system tool to inspect")
-    if Path(path).lstat().st_uid not in {0, os.getuid()}:
-        with pytest.raises(ValueError, match="writable"):
-            M.file_identity(path)
-    else:
-        assert len(M.file_identity(path)["sha256"]) == 64
+@pytest.mark.parametrize("absolute_target", [False, True])
+def test_trusted_alternatives_chain_retains_file_identity(tmp_path, absolute_target):
+    # PATH may select a CI toolcache with writable ancestors, or a Python
+    # binary larger than the review bound. Model the alternatives layout with
+    # real files and symlinks, independently of the host's installed tools.
+    binary = tmp_path / "usr/lib/openmpi/bin/mpicc"
+    binary.parent.mkdir(parents=True)
+    binary.write_bytes(b"reviewed compiler fixture")
+    binary.chmod(0o755)
+    alternative = tmp_path / "etc/alternatives/mpicc"
+    alternative.parent.mkdir(parents=True)
+    alternative.symlink_to(binary if absolute_target else "../../usr/lib/openmpi/bin/mpicc")
+    command = tmp_path / "usr/bin/mpicc"
+    command.parent.mkdir()
+    command.symlink_to("../../etc/alternatives/mpicc")
+
+    identity = M.file_identity(command)
+    assert identity["path"] == str(command)
+    assert identity["sha256"] == hashlib.sha256(binary.read_bytes()).hexdigest()
+    assert identity["inode"] == str(binary.stat().st_ino)
+    assert identity["device"] == str(binary.stat().st_dev)
+    resolved, chain = M.authority_chain(command)
+    assert resolved == binary
+    assert [(row[0], row[-1]) for row in chain if row[-1]] == [
+        (str(command), "../../etc/alternatives/mpicc"),
+        (str(alternative), str(binary) if absolute_target else "../../usr/lib/openmpi/bin/mpicc"),
+    ]
+    # The owned leaf alone is insufficient: every prefix remains authoritative.
+    for directory in (command.parent, alternative.parent, binary.parent):
+        mode = directory.stat().st_mode & 0o777
+        try:
+            directory.chmod(0o775)
+            with pytest.raises(ValueError, match="writable"):
+                M.file_identity(command)
+        finally:
+            directory.chmod(mode)
+        assert M.file_identity(command) == identity
 
 
 def test_changed_toolchain_plan_is_refused_before_runtime(tmp_path, monkeypatch):

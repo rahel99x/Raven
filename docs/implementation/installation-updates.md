@@ -88,3 +88,17 @@ dates, messages, and source trees were preserved. The
 [identity mapping](publication-identity-map.json) connects the recorded
 qualification commits to their public equivalents; historical receipts retain
 the exact hashes that were tested.
+
+The initial published CI run
+([39097589510](https://github.com/rahel99x/Raven/actions/runs/39097589510))
+exposed an MPI trust-test fixture that selected an ambient `PATH` executable
+and assumed its complete path was trusted from its leaf ownership alone.
+GitHub's selected Python toolcache path failed the complete ownership and
+write-permission checks. The fixture now constructs real, owned alternatives symlinks with
+both relative and absolute targets, asserts exact content and filesystem
+identity, and verifies rejection of writable original, intermediate, and target
+directories. Production trust policy is unchanged. This also removes dependence
+on an arbitrary host executable fitting the 4 MiB review bound.
+The focused command `python -m pytest -q tests/test_mpi_health.py` passed on
+each of Python 3.10–3.14: 11 passed, four explicitly gated MPI runtime tests
+skipped. These fixture checks do not qualify a live MPI installation.
