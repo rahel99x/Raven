@@ -13,7 +13,10 @@ def backend(host='example.invalid', **kwargs):
     return SshBackend(host, opts=['-F', 'none', *kwargs.pop('opts', [])], **kwargs)
 
 
-def test_equivalent_connections_share_private_option_scoped_paths():
+def test_equivalent_connections_share_private_option_scoped_paths(tmp_path, monkeypatch):
+    # Other clients may legitimately hold wrappers in the per-user root.
+    # Observe this fixture's cleanup in its own otherwise-real private root.
+    monkeypatch.setattr(ssh_control.tempfile, 'gettempdir', lambda: str(tmp_path))
     first, second = backend(), backend()
     first.argv(['squeue'])
     second.argv(['sacct'])
