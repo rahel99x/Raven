@@ -33,6 +33,9 @@ not archives of ignored datasets or complete virtual environments. Keep retained
 managed releases if their backups may be needed. Reversion requires the bound
 source checkout and a valid retained installation; it does not adopt an
 unrelated checkout or move a pipx environment.
+Installation and command directories inside the source checkout are rejected
+before maintenance. This prevents source replacement from removing the running
+environment or public launchers before a replacement build succeeds.
 
 Pipx retains its own replacement and failure behavior; it does not acquire the
 managed installer's atomic switch. Build verification checks revision and bounded

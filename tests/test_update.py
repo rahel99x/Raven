@@ -2,6 +2,7 @@
 
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -568,3 +569,25 @@ def test_pipx_source_change_is_not_recorded_as_a_verified_update(
     )
     with pytest.raises(U.UpdateError, match="Source changed"):
         U.install_updated(pipx_install, pipx_install.source, "b" * 40)
+
+
+@pytest.mark.parametrize("kind", ["managed", "pipx"])
+@pytest.mark.parametrize("field", ["prefix", "bin_dir"])
+@pytest.mark.parametrize(
+    "command", [["update", "--overwrite"], ["revert", "/saved/backup"]]
+)
+def test_source_contained_installation_paths_stop_before_any_mutation(
+    managed, monkeypatch, capsys, kind, field, command
+):
+    installation, _ = managed
+    # Include '..' to ensure lexical spelling cannot bypass containment.
+    unsafe = installation.source / "nested/../owned-commands"
+    altered = replace(installation, kind=kind, **{field: unsafe})
+    monkeypatch.setattr(U, "discover", lambda *a: altered)
+    monkeypatch.setattr(U, "_lock", lambda *a: pytest.fail("created maintenance lock"))
+    monkeypatch.setattr(U, "_update", lambda *a: pytest.fail("changed source"))
+    monkeypatch.setattr(U, "_revert", lambda *a: pytest.fail("restored source"))
+    assert U.cli(command) == 2
+    assert "outside the checkout" in capsys.readouterr().err
+    assert all((installation.bin_dir / name).is_symlink() for name in U.COMMANDS)
+    assert (installation.prefix / "current").resolve() == installation.release

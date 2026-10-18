@@ -285,6 +285,9 @@ Otherwise it prints a reinstall path rather than guessing. Ordinary virtual
 environments, system installations, administrator-owned or other-user pipx
 installations, and packages installed from a wheel or package index remain with
 their existing installer. The updater does not replace them automatically.
+The installation directory and command directory must also be outside the
+source checkout. If either is inside it, use the original installer to choose
+external destinations first; maintenance stops before changing that layout.
 
 The default XDG configuration and `RAVEN_CONFIG` are recognized automatically.
 If you keep additional configuration files inside the checkout, identify each

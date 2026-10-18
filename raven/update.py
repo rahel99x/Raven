@@ -279,6 +279,20 @@ def protected_paths(extra=()):
     return tuple(path.expanduser().absolute() for path in result)
 
 
+def _validate_layout(installation):
+    source = Path(os.path.abspath(installation.source))
+    for label, path in (
+        ("installation directory", installation.prefix),
+        ("command directory", installation.bin_dir),
+    ):
+        if Path(os.path.abspath(path)).is_relative_to(source):
+            raise UpdateError(
+                "The " + label + " is inside the source checkout. "
+                "Automatic update/revert cannot preserve that layout. "
+                "Use the original installer to select destinations outside the checkout first."
+            )
+
+
 @contextmanager
 def _lock(directory, filename):
     with directory_fd(directory, create=True) as parent:
@@ -699,24 +713,27 @@ def cli(argv=None):
         except ValueError:
             pass  # Embedders may invoke maintenance outside the main thread.
         installation = discover(args.source)
+        _validate_layout(installation)
         action = _update if args.command == "update" else _revert
         if args.plan or getattr(args, "check", False):
             return action(args, installation)
         print(
-            "Close other Raven dashboards and owned workers before updating; this command does not terminate jobs.",
+            "Close other Raven dashboards and owned workers before maintenance; this command does not terminate jobs.",
             flush=True,
         )
         with _lock(installation.control_directory, ".update.lock"):
             return action(args, installation)
     except (KeyboardInterrupt, MaintenanceInterrupted) as exc:
         print(
-            "Raven update interrupted. Retained releases and recovery backups are preserved.",
+            "Raven "
+            + args.command
+            + " interrupted. Retained releases and recovery backups are preserved.",
             file=sys.stderr,
         )
         _backup_message({"backup": getattr(exc, "backup", None)})
         return 130
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
-        print("Raven update: " + str(exc), file=sys.stderr)
+        print("Raven " + args.command + ": " + str(exc), file=sys.stderr)
         backup = getattr(exc, "backup", None)
         if backup:
             _backup_message({"backup": backup})
