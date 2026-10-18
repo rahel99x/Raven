@@ -3,6 +3,7 @@ import json
 import os
 import shlex
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -36,14 +37,26 @@ def entries(run):
     return json.loads((run / 'trace/index.json').read_text())['sources']
 
 
-def recordings(run):
+def recordings(run, *, wait_for_close=False):
+    # Forkserver/resource-tracker helpers outlive the application shell briefly.
+    # Await their receipts only when a test requires final coverage; never
+    # rewrite a live receipt or interpret a CLOSED manifest as a published index.
+    sources = entries(run)
+    deadline = time.monotonic() + 5
+    while wait_for_close and any(entry.get('schema') == 'raven.trace/v1'
+                                 and entry.get('status') == 'recording' for entry in sources):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(.01, remaining))
+        sources = entries(run)
     found = []
-    for entry in entries(run):
+    for entry in sources:
         if entry.get('schema') != 'raven.trace/v1':
             continue
         reader = TraceReader(run / entry['path'])
         snapshot = reader.refresh()
-        while not snapshot['caught_up']:
+        while not snapshot['caught_up'] and snapshot['status'] != 'INVALID':
             snapshot = reader.refresh()
         assert snapshot['status'] != 'INVALID', snapshot['warnings']
         found.append((entry, snapshot))
@@ -139,9 +152,12 @@ if __name__ == '__main__':
 ''')
     run, result = launch(tmp_path, python(['application.py']), '--trace')
     assert result['exit_code'] == 0
-    items = recordings(run)
+    items = recordings(run, wait_for_close=True)
     assert len(items) >= 3, entries(run)
-    assert all(e['status'] == 'complete' for e,_ in items)
+    assert all(e['status'] == 'complete' for e,_ in items), [
+        {'entry': entry, 'state': snapshot['manifest']['state'], 'warnings': snapshot['warnings']}
+        for entry, snapshot in items
+    ]
     assert any(s['identity']['role']=='helper' for _,s in items)
     reasons = ' '.join(e.get('reason','') for e in entries(run))
     assert 'disables environment/site' in reasons and 'replaces PYTHONPATH' in reasons
@@ -242,3 +258,57 @@ def test_unsupported_adapter_is_recorded_without_replacing_application_outcome(t
     run,result=launch(tmp_path,python(['-c','raise SystemExit(7)']),'--trace','--trace-adapter','native-cooperative')
     assert result['exit_code']==7 and not recordings(run)
     assert any('native/cooperative integration' in e.get('reason','') for e in entries(run))
+
+
+def test_delayed_forkserver_shutdown_keeps_live_receipt_until_finalization(tmp_path):
+    # Deliberately delay only the server's exit, after the application has
+    # completed. Older Python workers inherit atexit handlers, hence the PID
+    # guard. The release file keeps this deterministic without timed sleeps.
+    (tmp_path / 'delay_preload.py').write_text("""import atexit, os, time
+from pathlib import Path
+owner = os.getpid()
+root = Path(__file__).parent
+def delay_shutdown():
+    if os.getpid() != owner:
+        return
+    marker = root / 'shutdown-entered.tmp'
+    marker.write_text(str(owner))
+    marker.replace(root / 'shutdown-entered')
+    deadline = time.monotonic() + 15
+    while not (root / 'shutdown-release').exists() and time.monotonic() < deadline:
+        time.sleep(.01)
+atexit.register(delay_shutdown)
+""")
+    (tmp_path / 'application.py').write_text("""import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
+def work(): return 42
+if __name__ == '__main__':
+    mp.set_forkserver_preload(['delay_preload'])
+    with ProcessPoolExecutor(1, mp_context=mp.get_context('forkserver')) as pool:
+        assert pool.submit(work).result() == 42
+""")
+    try:
+        run, result = launch(tmp_path, python(['application.py']), '--trace',
+                             env={'PYTHONPATH': str(tmp_path)})
+        assert result['exit_code'] == 0
+        deadline = time.monotonic() + 5
+        entered = tmp_path / 'shutdown-entered'
+        while not entered.exists() and time.monotonic() < deadline:
+            time.sleep(.01)
+        assert entered.exists(), entries(run)
+        server_pid = int(entered.read_text())
+        sources = entries(run)
+        server = next(entry for entry in sources if entry.get('schema') == 'raven.trace/v1'
+                      and entry.get('process', {}).get('pid') == server_pid)
+        assert server['status'] == 'recording', server
+        assert json.loads((run / server['path']).read_text())['state'] == 'OPEN'
+        assert any(entry.get('process', {}).get('role') == 'main'
+                   and entry.get('status') == 'complete' for entry in sources), sources
+    finally:
+        (tmp_path / 'shutdown-release').touch()
+    items = recordings(run, wait_for_close=True)
+    assert len(items) >= 3, entries(run)
+    assert all(entry['status'] == 'complete' and snapshot['complete'] for entry, snapshot in items), [
+        {'entry': entry, 'state': snapshot['manifest']['state'], 'warnings': snapshot['warnings']}
+        for entry, snapshot in items
+    ]

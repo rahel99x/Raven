@@ -267,11 +267,45 @@ safety guard applied after client timing; it does not relabel earlier samples.
 | Unqualified gate | Evidence / unblock condition |
 | --- | --- |
 | Real CPU PyTorch/DDP, DataLoader, GPU/NCCL | PyTorch is absent. Install a compatible CPU PyTorch and rerun `tests/test_instrumentation_qualification.py` for gloo; separately exercise DataLoader and CUDA/NCCL on the intended hardware. Rank-shaped fixtures are unit evidence only. |
-| Slurm, multi-node, shared filesystem and module-system behavior | No live scheduler/allocation or selected target cluster was available. Run the documented unedited-script, MPI/DDP and environment-preservation examples inside an authorized site allocation and retain receipts. |
+| Automatic instrumentation under Slurm, multi-node, shared filesystem and module-system behavior | The disposable Slurm lifecycle qualification described below covers scheduler/accounting integration, not automatic instrumentation inside an allocation. Run the documented unedited-script, MPI/DDP and environment-preservation examples inside an authorized site allocation and retain receipts. |
 | Python interpreters below 3.10 | The startup source has a fail-open unsupported-version path and a reporting-interpreter gap receipt; no older interpreter was available for execution qualification. |
 | Arbitrary startup bypass and unsupported launchers | `-I`/`-E`/`-S`, embedded interpreters and replaced environments may bypass attachment. Observed parent requests and aggregate unknown coverage are reported; complete shell-child enumeration needs a separate observer. |
 | Deployed UI/user/scientific outcomes | Local terminal/PTY and regression evidence passed; actual emulator, external-user task completion and scientific outcomes require separate evaluation. |
-| Hosted CI on the delivery branch | CI now collects bounded instrumentation fidelity/performance receipts and retains the existing Python 3.10–3.14, packaging and schema matrix. It has not run remotely because this work has not been published. |
+| Hosted CI on the delivery revision | CI collects bounded instrumentation fidelity/performance receipts and retains the Python 3.10–3.14, packaging and schema matrix. The initial publication checks and a test synchronization correction are recorded below; the corrected revision must pass the complete matrix before promotion to `main`. |
+
+### Publication qualification
+
+The first [hosted matrix](https://github.com/rahel99x/Raven/actions/runs/39164754314)
+tested implementation commit `e0476bab192f2efbc5ec41a7a65eca85487ed3b8`.
+Python 3.10, 3.11, 3.12 and 3.13 passed their complete workflows, including
+packaging and installed-command checks. Python 3.14 exposed an asynchronous
+helper-shutdown assumption in a test: a forkserver's journal was already closed,
+but its final index receipt had not yet been published when the test inspected it.
+The program succeeded, and the receipt subsequently became complete. This was
+reproduced locally on Python 3.14.8.
+
+The correction changes only test synchronization: tests requiring final coverage
+wait up to five seconds for active recording receipts before applying the same
+completeness assertions. Invalid journals still fail immediately. A deterministic
+forkserver exit gate verifies that a live helper retains its recording status
+after the application finishes, then publishes a complete journal and receipt
+after release. Its ready marker is published atomically. No production shutdown
+delay, forced completion, or runtime behavior change was introduced. The 26-test
+launch-tracing suite passed on Python 3.10–3.14, the final two affected tests passed
+on all five versions, and a Python 3.14 stress check passed 20 consecutive runs.
+
+The [real-Slurm workflow](https://github.com/rahel99x/Raven/actions/runs/39164814882)
+also passed on `e0476bab` for versions 23.02.8, 23.11.11, 24.05.8, 24.11.7 and
+26.05.5. Its 155 recorded lifecycle checks and 492 command-output hashes were
+verified against the uploaded manifests and exact source hashes. These disposable
+container checks cover scheduler/accounting readers, lab accounts, arrays,
+requeue, controller reconnect, reused job IDs and supported guarded cancellation.
+Older-version limitations remain explicit. This does not qualify GPU execution,
+multi-node deployments, production SSH or automatic tracing inside Slurm jobs.
+
+The accompanying evidence JSON preserves the original implementation snapshot;
+its publication follow-up identifies the test-only correction. The runtime and
+measured benchmark sources remain unchanged.
 
 ### Installation and use
 

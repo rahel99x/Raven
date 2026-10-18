@@ -84,13 +84,73 @@
   ],
   "limits": [
     "Full-fidelity tight-call tracing exceeds requested 2x overhead target.",
-    "PyTorch/DDP and GPU/NCCL unavailable; live Slurm/multi-node/shared-filesystem/remote SSH not qualified.",
-    "Hosted CI has not run on unpublished feature branch."
+    "PyTorch/DDP and GPU/NCCL unavailable; live Slurm/multi-node/shared-filesystem/remote SSH not qualified."
   ],
   "optional_runtime_receipt": "../benchmarks/automatic-instrumentation-qualification.json",
+  "publication_followup": {
+    "checks": [
+      {
+        "command": "pytest -q tests/test_launch_trace_auto.py",
+        "passed_per_version": 26,
+        "python": [
+          "3.10",
+          "3.11",
+          "3.12",
+          "3.13",
+          "3.14"
+        ],
+        "scope": "Before final atomic-ready-marker refinement"
+      },
+      {
+        "command": "pytest -q tests/test_launch_trace_auto.py -k \"subprocess_pool_threads_async or delayed_forkserver\"",
+        "passed_per_version": 2,
+        "python": [
+          "3.10",
+          "3.11",
+          "3.12",
+          "3.13",
+          "3.14"
+        ],
+        "scope": "Final test source"
+      },
+      {
+        "python": "3.14.8",
+        "scope": "Repeated process-pool launch and delayed-shutdown checks",
+        "successful_repetitions": 20
+      }
+    ],
+    "correction": "Bounded test-only wait for final receipts with unchanged completeness assertions; deterministic gated-forkserver regression and atomically published ready marker. No production changes.",
+    "delivery_gate": "The corrected revision must pass the complete hosted Python 3.10\u20133.14 workflow before promotion to main.",
+    "initial_matrix_passed_python": [
+      "3.10",
+      "3.11",
+      "3.12",
+      "3.13"
+    ],
+    "initial_matrix_url": "https://github.com/rahel99x/Raven/actions/runs/39164754314",
+    "initial_python314_issue": "A forkserver journal was CLOSED while its final index receipt was briefly still recording. Reproduced locally on Python 3.14.8; the receipt subsequently became complete.",
+    "slurm": {
+      "checks_passed": 155,
+      "command_output_hashes_verified": 492,
+      "revision": "e0476bab192f2efbc5ec41a7a65eca85487ed3b8",
+      "scope": "Disposable real controller/compute/accounting lifecycle. GPU, multinode, production SSH and automatic tracing inside Slurm allocations remain unqualified.",
+      "url": "https://github.com/rahel99x/Raven/actions/runs/39164814882",
+      "versions": [
+        "23.02.8",
+        "23.11.11",
+        "24.05.8",
+        "24.11.7",
+        "26.05.5"
+      ]
+    },
+    "test_sha256": {
+      "tests/test_launch_trace_auto.py": "dda730305462c7ad729d15430a08530e67a0e9104d3aed3eea42e5e88de51702"
+    }
+  },
   "schema": "raven.instrumentation-integration-evidence/v1",
+  "snapshot_revision": "e0476bab192f2efbc5ec41a7a65eca85487ed3b8",
   "source_fingerprint": "f98618ccec297928867ec1892ccecebcdb2b1a3597965cd6e3aa06dd3fe57d6c",
-  "source_identity": "Changed runtime/test/schema/harness bytes; baseline supplies unchanged files. Same runtime bytes verified in installed wheel. Later documentation-only edits do not alter this identity.",
+  "source_identity": "Original implementation runtime/test/schema/harness bytes at snapshot_revision; baseline supplies unchanged files. The publication follow-up changes only tests and documentation, and identifies its test bytes separately. Runtime and benchmark source identities are unchanged.",
   "source_sha256": {
     ".github/workflows/tests.yml": "792bb4e3e64da9534ededadcf7125f04139e2220c3f8a4f14b88814675be97d0",
     "docs/schemas/automation-settings.v1.schema.json": "6707cf0cd239bcdb8694b028c735494d70d5e015a2ee617f9554c6be8f0034bf",
