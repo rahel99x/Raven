@@ -115,3 +115,12 @@ after installing `.[dev,terminal]`: all six installation, removal, reinstallatio
 upgrade, and downgrade scenarios passed. The following managed and pipx
 update/revert qualifier also passed all 31 checks with that environment's
 commands on `PATH`.
+
+The next [CI run](https://github.com/rahel99x/Raven/actions/runs/39099432845)
+completed successfully on Python 3.11–3.14, including the Python 3.12 extraction
+and maintenance gates. Python 3.10 exposed a test cleanup race: a process could
+exit after opening `/proc/PID/stat` but before reading it, yielding
+`ProcessLookupError` instead of `FileNotFoundError`. The test's liveness helper
+now treats either missing-process result as exited. Timeout, owned-helper
+termination, and unrelated-process survival assertions are unchanged, as is
+production code. All 32 source-update tests passed on Python 3.10 and 3.12.

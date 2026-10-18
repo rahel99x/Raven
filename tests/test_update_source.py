@@ -445,7 +445,8 @@ def test_exited_git_leader_cannot_strand_helper_holding_stdout(checkout, tmp_pat
     def alive(pid):
         try:
             return Path(f"/proc/{pid}/stat").read_text().split(") ", 1)[1].split()[0] != "Z"
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
+            # Exit can remove the entry before open or invalidate it during read.
             return False
     child = None
     try:
