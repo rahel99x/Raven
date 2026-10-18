@@ -16,6 +16,12 @@ Replace the example cluster, job ID, execution attempt, and paths before
 using them for a real job. An attempt is the exact submit/start identity, not
 only the reusable Slurm job number.
 
+For live Python producers, start with the
+[metrics and automatic-tracing examples](../automated-reporting/README.md).
+They include standard-library process pools, optional real CPU DDP, and mpi4py.
+The metrics API reports explicit values and reductions; it does not convert
+these platform fixtures into live measurements or qualify an untested site.
+
 ## Inspect and exchange evidence
 
 Open **File → Research and cluster operations → Platform**, or use these Raven

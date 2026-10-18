@@ -84,7 +84,7 @@ capture paths; it does not silently attach an arbitrary debugger.
 | 14 Incident reproduction | Existing replay, input traces, source fixtures and sequential input regressions; bounded support evidence and qualification reports. | **Partial:** no deterministic recording of every OS scheduling event or arbitrary external application. |
 | 15 Evidence records | `evidence` reads versioned identity, provenance, clock, unit, coverage and integrity records. | A valid schema checks supplied evidence; it cannot prove a producer measured correctly. |
 | 16 Capability manifests | Adapter/source capabilities and site policy admission distinguish unsupported and unavailable observations. | Claims must be qualified against the installed runtime, build and site. |
-| 17 Instrumentation federation | `diagnostic-recipe` checks explicit tool capabilities and conflicts. `raven trace mpi --source` emits a scoped C PMPI wrapper for supported world-communicator collectives. | **Partial:** no universal Caliper/OMPT/Kokkos/GPU injector. PMPI supports its declared C signatures/rank limit; unsupported operations produce gaps. |
+| 17 Instrumentation federation | `raven launch --trace` provides automatic Python attachment with declared gaps, project filtering, per-process/rank coverage and bounded block journals. `diagnostic-recipe` checks tool capabilities/conflicts; `raven trace mpi --source` emits a scoped C PMPI wrapper. | **Partial:** environment/startup propagation must be verified; legacy Python needs explicit consent. No universal native/GPU injector. PMPI retains its declared C signatures/rank limit. |
 | 18 Adapter SDK | `adapter` inspects pinned external manifests; reviewed describe/validate/run use bounded NDJSON, deadlines and process-group cleanup. | Installed code remains trusted; isolation is not a security sandbox. |
 | 19 Site telemetry | `site-telemetry` inspects or explicitly queries Prometheus range data with exact cluster/job/attempt labels, bounded HTTP responses and optional site policy/shared cache. | **External gate:** target-site authentication, deployment and label mappings; no blanket Jobstats, ClusterCockpit, LLview or slurmrestd client certification. |
 | 20 Portable records | `research-portable` imports supported Perfetto JSON, Caliper JSON, OTLP JSON spans and literal-key Workflow Run RO-Crate; reviewed bundle export. | Binary Perfetto/protobuf, arbitrary Caliper formats and general JSON-LD expansion are not implied. |
@@ -141,8 +141,10 @@ target-system support remain subject to the corresponding evaluation gates.
 
 ## Prepared tracing contract
 
-The recording pipeline uses **prepared, scoped instrumentation**. Preferred
-Python recording uses CPython 3.12+ monitoring events.
+The recording pipeline uses **scoped instrumentation**. `raven launch --trace`
+automatically attaches Python processes that inherit the supplied site hook,
+with a separate journal and coverage receipt per process. Preferred
+Python recording uses CPython 3.12+ monitoring events and project-file filtering.
 An explicit older-Python profile fallback has weaker event semantics. Native
 recording uses explicit instrumentation and private inherited local channels.
 
@@ -153,6 +155,14 @@ per-event durable acknowledgement guarantee, automatic global MPI launch,
 GPU-device stack recording, or retrospective history from an unprepared program.
 The reviewed Python snapshot path verifies supported local allocation/process
 identity and is a non-atomic snapshot, not complete execution history.
+
+Python rank launchers, forks, spawns and helpers retain their own declared
+coverage; they do not establish native MPI event or GPU-device capture. Isolated
+interpreters and replaced startup paths can bypass automatic attachment, and
+arbitrary shell children cannot always be observed. Reader windows verify
+committed blocks without loading entire journals. Optional application metrics
+use the separate `import raven` API and unchanged JSONL records with descriptive
+kind/rank metadata; no metric kind establishes scientific acceptance.
 
 Read [stack tracing](guides/stack-tracing.md),
 [scientific investigation](guides/scientific-investigation.md), and

@@ -134,19 +134,36 @@ def _start(app):
         if hub.pending or hub.future is not None and not hub.future.done():
             return
         token, jid, key, event = state["token"], state["job"], state["attempt"], state["cancel"]
+        # Copy only a declared binding; no full history snapshot or file read
+        # belongs on this input path. Acquisition stays on the shared worker.
+        binding = getattr(app, "project_state", {}).get("binding")
+        metric_context = ({"binding": copy.deepcopy(binding), "generation": hub.generation,
+                           "selection": copy.deepcopy(hub.settings.get("metric_stream", {}))}
+                          if isinstance(binding, dict) and binding.get("job_id") == jid and binding.get("metrics_file") else None)
 
         def work():
             payload = (capture(app.store, jid, event, light=True) if hub.execution.managed
                        else capture(app.store, jid, event))
             if event.is_set():
                 return None
+            if metric_context is not None:
+                try:
+                    from .metrics import MetricReader
+                    bound = metric_context["binding"]
+                    selection = metric_context["selection"]
+                    rank = selection.get("name") if isinstance(selection, dict) and selection.get("source") == bound["metrics_file"] else None
+                    options = {"rank_stream": rank} if rank else {}
+                    payload["application_metrics"] = MetricReader(hub.files, max_points=512 if hub.execution.managed else 600).read_confined(bound["metrics_file"], bound, **options)
+                except (OSError, ValueError) as exc:
+                    payload["warnings"].append("Application metrics unavailable: " + clean(exc, limit=240))
             return analyze(payload, event=event)
 
         def completed(result):
             if state["token"] != token or event.is_set() or not _visible(app, state):
                 return
             state["callback"] = None
-            if _attempt(app.store, jid) != key:
+            if (_attempt(app.store, jid) != key or metric_context is not None and
+                    metric_context["generation"] != hub.generation):
                 cancel(app)
                 return
             if isinstance(result, Exception):
@@ -354,6 +371,34 @@ def analyze(payload, *, event=None):
     def section(name, status, title, facts, action, values=()):
         sections.append(dict(name=name, status=status, title=title, facts=facts,
                              action=action, values=list(values)[-24:]))
+
+    reported = payload.get("application_metrics")
+    if isinstance(reported, dict):
+        from .metrics import metric_insights
+        if state == "PENDING":
+            reported = {**reported, "series": {}}
+        elif lower is not None or upper is not None:
+            reported = {**reported, "series": {name: [point for point in values[-32:]
+                        if (when := _timestamp(point.get("t"))) is not None
+                        and (lower is None or when >= lower) and (upper is None or when < upper + 1)]
+                        for name, values in list(reported.get("series", {}).items())[:64]}}
+        insights = metric_insights(reported)
+        for name, item in list(insights.items())[:8]:
+            facts = [f"{item['samples']} retained samples; kind {item['kind']}.",
+                     "Source: " + clean(reported.get("path", "explicitly reported application metrics"), limit=256)]
+            policy = reported.get("metadata", {}).get("rank_policy", {})
+            if policy:
+                facts.append(f"Reported rank {policy.get('rank', 0)}; {policy.get('mode', 'unknown')} policy.")
+                facts.extend(clean(value, limit=240) for value in policy.get("coverage", [])[:3])
+            if item.get("estimate"):
+                facts.append(item["estimate"])
+            facts.extend(item.get("limitations", []))
+            section("Metric: " + clean(name, limit=96),
+                    "caution" if item["status"] == "caution" else "unknown",
+                    item["summary"], facts,
+                    "Inspect the reported metric and its numerical method; declare scientific tolerances before judging correctness.")
+        if reported.get("meta_error"):
+            limitations.append("Metric metadata unavailable: " + clean(reported["meta_error"], limit=240))
 
     rates, timed_rates, rss, timestamps = [], [], [], []
     for sample in series:

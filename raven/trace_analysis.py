@@ -275,6 +275,8 @@ def analyze_causality(events):
         _warn(warnings, "Explicit dependency graph contains a cycle.")
     pending = deque(key for key, count in indegree.items() if count == 0)
     distance = {key: span["duration_ns"] for key, span in leaves.items()}
+    local_distance = dict(distance)
+    local_predecessor = {}
     predecessor, visited = {}, 0
     while pending:
         source = pending.popleft()
@@ -283,6 +285,13 @@ def analyze_causality(events):
             candidate = distance[source] + leaves[target]["duration_ns"]
             if candidate > distance[target]:
                 distance[target], predecessor[target] = candidate, source
+            # A process path never borrows another process's elapsed time.
+            # Cross-process links remain available only in the explicit global
+            # dependency result above; coincident timestamps imply no edges.
+            if leaves[source]["stream"] == leaves[target]["stream"]:
+                local_candidate = local_distance[source] + leaves[target]["duration_ns"]
+                if local_candidate > local_distance[target]:
+                    local_distance[target], local_predecessor[target] = local_candidate, source
             indegree[target] -= 1
             if indegree[target] == 0:
                 pending.append(target)
@@ -298,6 +307,23 @@ def analyze_causality(events):
             cursor = predecessor.get(cursor)
         path.reverse()
     status = "INVALID" if invalid else "PARTIAL" if warnings else "COMPLETE" if spans else "EMPTY"
+    process_paths = {}
+    for key, span in leaves.items():
+        stream = span["stream"]
+        current = process_paths.get(stream)
+        if current is None or local_distance[key] > local_distance[current]:
+            process_paths[stream] = key
+    processes = []
+    for stream, endpoint in process_paths.items():
+        local_path, cursor = [], endpoint if not invalid else None
+        while cursor is not None:
+            local_path.append(cursor)
+            cursor = local_predecessor.get(cursor)
+        local_path.reverse()
+        identity = leaves[endpoint]["identity"]
+        processes.append(dict(stream=stream, node=identity[2], pid=identity[3], path=local_path,
+                              duration_ns=local_distance[endpoint] if not invalid else None,
+                              status=status, clock_model="process-local monotonic; explicit links only"))
     rows = ["Observed finish-before-start chain; local elapsed durations, not global wall time."]
     if path:
         rows.append(f"Measured chain: {total / 1_000_000:.3f} ms across {len(path)} spans")
@@ -305,8 +331,10 @@ def analyze_causality(events):
     else:
         rows.append("No defensible duration path is available.")
     rows.append("Only declared instrumentation and dependencies are covered; absence of gaps is not proof of full coverage.")
+    if len(processes) > 1:
+        rows.append(f"{len(processes)} independent process paths; cross-process alignment requires explicit links.")
     return _result(status, "Causal dependency evidence", rows, warnings,
-                   dict(spans=list(spans.values()), edges=edges, path=path, duration_ns=total,
+                   dict(spans=list(spans.values()), edges=edges, path=path, duration_ns=total, processes=processes,
                         clock_model="per-stream monotonic; no inferred cross-node clock alignment"))
 
 

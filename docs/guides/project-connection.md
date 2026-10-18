@@ -12,6 +12,28 @@ Open `:projectguide /absolute/project/path`, or choose **Connect → Connect and
 validate a research project**. The form reads a bounded inventory and identifies
 which declared sources can populate each Research view. Inspection is read-only.
 
+## Add Python measurements
+
+Start with the [Python metrics client](python-metrics.md) for an application
+launched by Raven:
+
+```python
+import raven
+@raven.measure("loss", kind="objective")
+def train_step(batch): return compute_loss(batch)
+```
+
+The function returns its original value; Raven supplies the exact run context.
+`raven.phase`, `raven.metric` and `raven.progress` handle phases, explicit values
+and progress. The client is inert without an active run or configured output.
+Use `raven report vendor-client --root /absolute/project/path` when the
+application also needs to import it outside a Raven installation.
+
+Launch the existing script with `raven launch batch.sh --research experiment`,
+then validate an actual sample below. Manual `write_metric` and the generated
+Bash reporting hooks remain available for applications that own their file or
+lifecycle. Metrics are independent of CPU/memory, GPU and trace readiness.
+
 ## Validate an actual sample
 
 1. Open the project guide with the project's absolute path.

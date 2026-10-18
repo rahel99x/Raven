@@ -17,6 +17,8 @@ It does not submit jobs, start recorders, or rewrite application files.
 3. Choose **Preview chart** to inspect the observed values, numeric range, and
    timestamp range. The compact preview uses sample order; horizontal spacing
    does not represent elapsed time. One point cannot establish a trend.
+   A valid `metrics.meta.json` adds the metric kind and its default view, such as
+   **residual (log scale)**, without changing the underlying observations.
 4. Choose **Open chart in Research**. Raven revalidates the source and keeps
    the selected run's exact identity.
 
@@ -34,21 +36,34 @@ journal-event inspection currently requires Raven on the trace host.
 ## Produce scientific measurements
 
 Choose **Generate Bash / Python snippet**, select the language, and enter a
-metric name. **Copy complete snippet** copies an adapter function that accepts
-your measured value. It does not execute the function or invent example
-measurements.
+metric name. The Python path starts with the optional micro-API:
 
-Paste the function into your existing script or application. For Bash, call it
-after your program has set `measured_loss`:
+```python
+import raven
+@raven.measure("loss", kind="objective")
+def train_step(batch): return compute_loss(batch)
+```
+
+Use your real calculation in place of `compute_loss`. The decorated function
+returns its original value. For explicit reporting, call
+`raven.metric("loss", loss, kind="objective", step=step)`. A phase context
+tags enclosed observations and reports elapsed time:
+
+```python
+with raven.phase("assemble"):
+    assemble_matrix()
+```
+
+See the [Python metrics guide](python-metrics.md) for all kinds, sampling,
+standalone vendoring and the explicit `reduce="sum"` MPI/DDP collective contract.
+No collective is introduced unless requested. Generated snippets neither execute
+calculations nor invent measurements.
+
+For Bash, the copied adapter remains available. Call it after your program has
+set its measured value:
 
 ```bash
 report_measurement "$measured_loss"
-```
-
-For Python, call it after computing `loss`; the step is optional:
-
-```python
-report_measurement(loss, step=step)
 ```
 
 Launch the existing script through **Launch job** with application reporting,
@@ -58,17 +73,18 @@ or from the project directory:
 raven launch job.sh --research experiment
 ```
 
-Raven supplies the exact attempt directory and its portable reporting helper
-through `RAVEN_RUN_DIR`, `RAVEN_REPORT_PYTHON`, and `RAVEN_REPORT_HELPER`. The
-generated Python function uses that helper; the application environment does
-not need an installed Raven package. The Bash function checks that these
-variables exist before writing. Both adapters propagate reporting errors to
-the caller; decide how your application handles an optional reporting failure.
+Raven supplies the exact attempt directory, a Python client and the portable
+reporting helper. The application's environment needs no Raven installation.
+The Python client queues optional telemetry and reports failures through
+diagnostics without failing the scientific calculation. The Bash helper and
+manual `raven.metrics.write_metric` retain their synchronous error behavior;
+decide how the application handles those optional reporting failures.
 
 These adapters write the run's default `metrics.jsonl`. If your project already
 declares an external metrics file, keep its existing producer and validate that
 declared file instead. Use one reporting coordinator per attempt. MPI ranks
-must not all append to the same stream independently.
+must not all append to the same stream independently. The micro-API selects a
+coordinator by default and records separate streams when explicitly requested.
 
 ## Required file format
 
@@ -111,9 +127,11 @@ and GPU graphs use their recording contracts; writing a scientific metric
 named `cpu_pct` or `gpu_util` does not populate those graphs. Missing past
 observations cannot be reconstructed by enabling a reader later.
 
-Tracing requires its application hook and a compatible adapter. After your
-script activates its application environment, source `"$RAVEN_SHELL_HELPER"`
-and invoke a supported Python script with `raven_exec python3 program.py`.
-Select the adapter in launch defaults: Python monitoring requires Python 3.12
-or later; Python 3.10/3.11 requires explicit legacy-profile selection. A trace
-toggle cannot instrument every runtime, remote rank, or GPU kernel.
+Choose tracing in Launch job or add `--trace` to `raven launch`. Python
+interpreters inheriting the launch environment attach automatically; no script
+hook is required. Python monitoring requires CPython 3.12 or later;
+Python 3.10/3.11 requires explicit legacy-profile selection. `raven_exec` remains
+an optional override after environment setup. Isolated interpreters, replaced
+`PYTHONPATH`, native instructions and GPU kernels have declared limits; see
+[stack tracing](stack-tracing.md). Each recorded process reports its own
+coverage, and helper processes can be shown separately.

@@ -204,6 +204,35 @@
               "maxLength": 255
             }
           }
+        },
+        "trace_scope": {
+          "enum": [
+            "project",
+            "all"
+          ],
+          "default": "project"
+        },
+        "trace_helpers": {
+          "type": "boolean",
+          "default": false
+        },
+        "trace_process_bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 1073741824,
+          "default": 67108864
+        },
+        "trace_run_bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 4294967296,
+          "default": 268435456
+        },
+        "trace_processes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512,
+          "default": 128
         }
       }
     }

@@ -499,3 +499,106 @@ def test_checkpoint_advice_uses_explicit_bound_bundle_on_local_and_isolated_ssh(
         assert result["scope"] == source["checkpoint_advice"]["scope"]
     finally:
         app.research.close()
+
+
+@pytest.mark.parametrize("remote", [False, True])
+def test_metric_metadata_uses_verified_run_and_one_remote_round_trip(reported_project, remote):
+    root, run = reported_project
+    files = RemoteFiles(IsolatedSSH()) if remote else LocalFiles()
+    binding = projects.select_run(str(root), run.name, files=files)["binding"]
+    meta = run / "metrics.meta.json"
+    meta.write_text(json.dumps({"schema": "raven.metrics-meta/v1", "client": {"api_version": 1},
+        "kinds": {"loss": "residual"}, "coalesced": {"loss": 12},
+        "rank_policy": {"mode": "coordinator", "rank": 0}}))
+    reader = MetricReader(files)
+    result = reader.read_confined(binding["metrics_file"], binding)
+    assert result["kinds"] == {"loss": "residual"} and result["coalesced"] == {"loss": 12}
+    if remote:
+        assert len(files.ssh.commands) == 2  # discovery plus a combined stream/sidecar read
+    meta.unlink()
+    outside = root / "outside.json"
+    outside.write_text('{"schema":"untrusted"}')
+    meta.symlink_to(outside)
+    result = reader.read_confined(binding["metrics_file"], binding)
+    assert result["records"] == 1 and result["meta_error"] and not result["kinds"]
+
+
+def rank_index(run, ranks=(0, 3, 7)):
+    entries = []
+    for rank in ranks:
+        name = f"metrics.rank-{rank}.jsonl"
+        meta = f"metrics.rank-{rank}.meta.json"
+        entries.append({"path": name, "meta": meta, "rank": rank})
+        if rank != 7:
+            write_metric(run / name, {"loss": rank + 1}, t=100)
+            (run / meta).write_text(json.dumps({"schema": "raven.metrics-meta/v1", "client": {"api_version": 1},
+                "kinds": {"loss": "residual"}, "coalesced": {}, "rank_policy": {"mode": "all_ranks", "rank": rank}}))
+    (run / "metrics.index.json").write_text(json.dumps({"schema": "raven.metrics-index/v1", "streams": entries}))
+    return entries
+
+
+@pytest.mark.parametrize("remote", [False, True])
+@pytest.mark.parametrize("canonical", ["missing", "empty"])
+def test_all_rank_selection_is_confined_disjoint_and_recovers_missing_sources(reported_project, remote, canonical):
+    root, run = reported_project
+    if canonical == "missing":
+        (run / "metrics.jsonl").unlink()
+    else:
+        (run / "metrics.jsonl").write_text("")
+    rank_index(run)
+    files = RemoteFiles(IsolatedSSH()) if remote else LocalFiles()
+    binding = projects.select_run(str(root), run.name, files=files)["binding"]
+    reader = MetricReader(files)
+    path = binding["metrics_file"]
+    automatic = reader.read_confined(path, binding)
+    assert automatic["latest"] == {"loss": 1}
+    assert automatic["selected_stream"] == "metrics.rank-0.jsonl"
+    assert automatic["metadata"]["rank_policy"]["rank"] == 0
+    other = reader.read_confined(path, binding, rank_stream="metrics.rank-3.jsonl")
+    assert other["latest"] == {"loss": 4} and other["records"] == 1
+    assert other["requested_path"] == path
+    missing = reader.read_confined(path, binding, rank_stream="metrics.rank-7.jsonl")
+    assert missing["status"] == "missing" and missing["records"] == 0
+    assert len(missing["rank_streams"]) == 3
+    assert missing["selected_stream"] == "metrics.rank-7.jsonl"
+    assert missing["path"].endswith("metrics.rank-7.jsonl")
+    assert reader.read_confined(path, binding)["latest"] == {"loss": 1}
+    with pytest.raises(ValueError, match="no longer registered"):
+        reader.read_confined(path, binding, rank_stream="metrics.rank-900.jsonl")
+    if remote:
+        assert len(files.ssh.commands) == 6  # discovery + five single requests, no rank fanout
+
+
+@pytest.mark.parametrize("remote", [False, True])
+@pytest.mark.parametrize("corruption", ["symlink", "traversal", "oversized", "mismatch", "duplicate", "stream-symlink"])
+def test_rank_index_cannot_expand_a_bound_streams_authority(reported_project, remote, corruption):
+    root, run = reported_project
+    entries = rank_index(run)
+    path = run / "metrics.index.json"
+    if corruption == "symlink":
+        outside = root / "outside-index.json"
+        path.rename(outside)
+        path.symlink_to(outside)
+    elif corruption == "stream-symlink":
+        stream = run / "metrics.rank-3.jsonl"
+        stream.unlink()
+        stream.symlink_to(run / "metrics.jsonl")
+    else:
+        if corruption == "traversal":
+            entries[1]["path"] = "../metrics.rank-3.jsonl"
+        elif corruption == "mismatch":
+            entries[1]["rank"] = 4
+        elif corruption == "duplicate":
+            entries.append(entries[1])
+        else:
+            entries = [entries[1]] * 129
+        path.write_text(json.dumps({"schema": "raven.metrics-index/v1", "streams": entries}))
+    files = RemoteFiles(IsolatedSSH()) if remote else LocalFiles()
+    binding = projects.select_run(str(root), run.name, files=files)["binding"]
+    reader = MetricReader(files)
+    with pytest.raises((OSError, ValueError)):
+        reader.read_confined(binding["metrics_file"], binding, rank_stream="metrics.rank-3.jsonl")
+    canonical = reader.read_confined(binding["metrics_file"], binding)
+    assert canonical["latest"] == {"loss": .2}
+    if corruption != "stream-symlink":
+        assert canonical["index_error"]

@@ -276,3 +276,38 @@ def band_columns(source: Sequence[Column], low: float, high: float,
         if item.turns >= 2 or (before is not None and item.bridge) or (after is not None and after.bridge):
             result.append(item)
     return tuple(result)
+
+
+def rolling_median(source: Sequence[Column], width: int) -> tuple[tuple[int, float, bool], ...]:
+    """Seven-column rolling median of displayed centres, never across a gap.
+
+    This is a screen-bounded derived overlay, not an additional observation.
+    The window is at most seven columns, so work and memory are O(width).
+    """
+    from collections import deque
+    window, result = deque(maxlen=NEIGHBOURS), []
+    previous = None
+    for item in source:
+        if item.broken or item.step or not 0 <= item.x < min(MAX_COLUMNS, width):
+            window.clear()
+            previous = None
+            continue
+        if not item.bridge:
+            window.clear()
+            previous = None
+        window.append(item.centre)
+        ordered = sorted(window)
+        middle = len(ordered) // 2
+        value = ordered[middle] if len(ordered) % 2 else _midpoint(ordered[middle - 1], ordered[middle])
+        result.append((item.x, value, previous is not None and item.bridge))
+        previous = item.x
+    return tuple(result)
+
+
+def drift_columns(source: Sequence[Column], baseline: float) -> tuple[Column, ...]:
+    """Observed deviation from a declared baseline; never a tolerance band."""
+    if not math.isfinite(baseline):
+        return ()
+    return tuple(Column(item.x, min(item.low, baseline), max(item.high, baseline),
+                        item.first, item.last, item.count, item.bridge, item.broken, item.turns, item.step)
+                 for item in source if not item.broken and not item.step and (item.low != baseline or item.high != baseline))

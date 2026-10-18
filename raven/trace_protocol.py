@@ -6,6 +6,7 @@ program execution. A writer's open/crashed tail is explicitly uncommitted.
 from __future__ import annotations
 
 import hashlib
+from collections import deque
 import json
 import math
 import os
@@ -18,8 +19,15 @@ SCHEMA = "raven.trace/v1"
 MAX_EVENT = 64 * 1024
 MAX_EVENTS = 20_000
 MAX_BYTES = 8 * 1024 * 1024
+BLOCK_FORMAT = "raven.trace-block/v1"
+EVENT_FORMAT = "raven.trace-event/v1"
+MAX_BLOCK_BYTES = 1 << 20
+MAX_BLOCK_EVENTS = 65536
+MAX_BLOCK_HEADER = 1024
+_CONTROL_TEXT = re.compile(r"[\x00-\x1f\x7f]")
 IDENTITY_KEYS = ("job_id", "attempt", "cluster", "node", "boot_id", "pid", "process_start", "stream")
-OPTIONAL_IDENTITY_KEYS = {"slurm_submit", "slurm_start", "run_id"}
+OPTIONAL_IDENTITY_KEYS = {"slurm_submit", "slurm_start", "run_id", "launcher", "role",
+                          "rank", "local_rank", "world_size", "parent_pid", "interpreter"}
 
 
 def encoded(value):
@@ -46,6 +54,22 @@ def encode_event_record(record):
     if not separator:
         raise ValueError("Trace event envelope has no stream")
     return prefix + b',"sha256":"' + digest.encode('ascii') + b'"' + separator + stream + b'\n', digest
+
+
+def encode_block(stream, first_seq, previous, lines):
+    """Hash one bounded batch; include all framing fields in the chain."""
+    header = {"schema": BLOCK_FORMAT, "stream": stream, "first_seq": first_seq,
+              "count": len(lines), "bytes": sum(map(len, lines)), "prev": previous}
+    if not 1 <= len(lines) <= MAX_BLOCK_EVENTS or not 1 <= header["bytes"] <= MAX_BLOCK_BYTES:
+        raise ValueError("Invalid trace block budget")
+    digest = hashlib.sha256(encoded(header) + b"\n")
+    for line in lines:
+        digest.update(line)
+    checksum = digest.hexdigest()
+    raw = encoded(dict(header, sha256=checksum)) + b"\n"
+    if len(raw) > MAX_BLOCK_HEADER:
+        raise ValueError("Trace block header exceeds its byte budget")
+    return raw, checksum
 
 
 def text(value, name, maximum=1024):
@@ -98,9 +122,10 @@ def validate_identity(value):
     if not isinstance(value, dict) or not set(IDENTITY_KEYS) <= set(value) or set(value) - set(IDENTITY_KEYS) - OPTIONAL_IDENTITY_KEYS:
         raise ValueError("Trace identity must explicitly include job, attempt, cluster, node and process identity")
     for key in value:
-        if key == "pid":
-            if isinstance(value[key], bool) or not isinstance(value[key], int) or value[key] <= 0:
-                raise ValueError("Trace PID must be a positive integer")
+        if key in {"pid", "parent_pid", "rank", "local_rank", "world_size"}:
+            minimum = 1 if key in {"pid", "world_size"} else 0
+            if type(value[key]) is not int or not minimum <= value[key] < 1 << 63:
+                raise ValueError(f"Trace {key} must be an integer >= {minimum}")
         else:
             text(value[key], key, 256)
     if not re.fullmatch(r"[A-Za-z0-9_-]{8,128}", value["stream"]):
@@ -122,7 +147,7 @@ def _bounded_data(value, depth=0):
         for child in value:
             _bounded_data(child, depth + 1)
     elif isinstance(value, str):
-        if len(value) > 8192 or any(ord(c) < 32 or ord(c) == 127 for c in value):
+        if len(value) > 8192 or _CONTROL_TEXT.search(value):
             raise ValueError("Trace strings must be bounded printable text")
     elif isinstance(value, int) and not isinstance(value, bool):
         if value.bit_length() > 64:
@@ -160,7 +185,7 @@ def read_trace(path, *, max_events=MAX_EVENTS, max_bytes=MAX_BYTES, cancel=None)
 
 class TraceReader:
     """Incremental worker-owned journal reader with bounded retained events."""
-    def __init__(self, path, *, retain=MAX_EVENTS):
+    def __init__(self, path, *, retain=MAX_EVENTS, retain_bytes=MAX_BYTES):
         path = Path(path).absolute()
         self.path = path / "manifest.json" if path.is_dir() else path
         self.offset = 0
@@ -169,14 +194,85 @@ class TraceReader:
         self.mono = -1
         self.identity = None
         self.signature = None
-        self.events = []
         self.retain = max(1, min(int(retain), 1_000_000))
+        if type(retain_bytes) is not int or not 2 * MAX_EVENT <= retain_bytes <= 1 << 30:
+            raise ValueError("Trace retained byte budget must be 128 KiB–1 GiB")
+        self.retain_bytes = retain_bytes
+        self.retained_bytes = 0
+        self.events = deque()
+        self._event_sizes = deque()
+        self.journal_format = None
+        self._block = None
+        self._checkpoint = (0, 0)
         self.stack_map = {}
         self.warnings = []
         self.invalid = False
         self.end_seen = False
         self.evicted = 0
         self.source_loss = False
+
+    def iter_pages(self, *, max_events=MAX_EVENTS, max_bytes=MAX_BYTES, cancel=None, max_seconds=None):
+        """Yield bounded consecutive snapshots until caught up or interrupted.
+
+        Each snapshot retains at most ``retain`` events. Select a page size no
+        larger than ``retain`` when consuming every event (exports/analysis).
+        Existing readers can resume with refresh after an open writer advances.
+        """
+        while True:
+            previous = self.sequence
+            snapshot = self.refresh(max_events=min(max_events, self.retain),
+                                    max_bytes=min(max_bytes, self.retain_bytes - MAX_EVENT - MAX_BLOCK_HEADER),
+                                    cancel=cancel, max_seconds=max_seconds)
+            yield snapshot
+            if snapshot["caught_up"] or self.invalid or self.sequence == previous:
+                return
+
+    def _block_event(self, stream, identity, committed, committed_bytes):
+        """Authenticate a bounded whole block before exposing any of its events."""
+        header_bytes = 0
+        if self._block is None:
+            raw = stream.readline(min(MAX_BLOCK_HEADER + 1, committed_bytes - self.offset))
+            if not raw.endswith(b"\n") or len(raw) > MAX_BLOCK_HEADER:
+                raise ValueError("Truncated or oversized committed trace block header")
+            header = decode_json(raw)
+            keys = {"schema", "stream", "first_seq", "count", "bytes", "prev", "sha256"}
+            if not isinstance(header, dict) or set(header) != keys:
+                raise ValueError("Invalid trace block envelope")
+            if (header["schema"] != BLOCK_FORMAT or header["stream"] != identity["stream"]
+                    or type(header["first_seq"]) is not int or header["first_seq"] != self.sequence + 1
+                    or header["prev"] != self.previous):
+                raise ValueError("Trace block sequence or chain mismatch")
+            if (type(header["count"]) is not int or not 1 <= header["count"] <= MAX_BLOCK_EVENTS
+                    or type(header["bytes"]) is not int or not 1 <= header["bytes"] <= MAX_BLOCK_BYTES
+                    or header["first_seq"] + header["count"] - 1 > committed
+                    or self.offset + len(raw) + header["bytes"] > committed_bytes):
+                raise ValueError("Trace block exceeds its committed checkpoint or budget")
+            body = stream.read(header["bytes"])
+            signed = {key: value for key, value in header.items() if key != "sha256"}
+            digest = hashlib.sha256(encoded(signed) + b"\n")
+            digest.update(body)
+            if len(body) != header["bytes"] or digest.hexdigest() != header["sha256"]:
+                raise ValueError("Trace block checksum mismatch or truncated committed block")
+            self._block = [header, body, 0, 0]
+            header_bytes = len(raw)
+        header, body, cursor, count = self._block
+        end = body.find(b"\n", cursor, cursor + MAX_EVENT + 1)
+        if end < 0 or end - cursor + 1 > MAX_EVENT:
+            raise ValueError("Truncated or oversized committed trace event")
+        raw = body[cursor:end + 1]
+        record = decode_json(raw)
+        if not isinstance(record, dict) or set(record) != {"schema", "stream", "seq", "event"}:
+            raise ValueError("Invalid block trace event envelope")
+        if (record["schema"] != EVENT_FORMAT or record["stream"] != identity["stream"]
+                or type(record["seq"]) is not int or record["seq"] != self.sequence + 1):
+            raise ValueError("Trace sequence gap, duplicate, or stream mismatch")
+        count += 1
+        if (count == header["count"]) != (end + 1 == len(body)):
+            raise ValueError("Trace block event count mismatch")
+        self._block[2:] = [end + 1, count]
+        if count == header["count"]:
+            self._block = None
+        return record, header_bytes + len(raw), header["sha256"] if self._block is None else self.previous
 
     def refresh(self, *, max_events=MAX_EVENTS, max_bytes=MAX_BYTES, cancel=None, max_seconds=None):
         if isinstance(max_events, bool) or not 1 <= max_events <= 1_000_000 or not 1024 <= max_bytes <= 1 << 30:
@@ -188,6 +284,10 @@ class TraceReader:
         if not isinstance(manifest, dict) or manifest.get("schema") != SCHEMA:
             raise ValueError("Expected raven.trace/v1 manifest")
         identity = validate_identity(manifest.get("identity"))
+        process = {key: identity[key] for key in ("pid", "parent_pid", "role", "launcher", "rank",
+                   "local_rank", "world_size", "interpreter") if key in identity}
+        if "process" in manifest and manifest["process"] != process:
+            raise ValueError("Trace process metadata disagrees with its identity")
         coverage = manifest.get("coverage")
         if not isinstance(coverage, dict):
             raise ValueError("Trace manifest must declare its coverage")
@@ -206,6 +306,16 @@ class TraceReader:
         if self.identity is not None and self.identity != identity:
             raise ValueError("Trace identity changed; open a new reader for a new attempt")
         self.identity = identity
+        journal_format = manifest.get("journal_format", EVENT_FORMAT)
+        if journal_format not in {EVENT_FORMAT, BLOCK_FORMAT}:
+            raise ValueError("Unknown trace journal format")
+        if self.journal_format is not None and self.journal_format != journal_format:
+            raise ValueError("Trace journal format changed")
+        self.journal_format = journal_format
+        if journal_format == BLOCK_FORMAT and (type(manifest.get("block_size")) is not int
+                or not 1 <= manifest["block_size"] <= MAX_BLOCK_EVENTS
+                or manifest.get("max_block_bytes") != MAX_BLOCK_BYTES):
+            raise ValueError("Invalid trace block storage bounds")
         if manifest.get("journal") != "events.jsonl":
             raise ValueError("Trace manifest journal must be events.jsonl beside the manifest")
         committed = manifest.get("committed_seq")
@@ -213,6 +323,9 @@ class TraceReader:
         if (isinstance(committed, bool) or not isinstance(committed, int) or committed < self.sequence
                 or isinstance(committed_bytes, bool) or not isinstance(committed_bytes, int) or committed_bytes < self.offset):
             raise ValueError("Trace commit checkpoint regressed or is invalid")
+        if committed < self._checkpoint[0] or committed_bytes < self._checkpoint[1]:
+            raise ValueError("Trace commit checkpoint regressed since the previous manifest")
+        self._checkpoint = (committed, committed_bytes)
         count = used = 0
         fd = regular_open(self.path.parent / "events.jsonl")
         try:
@@ -232,26 +345,26 @@ class TraceReader:
                     if cancel is not None and cancel.is_set():
                         self._warn("Trace read cancelled; available prefix only")
                         break
-                    remaining = min(MAX_EVENT + 1, committed_bytes - self.offset)
-                    if remaining <= 0:
-                        self._warn("Commit sequence exceeds journal checkpoint")
-                        self.invalid = True
-                        break
-                    raw = stream.readline(remaining)
-                    if not raw.endswith(b"\n") or len(raw) > MAX_EVENT:
-                        self._warn("Truncated or oversized committed trace record")
-                        self.invalid = True
-                        break
                     try:
-                        record = decode_json(raw)
-                        if not isinstance(record, dict) or set(record) != {"schema", "stream", "seq", "prev", "event", "sha256"}:
-                            raise ValueError("Invalid trace envelope")
-                        if (record["schema"] != "raven.trace-event/v1" or record["stream"] != identity["stream"]
-                                or record["sha256"] != event_digest(record)):
-                            raise ValueError("Trace checksum or stream identity mismatch")
-                        if (type(record["seq"]) is not int or record["seq"] != self.sequence + 1
-                                or record["prev"] != self.previous):
-                            raise ValueError("Trace sequence gap, duplicate, or chain mismatch")
+                        if journal_format == BLOCK_FORMAT:
+                            record, consumed, checksum = self._block_event(stream, identity, committed, committed_bytes)
+                        else:
+                            remaining = min(MAX_EVENT + 1, committed_bytes - self.offset)
+                            if remaining <= 0:
+                                raise ValueError("Commit sequence exceeds journal checkpoint")
+                            raw = stream.readline(remaining)
+                            if not raw.endswith(b"\n") or len(raw) > MAX_EVENT:
+                                raise ValueError("Truncated or oversized committed trace record")
+                            record = decode_json(raw)
+                            if not isinstance(record, dict) or set(record) != {"schema", "stream", "seq", "prev", "event", "sha256"}:
+                                raise ValueError("Invalid trace envelope")
+                            if (record["schema"] != EVENT_FORMAT or record["stream"] != identity["stream"]
+                                    or record["sha256"] != event_digest(record)):
+                                raise ValueError("Trace checksum or stream identity mismatch")
+                            if (type(record["seq"]) is not int or record["seq"] != self.sequence + 1
+                                    or record["prev"] != self.previous):
+                                raise ValueError("Trace sequence gap, duplicate, or chain mismatch")
+                            consumed, checksum = len(raw), record["sha256"]
                         # The enclosing record already has a checked byte bound.
                         # Do not JSON-encode every event again just to size it.
                         event = validate_event(record["event"], check_size=False)
@@ -262,18 +375,26 @@ class TraceReader:
                         self._warn(str(exc))
                         self.invalid = True
                         break
-                    self.offset += len(raw)
+                    self.offset += consumed
                     self.sequence = record["seq"]
-                    self.previous = record["sha256"]
+                    self.previous = checksum
                     flat = {**identity, **event, "seq": self.sequence}
                     self.events.append(flat)
+                    self._event_sizes.append(consumed)
+                    self.retained_bytes += consumed
+                    while len(self.events) > self.retain or self.retained_bytes > self.retain_bytes:
+                        self.events.popleft()
+                        self.retained_bytes -= self._event_sizes.popleft()
+                        self.evicted += 1
                     self._stack(flat)
                     if event["kind"] in {"gap", "lost", "drop", "loss", "dropped"}:
                         self.source_loss = True
                         self._warn("Source reports omitted events; declared coverage is incomplete")
                     self.end_seen |= event["kind"] == "stream_end"
                     count += 1
-                    used += len(raw)
+                    used += consumed
+                    if journal_format == BLOCK_FORMAT and self._block is None:
+                        stream.seek(self.offset)
         except BaseException:
             # fdopen owns the descriptor after entry; protect earlier failures.
             try:
@@ -281,27 +402,26 @@ class TraceReader:
             except OSError:
                 pass
             raise
-        if len(self.events) > self.retain:
-            self.evicted += len(self.events) - self.retain
-            self.events = self.events[-self.retain:]
-        caught_up = self.sequence == committed and self.offset == committed_bytes
+        caught_up = self.sequence == committed and self.offset == committed_bytes and self._block is None
         warnings = list(self.warnings)
         state = manifest.get("state", "UNKNOWN")
         loss = manifest.get("dropped", 0)
         if not caught_up:
             warnings.append("Reader budget reached or evidence missing; more committed records remain")
+        if st.st_size > committed_bytes:
+            warnings.append("Journal has an uncommitted tail beyond its durable checkpoint")
         if state != "CLOSED":
             warnings.append("Recording is open or interrupted; its uncommitted tail is unknown")
         if loss:
             warnings.append(f"Producer reports {loss} omitted events; coverage is incomplete")
         if self.evicted:
-            warnings.append(f"View retains the latest {self.retain} events; raw journal remains on disk")
+            warnings.append(f"View retains at most {self.retain} events / {self.retain_bytes} encoded bytes; raw journal remains on disk")
         warnings.extend(str(item) for item in manifest.get("warnings", [])[:16] if isinstance(item, str))
         coverage = manifest.get("coverage", {})
         declared_complete = coverage.get("complete", True) is True
         if not declared_complete:
             warnings.append("Producer declares incomplete or unknown coverage within its instrumented scope")
-        complete = state == "CLOSED" and caught_up and self.end_seen and not self.invalid and not loss and not self.source_loss and coverage.get("mode") != "snapshot" and declared_complete
+        complete = state == "CLOSED" and st.st_size == committed_bytes and caught_up and self.end_seen and not self.invalid and not loss and not self.source_loss and coverage.get("mode") != "snapshot" and declared_complete
         status = "INVALID" if self.invalid else "COMPLETE" if complete else "LIVE" if state == "OPEN" and caught_up else "PARTIAL"
         stacks = [{"thread": key, "frames": list(value[-128:])} for key, value in sorted(self.stack_map.items())]
         rows = [f"Trace {identity['job_id']} / attempt {identity['attempt']} · {status}",
@@ -317,7 +437,10 @@ class TraceReader:
                 "stacks": stacks, "status": status, "rows": rows, "warnings": warnings,
                 "complete": complete, "covered": manifest.get("coverage", {}), "caught_up": caught_up,
                 "committed_seq": committed, "read_seq": self.sequence, "manifest": manifest,
-                "sha256": self.previous, "evicted": self.evicted}
+                "sha256": self.previous, "evicted": self.evicted, "retained_bytes": self.retained_bytes,
+                "window_start": self.events[0]["seq"] if self.events else self.sequence + 1,
+                "window_end": self.sequence, "process": {key: identity[key] for key in
+                    ("pid", "parent_pid", "role", "launcher", "rank", "local_rank", "world_size", "interpreter") if key in identity}}
 
     def _warn(self, message):
         if message not in self.warnings and len(self.warnings) < 32:
@@ -325,6 +448,10 @@ class TraceReader:
 
     def _stack(self, event):
         kind, data, thread = event["kind"], event["data"], event["thread"]
+        if kind in {"stack_checkpoint", "call", "resume", "return", "yield", "unwind"} and thread not in self.stack_map and len(self.stack_map) >= 4096:
+            self._warn("Trace thread reconstruction exceeds 4096 threads")
+            self.invalid = True
+            return
         if kind == "stack_checkpoint":
             frames = data.get("frames")
             if not isinstance(frames, list) or len(frames) > 4096 or any(not isinstance(frame, dict) for frame in frames):

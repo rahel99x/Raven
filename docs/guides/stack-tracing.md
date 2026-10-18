@@ -1,10 +1,97 @@
 # Recorded stacks and distributed trace evidence
 
-For a shell script launched through `raven launch`, use its explicit
-[`raven_exec` application hook](automated-reporting-exports.md#6-trace-a-supported-application-launch)
-to attach a supported Python recording to the existing run. This preserves one
-whole-job reporting attempt. The methods below remain available for prepared
-applications and separately instrumented native or distributed programs.
+For a shell script launched through `raven launch`, choose `--trace` to attach
+supported Python processes automatically. The original script remains unchanged
+and every process shares the exact reporting attempt. Explicit `raven_exec`,
+native instrumentation, distributed adapters and current-stack snapshots remain
+available for their respective coverage.
+
+## Automatic attachment
+
+Keep the application's existing Bash command, for example `python3 solve.py`,
+then launch on Slurm:
+
+```bash
+raven launch job.sh --project "$PWD" --research experiment --trace
+```
+
+Use `--local` only to execute on the current workstation. Add `--account LabX`
+for a lab account available to your login. The default monitoring adapter needs
+CPython 3.12 or later. On Python 3.10/3.11, explicitly consent to the reduced
+profile adapter with `--trace-adapter python-legacy-profile`.
+
+The supervisor supplies a private `sitecustomize` directory through `PYTHONPATH`.
+Interpreters that inherit it attach before the application's first line. Existing
+site customization is chained and recorded. No source rewriting, application
+Raven installation, or hand-written job hook is needed.
+
+| Application start | Python coverage |
+| --- | --- |
+| `python3 solve.py`, `python -m package`, `python -c`, Python shebang | Automatic attachment when startup imports the supplied site hook. |
+| Subprocess, multiprocessing spawn/fork, process pool | Separate process journals, each bound to the same run attempt. |
+| `torchrun` / DDP | Separate workers with discovered rank and local rank; Python frames only. |
+| `srun` / MPI Python tasks | Separate rank journals when the launch environment is propagated. |
+| DataLoader and pool helpers | Recorded and identified as helpers; hidden from the default trace view. |
+| Threads / asyncio | Observed Python events and thread IDs; not a complete logical task or distributed stack. |
+| Native libraries, CUDA/NCCL kernels, compiled solvers | No automatic native/device event capture. |
+
+The default `--trace-scope project` records code under the project root and
+declared script directory. Standard-library, installed dependency and Raven
+implementation frames are excluded at capture. `--trace-scope all` broadens
+Python scope and may substantially increase overhead and storage. It does not
+add native or GPU stacks. `--trace-helpers` includes helper workers in the
+default view. Trace controls show process role, rank, PID, observed events and
+coverage gaps independently; separate process clocks do not establish causal
+ordering without explicit links.
+
+Use the retained [explicit hook](automated-reporting-exports.md#6-trace-a-supported-application-launch)
+after module loads when a particular command needs an override:
+
+```bash
+source "$RAVEN_SHELL_HELPER"
+raven_exec python3 solve.py
+```
+
+The hook guards against double attachment. To use only explicitly hooked
+commands, launch with `RAVEN_TRACE_AUTO=0 raven launch job.sh --trace`. A hook
+on one command cannot undo automatic attachment in commands already started.
+
+### Understand attachment gaps
+
+`python -I` ignores the injected Python path and `python -S` skips site startup.
+An environment activation that replaces `PYTHONPATH` can also remove the hook.
+Older interpreters, unavailable monitoring IDs, profiler conflicts and exhausted
+recording budgets leave explicit coverage limitations when Raven can observe
+them. An attached parent's observed subprocess launch can diagnose supported
+exclusions, but **the site hook cannot observe arbitrary children launched by an
+untraced shell**. No recorded process is not proof that the script ran no Python.
+Use a simple pilot and inspect the per-process index on the actual site.
+
+Module systems, launchers and remote ranks must propagate the launch environment
+and see the runtime bundle on shared storage. A local shaped-rank fixture does
+not qualify Slurm launch, multi-node MPI, GPU kernels or a production filesystem.
+See the [runnable examples](../../examples/automated-reporting/README.md) for
+plain Python, process pools, optional CPU DDP and mpi4py.
+
+### Read committed evidence
+
+New automatic recordings batch events into hash-chained blocks. Readers verify
+each committed block and advance through bounded windows instead of retaining
+the entire journal or repeatedly showing only its first prefix. Existing event
+journals remain readable. A corrupted committed block fails integrity checks;
+an incomplete final block is an uncommitted tail, not a valid observation.
+
+Default limits are 64 MiB per process, 256 MiB per run and 128 process streams.
+`--trace-process-bytes`, `--trace-run-bytes` and `--trace-processes` set explicit
+limits. Saved launch recipes use the corresponding underscore-named fields.
+Raise limits only after checking the workload's event rate and available storage;
+more storage does not imply more complete instrumentation.
+
+Buffers and budgets bound resource use. The flush cadence is not a per-event
+durability guarantee: crashes, slow storage and forced termination can lose
+uncommitted observations. The manifest distinguishes observed and committed
+coverage. A low overhead target is workload-dependent; filtering and batching
+do not establish a universal slowdown bound.
 
 Use Raven to record a prepared Python program, receive cooperative native
 events, reconstruct recorded stacks, inspect explicit causal links, and audit
@@ -23,7 +110,8 @@ acknowledge transport acceptance, not per-event durable storage.
 
 | Method | Preparation | Recorded scope | Important limit |
 | --- | --- | --- | --- |
-| `raven trace run` | Launch a Python script with Raven under CPython 3.12 or later | Python call, resume, return, yield, throw-resume and unwind events, including observed threads | No native-extension internals, GPU execution or automatic fork-child capture |
+| `raven launch --trace` | Existing Bash script; CPython 3.12+ or explicit legacy consent | Project Python frames in automatically attached processes and threads | Environment propagation and supported startup are required; no native/device internals |
+| `raven trace run` | Launch a Python script with Raven under CPython 3.12 or later | Python call, resume, return, yield, throw-resume and unwind events, including observed threads | No native-extension internals, GPU execution or automatic fork-child capture in this standalone path |
 | `raven trace run --legacy-profile` | Explicitly select the legacy adapter | Python profile call/return events on supported Python 3.10 or later | Cannot reliably distinguish generator yields, returns and exception unwinds |
 | `raven trace native` | Compile explicit calls to the cooperative SDK | Events supplied by local C/C++ processes and threads | No automatic native unwinding; private inherited sockets do not cross SSH or `srun` automatically |
 | PMPI source adapter | Compile the optional adapter against the application's MPI runtime | Automatic C-binding WORLD Barrier, scalar Bcast and scalar Allreduce/SUM metadata | At most 256 ranks; no thread-multiple, Fortran, nonblocking or arbitrary communicator coverage |
@@ -76,8 +164,9 @@ event-driven. Display refresh and event capture are separate.
 
 Python monitoring needs an unused `sys.monitoring` tool ID. The legacy profile
 adapter refuses to replace an existing profiler. Recording excludes its own
-implementation. Forked Python children do not append to the parent's journal;
-each child must start its own recorder. Native instructions, existing frames at
+implementation. Forked Python children do not append to the parent's journal.
+The automatic launch adapter creates separate child recorders; standalone or
+cooperative instrumentation must arrange its own child capture. Native instructions, existing frames at
 attachment, signal-handler completeness and unprepared children are outside the
 declared Python coverage.
 

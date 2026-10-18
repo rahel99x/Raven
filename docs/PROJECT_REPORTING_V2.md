@@ -19,13 +19,14 @@ that need to own their reporting lifecycle.
 
 ## Choose the part you need
 
-Inside Raven, open **Setup** and choose a Research or Analytics view for embedded
-instructions and its attachment controls. **Setup → Heavy allocation settings**
-configures Raven's own worker account and resource defaults. See the
+Inside Raven, open **Setup → Recordings and metrics** for sample validation and
+reporting instructions. **Setup → Connections and accounts** configures Raven's
+own Heavy worker account and resource defaults. See the
 [internal Setup guide](guides/setup.md).
 
 | Need | Start here |
 | --- | --- |
+| Add Python measurements with one decorator or call | [Python metrics client](guides/python-metrics.md) |
 | Launch an unchanged shell script and export measurements | [Automated launch and export](guides/automated-reporting-exports.md) |
 | Record a first application run | [Quick start](#quick-start) |
 | Add reporting to an existing Bash or batch script | [Application and job hooks](#application-and-job-hooks) |
@@ -42,6 +43,22 @@ evidence as separate modules. A missing module leaves its corresponding view
 unavailable; a launcher cannot infer scientific progress or results.
 
 ## Quick start
+
+For Python jobs launched by Raven, start with this optional API:
+
+```python
+import raven
+@raven.measure("residual", kind="residual", every=50)
+def iterate(state): return solve_iteration(state)
+```
+
+Raven provides the client inside launched Python processes. Use `raven.phase`
+for timed phases, `raven.metric` for explicit scalar values and `raven.progress`
+for measured completion. The [client guide](guides/python-metrics.md) includes
+the kind table, MPI/DDP collective requirements, helper-worker behavior,
+coalescing, optional vendoring and local development. Reporting is inactive
+outside a run unless an output is configured. The portable launcher below and
+manual JSONL/Bash producers remain useful for other languages and lifecycles.
 
 ### 1. Copy the reporting module into your project
 

@@ -54,7 +54,9 @@ def test_metrics_are_incremental_and_snapshot_independent(tmp_path):
     result["series"]["loss"][0]["value"] = 999
     result["latest"].clear()
     assert reader.read(path)["latest"]["loss"] == 0
-    assert len(files.reads) == 1 and files.stats == 2
+    # Each update stats the JSONL stream, optional rank index and sidecar.
+    # Missing optional files add no byte reads or change incremental offsets.
+    assert len(files.reads) == 1 and files.stats == 6
     offset = path.stat().st_size
     append(path, encoded(t=101, metrics={"loss": 0.25}))
     result = reader.read(path)

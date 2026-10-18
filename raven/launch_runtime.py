@@ -155,6 +155,8 @@ def materialize(plan, *, token=None):
     plan.update(token=token, runtime_bundle=str(archive), runtime_sha256=digest,
                 report_python=interpreter, source_snapshot=str(payload.relative_to(root)),
                 run_id_base="launch-" + token, filesystem_host=filesystem["origin_host"], filesystem_id=filesystem["id"])
+    from .launch_bootstrap import digest as startup_digest
+    plan["sitecustomize_sha256"] = startup_digest()
     if plan.get("ui_capture_logs") and plan["execution"] == "local":
         plan["local_logs"] = {stream: str(folder / (stream + ".log")) for stream in ("stdout", "stderr")}
         for path in plan["local_logs"].values():
@@ -432,12 +434,20 @@ def _finalize_sources(run, plan):
 def supervise(plan, *, environ=None):
     """Run captured shell bytes once, with optional recording failures isolated."""
     env = dict(os.environ if environ is None else environ)
+    previous_startup = {key: env.get(key, "") for key in
+                        ("RAVEN_RUN_DIR", "RAVEN_LAUNCH_PLAN", "RAVEN_RUNTIME_BUNDLE")}
     run = _initialize_run(plan, env)
     folder = Path(plan["runtime_bundle"]).parent
     env.update(RAVEN_RUN_DIR=str(run), RAVEN_RUN_ID=run.name, RAVEN_PROJECT_ROOT=plan["project_root"],
                RAVEN_REPORT_HELPER=str(folder / "report.py"), RAVEN_REPORT_PYTHON=plan["report_python"],
                RAVEN_SHELL_HELPER=str(folder / "shell.sh"), RAVEN_RUNTIME_BUNDLE=plan["runtime_bundle"],
                RAVEN_LAUNCH_PLAN=str(folder / "plan.json"), RAVEN_SOURCE_SCRIPT=plan["script"])
+    try:
+        from .launch_bootstrap import prepare
+        prepare(run, plan, env, previous=previous_startup)
+    except Exception as exc:
+        from .launch_trace import _diagnostic
+        _diagnostic(run, "Optional Python startup preparation failed; application runs unchanged: " + str(exc))
     process, recording = None, None
     signals = []
     # Local foreground signals reach only our foreground group. Give its child
@@ -507,6 +517,12 @@ def supervise(plan, *, environ=None):
                 _warn(run, "Optional telemetry could not finish: " + str(exc))
         for sig, handler in handlers.items():
             signal.signal(sig, handler)
+    try:
+        from .launch_bootstrap import finish
+        finish(run, plan)
+    except Exception as exc:
+        from .launch_trace import _diagnostic
+        _diagnostic(run, "Optional Python coverage finalization failed: " + str(exc))
     _finalize_sources(run, plan)
     terminal_signal = child_signal or any(sig in {signal.SIGINT, signal.SIGTERM, signal.SIGHUP} for sig in signals)
     try:
@@ -533,6 +549,18 @@ def supervise(plan, *, environ=None):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     try:
+        if argv[:1] == ["startup-gap"] and len(argv) == 4:
+            from .launch_autotrace import record_gap, verified_run
+            plan = R._read_json(os.environ["RAVEN_LAUNCH_PLAN"])
+            run = R._under(R._directory(plan["project_root"]), "runs/" + os.environ["RAVEN_RUN_ID"])
+            if str(run) != os.environ["RAVEN_RUN_DIR"] or not plan.get("trace"):
+                raise ValueError("startup gap is outside the launch attempt")
+            run, _manifest = verified_run(run, plan)
+            if not all(x.isascii() and x.isdecimal() and len(x) <= 10 for x in argv[1:3]) or not re.fullmatch(r"[0-9.]{3,32}", argv[3]):
+                raise ValueError("invalid startup process identity")
+            record_gap(run, "Python " + argv[3] + " is below Python 3.10; application runs unchanged",
+                       process={"role": "unsupported", "launcher": "python", "pid": int(argv[1]), "parent_pid": int(argv[2]), "interpreter": argv[3]})
+            return 0
         if argv[:1] == ["supervise"] and len(argv) == 2:
             code, _run = supervise(R._read_json(argv[1]))
             return code

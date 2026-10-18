@@ -36,22 +36,18 @@ def snippet(language, name="loss"):
                 '    ' + shlex.quote('--value=' + name + '=') + '"${1:?Supply an actual measurement}"\n'
                 '}\n')
     if language == "python":
-        return ('# Launch through Raven; call report_measurement(actual_value, step=step).\n'
-                '# One coordinator writes this run. No Raven import is needed here.\n'
-                'import math\nimport os\nimport subprocess\n\n'
-                'def report_measurement(value, *, step=None):\n'
-                '    if isinstance(value, bool) or not math.isfinite(float(value)):\n'
-                '        raise ValueError("Supply a finite measured number")\n'
-                '    command = [os.environ["RAVEN_REPORT_PYTHON"], "-I",\n'
-                '               os.environ["RAVEN_REPORT_HELPER"], "metric", "--run",\n'
-                '               os.environ["RAVEN_RUN_DIR"],\n'
-                '               ' + repr('--value=' + name + '=') + ' + str(float(value))]\n'
-                '    if step is not None:\n'
-                '        if type(step) is not int or step < 0:\n'
-                '            raise ValueError("step must be a nonnegative integer")\n'
-                '        command += ["--step", str(step)]\n'
-                '    subprocess.run(command, check=True, timeout=10)\n')
-    raise ValueError("Choose Bash or Python.")
+        return ('import raven\n'
+                '@raven.measure(' + repr(name) + ', kind="objective")\n'
+                'def report_measurement(value, *, step=None): return value\n')
+    if language == "phase":
+        return ('import raven\n'
+                'with raven.phase("solve"):\n'
+                '    result = solve()  # Your existing computation.\n')
+    if language == "reduce":
+        return ('import raven\n'
+                '# Collective: every rank must call in the same order.\n'
+                'raven.metric(' + repr(name) + ', measured_value, kind="conserved", step=step, reduce="sum")\n')
+    raise ValueError("Choose Python, Phase, Reduce or Bash.")
 
 
 def validate_metrics(path, *, files=None, binding=None):
@@ -61,6 +57,8 @@ def validate_metrics(path, *, files=None, binding=None):
     reader = MetricReader(files, max_bytes=SAMPLE_BYTES, max_points=SAMPLE_POINTS, max_streams=1)
     value = reader.read_confined(path, binding) if binding else reader.read(path)
     issues = list(value["errors"])
+    if value.get("meta_error"):
+        issues.append("Metric metadata: " + value["meta_error"])
     if not value["records"] and not issues:
         issues.append("No complete JSONL observations yet. Append a JSON object followed by a newline.")
     if value["records"] and not value["series"]:
@@ -103,13 +101,16 @@ def _trace(binding, files):
     from .projects import read_bound_json, relative_path
     from .trace_protocol import validate_identity, TraceReader
     root = binding["run_root"]
-    index = read_bound_json(binding, os.path.join(root, "trace/index.json"), files=files, max_bytes=65536)
+    index = read_bound_json(binding, os.path.join(root, "trace/index.json"), files=files, max_bytes=1 << 20)
     if (not isinstance(index, dict) or index.get("schema") != "raven.trace-index/v1"
-            or not isinstance(index.get("sources"), list) or len(index["sources"]) > 256):
+            or not isinstance(index.get("sources"), list) or len(index["sources"]) > 8192):
         raise ValueError("Expected a bounded raven.trace-index/v1 sources list.")
     sources = [row for row in index["sources"] if isinstance(row, dict) and row.get("schema") == "raven.trace/v1"]
+    gaps = [str(row.get("reason", "Observed trace attachment failure")) for row in index["sources"]
+            if isinstance(row, dict) and row.get("schema") == "raven.trace-gap/v1" and row.get("run_id") == binding["run_id"]]
     if not sources:
-        return {"status": "not-recorded", "samples": 0, "reason": "No registered trace manifest for this attempt."}
+        return {"status": "unavailable" if gaps else "not-recorded", "samples": 0,
+                "reason": "; ".join(gaps[:16]) if gaps else "No registered trace manifest for this attempt."}
     path = os.path.join(root, relative_path(sources[0].get("path")))
     manifest = read_bound_json(binding, path, files=files, max_bytes=65536)
     if not isinstance(manifest, dict) or manifest.get("schema") != "raven.trace/v1":
@@ -126,11 +127,12 @@ def _trace(binding, files):
     if snapshot["identity"] != identity:
         raise ValueError("Trace identity changed during validation; retry.")
     # Revalidate run identity after the journal read, including replaced parents.
-    read_bound_json(binding, os.path.join(root, "trace/index.json"), files=files, max_bytes=65536)
+    read_bound_json(binding, os.path.join(root, "trace/index.json"), files=files, max_bytes=1 << 20)
     count = len(snapshot["events"])
-    issues = snapshot.get("warnings", [])
+    issues = snapshot.get("warnings", []) + gaps[:16]
     return {"status": "partial" if issues else "ready" if count else "waiting", "samples": count,
-            "path": path, "reason": "; ".join(issues) or ("Verified bounded journal prefix; more streams/events may exist." if count else "No committed trace events yet.")}
+            "path": path, "registered_processes": len(sources),
+            "reason": "; ".join(issues) or (f"Verified bounded journal sample from one of {len(sources)} registered processes. Open Trace to follow full journals." if count else "No committed trace events yet.")}
 
 
 def inspect(path="", *, files=None, binding=None, declared=False):
@@ -174,10 +176,22 @@ def preview_lines(result, glyphs, width=64):
         values = [point["value"] for point in selected]
         if not values:
             continue
+        kind = (result or {}).get("kinds", {}).get(name, "gauge")
+        from .chart_tools import kind_description
+        rows.append("kind: " + kind + " | Research default: " + kind_description(kind))
+        coalesced = (result or {}).get("coalesced", {}).get(name, 0)
+        if coalesced:
+            rows.append(f"coalesced ×{coalesced}: intermediate values omitted by the producer")
         low, high = min(values), max(values)
+        plotted = [math.log10(value) if value > 0 else None for value in values] if kind in {"residual", "error"} else values
+        known = [value for value in plotted if value is not None]
+        axis_low, axis_high = min(known, default=0), max(known, default=1)
         # Scaling finite extreme values avoids overflow in their difference.
-        scale = max(abs(low), abs(high), 1)
-        normalized = [((value / scale - low / scale) / (high / scale - low / scale)) if high != low else .5 for value in values]
+        scale = max(abs(axis_low), abs(axis_high), 1)
+        normalized = [None if value is None else ((value / scale - axis_low / scale) / (axis_high / scale - axis_low / scale))
+                      if axis_high != axis_low else .5 for value in plotted]
+        if len(known) < len(values):
+            rows.append(f"Log preview: {len(values)-len(known)} nonpositive values are undefined; their observations remain retained.")
         rows += [f"{name}: last {values[-1]:.6g} | range {low:.6g}–{high:.6g}",
                  spark(glyphs, normalized, len(values)),
                  f"{len(values)} observations | epoch {selected[0]['t']:.6g} to {selected[-1]['t']:.6g}"]

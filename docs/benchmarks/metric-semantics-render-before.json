@@ -1,0 +1,160 @@
+{
+  "metadata": {
+    "label": "before",
+    "source_root": "/workspace/raven-metrics-baseline",
+    "version": "7.0.0",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "interactive": true,
+    "headless": false,
+    "timestamp": "2026-10-18T20:27:01.629483+00:00",
+    "measurement": "CPU with a counting paint sink; excludes terminal transport and wait times",
+    "sources": "synthetic memory fixtures; scheduler, filesystem and worker I/O are forbidden during measured frames"
+  },
+  "results": [
+    {
+      "scenario": "research",
+      "gesture": "render",
+      "jobs": 100,
+      "history": 100,
+      "metrics": 64,
+      "points": 600,
+      "width": 80,
+      "height": 24,
+      "glyphs": "unicode",
+      "pipeline": "cached screen",
+      "repeats": 30,
+      "pointer_targets": {
+        "graphs": 0,
+        "controls": 0
+      },
+      "phases_ms": {
+        "compose": {
+          "median": 2.342096999200294,
+          "p95": 2.9045050032436848,
+          "max": 12.552626998513006
+        },
+        "decorate": {
+          "median": 0.04409649773151614,
+          "p95": 0.11844900291180238,
+          "max": 0.1936330008902587
+        },
+        "document_rebuild": {
+          "median": 3.2604999978502747,
+          "p95": 4.130373999942094,
+          "max": 13.657112001965288
+        },
+        "feedback": {
+          "median": 0.1285545040445868,
+          "p95": 0.20836600015172735,
+          "max": 0.3593949950300157
+        },
+        "frame": {
+          "median": 3.4587099944474176,
+          "p95": 4.357448000519071,
+          "max": 13.829272997099906
+        },
+        "graph": {
+          "median": 0.5977615001029335,
+          "p95": 0.8189620057237335,
+          "max": 0.9168209944618866
+        },
+        "overlay": {
+          "median": 0.03938500231015496,
+          "p95": 0.059710000641644,
+          "max": 0.3120729961665347
+        },
+        "paint": {
+          "median": 0.023455995687982067,
+          "p95": 0.06817400571890175,
+          "max": 0.07003599603194743
+        },
+        "snapshot": {
+          "median": 0.008663002518005669,
+          "p95": 0.010386000212747604,
+          "max": 0.011387994163669646
+        },
+        "tick": {
+          "median": 0.05335599780664779,
+          "p95": 0.12443800369510427,
+          "max": 0.21154100249987096
+        }
+      },
+      "counts_per_frame": {
+        "advisor_aggregations": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "chart_cards": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "chart_rasters": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "compose_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "erase_calls": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "graph_publications": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "overlay_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "paint_calls": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "paint_cells": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "paint_rows": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "prepared_job_rows": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "running_advice": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "snapshot_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "tick_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        }
+      },
+      "io_attempts": {},
+      "ui_trace": false,
+      "trace_timeline": null
+    }
+  ]
+}

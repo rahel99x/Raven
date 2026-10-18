@@ -67,11 +67,18 @@ def parser():
     ap.add_argument("--local", action="store_true", help="Explicitly execute here without Slurm")
     ap.add_argument("--account", help="Workload submission account; does not alter monitoring/Heavy preferences")
     ap.add_argument("--sbatch", action="append", default=[], metavar="TOKEN", help="One exact scheduler token, e.g. --sbatch=--mem=8G; repeatable")
-    for name, explanation in (("gpu", "Request supported device recording inside the job; no allocation is added"), ("cpu-memory", "Record supported CPU and memory process measurements"), ("trace", "Request application tracing through the explicit raven_exec hook")):
+    for name, explanation in (("gpu", "Request supported device recording inside the job; no allocation is added"), ("cpu-memory", "Record supported CPU and memory process measurements"), ("trace", "Automatically trace Python processes inheriting this job's environment; no script hook required")):
         group = ap.add_mutually_exclusive_group()
         group.add_argument("--" + name, dest=name.replace("-", "_"), action="store_true", default=None, help=explanation)
         group.add_argument("--no-" + name, dest=name.replace("-", "_"), action="store_false", help="Explicitly disable " + name + " recording")
     ap.add_argument("--trace-adapter", choices=("python-monitoring", "python-legacy-profile", "native-cooperative", "mpi"))
+    ap.add_argument("--trace-scope", choices=("project", "all"), help="Trace project/script files (default), or all Python frames")
+    helpers = ap.add_mutually_exclusive_group()
+    helpers.add_argument("--trace-helpers", action="store_true", default=None, help="Include helper processes in the initial trace view; their recordings always remain available")
+    helpers.add_argument("--no-trace-helpers", dest="trace_helpers", action="store_false", help="Hide helper processes in the initial trace view")
+    ap.add_argument("--trace-process-bytes", type=int, help="Per-process trace budget in bytes (4096–1073741824; default 67108864)")
+    ap.add_argument("--trace-run-bytes", type=int, help="Run trace budget in bytes (4096–4294967296; default 268435456)")
+    ap.add_argument("--trace-processes", type=int, help="Maximum attached processes (1–512; default 128)")
     ap.add_argument("--metrics-file", help="Declared project-relative native application JSONL producer")
     ap.add_argument("--checkpoint-advice", help="Project-relative checkpoint duration/exposure JSON; read-only launch advice")
     ap.add_argument("--artifact", action="append", default=None, help="Explicit project-relative output path; repeatable")
@@ -440,8 +447,8 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
     if args.research is not None:
         values = [value for group in args.research for value in (group or F.DEFAULT_FEATURES)]
         explicit["features"] = F.normalize_features(values)
-    for key in ("gpu", "cpu_memory", "trace", "trace_adapter"):
-        if getattr(args, key) is not None:
+    for key in ("gpu", "cpu_memory", "trace", "trace_adapter", "trace_scope", "trace_helpers", "trace_process_bytes", "trace_run_bytes", "trace_processes"):
+        if getattr(args, key, None) is not None:
             explicit[key] = getattr(args, key)
     if args.metrics_file is not None:
         explicit["application_metrics"] = args.metrics_file
@@ -496,6 +503,13 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
     if settings.get("auto_export") is not None and settings.get("auto_export") is not False:
         settings["auto_export"] = _completion_request(settings["auto_export"], settings.get("auto_export_scope"))
     settings.setdefault("features", list(F.DEFAULT_FEATURES))
+    for key, value in S.TRACE_DEFAULTS.items():
+        if key not in settings:
+            settings[key] = value
+            setting_sources[key] = "built-in trace default"
+    # Captured run settings and CLI additions receive the same validation as
+    # saved project preferences before any script is materialized.
+    S._launch(settings)
     if args.research is not None and any(not group for group in args.research):
         settings["features"] = F.normalize_features([*settings["features"], *settings.get("research_sources", {})])
     if settings.get("trace_adapter") and settings.get("trace") is False and "trace_adapter" in explicit:
@@ -540,7 +554,8 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
             "name": name, "account": effective.get("account", ""), "account_source": option_sources.get("account", "scheduler default"),
             "export_policy": effective.get("export", "ALL"), "features": settings["features"], "gpu": settings.get("gpu", False), "trace": settings.get("trace", False),
             "settings": settings, "setting_sources": setting_sources, "recipe": args.recipe or "", "auto_export": settings.get("auto_export", False),
-            "readiness": F.readiness(settings["features"], settings, execution="local" if args.local else "slurm", gpu=settings.get("gpu", False), trace=settings.get("trace", False), effective_options=effective),
+            "readiness": F.readiness(settings["features"], settings, execution="local" if args.local else "slurm", gpu=settings.get("gpu", False), trace=settings.get("trace", False), effective_options=effective,
+                                      metric_client=F.detect_metric_client(script, root, working_directory=workdir)),
             "compatibility": ["$0 and BASH_SOURCE identify the immutable script snapshot; source-relative programs need RAVEN_SOURCE_SCRIPT or an explicit application hook.", "Static preview is not Slurm acceptance; shared project and reporting Python must be visible on compute nodes."], "mutations": 0}
     plan["receipt_file"] = receipt_path
     if settings.get("checkpoint_advice"):

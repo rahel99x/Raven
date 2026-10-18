@@ -108,7 +108,7 @@ COMMANDS = (
     Command('arraymap', 'Inspect array task input mapping', owner='array_manifest_ui'),
     Command('artifact', 'Preview a declared artifact', owner='project_ui', paths=True),
     Command('back', 'Return to the previous location and selection', owner='navigation_ui'),
-    Command('chart', 'Inspect exact chart samples and timestamps', example='chart preset 30m; chart axis fixed 0 100; chart range 1 20; chart events', owner='analysis_ui'),
+    Command('chart', 'Inspect exact chart samples and timestamps', example='chart preset 30m; chart axis fixed 0 100; chart mode raw; chart range 1 20; chart events', owner='analysis_ui'),
     Command('chartzoom', 'Inspect or reset a chart selection', owner='chart_interaction'),
     Command('columns', 'Choose visible job-table columns', arguments=('show', 'hide', 'reset', 'jobs', 'history'), example='columns show rss', owner='table_ui'),
     Command('commands', 'Search and execute commands', owner='command_ui'),

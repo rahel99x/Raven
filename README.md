@@ -228,17 +228,32 @@ scrolling, and bounded graph zoom.
 
 ## Project evidence
 
+Python applications can report measurements with the optional, lightweight client:
+
+```python
+import raven
+@raven.measure("loss", kind="objective")
+def train_step(batch): return compute_loss(batch)
+```
+
+Raven supplies the client to launched Python processes. See the
+[Python metrics guide](docs/guides/python-metrics.md) for phases, progress,
+rank reductions, local development and a vendored single-file client.
+
 For an existing Bash or batch script, start with
 [automated reporting and exports](docs/guides/automated-reporting-exports.md):
 
 ```bash
 raven launch test.sh --research experiment --check
 raven launch test.sh --research experiment --export-on-finish
+raven launch test.sh --research experiment --trace
 ```
 
 The first command previews without submitting; the second submits once and
 retains an exact attempt independently of the dashboard. GPU recording and
-supported application tracing are explicit choices. Scientific measurements
+automatic Python tracing are explicit choices. Tracing needs CPython 3.12+ or
+explicit legacy-profile consent on Python 3.10/3.11; the script needs no hook.
+Scientific measurements
 still need a producer; missing evidence remains visible. The
 [runnable example](examples/automated-reporting/README.md) needs no handwritten
 manifests.

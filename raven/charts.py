@@ -707,6 +707,7 @@ def braille_chart(g: Glyphs, values: Sequence[Optional[float]], width: int, heig
                   axis_formatter: Optional[Callable[[float], str]] = None,
                   metadata: Optional[dict] = None, fitted: bool = False, time_units: bool = False,
                   curve_style: str = "fine", trend: bool = True, bands: bool = True,
+                  model_kind: str = "quadratic", reference: float | None = None,
                   _time_cache=None) -> List[Row]:
     """Connected telemetry with a fine 2 x 4 Braille raster per Unicode cell.
 
@@ -746,8 +747,12 @@ def braille_chart(g: Glyphs, values: Sequence[Optional[float]], width: int, heig
     if enhanced:
         from . import metric_envelope as E
         profile = E.columns(points, pixels_w, details)
-        trend_points = E.local_trend(profile, pixels_w) if trend else ()
-        band_points = E.band_columns(profile, lo, hi, pixels_h) if bands else ()
+        trend_points = ((E.rolling_median(profile, pixels_w) if model_kind == "median" else
+                         E.local_trend(profile, pixels_w)) if trend else ())
+        if bands and model_kind == "drift":
+            band_points = E.drift_columns(profile, reference) if reference is not None else ()
+        elif bands:
+            band_points = E.band_columns(profile, lo, hi, pixels_h)
     band_x = {point.x for point in band_points}
     borders = [[0] * chart_w for _ in range(height)] if band_points else []
     fills = [[0] * chart_w for _ in range(height)] if band_points else []
@@ -755,8 +760,8 @@ def braille_chart(g: Glyphs, values: Sequence[Optional[float]], width: int, heig
     target_cells = cells
     if metadata is not None:
         metadata.update(trend=bool(trend_points), band=bool(band_points),
-                        trend_label="local quadratic fit" if trend_points else "",
-                        band_label="observed low-high range" if band_points else "")
+                        trend_label=("rolling median of displayed columns" if model_kind == "median" else "local quadratic fit") if trend_points else "",
+                        band_label=("observed drift from baseline; no tolerance" if model_kind == "drift" else "observed low-high range") if band_points else "")
 
     def mark(x: int, y: int, direction: int = 16) -> None:
         if 0 <= x < pixels_w and 0 <= y < pixels_h:

@@ -180,7 +180,8 @@ def _activate(app, action):
         if field in ("path", "metric"):
             state["editing"] = field, state[field]
     elif action == "language":
-        state["language"] = "bash" if state["language"] == "python" else "python"
+        languages = ("python", "phase", "reduce", "bash")
+        state["language"] = languages[(languages.index(state["language"])+1) % len(languages)]
     elif action == "copy":
         from . import clipboard
         text = C.snippet(state["language"], state["metric"])
@@ -225,10 +226,10 @@ def _document(app, glyphs=None, width=64):
     if state["page"] != "connect":
         rows.append(("Back to Connect data", "connect"))
     if state["page"] == "snippet":
-        rows += [("Language: " + state["language"].title() + " (change)", "language"),
+        rows += [("Example: " + state["language"].title() + " (change)", "language"),
                  ("Metric name: " + state["metric"], "edit:metric"), ("Copy complete snippet", "copy"),
-                 ("Paste this function into your existing program or job script. Call it with a real measured value. Launch job (or raven launch SCRIPT --research experiment) supplies the helper and exact attempt environment.", None),
-                 ("The helper writes this attempt's metrics.jsonl. If your launch declares an external metrics file, keep its existing producer instead. Generation and Copy do not execute this snippet.", None)]
+                 ("Decorate the function that returns your measured value, or call report_measurement(actual_value). Phase and Reduce examples show timing and explicit collective reporting. Bash keeps the manual helper. Raven launch supplies the client and exact attempt environment, even without tracing.", None),
+                 ("The client writes this attempt's metrics.jsonl asynchronously and is inactive outside Raven unless configured. reduce= is collective: every rank must call in the same order. If your launch declares an external metrics file, keep its existing producer instead. Generation and Copy never execute code.", None)]
         try:
             rows += [("| " + line, None) for line in C.snippet(state["language"], state["metric"]).splitlines()]
         except ValueError as exc:
@@ -264,7 +265,7 @@ def _document(app, glyphs=None, width=64):
                 if metrics["usable"]:
                     rows += [("Preview chart", "preview"), ("Open chart in Research", "attach")]
         rows += [("CPU/memory and GPU are independent retained recordings. Choose them in Launch job for future jobs; past observations cannot be reconstructed. GPU recording still requires assigned devices and a supported driver.", None),
-                 ("Tracing requires an application hook: source \"$RAVEN_SHELL_HELPER\" after environment activation, then raven_exec python3 program.py. Choose the matching adapter in Launch defaults; Python 3.12+ supports monitoring. Python 3.10/3.11 requires explicit legacy-profile selection.", None)]
+                 ("Automatic Python tracing: launch with raven launch SCRIPT --trace; no script hook is required. Python 3.12+ supports monitoring; Python 3.10/3.11 requires explicit legacy-profile selection. raven_exec is an optional override. Isolated interpreters and replaced PYTHONPATH can prevent attachment; see docs/guides/stack-tracing.md for coverage and gaps.", None)]
     if state["editing"]:
         rows.insert(1, ("Editing " + state["editing"][0] + ": " + state["editing"][1] + "_", None))
     return rows

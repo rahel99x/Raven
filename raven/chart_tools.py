@@ -28,7 +28,7 @@ def text(value, limit=96):
 
 def restore(saved):
     """Accept only bounded, printable display declarations and valid axes."""
-    result = {"metric_display": {}, "axes": {}, "shared_scale": True, "chart_events": True}
+    result = {"metric_display": {}, "axes": {}, "shared_scale": True, "chart_events": True, "metric_modes": {}}
     if not isinstance(saved, dict):
         return result
     for name, preference in list(saved.get("metric_display", {}).items())[:MAX_PREFERENCES] if isinstance(saved.get("metric_display"), dict) else []:
@@ -43,10 +43,52 @@ def restore(saved):
     for name, axis in list(saved.get("axes", {}).items())[:MAX_PREFERENCES] if isinstance(saved.get("axes"), dict) else []:
         if text(name) and valid_axis(axis):
             result["axes"][name] = {key: axis[key] for key in ("mode", "low", "high") if key in axis}
+    for name, mode in list(saved.get("metric_modes", {}).items())[:MAX_PREFERENCES] if isinstance(saved.get("metric_modes"), dict) else []:
+        if text(name) and mode in ("raw", "trend", "range"):
+            result["metric_modes"][name] = mode
     for key in ("shared_scale", "chart_events"):
         if isinstance(saved.get(key), bool):
             result[key] = saved[key]
     return result
+
+
+def kind_description(kind):
+    return {"objective": "linear, trend overlay", "residual": "log scale, convergence estimate",
+            "throughput": "linear, rolling median", "progress": "progress and conditional ETA",
+            "conserved": "drift from first observed value; no tolerance declared",
+            "error": "log scale", "gauge": "linear"}.get(kind, "linear")
+
+
+def metric_metadata(result, name):
+    """Only bounded publications reach charts; no file is read here."""
+    if not isinstance(result, dict):
+        return {}
+    kind = result.get("kinds", {}).get(name)
+    from .metrics import METRIC_KINDS
+    if kind not in METRIC_KINDS:
+        return {}
+    count = result.get("coalesced", {}).get(name, 0)
+    unit = result.get("units", {}).get(name, "")
+    return {"kind": kind, "coalesced": count if type(count) is int and count >= 0 else 0,
+            "unit": unit if text(unit, 64) else "",
+            "baseline": result.get("baselines", {}).get(name),
+            "estimate": result.get("insights", {}).get(name, {}).get("estimate", "")}
+
+
+def metric_axis(state, name, metadata):
+    return state["axes"].get(name, {"mode": "log" if metadata.get("kind") in ("residual", "error") else "auto"})
+
+
+def metric_layers(state, name, metadata):
+    mode = state.get("metric_modes", {}).get(name, "default")
+    kind = metadata.get("kind")
+    if mode == "raw":
+        return False, False, "quadratic"
+    if mode == "trend":
+        return True, False, "median" if kind == "throughput" else "quadratic"
+    if mode == "range":
+        return False, True, "quadratic"
+    return kind not in ("conserved", "error", "progress"), kind not in ("objective", "residual", "throughput", "error", "progress"), ("median" if kind == "throughput" else "drift" if kind == "conserved" else "quadratic")
 
 
 def valid_axis(axis):

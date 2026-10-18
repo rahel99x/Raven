@@ -35,6 +35,9 @@ jobs:
         run: python scripts/generate_capability_reference.py --check
       - name: Validate reporting schemas and published examples
         run: python scripts/validate_operation_schemas.py
+      - name: Check instrumentation fidelity and record bounded benchmark samples
+        if: matrix.python == '3.12'
+        run: python scripts/benchmark_auto_instrumentation.py --cases calls,noop,metrics,metric-threads --repeats 1 --timeout 60 --output /tmp/raven-instrumentation-benchmark.json
       - name: Exercise offline setup
         run: python scripts/setup.py --mode demo --venv /tmp/raven-offline-venv --report /tmp/raven-demo.txt
       - name: Build source and wheel distributions
@@ -116,5 +119,6 @@ jobs:
             /tmp/raven-demo.txt
             /tmp/raven-qualification.json
             /tmp/raven-offline-qualification.json
+            /tmp/raven-instrumentation-benchmark.json
             /tmp/raven-distribution-prototype/manifest.json
             /tmp/raven-update-qualification

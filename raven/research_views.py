@@ -47,6 +47,7 @@ def render(views, snap, app, width, height):
         app.analysis_result_job = context.get("jid") or getattr(context.get("job"), "id", None)
         app.analysis_result_generation = context.get("generation")
         analysis_ui.observe_metrics(app, result, app.analysis_result_job)
+        analysis_ui.publish_metric_metadata(app, result)
     rows, hits = [], []
     paint_offset = None
     from .scrolling import viewport as scroll_viewport
@@ -59,7 +60,9 @@ def render(views, snap, app, width, height):
         diagnostic_command = "telemetry" + (" " + shlex.quote(str(context.get("jid"))) if context.get("jid") else "")
         controls, control_hits = buttons(g, width,
             [("telemetry", "Metric sampling", ("command", diagnostic_command)),
-             ("gpu-provider", "GPU source", ("command", "gpuprovider"))],
+             ("gpu-provider", "GPU source", ("command", "gpuprovider"))] +
+            ([("reset-stream", "Reset metric stream", ("command", "chart rank default"))]
+             if isinstance(getattr(hub, "settings", {}).get("metric_stream"), dict) and hub.settings["metric_stream"].get("name") else []),
             group="research-tools", prefix="research-tools:")
         hits += [(y + len(rows), kind, data) for y, kind, data in control_hits]
         rows += controls
@@ -79,6 +82,33 @@ def render(views, snap, app, width, height):
         rows += content
     elif view == "experiment":
         rows.append(row(f" {result.get('path', '')}  |  {result.get('records', 0)} records  |  phase {result.get('phase') or 'unreported'}", "dim"))
+        policy = result.get("metadata", {}).get("rank_policy", {})
+        if policy:
+            coverage = "; ".join(policy.get("coverage", [])[:3])
+            scope = ("coordinator only" if policy.get("mode") == "coordinator" else "one independently recorded rank")
+            rows.append(row(f" Metric coverage: {scope}, rank {policy.get('rank', 0)}" + ("; " + text(coverage) if coverage else ""), "dim"))
+        rank_streams = result.get("rank_streams", [])[:128]
+        if rank_streams:
+            import shlex
+            page = max(0, min((len(rank_streams) - 1) // 8, analysis.get("rank_page", 0)))
+            analysis["rank_page"] = page
+            start = page * 8
+            selected_stream = result.get("selected_stream")
+            choices = [("default", "Auto stream", ("command", "chart rank default"))]
+            for entry in rank_streams[start:start + 8]:
+                suffix = entry["path"].partition("-pid-")[2].removesuffix(".jsonl")
+                label = f"Rank {entry['rank']}" + (f" / PID {suffix}" if suffix else "")
+                if entry["path"] == selected_stream:
+                    label = "[" + label + "]"
+                choices.append((entry["path"], label, ("command", "chart rank " + shlex.quote(entry["path"]))))
+            if page:
+                choices.append(("previous", "Previous ranks", ("command", "chart rank-page previous")))
+            if start + 8 < len(rank_streams):
+                choices.append(("next", "Next ranks", ("command", "chart rank-page next")))
+            controls, control_hits = buttons(g, width, choices, group="metric-ranks", prefix="metric-rank:")
+            hits += [(y + len(rows), kind, data) for y, kind, data in control_hits]
+            rows += controls
+            rows.append(row(f" Rank streams {start + 1}-{min(start + 8, len(rank_streams))}/{len(rank_streams)}; one stream at a time, no rank aggregation.", "dim"))
         progress = result.get("progress") or {}
         if progress:
             fraction = progress.get("fraction")
@@ -98,7 +128,7 @@ def render(views, snap, app, width, height):
         rows.append(row(f" Dashboard {len(names)}/{len(series)} metrics  | :dashboard pin/hide/move/expand/color  | :chart METRIC", "dim"))
         # Offscreen charts reserve their document rows without rasterizing. This
         # makes 64-metric dashboards cost roughly the visible cards per frame.
-        tail_rows = len(result.get("errors", [])[:8]) + int(bool(result.get("truncated"))) + int(bool(series) and not names)
+        tail_rows = int(bool(result.get("meta_error"))) + int(bool(result.get("index_error"))) + len(result.get("errors", [])[:8]) + int(bool(result.get("truncated"))) + int(bool(series) and not names)
         total_rows = len(rows) + sum((10 if name in analysis["expanded"] else 5) + 5 + live_rows[name] + int(name in analysis["pinned"]) for name in names) + tail_rows
         visible_height = max(0, height - len(nav)) if height is not None else total_rows
         if own_document and width >= 6 and total_rows > visible_height:
@@ -130,7 +160,7 @@ def render(views, snap, app, width, height):
                 metadata = {}
                 chart = analysis_ui.chart_rows(g, app, series[name], card_width, height_, name,
                     source, interactive=False, metadata=metadata, zoom_key=identity,
-                    snapshot=snap, running=live_running)
+                    snapshot=snap, running=live_running, metric_meta=analysis_ui.chart_tools.metric_metadata(result, name))
                 chart_interaction.record(app, identity, metadata, row=len(rows), scale=metadata.get("scale", "linear"))
                 rows.extend(chart)
             else:
@@ -138,6 +168,10 @@ def render(views, snap, app, width, height):
                 rows.extend([[] for _ in range(count)])
         if series and not names:
             rows.append(row(" No visible metrics match. :dashboard search clears search; :dashboard show METRIC or reset restores cards.", "yellow"))
+        if result.get("index_error"):
+            rows.append(row(" ! Metric rank index: " + text(result["index_error"]), "yellow"))
+        if result.get("meta_error"):
+            rows.append(row(" ! Metric metadata: " + text(result["meta_error"]), "yellow"))
         for error in result.get("errors", [])[:8]:
             rows.append(row(" ! " + text(error), "yellow"))
         if result.get("truncated"):

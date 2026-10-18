@@ -1,0 +1,142 @@
+{
+  "base_revision": "b52cd93e2b7581eeff6e9f601ad13765f4618a0c",
+  "benchmarks": [
+    "../benchmarks/automatic-instrumentation.md",
+    "../benchmarks/metric-semantics.md"
+  ],
+  "branch": "codex/automatic-tracing-and-metrics-api",
+  "checks": [
+    {
+      "command": ".venv/bin/python -m pytest -q -n 4 --dist=loadfile",
+      "passed": 18746,
+      "seconds": 223.86,
+      "skipped": 15,
+      "warnings": 4
+    },
+    {
+      "command": "pytest -q tests/test_launch_trace_auto.py tests/test_launch_trace_review.py tests/test_launch_trace_settings.py tests/test_trace_auto_recording.py -k \"not 200_mb\"",
+      "deselected": 1,
+      "passed": 93,
+      "python": "3.10",
+      "skipped": 4
+    },
+    {
+      "command": "pytest -q tests/test_launch_trace_auto.py tests/test_launch_trace_review.py tests/test_launch_trace_settings.py tests/test_trace_auto_recording.py -k \"not 200_mb\"",
+      "deselected": 1,
+      "passed": 93,
+      "python": "3.11",
+      "skipped": 4
+    },
+    {
+      "command": "pytest -q tests/test_launch_trace_auto.py tests/test_launch_trace_review.py tests/test_launch_trace_settings.py tests/test_trace_auto_recording.py -k \"not 200_mb\"",
+      "deselected": 1,
+      "passed": 97,
+      "python": "3.13",
+      "skipped": 0
+    },
+    {
+      "command": "pytest -q tests/test_launch_trace_auto.py tests/test_launch_trace_review.py tests/test_launch_trace_settings.py tests/test_trace_auto_recording.py -k \"not 200_mb\"",
+      "deselected": 1,
+      "passed": 97,
+      "python": "3.14",
+      "skipped": 0
+    },
+    {
+      "command": "scripts/validate_operation_schemas.py",
+      "errors": [],
+      "examples": 43,
+      "schemas": 80
+    },
+    {
+      "command": "scripts/check_quality.py; scripts/generate_operation_reference.py --check; scripts/generate_capability_reference.py --check; git diff --check",
+      "status": "passed"
+    },
+    {
+      "artifacts": [
+        "raven-7.0.0-py3-none-any.whl",
+        "raven-7.0.0.tar.gz"
+      ],
+      "command": "python -m build",
+      "status": "passed"
+    },
+    {
+      "command": "pytest from extracted source distribution: test_slurm_json.py test_slurm_qualification.py test_completed_series_identity.py test_launch_trace_auto.py test_vendor_client.py",
+      "passed": 92
+    },
+    {
+      "command": "scripts/qualify_flagship.py --wheel dist/raven-7.0.0-py3-none-any.whl",
+      "external_untested": 7,
+      "local_qualified": 8
+    },
+    {
+      "entrypoints": [
+        "raven",
+        "ravenl",
+        "ravenh"
+      ],
+      "scope": "Installed wheel outside checkout; separate application venv without installed Raven; bundled and vendored clients",
+      "status": "passed",
+      "verified_metrics": {
+        "residual": 0.125
+      },
+      "verified_trace_streams_per_run": 1
+    }
+  ],
+  "limits": [
+    "Full-fidelity tight-call tracing exceeds requested 2x overhead target.",
+    "PyTorch/DDP and GPU/NCCL unavailable; live Slurm/multi-node/shared-filesystem/remote SSH not qualified.",
+    "Hosted CI has not run on unpublished feature branch."
+  ],
+  "optional_runtime_receipt": "../benchmarks/automatic-instrumentation-qualification.json",
+  "schema": "raven.instrumentation-integration-evidence/v1",
+  "source_fingerprint": "f98618ccec297928867ec1892ccecebcdb2b1a3597965cd6e3aa06dd3fe57d6c",
+  "source_identity": "Changed runtime/test/schema/harness bytes; baseline supplies unchanged files. Same runtime bytes verified in installed wheel. Later documentation-only edits do not alter this identity.",
+  "source_sha256": {
+    ".github/workflows/tests.yml": "792bb4e3e64da9534ededadcf7125f04139e2220c3f8a4f14b88814675be97d0",
+    "docs/schemas/automation-settings.v1.schema.json": "6707cf0cd239bcdb8694b028c735494d70d5e015a2ee617f9554c6be8f0034bf",
+    "docs/schemas/metrics-index.v1.schema.json": "58d2c92f0b07b2acc01330e95166e41c1d2d62b9b3cd71cad5b02364df82f17f",
+    "docs/schemas/metrics-meta.v1.schema.json": "52e1acf81afc2b004d1478b587f181e3b53a238d51eff41593c4c1052a763d45",
+    "raven/__init__.py": "3931246259eb1d3a7b55b5f78383a95fde6023cc1e62e7a5f37baf69b5a90866",
+    "raven/analysis_ui.py": "b101dc0b603cd525ff9c7e05a2fded406285898ba7d3084e9c91a6dc58f3e3d8",
+    "raven/chart_tools.py": "1277e1e7a215db8b042365cc9c6a44e2984804e36a152df8828b14a3b0610488",
+    "raven/charts.py": "2c0ac894a249f3385ad19cab718a14a4c63603839cb752411f644b559dc3ad52",
+    "raven/client.py": "911e28388ccea14dd1bea15e3cdab9fea709f6873d9d5a8163e024c957db368c",
+    "raven/command_registry.py": "01452a0dcddda2fa906594a16584a94f3460e1af40a78532965a532863612ccd",
+    "raven/connect_data.py": "21da1707d3c6f8a010f8a77d434e9d6839ea0349f7424a4b0b854e5ed0a34629",
+    "raven/connect_data_ui.py": "14b1a21a5142308cb40388aa2f19bc7570e69d9afba07211664f55ee4f498601",
+    "raven/launch.py": "c1985ea19f2ca88f1f3ff700840a03cb8d723bad2ba81372496e3e8ca68a32a8",
+    "raven/launch_autotrace.py": "3fd376d13d594fa1886a83adbf347a7fc0dfc0c9a37181a53329d5ea2e670fb6",
+    "raven/launch_bootstrap.py": "fc29e0d761034d7b811c169b3fbd8a447f9c004fa4a3b503ae249ae963d029e2",
+    "raven/launch_features.py": "c94804c41d5bdd87e3ba412b961cf5871eb41dae8482e8d58784ed9ed1ee7f5d",
+    "raven/launch_runtime.py": "5f4aef56339a263087982cd8726f99a900004987a03b4f1d4fbea0032d0ab1cc",
+    "raven/launch_settings.py": "010471f50cee5517df68ddb1bb5a50439e2a21283a7c862373539e7b9162b121",
+    "raven/launch_setup_ui.py": "93ebceca037ded2061cfff9fe398ec48fda5a38b08f58c22d371f9d3b423e351",
+    "raven/launch_trace.py": "e10074a5a5c640ffc1cde59e377eb2adc8b17164636aab48d4b316ae2a3b5744",
+    "raven/metric_envelope.py": "8665f3b4a4de6131301114e9edf0c9fe62c72fa26d39ed1df00907a006829c58",
+    "raven/metrics.py": "d183d79b81e78057bded8623162eb736e0ee2bae995a2677674d6600d1401026",
+    "raven/projects.py": "c30d402c59b36041a9c11f17ca0de5bd73b0336ddaa884fe3da650cd178279a5",
+    "raven/quick_advisor.py": "d604552e9460d43f2bb787edb8c59bb158a4d24dcdee4b0f075de580d01e17ca",
+    "raven/raven_limits.py": "f9c0304e5a5bce14e1e64000a21ca8e296fd280e843f7652cb1508ed75eedfff",
+    "raven/research.py": "238f4c1e495477ddd81554a62c23d860d3e3cb386bee3c9fa80c1347a5f0d283",
+    "raven/research_reporting.py": "e429e2e30d29977d3633cb48821dcb1f8ba8942ac0cd1450fa48ae5f4a174fd9",
+    "raven/research_views.py": "5a9b65fdaff0e9aacce719b002dacd2ea27a931623b0ae4f12ba45cdb450ce55",
+    "raven/trace_analysis.py": "8f7fe596af34f3bbfec270aec85249f1d0a092dc665f79967dcee7a05c43e2c0",
+    "raven/trace_protocol.py": "84936325e686beede4a130ebe3bedc2bc0c0ca63e51b1e9c5870b3acbe76dbfa",
+    "raven/trace_recorder.py": "4485523d5b9a4a7e33c32a3cfd66da479071483eb25d80355777c1c035a864d0",
+    "raven/trace_ui.py": "1d8deedf98d9b820039c05bc6644aa7b04eebebf5ab850c9bd10b72abf51dd82",
+    "scripts/benchmark_auto_instrumentation.py": "dce8e75f444ff4564b90c5b442605deb9c2d54900eb79b4973da62c56fafd8b2",
+    "scripts/benchmark_metric_semantics.py": "eddeb303055130e2218c13af9e48c127d0482622a9ebfbded9326128464b8a6f",
+    "scripts/validate_operation_schemas.py": "b2d01914907256738fa231bfabffc4f25576f110fb442fa687372074cb5406c1",
+    "tests/test_attachment_readiness_ui.py": "c4a2eb24ed8a12b37f82beb9ea66a3dd229f623ee73d652e11435c191a8a4e31",
+    "tests/test_client.py": "62e84b87daddd7968558e1828111566636e7a940d64135f986d209788af5e364",
+    "tests/test_instrumentation_qualification.py": "cb8d0ec34f8a5b6725cfb7780e6d1f993029c327b3f5977e110c9cf34d56fc4c",
+    "tests/test_launch_trace_auto.py": "a3ad53e2e44477a4b2d9383453e1dbefa04a4a562613039d8c6bf4610b47e53f",
+    "tests/test_launch_trace_review.py": "24acb2d4580ff25a98af619b8a9f4321c0f3e0785dc149ab469d31e537cf4994",
+    "tests/test_launch_trace_settings.py": "80ae7d85a0b778e88a8b8c30f1a3321fb5094d347815edbc46a2ed1576db34ab",
+    "tests/test_metric_semantics.py": "3f7fca4f5f99cb84cf96611067999256d741e5bce6c274900e997fe2f35aff07",
+    "tests/test_metrics.py": "d941f7ed578121139fbba1b52e3f4676879765fc16f99d13a5a2b6d0b87b27d5",
+    "tests/test_project_remote.py": "1626a8cc3c38410251f38bb856752100bb94e6032e1125c872a1f2046c75a512",
+    "tests/test_trace_auto_recording.py": "fcfe85ca22aaaf2ab7f15cda5cb09ae97131c18b7fe9fac84df4975bcee1944d",
+    "tests/test_vendor_client.py": "cd68b4c4654871d58682354fffb0a0a32eb7a7a2a86632d961c6f280e8507244"
+  }
+}

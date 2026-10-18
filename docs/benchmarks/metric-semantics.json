@@ -1,0 +1,80 @@
+{
+  "baseline_revision": "b52cd93e2b7581eeff6e9f601ad13765f4618a0c",
+  "source_sha256": {
+    "raven/metrics.py": "d183d79b81e78057bded8623162eb736e0ee2bae995a2677674d6600d1401026",
+    "raven/projects.py": "c30d402c59b36041a9c11f17ca0de5bd73b0336ddaa884fe3da650cd178279a5",
+    "raven/analysis_ui.py": "b101dc0b603cd525ff9c7e05a2fded406285898ba7d3084e9c91a6dc58f3e3d8",
+    "raven/chart_tools.py": "1277e1e7a215db8b042365cc9c6a44e2984804e36a152df8828b14a3b0610488",
+    "raven/charts.py": "2c0ac894a249f3385ad19cab718a14a4c63603839cb752411f644b559dc3ad52",
+    "raven/metric_envelope.py": "8665f3b4a4de6131301114e9edf0c9fe62c72fa26d39ed1df00907a006829c58",
+    "raven/quick_advisor.py": "d604552e9460d43f2bb787edb8c59bb158a4d24dcdee4b0f075de580d01e17ca",
+    "raven/research.py": "238f4c1e495477ddd81554a62c23d860d3e3cb386bee3c9fa80c1347a5f0d283",
+    "raven/research_views.py": "5a9b65fdaff0e9aacce719b002dacd2ea27a931623b0ae4f12ba45cdb450ce55",
+    "tests/test_metric_semantics.py": "3f7fca4f5f99cb84cf96611067999256d741e5bce6c274900e997fe2f35aff07",
+    "tests/test_project_remote.py": "1626a8cc3c38410251f38bb856752100bb94e6032e1125c872a1f2046c75a512",
+    "tests/test_metrics.py": "d941f7ed578121139fbba1b52e3f4676879765fc16f99d13a5a2b6d0b87b27d5",
+    "docs/schemas/metrics-meta.v1.schema.json": "52e1acf81afc2b004d1478b587f181e3b53a238d51eff41593c4c1052a763d45",
+    "docs/schemas/metrics-index.v1.schema.json": "58d2c92f0b07b2acc01330e95166e41c1d2d62b9b3cd71cad5b02364df82f17f"
+  },
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q tests/test_metric_semantics.py tests/test_metrics.py tests/test_project_remote.py tests/test_analysis_ui.py tests/test_quick_advisor.py tests/test_research_autolink.py tests/test_analysis_raster_zoom.py tests/test_analysis_selection_clear.py tests/test_qol_charts.py tests/test_charts_extremes.py --disable-warnings --maxfail=3",
+    "passed": 551,
+    "elapsed_seconds": 15.45
+  },
+  "reader_benchmark": {
+    "before": {
+      "source": "/workspace/raven-metrics-baseline",
+      "mode": "legacy",
+      "median_ms": 5.866466999577824,
+      "p95_ms": 7.661654999537859,
+      "cpu_total_ms": 372.451836,
+      "process_peak_rss_kib": 37444,
+      "fixture": "64series*600points;unchangedsource;60reads",
+      "retained": 38400
+    },
+    "after-legacy": {
+      "source": "/workspace/Raven",
+      "mode": "legacy",
+      "median_ms": 5.9426620027807076,
+      "p95_ms": 7.2598289989400655,
+      "cpu_total_ms": 365.63179299999996,
+      "process_peak_rss_kib": 37496,
+      "fixture": "64series*600points;unchangedsource;60reads",
+      "retained": 38400
+    },
+    "after-meta": {
+      "source": "/workspace/Raven",
+      "mode": "sidecar",
+      "median_ms": 8.56502150054439,
+      "p95_ms": 10.622220004734118,
+      "cpu_total_ms": 522.653254,
+      "process_peak_rss_kib": 38464,
+      "fixture": "64series*600points;unchangedsource;60reads",
+      "retained": 38400
+    }
+  },
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "limits": [
+    "synthetic local filesystem; no live Slurm,GPU or remote latency measurement",
+    "isolated stdlib SSH helper execution tests use a local subprocess, not a live SSH cluster",
+    "process peak RSS is not Python allocation measurement",
+    "one default stream read, no all-rank fanout or aggregation",
+    "rolling median uses seven displayed columns and does not alter observations",
+    "Small same-host samples vary with process scheduling and Python garbage collection; no universal overhead bound is established.",
+    "Reader/source hashes identify the qualified working-tree bytes, not a later integrated commit."
+  ],
+  "methods": {
+    "reader_harness": "scripts/benchmark_metric_semantics.py",
+    "reader_note": "Recorded runs used an equivalent fixed-fixture precursor of the published guarded CLI harness. Its source SHA-256 is retained below. The CLI adds argument parsing, validation and provenance fields without changing the 64\u00d7600 fixture or timed read loop.",
+    "recorded_harness_sha256": "38df822915458821938ce68de5aa045357f92844d57f201d575da3180c4f6ceb",
+    "reader_initialization": "One complete warmup read outside timing; 60 unchanged-stream snapshots in each fresh process. The sidecar declares all 64 metrics as residuals.",
+    "reader_p95": "Nearest-rank percentile: sorted times[ceil(0.95*n)-1].",
+    "render_harness": "scripts/benchmark_ui.py",
+    "render_reports": [
+      "metric-semantics-render-before.json",
+      "metric-semantics-render-after.json"
+    ],
+    "render_note": "Supplemental cached-screen measurements collected before the final empty-canonical rank-fallback correction. This fixture contains no rank index or sidecar; these render reports do not identify the final integrated revision.",
+    "benchmarks_are_thresholds": false
+  }
+}

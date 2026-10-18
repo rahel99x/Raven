@@ -1,0 +1,160 @@
+{
+  "metadata": {
+    "label": "after",
+    "source_root": "/workspace/Raven",
+    "version": "7.0.0",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "interactive": true,
+    "headless": false,
+    "timestamp": "2026-10-18T20:27:02.075279+00:00",
+    "measurement": "CPU with a counting paint sink; excludes terminal transport and wait times",
+    "sources": "synthetic memory fixtures; scheduler, filesystem and worker I/O are forbidden during measured frames"
+  },
+  "results": [
+    {
+      "scenario": "research",
+      "gesture": "render",
+      "jobs": 100,
+      "history": 100,
+      "metrics": 64,
+      "points": 600,
+      "width": 80,
+      "height": 24,
+      "glyphs": "unicode",
+      "pipeline": "cached screen",
+      "repeats": 30,
+      "pointer_targets": {
+        "graphs": 0,
+        "controls": 0
+      },
+      "phases_ms": {
+        "compose": {
+          "median": 2.447226499498356,
+          "p95": 3.155354999762494,
+          "max": 11.762547997932415
+        },
+        "decorate": {
+          "median": 0.043626499973470345,
+          "p95": 0.05710700497729704,
+          "max": 0.11057799565605819
+        },
+        "document_rebuild": {
+          "median": 3.38507849664893,
+          "p95": 4.143623998970725,
+          "max": 12.840832998335827
+        },
+        "feedback": {
+          "median": 0.12758899902109988,
+          "p95": 0.1966380004887469,
+          "max": 0.2480059993104078
+        },
+        "frame": {
+          "median": 3.542877999279881,
+          "p95": 4.323786997701973,
+          "max": 13.010449998546392
+        },
+        "graph": {
+          "median": 0.5962284994893707,
+          "p95": 0.7320509976125322,
+          "max": 0.732621003407985
+        },
+        "overlay": {
+          "median": 0.03835799725493416,
+          "p95": 0.0691050008754246,
+          "max": 0.13192000187700614
+        },
+        "paint": {
+          "median": 0.022909502149559557,
+          "p95": 0.042994994146283716,
+          "max": 0.06393699732143432
+        },
+        "snapshot": {
+          "median": 0.008627997885923833,
+          "p95": 0.009894996765069664,
+          "max": 0.012378004612401128
+        },
+        "tick": {
+          "median": 0.049890499212779105,
+          "p95": 0.0901870007510297,
+          "max": 0.12199499906273559
+        }
+      },
+      "counts_per_frame": {
+        "advisor_aggregations": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "chart_cards": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "chart_rasters": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "compose_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "erase_calls": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "graph_publications": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "overlay_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "paint_calls": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 1
+        },
+        "paint_cells": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 1
+        },
+        "paint_rows": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 1
+        },
+        "prepared_job_rows": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "running_advice": {
+          "median": 0.0,
+          "p95": 0,
+          "max": 0
+        },
+        "snapshot_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        },
+        "tick_calls": {
+          "median": 1.0,
+          "p95": 1,
+          "max": 1
+        }
+      },
+      "io_attempts": {},
+      "ui_trace": false,
+      "trace_timeline": null
+    }
+  ]
+}

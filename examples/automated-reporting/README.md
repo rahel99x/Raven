@@ -1,7 +1,7 @@
 # Existing-script reporting and export example
 
-This project runs a finite-series approximation of π. It contains an ordinary
-Slurm/Bash script, an optional measurement producer, and a Python tracing hook.
+This project runs a finite-series approximation of π. It contains ordinary
+Slurm/Bash scripts, optional measurement producers, and automatic Python tracing.
 No user-created Raven manifests are needed. Python 3.10+ and an installed Raven
 command are sufficient for the local example. It is an integration check, not
 a numerical benchmark or GPU workload.
@@ -10,7 +10,35 @@ a numerical benchmark or GPU workload.
 | --- | --- |
 | `test.sh` | Ordinary batch script; also works without Raven. |
 | `solve.py` | Computes actual values; uses the pinned helper when provided. |
-| `traced.sh` | Adds `raven_exec` after application environment setup. |
+| `solve_client.py` | The same scientific calculation using `import raven` measurements. |
+| `traced-auto.sh` | Ordinary Python command; automatic attachment needs no helper. |
+| `traced.sh` | Explicit `raven_exec` override after application environment setup. |
+| `train_ddp.py`, `ddp.sh` | Real two-process CPU PyTorch DDP and mean-loss reporting. |
+| `rank_mpi.py`, `mpi.sh` | Real mpi4py exchange and explicit collective reporting. |
+| `pool.py` | Real process-pool calculation with parent-only aggregate reporting. |
+
+## Start with the Python client
+
+The primary Python integration is one import and a decorator or explicit call:
+
+```python
+import raven
+@raven.measure("absolute_error", kind="error", step="step")
+def measured_error(estimate, step): return abs(math.pi - estimate)
+```
+
+`solve_client.py` also reports `pi_estimate`, phase timing and progress. The client
+coalesces fast intermediate telemetry; metadata records omitted-point counts.
+`solve.py` deliberately retains the manual producer so every explicitly submitted
+step remains available for the existing exact-observation/export example.
+Choose that manual path when each submitted observation must be retained.
+
+Raven supplies the Python client inside the launch. To run these applications
+directly in an environment without Raven, first run
+`raven report vendor-client --root "$PWD"` from the copied example directory.
+The resulting `raven.py` is inert until a Raven run or `RAVEN_METRICS_FILE` is
+configured. See the [client guide](../../docs/guides/python-metrics.md) for kinds,
+rank policy, coalescing, and failure behavior.
 
 ## Prepare and preview
 
@@ -24,7 +52,7 @@ raven launch test.sh --project "$PWD" --research experiment scaling forecast --g
 
 Choose another destination if that directory already exists. The preview
 explains missing scaling context, pending-time observations, assigned-device
-verification, and the tracing hook. It creates no run/export state and submits
+verification, and Python tracing prerequisites. It creates no run/export state and submits
 nothing. WorkDir remains the directory from which you submit.
 
 ## Run on a workstation
@@ -136,14 +164,18 @@ explain identity, units, clocks, missing cells, source cutoffs, and coverage.
 
 ## Trace, failure, and recovery
 
-Use the explicit hook on a supported CPython 3.12+ application runtime:
+Use an unchanged Python command on a supported CPython 3.12+ application runtime:
 
 ```bash
-raven launch traced.sh --project "$PWD" --local --research experiment --trace -- --steps 3
+raven launch traced-auto.sh --project "$PWD" --local --research experiment --trace -- --steps 3
 ```
 
-The explicit `--trace-adapter python-legacy-profile` option supports reduced
-Python 3.10+ profile semantics. Native, MPI, and GPU stacks are separate
+On Python 3.10/3.11, explicitly add
+`--trace-adapter python-legacy-profile` for reduced profile semantics.
+The existing `traced.sh` keeps the explicit `raven_exec` form. To select only
+explicitly hooked commands, set `RAVEN_TRACE_AUTO=0` before launching that script;
+the automatic setting cannot retroactively untrace a previously started command.
+Native, MPI, and GPU stacks are separate
 integrations; see [stack tracing](../../docs/guides/stack-tracing.md).
 
 Keep evidence from a controlled application failure:
@@ -171,3 +203,35 @@ the target cluster. Local acceptance does not establish those site properties.
 
 See the [complete workflow](../../docs/guides/automated-reporting-exports.md)
 for readiness, all Research selections, export contracts, and operational limits.
+
+## Exercise real process and rank workloads
+
+For the standard-library process pool, run `python3 pool.py` from a script
+launched with `--trace`. Its spawned helpers have separate trace coverage but
+are hidden from the default trace view; parent metrics report the aggregate.
+`--trace-helpers` includes helper processes in the default trace view.
+
+With PyTorch installed in the application's environment:
+
+```bash
+raven launch ddp.sh --project "$PWD" --local --research experiment --trace
+```
+
+This uses two real CPU `gloo` ranks. Both call `reduce="mean"` in the same order.
+It requires no GPU and makes no claim about CUDA, NCCL, multi-node networking,
+or the site's GPU resource policy.
+
+With site-compatible MPI and mpi4py installed, submit the supplied two-task
+script on Slurm:
+
+```bash
+raven launch mpi.sh --project "$PWD" --account LabX --research experiment --trace
+```
+
+Use an account available to your login, or omit it for the default account.
+For a local MPI check, a Bash script may instead run
+`mpirun -np 2 python3 rank_mpi.py` with `--local`.
+The metric reduction is an application collective: every rank must participate
+in the same order. A local optional-dependency test that skips missing PyTorch,
+mpi4py or an MPI executable does not qualify these integrations; verify them
+with the installed runtime and actual launch policy before a production run.

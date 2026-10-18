@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add automatic Python attachment for `raven launch --trace`, project-scoped
+  filtering, bounded block journals and per-process coverage. Existing
+  `raven_exec` hooks remain available; isolated interpreters, native code and
+  GPU kernels retain explicit coverage limits.
+- Add the optional `import raven` metrics client: sampled measurements, phases,
+  watched locals, progress, rank-aware reductions and kind-aware presentation.
+  `raven report vendor-client` publishes a standalone copy with a recorded hash;
+  the existing JSONL and manual reporting contracts remain supported.
+
 - Add a one-command installer, explicit `raven update` with saved installation
   options, and `--overwrite` source replacement with recoverable backups.
   Restore a backup with `raven revert BACKUP_DIRECTORY` while preserving current

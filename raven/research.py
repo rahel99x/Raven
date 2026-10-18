@@ -345,8 +345,11 @@ class ResearchHub:
             if self.reader is None or self.reader.files is not self.files:
                 from .metrics import MetricReader
                 self.reader = MetricReader(self.files)
-            return (self.reader.read_confined(path, context["binding"]) if context.get("binding")
-                    else self.reader.read(path))
+            selected = settings.get("metric_stream", {})
+            rank_stream = (selected.get("name") if isinstance(selected, dict) and selected.get("source") == path else None)
+            options = {"rank_stream": rank_stream} if rank_stream else {}
+            return (self.reader.read_confined(path, context["binding"], **options) if context.get("binding")
+                    else self.reader.read(path, **options))
         if view == "arrays":
             from .arrays import summarize
             return {"status": "ok", "groups": summarize(snap.get("jobs", []), snap.get("finished", []))}

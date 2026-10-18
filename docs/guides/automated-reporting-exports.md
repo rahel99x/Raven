@@ -293,8 +293,19 @@ observer; launch does not create a detached per-job scheduler daemon.
 
 ## 6. Trace a supported application launch
 
-`--trace` requests application tracing, not shell `set -x` or arbitrary native
-stack capture. Place the explicit hook after module loads and environment
+`raven launch batch.sh --trace` automatically attaches supported Python
+interpreters that inherit the launch environment. An unchanged command such as
+`python3 train.py --epochs 100` is enough. Scripts, modules, `-c`, shebangs,
+subprocesses and Python rank workers share the same reporting attempt with
+separate process journals. The monitoring adapter needs CPython 3.12 or later;
+Python 3.10/3.11 requires explicit `--trace-adapter python-legacy-profile` consent.
+
+Project files are captured by default. `--trace-scope all` includes other Python
+frames at higher potential cost, and `--trace-helpers` includes helper workers
+in the default trace view. Python event tracing does not record native library
+internals, GPU kernels or a complete distributed logical stack.
+
+The existing explicit override remains useful after module loads and environment
 activation:
 
 ```bash
@@ -302,21 +313,21 @@ source "$RAVEN_SHELL_HELPER"
 raven_exec python3 train.py --epochs 100
 ```
 
-Use `raven launch batch.sh --trace` for the CPython monitoring adapter on a
-supported CPython 3.12+ application runtime. The explicit
-`--trace-adapter python-legacy-profile` option supports the documented reduced
-Python 3.10+ profile semantics. Raven does not silently replace a profiler or
-rewrite hidden `python`, `srun`, or `mpirun` commands. The hook preserves argv
-and application status; the outer wrapper owns the single reporting attempt.
+The hook preserves application arguments and status and prevents double
+attachment. Use `RAVEN_TRACE_AUTO=0 raven launch batch.sh --trace` for an
+explicit-hook-only workflow. A later hook cannot undo earlier automatic capture.
 
-The automatic hook supports a simple `python script.py [args]` invocation.
-Python `-m`, interpreter flags, shell pipelines, and hidden distributed launches
-run unchanged with an unavailable-trace explanation; they are not rewritten.
+`python -I`, `python -S`, or an environment that removes the supplied
+`PYTHONPATH` can bypass attachment. An attached parent's observed subprocess
+activity can explain supported exclusions, but Raven cannot enumerate arbitrary
+children started by an untraced shell. Review the per-process coverage and pilot
+the actual module/launcher environment; missing journals are not proof of full
+coverage. Launch does not rewrite the script or arbitrary child commands.
 
 Native cooperative events, supported MPI instrumentation, and reviewed
 `py-spy` snapshots are separate integrations with their own coverage and
-permissions. See [stack tracing](stack-tracing.md). Without a supported hook,
-the run remains usable and its trace readiness explains the missing input.
+permissions. See [stack tracing](stack-tracing.md). Missing tracing leaves
+the run and its independent CPU, GPU, logs and scientific measurements usable.
 
 ## Inspect the exact retained attempt
 

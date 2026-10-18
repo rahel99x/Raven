@@ -24,6 +24,7 @@ from . import trace_protocol as protocol
 from .reporting import _atomic_json, _directory
 
 _RECORDERS = weakref.WeakSet()
+_CAPTURES = weakref.WeakSet()
 
 
 def _fork_child():
@@ -31,6 +32,8 @@ def _fork_child():
     # recorder instances through os.register_at_fork's permanent callback list.
     for recorder in list(_RECORDERS):
         recorder._after_fork()
+    for capture in list(_CAPTURES):
+        capture._after_fork()
 
 
 if hasattr(os, "register_at_fork"):
@@ -113,9 +116,22 @@ class Recorder:
     def __init__(self, project, *, job_id=None, attempt=None, cluster=None,
                  coverage=None, max_bytes=64 << 20, flush_events=64,
                  flush_interval=0.05, identity_extra=None, stream_id=None, initial_mono_ns=None,
-                 background_flush=True):
-        if not 4096 <= max_bytes <= 1 << 40 or not 1 <= flush_events <= 65536 or not 0 <= flush_interval <= 60:
+                 background_flush=True, journal_format="events", reserve_bytes=None):
+        if (type(max_bytes) is not int or not 4096 <= max_bytes <= 1 << 40
+                or type(flush_events) is not int or not 1 <= flush_events <= 65536
+                or isinstance(flush_interval, bool) or not isinstance(flush_interval, (int, float))
+                or not 0 <= flush_interval <= 60):
             raise ValueError("Invalid recorder storage or flush budget")
+        if journal_format not in {"events", "blocks"}:
+            raise ValueError("Unknown trace journal format")
+        self.journal_format = journal_format
+        if reserve_bytes is not None and not callable(reserve_bytes):
+            raise ValueError("Trace byte reservation must be callable")
+        self.reserve_bytes = reserve_bytes
+        self._pending = []
+        self._pending_bytes = 0
+        self._written_seq = 0
+        self._storage_failed = False
         self.project = _safe_directory(project)
         self._pid = os.getpid()
         self.lock = threading.RLock()
@@ -175,7 +191,12 @@ class Recorder:
             self.fd = None
 
     def _publish(self):
-        _atomic_json(self.path, {"schema": protocol.SCHEMA, "identity": self.identity,
+        format_fields = ({"journal_format": protocol.BLOCK_FORMAT, "block_size": self.flush_events,
+                          "max_block_bytes": protocol.MAX_BLOCK_BYTES} if self.journal_format == "blocks" else {})
+        process = {key: self.identity[key] for key in ("pid", "parent_pid", "role", "launcher", "rank",
+                   "local_rank", "world_size", "interpreter") if key in self.identity}
+        _atomic_json(self.path, {"schema": protocol.SCHEMA, "identity": self.identity, **format_fields,
+            "process": process,
             "journal": "events.jsonl", "coverage": self.coverage, "state": self.state,
             "committed_seq": self.committed_seq, "committed_bytes": self.committed_bytes,
             "dropped": self.dropped, "warnings": self.warnings[-16:], "updated_ns": time.time_ns(),
@@ -189,6 +210,8 @@ class Recorder:
                 return False
             event = protocol.validate_event({"kind": kind, "mono_ns": mono_ns if mono_ns is not None else time.monotonic_ns(),
                 "thread": str(thread or threading.get_ident()), "data": data or {}}, check_size=False)
+            if self.journal_format == "blocks":
+                return self._emit_block_event(event)
             record = {"schema": "raven.trace-event/v1", "stream": self.stream, "seq": self.sequence + 1,
                       "prev": self.previous, "event": event}
             raw, digest = protocol.encode_event_record(record)
@@ -199,6 +222,17 @@ class Recorder:
                 self._fail("LIMIT", "Storage budget reached; recording stopped, application continues")
                 return False
             try:
+                if self.reserve_bytes is not None:
+                    try:
+                        reserved = self.reserve_bytes(len(raw))
+                    except Exception as exc:
+                        self.dropped += 1
+                        self._fail("ERROR", f"Shared run storage reservation failed: {type(exc).__name__}")
+                        return False
+                    if not reserved:
+                        self.dropped += 1
+                        self._fail("LIMIT", "Shared run storage budget reached; recording stopped, application continues")
+                        return False
                 view = memoryview(raw)
                 while view:
                     written = os.write(self.fd, view)
@@ -216,6 +250,83 @@ class Recorder:
                 self._fail("ERROR", f"Trace storage failed: {type(exc).__name__}")
                 return False
 
+
+    def _emit_block_event(self, event):
+        raw = protocol.encoded({"schema": protocol.EVENT_FORMAT, "stream": self.stream,
+                                "seq": self.sequence + 1, "event": event}) + b"\n"
+        if len(raw) > protocol.MAX_EVENT:
+            raise ValueError("Trace event envelope exceeds 64 KiB")
+        try:
+            if self._pending_bytes + len(raw) > protocol.MAX_BLOCK_BYTES:
+                self.flush()
+                if self.state != "OPEN":
+                    self.dropped += 1
+                    return False
+            # Reserve the bounded header before accepting an event. Budget
+            # exhaustion cannot leave a committed checkpoint inside a block.
+            if self.bytes + self._pending_bytes + len(raw) + protocol.MAX_BLOCK_HEADER > self.max_bytes:
+                self.dropped += 1
+                self._fail("LIMIT", "Storage budget reached; recording stopped, application continues")
+                return False
+            self._pending.append(raw)
+            self._pending_bytes += len(raw)
+            self.sequence += 1
+            if len(self._pending) >= self.flush_events or time.monotonic() - self.last_flush >= self.flush_interval:
+                self.flush()
+            return self.state == "OPEN"
+        except OSError as exc:
+            self._fail("ERROR", f"Trace storage failed: {type(exc).__name__}")
+            return False
+
+    def _write_block(self):
+        if not self._pending or self._storage_failed:
+            return
+        header, digest = protocol.encode_block(self.stream, self._written_seq + 1, self.previous, self._pending)
+        try:
+            reserved = self.reserve_bytes is None or self.reserve_bytes(len(header) + self._pending_bytes)
+        except Exception as exc:
+            # A reservation service is an instrumentation dependency. Its
+            # failure may stop capture, never the scientific application.
+            self.state = "ERROR"
+            self.warnings.append(f"Shared run storage reservation failed: {type(exc).__name__}")
+            reserved = False
+        if not reserved:
+            if self.state != "ERROR":
+                self.state = "LIMIT"
+                self.warnings.append("Shared run storage budget reached; recording stopped, application continues")
+            self.dropped += len(self._pending)
+            self._pending.clear()
+            self._pending_bytes = 0
+            return
+        # POSIX IOV_MAX is commonly 1024; coalesce only oversized batches.
+        vectors = [header, *self._pending]
+        maximum = os.sysconf("SC_IOV_MAX") if hasattr(os, "writev") else 1
+        if len(vectors) > maximum:
+            vectors = [b"".join(vectors)]
+        views = [memoryview(raw) for raw in vectors]
+        try:
+            while views:
+                written = os.writev(self.fd, views) if hasattr(os, "writev") else os.write(self.fd, views[0])
+                if written <= 0:
+                    raise OSError("Trace journal write made no progress")
+                while views and written >= len(views[0]):
+                    written -= len(views.pop(0))
+                if views and written:
+                    views[0] = views[0][written:]
+        except OSError:
+            # A partial block must remain an uncommitted tail. Never retry it
+            # at the advanced descriptor or certify its accepted sequences.
+            self._storage_failed = True
+            self.dropped += len(self._pending)
+            self._pending.clear()
+            self._pending_bytes = 0
+            raise
+        self.bytes += len(header) + self._pending_bytes
+        self._written_seq = self.sequence
+        self.previous = digest
+        self._pending.clear()
+        self._pending_bytes = 0
+
     def _fail(self, state, message):
         with self.lock:
             self.state = state
@@ -229,8 +340,11 @@ class Recorder:
         if self._fork_disabled or self.fd is None:
             return
         with self.lock:
+            if self.journal_format == "blocks":
+                self._write_block()
             os.fsync(self.fd)
-            self.committed_seq, self.committed_bytes = self.sequence, self.bytes
+            self.committed_seq = self._written_seq if self.journal_format == "blocks" else self.sequence
+            self.committed_bytes = self.bytes
             self.last_flush = time.monotonic()
             self._publish()
 
@@ -276,9 +390,14 @@ class Recorder:
 
 class PythonCapture:
     """CPython monitoring, with an explicitly less capable legacy profile mode."""
-    def __init__(self, recorder, *, legacy=False):
+    def __init__(self, recorder, *, legacy=False, scope="all", roots=()):
+        if scope not in {"project", "all"}:
+            raise ValueError("Python trace scope must be project or all")
         self.recorder = recorder
         self.legacy = legacy
+        self.scope = scope
+        self.roots = tuple(str(Path(root).resolve()) + os.sep for root in (roots or (recorder.project,)))
+        self._scope_cache = {}
         self.local = threading.local()
         self.tool_id = None
         self.previous_profile = None
@@ -289,6 +408,46 @@ class PythonCapture:
         self._stopped = False
         self._metadata = {}
         self._metadata_lock = threading.RLock()
+        _CAPTURES.add(self)
+
+    def _after_fork(self):
+        # Weakref cleanup and explicit stop may run before a fresh child
+        # attachment. Never acquire a cache lock inherited from another thread.
+        self._stopped = True
+        self._metadata_lock = threading.RLock()
+        self.local = threading.local()
+
+    def _included(self, code):
+        """A bounded, weak code cache keeps legacy filtering cheap and stable."""
+        key = id(code)
+        cached = self._scope_cache.get(key)
+        if cached is not None and cached[0]() is code:
+            return cached[1]
+        filename = code.co_filename
+        allowed = filename not in self.excluded
+        if allowed and self.scope == "project":
+            if filename.startswith("<"):
+                allowed = filename in {"<string>", "<stdin>"}
+            else:
+                path = os.path.realpath(filename)
+                raven_root = str(Path(__file__).resolve().parent) + os.sep
+                allowed = (not path.startswith(raven_root)
+                           and "site-packages" not in Path(path).parts
+                           and "dist-packages" not in Path(path).parts
+                           and any(path.startswith(root) for root in self.roots))
+        owner = weakref.ref(self)
+        def discard(reference):
+            capture = owner()
+            if capture is not None:
+                with capture._metadata_lock:
+                    current = capture._scope_cache.get(key)
+                    if current is not None and current[0] is reference:
+                        del capture._scope_cache[key]
+        with self._metadata_lock:
+            if len(self._scope_cache) >= 1024:
+                del self._scope_cache[next(iter(self._scope_cache))]
+            self._scope_cache[key] = (weakref.ref(code, discard), allowed)
+        return allowed
 
     def _code_metadata(self, code):
         """Bounded immutable-code metadata without keeping dynamic code alive."""
@@ -314,7 +473,8 @@ class PythonCapture:
         return data
 
     def _event(self, kind, code):
-        if getattr(self.local, "busy", False) or self._stopped or self.recorder._fork_disabled or code.co_filename in self.excluded:
+        if (getattr(self.local, "busy", False) or self._stopped or self.recorder._fork_disabled
+                or self.recorder.state != "OPEN" or os.getpid() != self.recorder._pid or not self._included(code)):
             return
         self.local.busy = True
         try:
@@ -368,13 +528,19 @@ class PythonCapture:
                     # it for permanently excluded code and local events. Never
                     # disable on a transient recursion or flush-thread guard;
                     # PY_THROW/PY_UNWIND do not permit this return value.
-                    if _disable and code.co_filename in self.excluded:
+                    if (self._stopped or self.recorder._fork_disabled or self.recorder.state != "OPEN"
+                            or os.getpid() != self.recorder._pid):
+                        return monitoring.DISABLE if _disable else None
+                    if _disable and not self._included(code):
                         return monitoring.DISABLE
                     self._event(_kind, code)
                 self.callbacks[event_id] = callback
                 monitoring.register_callback(self.tool_id, event_id, callback)
                 mask |= event_id
             monitoring.set_events(self.tool_id, mask)
+            # CPython keeps DISABLE locations when a tool ID is freed. A later
+            # capture with a wider scope must not inherit the former filter.
+            monitoring.restart_events()
         else:
             self.previous_profile = sys.getprofile()
             self.previous_thread_profile = threading.getprofile() if hasattr(threading, "getprofile") else None

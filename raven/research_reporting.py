@@ -7,11 +7,10 @@ a short advisory lock serializes metadata publications, not job execution.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import fcntl
+import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import shlex
 import signal
@@ -21,6 +20,9 @@ import sys
 import tempfile
 import time
 import uuid
+from contextlib import contextmanager
+from importlib import resources
+from pathlib import Path
 
 from . import reporting as R
 from .projects import validate_inventory
@@ -65,6 +67,105 @@ def initialize(root, name=None):
             return current
         R._atomic_json(path, value)
     return value
+
+
+def _vendor_bytes(path):
+    """Read one stable regular source file, refusing links and unbounded input."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return None
+    try:
+        before = os.fstat(fd)
+        if not stat.S_ISREG(before.st_mode) or before.st_size > R.MAX_JSON:
+            raise ValueError("vendored client must be a regular file of at most 1 MiB")
+        chunks, remaining = [], R.MAX_JSON + 1
+        while remaining:
+            chunk = os.read(fd, min(65536, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        signature = lambda value: (value.st_dev, value.st_ino, value.st_size,
+                                   value.st_mtime_ns, value.st_ctime_ns)
+        if (len(raw) != before.st_size or len(raw) > R.MAX_JSON
+                or signature(before) != signature(os.fstat(fd))
+                or signature(before) != signature(path.lstat())):
+            raise ValueError("vendored client changed while being read; retry")
+        return raw
+    finally:
+        os.close(fd)
+
+
+def _vendor_write(path, raw, *, replace):
+    """Publish a complete private source file, preserving the old file on error."""
+    R._directory(path.parent)
+    if os.path.lexists(path) and not stat.S_ISREG(path.lstat().st_mode):
+        raise ValueError("vendored client must be a regular file; symlinks refused")
+    fd, temporary = tempfile.mkstemp(prefix=".raven-client-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if replace:
+            os.replace(temporary, path)
+        else:
+            os.link(temporary, path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def vendor_client(root, path="raven.py", *, force=False):
+    """Copy the standalone metrics API and retain its verified source identity."""
+    _managed_driver_admission("vendor-client")
+    if type(force) is not bool:
+        raise ValueError("force must be boolean")
+    from .client import API_VERSION
+    source = resources.files("raven").joinpath("client.py").read_bytes()
+    if len(source) > R.MAX_JSON:
+        raise ValueError("packaged metrics client exceeds the 1 MiB source budget")
+    with _lock(root):
+        root = R._directory(root)
+        destination = R._under(root, path, create_parent=True)
+        if destination.suffix != ".py":
+            raise ValueError("vendored client path must name a .py file inside the project")
+        relative = str(destination.relative_to(root))
+        config_path = R._under(root, ".raven/config.json")
+        config = R._read_json(config_path) if os.path.lexists(config_path) else {}
+        if not isinstance(config, dict):
+            raise TypeError("project .raven/config.json must contain a JSON object")
+        previous = _vendor_bytes(destination)
+        recorded = config.get("metrics_client", {})
+        digest = hashlib.sha256(source).hexdigest()
+        if (previous is not None and previous != source and not force
+                and (not isinstance(recorded, dict) or recorded.get("path") != relative
+                     or recorded.get("sha256") != hashlib.sha256(previous).hexdigest())):
+            raise ValueError("existing client has local edits or no recorded checksum; use --force to replace it")
+        metadata = {"api_version": API_VERSION, "path": relative, "sha256": digest}
+        updated = dict(config, metrics_client=metadata)
+        R._encoded(updated)  # Validate before either publication.
+        changed = previous != source
+        if changed:
+            if _vendor_bytes(destination) != previous:
+                raise ValueError("vendored client changed before publication; retry")
+            _vendor_write(destination, source, replace=previous is not None)
+        try:
+            R._atomic_json(config_path, updated, replace=True)
+        except (OSError, ValueError):
+            # Metadata and source are separate atomic files. Restore the source
+            # after a failed metadata publication, but never replace a new edit.
+            if changed and _vendor_bytes(destination) == source:
+                if previous is None:
+                    destination.unlink()
+                else:
+                    _vendor_write(destination, previous, replace=True)
+            raise
+        return metadata
 
 
 def _identity(job_id=None, environ=None):
@@ -548,6 +649,10 @@ def main(argv=None):
     init = sub.add_parser("init", help="initialize an optional project descriptor")
     init.add_argument("--root", default=os.environ.get("RAVEN_PROJECT_ROOT", "."))
     init.add_argument("--name")
+    vendor = sub.add_parser("vendor-client", help="copy the standalone Python metrics API into a project")
+    vendor.add_argument("--root", default=os.environ.get("RAVEN_PROJECT_ROOT", "."))
+    vendor.add_argument("--path", default="raven.py", help="project-relative Python destination (default: raven.py)")
+    vendor.add_argument("--force", action="store_true", help="replace a locally edited or untracked destination")
     for command in ("submit", "start", "exec"):
         item = sub.add_parser(command)
         item.add_argument("--root", default=os.environ.get("RAVEN_PROJECT_ROOT", "."))
@@ -604,6 +709,9 @@ def main(argv=None):
         _managed_driver_admission(args.command)
         if args.command == "init":
             initialize(args.root, args.name)
+            return 0
+        if args.command == "vendor-client":
+            print(json.dumps(vendor_client(args.root, args.path, force=args.force), sort_keys=True))
             return 0
         if args.command in {"submit", "start", "exec"}:
             kwargs = {key: getattr(args, key) for key in ("experiment", "script", "name")}

@@ -19,7 +19,7 @@ over the ledger's generic baseline allowance.
 | Queue, selected details, scheduler actions | Existing governed collection owner. Exact-attempt review remains mandatory. Heavy does not increase scheduler quotas. |
 | Small log search and selected copy/export | Interface background lane; at most 2 MiB of captured sources and 128 files per task. Complete bytes are copied or failure is reported. |
 | Large local log search/export | Named Heavy tasks; at most 8 MiB aggregate source bytes, or the worker's lower admitted limit. Search uses at most 32 sources; export uses at most 128. |
-| Trace viewing in Light | At most 512 events and 256 KiB per refresh. Incomplete prefix coverage remains visible. |
+| Trace viewing in Light | At most 512 events and 256 KiB per refresh. A streaming reader advances through committed windows; incomplete coverage remains visible. |
 | Basic Quick Advisor | At most 512 series samples, a 256 KiB persisted tail, and 512 historical jobs. |
 | Scientific analysis and planning | Fixed named worker adapters. No arbitrary Python function dispatch. |
 | Ordinary terminal typing/paste | Existing shell destination and normal user authority. Light/Heavy never redirects that input. |
@@ -56,7 +56,7 @@ the exported files and return a delivery warning.
 
 ## Existing project commands
 
-Bounded `report init/start/finish/metric/research/log/artifact` commands retain their
+Bounded `report init/start/finish/metric/research/log/artifact/vendor-client` commands retain their
 argument and output contracts. `report submit` does not require Heavy. It uses
 the same governed scheduler ledger, original exact `sbatch` arguments and
 environment, and persistent submission intent. An uncertain submission is never
@@ -81,6 +81,24 @@ Standalone reporting/scientific library APIs outside a configured managed Raven
 runtime retain their existing behavior. This boundary supports project-owned
 instrumentation libraries. Raven's execution policy is not an operating-system
 sandbox for arbitrary Python programs or user shell commands.
+
+`raven launch --trace` attaches Python recording inside the launched workload,
+using its existing attempt and execution authority. It does not allocate another
+worker or authorize attaching to unrelated processes. CPython 3.12+ monitoring
+is preferred; Python 3.10/3.11 profile semantics require explicit consent.
+Project scope is the default, helpers have separate process coverage, and an
+explicit `raven_exec` override remains available. Environment propagation and
+startup exclusions are declared gaps, not an inferred global capture guarantee.
+Native instructions, GPU-device stacks and retrospective history remain outside
+this automatic Python path. See [stack tracing](../guides/stack-tracing.md).
+
+The optional Python metrics client writes bounded, coalesced numeric observations
+for the current run. Its sidecar describes metric kinds, sampling and rank policy;
+it cannot grant scheduler authority. Explicit reductions reuse an initialized
+application communicator and are collectives at the application call site.
+`report vendor-client` copies only the standalone client, with an API version and
+content hash, preserving unrelated project configuration and refusing modified
+copies unless `--force` is explicitly selected.
 
 ## Explicit deferred paths
 

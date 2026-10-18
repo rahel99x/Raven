@@ -1,0 +1,10 @@
+{
+  "schema": "raven.metrics-index/v1",
+  "streams": [
+    {
+      "path": "metrics.rank-0.jsonl",
+      "meta": "metrics.rank-0.meta.json",
+      "rank": 0
+    }
+  ]
+}

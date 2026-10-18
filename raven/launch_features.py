@@ -6,6 +6,11 @@ creates observations, issues scheduler probes, or applies Operations actions.
 from __future__ import annotations
 
 import difflib
+import ast
+import os
+from pathlib import Path
+import re
+import shlex
 
 # Registry order is also the documented order for the explicit ``all`` selector.
 FEATURES = (
@@ -48,7 +53,7 @@ def normalize_features(names):
     return result
 
 
-def readiness(features, settings, *, execution="slurm", gpu=False, trace=False, effective_options=None):
+def readiness(features, settings, *, execution="slurm", gpu=False, trace=False, effective_options=None, metric_client=None):
     rows = [{"feature": "run", "label": "Run records", "status": "ready", "reason": "Exact lifecycle and source snapshot; filesystem/runtime rechecked at job start."},
             {"feature": "logs", "label": "Logs", "status": "ready", "reason": "Original Slurm stdout/stderr destinations are preserved and registered." if execution == "slurm" else "Inherited local stdout/stderr streams are preserved; automatic run-local log copies are unavailable."},
             {"feature": "runtime", "label": "Reporting runtime", "status": "will-verify", "reason": "The pinned helper and Python 3.10+ must be visible on the execution host."}]
@@ -81,13 +86,106 @@ def readiness(features, settings, *, execution="slurm", gpu=False, trace=False, 
     if settings.get("cpu_memory", True):
         rows.append({"feature": "cpu-memory", "label": "CPU/memory", "status": "will-verify", "reason": "Supported local supervisor/process evidence only; remote MPI ranks are outside this collector's scope."})
     if trace:
-        adapter = settings.get("trace_adapter", "")
-        status = "will-verify" if adapter else "needs-input"
-        reason = "Source RAVEN_SHELL_HELPER after activation and use raven_exec for the application. " + ("Adapter " + adapter + " is verified inside the application runtime." if adapter else "Choose a supported adapter; a shell wrapper cannot capture arbitrary application stacks.")
+        adapter = settings.get("trace_adapter") or "python-monitoring"
+        status = "will-verify"
+        reason = ("Automatic attachment for Python processes inheriting this job's environment; no script hook is required. "
+                  "Python monitoring requires 3.12+; Python 3.10/3.11 requires explicit python-legacy-profile consent. "
+                  "Application interpreter and scope are verified at runtime. raven_exec is an optional command override; "
+                  "isolated interpreters and replaced PYTHONPATH can prevent attachment.")
         if adapter in {"native-cooperative", "mpi"}:
             status = "needs-input"
             reason = ("The raven_exec helper currently wraps supported Python scripts. "
                       "Native or MPI tracing requires the existing cooperative SDK or prepared MPI adapter; "
                       "this launch does not retrofit binary instrumentation or add rank wrappers.")
         rows.append({"feature": "trace", "label": "Stack tracing", "status": status, "reason": reason})
+    if metric_client is not None:
+        append_metrics_readiness(rows, metric_client)
     return rows
+
+
+def append_metrics_readiness(rows, evidence):
+    """A bounded source declaration is never proof that measurements exist."""
+    targets = evidence.get("targets", [])
+    if targets:
+        rows.append({"feature": "metrics-client", "label": "Metrics", "status": "will-verify",
+                     "reason": "@raven client detected in " + ", ".join(targets) +
+                     ". Imports were inspected without execution; actual measurements are verified after launch."})
+    if evidence.get("warnings"):
+        rows.append({"feature": "metrics-client", "label": "Metrics source check", "status": "needs-input",
+                     "reason": "; ".join(evidence["warnings"])})
+    return rows
+
+
+def detect_metric_client(script_path, project_root=None, *, working_directory=None):
+    """Inspect only immediate literal Python targets, never shell-expand or execute.
+
+    At most 32 files and 256 KiB are inspected. Imports inside conditional code
+    count as declarations; dynamic launchers and unreadable targets remain unknown.
+    Symlinks, devices and paths outside the declared project are not followed.
+    """
+    from .trace_protocol import regular_open
+    script = Path(script_path).absolute()
+    root = Path(project_root).absolute() if project_root else script.parent
+    workdir = Path(working_directory).absolute() if working_directory else root
+    result = {"targets": [], "warnings": []}
+    budget = 256 << 10
+
+    def read(path, limit):
+        nonlocal budget
+        path.relative_to(root)
+        descriptor = regular_open(path)
+        with os.fdopen(descriptor, "rb") as source:
+            raw = source.read(min(limit, budget) + 1)
+        if len(raw) > min(limit, budget):
+            raise ValueError("Source exceeds the bounded readiness scan")
+        budget -= len(raw)
+        return raw.decode("utf-8")
+
+    try:
+        source = read(script, 128 << 10)
+    except (OSError, ValueError, UnicodeError) as exc:
+        return dict(result, warnings=["Metrics source readiness unavailable: " + str(exc)])
+    candidates = []
+    if script.suffix == ".py" or re.search(r"^#![^\n]*\bpython(?:[0-9.]+)?\b", source):
+        candidates.append((script, source))
+    else:
+        # Punctuation separates commands without executing substitutions,
+        # expanding variables, reading shell includes or traversing directories.
+        lexer = shlex.shlex(source, posix=True, punctuation_chars=";&|(){}")
+        lexer.whitespace_split = True
+        try:
+            tokens = list(lexer)
+        except ValueError:
+            return dict(result, warnings=["Shell syntax prevented a bounded Python-target readiness scan."])
+        for index, token in enumerate(tokens[:-1]):
+            if not re.fullmatch(r"python(?:[0-9]+(?:\.[0-9]+)?)?", os.path.basename(token)):
+                continue
+            after = index + 1
+            while after < len(tokens) and tokens[after] in {"-u", "-B", "-E", "-s", "-P", "-I", "-S"}:
+                after += 1
+            if after >= len(tokens):
+                continue
+            target = tokens[after]
+            if target.startswith("-") or any(char in target for char in "$`*?[]{}"):
+                continue
+            path = Path(os.path.abspath(workdir / target))
+            if path not in [entry[0] for entry in candidates]:
+                candidates.append((path, None))
+            if len(candidates) >= 32:
+                result["warnings"].append("Metrics readiness inspected at most 32 immediate Python targets; other producers are unknown.")
+                break
+    for path, text in candidates:
+        try:
+            text = read(path, 64 << 10) if text is None else text
+            tree = ast.parse(text)
+        except (OSError, ValueError, UnicodeError, SyntaxError, RecursionError, MemoryError):
+            continue
+        if any(isinstance(node, ast.Import) and any(alias.name in {"raven", "raven.client"} for alias in node.names)
+               or isinstance(node, ast.ImportFrom) and node.module in {"raven", "raven.client"}
+               for node in ast.walk(tree)):
+            result["targets"].append(str(path.relative_to(root)))
+            vendored = path.parent / "raven.py"
+            if vendored != path and vendored.is_file():
+                result["warnings"].append("A local raven.py beside " + str(path.relative_to(root)) +
+                    " takes import precedence; verify its vendor-client version and checksum before launch.")
+    return result

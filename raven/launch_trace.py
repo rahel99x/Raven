@@ -17,6 +17,12 @@ import sys
 from . import reporting as R
 
 
+def auto_attach(**options):
+    """Attach once in the application interpreter; startup failures are optional."""
+    from .launch_autotrace import auto_attach as attach
+    return attach(**options)
+
+
 def _diagnostic(run, message):
     """Recorder diagnostics must never prevent or replace application work."""
     try:
@@ -61,6 +67,9 @@ def hook(command):
         os.execvpe(command[0], command, os.environ)
     if not plan.get("trace"):
         os.execvpe(command[0], command, os.environ)
+    # Explicit attachment owns this command and its descendants. Suppress the
+    # startup hook before exec so the same process cannot open two recorders.
+    os.environ["RAVEN_TRACE_SKIP_AUTO"] = "1"
     adapter = plan.get("settings", {}).get("trace_adapter", "python-monitoring")
     supported = (adapter in {"python-monitoring", "python-legacy-profile"}
                  and re.fullmatch(r"python(?:[0-9]+(?:\.[0-9]+)?)?", Path(command[0]).name)
@@ -79,7 +88,10 @@ def hook(command):
         run = Path(os.environ["RAVEN_RUN_DIR"]) if os.environ.get("RAVEN_RUN_DIR") else None
         _diagnostic(run, "Tracing needs a simple 'raven_exec python script.py [args]' launch with a Python 3.10+ supported adapter; this command runs unchanged")
         os.execvpe(command[0], command, os.environ)
-    bootstrap = "import sys;sys.path.insert(0,sys.argv.pop(1));from raven.launch_trace import python_application;python_application()"
+    bootstrap = ("import sys,types;bundle=sys.argv.pop(1);p=types.ModuleType('_raven_launch_runtime');"
+                 "p.__path__=[bundle+'/raven'];p.__package__='_raven_launch_runtime';"
+                 "sys.modules['_raven_launch_runtime']=p;"
+                 "from _raven_launch_runtime.launch_trace import python_application;python_application()")
     os.execvpe(command[0], [command[0], "-c", bootstrap, os.environ["RAVEN_RUNTIME_BUNDLE"], *command[1:]], os.environ)
 
 
@@ -87,6 +99,12 @@ def python_application():
     """Runs inside the application Python, even when Raven is not installed."""
     target, args = Path(sys.argv[1]).absolute(), sys.argv[1:]
     run = Path(os.environ["RAVEN_RUN_DIR"]) if os.environ.get("RAVEN_RUN_DIR") else None
+    try:
+        current_plan = R._read_json(os.environ["RAVEN_LAUNCH_PLAN"])
+    except Exception:
+        current_plan = {}
+    if current_plan.get("sitecustomize_sha256"):
+        return _explicit_application(target, args, run, current_plan)
     recorder, capture = None, None
     started = False
     try:
@@ -149,3 +167,33 @@ def python_application():
                         R._atomic_json(index, value, replace=True)
             except Exception as exc:
                 _diagnostic(run, "Trace finalization failed: " + str(exc))
+
+
+def _explicit_application(target, args, run, plan):
+    """New frozen launches share the automatic recorder's scope and budgets.
+
+    Old frozen plans retain their historical adapter above. This path owns
+    only the explicitly selected command, including its normal Python threads.
+    """
+    from .launch_autotrace import _Attachment, record_gap, verified_run
+    attachment = _Attachment(run, plan, chained=False, chain_error="", automatic=False)
+    diagnostic_run = None
+    try:
+        try:
+            diagnostic_run, _manifest = verified_run(run, plan)
+            attachment.start()
+        except Exception as exc:
+            if attachment.recorder is not None:
+                try:
+                    attachment.recorder._fail("PARTIAL", "Explicit attachment failed: " + str(exc))
+                except Exception:
+                    pass
+            attachment.close()
+            if diagnostic_run is not None:
+                record_gap(diagnostic_run, "Explicit Python attachment unavailable; application executes normally: " + str(exc))
+            _diagnostic(diagnostic_run, "Optional Python tracing unavailable; application executes normally: " + str(exc))
+        sys.path[:] = [str(target.parent)] + [item for item in sys.path if item not in ("", str(target.parent))]
+        sys.argv = args
+        runpy.run_path(str(target), run_name="__main__")
+    finally:
+        attachment.close()

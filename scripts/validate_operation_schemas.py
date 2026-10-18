@@ -46,6 +46,8 @@ def main():
     schema_names = {marker: name for name, schema in schemas.items() for marker in markers(schema)}
     passed, errors = [], []
     examples = sorted((root / "examples").rglob("*.json")) + sorted((root / "docs/examples").rglob("*.json"))
+    # Versioned metric metadata participates through the same schema marker
+    # discovery as operation examples; it is never a JSONL header record.
     # A scientific identity is deliberately reusable without a schema marker.
     explicit = {"examples/operations-science/identity.json": "science-identity.schema.json"}
     for path in examples:

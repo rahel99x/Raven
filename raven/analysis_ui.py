@@ -234,6 +234,19 @@ def _analysis_jid(app):
     return getattr(app, "selected_id", None)
 
 
+def publish_metric_metadata(app, result):
+    """Publish only already-read semantics and rank choices for this view."""
+    state = initialize(app)
+    series = result.get("series", {})
+    source = result.get("requested_path", result.get("path", ""))
+    if state.get("metric_source") != source:
+        state["rank_page"] = 0
+    state["metric_source"] = source
+    state["metric_metadata"] = {name: chart_tools.metric_metadata(result, name) for name in list(series)[:MAX_METRICS]}
+    state["rank_streams"] = result.get("rank_streams", [])[:128]
+    state["selected_stream"] = result.get("selected_stream", "")
+
+
 def chart_data(app, snap):
     state = initialize(app)
     jid = state.get("chart_job") if state.get("modal") in ("chart", "chart_events") else _analysis_jid(app)
@@ -241,15 +254,18 @@ def chart_data(app, snap):
     series = result.get("series", {}) if isinstance(result, dict) else {}
     hub = getattr(app, "research", None)
     generation = getattr(hub, "generation", None)
-    if (series and getattr(app, "analysis_result_job", None) == jid
+    if ((series or result.get("rank_streams")) and getattr(app, "analysis_result_job", None) == jid
             and getattr(app, "analysis_result_generation", None) == generation):
+        publish_metric_metadata(app, result)
         return series, result.get("path", "application metrics"), jid
     if hub is not None and hasattr(hub, "current"):
         context = hub.context(snap, app)
         context["view"], context["jid"] = "experiment", jid
         cached = hub.current(context)
-        if cached.get("series"):
-            return cached["series"], cached.get("path", "application metrics"), jid
+        if cached.get("series") or cached.get("rank_streams"):
+            publish_metric_metadata(app, cached)
+            return cached.get("series", {}), cached.get("path", "application metrics"), jid
+    publish_metric_metadata(app, {})
     return _resource_series(app, jid), "Raven session resource samples", jid
 
 
@@ -277,7 +293,7 @@ def _chart_visible_points(app, series, name):
     source = state.get("chart_frame", {}).get("source", "Raven session resource samples")
     identity = chart_key(app, name, source, job=state.get("chart_frame", {}).get("record"))
     box = chart_interaction.bounds(app, identity,
-                                   scale="log" if state["axes"].get(name, {}).get("mode") == "log" else "linear")
+                                   scale="log" if chart_tools.metric_axis(state, name, state.get("metric_metadata", {}).get(name, {})).get("mode") == "log" else "linear")
     from . import metric_live
     # Input acts on the published frame. Advancing a playback clock here would
     # change which sample an arrow selects before the replacement frame paints.
@@ -606,7 +622,7 @@ def _present_history(app, identity, *, interactive, g, width, height, times, low
 
 
 def chart_rows(g, app, points, width, height, name, source, *, interactive=True, snapshot=None,
-               metadata=None, zoom_key=None, running=False):
+               metadata=None, zoom_key=None, running=False, metric_meta=None):
     """Cache pure dashboard cards while preserving exact interactive charts.
 
     A content scan detects edits anywhere in the retained series, including
@@ -614,6 +630,7 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
     skips normalization, sorting, cadence analysis, and rasterization only for
     unchanged noninteractive cards. Source identity and age are rendered fresh.
     """
+    metric_meta = metric_meta if metric_meta is not None else initialize(app).get("metric_metadata", {}).get(name, {})
     zoom_key = chart_key(app, name, source, interactive=interactive) if zoom_key is None else zoom_key
     from . import metric_live
     # A card can be narrower than its optional controls. Its running source
@@ -629,7 +646,7 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
             content = tuple((point["t"], _card_value(point["value"])) for point in full)
             source_token = _prepared_card_source(app, content)["token"]
         return _render_chart_rows(g, app, points, width, height, name, source,
-                                  interactive=True, snapshot=snapshot, metadata=metadata, zoom_key=zoom_key,
+                                  interactive=True, snapshot=snapshot, metadata=metadata, zoom_key=zoom_key, metric_meta=metric_meta,
                                   normalized_points=full, source_times=timestamps, live_window=live_window,
                                   live_now=live_now, display_end=display_end, source_token=source_token)
     state = initialize(app)
@@ -640,7 +657,7 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
     live_window, live_now, display_end, newest = _playback_window(
         app, zoom_key, prepared["times"], running)
     label, unit, precision = chart_tools.display(state, name)
-    axis = state["axes"].get(name, {"mode": "auto"})
+    axis = chart_tools.metric_axis(state, name, metric_meta)
     color = state["colors"].get(name, COLORS[sum(ord(char) for char in name) % len(COLORS)])
     # The timestamp axis uses libc local time. A session timezone change must
     # invalidate the raster even when its source values remain unchanged.
@@ -653,7 +670,8 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
     if live_window is not None or box or captured or live_now is None:
         from .metric_playback import reset_presentation
         reset_presentation(app, ("reported-card", zoom_key))
-    key = (name, width, height, glyphs, label, unit, (type(precision), precision), color,
+    key = (name, metric_meta.get("kind"), metric_meta.get("unit"), metric_meta.get("coalesced"),
+           state.get("metric_modes", {}).get(name), metric_meta.get("baseline"), metric_meta.get("estimate"), width, height, glyphs, label, unit, (type(precision), precision), color,
            axis.get("mode"), repr(axis.get("low")), repr(axis.get("high")), zone, id(prepared),
            (box["x"], box["y"], auto_fit) if box else None, live_window,
            (live_now is not None, display_end if not box and not captured else None, newest),
@@ -674,7 +692,7 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
     rows = _render_chart_rows(g, app, points, width, height, name, source, interactive=False,
                               snapshot=snapshot, normalized_points=prepared["points"], source_times=prepared["times"],
                               cache_metadata=cache_metadata,
-                              metadata=plot_metadata, zoom_key=zoom_key, live_window=live_window,
+                              metadata=plot_metadata, zoom_key=zoom_key, metric_meta=metric_meta, live_window=live_window,
                               live_now=live_now, display_end=display_end, source_token=prepared["token"])
     if cache_metadata.get("display_end") is not None:
         key = (*key[:-2], (live_now is not None, cache_metadata["display_end"], newest), key[-1])
@@ -698,11 +716,14 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
 
 def _render_chart_rows(g, app, points, width, height, name, source, *, interactive=True,
                        snapshot=None, normalized_points=None, cache_metadata=None, metadata=None, zoom_key=None,
-                       live_window=None, live_now=None, display_end=None, source_times=None, source_token=None):
+                       live_window=None, live_now=None, display_end=None, source_times=None, source_token=None, metric_meta=None):
     state = initialize(app)
+    metric_meta = metric_meta or {}
+    kind = metric_meta.get("kind")
+    trend, bands, model_kind = chart_tools.metric_layers(state, name, metric_meta)
     full = _points(points) if normalized_points is None else normalized_points
     source_times = tuple(point["t"] for point in full) if source_times is None else source_times
-    axis = state["axes"].get(name, {"mode": "auto"})
+    axis = chart_tools.metric_axis(state, name, metric_meta)
     scale = "log" if axis.get("mode") == "log" else "linear"
     box = chart_interaction.bounds(app, zoom_key, scale=scale)
     captured = chart_interaction.captured_bounds(app, zoom_key, scale=scale)
@@ -737,9 +758,21 @@ def _render_chart_rows(g, app, points, width, height, name, source, *, interacti
     color = state["colors"].get(name, COLORS[sum(ord(c) for c in name) % len(COLORS)])
     known = [v for v in values if v is not None]
     label, unit, precision = chart_tools.display(state, name)
-    preference = chart_tools.preference(state, name)
-    axis = state["axes"].get(name, {"mode": "auto"})
+    unit = unit or metric_meta.get("unit", "")
+    preference = {"unit": unit, **chart_tools.preference(state, name)}
+    axis = chart_tools.metric_axis(state, name, metric_meta)
     visible_plotted, low, high, undefined = chart_tools.axis_values(values, axis)
+    baseline = metric_meta.get("baseline") if model_kind == "drift" else None
+    declared_baseline = baseline is not None
+    if model_kind == "drift" and baseline is None:
+        baseline = next((p["value"] for p in acquired if p["value"] is not None), None)
+    reference = baseline
+    if baseline is not None and axis.get("mode") == "log":
+        reference = math.log10(baseline) if baseline > 0 else None
+    if reference is not None and axis.get("low") is None:
+        low = min(low, reference)
+    if reference is not None and axis.get("high") is None:
+        high = max([reference] + [value for value in visible_plotted if value is not None])
     raster_points = full[max(0, first - 1):min(acquired_count, last + 1)]
     if len(raster_points) > len(visible):
         low, high = charts._bounds(visible_plotted, low, high)
@@ -796,7 +829,7 @@ def _render_chart_rows(g, app, points, width, height, name, source, *, interacti
     raster_key = None
     raster_cache = state.setdefault("chart_history_rasters", OrderedDict())
     if automatic_history:
-        raster_key = (source_token, times, low, high, scale, cadence, width, height,
+        raster_key = (source_token, times, low, high, scale, cadence, width, height, model_kind, trend, bands, baseline,
                       g.ascii, g.spark, g.box, g.dot, g.rule, color, label, unit, (type(precision), precision),
                       getattr(getattr(app, "_chart_owner", app), "theme", ""),
                       os.environ.get("TZ"), time.tzname, time.timezone, time.daylight)
@@ -810,7 +843,8 @@ def _render_chart_rows(g, app, points, width, height, name, source, *, interacti
         rows = charts.braille_chart(g, plotted, width, height, lo=low, hi=high, title=clean(label, g.ascii),
                                    sample_times=[p["t"] for p in raster_points], times=times,
                                    sample_interval=cadence, color=lambda _: color, axis_formatter=axis_label,
-                                   metadata=plot_metadata, fitted=auto_fit, time_units=bool(box))
+                                   metadata=plot_metadata, fitted=auto_fit, time_units=bool(box),
+                                   trend=trend, bands=bands, model_kind=model_kind, reference=reference)
         if raster_key is not None and sum(L.vlen(L.row_text(row)) for row in rows) <= 65536:
             raster_cache[raster_key] = (tuple(tuple(row) for row in rows), dict(plot_metadata))
             while len(raster_cache) > MAX_CARD_CACHE:
@@ -823,7 +857,7 @@ def _render_chart_rows(g, app, points, width, height, name, source, *, interacti
     # Summary and exact inspection always describe the original measurements,
     # including values undefined on a logarithmic axis.
     if rows:
-        plot_label = charts.chart_model_title(clean(label, g.ascii), plot_metadata)
+        plot_label = charts.chart_model_title(clean(label + (f" [{kind}]" if kind else ""), g.ascii), plot_metadata)
         rows[0] = charts._header(g, values, width, plot_label, unit, "   ")
         if buffered and plot_metadata.get("has_data") and not known:
             rows[0] = L.clip_row([("   " + plot_label, "cyan+bold"),
@@ -840,6 +874,17 @@ def _render_chart_rows(g, app, points, width, height, name, source, *, interacti
         exact = repr(selected["value"]) if selected["value"] is not None else "unavailable"
         rows.append([(clean(f" {_time(selected['t'])}  t={selected['t']!r}  value {exact}{step}", g.ascii), "yellow+bold")])
     description = f" Axis {axis['mode']}"
+    if name in state.get("metric_modes", {}):
+        description += " | display " + state["metric_modes"][name]
+    if kind:
+        description += f" | kind {kind}"
+    coalesced = metric_meta.get("coalesced", 0)
+    if coalesced:
+        description += f" | coalesced {'x' if g.ascii else '×'}{coalesced}"
+    if model_kind == "drift" and baseline is not None:
+        description += f" | baseline {baseline:g} ({'producer first value' if declared_baseline else 'first retained'}); no tolerance declared"
+    if metric_meta.get("estimate"):
+        description += " | " + metric_meta["estimate"]
     layers = [plot_metadata[field] for field in ("trend_label", "band_label") if plot_metadata.get(field)]
     if layers:
         description += " | Draw: " + "; ".join(layers)
@@ -968,12 +1013,31 @@ def timeline_events(app, snap):
 
 def _chart_control(app, args, series):
     """Validate chart controls before mutating preferences or opening a view."""
-    if not args or args[0] not in ("preset", "axis", "range", "events", "event", "shared", "undo", "reset"):
+    if not args or args[0] not in ("preset", "axis", "mode", "rank", "rank-page", "range", "events", "event", "shared", "undo", "reset"):
         return False
     state = initialize(app)
     action, parameters = args[0], args[1:]
     name = state.get("metric") if state.get("metric") in series else next(iter(series), "")
     try:
+        if action == "rank-page":
+            if parameters not in (["previous"], ["next"]):
+                raise ValueError("chart rank-page previous|next")
+            count = len(state.get("rank_streams", []))
+            state["rank_page"] = max(0, min(max(0, (count - 1) // 8),
+                state.get("rank_page", 0) + (1 if parameters == ["next"] else -1)))
+            return True
+        if action == "rank":
+            hub = getattr(app, "research", None)
+            if len(parameters) != 1 or hub is None:
+                raise ValueError("chart rank default|REGISTERED_STREAM")
+            selected = parameters[0]
+            if selected != "default" and (not state.get("metric_source") or selected not in [entry["path"] for entry in state.get("rank_streams", [])]):
+                raise ValueError("Choose a registered rank stream from this run")
+            hub.configure(metric_stream={} if selected == "default" else {"source": state["metric_source"], "name": selected})
+            app.analysis_result = {}
+            state.pop("chart_frame", None)
+            app.say("Reading " + ("the default metric stream" if selected == "default" else selected) + "; ranks are displayed separately.")
+            return True
         if action in ("undo", "reset"):
             if parameters:
                 raise ValueError("chart undo|reset")
@@ -988,6 +1052,15 @@ def _chart_control(app, args, series):
                 state["window"] = window
             else:
                 state.pop("window", None)
+        elif action == "mode":
+            if len(parameters) != 1 or parameters[0] not in ("default", "raw", "trend", "range") or not name:
+                raise ValueError("chart mode default|raw|trend|range")
+            if parameters[0] == "default":
+                state["metric_modes"].pop(name, None)
+            else:
+                state["metric_modes"][name] = parameters[0]
+                state["metric_modes"] = dict(list(state["metric_modes"].items())[-MAX_METRICS:])
+            app.say(f"{name}: {parameters[0]} display; original observations are unchanged.")
         elif action == "axis":
             axis = {"mode": parameters[0]} if parameters else {}
             if len(parameters) == 3:
@@ -1037,7 +1110,7 @@ def _chart_control(app, args, series):
         app.fail(str(exc) if str(exc) else "Invalid chart control.")
         return True
     state.update(modal="chart", scroll=0, metric=name)
-    if action in ("axis", "events"):
+    if action in ("axis", "mode", "events"):
         app.save()
     app.mode = "analysis"
     return True
@@ -1656,6 +1729,9 @@ def overlay(views, snap, app, width, height):
                     ("auto", "Auto axis", ("command", "chart axis auto")),
                     ("log", "Log axis", ("command", "chart axis log")),
                     ("range", "Select range", ("key", "r")), ("events", "Events", ("key", "e"))]
+        choices += [("mode-" + mode, "[" + label + "]" if state["metric_modes"].get(name, "default") == mode else label,
+                     ("command", "chart mode " + mode)) for mode, label in
+                    (("default", "Kind default"), ("raw", "Raw"), ("trend", "Trend"), ("range", "Range"))]
         controls, hits = buttons(g, inner, choices, selected=active_preset, group="chart_controls", prefix="chart-control:")
         button_hits.extend((y + len(rows), kind, value) for y, kind, value in hits)
         rows.extend(controls)

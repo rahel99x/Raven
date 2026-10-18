@@ -1,0 +1,34 @@
+{
+  "schema": "raven.metrics-meta/v1",
+  "client": {
+    "api_version": 1
+  },
+  "kinds": {
+    "loss": "objective",
+    "residual": "residual",
+    "energy": "conserved",
+    "samples_per_second": "throughput"
+  },
+  "units": {
+    "energy": "J",
+    "samples_per_second": "samples/s"
+  },
+  "baselines": {
+    "loss": 1.2,
+    "residual": 1.0,
+    "energy": 0.0,
+    "samples_per_second": 120
+  },
+  "coalesced": {
+    "loss": 99
+  },
+  "rank_policy": {
+    "mode": "coordinator",
+    "rank": 0,
+    "source": "RANK",
+    "helper": false,
+    "coverage": [
+      "rank 0 only; no collective requested"
+    ]
+  }
+}

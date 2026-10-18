@@ -17,8 +17,19 @@ def initialize(app):
     if not isinstance(getattr(app, "trace_panel_state", None), dict):
         app.trace_panel_state = dict(token=0, context=None, status="idle", error="", result=None,
             reader=None, callback=None, cancel=None, next_read=0.0, path="", explicit="", sources=[],
-            index=0, paused=False, verified=False, paint=None, discover_at=0.0, summary=False)
+            index=0, paused=False, verified=False, paint=None, discover_at=0.0, summary=False,
+            processes=[], show_helpers=None, process_page=0)
     return app.trace_panel_state
+
+
+def restore(app, data):
+    if isinstance(data, dict) and type(data.get("show_helpers")) is bool:
+        initialize(app)["show_helpers"] = data["show_helpers"]
+
+
+def save(app):
+    choice = initialize(app)["show_helpers"]
+    return {"show_helpers": choice} if type(choice) is bool else {}
 
 
 def command_names():
@@ -50,6 +61,7 @@ def _context(app):
     from .raven_execution import router_for
     return dict(key=key, job_id=str(jid), submit=key[1], start=key[2], root=root, cluster=cluster,
                 light=router_for(app).managed,
+                run_root=binding.get("run_root", ""), binding=dict(binding),
                 run_id=binding.get("run_id", ""), remote=bool(getattr(getattr(app, "files", None), "remote", False)))
 
 
@@ -68,7 +80,7 @@ def cancel(app, *, clear=False):
         hub.cancel_task(state["callback"])
     state.update(callback=None, cancel=None)
     if clear:
-        state.update(context=None, result=None, reader=None, sources=[], path="", explicit="", status="idle", index=0, error="", verified=False, paint=None, discover_at=0.0)
+        state.update(context=None, result=None, reader=None, sources=[], processes=[], process_page=0, path="", explicit="", status="idle", index=0, error="", verified=False, paint=None, discover_at=0.0)
 
 
 def run_command(app, args):
@@ -92,6 +104,13 @@ def run_command(app, args):
     elif args[1:] in (["summary"], ["events"]):
         state.update(summary=args[1] == "summary", next_read=0.0, paint=None)
         app.say("Trace summaries use matched retained intervals; order and causality remain unanswerable" if state["summary"] else "Original retained trace events")
+    elif args[1:] == ["helpers"]:
+        state["show_helpers"] = not bool(state["show_helpers"])
+        state.update(paint=None, next_read=0.0, process_page=0)
+        app.save()
+    elif args[1:] in (["processes-next"], ["processes-previous"]):
+        state["process_page"] = max(0, state["process_page"] + (1 if args[1] == "processes-next" else -1))
+        state["paint"] = None
     elif args[1:] in (["refresh"], ["pause"], ["follow"], ["clear"]):
         operation = args[1]
         if operation == "clear":
@@ -112,7 +131,7 @@ def run_command(app, args):
         except (TypeError, ValueError):
             app.fail("Choose a visible trace source index.")
     else:
-        app.fail("trace [attach MANIFEST|refresh|pause|follow|clear|select INDEX]")
+        app.fail("trace [attach MANIFEST|refresh|pause|follow|clear|helpers|select INDEX]")
     return True
 
 
@@ -131,21 +150,85 @@ def _matches(identity, context):
     return bool(context["submit"] and identity.get("attempt") == expected)
 
 
-def _read(context, explicit, index, previous_path, reader, event, source_cache=None):
+def _helper(process):
+    return process.get("role") in {"helper", "dataloader-worker", "pool-worker", "multiprocessing-helper", "resource-tracker"}
+
+
+def _process(manifest, path):
+    from .trace_protocol import validate_identity
+    if manifest.get("schema") != "raven.trace/v1":
+        raise ValueError("Expected a trace manifest")
+    identity = validate_identity(manifest.get("identity"))
+    process = {key: identity[key] for key in ("pid", "parent_pid", "role", "launcher", "rank",
+               "local_rank", "world_size", "interpreter") if key in identity}
+    if "process" in manifest and manifest["process"] != process:
+        raise ValueError("Trace process metadata disagrees with its identity")
+    for key in ("role", "rank", "pid", "parent_pid", "local_rank", "world_size", "launcher"):
+        process.setdefault(key, identity.get(key))
+    coverage = manifest.get("coverage", {})
+    count = manifest.get("committed_seq")
+    count = count if type(count) is int and count >= 0 else None
+    reasons = [str(value) for value in manifest.get("warnings", [])[:16]]
+    if coverage.get("complete") is False:
+        reasons.append("Producer declares incomplete coverage.")
+    process.update(path=path, events=count, status="declared", coverage=coverage.get("scope", "undeclared"),
+                   reason="; ".join(reasons), helpers_default=coverage.get("helpers_default", False))
+    return process
+
+
+def _launch_sources(context):
+    """Read only registered paths for the selected attempt, in worker context."""
+    from .trace_protocol import read_json
+    from .projects import read_bound_json, relative_path
+    root = context.get("run_root")
+    if not root:
+        return [], []
+    path = os.path.join(root, "trace/index.json")
+    binding = context.get("binding")
+    try:
+        value = read_bound_json(binding, path, max_bytes=1 << 20) if binding else read_json(path)
+    except FileNotFoundError:
+        return [], []
+    sources = value.get("sources") if isinstance(value, dict) else None
+    if not isinstance(value, dict) or value.get("schema") != "raven.trace-index/v1" or not isinstance(sources, list) or len(sources) > 8192:
+        raise ValueError("Invalid bounded run trace index")
+    paths, gaps, seen = [], [], set()
+    for entry in sources:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("schema") == "raven.trace/v1":
+            path = os.path.join(root, relative_path(entry.get("path")))
+            if path not in seen:
+                paths.append(path)
+                seen.add(path)
+        elif entry.get("schema") == "raven.trace-gap/v1" and entry.get("run_id") == context.get("run_id"):
+            process = dict(entry.get("process") or {})
+            process.update(path="", events=0, status=entry.get("status", "unavailable"),
+                           coverage="observed attachment gap", reason=str(entry.get("reason", "Unknown attachment failure")))
+            gaps.append(process)
+    return paths, gaps
+
+
+def _read(context, explicit, index, previous_path, reader, event, source_cache=None, process_cache=None):
     from .trace_protocol import TraceReader, discover_trace, read_json
     if context["remote"]:
         raise ValueError("Open Raven on the trace host to inspect its journal; remote views never substitute local files.")
+    processes = [] if process_cache is None else [dict(row) for row in process_cache]
     if explicit:
         sources = [explicit]
     elif source_cache is not None:
         sources = source_cache
-    elif context["root"]:
-        candidates = discover_trace(context["root"], context["job_id"])
+    elif context["root"] or context.get("run_root"):
+        candidates, processes = _launch_sources(context)
+        seen = set(candidates)
+        if context["root"]:
+            candidates += [path for path in discover_trace(context["root"], context["job_id"]) if path not in seen]
         sources = []
         for path in candidates:
             if event.is_set():
                 return None
-            identity = read_json(path).get("identity", {})
+            manifest = read_json(path, limit=65536)
+            identity = manifest.get("identity", {})
             # Registered projects may retain the same numeric job ID from
             # different clusters. Ignore other identities during discovery;
             # explicitly attached mismatches still fail visibly below.
@@ -153,11 +236,24 @@ def _read(context, explicit, index, previous_path, reader, event, source_cache=N
                 continue
             if _matches(identity, context):
                 sources.append(path)
+                processes.append(_process(manifest, path))
     else:
         sources = []
     if not sources:
-        return dict(sources=[], snapshot=None, reader=None, path="", verified=False, discovered=source_cache is None)
+        return dict(sources=[], processes=processes, snapshot=None, reader=None, path="", verified=False, discovered=source_cache is None, index=0)
     path = sources[max(0, min(index, len(sources) - 1))]
+    manifest = read_json(path, limit=65536)
+    show_helpers = context.get("show_helpers")
+    if show_helpers is None:
+        show_helpers = any(row.get("helpers_default") is True for row in processes)
+    if not explicit and not show_helpers and _helper(_process(manifest, path)):
+        visible = next((row for row in processes if row.get("path") in sources and not _helper(row)), None)
+        if visible is None:
+            return dict(sources=sources, processes=processes, snapshot=None, reader=None, path="", verified=False,
+                        discovered=source_cache is None, index=index)
+        path = visible["path"]
+        manifest = read_json(path, limit=65536)
+    index = sources.index(path)
     reader = reader if reader is not None and path == previous_path else TraceReader(path)
     snapshot = reader.refresh(max_events=512 if context.get("light") else 4096,
                               max_bytes=256 << 10 if context.get("light") else 2 << 20,
@@ -165,7 +261,17 @@ def _read(context, explicit, index, previous_path, reader, event, source_cache=N
     verified = _matches(snapshot["identity"], context)
     if not verified and not explicit:
         raise ValueError("Trace attempt cannot be verified against the current job.")
-    return dict(sources=sources, snapshot=snapshot, reader=reader, path=path, verified=verified, discovered=source_cache is None)
+    if context.get("binding") and context.get("run_root"):
+        from .projects import read_bound_json
+        read_bound_json(context["binding"], os.path.join(context["run_root"], "run.json"), max_bytes=65536)
+    current = _process(snapshot["manifest"], path)
+    current.update(status=snapshot["status"].lower(), checked=snapshot["read_seq"],
+                   reason="; ".join(snapshot.get("warnings", [])[:16]))
+    processes = [current if row.get("path") == path else row for row in processes]
+    if not any(row.get("path") == path for row in processes):
+        processes.append(current)
+    return dict(sources=sources, processes=processes, snapshot=snapshot, reader=reader, path=path,
+                verified=verified, discovered=source_cache is None, index=index)
 
 
 def tick(app):
@@ -188,10 +294,12 @@ def tick(app):
     token, event = state["token"], threading.Event()
     explicit, index, path, reader = state["explicit"], state["index"], state["path"], state["reader"]
     source_cache = list(state["sources"]) if time.monotonic() < state["discover_at"] else None
+    process_cache = state["processes"] if source_cache is not None else None
+    context = dict(context, show_helpers=state["show_helpers"])
 
     summary_requested = state.get("summary", False)
     def work():
-        result = _read(context, explicit, index, path, reader, event, source_cache)
+        result = _read(context, explicit, index, path, reader, event, source_cache, process_cache)
         if summary_requested and result is not None and result.get("snapshot") is not None:
             from .trace_summary import summarize, answer
             try:
@@ -214,8 +322,10 @@ def tick(app):
             state.update(status="error", error=clean(result, 400), result=None, discover_at=0.0)
             return
         if result is not None:
-            state.update(sources=result["sources"], result=result["snapshot"], reader=result["reader"], path=result["path"],
+            state.update(sources=result["sources"], processes=result["processes"], index=result["index"], result=result["snapshot"], reader=result["reader"], path=result["path"],
                          verified=result["verified"], error="", status="ready" if result["snapshot"] else "missing")
+            if state["show_helpers"] is None:
+                state["show_helpers"] = any(row.get("helpers_default") is True for row in result["processes"])
             if result.get("discovered"):
                 state["discover_at"] = time.monotonic() + 5.0
             if result["snapshot"] is not None and not result["snapshot"].get("caught_up", True):
@@ -233,9 +343,9 @@ def panel(views, app, job, width):
     if context is None or state["context"] is None or context["key"] != state["context"]["key"]:
         # A redraw can precede tick after a row change. Never paint the prior
         # attempt's frames under the new job's heading.
-        state = dict(state, result=None, error="", status="waiting for job evidence", sources=[])
+        state = dict(state, result=None, error="", status="waiting for job evidence", sources=[], processes=[])
     signature = (context["key"] if context else None, job.id, width, id(state["result"]), state["status"],
-                 state["error"], state["paused"], state.get("summary", False), state["verified"], state["index"], tuple(state["sources"][:128]), views.g.ascii)
+                 state["error"], state["paused"], state.get("summary", False), state["show_helpers"], state["process_page"], id(state["processes"]), state["verified"], state["index"], tuple(state["sources"][:128]), views.g.ascii)
     cached = owner_state.get("paint")
     if cached is not None and cached[0] == signature:
         return cached[1]
@@ -245,15 +355,50 @@ def panel(views, app, job, width):
                 ("snapshot", "Python snapshot", ("command", "ops trace-snapshot"))]
     controls.append(("summary", "Events" if state.get("summary") else "Summaries",
                      ("command", "trace events" if state.get("summary") else "trace summary")))
+    controls.append(("helpers", "Hide helpers" if state["show_helpers"] else "Show helpers", ("command", "trace helpers")))
     rows, raw_hits = buttons(views.g, width, controls, group="trace", prefix="trace:")
     hits = [(y, "job_panel_action", (("trace_command", {"job": job.id, "command": value["action"][1]}), value["left"], value["right"]))
             for y, _, value in raw_hits]
     rows.append([(f" Trace for job {job.id}  / {state['status']}", "heading")])
     if state["error"]:
         rows.append([(state["error"], "warning")])
+    processes = state.get("processes", [])
+    if processes:
+        source_indices = {path: index for index, path in enumerate(state["sources"])}
+        hidden = sum(_helper(row) for row in processes) if not state["show_helpers"] else 0
+        rows.append([(f"Processes: {len(processes)} registered / {hidden} helpers hidden", "heading")])
+        visible_processes = [row for row in processes if state["show_helpers"] or not _helper(row)]
+        page = min(state["process_page"], max(0, (len(visible_processes)-1) // 32))
+        if len(visible_processes) > 32:
+            rows.append([(f"Process page {page + 1} / {(len(visible_processes)+31)//32}", "dim")])
+            page_controls = []
+            if page:
+                page_controls.append(("previous", "Previous processes", ("command", "trace processes-previous")))
+            if (page+1)*32 < len(visible_processes):
+                page_controls.append(("next", "Next processes", ("command", "trace processes-next")))
+            page_rows, page_hits = buttons(views.g, width, page_controls, group="trace-pages", prefix="trace-page:")
+            hits.extend((len(rows) + y, "job_panel_action", (("trace_command", {"job": job.id, "command": value["action"][1]}), value["left"], value["right"])) for y, _, value in page_hits)
+            rows.extend(page_rows)
+        rows.append([("Role / rank / PID / events / coverage", "muted")])
+        for process in visible_processes[page*32:(page+1)*32]:
+            path = process.get("path")
+            label = (f"{process.get('role') or 'unknown'} / {process.get('rank') if process.get('rank') is not None else '-'} / "
+                     f"{process.get('pid') if process.get('pid') is not None else '?'} / "
+                     f"{process.get('events') if process.get('events') is not None else '?'} / {process.get('status', 'unknown')}")
+            if path in source_indices:
+                index = source_indices[path]
+                source_rows, source_hits = buttons(views.g, width, [(str(index), label, ("command", "trace select " + str(index)))],
+                    selected=str(state["index"]), group="trace-sources", prefix="trace-source:")
+                hits.extend((len(rows) + y, "job_panel_action", (("trace_command", {"job": job.id, "command": value["action"][1]}), value["left"], value["right"])) for y, _, value in source_hits)
+                rows.extend(source_rows)
+            else:
+                rows.append([(label, "warning")])
+            if process.get("reason"):
+                rows.append([("Why / coverage: " + process["reason"], "warning")])
+        rows.append([("Counts come from producer receipts; journal verification advances for the selected process. Undiscovered processes remain unknown.", "dim")])
     if state["result"] is None:
         rows += [[("No verified recording is attached yet.", "dim")],
-                 [("Start the application with raven trace run, or attach its manifest with :trace attach PATH.", "dim")],
+                 [("Launch with raven launch SCRIPT --trace, or attach its manifest with :trace attach PATH.", "dim")],
                  [("Recording must begin before the events you need; opening this view does not attach a debugger.", "dim")]]
     else:
         if not state["verified"]:
@@ -261,11 +406,8 @@ def panel(views, app, job, width):
         snapshot = state["result"]
         identity = snapshot.get("identity", {})
         rows.append([(f" {identity.get('node', '?')} / PID {identity.get('pid', '?')} / attempt {identity.get('attempt', '?')}", "cyan")])
-        for i, path in enumerate(state["sources"][:128]):
-            source_rows, source_hits = buttons(views.g, width, [(str(i), f"Source {i + 1}: {os.path.basename(os.path.dirname(path))}",
-                ("command", "trace select " + str(i)))], selected=str(state["index"]), group="trace-sources", prefix="trace-source:")
-            hits.extend((len(rows) + y, "job_panel_action", (("trace_command", {"job": job.id, "command": value["action"][1]}), value["left"], value["right"])) for y, _, value in source_hits)
-            rows.extend(source_rows)
+        rows.append([(f"Verified events: {snapshot.get('read_seq', 0)} / {snapshot.get('committed_seq', '?')} committed; "
+                      f"retained window: {len(snapshot.get('events', []))} events", "dim")])
         if state.get("summary"):
             rows.append([("Experimental: matched retained intervals; emitter-declared rank, unknown when absent.", "warning")])
             rows.append([("P95 bounds measure duration values; no event-order or causal guarantee.", "dim")])
@@ -284,7 +426,7 @@ def panel(views, app, job, width):
     rendered = _wrap(rows, hits, width)
     # Keep the source object alive with the cache: id reuse cannot alias a
     # later snapshot even if a worker replaces the published result.
-    owner_state["paint"] = (signature, rendered, state["result"])
+    owner_state["paint"] = (signature, rendered, state["result"], state["processes"])
     return rendered
 
 

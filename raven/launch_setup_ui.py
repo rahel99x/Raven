@@ -91,11 +91,13 @@ def document(app):
         rows.append((state["message"], None))
     for key, label in visible_fields(form):
         rows.append((label + ": " + (fields.get(key) or "[unset]"), "field:setup:" + key))
-    for key, label in (("gpu", "GPU recording"), ("cpu_memory", "CPU/memory process recording"), ("trace", "Stack tracing (requires application hook)")):
+    for key, label in (("gpu", "GPU recording"), ("cpu_memory", "CPU/memory process recording"), ("trace", "Automatic Python tracing")):
         rows.append((("[x] " if form.get(key, key == "cpu_memory") else "[ ] ") + label, "setup:toggle:" + key))
     if form.get("trace"):
-        rows.append(("Trace adapter: " + (form.get("trace_adapter") or "Not configured"), "setup:adapter"))
-        rows.append(("Source \"$RAVEN_SHELL_HELPER\" then use raven_exec python3 program.py in the script for the selected Python adapter. The Python monitoring adapter requires Python 3.12+; Python 3.10/3.11 needs explicit legacy-profile consent. Selecting trace alone cannot instrument every runtime.", None))
+        rows.append(("Trace adapter: " + (form.get("trace_adapter") or "python-monitoring"), "setup:adapter"))
+        rows.append(("Trace scope: " + form.get("trace_scope", "project"), "setup:scope"))
+        rows.append((("[x] " if form.get("trace_helpers", False) else "[ ] ") + "Show helper processes in trace view", "setup:toggle:trace_helpers"))
+        rows.append(("Python processes inherit automatic tracing without script edits. Monitoring requires Python 3.12+; Python 3.10/3.11 needs explicit legacy-profile consent. Project scope includes project and script files. Helpers are recorded even when hidden. raven_exec remains an optional command override; native stacks and GPU kernels require separate instrumentation.", None))
     rows.append(("Select a Research feature to reveal its optional scientific inputs. Hiding a feature preserves its saved declarations.", None))
     for item in FEATURES:
         name, label = item["name"], item["label"]
@@ -155,7 +157,7 @@ def _resolved(state):
     launch["research_sources"] = {key[len("report:"):]: value for key, value in fields.items()
                                   if key.startswith("report:") and value}
     if launch.get("trace") and not launch.get("trace_adapter"):
-        raise ValueError("Choose a tracing adapter and add raven_exec to the script before enabling tracing")
+        launch["trace_adapter"] = "python-monitoring"
     if not launch.get("trace"):
         launch.pop("trace_adapter", None)
     return launch
@@ -200,9 +202,11 @@ def activate(app, action):
     elif kind == "feature":
         form["features"] = UI._toggle(form.get("features", []), value)
     elif kind == "adapter":
-        values = ["", "python-monitoring", "python-legacy-profile"]
-        current = form.get("trace_adapter", "")
-        form["trace_adapter"] = values[(values.index(current)+1) % len(values)] if current in values else ""
+        values = ["python-monitoring", "python-legacy-profile"]
+        current = form.get("trace_adapter") or "python-monitoring"
+        form["trace_adapter"] = values[(values.index(current)+1) % len(values)] if current in values else "python-monitoring"
+    elif kind == "scope":
+        form["trace_scope"] = "all" if form.get("trace_scope", "project") == "project" else "project"
     elif kind == "remove":
         index = int(value)
         if 0 <= index < len(form.get("artifacts", [])):

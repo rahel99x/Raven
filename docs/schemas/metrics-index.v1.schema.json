@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven rank metric stream index",
+  "type": "object",
+  "required": [
+    "schema",
+    "streams"
+  ],
+  "properties": {
+    "schema": {
+      "const": "raven.metrics-index/v1"
+    },
+    "streams": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "meta",
+          "rank"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[^/\\\\]+\\.rank-(0|[1-9][0-9]*)(-pid-[1-9][0-9]*)?\\.jsonl$"
+          },
+          "meta": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[^/\\\\]+\\.meta\\.json$"
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true,
+  "description": "Readers additionally require names to share the explicitly declared metric stem, rank to match the path, and sidecar to match its stream. Entries never authorize arbitrary files; run bindings and no-symlink reads still apply."
+}

@@ -574,14 +574,74 @@ def bound_metric_source(binding, path, current, project_fd, run_fd):
     return project_fd, relative
 
 
-def read_bound_metric_chunk(binding, path, offset, ident, max_bytes):
+def validate_metric_index(value, stream):
+    """An index selects only literal rank siblings of one declared stream."""
+    if not isinstance(value, dict) or value.get("schema") != "raven.metrics-index/v1":
+        raise ValueError("metric index must declare raven.metrics-index/v1")
+    rows = value.get("streams")
+    if not isinstance(rows, list) or len(rows) > 128:
+        raise ValueError("metric index requires at most 128 streams")
+    basename = os.path.basename(stream)
+    stem = basename[:-6] if basename.endswith(".jsonl") else basename
+    pattern = re.compile(re.escape(stem) + r"\.rank-(0|[1-9][0-9]*)(?:-pid-([1-9][0-9]*))?\.jsonl\Z")
+    result, seen = [], set()
+    for row in rows:
+        if not isinstance(row, dict) or type(row.get("rank")) is not int or not 0 <= row["rank"] <= 2147483647:
+            raise ValueError("metric index rank must be a bounded nonnegative integer")
+        name, meta = row.get("path"), row.get("meta")
+        match = pattern.fullmatch(name) if isinstance(name, str) and len(name) <= 255 else None
+        if not match or int(match[1]) != row["rank"] or meta != name[:-6] + ".meta.json" or name in seen:
+            raise ValueError("metric index entries must be unique literal rank siblings with matching sidecars")
+        seen.add(name)
+        result.append({"path": name, "meta": meta, "rank": row["rank"]})
+    return sorted(result, key=lambda row: (row["rank"], row["path"]))
+
+
+def bound_metric_stream(source_fd, relative, selected=None):
+    """Choose a rank stream inside the original verified descriptor boundary."""
+    rows, error = [], ""
+    try:
+        raw, _ = _read(source_fd, os.path.join(os.path.dirname(relative), "metrics.index.json"), 65536)
+        rows = validate_metric_index(_json(raw), relative)
+    except FileNotFoundError:
+        pass
+    except (OSError, ValueError) as exc:
+        error = str(exc)[:240]
+    if selected:
+        if selected not in [row["path"] for row in rows]:
+            raise ValueError("selected rank stream is no longer registered in this run" + (": " + error if error else ""))
+        return os.path.join(os.path.dirname(relative), selected), rows, error
+    if rows:
+        try:
+            fd, parent, _ = _open_local(source_fd, relative)
+        except FileNotFoundError:
+            return os.path.join(os.path.dirname(relative), rows[0]["path"]), rows, error
+        else:
+            try:
+                current = os.fstat(fd)
+                if not stat.S_ISREG(current.st_mode):
+                    raise ValueError("metric stream changed to a nonregular file")
+                if current.st_size == 0:
+                    return os.path.join(os.path.dirname(relative), rows[0]["path"]), rows, error
+            finally:
+                os.close(fd)
+                os.close(parent)
+    return relative, rows, error
+
+
+def read_bound_metric_chunk(binding, path, offset, ident, max_bytes, rank_stream=None):
     """One SSH round trip supplies an identity-checked incremental byte window."""
     import base64
     if type(offset) is not int or offset < 0 or type(max_bytes) is not int or not 1 <= max_bytes <= 64 * 1024 * 1024:
         raise ValueError("invalid bounded metric read window")
     with bound_run_root(binding) as (project_fd, run_fd, current):
         source_fd, relative = bound_metric_source(binding, path, current, project_fd, run_fd)
-        fd, parent, name = _open_local(source_fd, relative)
+        relative, rank_streams, index_error = bound_metric_stream(source_fd, relative, rank_stream)
+        try:
+            fd, parent, name = _open_local(source_fd, relative)
+        except FileNotFoundError as exc:
+            return {"missing": True, "read_error": str(exc)[:240], "rank_streams": rank_streams,
+                    "selected_stream": os.path.basename(relative), "index_error": index_error}
         try:
             before = os.fstat(fd)
             identity = [before.st_dev, before.st_ino]
@@ -599,8 +659,21 @@ def read_bound_metric_chunk(binding, path, offset, ident, max_bytes):
                     or after.st_size < before.st_size or len(data) != length
                     or after.st_size == before.st_size and _signature(after) != _signature(before)):
                 raise ValueError("metric stream changed during its bounded read")
+            # Piggyback optional descriptive metadata on the same verified
+            # run read. This adds no SSH round trip or unconfined filesystem path.
+            metadata, meta_error = None, ""
+            sidecar = relative[:-6] + ".meta.json" if relative.endswith(".jsonl") else relative + ".meta.json"
+            try:
+                raw, _ = _read(source_fd, sidecar, 65536)
+                metadata = base64.b64encode(raw).decode("ascii")
+            except FileNotFoundError:
+                pass
+            except (OSError, ValueError) as exc:
+                meta_error = str(exc)[:240]
             return {"size": before.st_size, "ident": identity, "offset": start,
-                    "data": base64.b64encode(data).decode("ascii")}
+                    "data": base64.b64encode(data).decode("ascii"),
+                    "metadata": metadata, "meta_error": meta_error, "rank_streams": rank_streams,
+                    "selected_stream": os.path.basename(relative), "index_error": index_error}
         finally:
             os.close(fd)
             os.close(parent)

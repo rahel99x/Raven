@@ -9,6 +9,11 @@ import stat
 import sys
 import threading
 
+# Automatic tracing has one aggregate budget per immutable launch attempt.
+TRACE_PROCESS_BYTES = 64 << 20
+TRACE_RUN_BYTES = 256 << 20
+TRACE_PROCESSES = 128
+
 
 def retained_size(value, limit=32 << 20):
     """Bounded conservative Python-container accounting, never a serialization."""

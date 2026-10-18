@@ -579,6 +579,20 @@ unique attempt directory and reports separate even when Slurm reuses its job ID.
 
 ## Live metrics: `metrics.jsonl`
 
+Python applications may use the optional
+[`import raven` client](guides/python-metrics.md) to supply the run path and
+timestamp automatically:
+
+```python
+import raven
+@raven.measure("loss", kind="objective")
+def train_step(batch): return compute_loss(batch)
+```
+
+The client writes the same timestamped JSONL records described below. It adds
+meaning and coverage in a separate optional metadata file; existing producers
+and readers need no JSONL format change.
+
 Write UTF-8 JSON Lines, one complete object followed by a newline:
 
 ```json
@@ -649,6 +663,41 @@ write_metric("metrics.jsonl", {"loss": 0.032}, step=12, phase="fit",
 
 Other languages can append the same JSONL. The template's `reporting.py` writes
 the format using only Python's standard library.
+
+### Optional metric metadata: `metrics.meta.json`
+
+The `raven.metrics-meta/v1` sidecar describes a metric stream. It is never a
+header record in `metrics.jsonl`; every line in that stream still requires `t`.
+For a separately named stream, use the same stem, such as
+`metrics.rank-1.jsonl` and `metrics.rank-1.meta.json`.
+
+```json
+{"schema":"raven.metrics-meta/v1","client":{"api_version":1},"kinds":{"residual":"residual","energy":"conserved"},"coalesced":{"residual":12},"units":{"energy":"J"},"rank_policy":{"mode":"coordinator","rank":0}}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `client.api_version` | Client API version, currently `1`. |
+| `kinds` | Stable metric-name to kind mapping, at most 64 names. |
+| `coalesced` | Counts of intermediate observations omitted by coalescing. |
+| `units` | Optional unit labels keyed by metric name. |
+| `rank_policy` | Declared coordinator or separate-rank coverage; not proof of a global reduction. |
+
+| Kind | Meaning and default presentation |
+| --- | --- |
+| `objective` | A minimized or maximized objective; linear values and trend. |
+| `residual` | A convergence residual; logarithmic positive values. |
+| `throughput` | Work per unit time; linear values and rolling median. |
+| `progress` | Completed work against a positive total; progress and conditional ETA. |
+| `conserved` | A nominal invariant; drift relative to the first reported value. |
+| `error` | Distance from a reference; logarithmic positive values. |
+| `gauge` | Another numeric measurement; linear values. |
+
+Kinds affect defaults, not the stored numbers or scientific acceptance.
+Nonpositive log samples remain available as raw observations. The versioned
+[schema](schemas/metrics-meta.v1.schema.json) defines exact fields and bounds;
+invalid metadata does not erase valid JSONL samples. Existing synchronous
+`write_metric` callers can continue without a sidecar.
 
 ## Run inventory: `run.json`
 
