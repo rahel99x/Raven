@@ -1,0 +1,94 @@
+{
+  "package": "W09",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "requirements": [
+    {
+      "id": "W09-R01",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W09.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Local policy/verifier tests passed; hosted OIDC attestation and cryptographic verification of an actual signed Raven artifact remain unperformed. No tag/release publication is authorized.",
+      "unblock": null
+    },
+    {
+      "id": "W09-R02",
+      "state": "adjusted",
+      "evidence": [
+        "evidence/W09.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Local policy/verifier tests passed; hosted OIDC attestation and cryptographic verification of an actual signed Raven artifact remain unperformed. No tag/release publication is authorized.",
+      "unblock": null
+    },
+    {
+      "id": "W09-R03",
+      "state": "adjusted",
+      "evidence": [
+        "evidence/W09.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Local policy/verifier tests passed; hosted OIDC attestation and cryptographic verification of an actual signed Raven artifact remain unperformed. No tag/release publication is authorized.",
+      "unblock": null
+    },
+    {
+      "id": "W09-R04",
+      "state": "blocked",
+      "evidence": [
+        "evidence/W09.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Cryptographic identity verifier is implemented and negatively tested, but no signed Raven bundle/OIDC execution is available.",
+      "unblock": "Authorize a hosted provenance run and verify its signed artifacts using a current gh attestation CLI."
+    },
+    {
+      "id": "W09-R05",
+      "state": "adjusted",
+      "evidence": [
+        "evidence/W09.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Local policy/verifier tests passed; hosted OIDC attestation and cryptographic verification of an actual signed Raven artifact remain unperformed. No tag/release publication is authorized.",
+      "unblock": null
+    },
+    {
+      "id": "W09-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W09.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Local policy/verifier tests passed; hosted OIDC attestation and cryptographic verification of an actual signed Raven artifact remain unperformed. No tag/release publication is authorized.",
+      "unblock": null
+    },
+    {
+      "id": "W09-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W09.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Local policy/verifier tests passed; hosted OIDC attestation and cryptographic verification of an actual signed Raven artifact remain unperformed. No tag/release publication is authorized.",
+      "unblock": null
+    }
+  ],
+  "focused_history": {
+    "qualification": "working tree; final integrated revision checks pending"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated_with_external_gates",
+  "external_gates": [
+    "W09-R04"
+  ]
+}

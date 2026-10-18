@@ -1,0 +1,307 @@
+{
+  "schema": "raven.queue-model/v1",
+  "id": "slurm-independent-queue-holdout",
+  "seed": 0,
+  "nodes": [
+    {
+      "id": "raven-ci",
+      "cpus": 2,
+      "memory_mb": 1024,
+      "gpus": 0
+    }
+  ],
+  "policy": {
+    "backfill": true,
+    "fairshare_weight": 0,
+    "usage_half_life_seconds": 86400,
+    "accounts": {
+      "labx": {
+        "weight": 1,
+        "usage_cpu_seconds": 0
+      }
+    },
+    "qos": {
+      "normal": {
+        "max_running": 1000,
+        "max_cpus": 100000,
+        "max_wall_seconds": 86400
+      }
+    }
+  },
+  "jobs": [
+    {
+      "id": "4",
+      "submit": 1792281149,
+      "duration": 4,
+      "wall_limit": 60,
+      "nodes": 1,
+      "cpus_per_node": 1,
+      "memory_mb_per_node": 32,
+      "gpus_per_node": 0,
+      "priority": 1,
+      "account": "labx",
+      "qos": "normal",
+      "depends": [],
+      "actual_start": 1792281149.0,
+      "actual_end": 1792281154.0,
+      "metadata": {
+        "submitted_at": "2026-10-17T23:52:29",
+        "eligible_at": "2026-10-17T23:52:29",
+        "program": "sleep 4",
+        "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+      }
+    },
+    {
+      "id": "5",
+      "submit": 1792281149,
+      "duration": 2,
+      "wall_limit": 60,
+      "nodes": 1,
+      "cpus_per_node": 2,
+      "memory_mb_per_node": 32,
+      "gpus_per_node": 0,
+      "priority": 1,
+      "account": "labx",
+      "qos": "normal",
+      "depends": [],
+      "actual_start": 1792281154.0,
+      "actual_end": 1792281157.0,
+      "metadata": {
+        "submitted_at": "2026-10-17T23:52:29",
+        "eligible_at": "2026-10-17T23:52:29",
+        "program": "sleep 2",
+        "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+      }
+    },
+    {
+      "id": "6",
+      "submit": 1792281149,
+      "duration": 2,
+      "wall_limit": 60,
+      "nodes": 1,
+      "cpus_per_node": 1,
+      "memory_mb_per_node": 32,
+      "gpus_per_node": 0,
+      "priority": 1,
+      "account": "labx",
+      "qos": "normal",
+      "depends": [],
+      "actual_start": 1792281157.0,
+      "actual_end": 1792281160.0,
+      "metadata": {
+        "submitted_at": "2026-10-17T23:52:29",
+        "eligible_at": "2026-10-17T23:52:29",
+        "program": "sleep 2",
+        "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+      }
+    },
+    {
+      "id": "7",
+      "submit": 1792281149,
+      "duration": 2,
+      "wall_limit": 60,
+      "nodes": 1,
+      "cpus_per_node": 1,
+      "memory_mb_per_node": 32,
+      "gpus_per_node": 0,
+      "priority": 1,
+      "account": "labx",
+      "qos": "normal",
+      "depends": [
+        "5"
+      ],
+      "actual_start": 1792281157.0,
+      "actual_end": 1792281160.0,
+      "metadata": {
+        "submitted_at": "2026-10-17T23:52:29",
+        "eligible_at": "2026-10-17T23:52:37",
+        "program": "sleep 2",
+        "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+      }
+    }
+  ],
+  "traces": [
+    {
+      "id": "queue-0",
+      "role": "calibration",
+      "origin": "recorded",
+      "jobs": [
+        {
+          "id": "1",
+          "submit": 1792281138,
+          "duration": 2,
+          "wall_limit": 60,
+          "nodes": 1,
+          "cpus_per_node": 2,
+          "memory_mb_per_node": 32,
+          "gpus_per_node": 0,
+          "priority": 1,
+          "account": "labx",
+          "qos": "normal",
+          "depends": [],
+          "actual_start": 1792281140.0,
+          "actual_end": 1792281142.0,
+          "metadata": {
+            "submitted_at": "2026-10-17T23:52:18",
+            "eligible_at": "2026-10-17T23:52:20",
+            "program": "sleep 2",
+            "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+          }
+        },
+        {
+          "id": "2",
+          "submit": 1792281138,
+          "duration": 2,
+          "wall_limit": 60,
+          "nodes": 1,
+          "cpus_per_node": 1,
+          "memory_mb_per_node": 32,
+          "gpus_per_node": 0,
+          "priority": 1,
+          "account": "labx",
+          "qos": "normal",
+          "depends": [],
+          "actual_start": 1792281143.0,
+          "actual_end": 1792281145.0,
+          "metadata": {
+            "submitted_at": "2026-10-17T23:52:18",
+            "eligible_at": "2026-10-17T23:52:20",
+            "program": "sleep 2",
+            "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+          }
+        },
+        {
+          "id": "3",
+          "submit": 1792281138,
+          "duration": 2,
+          "wall_limit": 60,
+          "nodes": 1,
+          "cpus_per_node": 1,
+          "memory_mb_per_node": 32,
+          "gpus_per_node": 0,
+          "priority": 1,
+          "account": "labx",
+          "qos": "normal",
+          "depends": [
+            "2"
+          ],
+          "actual_start": 1792281146.0,
+          "actual_end": 1792281149.0,
+          "metadata": {
+            "submitted_at": "2026-10-17T23:52:18",
+            "eligible_at": "2026-10-17T23:52:26",
+            "program": "sleep 2",
+            "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+          }
+        }
+      ],
+      "source_sha256": "028110db3bdc005b3a0e2e4b19574d1702bb4f5ee833b00247b797bd439b418b"
+    },
+    {
+      "id": "queue-1",
+      "role": "validation",
+      "origin": "recorded",
+      "jobs": [
+        {
+          "id": "4",
+          "submit": 1792281149,
+          "duration": 4,
+          "wall_limit": 60,
+          "nodes": 1,
+          "cpus_per_node": 1,
+          "memory_mb_per_node": 32,
+          "gpus_per_node": 0,
+          "priority": 1,
+          "account": "labx",
+          "qos": "normal",
+          "depends": [],
+          "actual_start": 1792281149.0,
+          "actual_end": 1792281154.0,
+          "metadata": {
+            "submitted_at": "2026-10-17T23:52:29",
+            "eligible_at": "2026-10-17T23:52:29",
+            "program": "sleep 4",
+            "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+          }
+        },
+        {
+          "id": "5",
+          "submit": 1792281149,
+          "duration": 2,
+          "wall_limit": 60,
+          "nodes": 1,
+          "cpus_per_node": 2,
+          "memory_mb_per_node": 32,
+          "gpus_per_node": 0,
+          "priority": 1,
+          "account": "labx",
+          "qos": "normal",
+          "depends": [],
+          "actual_start": 1792281154.0,
+          "actual_end": 1792281157.0,
+          "metadata": {
+            "submitted_at": "2026-10-17T23:52:29",
+            "eligible_at": "2026-10-17T23:52:29",
+            "program": "sleep 2",
+            "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+          }
+        },
+        {
+          "id": "6",
+          "submit": 1792281149,
+          "duration": 2,
+          "wall_limit": 60,
+          "nodes": 1,
+          "cpus_per_node": 1,
+          "memory_mb_per_node": 32,
+          "gpus_per_node": 0,
+          "priority": 1,
+          "account": "labx",
+          "qos": "normal",
+          "depends": [],
+          "actual_start": 1792281157.0,
+          "actual_end": 1792281160.0,
+          "metadata": {
+            "submitted_at": "2026-10-17T23:52:29",
+            "eligible_at": "2026-10-17T23:52:29",
+            "program": "sleep 2",
+            "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+          }
+        },
+        {
+          "id": "7",
+          "submit": 1792281149,
+          "duration": 2,
+          "wall_limit": 60,
+          "nodes": 1,
+          "cpus_per_node": 1,
+          "memory_mb_per_node": 32,
+          "gpus_per_node": 0,
+          "priority": 1,
+          "account": "labx",
+          "qos": "normal",
+          "depends": [
+            "5"
+          ],
+          "actual_start": 1792281157.0,
+          "actual_end": 1792281160.0,
+          "metadata": {
+            "submitted_at": "2026-10-17T23:52:29",
+            "eligible_at": "2026-10-17T23:52:37",
+            "program": "sleep 2",
+            "arrival_semantics": "explicitly observed release of owned held jobs; dependency outcomes remain modeled"
+          }
+        }
+      ],
+      "source_sha256": "a49163769399878de8bee35ae00b2ba5055929dfbe88d17737fa55942172fb88"
+    }
+  ],
+  "hidden_delay_seconds": 10,
+  "metadata": {
+    "version": "slurm 26.05.5",
+    "revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+    "environment": "isolated single-node real Slurm container",
+    "qualification_limit": "Two tiny independent workloads; not site-scale efficacy or hidden-state fidelity",
+    "policy_basis": "Dedicated qualification fixture; no preemption, no reservations, labx/normal defaults"
+  }
+}

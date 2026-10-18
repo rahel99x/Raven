@@ -1,0 +1,306 @@
+[
+  {
+    "source": "baseline",
+    "shell": false,
+    "probe": false,
+    "cpu": 2.0221392189793987,
+    "rss": 40374272,
+    "readiness": {
+      "ui_waits": 226,
+      "ui_waits_per_second": 5.0220160823004845,
+      "site_packages_enabled_for_terminal_extra": false,
+      "input_dispatch_ms": {
+        "count": 0
+      },
+      "publication_to_flush_ms": {
+        "count": 0
+      },
+      "latency_probes_enabled": false,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 74755,
+      "wchar": 19232
+    },
+    "path": "W18-final-baseline-0-0.json"
+  },
+  {
+    "source": "integrated",
+    "shell": false,
+    "probe": false,
+    "cpu": 2.199906420576227,
+    "rss": 43204608,
+    "readiness": {
+      "ui_waits": 328,
+      "ui_waits_per_second": 7.288578847969721,
+      "site_packages_enabled_for_terminal_extra": false,
+      "input_dispatch_ms": {
+        "count": 0
+      },
+      "publication_to_flush_ms": {
+        "count": 0
+      },
+      "latency_probes_enabled": false,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 74757,
+      "wchar": 19216
+    },
+    "path": "W18-final-integrated-0-0.json"
+  },
+  {
+    "source": "baseline",
+    "shell": true,
+    "probe": false,
+    "cpu": 16.64387670627572,
+    "rss": 43880448,
+    "readiness": {
+      "ui_waits": 2439,
+      "ui_waits_per_second": 54.19815125047595,
+      "site_packages_enabled_for_terminal_extra": true,
+      "input_dispatch_ms": {
+        "count": 0
+      },
+      "publication_to_flush_ms": {
+        "count": 0
+      },
+      "latency_probes_enabled": false,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 93457,
+      "wchar": 22037
+    },
+    "path": "W18-final-baseline-1-0.json"
+  },
+  {
+    "source": "integrated",
+    "shell": true,
+    "probe": false,
+    "cpu": 6.2220035729972185,
+    "rss": 46567424,
+    "readiness": {
+      "ui_waits": 344,
+      "ui_waits_per_second": 7.644175818253725,
+      "site_packages_enabled_for_terminal_extra": true,
+      "input_dispatch_ms": {
+        "count": 0
+      },
+      "publication_to_flush_ms": {
+        "count": 0
+      },
+      "latency_probes_enabled": false,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 74761,
+      "wchar": 21914
+    },
+    "path": "W18-final-integrated-1-0.json"
+  },
+  {
+    "source": "baseline",
+    "shell": false,
+    "probe": true,
+    "cpu": 10.398445984482894,
+    "rss": 40300544,
+    "readiness": {
+      "ui_waits": 63,
+      "ui_waits_per_second": 6.299058625215601,
+      "site_packages_enabled_for_terminal_extra": false,
+      "input_dispatch_ms": {
+        "count": 47,
+        "mean": 0.7085507872556689,
+        "min": 0.06937399984963122,
+        "p50": 0.1981660000183183,
+        "p95": 1.732300999947256,
+        "p99": 17.871115000161808,
+        "max": 17.871115000161808
+      },
+      "publication_to_flush_ms": {
+        "count": 31,
+        "mean": 103.68204451611423,
+        "min": 31.38723300003221,
+        "p50": 139.33672899997873,
+        "p95": 176.58254400021178,
+        "p99": 255.68234899992603,
+        "max": 255.68234899992603
+      },
+      "latency_probes_enabled": true,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 242064,
+      "wchar": 465244
+    },
+    "path": "W18-final-baseline-0-1.json"
+  },
+  {
+    "source": "integrated",
+    "shell": false,
+    "probe": true,
+    "cpu": 14.997701017408541,
+    "rss": 43229184,
+    "readiness": {
+      "ui_waits": 201,
+      "ui_waits_per_second": 20.096919363327444,
+      "site_packages_enabled_for_terminal_extra": false,
+      "input_dispatch_ms": {
+        "count": 47,
+        "mean": 0.27464378723244465,
+        "min": 0.10603500004435773,
+        "p50": 0.2108310000039637,
+        "p95": 0.8487180000429362,
+        "p99": 1.735338999878877,
+        "max": 1.735338999878877
+      },
+      "publication_to_flush_ms": {
+        "count": 31,
+        "mean": 8.484818290335463,
+        "min": 6.825832000004084,
+        "p50": 8.459313999992446,
+        "p95": 10.176179000154661,
+        "p99": 10.852275000161171,
+        "max": 10.852275000161171
+      },
+      "latency_probes_enabled": true,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 135040,
+      "wchar": 264434
+    },
+    "path": "W18-final-integrated-0-1.json"
+  },
+  {
+    "source": "baseline",
+    "shell": true,
+    "probe": true,
+    "cpu": 16.497542400702848,
+    "rss": 43663360,
+    "readiness": {
+      "ui_waits": 577,
+      "ui_waits_per_second": 57.691405849730565,
+      "site_packages_enabled_for_terminal_extra": true,
+      "input_dispatch_ms": {
+        "count": 47,
+        "mean": 0.5460285957472847,
+        "min": 0.08469099998364982,
+        "p50": 0.12298900014684477,
+        "p95": 3.487074000076973,
+        "p99": 8.515099000078408,
+        "max": 8.515099000078408
+      },
+      "publication_to_flush_ms": {
+        "count": 31,
+        "mean": 112.30078529029602,
+        "min": 19.840833999978713,
+        "p50": 117.70201100011946,
+        "p95": 206.38397700008682,
+        "p99": 214.47984799988262,
+        "max": 214.47984799988262
+      },
+      "latency_probes_enabled": true,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 236974,
+      "wchar": 365624
+    },
+    "path": "W18-final-baseline-1-1.json"
+  },
+  {
+    "source": "integrated",
+    "shell": true,
+    "probe": true,
+    "cpu": 11.29729682800416,
+    "rss": 46436352,
+    "readiness": {
+      "ui_waits": 231,
+      "ui_waits_per_second": 23.094474046627973,
+      "site_packages_enabled_for_terminal_extra": true,
+      "input_dispatch_ms": {
+        "count": 47,
+        "mean": 0.2067727872348227,
+        "min": 0.12173300001450116,
+        "p50": 0.19542800009730854,
+        "p95": 0.29991400015205727,
+        "p99": 0.6386869999914779,
+        "max": 0.6386869999914779
+      },
+      "publication_to_flush_ms": {
+        "count": 31,
+        "mean": 10.044004741963187,
+        "min": 8.223196000017197,
+        "p50": 9.631109000110882,
+        "p95": 13.648959000192917,
+        "p99": 19.260127000052307,
+        "max": 19.260127000052307
+      },
+      "latency_probes_enabled": true,
+      "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+    },
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "io": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 129950,
+      "wchar": 172954
+    },
+    "path": "W18-final-integrated-1-1.json"
+  }
+]

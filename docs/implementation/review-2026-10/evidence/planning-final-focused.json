@@ -1,0 +1,31 @@
+{
+  "base_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "runs": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_checkpoint_advisor.py tests/test_forecast_scenarios.py tests/test_forecast.py tests/test_slurm_simulator.py tests/test_campaign_policy.py",
+      "result": "191 passed in 3.12s"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_planning_commands.py tests/test_planning_empty.py tests/test_planning_integration.py tests/test_launch_settings.py tests/test_launch_wizard.py tests/test_automated_launch_planning.py tests/test_execution_ui.py tests/test_setup_content.py tests/test_ops_campaigns.py",
+      "result": "410 passed in 5.85s"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_forecast_scenarios.py tests/test_forecast.py tests/test_slurm_simulator.py",
+      "result": "157 passed in2.72s; optional queue-model shape validation reuses simulator contract before accessing fields"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_forecast_scenarios.py tests/test_slurm_json.py tests/test_slurm_simulator.py",
+      "result": "65 passed in2.78s; actual independent prospective65-outcome corpus replayed without efficacy gain"
+    }
+  ],
+  "source_sha256": {
+    "raven/checkpoint_advisor.py": "b3d437a2bbd5adf3ffe44099b6460faa9d84d00fe135432dca1ab49c2961ed31",
+    "raven/forecast_scenarios.py": "d8118819ae5b1109973328bab6a36748d693e3a9c6acefd3ad115e82e58f1adc",
+    "raven/slurm_simulator.py": "509113dc9b9891feb1f274b46e932106fcf584bc714bf49243e48f82e1cc2c53",
+    "raven/campaign_policy.py": "3ddd754a6fe58ea373e420e3b0c657c71e175f4dd44ede2bf6fcad5d1e9f79a9",
+    "raven/ops_campaign_policy.py": "18b26edbb1ed2c6998463eaae46dcbfbc2e583414544a411013f21363bfbcc47",
+    "tests/test_checkpoint_advisor.py": "64b010fc1cc5f6028a0b02cfda7b224530c6bcf5dbb66821c535bf52900163e0",
+    "tests/test_forecast_scenarios.py": "a4dcde3da22c5a770dcd69b48ee8a63d425c07e07a78eca9898dcbed0f580c2d",
+    "tests/test_campaign_policy.py": "1bd02209ad666637de2e4c79c0b93100fa1c9209a0f1fc82852d8eddb4abcdf7"
+  }
+}

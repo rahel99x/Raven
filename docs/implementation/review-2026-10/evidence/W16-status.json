@@ -1,0 +1,113 @@
+{
+  "package": "W16",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "evidence_file": "evidence/W16.md",
+  "requirements": [
+    {
+      "id": "W16-R01",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Sources B-08/A-11 mapped to allocation, worker and independent pointer-capture states.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Documented pending/grant/cancel/transport/generation/commit/ack transitions with exact ownership boundaries.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Hypothesis state machines drive actual AllocationManager, WorkerProxy, WorkerClient and PointerLease/scrollbar code.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "TLA+ safe model exhaustive 68 distinct states; negative job-number-only control violates Safety at depth6. Tool digest/logs/abstraction/fairness recorded.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Lost acknowledgment replay preserves one receipt/task; stale generations cannot revive Heavy. W17 exact-token atomic cancellation and terminal evidence recovery tests extend progress assertion.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Unknown external effects and missing accounting remain unknown; model does not invent backend idempotency.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Grant/cancel crossing, delayed publications, subprocess crashes, disconnected commits, reused IDs and persisted W17 restart cases.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Unsafe model counterexample mapped to implementation reused-ID/token mismatch regression fixtures; schema-authority review finding corrected by W17 owner.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    },
+    {
+      "id": "W16-R09",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W16.md",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "README and W16 evidence explicitly limit bounded model checking; no deployment-wide proof or forced liveness claim.",
+      "qualification_limits": "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local models/fault tests do not qualify remote/Slurm/GPU deployments."
+    }
+  ],
+  "focused_history": {
+    "candidate_revision": "working tree; final root integration revision pending"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

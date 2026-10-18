@@ -1,0 +1,111 @@
+{
+  "package": "W26",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "evidence_file": "evidence/W26.md",
+  "requirements": [
+    {
+      "id": "W26-R01",
+      "state": "implemented",
+      "conclusion": "Source A-17 reconciled; existing Store/notifications reused; no preexisting detector.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    },
+    {
+      "id": "W26-R02",
+      "state": "implemented",
+      "conclusion": "One bounded median/MAD baseline and specified RSS trend; CUSUM not justified by a separate use case.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    },
+    {
+      "id": "W26-R03",
+      "state": "implemented",
+      "conclusion": "Verified current-attempt Store hook; bounded deduplicated evidence episodes; exact-source retained converter.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    },
+    {
+      "id": "W26-R04",
+      "state": "implemented",
+      "conclusion": "Every alert separates observed change from unknown cause.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    },
+    {
+      "id": "W26-R05",
+      "state": "implemented",
+      "conclusion": "Known step/leak/stall evaluation records delay/false positives; explicit abstention regressions cover warmup/missing/uneven/phase/constant/noisy/invalid observations.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    },
+    {
+      "id": "W26-R06",
+      "state": "implemented",
+      "conclusion": "Bounded window128 streams64events; controlled per-scale and full-monitor CPU/allocation/RSS measurements.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    },
+    {
+      "id": "W26-R07",
+      "state": "implemented",
+      "conclusion": "Explicit same-scope RSS limit; remaining-seconds interval, B/s slope, residual uncertainty and observed-span horizon.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    },
+    {
+      "id": "W26-R08",
+      "state": "implemented",
+      "conclusion": "Existing Research Operations and notifications only; no permanent toolbar control.",
+      "evidence": [
+        "evidence/W26.md",
+        "evidence/W26-W32-evaluation.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Synthetic/local process evaluation does not qualify real Slurm/GPU deployments; Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+    }
+  ],
+  "focused_history": {
+    "candidate_revision": "working tree; source hashes in raw evaluation/benchmark artifacts"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

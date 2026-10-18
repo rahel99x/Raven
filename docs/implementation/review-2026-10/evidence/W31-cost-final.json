@@ -1,0 +1,3410 @@
+{
+  "schema": "raven.allocation-health-cost/v1",
+  "rows": [
+    {
+      "mode": "disabled",
+      "tracked_python_allocations": false,
+      "wall_seconds": 5.099996087665204e-07,
+      "cpu_seconds": 2.744000000002439e-06,
+      "process_max_rss_kib": 11136,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 97,
+        "wchar": 0,
+        "syscr": 2,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": null,
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "memory",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.011993072000223037,
+      "cpu_seconds": 0.011995344000000002,
+      "process_max_rss_kib": 15360,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 189907,
+        "wchar": 0,
+        "syscr": 48,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51629,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 6.906499993419857e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 4.6580999878642615e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 4.328600016378914e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 4.2934999783028616e-05,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 4.328600016378914e-05,
+            "minimum_seconds": 4.2934999783028616e-05,
+            "maximum_seconds": 4.6580999878642615e-05,
+            "relative_range": 0.08423046901580103
+          }
+        },
+        "started_unix_seconds": 1792286760.504653,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0015533380001215846,
+        "cohort": "9977c429a910e9941480b9e17858a076d57988fc8e68fc979611e6ff6c3cd6b4",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "scratch",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.012363266000193107,
+      "cpu_seconds": 0.012365283000000001,
+      "process_max_rss_kib": 15448,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 4384211,
+        "wchar": 4194304,
+        "syscr": 52,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51630,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-fqfm1llt",
+          "device": 34,
+          "inode": 89928
+        },
+        "samples": [
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0005249900000308116,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.0004085129999111814,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.0003206090000276163,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.00023875399983808165,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.0003206090000276163,
+            "minimum_seconds": 0.00023875399983808165,
+            "maximum_seconds": 0.0004085129999111814,
+            "relative_range": 0.5294891910659939
+          }
+        },
+        "started_unix_seconds": 1792286760.543804,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0028304540001045098,
+        "cohort": "67e981adcf3eb8730cb7eaa414bfe01e08ad5e053838acee8f26a19d390a4cb6",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "memory,scratch",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.01245687899972836,
+      "cpu_seconds": 0.012458872,
+      "process_max_rss_kib": 15448,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 4384211,
+        "wchar": 4194304,
+        "syscr": 52,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51631,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory",
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-qjrlafmm",
+          "device": 34,
+          "inode": 89934
+        },
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 5.353200003810343e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 4.385700003695092e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 4.327600026954315e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 4.285499971956597e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0005595830002675939,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.00042245400027240976,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.0002549890000409505,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.00023787300006006262,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 4.327600026954315e-05,
+            "minimum_seconds": 4.285499971956597e-05,
+            "maximum_seconds": 4.385700003695092e-05,
+            "relative_range": 0.023153718253628535
+          },
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.0002549890000409505,
+            "minimum_seconds": 0.00023787300006006262,
+            "maximum_seconds": 0.00042245400027240976,
+            "relative_range": 0.7238782856621422
+          }
+        },
+        "started_unix_seconds": 1792286760.5845337,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0031661670000175945,
+        "cohort": "e59824690605969464849844f5f18aa15c20bc4a270f807e7ee90c7890c382a8",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "mpi",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.9161829029999353,
+      "cpu_seconds": 0.043391112999999995,
+      "process_max_rss_kib": 17964,
+      "reaped_children_cpu_seconds": 0.695982,
+      "reaped_child_peak_rss_kib": 22228,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 45731580,
+        "wchar": 8796214,
+        "syscr": 3712,
+        "syscw": 305,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51632,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "mpi"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 4194304,
+          "anonymous_mpi_compile_bytes": 196608
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "repeat": 0,
+            "seconds": 0.0011998589999999993,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": true
+          },
+          {
+            "repeat": 1,
+            "seconds": 0.0006932270000000011,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 2,
+            "seconds": 0.0004156930000000017,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 3,
+            "seconds": 0.0003482710000000007,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          }
+        ],
+        "summary": {
+          "mpi": {
+            "count": 3,
+            "median_seconds": 0.0004156930000000017,
+            "minimum_seconds": 0.0003482710000000007,
+            "maximum_seconds": 0.0006932270000000011,
+            "relative_range": 0.8298335550514419
+          }
+        },
+        "started_unix_seconds": 1792286760.734547,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "mpi": {
+          "toolchain": {
+            "prefix": "/workspace/raven-tools/mpi-private-qualification",
+            "mpicc": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+              "sha256": "305f96a29cb3e2d1fb7cbd29e4448b33345ae7fb8a915c7ac7379d543166307f",
+              "device": "27",
+              "inode": "1843272",
+              "size": 217104,
+              "mtime_ns": 1792286296832161871,
+              "authority_sha256": "599c8b1180b8825f0bd4f9b5d5b2b590996859b79cbb04390e60576c58c3bd9c"
+            },
+            "mpiexec": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+              "sha256": "96ab74bcbe60c8b6a750cd3b726ce6b2360991bcbc2a16635525a1979fc252ff",
+              "device": "27",
+              "inode": "1843273",
+              "size": 208848,
+              "mtime_ns": 1792286296832846836,
+              "authority_sha256": "a46c2d488fa0c4985b3a2467046e5cdcf01bd9dd26e6dfcc84b446197b4af7d8"
+            },
+            "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+            "include": "/workspace/raven-tools/mpi-private-qualification/include",
+            "library": "/workspace/raven-tools/mpi-private-qualification/lib",
+            "headers": [
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi.h",
+                "sha256": "84b26c8fe0b227168ac1753a0988d1e2139dc63bda8759378e33c8fe2a24e950",
+                "device": "27",
+                "inode": "1843276",
+                "size": 200058,
+                "mtime_ns": 1792286296833554486,
+                "authority_sha256": "5d04479766b8ef245d1b6f4359df9efb55ade2959fb17a6099f3bd7d6eae873d"
+              },
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi_portable_platform.h",
+                "sha256": "9ae30899eb391eca5e72223b1131d3ff1f039599aa3c1dd34c021fccc3384e4b",
+                "device": "27",
+                "inode": "1843277",
+                "size": 44232,
+                "mtime_ns": 1792286296833957899,
+                "authority_sha256": "69559bc675d5fe2475a6e0250c93cd51c8b7704260e2abb6bd5557326702e0da"
+              }
+            ],
+            "library_file": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/lib/libmpi.so",
+              "sha256": "dcca32f78fe6bda5ab10ca9019a3129e1869ffe6bb7a6f5461207563d2cea446",
+              "device": "27",
+              "inode": "1843279",
+              "size": 3655472,
+              "mtime_ns": 1792286296834325189,
+              "authority_sha256": "4d133c9328cf544c23b745a1326ef1607b2c1413622b6e1cdc4e69e0733a01a2"
+            },
+            "source_sha256": "8445c589c3348736f80125ee94ad1609470c123db66c7c089da11b4fe3db7603",
+            "limits": {
+              "ranks": 2,
+              "maximum_message_bytes": 1048576,
+              "compile_output_bytes": 65536,
+              "runtime_output_bytes": 1048576,
+              "runtime_file_bytes": 1048576,
+              "runtime_total_bytes": 8388608,
+              "runtime_files": 128,
+              "anonymous_compile_file_bytes": 65536,
+              "same_host_only": true
+            }
+          },
+          "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+          "library_version": "Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 ",
+          "binary_sha256": "cf615b3ee28e9c35eb42f77f103f2e0aec1bc1fdbcc56b6255db7fa1dbad781f",
+          "commands": [
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-I/workspace/raven-tools/mpi-private-qualification/include",
+                "-O2",
+                "-pipe",
+                "-x",
+                "c",
+                "-c",
+                "/proc/51632/fd/3",
+                "-o",
+                "/proc/51632/fd/6"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.13401148699995247,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-L/workspace/raven-tools/mpi-private-qualification/lib",
+                "/proc/51632/fd/6",
+                "-o",
+                "/proc/51632/fd/8"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.10931290600001375,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+                "-n",
+                "2",
+                "--host",
+                "localhost:2",
+                "--bind-to",
+                "none",
+                "--prtemca",
+                "plm",
+                "ssh",
+                "--prtemca",
+                "plm_ssh_agent",
+                "/usr/bin/false",
+                "--prtemca",
+                "ras",
+                "^slurm",
+                "--mca",
+                "btl",
+                "self,tcp",
+                "--mca",
+                "btl_tcp_if_include",
+                "lo",
+                "--mca",
+                "pml",
+                "ob1",
+                "--prtemca",
+                "prte_tmpdir_base",
+                "/tmp/raven-mpi-session-s86xxqjl",
+                "--timeout",
+                "10",
+                "/proc/51632/fd/8",
+                "1048576",
+                "1",
+                "3",
+                "10"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.31447114299999157,
+              "output": "RAVEN_MPI_LIBRARY Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 \nRAVEN_MPI_SAMPLE {\"repeat\":0,\"seconds\":0.0011998589999999993,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":1,\"seconds\":0.00069322700000000112,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":2,\"seconds\":0.0004156930000000017,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":3,\"seconds\":0.00034827100000000069,\"bytes\":1048576,\"verified\":true}\n"
+            }
+          ],
+          "runtime_temp": "/tmp/raven-mpi-session-s86xxqjl",
+          "runtime_temp_cleanup": "owned janitor verifies removal before return; pidfd/pipe EOF also closes crash lifetime",
+          "placement": "two ranks on the authenticated worker host",
+          "limits": "Same-host communication only; no inter-node/interconnect or scientific workload efficacy"
+        },
+        "elapsed_seconds": 0.799077853000199,
+        "cohort": "e94d74144d57e20eb5b14afdd004441ed7a2e35bcd25d115ac5c35a90ec24af1",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "disabled",
+      "tracked_python_allocations": false,
+      "wall_seconds": 4.910002644464839e-07,
+      "cpu_seconds": 2.1229999999997085e-06,
+      "process_max_rss_kib": 11136,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 97,
+        "wchar": 0,
+        "syscr": 2,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": null,
+      "scratch_cleaned": true,
+      "trial": 1
+    },
+    {
+      "mode": "memory",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.010890190999816696,
+      "cpu_seconds": 0.010892497000000001,
+      "process_max_rss_kib": 15360,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 189907,
+        "wchar": 0,
+        "syscr": 48,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51659,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 5.487400039783097e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 4.399700037538423e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 4.3045999973401194e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 4.299600004742388e-05,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 4.3045999973401194e-05,
+            "minimum_seconds": 4.299600004742388e-05,
+            "maximum_seconds": 4.399700037538423e-05,
+            "relative_range": 0.02325420082188564
+          }
+        },
+        "started_unix_seconds": 1792286761.6018105,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0014274559998739278,
+        "cohort": "9977c429a910e9941480b9e17858a076d57988fc8e68fc979611e6ff6c3cd6b4",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 1
+    },
+    {
+      "mode": "scratch",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.014341702999900008,
+      "cpu_seconds": 0.014344571000000004,
+      "process_max_rss_kib": 15448,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 4384211,
+        "wchar": 4194304,
+        "syscr": 52,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51660,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-q565aqe8",
+          "device": 34,
+          "inode": 89962
+        },
+        "samples": [
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0005499680000866647,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.0014306309999483346,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.0003780259999075497,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.00025139300032606116,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.0003780259999075497,
+            "minimum_seconds": 0.00025139300032606116,
+            "maximum_seconds": 0.0014306309999483346,
+            "relative_range": 3.1194626822246847
+          }
+        },
+        "started_unix_seconds": 1792286761.6451492,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.004152160000103322,
+        "cohort": "67e981adcf3eb8730cb7eaa414bfe01e08ad5e053838acee8f26a19d390a4cb6",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 1
+    },
+    {
+      "mode": "memory,scratch",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.013291922000007617,
+      "cpu_seconds": 0.013294122000000002,
+      "process_max_rss_kib": 15448,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 4384211,
+        "wchar": 4194304,
+        "syscr": 52,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51661,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory",
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-x4_l7vb3",
+          "device": 34,
+          "inode": 89968
+        },
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 5.377200022849138e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 4.3356000333005795e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 4.275499986761133e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 4.260500008967938e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0006441219998123415,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.00034983300020030583,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.00036892299976898357,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.0003908059998138924,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 4.275499986761133e-05,
+            "minimum_seconds": 4.260500008967938e-05,
+            "maximum_seconds": 4.3356000333005795e-05,
+            "relative_range": 0.01756520279854637
+          },
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.00036892299976898357,
+            "minimum_seconds": 0.00034983300020030583,
+            "maximum_seconds": 0.0003908059998138924,
+            "relative_range": 0.11106111475631371
+          }
+        },
+        "started_unix_seconds": 1792286761.6893132,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0034429679999448126,
+        "cohort": "e59824690605969464849844f5f18aa15c20bc4a270f807e7ee90c7890c382a8",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 1
+    },
+    {
+      "mode": "mpi",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.9394436069997028,
+      "cpu_seconds": 0.043032338999999996,
+      "process_max_rss_kib": 17964,
+      "reaped_children_cpu_seconds": 0.712877,
+      "reaped_child_peak_rss_kib": 22096,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 45731620,
+        "wchar": 8796254,
+        "syscr": 3636,
+        "syscw": 310,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51662,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "mpi"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 4194304,
+          "anonymous_mpi_compile_bytes": 196608
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "repeat": 0,
+            "seconds": 0.009242847999999998,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": true
+          },
+          {
+            "repeat": 1,
+            "seconds": 0.00025582600000000066,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 2,
+            "seconds": 0.000287954,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 3,
+            "seconds": 0.0002621859999999976,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          }
+        ],
+        "summary": {
+          "mpi": {
+            "count": 3,
+            "median_seconds": 0.0002621859999999976,
+            "minimum_seconds": 0.00025582600000000066,
+            "maximum_seconds": 0.000287954,
+            "relative_range": 0.12253896089035883
+          }
+        },
+        "started_unix_seconds": 1792286761.8229194,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "mpi": {
+          "toolchain": {
+            "prefix": "/workspace/raven-tools/mpi-private-qualification",
+            "mpicc": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+              "sha256": "305f96a29cb3e2d1fb7cbd29e4448b33345ae7fb8a915c7ac7379d543166307f",
+              "device": "27",
+              "inode": "1843272",
+              "size": 217104,
+              "mtime_ns": 1792286296832161871,
+              "authority_sha256": "599c8b1180b8825f0bd4f9b5d5b2b590996859b79cbb04390e60576c58c3bd9c"
+            },
+            "mpiexec": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+              "sha256": "96ab74bcbe60c8b6a750cd3b726ce6b2360991bcbc2a16635525a1979fc252ff",
+              "device": "27",
+              "inode": "1843273",
+              "size": 208848,
+              "mtime_ns": 1792286296832846836,
+              "authority_sha256": "a46c2d488fa0c4985b3a2467046e5cdcf01bd9dd26e6dfcc84b446197b4af7d8"
+            },
+            "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+            "include": "/workspace/raven-tools/mpi-private-qualification/include",
+            "library": "/workspace/raven-tools/mpi-private-qualification/lib",
+            "headers": [
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi.h",
+                "sha256": "84b26c8fe0b227168ac1753a0988d1e2139dc63bda8759378e33c8fe2a24e950",
+                "device": "27",
+                "inode": "1843276",
+                "size": 200058,
+                "mtime_ns": 1792286296833554486,
+                "authority_sha256": "5d04479766b8ef245d1b6f4359df9efb55ade2959fb17a6099f3bd7d6eae873d"
+              },
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi_portable_platform.h",
+                "sha256": "9ae30899eb391eca5e72223b1131d3ff1f039599aa3c1dd34c021fccc3384e4b",
+                "device": "27",
+                "inode": "1843277",
+                "size": 44232,
+                "mtime_ns": 1792286296833957899,
+                "authority_sha256": "69559bc675d5fe2475a6e0250c93cd51c8b7704260e2abb6bd5557326702e0da"
+              }
+            ],
+            "library_file": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/lib/libmpi.so",
+              "sha256": "dcca32f78fe6bda5ab10ca9019a3129e1869ffe6bb7a6f5461207563d2cea446",
+              "device": "27",
+              "inode": "1843279",
+              "size": 3655472,
+              "mtime_ns": 1792286296834325189,
+              "authority_sha256": "4d133c9328cf544c23b745a1326ef1607b2c1413622b6e1cdc4e69e0733a01a2"
+            },
+            "source_sha256": "8445c589c3348736f80125ee94ad1609470c123db66c7c089da11b4fe3db7603",
+            "limits": {
+              "ranks": 2,
+              "maximum_message_bytes": 1048576,
+              "compile_output_bytes": 65536,
+              "runtime_output_bytes": 1048576,
+              "runtime_file_bytes": 1048576,
+              "runtime_total_bytes": 8388608,
+              "runtime_files": 128,
+              "anonymous_compile_file_bytes": 65536,
+              "same_host_only": true
+            }
+          },
+          "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+          "library_version": "Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 ",
+          "binary_sha256": "cf615b3ee28e9c35eb42f77f103f2e0aec1bc1fdbcc56b6255db7fa1dbad781f",
+          "commands": [
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-I/workspace/raven-tools/mpi-private-qualification/include",
+                "-O2",
+                "-pipe",
+                "-x",
+                "c",
+                "-c",
+                "/proc/51662/fd/3",
+                "-o",
+                "/proc/51662/fd/6"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.14586073999998916,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-L/workspace/raven-tools/mpi-private-qualification/lib",
+                "/proc/51662/fd/6",
+                "-o",
+                "/proc/51662/fd/8"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.10846212900014507,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+                "-n",
+                "2",
+                "--host",
+                "localhost:2",
+                "--bind-to",
+                "none",
+                "--prtemca",
+                "plm",
+                "ssh",
+                "--prtemca",
+                "plm_ssh_agent",
+                "/usr/bin/false",
+                "--prtemca",
+                "ras",
+                "^slurm",
+                "--mca",
+                "btl",
+                "self,tcp",
+                "--mca",
+                "btl_tcp_if_include",
+                "lo",
+                "--mca",
+                "pml",
+                "ob1",
+                "--prtemca",
+                "prte_tmpdir_base",
+                "/tmp/raven-mpi-session-ezytqm4q",
+                "--timeout",
+                "10",
+                "/proc/51662/fd/8",
+                "1048576",
+                "1",
+                "3",
+                "10"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.3474909070000649,
+              "output": "RAVEN_MPI_LIBRARY Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 \nRAVEN_MPI_SAMPLE {\"repeat\":0,\"seconds\":0.009242847999999998,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":1,\"seconds\":0.00025582600000000066,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":2,\"seconds\":0.00028795399999999999,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":3,\"seconds\":0.00026218599999999759,\"bytes\":1048576,\"verified\":true}\n"
+            }
+          ],
+          "runtime_temp": "/tmp/raven-mpi-session-ezytqm4q",
+          "runtime_temp_cleanup": "owned janitor verifies removal before return; pidfd/pipe EOF also closes crash lifetime",
+          "placement": "two ranks on the authenticated worker host",
+          "limits": "Same-host communication only; no inter-node/interconnect or scientific workload efficacy"
+        },
+        "elapsed_seconds": 0.8365656390001277,
+        "cohort": "e94d74144d57e20eb5b14afdd004441ed7a2e35bcd25d115ac5c35a90ec24af1",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 1
+    },
+    {
+      "mode": "disabled",
+      "tracked_python_allocations": false,
+      "wall_seconds": 4.2100009522982873e-07,
+      "cpu_seconds": 1.7929999999999335e-06,
+      "process_max_rss_kib": 11264,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 97,
+        "wchar": 0,
+        "syscr": 2,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": null,
+      "scratch_cleaned": true,
+      "trial": 2
+    },
+    {
+      "mode": "memory",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.01229338299981464,
+      "cpu_seconds": 0.012295799999999999,
+      "process_max_rss_kib": 15360,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 189907,
+        "wchar": 0,
+        "syscr": 48,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51689,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 8.289200013678055e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 5.571200017584488e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 5.317799968906911e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 7.133500002964865e-05,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 5.571200017584488e-05,
+            "minimum_seconds": 5.317799968906911e-05,
+            "maximum_seconds": 7.133500002964865e-05,
+            "relative_range": 0.32590824747397773
+          }
+        },
+        "started_unix_seconds": 1792286762.7272933,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0015746239996587974,
+        "cohort": "9977c429a910e9941480b9e17858a076d57988fc8e68fc979611e6ff6c3cd6b4",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 2
+    },
+    {
+      "mode": "scratch",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.013699620999886974,
+      "cpu_seconds": 0.013702438,
+      "process_max_rss_kib": 15452,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 4384211,
+        "wchar": 4194304,
+        "syscr": 52,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51690,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-e5tv8h6e",
+          "device": 34,
+          "inode": 89996
+        },
+        "samples": [
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0006871700002193393,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.00039452000009987387,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.0003321079998386267,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.0002958650002256036,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.0003321079998386267,
+            "minimum_seconds": 0.0002958650002256036,
+            "maximum_seconds": 0.00039452000009987387,
+            "relative_range": 0.29705698122962215
+          }
+        },
+        "started_unix_seconds": 1792286762.7696724,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0032876840000426455,
+        "cohort": "67e981adcf3eb8730cb7eaa414bfe01e08ad5e053838acee8f26a19d390a4cb6",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 2
+    },
+    {
+      "mode": "memory,scratch",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.013528640000004089,
+      "cpu_seconds": 0.013522410999999998,
+      "process_max_rss_kib": 15448,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 4384211,
+        "wchar": 4194304,
+        "syscr": 52,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51691,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory",
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-0tue8bla",
+          "device": 34,
+          "inode": 90002
+        },
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 5.608200035567279e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 4.3634000121528516e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 4.286300008971011e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 4.2701999973360216e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0006909559997438919,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.000422350999997434,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.00042209100001855404,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.0002518800001780619,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 4.286300008971011e-05,
+            "minimum_seconds": 4.2701999973360216e-05,
+            "maximum_seconds": 4.3634000121528516e-05,
+            "relative_range": 0.021743698439625543
+          },
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.00042209100001855404,
+            "minimum_seconds": 0.0002518800001780619,
+            "maximum_seconds": 0.000422350999997434,
+            "relative_range": 0.403872624177911
+          }
+        },
+        "started_unix_seconds": 1792286762.8117113,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.003469029999905615,
+        "cohort": "e59824690605969464849844f5f18aa15c20bc4a270f807e7ee90c7890c382a8",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 2
+    },
+    {
+      "mode": "mpi",
+      "tracked_python_allocations": false,
+      "wall_seconds": 0.904040969000107,
+      "cpu_seconds": 0.04378476099999999,
+      "process_max_rss_kib": 17984,
+      "reaped_children_cpu_seconds": 0.676118,
+      "reaped_child_peak_rss_kib": 22144,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": null,
+      "io_delta": {
+        "rchar": 45731605,
+        "wchar": 8796239,
+        "syscr": 3616,
+        "syscw": 307,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51692,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "mpi"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 4194304,
+          "anonymous_mpi_compile_bytes": 196608
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "repeat": 0,
+            "seconds": 0.009225051999999997,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": true
+          },
+          {
+            "repeat": 1,
+            "seconds": 0.0002881439999999971,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 2,
+            "seconds": 0.0002313799999999963,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 3,
+            "seconds": 0.00022790599999999994,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          }
+        ],
+        "summary": {
+          "mpi": {
+            "count": 3,
+            "median_seconds": 0.0002313799999999963,
+            "minimum_seconds": 0.00022790599999999994,
+            "maximum_seconds": 0.0002881439999999971,
+            "relative_range": 0.2603422940617086
+          }
+        },
+        "started_unix_seconds": 1792286762.9460526,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "mpi": {
+          "toolchain": {
+            "prefix": "/workspace/raven-tools/mpi-private-qualification",
+            "mpicc": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+              "sha256": "305f96a29cb3e2d1fb7cbd29e4448b33345ae7fb8a915c7ac7379d543166307f",
+              "device": "27",
+              "inode": "1843272",
+              "size": 217104,
+              "mtime_ns": 1792286296832161871,
+              "authority_sha256": "599c8b1180b8825f0bd4f9b5d5b2b590996859b79cbb04390e60576c58c3bd9c"
+            },
+            "mpiexec": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+              "sha256": "96ab74bcbe60c8b6a750cd3b726ce6b2360991bcbc2a16635525a1979fc252ff",
+              "device": "27",
+              "inode": "1843273",
+              "size": 208848,
+              "mtime_ns": 1792286296832846836,
+              "authority_sha256": "a46c2d488fa0c4985b3a2467046e5cdcf01bd9dd26e6dfcc84b446197b4af7d8"
+            },
+            "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+            "include": "/workspace/raven-tools/mpi-private-qualification/include",
+            "library": "/workspace/raven-tools/mpi-private-qualification/lib",
+            "headers": [
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi.h",
+                "sha256": "84b26c8fe0b227168ac1753a0988d1e2139dc63bda8759378e33c8fe2a24e950",
+                "device": "27",
+                "inode": "1843276",
+                "size": 200058,
+                "mtime_ns": 1792286296833554486,
+                "authority_sha256": "5d04479766b8ef245d1b6f4359df9efb55ade2959fb17a6099f3bd7d6eae873d"
+              },
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi_portable_platform.h",
+                "sha256": "9ae30899eb391eca5e72223b1131d3ff1f039599aa3c1dd34c021fccc3384e4b",
+                "device": "27",
+                "inode": "1843277",
+                "size": 44232,
+                "mtime_ns": 1792286296833957899,
+                "authority_sha256": "69559bc675d5fe2475a6e0250c93cd51c8b7704260e2abb6bd5557326702e0da"
+              }
+            ],
+            "library_file": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/lib/libmpi.so",
+              "sha256": "dcca32f78fe6bda5ab10ca9019a3129e1869ffe6bb7a6f5461207563d2cea446",
+              "device": "27",
+              "inode": "1843279",
+              "size": 3655472,
+              "mtime_ns": 1792286296834325189,
+              "authority_sha256": "4d133c9328cf544c23b745a1326ef1607b2c1413622b6e1cdc4e69e0733a01a2"
+            },
+            "source_sha256": "8445c589c3348736f80125ee94ad1609470c123db66c7c089da11b4fe3db7603",
+            "limits": {
+              "ranks": 2,
+              "maximum_message_bytes": 1048576,
+              "compile_output_bytes": 65536,
+              "runtime_output_bytes": 1048576,
+              "runtime_file_bytes": 1048576,
+              "runtime_total_bytes": 8388608,
+              "runtime_files": 128,
+              "anonymous_compile_file_bytes": 65536,
+              "same_host_only": true
+            }
+          },
+          "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+          "library_version": "Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 ",
+          "binary_sha256": "cf615b3ee28e9c35eb42f77f103f2e0aec1bc1fdbcc56b6255db7fa1dbad781f",
+          "commands": [
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-I/workspace/raven-tools/mpi-private-qualification/include",
+                "-O2",
+                "-pipe",
+                "-x",
+                "c",
+                "-c",
+                "/proc/51692/fd/3",
+                "-o",
+                "/proc/51692/fd/6"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.12940685399962604,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-L/workspace/raven-tools/mpi-private-qualification/lib",
+                "/proc/51692/fd/6",
+                "-o",
+                "/proc/51692/fd/8"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.1039779699999599,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+                "-n",
+                "2",
+                "--host",
+                "localhost:2",
+                "--bind-to",
+                "none",
+                "--prtemca",
+                "plm",
+                "ssh",
+                "--prtemca",
+                "plm_ssh_agent",
+                "/usr/bin/false",
+                "--prtemca",
+                "ras",
+                "^slurm",
+                "--mca",
+                "btl",
+                "self,tcp",
+                "--mca",
+                "btl_tcp_if_include",
+                "lo",
+                "--mca",
+                "pml",
+                "ob1",
+                "--prtemca",
+                "prte_tmpdir_base",
+                "/tmp/raven-mpi-session-pfpcd5fc",
+                "--timeout",
+                "10",
+                "/proc/51692/fd/8",
+                "1048576",
+                "1",
+                "3",
+                "10"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.3356355200003236,
+              "output": "RAVEN_MPI_LIBRARY Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 \nRAVEN_MPI_SAMPLE {\"repeat\":0,\"seconds\":0.0092250519999999975,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":1,\"seconds\":0.00028814399999999712,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":2,\"seconds\":0.00023137999999999631,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":3,\"seconds\":0.00022790599999999994,\"bytes\":1048576,\"verified\":true}\n"
+            }
+          ],
+          "runtime_temp": "/tmp/raven-mpi-session-pfpcd5fc",
+          "runtime_temp_cleanup": "owned janitor verifies removal before return; pidfd/pipe EOF also closes crash lifetime",
+          "placement": "two ranks on the authenticated worker host",
+          "limits": "Same-host communication only; no inter-node/interconnect or scientific workload efficacy"
+        },
+        "elapsed_seconds": 0.8019710000003215,
+        "cohort": "e94d74144d57e20eb5b14afdd004441ed7a2e35bcd25d115ac5c35a90ec24af1",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 2
+    },
+    {
+      "mode": "disabled",
+      "tracked_python_allocations": true,
+      "wall_seconds": 0.006735202000072604,
+      "cpu_seconds": 0.006741506000000001,
+      "process_max_rss_kib": 11776,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": 0,
+      "io_delta": {
+        "rchar": 139500,
+        "wchar": 0,
+        "syscr": 16,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": null,
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "memory",
+      "tracked_python_allocations": true,
+      "wall_seconds": 0.03316651099976298,
+      "cpu_seconds": 0.033172135,
+      "process_max_rss_kib": 17492,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": 2905558,
+      "io_delta": {
+        "rchar": 329310,
+        "wchar": 0,
+        "syscr": 62,
+        "syscw": 0,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51719,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.000119184999675781,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 4.5187000068835914e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 4.3945000015810365e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 6.945199993424467e-05,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 4.5187000068835914e-05,
+            "minimum_seconds": 4.3945000015810365e-05,
+            "maximum_seconds": 6.945199993424467e-05,
+            "relative_range": 0.5644765060654181
+          }
+        },
+        "started_unix_seconds": 1792286763.8491223,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.0027256280000074184,
+        "cohort": "9977c429a910e9941480b9e17858a076d57988fc8e68fc979611e6ff6c3cd6b4",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "scratch",
+      "tracked_python_allocations": true,
+      "wall_seconds": 0.03823870699989129,
+      "cpu_seconds": 0.038244995000000004,
+      "process_max_rss_kib": 17496,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": 2909253,
+      "io_delta": {
+        "rchar": 4523614,
+        "wchar": 4194304,
+        "syscr": 66,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51720,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-xhvz0cas",
+          "device": 34,
+          "inode": 90030
+        },
+        "samples": [
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0006836850002400752,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.0004802759999620321,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.00038529699986611377,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.00037483100004465086,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.00038529699986611377,
+            "minimum_seconds": 0.00037483100004465086,
+            "maximum_seconds": 0.0004802759999620321,
+            "relative_range": 0.27367199836495515
+          }
+        },
+        "started_unix_seconds": 1792286763.9193165,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.004803903000265564,
+        "cohort": "67e981adcf3eb8730cb7eaa414bfe01e08ad5e053838acee8f26a19d390a4cb6",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "memory,scratch",
+      "tracked_python_allocations": true,
+      "wall_seconds": 0.036022287999912805,
+      "cpu_seconds": 0.036027634,
+      "process_max_rss_kib": 17496,
+      "reaped_children_cpu_seconds": 0.0,
+      "reaped_child_peak_rss_kib": 0,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": 2910638,
+      "io_delta": {
+        "rchar": 4523614,
+        "wchar": 4194304,
+        "syscr": 66,
+        "syscw": 4,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51721,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "memory",
+            "scratch"
+          ],
+          "peak_scratch_bytes": 1048576,
+          "maximum_io_bytes": 8388608,
+          "maximum_buffer_bytes": 2097152,
+          "anonymous_mpi_compile_bytes": 0
+        },
+        "scratch": {
+          "path": "/tmp/raven-health-cost-kxxh0dsq",
+          "device": 34,
+          "inode": 90036
+        },
+        "samples": [
+          {
+            "test": "memory",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 5.727400002797367e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 4.5356000100582605e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 4.455599992070347e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "memory",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 4.404400033308775e-05,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 0,
+            "warmup": true,
+            "seconds": 0.0008660230000714364,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 1,
+            "warmup": false,
+            "seconds": 0.0004171340001448698,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 2,
+            "warmup": false,
+            "seconds": 0.000582517000111693,
+            "bytes": 1048576,
+            "verified": true
+          },
+          {
+            "test": "scratch",
+            "repeat": 3,
+            "warmup": false,
+            "seconds": 0.0004079499999534164,
+            "bytes": 1048576,
+            "verified": true
+          }
+        ],
+        "summary": {
+          "memory": {
+            "count": 3,
+            "median_seconds": 4.455599992070347e-05,
+            "minimum_seconds": 4.404400033308775e-05,
+            "maximum_seconds": 4.5356000100582605e-05,
+            "relative_range": 0.029446085147450982
+          },
+          "scratch": {
+            "count": 3,
+            "median_seconds": 0.0004171340001448698,
+            "minimum_seconds": 0.0004079499999534164,
+            "maximum_seconds": 0.000582517000111693,
+            "relative_range": 0.418491420257399
+          }
+        },
+        "started_unix_seconds": 1792286763.9864345,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "elapsed_seconds": 0.005068381000000954,
+        "cohort": "e59824690605969464849844f5f18aa15c20bc4a270f807e7ee90c7890c382a8",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    },
+    {
+      "mode": "mpi",
+      "tracked_python_allocations": true,
+      "wall_seconds": 1.0013973330001136,
+      "cpu_seconds": 0.11689485299999999,
+      "process_max_rss_kib": 19904,
+      "reaped_children_cpu_seconds": 0.719886,
+      "reaped_child_peak_rss_kib": 22144,
+      "reaped_children_input_blocks": 0,
+      "reaped_children_output_blocks": 0,
+      "python_peak_allocated_bytes": 6027274,
+      "io_delta": {
+        "rchar": 45870589,
+        "wchar": 8796249,
+        "syscr": 3723,
+        "syscw": 308,
+        "read_bytes": 0,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "receipt": {
+        "schema": "raven.allocation-health/v1",
+        "execution": {
+          "site_kind": "desktop",
+          "host": "9057b8f37cff",
+          "uid": 1000,
+          "pid": 51722,
+          "verified": true,
+          "verification": "explicit local kernel-cost fixture; not allocation qualification",
+          "verified_resources": {
+            "cpus": 2,
+            "memory_mib": 1024
+          }
+        },
+        "hardware": {
+          "machine": "x86_64",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_topology": [
+            {
+              "cpu": 0,
+              "physical_package_id": 0,
+              "core_id": 0
+            },
+            {
+              "cpu": 1,
+              "physical_package_id": 0,
+              "core_id": 1
+            },
+            {
+              "cpu": 2,
+              "physical_package_id": 0,
+              "core_id": 2
+            },
+            {
+              "cpu": 3,
+              "physical_package_id": 0,
+              "core_id": 3
+            },
+            {
+              "cpu": 4,
+              "physical_package_id": 0,
+              "core_id": 4
+            }
+          ],
+          "logical_cpus": 5,
+          "allowed_cpus": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "affinity_truncated": false,
+          "kernel": "6.18.55",
+          "python": "3.12.14",
+          "libc": [
+            "glibc",
+            "2.41"
+          ],
+          "implementation": "Python bytearray copy; cached scratch write/fsync/read"
+        },
+        "settings": {
+          "bytes": 1048576,
+          "repeats": 3,
+          "warmup": 1,
+          "seconds": 10.0,
+          "tests": [
+            "mpi"
+          ],
+          "peak_scratch_bytes": 0,
+          "maximum_io_bytes": 0,
+          "maximum_buffer_bytes": 4194304,
+          "anonymous_mpi_compile_bytes": 196608
+        },
+        "scratch": {},
+        "samples": [
+          {
+            "repeat": 0,
+            "seconds": 0.0009919700000000503,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": true
+          },
+          {
+            "repeat": 1,
+            "seconds": 0.0004068400000000194,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 2,
+            "seconds": 0.00033190599999999293,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          },
+          {
+            "repeat": 3,
+            "seconds": 0.00036495599999997186,
+            "bytes": 1048576,
+            "verified": true,
+            "test": "mpi",
+            "warmup": false
+          }
+        ],
+        "summary": {
+          "mpi": {
+            "count": 3,
+            "median_seconds": 0.00036495599999997186,
+            "minimum_seconds": 0.00033190599999999293,
+            "maximum_seconds": 0.0004068400000000194,
+            "relative_range": 0.20532338144881096
+          }
+        },
+        "started_unix_seconds": 1792286764.182572,
+        "status": "completed",
+        "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+        "uncertainty": [
+          "Scratch reads may use the page cache; fsync does not measure distributed durability",
+          "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+          "Kernel I/O stalls can delay process termination beyond the requested deadline"
+        ],
+        "mpi": {
+          "toolchain": {
+            "prefix": "/workspace/raven-tools/mpi-private-qualification",
+            "mpicc": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+              "sha256": "305f96a29cb3e2d1fb7cbd29e4448b33345ae7fb8a915c7ac7379d543166307f",
+              "device": "27",
+              "inode": "1843272",
+              "size": 217104,
+              "mtime_ns": 1792286296832161871,
+              "authority_sha256": "599c8b1180b8825f0bd4f9b5d5b2b590996859b79cbb04390e60576c58c3bd9c"
+            },
+            "mpiexec": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+              "sha256": "96ab74bcbe60c8b6a750cd3b726ce6b2360991bcbc2a16635525a1979fc252ff",
+              "device": "27",
+              "inode": "1843273",
+              "size": 208848,
+              "mtime_ns": 1792286296832846836,
+              "authority_sha256": "a46c2d488fa0c4985b3a2467046e5cdcf01bd9dd26e6dfcc84b446197b4af7d8"
+            },
+            "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+            "include": "/workspace/raven-tools/mpi-private-qualification/include",
+            "library": "/workspace/raven-tools/mpi-private-qualification/lib",
+            "headers": [
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi.h",
+                "sha256": "84b26c8fe0b227168ac1753a0988d1e2139dc63bda8759378e33c8fe2a24e950",
+                "device": "27",
+                "inode": "1843276",
+                "size": 200058,
+                "mtime_ns": 1792286296833554486,
+                "authority_sha256": "5d04479766b8ef245d1b6f4359df9efb55ade2959fb17a6099f3bd7d6eae873d"
+              },
+              {
+                "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi_portable_platform.h",
+                "sha256": "9ae30899eb391eca5e72223b1131d3ff1f039599aa3c1dd34c021fccc3384e4b",
+                "device": "27",
+                "inode": "1843277",
+                "size": 44232,
+                "mtime_ns": 1792286296833957899,
+                "authority_sha256": "69559bc675d5fe2475a6e0250c93cd51c8b7704260e2abb6bd5557326702e0da"
+              }
+            ],
+            "library_file": {
+              "path": "/workspace/raven-tools/mpi-private-qualification/lib/libmpi.so",
+              "sha256": "dcca32f78fe6bda5ab10ca9019a3129e1869ffe6bb7a6f5461207563d2cea446",
+              "device": "27",
+              "inode": "1843279",
+              "size": 3655472,
+              "mtime_ns": 1792286296834325189,
+              "authority_sha256": "4d133c9328cf544c23b745a1326ef1607b2c1413622b6e1cdc4e69e0733a01a2"
+            },
+            "source_sha256": "8445c589c3348736f80125ee94ad1609470c123db66c7c089da11b4fe3db7603",
+            "limits": {
+              "ranks": 2,
+              "maximum_message_bytes": 1048576,
+              "compile_output_bytes": 65536,
+              "runtime_output_bytes": 1048576,
+              "runtime_file_bytes": 1048576,
+              "runtime_total_bytes": 8388608,
+              "runtime_files": 128,
+              "anonymous_compile_file_bytes": 65536,
+              "same_host_only": true
+            }
+          },
+          "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+          "library_version": "Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 ",
+          "binary_sha256": "cf615b3ee28e9c35eb42f77f103f2e0aec1bc1fdbcc56b6255db7fa1dbad781f",
+          "commands": [
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-I/workspace/raven-tools/mpi-private-qualification/include",
+                "-O2",
+                "-pipe",
+                "-x",
+                "c",
+                "-c",
+                "/proc/51722/fd/3",
+                "-o",
+                "/proc/51722/fd/6"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.1376213779999489,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+                "-L/workspace/raven-tools/mpi-private-qualification/lib",
+                "/proc/51722/fd/6",
+                "-o",
+                "/proc/51722/fd/8"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.10990211299986186,
+              "output": ""
+            },
+            {
+              "argv": [
+                "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+                "-n",
+                "2",
+                "--host",
+                "localhost:2",
+                "--bind-to",
+                "none",
+                "--prtemca",
+                "plm",
+                "ssh",
+                "--prtemca",
+                "plm_ssh_agent",
+                "/usr/bin/false",
+                "--prtemca",
+                "ras",
+                "^slurm",
+                "--mca",
+                "btl",
+                "self,tcp",
+                "--mca",
+                "btl_tcp_if_include",
+                "lo",
+                "--mca",
+                "pml",
+                "ob1",
+                "--prtemca",
+                "prte_tmpdir_base",
+                "/tmp/raven-mpi-session-5alglk__",
+                "--timeout",
+                "10",
+                "/proc/51722/fd/8",
+                "1048576",
+                "1",
+                "3",
+                "10"
+              ],
+              "returncode": 0,
+              "state": "finished",
+              "seconds": 0.3307269349998023,
+              "output": "RAVEN_MPI_LIBRARY Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 \nRAVEN_MPI_SAMPLE {\"repeat\":0,\"seconds\":0.00099197000000005031,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":1,\"seconds\":0.00040684000000001941,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":2,\"seconds\":0.00033190599999999293,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":3,\"seconds\":0.00036495599999997186,\"bytes\":1048576,\"verified\":true}\n"
+            }
+          ],
+          "runtime_temp": "/tmp/raven-mpi-session-5alglk__",
+          "runtime_temp_cleanup": "owned janitor verifies removal before return; pidfd/pipe EOF also closes crash lifetime",
+          "placement": "two ranks on the authenticated worker host",
+          "limits": "Same-host communication only; no inter-node/interconnect or scientific workload efficacy"
+        },
+        "elapsed_seconds": 0.8452249950000805,
+        "cohort": "e94d74144d57e20eb5b14afdd004441ed7a2e35bcd25d115ac5c35a90ec24af1",
+        "comparison": {
+          "status": "no-baseline",
+          "reason": "A single observation cannot identify unusual performance"
+        }
+      },
+      "scratch_cleaned": true,
+      "trial": 0
+    }
+  ],
+  "scope": "Equivalent fresh local Python processes, explicit fixed 1MiB/3-repeat/1-warmup kernel; imports included",
+  "limits": [
+    "Not scheduler, multi-node, GPU or sick-node efficacy qualification",
+    "Scratch I/O includes page cache",
+    "Python allocation tracing uses separate runs and must not be conflated with process RSS",
+    "Process RSS includes interpreter startup; /proc I/O counters include metadata/imports",
+    "Child peak RSS is a maximum of reaped child observations, not simultaneous process-tree RSS; child CPU is separate from parent CPU",
+    "No scientific workload was running"
+  ],
+  "source_sha256": {
+    "raven/allocation_health.py": "5a6e94c5b7a824de7925a7eb9539ab146700fc90613d01cc7ae695239c2be9f2",
+    "raven/mpi_health.py": "9df1a5e4996f34384ad6901f821c89fd000683a4dc5ecde1bfffa0a2418835da",
+    "raven/diagnostic_trials.py": "d293e110da00917fc2e9acbe883907dbfa9b44c7e8145f9dbabdea11e8282f13",
+    "scripts/benchmark_allocation_health.py": "a8e1f69763628ea17b14759c7e994d10b90b9e9c3b7e8b20e589da03d2394652"
+  },
+  "controlled_window": {
+    "after_other_measurements_completed_utc": "2026-10-18T01:24:24.292Z",
+    "command_completed_before_process_audit_utc": "2026-10-18T01:26:16Z",
+    "policy": "Exclusive root-granted slot after all agents acknowledged no active work. Exact shell start/end UTC were not recorded; per-observation monotonic durations are retained.",
+    "post_run_process_audit": "No live MPI/probe process; old terminated prterun zombies from fault-injection remained under host init. No aggregate zombie-reaping claim."
+  }
+}

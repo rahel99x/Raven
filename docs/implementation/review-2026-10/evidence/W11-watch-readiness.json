@@ -1,0 +1,126 @@
+{
+  "schema": "raven.watch-fixture-correction/v1",
+  "baseline_commit": "c89808b30a61d1c03deae7bd0b30742a0ba1a134",
+  "correction_commit": "601766930b16af58a7590fa96a3e2d96c59a527a",
+  "runtime_unchanged": true,
+  "failure": "Full Python3.13 run:1 failed,18258 passed,36 skipped; fixed2sGNUtimeout counted process startup and only captured one required title. Original log/JUnit retained with historical final-ci/py3.13.",
+  "baseline_recheck": "Original affected test passed in8.44s when run alone; two quiet actual watch observations show first title at0.171/0.180s, next at1.176/1.184s. Parent receipt times are not exact display times.",
+  "alternative": "A larger unconditional timeout would still conflate startup and cadence. Separate bounded readiness observation preserves the same repeated-output requirement, while deterministic sleep assertions test the exact repaint interval.",
+  "behavior_retained": [
+    "Original once/JSON/account/header/navigation assertions",
+    "At least two real title observations",
+    "No ANSI escapes on redirected output",
+    "No traceback"
+  ],
+  "additional_checks": [
+    "Normal SIGINT exit0",
+    "Concurrent bounded pipe drainage",
+    "Separate10sstartup/3snextframe/5sshutdown budgets",
+    "SIGINT of the owned watch group, bounded leader reaping and TERM/KILL fallback while the leader is live",
+    "Existing palette fixture verifies two exact theme/width frames and sleep calls[1,1]"
+  ],
+  "focused_results": [
+    {
+      "version": "3.10",
+      "command": [
+        "/workspace/raven-compat/py3.10/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_raven.py::test_cli_once_json_and_watch_from_the_simulated_cluster",
+        "tests/test_palette.py::test_once_and_watch_keep_theme_and_narrow_width",
+        "--basetemp=/tmp/watch310"
+      ],
+      "exit_code": 0,
+      "seconds": 7.280278080000244
+    },
+    {
+      "version": "3.11",
+      "command": [
+        "/workspace/raven-compat/py3.11/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_raven.py::test_cli_once_json_and_watch_from_the_simulated_cluster",
+        "tests/test_palette.py::test_once_and_watch_keep_theme_and_narrow_width",
+        "--basetemp=/tmp/watch311"
+      ],
+      "exit_code": 0,
+      "seconds": 7.984625886999311
+    },
+    {
+      "version": "3.12",
+      "command": [
+        "/workspace/Raven/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_raven.py::test_cli_once_json_and_watch_from_the_simulated_cluster",
+        "tests/test_palette.py::test_once_and_watch_keep_theme_and_narrow_width",
+        "--basetemp=/tmp/watch312"
+      ],
+      "exit_code": 0,
+      "seconds": 6.817142623000109
+    },
+    {
+      "version": "3.13",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_raven.py::test_cli_once_json_and_watch_from_the_simulated_cluster",
+        "tests/test_palette.py::test_once_and_watch_keep_theme_and_narrow_width",
+        "--basetemp=/tmp/watch313"
+      ],
+      "exit_code": 0,
+      "seconds": 6.648576852000588
+    },
+    {
+      "version": "3.14",
+      "command": [
+        "/workspace/raven-compat/py3.14/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_raven.py::test_cli_once_json_and_watch_from_the_simulated_cluster",
+        "tests/test_palette.py::test_once_and_watch_keep_theme_and_narrow_width",
+        "--basetemp=/tmp/watch314"
+      ],
+      "exit_code": 0,
+      "seconds": 8.5093112200002
+    }
+  ],
+  "limits": "This changes test timing only, not application repaint cadence or scheduler polling. Final full regression reruns remain separately recorded. No new performance gain is claimed.",
+  "artifacts": [
+    {
+      "path": "raw/watch-readiness/3.10.log",
+      "sha256": "d5b037dfd2223c17d5df3a2364ee791a35fb80bf18ff9712065bfc9964f84bea"
+    },
+    {
+      "path": "raw/watch-readiness/3.11.log",
+      "sha256": "4ba94acbeee60a0041978697f0e073871897dd6894b2309bc4fd920cc7bef4ed"
+    },
+    {
+      "path": "raw/watch-readiness/3.12.log",
+      "sha256": "9b853cae446a1e675cc2afe5fc75d2864268b6f76c87ec57c97be527b26cb620"
+    },
+    {
+      "path": "raw/watch-readiness/3.13.log",
+      "sha256": "26a3c8bfdc3f5ad86aad323e886a3f6e0bb81e43ebbe0511a734513ec9683de3"
+    },
+    {
+      "path": "raw/watch-readiness/3.14.log",
+      "sha256": "c287922d97046a2dd3c2e2327096e8964c882321b5b7584d46cffaa3a4ea3014"
+    },
+    {
+      "path": "raw/watch-readiness/diagnosis.json",
+      "sha256": "8bf16f50fd1852f661bbbf6dcdc8f6b51aef650e723cfc2056829d8dbdf19598"
+    },
+    {
+      "path": "raw/watch-readiness/results.json",
+      "sha256": "011611131626e98e54de4c70c35b5a942bfd28f34eaac48f2fd84efde2c67b64"
+    }
+  ],
+  "independent_review": "Second owner confirmed unchanged/stronger behavioral assertions and bounded single-owner pipe reads. The fake watch path is thread-only; this fixture does not claim generic orphan-descendant discovery after the leader exits."
+}

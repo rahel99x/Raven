@@ -1,0 +1,18 @@
+{
+  "iterations": 5000,
+  "light_import_seconds": 0.007401943999866489,
+  "jsonschema_import_seconds": 0.03510966299654683,
+  "contract_sha256": "659c3183c4d42fea565756b93e8d8ca742f2b8878aad153b5023f227c97d4115",
+  "scope": "Worker control envelope only; domain ownership checks are additional and unchanged",
+  "typed_seconds": [
+    0.006239161004486959,
+    0.0063508090024697594,
+    0.006587012998352293
+  ],
+  "jsonschema_seconds": [
+    0.6274720779983909,
+    0.6179404220019933,
+    0.6179410429976997
+  ],
+  "process_peak_rss_kib": 16728
+}

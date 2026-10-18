@@ -1,0 +1,119 @@
+{
+  "package": "W28",
+  "state": "locally_validated",
+  "requirements": [
+    {
+      "id": "W28-R01",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W28-R09",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W28.md",
+        "tests/test_historical_replay.py",
+        "docs/guides/historical-observations.md",
+        "evidence/W28-measurements-100.json",
+        "evidence/W28-measurements-1000.json",
+        "evidence/W28-window.json",
+        "evidence/final-qualification.json"
+      ]
+    }
+  ],
+  "limits": [
+    "Observation snapshots are bounded opt-in local captures; no complete scheduler audit or retroactive knowledge is claimed.",
+    "Clock/source epoch changes require explicit selection; unverified identity remains unverified.",
+    "Human terminal/remote UX remains separately unqualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+  ],
+  "focused_history": {
+    "validation": "188 focused replay, UI, registry, source compatibility and run-home tests passed in 6.71 s on CPython 3.12; source hashes retained. Controlled 100/1000-job, 32-frame seek/layout/allocation/RSS/archive measurements passed in an exclusive quiet window; final integration pending."
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "external_gates": []
+}

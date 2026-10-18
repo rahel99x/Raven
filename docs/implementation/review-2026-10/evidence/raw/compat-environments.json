@@ -1,0 +1,38 @@
+[
+  {
+    "requested": "3.10",
+    "actual": "Python 3.10.22",
+    "python": "/workspace/raven-compat/py3.10/bin/python",
+    "extras": [
+      "dev",
+      "terminal"
+    ]
+  },
+  {
+    "requested": "3.11",
+    "actual": "Python 3.11.17",
+    "python": "/workspace/raven-compat/py3.11/bin/python",
+    "extras": [
+      "dev",
+      "terminal"
+    ]
+  },
+  {
+    "requested": "3.13",
+    "actual": "Python 3.13.16",
+    "python": "/workspace/raven-compat/py3.13/bin/python",
+    "extras": [
+      "dev",
+      "terminal"
+    ]
+  },
+  {
+    "requested": "3.14",
+    "actual": "Python 3.14.8",
+    "python": "/workspace/raven-compat/py3.14/bin/python",
+    "extras": [
+      "dev",
+      "terminal"
+    ]
+  }
+]

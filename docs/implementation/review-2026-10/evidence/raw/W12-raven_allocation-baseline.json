@@ -1,0 +1,29 @@
+{
+  "channel": "raven_allocation",
+  "fixture": "common",
+  "source": "/tmp/raven-review-baseline",
+  "frames_per_iteration": 32,
+  "source_sha256": {
+    "raven/raven_allocation.py": "9f58fad9e46170d7d131bdda9bc88fedbdb4d1ff4a130e369ff4f04dc50baaac"
+  },
+  "wire_bytes_per_iteration": 24470,
+  "iterations": 150,
+  "repeats": 3,
+  "wall_seconds": [
+    0.4288432549947174,
+    0.44125342999905115,
+    0.44382626099832123
+  ],
+  "cpu_seconds": [
+    0.428807508,
+    0.44123343400000004,
+    0.4437804609999999
+  ],
+  "verified_source_import_seconds": 0.024306660001457203,
+  "frames_per_second_median": 10878.102409334975,
+  "python_peak_allocated_bytes": 254664,
+  "process_peak_rss_kib": 18304,
+  "block_reads": 0,
+  "block_writes": 0,
+  "limits": "In-memory transport fixture; no scheduler, GPU, SSH or end-user terminal latency measurement"
+}

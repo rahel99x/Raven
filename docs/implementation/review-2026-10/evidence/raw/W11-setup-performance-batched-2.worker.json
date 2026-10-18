@@ -1,0 +1,52 @@
+{
+  "exit_code": 0,
+  "direct_setup_subprocesses": 5,
+  "commands": [
+    [
+      "/tmp/raven-setup-benchmark-1mmfyuue/batched-2/environment with spaces/bin/python",
+      "-c",
+      "import sys; print(sys.prefix); sys.exit(0 if sys.version_info >= (3, 10) else 'Python 3.10+ required')"
+    ],
+    [
+      "/tmp/raven-setup-benchmark-1mmfyuue/batched-2/environment with spaces/bin/python",
+      "/workspace/Raven/raven",
+      "--config",
+      "/tmp/raven-setup-8wtyy3es/config.json",
+      "--no-state",
+      "--no-plugins",
+      "--fake",
+      "--json"
+    ],
+    [
+      "/tmp/raven-setup-benchmark-1mmfyuue/batched-2/environment with spaces/bin/python",
+      "/workspace/Raven/scripts/setup.py",
+      "--_validate-views",
+      "/tmp/raven-setup-8wtyy3es/config.json"
+    ],
+    [
+      "/tmp/raven-setup-benchmark-1mmfyuue/batched-2/environment with spaces/bin/python",
+      "/workspace/Raven/raven",
+      "--config",
+      "/tmp/raven-setup-8wtyy3es/config.json",
+      "--no-state",
+      "--no-plugins",
+      "--fake",
+      "--report",
+      "/tmp/raven-setup-8wtyy3es/demo.txt"
+    ],
+    [
+      "/tmp/raven-setup-benchmark-1mmfyuue/batched-2/environment with spaces/bin/python",
+      "/workspace/Raven/raven",
+      "--no-state",
+      "--no-plugins",
+      "--config",
+      "/tmp/raven-setup-8wtyy3es/config.json",
+      "--doctor",
+      "--fake"
+    ]
+  ],
+  "personal_config_preserved": true,
+  "ascii_report_complete": true,
+  "worker_maxrss_kib": 14336,
+  "waited_child_maxrss_kib": 39656
+}

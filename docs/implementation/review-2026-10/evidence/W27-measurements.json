@@ -1,0 +1,66 @@
+{
+  "results": [
+    {
+      "fixture": "unique",
+      "implementation": "normalized-pairwise-diff",
+      "median_ms": 7.244427,
+      "samples_ms": [
+        12.410253,
+        7.067999,
+        7.075601,
+        7.268934,
+        7.571685,
+        7.110313,
+        7.244427
+      ],
+      "python_peak_bytes": 275041
+    },
+    {
+      "fixture": "unique",
+      "implementation": "cohort-first-divergence",
+      "median_ms": 7.193429,
+      "samples_ms": [
+        7.375747,
+        7.836357,
+        7.193429,
+        6.636793,
+        6.902928,
+        7.268003,
+        7.148091
+      ],
+      "python_peak_bytes": 263641
+    },
+    {
+      "fixture": "repeated",
+      "implementation": "normalized-pairwise-diff",
+      "median_ms": 26.799556,
+      "samples_ms": [
+        26.610849,
+        25.383593,
+        26.887109,
+        26.166173,
+        27.094263,
+        27.736831,
+        26.799556
+      ],
+      "python_peak_bytes": 251883
+    },
+    {
+      "fixture": "repeated",
+      "implementation": "cohort-first-divergence",
+      "median_ms": 6.452282,
+      "samples_ms": [
+        7.011002,
+        6.408286,
+        7.192589,
+        6.422076,
+        6.321373,
+        6.452282,
+        6.927365
+      ],
+      "python_peak_bytes": 247579
+    }
+  ],
+  "process_maxrss_kib": 23168,
+  "scope": "16 ranks, 240 rows; normalized pairwise diff returns more edit operations than first-divergence analysis; neither establishes causality"
+}

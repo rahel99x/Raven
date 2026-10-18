@@ -1,0 +1,73 @@
+{
+  "schema": "raven.framing-comparison/v1",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "candidate_revision": "working tree; raw artifacts include source hashes",
+  "environment": "same container/Python; serialized quiet window; source verification and import outside timing; tracemalloc outside timing",
+  "measurements": [
+    {
+      "fixture": "raven_protocol",
+      "baseline_frames_per_second": 11242.667891960651,
+      "candidate_frames_per_second": 10579.338202867424,
+      "throughput_percent_change": -5.900109257586072,
+      "extra_microseconds_per_frame": 5.577011665991447,
+      "baseline_python_peak_bytes": 281283,
+      "candidate_python_peak_bytes": 281768,
+      "baseline_process_peak_rss_kib": 17024,
+      "candidate_process_peak_rss_kib": 17152,
+      "raw_sources": [
+        "raw/W12-raven_protocol-baseline.json",
+        "raw/W12-raven_protocol-candidate.json"
+      ]
+    },
+    {
+      "fixture": "raven_allocation",
+      "baseline_frames_per_second": 10878.102409334975,
+      "candidate_frames_per_second": 8939.910514472387,
+      "throughput_percent_change": -17.81737128342661,
+      "extra_microseconds_per_frame": 19.930144999307245,
+      "baseline_python_peak_bytes": 254664,
+      "candidate_python_peak_bytes": 278530,
+      "baseline_process_peak_rss_kib": 18304,
+      "candidate_process_peak_rss_kib": 18372,
+      "raw_sources": [
+        "raw/W12-raven_allocation-baseline.json",
+        "raw/W12-raven_allocation-candidate.json"
+      ]
+    },
+    {
+      "fixture": "terminal_service",
+      "baseline_frames_per_second": 40800.530896459764,
+      "candidate_frames_per_second": 22094.40669324925,
+      "throughput_percent_change": -45.84774705672674,
+      "extra_microseconds_per_frame": 20.750838749942588,
+      "baseline_python_peak_bytes": 268608,
+      "candidate_python_peak_bytes": 278924,
+      "baseline_process_peak_rss_kib": 17280,
+      "candidate_process_peak_rss_kib": 17536,
+      "raw_sources": [
+        "raw/W12-terminal_service-baseline.json",
+        "raw/W12-terminal_service-candidate.json"
+      ]
+    },
+    {
+      "fixture": "terminal-grid",
+      "baseline_frames_per_second": 1642.7069079728121,
+      "candidate_frames_per_second": 833.1157136728282,
+      "throughput_percent_change": -49.28397088796945,
+      "extra_microseconds_per_frame": 591.5621333163776,
+      "baseline_python_peak_bytes": 2622155,
+      "candidate_python_peak_bytes": 2649301,
+      "baseline_process_peak_rss_kib": 25264,
+      "candidate_process_peak_rss_kib": 25984,
+      "raw_sources": [
+        "raw/W12-terminal-grid-baseline.json",
+        "raw/W12-terminal-grid-candidate.json"
+      ]
+    }
+  ],
+  "limits": [
+    "Additional finite/duplicate/depth/node validation has measurable CPU cost; no frame or evidence fidelity was removed for speed.",
+    "Transport fixture only; no Slurm/GPU/remote qualification or end-to-end UI latency claim.",
+    "Process RSS includes imports and fixture data; Python allocations are separately traced."
+  ]
+}

@@ -1,0 +1,3527 @@
+{
+  "schema": "raven.test-profile/v1",
+  "started": "2026-10-18T01:30:25.032507+00:00",
+  "ended": "2026-10-18T01:40:10.581216+00:00",
+  "command": [
+    ".venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "-n",
+    "0",
+    "--hypothesis-seed=20261018",
+    "--basetemp=/tmp/rfs",
+    "--durations=30",
+    "--junitxml=/workspace/Raven/docs/implementation/review-2026-10/evidence/raw/W11-final-serial.xml"
+  ],
+  "cwd": "/workspace/Raven",
+  "exit_code": 0,
+  "interrupted": false,
+  "wall_seconds": 585.548688889,
+  "user_cpu_seconds": 287.150299,
+  "system_cpu_seconds": 38.131057,
+  "profiler_cpu_seconds": 11.822234,
+  "peak_live_tree_io_counters": {
+    "rchar": 26576545247,
+    "wchar": 758253575,
+    "read_bytes": 4096,
+    "write_bytes": 51150848
+  },
+  "input_blocks": 8,
+  "output_blocks": 99904,
+  "peak_aggregate_live_rss_kib": 1222672,
+  "peak_individual_sampled_rss_kib": 752064,
+  "waited_process_maxrss_kib": 772204,
+  "peak_live_process_count": 6,
+  "observed_processes": 693,
+  "samples": 2867,
+  "cadence_seconds": 0.2,
+  "process_peaks": [
+    {
+      "pid": 52508,
+      "start_ticks": "419018",
+      "rss_kib": 752064
+    },
+    {
+      "pid": 52557,
+      "start_ticks": "420698",
+      "rss_kib": 14752
+    },
+    {
+      "pid": 52559,
+      "start_ticks": "420706",
+      "rss_kib": 13264
+    },
+    {
+      "pid": 52562,
+      "start_ticks": "420728",
+      "rss_kib": 8660
+    },
+    {
+      "pid": 52647,
+      "start_ticks": "421273",
+      "rss_kib": 19660
+    },
+    {
+      "pid": 52652,
+      "start_ticks": "421315",
+      "rss_kib": 18392
+    },
+    {
+      "pid": 52653,
+      "start_ticks": "421339",
+      "rss_kib": 1724
+    },
+    {
+      "pid": 52655,
+      "start_ticks": "421339",
+      "rss_kib": 7100
+    },
+    {
+      "pid": 52656,
+      "start_ticks": "421344",
+      "rss_kib": 18384
+    },
+    {
+      "pid": 52657,
+      "start_ticks": "421370",
+      "rss_kib": 1720
+    },
+    {
+      "pid": 52659,
+      "start_ticks": "421370",
+      "rss_kib": 10404
+    },
+    {
+      "pid": 52660,
+      "start_ticks": "421372",
+      "rss_kib": 17364
+    },
+    {
+      "pid": 52661,
+      "start_ticks": "421399",
+      "rss_kib": 12876
+    },
+    {
+      "pid": 52662,
+      "start_ticks": "421420",
+      "rss_kib": 23560
+    },
+    {
+      "pid": 52663,
+      "start_ticks": "421447",
+      "rss_kib": 23544
+    },
+    {
+      "pid": 52665,
+      "start_ticks": "421478",
+      "rss_kib": 16000
+    },
+    {
+      "pid": 52667,
+      "start_ticks": "421494",
+      "rss_kib": 18388
+    },
+    {
+      "pid": 52668,
+      "start_ticks": "421519",
+      "rss_kib": 1720
+    },
+    {
+      "pid": 52670,
+      "start_ticks": "421520",
+      "rss_kib": 10400
+    },
+    {
+      "pid": 52671,
+      "start_ticks": "421522",
+      "rss_kib": 8380
+    },
+    {
+      "pid": 52672,
+      "start_ticks": "421544",
+      "rss_kib": 5412
+    },
+    {
+      "pid": 52673,
+      "start_ticks": "421566",
+      "rss_kib": 23668
+    },
+    {
+      "pid": 52674,
+      "start_ticks": "421587",
+      "rss_kib": 23672
+    },
+    {
+      "pid": 52677,
+      "start_ticks": "421626",
+      "rss_kib": 3628
+    },
+    {
+      "pid": 52678,
+      "start_ticks": "421635",
+      "rss_kib": 18396
+    },
+    {
+      "pid": 52679,
+      "start_ticks": "421659",
+      "rss_kib": 1720
+    },
+    {
+      "pid": 52681,
+      "start_ticks": "421660",
+      "rss_kib": 10400
+    },
+    {
+      "pid": 52682,
+      "start_ticks": "421662",
+      "rss_kib": 14124
+    },
+    {
+      "pid": 52683,
+      "start_ticks": "421684",
+      "rss_kib": 13348
+    },
+    {
+      "pid": 52684,
+      "start_ticks": "421705",
+      "rss_kib": 13004
+    },
+    {
+      "pid": 52685,
+      "start_ticks": "421727",
+      "rss_kib": 8552
+    },
+    {
+      "pid": 52688,
+      "start_ticks": "421766",
+      "rss_kib": 11700
+    },
+    {
+      "pid": 52689,
+      "start_ticks": "421774",
+      "rss_kib": 18388
+    },
+    {
+      "pid": 52690,
+      "start_ticks": "421799",
+      "rss_kib": 1716
+    },
+    {
+      "pid": 52692,
+      "start_ticks": "421800",
+      "rss_kib": 10380
+    },
+    {
+      "pid": 52693,
+      "start_ticks": "421802",
+      "rss_kib": 17432
+    },
+    {
+      "pid": 52694,
+      "start_ticks": "421824",
+      "rss_kib": 17096
+    },
+    {
+      "pid": 52695,
+      "start_ticks": "421848",
+      "rss_kib": 10872
+    },
+    {
+      "pid": 52696,
+      "start_ticks": "421855",
+      "rss_kib": 18384
+    },
+    {
+      "pid": 52697,
+      "start_ticks": "421881",
+      "rss_kib": 1720
+    },
+    {
+      "pid": 52699,
+      "start_ticks": "421881",
+      "rss_kib": 10404
+    },
+    {
+      "pid": 52700,
+      "start_ticks": "421884",
+      "rss_kib": 17396
+    },
+    {
+      "pid": 52701,
+      "start_ticks": "421905",
+      "rss_kib": 17116
+    },
+    {
+      "pid": 52702,
+      "start_ticks": "421930",
+      "rss_kib": 10096
+    },
+    {
+      "pid": 52705,
+      "start_ticks": "421942",
+      "rss_kib": 19656
+    },
+    {
+      "pid": 52706,
+      "start_ticks": "421967",
+      "rss_kib": 1716
+    },
+    {
+      "pid": 52708,
+      "start_ticks": "421967",
+      "rss_kib": 10400
+    },
+    {
+      "pid": 52709,
+      "start_ticks": "421969",
+      "rss_kib": 13324
+    },
+    {
+      "pid": 52710,
+      "start_ticks": "421991",
+      "rss_kib": 12864
+    },
+    {
+      "pid": 52712,
+      "start_ticks": "422023",
+      "rss_kib": 18388
+    },
+    {
+      "pid": 52713,
+      "start_ticks": "422047",
+      "rss_kib": 1840
+    },
+    {
+      "pid": 52715,
+      "start_ticks": "422047",
+      "rss_kib": 24052
+    },
+    {
+      "pid": 52718,
+      "start_ticks": "422108",
+      "rss_kib": 17456
+    },
+    {
+      "pid": 52719,
+      "start_ticks": "422130",
+      "rss_kib": 17092
+    },
+    {
+      "pid": 52720,
+      "start_ticks": "422155",
+      "rss_kib": 6328
+    },
+    {
+      "pid": 52721,
+      "start_ticks": "422165",
+      "rss_kib": 18368
+    },
+    {
+      "pid": 52722,
+      "start_ticks": "422189",
+      "rss_kib": 9576
+    },
+    {
+      "pid": 52723,
+      "start_ticks": "422191",
+      "rss_kib": 24340
+    },
+    {
+      "pid": 52724,
+      "start_ticks": "422212",
+      "rss_kib": 1744
+    },
+    {
+      "pid": 52725,
+      "start_ticks": "422212",
+      "rss_kib": 14432
+    },
+    {
+      "pid": 52728,
+      "start_ticks": "422247",
+      "rss_kib": 18364
+    },
+    {
+      "pid": 52729,
+      "start_ticks": "422271",
+      "rss_kib": 9576
+    },
+    {
+      "pid": 52730,
+      "start_ticks": "422273",
+      "rss_kib": 24452
+    },
+    {
+      "pid": 52731,
+      "start_ticks": "422293",
+      "rss_kib": 1752
+    },
+    {
+      "pid": 52732,
+      "start_ticks": "422293",
+      "rss_kib": 17116
+    },
+    {
+      "pid": 52739,
+      "start_ticks": "422331",
+      "rss_kib": 15824
+    },
+    {
+      "pid": 52740,
+      "start_ticks": "422336",
+      "rss_kib": 8184
+    },
+    {
+      "pid": 52761,
+      "start_ticks": "423464",
+      "rss_kib": 34076
+    },
+    {
+      "pid": 52769,
+      "start_ticks": "423596",
+      "rss_kib": 34076
+    },
+    {
+      "pid": 52802,
+      "start_ticks": "423967",
+      "rss_kib": 9672
+    },
+    {
+      "pid": 52803,
+      "start_ticks": "423978",
+      "rss_kib": 25764
+    },
+    {
+      "pid": 52805,
+      "start_ticks": "424023",
+      "rss_kib": 23900
+    },
+    {
+      "pid": 52807,
+      "start_ticks": "424041",
+      "rss_kib": 1808
+    },
+    {
+      "pid": 52808,
+      "start_ticks": "424042",
+      "rss_kib": 17432
+    },
+    {
+      "pid": 52810,
+      "start_ticks": "424086",
+      "rss_kib": 23896
+    },
+    {
+      "pid": 52812,
+      "start_ticks": "424104",
+      "rss_kib": 1696
+    },
+    {
+      "pid": 52813,
+      "start_ticks": "424104",
+      "rss_kib": 9396
+    },
+    {
+      "pid": 52815,
+      "start_ticks": "424106",
+      "rss_kib": 23680
+    },
+    {
+      "pid": 52854,
+      "start_ticks": "424286",
+      "rss_kib": 33884
+    },
+    {
+      "pid": 52858,
+      "start_ticks": "424313",
+      "rss_kib": 8712
+    },
+    {
+      "pid": 52873,
+      "start_ticks": "424334",
+      "rss_kib": 7428
+    },
+    {
+      "pid": 52874,
+      "start_ticks": "424334",
+      "rss_kib": 7148
+    },
+    {
+      "pid": 52879,
+      "start_ticks": "424352",
+      "rss_kib": 33844
+    },
+    {
+      "pid": 52883,
+      "start_ticks": "424375",
+      "rss_kib": 5840
+    },
+    {
+      "pid": 52888,
+      "start_ticks": "424491",
+      "rss_kib": 33884
+    },
+    {
+      "pid": 52893,
+      "start_ticks": "424518",
+      "rss_kib": 5128
+    },
+    {
+      "pid": 52901,
+      "start_ticks": "424742",
+      "rss_kib": 33896
+    },
+    {
+      "pid": 52912,
+      "start_ticks": "424985",
+      "rss_kib": 8248
+    },
+    {
+      "pid": 52914,
+      "start_ticks": "424993",
+      "rss_kib": 34608
+    },
+    {
+      "pid": 52939,
+      "start_ticks": "425046",
+      "rss_kib": 6876
+    },
+    {
+      "pid": 52940,
+      "start_ticks": "425057",
+      "rss_kib": 33992
+    },
+    {
+      "pid": 52945,
+      "start_ticks": "425188",
+      "rss_kib": 7420
+    },
+    {
+      "pid": 52948,
+      "start_ticks": "425197",
+      "rss_kib": 33996
+    },
+    {
+      "pid": 52954,
+      "start_ticks": "425330",
+      "rss_kib": 8788
+    },
+    {
+      "pid": 52956,
+      "start_ticks": "425336",
+      "rss_kib": 33976
+    },
+    {
+      "pid": 52983,
+      "start_ticks": "425522",
+      "rss_kib": 53392
+    },
+    {
+      "pid": 53003,
+      "start_ticks": "425553",
+      "rss_kib": 10144
+    },
+    {
+      "pid": 53016,
+      "start_ticks": "425586",
+      "rss_kib": 41284
+    },
+    {
+      "pid": 53020,
+      "start_ticks": "425623",
+      "rss_kib": 52516
+    },
+    {
+      "pid": 53021,
+      "start_ticks": "425656",
+      "rss_kib": 9896
+    },
+    {
+      "pid": 53079,
+      "start_ticks": "426012",
+      "rss_kib": 16456
+    },
+    {
+      "pid": 53080,
+      "start_ticks": "426016",
+      "rss_kib": 6448
+    },
+    {
+      "pid": 53099,
+      "start_ticks": "426311",
+      "rss_kib": 7096
+    },
+    {
+      "pid": 53101,
+      "start_ticks": "426330",
+      "rss_kib": 10236
+    },
+    {
+      "pid": 53103,
+      "start_ticks": "426349",
+      "rss_kib": 11888
+    },
+    {
+      "pid": 53105,
+      "start_ticks": "426388",
+      "rss_kib": 16460
+    },
+    {
+      "pid": 53109,
+      "start_ticks": "426419",
+      "rss_kib": 46592
+    },
+    {
+      "pid": 53124,
+      "start_ticks": "426566",
+      "rss_kib": 16436
+    },
+    {
+      "pid": 53125,
+      "start_ticks": "426570",
+      "rss_kib": 6444
+    },
+    {
+      "pid": 53132,
+      "start_ticks": "426677",
+      "rss_kib": 9188
+    },
+    {
+      "pid": 53134,
+      "start_ticks": "426715",
+      "rss_kib": 16084
+    },
+    {
+      "pid": 53136,
+      "start_ticks": "426735",
+      "rss_kib": 13912
+    },
+    {
+      "pid": 53138,
+      "start_ticks": "426756",
+      "rss_kib": 11864
+    },
+    {
+      "pid": 53140,
+      "start_ticks": "426778",
+      "rss_kib": 10160
+    },
+    {
+      "pid": 53142,
+      "start_ticks": "426792",
+      "rss_kib": 14352
+    },
+    {
+      "pid": 53143,
+      "start_ticks": "426796",
+      "rss_kib": 16440
+    },
+    {
+      "pid": 53150,
+      "start_ticks": "426898",
+      "rss_kib": 12040
+    },
+    {
+      "pid": 53151,
+      "start_ticks": "426905",
+      "rss_kib": 14708
+    },
+    {
+      "pid": 53152,
+      "start_ticks": "426912",
+      "rss_kib": 21892
+    },
+    {
+      "pid": 53154,
+      "start_ticks": "426937",
+      "rss_kib": 15460
+    },
+    {
+      "pid": 53173,
+      "start_ticks": "426962",
+      "rss_kib": 8256
+    },
+    {
+      "pid": 53206,
+      "start_ticks": "426983",
+      "rss_kib": 0
+    },
+    {
+      "pid": 53420,
+      "start_ticks": "427167",
+      "rss_kib": 4016
+    },
+    {
+      "pid": 53424,
+      "start_ticks": "427204",
+      "rss_kib": 16220
+    },
+    {
+      "pid": 53426,
+      "start_ticks": "427227",
+      "rss_kib": 9404
+    },
+    {
+      "pid": 53434,
+      "start_ticks": "427343",
+      "rss_kib": 16468
+    },
+    {
+      "pid": 53436,
+      "start_ticks": "427365",
+      "rss_kib": 16436
+    },
+    {
+      "pid": 53437,
+      "start_ticks": "427369",
+      "rss_kib": 9748
+    },
+    {
+      "pid": 53438,
+      "start_ticks": "427387",
+      "rss_kib": 16436
+    },
+    {
+      "pid": 53440,
+      "start_ticks": "427410",
+      "rss_kib": 9752
+    },
+    {
+      "pid": 53442,
+      "start_ticks": "427431",
+      "rss_kib": 8992
+    },
+    {
+      "pid": 53444,
+      "start_ticks": "427451",
+      "rss_kib": 8596
+    },
+    {
+      "pid": 53446,
+      "start_ticks": "427472",
+      "rss_kib": 3208
+    },
+    {
+      "pid": 53457,
+      "start_ticks": "427573",
+      "rss_kib": 7944
+    },
+    {
+      "pid": 53464,
+      "start_ticks": "427594",
+      "rss_kib": 8604
+    },
+    {
+      "pid": 53467,
+      "start_ticks": "427601",
+      "rss_kib": 14720
+    },
+    {
+      "pid": 53470,
+      "start_ticks": "427612",
+      "rss_kib": 12972
+    },
+    {
+      "pid": 53481,
+      "start_ticks": "427686",
+      "rss_kib": 33960
+    },
+    {
+      "pid": 53484,
+      "start_ticks": "427816",
+      "rss_kib": 34292
+    },
+    {
+      "pid": 53487,
+      "start_ticks": "427952",
+      "rss_kib": 33960
+    },
+    {
+      "pid": 53490,
+      "start_ticks": "428086",
+      "rss_kib": 33968
+    },
+    {
+      "pid": 53523,
+      "start_ticks": "428431",
+      "rss_kib": 7764
+    },
+    {
+      "pid": 53529,
+      "start_ticks": "428530",
+      "rss_kib": 405440
+    },
+    {
+      "pid": 53530,
+      "start_ticks": "428530",
+      "rss_kib": 405344
+    },
+    {
+      "pid": 53542,
+      "start_ticks": "428580",
+      "rss_kib": 5560
+    },
+    {
+      "pid": 53545,
+      "start_ticks": "428699",
+      "rss_kib": 8468
+    },
+    {
+      "pid": 53643,
+      "start_ticks": "429192",
+      "rss_kib": 10300
+    },
+    {
+      "pid": 53649,
+      "start_ticks": "429212",
+      "rss_kib": 10376
+    },
+    {
+      "pid": 53650,
+      "start_ticks": "429215",
+      "rss_kib": 2472
+    },
+    {
+      "pid": 53654,
+      "start_ticks": "429229",
+      "rss_kib": 10376
+    },
+    {
+      "pid": 53655,
+      "start_ticks": "429231",
+      "rss_kib": 8456
+    },
+    {
+      "pid": 53658,
+      "start_ticks": "429254",
+      "rss_kib": 10348
+    },
+    {
+      "pid": 53667,
+      "start_ticks": "429276",
+      "rss_kib": 1240
+    },
+    {
+      "pid": 53668,
+      "start_ticks": "429276",
+      "rss_kib": 8184
+    },
+    {
+      "pid": 53684,
+      "start_ticks": "429296",
+      "rss_kib": 8112
+    },
+    {
+      "pid": 53702,
+      "start_ticks": "429317",
+      "rss_kib": 4792
+    },
+    {
+      "pid": 53715,
+      "start_ticks": "429335",
+      "rss_kib": 1244
+    },
+    {
+      "pid": 53716,
+      "start_ticks": "429335",
+      "rss_kib": 16812
+    },
+    {
+      "pid": 53726,
+      "start_ticks": "429348",
+      "rss_kib": 10388
+    },
+    {
+      "pid": 53729,
+      "start_ticks": "429357",
+      "rss_kib": 7204
+    },
+    {
+      "pid": 53734,
+      "start_ticks": "429374",
+      "rss_kib": 1312
+    },
+    {
+      "pid": 53737,
+      "start_ticks": "429378",
+      "rss_kib": 916
+    },
+    {
+      "pid": 53738,
+      "start_ticks": "429378",
+      "rss_kib": 5348
+    },
+    {
+      "pid": 53744,
+      "start_ticks": "429395",
+      "rss_kib": 10380
+    },
+    {
+      "pid": 53745,
+      "start_ticks": "429398",
+      "rss_kib": 5328
+    },
+    {
+      "pid": 53752,
+      "start_ticks": "429412",
+      "rss_kib": 10388
+    },
+    {
+      "pid": 53754,
+      "start_ticks": "429417",
+      "rss_kib": 8516
+    },
+    {
+      "pid": 53757,
+      "start_ticks": "429428",
+      "rss_kib": 10424
+    },
+    {
+      "pid": 53760,
+      "start_ticks": "429437",
+      "rss_kib": 0
+    },
+    {
+      "pid": 53766,
+      "start_ticks": "429446",
+      "rss_kib": 10408
+    },
+    {
+      "pid": 53770,
+      "start_ticks": "429459",
+      "rss_kib": 7624
+    },
+    {
+      "pid": 53775,
+      "start_ticks": "429477",
+      "rss_kib": 1240
+    },
+    {
+      "pid": 53776,
+      "start_ticks": "429477",
+      "rss_kib": 18048
+    },
+    {
+      "pid": 53785,
+      "start_ticks": "429499",
+      "rss_kib": 10328
+    },
+    {
+      "pid": 53794,
+      "start_ticks": "429518",
+      "rss_kib": 10368
+    },
+    {
+      "pid": 53795,
+      "start_ticks": "429520",
+      "rss_kib": 7388
+    },
+    {
+      "pid": 53799,
+      "start_ticks": "429534",
+      "rss_kib": 10392
+    },
+    {
+      "pid": 53801,
+      "start_ticks": "429540",
+      "rss_kib": 8344
+    },
+    {
+      "pid": 53808,
+      "start_ticks": "429554",
+      "rss_kib": 10388
+    },
+    {
+      "pid": 53810,
+      "start_ticks": "429562",
+      "rss_kib": 2460
+    },
+    {
+      "pid": 53813,
+      "start_ticks": "429573",
+      "rss_kib": 10396
+    },
+    {
+      "pid": 53815,
+      "start_ticks": "429580",
+      "rss_kib": 0
+    },
+    {
+      "pid": 53822,
+      "start_ticks": "429593",
+      "rss_kib": 10384
+    },
+    {
+      "pid": 53825,
+      "start_ticks": "429602",
+      "rss_kib": 6736
+    },
+    {
+      "pid": 53836,
+      "start_ticks": "429629",
+      "rss_kib": 10412
+    },
+    {
+      "pid": 53840,
+      "start_ticks": "429642",
+      "rss_kib": 8424
+    },
+    {
+      "pid": 53846,
+      "start_ticks": "429763",
+      "rss_kib": 10408
+    },
+    {
+      "pid": 53847,
+      "start_ticks": "429766",
+      "rss_kib": 6180
+    },
+    {
+      "pid": 53850,
+      "start_ticks": "429776",
+      "rss_kib": 8428
+    },
+    {
+      "pid": 53856,
+      "start_ticks": "429897",
+      "rss_kib": 10412
+    },
+    {
+      "pid": 53866,
+      "start_ticks": "429919",
+      "rss_kib": 10384
+    },
+    {
+      "pid": 53869,
+      "start_ticks": "429928",
+      "rss_kib": 8272
+    },
+    {
+      "pid": 53876,
+      "start_ticks": "429941",
+      "rss_kib": 10384
+    },
+    {
+      "pid": 53885,
+      "start_ticks": "429959",
+      "rss_kib": 10388
+    },
+    {
+      "pid": 53888,
+      "start_ticks": "429968",
+      "rss_kib": 0
+    },
+    {
+      "pid": 53898,
+      "start_ticks": "429990",
+      "rss_kib": 1240
+    },
+    {
+      "pid": 53899,
+      "start_ticks": "429990",
+      "rss_kib": 8028
+    },
+    {
+      "pid": 53907,
+      "start_ticks": "430008",
+      "rss_kib": 1240
+    },
+    {
+      "pid": 53908,
+      "start_ticks": "430008",
+      "rss_kib": 17900
+    },
+    {
+      "pid": 53926,
+      "start_ticks": "430048",
+      "rss_kib": 10376
+    },
+    {
+      "pid": 53927,
+      "start_ticks": "430051",
+      "rss_kib": 8312
+    },
+    {
+      "pid": 53934,
+      "start_ticks": "430063",
+      "rss_kib": 10384
+    },
+    {
+      "pid": 53937,
+      "start_ticks": "430072",
+      "rss_kib": 5560
+    },
+    {
+      "pid": 53943,
+      "start_ticks": "430081",
+      "rss_kib": 10380
+    },
+    {
+      "pid": 53946,
+      "start_ticks": "430090",
+      "rss_kib": 0
+    },
+    {
+      "pid": 53974,
+      "start_ticks": "430141",
+      "rss_kib": 21828
+    },
+    {
+      "pid": 53987,
+      "start_ticks": "430153",
+      "rss_kib": 7884
+    },
+    {
+      "pid": 53994,
+      "start_ticks": "430172",
+      "rss_kib": 10260
+    },
+    {
+      "pid": 54174,
+      "start_ticks": "431272",
+      "rss_kib": 16440
+    },
+    {
+      "pid": 54175,
+      "start_ticks": "431276",
+      "rss_kib": 6948
+    },
+    {
+      "pid": 54176,
+      "start_ticks": "431291",
+      "rss_kib": 16480
+    },
+    {
+      "pid": 54235,
+      "start_ticks": "431622",
+      "rss_kib": 6100
+    },
+    {
+      "pid": 54285,
+      "start_ticks": "433338",
+      "rss_kib": 23900
+    },
+    {
+      "pid": 54286,
+      "start_ticks": "433356",
+      "rss_kib": 1724
+    },
+    {
+      "pid": 54287,
+      "start_ticks": "433357",
+      "rss_kib": 17156
+    },
+    {
+      "pid": 54289,
+      "start_ticks": "433401",
+      "rss_kib": 12304
+    },
+    {
+      "pid": 54292,
+      "start_ticks": "433441",
+      "rss_kib": 14924
+    },
+    {
+      "pid": 54295,
+      "start_ticks": "433481",
+      "rss_kib": 14916
+    },
+    {
+      "pid": 54298,
+      "start_ticks": "433521",
+      "rss_kib": 15136
+    },
+    {
+      "pid": 54307,
+      "start_ticks": "433617",
+      "rss_kib": 19068
+    },
+    {
+      "pid": 54311,
+      "start_ticks": "433679",
+      "rss_kib": 1820
+    },
+    {
+      "pid": 54313,
+      "start_ticks": "433679",
+      "rss_kib": 23952
+    },
+    {
+      "pid": 54318,
+      "start_ticks": "433755",
+      "rss_kib": 23672
+    },
+    {
+      "pid": 54321,
+      "start_ticks": "433796",
+      "rss_kib": 23672
+    },
+    {
+      "pid": 54324,
+      "start_ticks": "433839",
+      "rss_kib": 1824
+    },
+    {
+      "pid": 54326,
+      "start_ticks": "433839",
+      "rss_kib": 23572
+    },
+    {
+      "pid": 54333,
+      "start_ticks": "433997",
+      "rss_kib": 23768
+    },
+    {
+      "pid": 54340,
+      "start_ticks": "434099",
+      "rss_kib": 23856
+    },
+    {
+      "pid": 54341,
+      "start_ticks": "434116",
+      "rss_kib": 0
+    },
+    {
+      "pid": 54343,
+      "start_ticks": "434137",
+      "rss_kib": 23892
+    },
+    {
+      "pid": 54345,
+      "start_ticks": "434155",
+      "rss_kib": 776
+    },
+    {
+      "pid": 54346,
+      "start_ticks": "434155",
+      "rss_kib": 812
+    },
+    {
+      "pid": 54348,
+      "start_ticks": "434185",
+      "rss_kib": 23672
+    },
+    {
+      "pid": 54354,
+      "start_ticks": "434274",
+      "rss_kib": 16756
+    },
+    {
+      "pid": 54429,
+      "start_ticks": "434988",
+      "rss_kib": 67608
+    },
+    {
+      "pid": 54430,
+      "start_ticks": "435000",
+      "rss_kib": 16104
+    },
+    {
+      "pid": 54431,
+      "start_ticks": "435006",
+      "rss_kib": 14808
+    },
+    {
+      "pid": 54435,
+      "start_ticks": "435088",
+      "rss_kib": 14456
+    },
+    {
+      "pid": 54438,
+      "start_ticks": "435111",
+      "rss_kib": 14372
+    },
+    {
+      "pid": 54441,
+      "start_ticks": "435134",
+      "rss_kib": 6980
+    },
+    {
+      "pid": 54443,
+      "start_ticks": "435166",
+      "rss_kib": 67044
+    },
+    {
+      "pid": 54444,
+      "start_ticks": "435173",
+      "rss_kib": 16128
+    },
+    {
+      "pid": 54445,
+      "start_ticks": "435178",
+      "rss_kib": 14832
+    },
+    {
+      "pid": 54449,
+      "start_ticks": "435239",
+      "rss_kib": 14628
+    },
+    {
+      "pid": 54451,
+      "start_ticks": "435271",
+      "rss_kib": 14856
+    },
+    {
+      "pid": 54524,
+      "start_ticks": "435870",
+      "rss_kib": 4484
+    },
+    {
+      "pid": 54554,
+      "start_ticks": "435887",
+      "rss_kib": 1900
+    },
+    {
+      "pid": 54561,
+      "start_ticks": "435888",
+      "rss_kib": 12332
+    },
+    {
+      "pid": 54596,
+      "start_ticks": "435907",
+      "rss_kib": 1900
+    },
+    {
+      "pid": 54600,
+      "start_ticks": "435908",
+      "rss_kib": 15520
+    },
+    {
+      "pid": 54618,
+      "start_ticks": "435930",
+      "rss_kib": 1892
+    },
+    {
+      "pid": 54621,
+      "start_ticks": "435931",
+      "rss_kib": 6080
+    },
+    {
+      "pid": 54642,
+      "start_ticks": "435950",
+      "rss_kib": 1892
+    },
+    {
+      "pid": 54645,
+      "start_ticks": "435950",
+      "rss_kib": 9308
+    },
+    {
+      "pid": 54679,
+      "start_ticks": "435970",
+      "rss_kib": 1896
+    },
+    {
+      "pid": 54683,
+      "start_ticks": "435970",
+      "rss_kib": 10020
+    },
+    {
+      "pid": 54703,
+      "start_ticks": "435990",
+      "rss_kib": 1896
+    },
+    {
+      "pid": 54707,
+      "start_ticks": "435990",
+      "rss_kib": 11324
+    },
+    {
+      "pid": 54723,
+      "start_ticks": "436008",
+      "rss_kib": 1896
+    },
+    {
+      "pid": 54726,
+      "start_ticks": "436008",
+      "rss_kib": 15592
+    },
+    {
+      "pid": 54746,
+      "start_ticks": "436032",
+      "rss_kib": 1844
+    },
+    {
+      "pid": 54750,
+      "start_ticks": "436032",
+      "rss_kib": 7448
+    },
+    {
+      "pid": 54761,
+      "start_ticks": "436049",
+      "rss_kib": 1896
+    },
+    {
+      "pid": 54764,
+      "start_ticks": "436050",
+      "rss_kib": 15592
+    },
+    {
+      "pid": 54785,
+      "start_ticks": "436073",
+      "rss_kib": 7728
+    },
+    {
+      "pid": 54819,
+      "start_ticks": "436093",
+      "rss_kib": 1892
+    },
+    {
+      "pid": 54822,
+      "start_ticks": "436093",
+      "rss_kib": 8224
+    },
+    {
+      "pid": 54858,
+      "start_ticks": "436219",
+      "rss_kib": 31848
+    },
+    {
+      "pid": 54859,
+      "start_ticks": "436253",
+      "rss_kib": 31852
+    },
+    {
+      "pid": 54860,
+      "start_ticks": "436284",
+      "rss_kib": 28148
+    },
+    {
+      "pid": 54861,
+      "start_ticks": "436320",
+      "rss_kib": 31852
+    },
+    {
+      "pid": 54862,
+      "start_ticks": "436352",
+      "rss_kib": 31840
+    },
+    {
+      "pid": 54863,
+      "start_ticks": "436402",
+      "rss_kib": 31868
+    },
+    {
+      "pid": 54864,
+      "start_ticks": "436453",
+      "rss_kib": 38384
+    },
+    {
+      "pid": 54865,
+      "start_ticks": "436530",
+      "rss_kib": 38396
+    },
+    {
+      "pid": 54866,
+      "start_ticks": "436607",
+      "rss_kib": 38416
+    },
+    {
+      "pid": 54867,
+      "start_ticks": "436682",
+      "rss_kib": 38400
+    },
+    {
+      "pid": 54868,
+      "start_ticks": "436757",
+      "rss_kib": 31904
+    },
+    {
+      "pid": 54869,
+      "start_ticks": "436832",
+      "rss_kib": 31920
+    },
+    {
+      "pid": 54870,
+      "start_ticks": "436912",
+      "rss_kib": 31912
+    },
+    {
+      "pid": 54871,
+      "start_ticks": "436988",
+      "rss_kib": 31924
+    },
+    {
+      "pid": 54872,
+      "start_ticks": "437068",
+      "rss_kib": 32416
+    },
+    {
+      "pid": 54905,
+      "start_ticks": "437277",
+      "rss_kib": 32424
+    },
+    {
+      "pid": 54908,
+      "start_ticks": "437485",
+      "rss_kib": 32484
+    },
+    {
+      "pid": 54909,
+      "start_ticks": "437691",
+      "rss_kib": 32464
+    },
+    {
+      "pid": 54910,
+      "start_ticks": "438024",
+      "rss_kib": 12244
+    },
+    {
+      "pid": 54913,
+      "start_ticks": "438057",
+      "rss_kib": 5964
+    },
+    {
+      "pid": 54937,
+      "start_ticks": "438467",
+      "rss_kib": 33896
+    },
+    {
+      "pid": 54938,
+      "start_ticks": "438474",
+      "rss_kib": 15956
+    },
+    {
+      "pid": 54939,
+      "start_ticks": "438479",
+      "rss_kib": 14604
+    },
+    {
+      "pid": 54940,
+      "start_ticks": "438499",
+      "rss_kib": 21328
+    },
+    {
+      "pid": 54941,
+      "start_ticks": "438517",
+      "rss_kib": 33716
+    },
+    {
+      "pid": 54942,
+      "start_ticks": "438524",
+      "rss_kib": 15944
+    },
+    {
+      "pid": 54943,
+      "start_ticks": "438529",
+      "rss_kib": 14544
+    },
+    {
+      "pid": 54945,
+      "start_ticks": "438567",
+      "rss_kib": 34144
+    },
+    {
+      "pid": 54946,
+      "start_ticks": "438574",
+      "rss_kib": 15980
+    },
+    {
+      "pid": 54947,
+      "start_ticks": "438580",
+      "rss_kib": 14676
+    },
+    {
+      "pid": 54949,
+      "start_ticks": "438614",
+      "rss_kib": 33880
+    },
+    {
+      "pid": 54950,
+      "start_ticks": "438621",
+      "rss_kib": 15956
+    },
+    {
+      "pid": 54951,
+      "start_ticks": "438626",
+      "rss_kib": 14604
+    },
+    {
+      "pid": 54952,
+      "start_ticks": "438645",
+      "rss_kib": 15440
+    },
+    {
+      "pid": 54953,
+      "start_ticks": "438663",
+      "rss_kib": 29832
+    },
+    {
+      "pid": 54954,
+      "start_ticks": "438670",
+      "rss_kib": 15944
+    },
+    {
+      "pid": 54955,
+      "start_ticks": "438676",
+      "rss_kib": 14544
+    },
+    {
+      "pid": 54957,
+      "start_ticks": "438710",
+      "rss_kib": 34144
+    },
+    {
+      "pid": 54958,
+      "start_ticks": "438717",
+      "rss_kib": 15952
+    },
+    {
+      "pid": 54959,
+      "start_ticks": "438722",
+      "rss_kib": 14612
+    },
+    {
+      "pid": 54961,
+      "start_ticks": "438758",
+      "rss_kib": 33908
+    },
+    {
+      "pid": 54962,
+      "start_ticks": "438765",
+      "rss_kib": 15956
+    },
+    {
+      "pid": 54963,
+      "start_ticks": "438771",
+      "rss_kib": 14604
+    },
+    {
+      "pid": 54964,
+      "start_ticks": "438788",
+      "rss_kib": 14224
+    },
+    {
+      "pid": 54972,
+      "start_ticks": "438807",
+      "rss_kib": 27944
+    },
+    {
+      "pid": 54973,
+      "start_ticks": "438814",
+      "rss_kib": 15948
+    },
+    {
+      "pid": 54974,
+      "start_ticks": "438820",
+      "rss_kib": 14544
+    },
+    {
+      "pid": 54976,
+      "start_ticks": "438854",
+      "rss_kib": 33900
+    },
+    {
+      "pid": 54977,
+      "start_ticks": "438861",
+      "rss_kib": 15952
+    },
+    {
+      "pid": 54978,
+      "start_ticks": "438869",
+      "rss_kib": 14608
+    },
+    {
+      "pid": 54979,
+      "start_ticks": "438888",
+      "rss_kib": 19860
+    },
+    {
+      "pid": 54980,
+      "start_ticks": "438905",
+      "rss_kib": 34168
+    },
+    {
+      "pid": 54981,
+      "start_ticks": "438913",
+      "rss_kib": 15944
+    },
+    {
+      "pid": 54982,
+      "start_ticks": "438918",
+      "rss_kib": 14548
+    },
+    {
+      "pid": 54984,
+      "start_ticks": "438958",
+      "rss_kib": 33908
+    },
+    {
+      "pid": 54985,
+      "start_ticks": "438966",
+      "rss_kib": 15956
+    },
+    {
+      "pid": 54986,
+      "start_ticks": "438971",
+      "rss_kib": 14604
+    },
+    {
+      "pid": 54987,
+      "start_ticks": "438989",
+      "rss_kib": 16788
+    },
+    {
+      "pid": 54988,
+      "start_ticks": "439007",
+      "rss_kib": 31648
+    },
+    {
+      "pid": 54989,
+      "start_ticks": "439015",
+      "rss_kib": 15948
+    },
+    {
+      "pid": 54990,
+      "start_ticks": "439020",
+      "rss_kib": 14548
+    },
+    {
+      "pid": 54992,
+      "start_ticks": "439055",
+      "rss_kib": 34756
+    },
+    {
+      "pid": 54999,
+      "start_ticks": "439194",
+      "rss_kib": 0
+    },
+    {
+      "pid": 55043,
+      "start_ticks": "439808",
+      "rss_kib": 8448
+    },
+    {
+      "pid": 55044,
+      "start_ticks": "439808",
+      "rss_kib": 8452
+    },
+    {
+      "pid": 55047,
+      "start_ticks": "439824",
+      "rss_kib": 8420
+    },
+    {
+      "pid": 55048,
+      "start_ticks": "439841",
+      "rss_kib": 8404
+    },
+    {
+      "pid": 55052,
+      "start_ticks": "439950",
+      "rss_kib": 8448
+    },
+    {
+      "pid": 55053,
+      "start_ticks": "439950",
+      "rss_kib": 8448
+    },
+    {
+      "pid": 55054,
+      "start_ticks": "439965",
+      "rss_kib": 8452
+    },
+    {
+      "pid": 55055,
+      "start_ticks": "439965",
+      "rss_kib": 8452
+    },
+    {
+      "pid": 55082,
+      "start_ticks": "440155",
+      "rss_kib": 9760
+    },
+    {
+      "pid": 55085,
+      "start_ticks": "440169",
+      "rss_kib": 13212
+    },
+    {
+      "pid": 55095,
+      "start_ticks": "440193",
+      "rss_kib": 8408
+    },
+    {
+      "pid": 55096,
+      "start_ticks": "440199",
+      "rss_kib": 0
+    },
+    {
+      "pid": 55375,
+      "start_ticks": "441069",
+      "rss_kib": 8688
+    },
+    {
+      "pid": 55406,
+      "start_ticks": "441126",
+      "rss_kib": 9268
+    },
+    {
+      "pid": 55407,
+      "start_ticks": "441126",
+      "rss_kib": 8408
+    },
+    {
+      "pid": 55408,
+      "start_ticks": "441128",
+      "rss_kib": 8408
+    },
+    {
+      "pid": 55409,
+      "start_ticks": "441336",
+      "rss_kib": 14704
+    },
+    {
+      "pid": 55411,
+      "start_ticks": "441351",
+      "rss_kib": 21960
+    },
+    {
+      "pid": 55413,
+      "start_ticks": "441390",
+      "rss_kib": 25764
+    },
+    {
+      "pid": 55417,
+      "start_ticks": "441413",
+      "rss_kib": 25752
+    },
+    {
+      "pid": 55421,
+      "start_ticks": "441436",
+      "rss_kib": 19768
+    },
+    {
+      "pid": 55425,
+      "start_ticks": "441459",
+      "rss_kib": 10544
+    },
+    {
+      "pid": 55426,
+      "start_ticks": "441480",
+      "rss_kib": 22572
+    },
+    {
+      "pid": 55427,
+      "start_ticks": "441490",
+      "rss_kib": 9212
+    },
+    {
+      "pid": 55428,
+      "start_ticks": "441492",
+      "rss_kib": 22544
+    },
+    {
+      "pid": 55446,
+      "start_ticks": "441984",
+      "rss_kib": 21072
+    },
+    {
+      "pid": 55450,
+      "start_ticks": "442009",
+      "rss_kib": 9972
+    },
+    {
+      "pid": 55452,
+      "start_ticks": "442022",
+      "rss_kib": 25648
+    },
+    {
+      "pid": 55456,
+      "start_ticks": "442048",
+      "rss_kib": 15480
+    },
+    {
+      "pid": 55462,
+      "start_ticks": "442084",
+      "rss_kib": 25680
+    },
+    {
+      "pid": 55466,
+      "start_ticks": "442108",
+      "rss_kib": 19736
+    },
+    {
+      "pid": 55474,
+      "start_ticks": "442144",
+      "rss_kib": 25688
+    },
+    {
+      "pid": 55476,
+      "start_ticks": "442156",
+      "rss_kib": 25668
+    },
+    {
+      "pid": 55482,
+      "start_ticks": "442189",
+      "rss_kib": 19748
+    },
+    {
+      "pid": 55490,
+      "start_ticks": "442227",
+      "rss_kib": 25656
+    },
+    {
+      "pid": 55496,
+      "start_ticks": "442251",
+      "rss_kib": 19064
+    },
+    {
+      "pid": 55502,
+      "start_ticks": "442274",
+      "rss_kib": 8920
+    },
+    {
+      "pid": 55506,
+      "start_ticks": "442287",
+      "rss_kib": 25716
+    },
+    {
+      "pid": 55512,
+      "start_ticks": "442311",
+      "rss_kib": 19972
+    },
+    {
+      "pid": 55520,
+      "start_ticks": "442325",
+      "rss_kib": 25772
+    },
+    {
+      "pid": 55524,
+      "start_ticks": "442352",
+      "rss_kib": 21112
+    },
+    {
+      "pid": 55526,
+      "start_ticks": "442364",
+      "rss_kib": 25784
+    },
+    {
+      "pid": 55534,
+      "start_ticks": "442393",
+      "rss_kib": 19744
+    },
+    {
+      "pid": 55541,
+      "start_ticks": "442418",
+      "rss_kib": 2532
+    },
+    {
+      "pid": 55548,
+      "start_ticks": "442433",
+      "rss_kib": 19948
+    },
+    {
+      "pid": 55556,
+      "start_ticks": "442458",
+      "rss_kib": 6200
+    },
+    {
+      "pid": 55558,
+      "start_ticks": "442471",
+      "rss_kib": 25628
+    },
+    {
+      "pid": 55566,
+      "start_ticks": "442497",
+      "rss_kib": 13220
+    },
+    {
+      "pid": 55572,
+      "start_ticks": "442511",
+      "rss_kib": 25648
+    },
+    {
+      "pid": 55576,
+      "start_ticks": "442535",
+      "rss_kib": 19688
+    },
+    {
+      "pid": 55588,
+      "start_ticks": "442575",
+      "rss_kib": 19868
+    },
+    {
+      "pid": 55601,
+      "start_ticks": "442617",
+      "rss_kib": 17168
+    },
+    {
+      "pid": 55609,
+      "start_ticks": "442655",
+      "rss_kib": 25644
+    },
+    {
+      "pid": 55613,
+      "start_ticks": "442678",
+      "rss_kib": 19744
+    },
+    {
+      "pid": 55619,
+      "start_ticks": "442702",
+      "rss_kib": 7880
+    },
+    {
+      "pid": 55631,
+      "start_ticks": "442719",
+      "rss_kib": 18812
+    },
+    {
+      "pid": 55633,
+      "start_ticks": "442732",
+      "rss_kib": 0
+    },
+    {
+      "pid": 55637,
+      "start_ticks": "442783",
+      "rss_kib": 7252
+    },
+    {
+      "pid": 55649,
+      "start_ticks": "442965",
+      "rss_kib": 10928
+    },
+    {
+      "pid": 55660,
+      "start_ticks": "443144",
+      "rss_kib": 5816
+    },
+    {
+      "pid": 55911,
+      "start_ticks": "445034",
+      "rss_kib": 33900
+    },
+    {
+      "pid": 55914,
+      "start_ticks": "445168",
+      "rss_kib": 34036
+    },
+    {
+      "pid": 55916,
+      "start_ticks": "445508",
+      "rss_kib": 876
+    },
+    {
+      "pid": 55917,
+      "start_ticks": "445509",
+      "rss_kib": 34296
+    },
+    {
+      "pid": 55921,
+      "start_ticks": "445712",
+      "rss_kib": 37440
+    },
+    {
+      "pid": 55943,
+      "start_ticks": "445780",
+      "rss_kib": 34668
+    },
+    {
+      "pid": 55946,
+      "start_ticks": "445801",
+      "rss_kib": 33188
+    },
+    {
+      "pid": 55964,
+      "start_ticks": "445867",
+      "rss_kib": 33932
+    },
+    {
+      "pid": 56024,
+      "start_ticks": "446008",
+      "rss_kib": 33708
+    },
+    {
+      "pid": 56029,
+      "start_ticks": "446532",
+      "rss_kib": 34848
+    },
+    {
+      "pid": 56048,
+      "start_ticks": "446562",
+      "rss_kib": 25200
+    },
+    {
+      "pid": 56055,
+      "start_ticks": "446583",
+      "rss_kib": 33984
+    },
+    {
+      "pid": 56058,
+      "start_ticks": "446708",
+      "rss_kib": 33988
+    },
+    {
+      "pid": 56061,
+      "start_ticks": "446835",
+      "rss_kib": 33956
+    },
+    {
+      "pid": 56064,
+      "start_ticks": "446960",
+      "rss_kib": 34276
+    },
+    {
+      "pid": 56066,
+      "start_ticks": "447085",
+      "rss_kib": 33876
+    },
+    {
+      "pid": 56068,
+      "start_ticks": "447211",
+      "rss_kib": 30000
+    },
+    {
+      "pid": 56070,
+      "start_ticks": "447232",
+      "rss_kib": 33704
+    },
+    {
+      "pid": 56072,
+      "start_ticks": "447403",
+      "rss_kib": 33876
+    },
+    {
+      "pid": 56074,
+      "start_ticks": "447529",
+      "rss_kib": 12304
+    },
+    {
+      "pid": 56094,
+      "start_ticks": "447560",
+      "rss_kib": 33988
+    },
+    {
+      "pid": 56097,
+      "start_ticks": "447789",
+      "rss_kib": 34040
+    },
+    {
+      "pid": 56100,
+      "start_ticks": "448017",
+      "rss_kib": 33884
+    },
+    {
+      "pid": 56110,
+      "start_ticks": "448256",
+      "rss_kib": 33960
+    },
+    {
+      "pid": 56129,
+      "start_ticks": "448392",
+      "rss_kib": 33972
+    },
+    {
+      "pid": 56140,
+      "start_ticks": "448522",
+      "rss_kib": 34048
+    },
+    {
+      "pid": 56150,
+      "start_ticks": "448648",
+      "rss_kib": 34056
+    },
+    {
+      "pid": 56162,
+      "start_ticks": "448781",
+      "rss_kib": 33888
+    },
+    {
+      "pid": 56165,
+      "start_ticks": "448915",
+      "rss_kib": 35828
+    },
+    {
+      "pid": 56182,
+      "start_ticks": "449130",
+      "rss_kib": 15500
+    },
+    {
+      "pid": 56183,
+      "start_ticks": "449135",
+      "rss_kib": 14608
+    },
+    {
+      "pid": 56184,
+      "start_ticks": "449142",
+      "rss_kib": 9784
+    },
+    {
+      "pid": 56185,
+      "start_ticks": "449151",
+      "rss_kib": 15512
+    },
+    {
+      "pid": 56186,
+      "start_ticks": "449156",
+      "rss_kib": 14612
+    },
+    {
+      "pid": 56187,
+      "start_ticks": "449164",
+      "rss_kib": 5340
+    },
+    {
+      "pid": 56188,
+      "start_ticks": "449174",
+      "rss_kib": 15360
+    },
+    {
+      "pid": 56189,
+      "start_ticks": "449179",
+      "rss_kib": 11680
+    },
+    {
+      "pid": 56190,
+      "start_ticks": "449190",
+      "rss_kib": 15532
+    },
+    {
+      "pid": 56194,
+      "start_ticks": "449223",
+      "rss_kib": 10136
+    },
+    {
+      "pid": 56198,
+      "start_ticks": "449244",
+      "rss_kib": 9840
+    },
+    {
+      "pid": 56202,
+      "start_ticks": "449266",
+      "rss_kib": 15420
+    },
+    {
+      "pid": 56203,
+      "start_ticks": "449271",
+      "rss_kib": 8848
+    },
+    {
+      "pid": 56204,
+      "start_ticks": "449282",
+      "rss_kib": 12284
+    },
+    {
+      "pid": 56206,
+      "start_ticks": "449295",
+      "rss_kib": 15412
+    },
+    {
+      "pid": 56207,
+      "start_ticks": "449300",
+      "rss_kib": 8840
+    },
+    {
+      "pid": 56208,
+      "start_ticks": "449303",
+      "rss_kib": 10328
+    },
+    {
+      "pid": 56210,
+      "start_ticks": "449316",
+      "rss_kib": 15408
+    },
+    {
+      "pid": 56211,
+      "start_ticks": "449321",
+      "rss_kib": 8844
+    },
+    {
+      "pid": 56212,
+      "start_ticks": "449325",
+      "rss_kib": 7404
+    },
+    {
+      "pid": 56214,
+      "start_ticks": "449337",
+      "rss_kib": 15404
+    },
+    {
+      "pid": 56215,
+      "start_ticks": "449343",
+      "rss_kib": 8800
+    },
+    {
+      "pid": 56217,
+      "start_ticks": "449446",
+      "rss_kib": 15416
+    },
+    {
+      "pid": 56220,
+      "start_ticks": "449553",
+      "rss_kib": 15400
+    },
+    {
+      "pid": 56223,
+      "start_ticks": "449661",
+      "rss_kib": 15404
+    },
+    {
+      "pid": 56224,
+      "start_ticks": "449667",
+      "rss_kib": 8844
+    },
+    {
+      "pid": 56225,
+      "start_ticks": "449671",
+      "rss_kib": 7680
+    },
+    {
+      "pid": 56226,
+      "start_ticks": "449682",
+      "rss_kib": 15396
+    },
+    {
+      "pid": 56227,
+      "start_ticks": "449687",
+      "rss_kib": 11468
+    },
+    {
+      "pid": 56230,
+      "start_ticks": "449712",
+      "rss_kib": 11560
+    },
+    {
+      "pid": 56233,
+      "start_ticks": "449731",
+      "rss_kib": 14072
+    },
+    {
+      "pid": 56234,
+      "start_ticks": "449737",
+      "rss_kib": 15496
+    },
+    {
+      "pid": 56235,
+      "start_ticks": "449742",
+      "rss_kib": 14564
+    },
+    {
+      "pid": 56237,
+      "start_ticks": "449759",
+      "rss_kib": 15492
+    },
+    {
+      "pid": 56238,
+      "start_ticks": "449765",
+      "rss_kib": 14548
+    },
+    {
+      "pid": 56239,
+      "start_ticks": "449875",
+      "rss_kib": 15484
+    },
+    {
+      "pid": 56240,
+      "start_ticks": "449880",
+      "rss_kib": 14544
+    },
+    {
+      "pid": 56242,
+      "start_ticks": "449990",
+      "rss_kib": 15392
+    },
+    {
+      "pid": 56243,
+      "start_ticks": "449995",
+      "rss_kib": 8336
+    },
+    {
+      "pid": 56246,
+      "start_ticks": "450016",
+      "rss_kib": 15100
+    },
+    {
+      "pid": 56248,
+      "start_ticks": "450034",
+      "rss_kib": 14396
+    },
+    {
+      "pid": 56249,
+      "start_ticks": "450038",
+      "rss_kib": 11436
+    },
+    {
+      "pid": 56275,
+      "start_ticks": "452036",
+      "rss_kib": 11120
+    },
+    {
+      "pid": 56277,
+      "start_ticks": "452091",
+      "rss_kib": 14672
+    },
+    {
+      "pid": 56278,
+      "start_ticks": "452098",
+      "rss_kib": 7432
+    },
+    {
+      "pid": 56279,
+      "start_ticks": "452111",
+      "rss_kib": 14720
+    },
+    {
+      "pid": 56280,
+      "start_ticks": "452118",
+      "rss_kib": 8228
+    },
+    {
+      "pid": 56281,
+      "start_ticks": "452130",
+      "rss_kib": 21956
+    },
+    {
+      "pid": 56283,
+      "start_ticks": "452145",
+      "rss_kib": 14684
+    },
+    {
+      "pid": 56286,
+      "start_ticks": "452179",
+      "rss_kib": 8224
+    },
+    {
+      "pid": 56289,
+      "start_ticks": "452233",
+      "rss_kib": 14676
+    },
+    {
+      "pid": 56290,
+      "start_ticks": "452239",
+      "rss_kib": 11896
+    },
+    {
+      "pid": 56296,
+      "start_ticks": "452275",
+      "rss_kib": 14704
+    },
+    {
+      "pid": 56298,
+      "start_ticks": "452281",
+      "rss_kib": 5976
+    },
+    {
+      "pid": 56302,
+      "start_ticks": "452300",
+      "rss_kib": 10804
+    },
+    {
+      "pid": 56305,
+      "start_ticks": "452317",
+      "rss_kib": 14648
+    },
+    {
+      "pid": 56309,
+      "start_ticks": "452342",
+      "rss_kib": 7772
+    },
+    {
+      "pid": 56312,
+      "start_ticks": "452360",
+      "rss_kib": 12320
+    },
+    {
+      "pid": 56314,
+      "start_ticks": "452375",
+      "rss_kib": 14688
+    },
+    {
+      "pid": 56315,
+      "start_ticks": "452381",
+      "rss_kib": 10912
+    },
+    {
+      "pid": 56318,
+      "start_ticks": "452401",
+      "rss_kib": 12000
+    },
+    {
+      "pid": 56320,
+      "start_ticks": "452415",
+      "rss_kib": 14672
+    },
+    {
+      "pid": 56321,
+      "start_ticks": "452420",
+      "rss_kib": 14220
+    },
+    {
+      "pid": 56379,
+      "start_ticks": "452823",
+      "rss_kib": 16452
+    },
+    {
+      "pid": 56380,
+      "start_ticks": "452827",
+      "rss_kib": 8564
+    },
+    {
+      "pid": 56381,
+      "start_ticks": "452850",
+      "rss_kib": 11044
+    },
+    {
+      "pid": 56383,
+      "start_ticks": "452871",
+      "rss_kib": 11864
+    },
+    {
+      "pid": 56385,
+      "start_ticks": "452891",
+      "rss_kib": 13716
+    },
+    {
+      "pid": 56391,
+      "start_ticks": "452963",
+      "rss_kib": 16440
+    },
+    {
+      "pid": 56392,
+      "start_ticks": "452967",
+      "rss_kib": 8564
+    },
+    {
+      "pid": 56393,
+      "start_ticks": "452991",
+      "rss_kib": 16432
+    },
+    {
+      "pid": 56394,
+      "start_ticks": "452995",
+      "rss_kib": 8620
+    },
+    {
+      "pid": 56465,
+      "start_ticks": "453065",
+      "rss_kib": 16440
+    },
+    {
+      "pid": 56466,
+      "start_ticks": "453068",
+      "rss_kib": 8620
+    },
+    {
+      "pid": 56467,
+      "start_ticks": "453092",
+      "rss_kib": 16472
+    },
+    {
+      "pid": 56469,
+      "start_ticks": "453112",
+      "rss_kib": 16312
+    },
+    {
+      "pid": 56498,
+      "start_ticks": "453159",
+      "rss_kib": 9076
+    },
+    {
+      "pid": 56500,
+      "start_ticks": "453178",
+      "rss_kib": 11228
+    },
+    {
+      "pid": 56502,
+      "start_ticks": "453197",
+      "rss_kib": 13736
+    },
+    {
+      "pid": 56504,
+      "start_ticks": "453217",
+      "rss_kib": 16220
+    },
+    {
+      "pid": 56506,
+      "start_ticks": "453237",
+      "rss_kib": 16436
+    },
+    {
+      "pid": 56507,
+      "start_ticks": "453241",
+      "rss_kib": 6080
+    },
+    {
+      "pid": 56508,
+      "start_ticks": "453256",
+      "rss_kib": 16436
+    },
+    {
+      "pid": 56509,
+      "start_ticks": "453260",
+      "rss_kib": 8424
+    },
+    {
+      "pid": 56510,
+      "start_ticks": "453276",
+      "rss_kib": 16436
+    },
+    {
+      "pid": 56511,
+      "start_ticks": "453280",
+      "rss_kib": 8672
+    },
+    {
+      "pid": 56587,
+      "start_ticks": "453481",
+      "rss_kib": 14888
+    },
+    {
+      "pid": 56590,
+      "start_ticks": "453486",
+      "rss_kib": 6108
+    },
+    {
+      "pid": 56594,
+      "start_ticks": "453502",
+      "rss_kib": 14896
+    },
+    {
+      "pid": 56603,
+      "start_ticks": "453524",
+      "rss_kib": 13980
+    },
+    {
+      "pid": 56608,
+      "start_ticks": "453545",
+      "rss_kib": 11920
+    },
+    {
+      "pid": 56619,
+      "start_ticks": "453584",
+      "rss_kib": 14892
+    },
+    {
+      "pid": 56625,
+      "start_ticks": "453607",
+      "rss_kib": 9916
+    },
+    {
+      "pid": 56727,
+      "start_ticks": "453808",
+      "rss_kib": 14964
+    },
+    {
+      "pid": 56838,
+      "start_ticks": "454016",
+      "rss_kib": 8888
+    },
+    {
+      "pid": 56844,
+      "start_ticks": "454027",
+      "rss_kib": 10380
+    },
+    {
+      "pid": 56845,
+      "start_ticks": "454030",
+      "rss_kib": 804
+    },
+    {
+      "pid": 56847,
+      "start_ticks": "454053",
+      "rss_kib": 10380
+    },
+    {
+      "pid": 56848,
+      "start_ticks": "454056",
+      "rss_kib": 800
+    },
+    {
+      "pid": 56880,
+      "start_ticks": "454545",
+      "rss_kib": 14968
+    },
+    {
+      "pid": 56884,
+      "start_ticks": "454583",
+      "rss_kib": 17088
+    },
+    {
+      "pid": 56888,
+      "start_ticks": "454622",
+      "rss_kib": 18112
+    },
+    {
+      "pid": 56892,
+      "start_ticks": "454662",
+      "rss_kib": 18216
+    },
+    {
+      "pid": 56896,
+      "start_ticks": "454704",
+      "rss_kib": 18156
+    },
+    {
+      "pid": 56900,
+      "start_ticks": "454743",
+      "rss_kib": 18376
+    },
+    {
+      "pid": 56904,
+      "start_ticks": "454804",
+      "rss_kib": 22816
+    },
+    {
+      "pid": 56908,
+      "start_ticks": "454844",
+      "rss_kib": 23400
+    },
+    {
+      "pid": 56912,
+      "start_ticks": "454885",
+      "rss_kib": 21072
+    },
+    {
+      "pid": 56916,
+      "start_ticks": "454923",
+      "rss_kib": 23672
+    },
+    {
+      "pid": 56920,
+      "start_ticks": "454963",
+      "rss_kib": 23672
+    },
+    {
+      "pid": 56924,
+      "start_ticks": "455002",
+      "rss_kib": 23772
+    },
+    {
+      "pid": 56928,
+      "start_ticks": "455041",
+      "rss_kib": 23888
+    },
+    {
+      "pid": 56936,
+      "start_ticks": "455103",
+      "rss_kib": 11100
+    },
+    {
+      "pid": 56937,
+      "start_ticks": "455103",
+      "rss_kib": 15412
+    },
+    {
+      "pid": 56942,
+      "start_ticks": "455108",
+      "rss_kib": 27736
+    },
+    {
+      "pid": 56943,
+      "start_ticks": "455108",
+      "rss_kib": 27688
+    },
+    {
+      "pid": 56949,
+      "start_ticks": "455127",
+      "rss_kib": 15408
+    },
+    {
+      "pid": 56954,
+      "start_ticks": "455132",
+      "rss_kib": 21212
+    },
+    {
+      "pid": 56955,
+      "start_ticks": "455132",
+      "rss_kib": 22636
+    },
+    {
+      "pid": 56961,
+      "start_ticks": "455156",
+      "rss_kib": 15496
+    },
+    {
+      "pid": 56973,
+      "start_ticks": "455184",
+      "rss_kib": 15408
+    },
+    {
+      "pid": 56978,
+      "start_ticks": "455191",
+      "rss_kib": 21804
+    },
+    {
+      "pid": 56979,
+      "start_ticks": "455191",
+      "rss_kib": 21808
+    },
+    {
+      "pid": 56985,
+      "start_ticks": "455215",
+      "rss_kib": 15408
+    },
+    {
+      "pid": 56990,
+      "start_ticks": "455222",
+      "rss_kib": 7776
+    },
+    {
+      "pid": 56991,
+      "start_ticks": "455222",
+      "rss_kib": 7748
+    },
+    {
+      "pid": 57005,
+      "start_ticks": "455263",
+      "rss_kib": 8200
+    },
+    {
+      "pid": 57016,
+      "start_ticks": "455365",
+      "rss_kib": 8372
+    },
+    {
+      "pid": 57019,
+      "start_ticks": "455384",
+      "rss_kib": 12784
+    },
+    {
+      "pid": 57022,
+      "start_ticks": "455403",
+      "rss_kib": 15628
+    },
+    {
+      "pid": 57028,
+      "start_ticks": "455422",
+      "rss_kib": 15876
+    },
+    {
+      "pid": 57088,
+      "start_ticks": "455734",
+      "rss_kib": 8292
+    },
+    {
+      "pid": 57089,
+      "start_ticks": "455745",
+      "rss_kib": 8408
+    },
+    {
+      "pid": 57090,
+      "start_ticks": "455766",
+      "rss_kib": 8408
+    },
+    {
+      "pid": 57099,
+      "start_ticks": "455817",
+      "rss_kib": 6372
+    },
+    {
+      "pid": 57112,
+      "start_ticks": "455853",
+      "rss_kib": 33640
+    },
+    {
+      "pid": 57115,
+      "start_ticks": "455979",
+      "rss_kib": 33952
+    },
+    {
+      "pid": 57118,
+      "start_ticks": "456007",
+      "rss_kib": 13600
+    },
+    {
+      "pid": 57120,
+      "start_ticks": "456013",
+      "rss_kib": 34360
+    },
+    {
+      "pid": 57122,
+      "start_ticks": "456352",
+      "rss_kib": 40100
+    },
+    {
+      "pid": 57219,
+      "start_ticks": "457933",
+      "rss_kib": 33796
+    },
+    {
+      "pid": 57222,
+      "start_ticks": "458067",
+      "rss_kib": 11504
+    },
+    {
+      "pid": 57223,
+      "start_ticks": "458080",
+      "rss_kib": 13592
+    },
+    {
+      "pid": 57225,
+      "start_ticks": "458085",
+      "rss_kib": 34352
+    },
+    {
+      "pid": 57227,
+      "start_ticks": "458420",
+      "rss_kib": 41328
+    },
+    {
+      "pid": 57334,
+      "start_ticks": "460010",
+      "rss_kib": 34832
+    },
+    {
+      "pid": 57337,
+      "start_ticks": "460143",
+      "rss_kib": 0
+    },
+    {
+      "pid": 57454,
+      "start_ticks": "461833",
+      "rss_kib": 13600
+    },
+    {
+      "pid": 57456,
+      "start_ticks": "461838",
+      "rss_kib": 33980
+    },
+    {
+      "pid": 57458,
+      "start_ticks": "462171",
+      "rss_kib": 41128
+    },
+    {
+      "pid": 57555,
+      "start_ticks": "463749",
+      "rss_kib": 33804
+    },
+    {
+      "pid": 57558,
+      "start_ticks": "463879",
+      "rss_kib": 19260
+    },
+    {
+      "pid": 57560,
+      "start_ticks": "463893",
+      "rss_kib": 13484
+    },
+    {
+      "pid": 57562,
+      "start_ticks": "463897",
+      "rss_kib": 33988
+    },
+    {
+      "pid": 57564,
+      "start_ticks": "464230",
+      "rss_kib": 40136
+    },
+    {
+      "pid": 57661,
+      "start_ticks": "465814",
+      "rss_kib": 34412
+    },
+    {
+      "pid": 57664,
+      "start_ticks": "465946",
+      "rss_kib": 0
+    },
+    {
+      "pid": 57665,
+      "start_ticks": "465965",
+      "rss_kib": 34084
+    },
+    {
+      "pid": 57748,
+      "start_ticks": "466571",
+      "rss_kib": 5896
+    },
+    {
+      "pid": 57764,
+      "start_ticks": "466590",
+      "rss_kib": 7904
+    },
+    {
+      "pid": 57781,
+      "start_ticks": "466612",
+      "rss_kib": 4376
+    },
+    {
+      "pid": 57798,
+      "start_ticks": "466652",
+      "rss_kib": 4768
+    },
+    {
+      "pid": 57867,
+      "start_ticks": "466691",
+      "rss_kib": 8376
+    },
+    {
+      "pid": 57881,
+      "start_ticks": "466699",
+      "rss_kib": 14680
+    },
+    {
+      "pid": 57882,
+      "start_ticks": "466706",
+      "rss_kib": 21048
+    },
+    {
+      "pid": 57884,
+      "start_ticks": "466734",
+      "rss_kib": 7728
+    },
+    {
+      "pid": 57975,
+      "start_ticks": "467619",
+      "rss_kib": 38232
+    },
+    {
+      "pid": 57980,
+      "start_ticks": "467657",
+      "rss_kib": 16540
+    },
+    {
+      "pid": 57981,
+      "start_ticks": "467664",
+      "rss_kib": 760
+    },
+    {
+      "pid": 58172,
+      "start_ticks": "468095",
+      "rss_kib": 16588
+    },
+    {
+      "pid": 58173,
+      "start_ticks": "468101",
+      "rss_kib": 2328
+    },
+    {
+      "pid": 58174,
+      "start_ticks": "468106",
+      "rss_kib": 2636
+    },
+    {
+      "pid": 58175,
+      "start_ticks": "468293",
+      "rss_kib": 16472
+    },
+    {
+      "pid": 58176,
+      "start_ticks": "468300",
+      "rss_kib": 2508
+    },
+    {
+      "pid": 58179,
+      "start_ticks": "468310",
+      "rss_kib": 10756
+    },
+    {
+      "pid": 58218,
+      "start_ticks": "468483",
+      "rss_kib": 16492
+    },
+    {
+      "pid": 58219,
+      "start_ticks": "468490",
+      "rss_kib": 2296
+    },
+    {
+      "pid": 58220,
+      "start_ticks": "468657",
+      "rss_kib": 16472
+    },
+    {
+      "pid": 58222,
+      "start_ticks": "468837",
+      "rss_kib": 16448
+    },
+    {
+      "pid": 58223,
+      "start_ticks": "468843",
+      "rss_kib": 7768
+    },
+    {
+      "pid": 58255,
+      "start_ticks": "469011",
+      "rss_kib": 16464
+    },
+    {
+      "pid": 58256,
+      "start_ticks": "469017",
+      "rss_kib": 2356
+    },
+    {
+      "pid": 58257,
+      "start_ticks": "469189",
+      "rss_kib": 16500
+    },
+    {
+      "pid": 58259,
+      "start_ticks": "469366",
+      "rss_kib": 16488
+    },
+    {
+      "pid": 58260,
+      "start_ticks": "469371",
+      "rss_kib": 2300
+    },
+    {
+      "pid": 58261,
+      "start_ticks": "469543",
+      "rss_kib": 16416
+    },
+    {
+      "pid": 58263,
+      "start_ticks": "469714",
+      "rss_kib": 16632
+    },
+    {
+      "pid": 58264,
+      "start_ticks": "469720",
+      "rss_kib": 2376
+    },
+    {
+      "pid": 58265,
+      "start_ticks": "469726",
+      "rss_kib": 8360
+    },
+    {
+      "pid": 58268,
+      "start_ticks": "469762",
+      "rss_kib": 17072
+    },
+    {
+      "pid": 58270,
+      "start_ticks": "469949",
+      "rss_kib": 16632
+    },
+    {
+      "pid": 58271,
+      "start_ticks": "469956",
+      "rss_kib": 0
+    },
+    {
+      "pid": 58272,
+      "start_ticks": "469962",
+      "rss_kib": 2368
+    },
+    {
+      "pid": 58273,
+      "start_ticks": "470133",
+      "rss_kib": 16476
+    },
+    {
+      "pid": 58276,
+      "start_ticks": "470310",
+      "rss_kib": 16472
+    },
+    {
+      "pid": 58277,
+      "start_ticks": "470316",
+      "rss_kib": 2372
+    },
+    {
+      "pid": 58278,
+      "start_ticks": "470484",
+      "rss_kib": 16512
+    },
+    {
+      "pid": 58311,
+      "start_ticks": "470657",
+      "rss_kib": 16440
+    },
+    {
+      "pid": 58312,
+      "start_ticks": "470663",
+      "rss_kib": 2372
+    },
+    {
+      "pid": 58313,
+      "start_ticks": "470831",
+      "rss_kib": 16404
+    },
+    {
+      "pid": 58315,
+      "start_ticks": "470996",
+      "rss_kib": 16504
+    },
+    {
+      "pid": 58316,
+      "start_ticks": "471002",
+      "rss_kib": 2360
+    },
+    {
+      "pid": 58318,
+      "start_ticks": "471018",
+      "rss_kib": 864
+    },
+    {
+      "pid": 58330,
+      "start_ticks": "471038",
+      "rss_kib": 7084
+    },
+    {
+      "pid": 58351,
+      "start_ticks": "471202",
+      "rss_kib": 16460
+    },
+    {
+      "pid": 58353,
+      "start_ticks": "471372",
+      "rss_kib": 16588
+    },
+    {
+      "pid": 58355,
+      "start_ticks": "471383",
+      "rss_kib": 2316
+    },
+    {
+      "pid": 58356,
+      "start_ticks": "471562",
+      "rss_kib": 21368
+    },
+    {
+      "pid": 58357,
+      "start_ticks": "471580",
+      "rss_kib": 16392
+    },
+    {
+      "pid": 58359,
+      "start_ticks": "471627",
+      "rss_kib": 18168
+    },
+    {
+      "pid": 58360,
+      "start_ticks": "471633",
+      "rss_kib": 16396
+    },
+    {
+      "pid": 58362,
+      "start_ticks": "471688",
+      "rss_kib": 16676
+    },
+    {
+      "pid": 58363,
+      "start_ticks": "471693",
+      "rss_kib": 8236
+    },
+    {
+      "pid": 58365,
+      "start_ticks": "471754",
+      "rss_kib": 9800
+    },
+    {
+      "pid": 58366,
+      "start_ticks": "471792",
+      "rss_kib": 16336
+    },
+    {
+      "pid": 58368,
+      "start_ticks": "471834",
+      "rss_kib": 16380
+    },
+    {
+      "pid": 58370,
+      "start_ticks": "471871",
+      "rss_kib": 16396
+    },
+    {
+      "pid": 58371,
+      "start_ticks": "471877",
+      "rss_kib": 8348
+    },
+    {
+      "pid": 58372,
+      "start_ticks": "471914",
+      "rss_kib": 16380
+    },
+    {
+      "pid": 58374,
+      "start_ticks": "471952",
+      "rss_kib": 16428
+    },
+    {
+      "pid": 58375,
+      "start_ticks": "471958",
+      "rss_kib": 2192
+    },
+    {
+      "pid": 58376,
+      "start_ticks": "472119",
+      "rss_kib": 16452
+    },
+    {
+      "pid": 58377,
+      "start_ticks": "472124",
+      "rss_kib": 0
+    },
+    {
+      "pid": 58379,
+      "start_ticks": "472296",
+      "rss_kib": 16452
+    },
+    {
+      "pid": 58380,
+      "start_ticks": "472301",
+      "rss_kib": 2332
+    },
+    {
+      "pid": 58381,
+      "start_ticks": "472307",
+      "rss_kib": 864
+    },
+    {
+      "pid": 58382,
+      "start_ticks": "472483",
+      "rss_kib": 16400
+    },
+    {
+      "pid": 58383,
+      "start_ticks": "472488",
+      "rss_kib": 7860
+    },
+    {
+      "pid": 58384,
+      "start_ticks": "472654",
+      "rss_kib": 16396
+    },
+    {
+      "pid": 58386,
+      "start_ticks": "472696",
+      "rss_kib": 16472
+    },
+    {
+      "pid": 58389,
+      "start_ticks": "472739",
+      "rss_kib": 16336
+    },
+    {
+      "pid": 58391,
+      "start_ticks": "472778",
+      "rss_kib": 16456
+    },
+    {
+      "pid": 58394,
+      "start_ticks": "472825",
+      "rss_kib": 16352
+    },
+    {
+      "pid": 58397,
+      "start_ticks": "472984",
+      "rss_kib": 16360
+    },
+    {
+      "pid": 58399,
+      "start_ticks": "473148",
+      "rss_kib": 16348
+    },
+    {
+      "pid": 58402,
+      "start_ticks": "473312",
+      "rss_kib": 16392
+    },
+    {
+      "pid": 58403,
+      "start_ticks": "473317",
+      "rss_kib": 8460
+    },
+    {
+      "pid": 58405,
+      "start_ticks": "473485",
+      "rss_kib": 16396
+    },
+    {
+      "pid": 58406,
+      "start_ticks": "473491",
+      "rss_kib": 5216
+    },
+    {
+      "pid": 58407,
+      "start_ticks": "473531",
+      "rss_kib": 16744
+    },
+    {
+      "pid": 58410,
+      "start_ticks": "473702",
+      "rss_kib": 16404
+    },
+    {
+      "pid": 58429,
+      "start_ticks": "473866",
+      "rss_kib": 16316
+    },
+    {
+      "pid": 58445,
+      "start_ticks": "473899",
+      "rss_kib": 16328
+    },
+    {
+      "pid": 58447,
+      "start_ticks": "473944",
+      "rss_kib": 16380
+    },
+    {
+      "pid": 58448,
+      "start_ticks": "473951",
+      "rss_kib": 8412
+    },
+    {
+      "pid": 58449,
+      "start_ticks": "474003",
+      "rss_kib": 17048
+    },
+    {
+      "pid": 58462,
+      "start_ticks": "474165",
+      "rss_kib": 21452
+    },
+    {
+      "pid": 58463,
+      "start_ticks": "474170",
+      "rss_kib": 764
+    },
+    {
+      "pid": 58464,
+      "start_ticks": "474172",
+      "rss_kib": 864
+    },
+    {
+      "pid": 58481,
+      "start_ticks": "474363",
+      "rss_kib": 16448
+    },
+    {
+      "pid": 58482,
+      "start_ticks": "474368",
+      "rss_kib": 6960
+    },
+    {
+      "pid": 58500,
+      "start_ticks": "474526",
+      "rss_kib": 16532
+    },
+    {
+      "pid": 58501,
+      "start_ticks": "474532",
+      "rss_kib": 7748
+    },
+    {
+      "pid": 58505,
+      "start_ticks": "474757",
+      "rss_kib": 6360
+    },
+    {
+      "pid": 58513,
+      "start_ticks": "474940",
+      "rss_kib": 6384
+    },
+    {
+      "pid": 58554,
+      "start_ticks": "474984",
+      "rss_kib": 17716
+    },
+    {
+      "pid": 58559,
+      "start_ticks": "475165",
+      "rss_kib": 5848
+    },
+    {
+      "pid": 58585,
+      "start_ticks": "475266",
+      "rss_kib": 8360
+    },
+    {
+      "pid": 58586,
+      "start_ticks": "475343",
+      "rss_kib": 14124
+    },
+    {
+      "pid": 58597,
+      "start_ticks": "475428",
+      "rss_kib": 11400
+    },
+    {
+      "pid": 58680,
+      "start_ticks": "475895",
+      "rss_kib": 26464
+    },
+    {
+      "pid": 58692,
+      "start_ticks": "475957",
+      "rss_kib": 25568
+    },
+    {
+      "pid": 58696,
+      "start_ticks": "475977",
+      "rss_kib": 26160
+    },
+    {
+      "pid": 58701,
+      "start_ticks": "476002",
+      "rss_kib": 26040
+    },
+    {
+      "pid": 58702,
+      "start_ticks": "476103",
+      "rss_kib": 6832
+    },
+    {
+      "pid": 58703,
+      "start_ticks": "476106",
+      "rss_kib": 14692
+    },
+    {
+      "pid": 58707,
+      "start_ticks": "476143",
+      "rss_kib": 6632
+    },
+    {
+      "pid": 58735,
+      "start_ticks": "476316",
+      "rss_kib": 14688
+    },
+    {
+      "pid": 58739,
+      "start_ticks": "476348",
+      "rss_kib": 4152
+    },
+    {
+      "pid": 58741,
+      "start_ticks": "476363",
+      "rss_kib": 14676
+    },
+    {
+      "pid": 58742,
+      "start_ticks": "476368",
+      "rss_kib": 5568
+    },
+    {
+      "pid": 58743,
+      "start_ticks": "476376",
+      "rss_kib": 14768
+    },
+    {
+      "pid": 58759,
+      "start_ticks": "476399",
+      "rss_kib": 34088
+    },
+    {
+      "pid": 58761,
+      "start_ticks": "476734",
+      "rss_kib": 34392
+    }
+  ],
+  "junit": {
+    "available": true,
+    "cases": 18290,
+    "failure": 0,
+    "error": 0,
+    "skipped": 12,
+    "identity_multiset_sha256": "c326ea42c2229f9650fd6e05df42e50d563bf5f579ba17312371b6ad23e3f8e4",
+    "sha256": "02fb7db384bb3a9e5a9e432ade6bcdbd5303354f0d41c3d4489116a2c0b8d9d7"
+  },
+  "source_before": "10f3c29138e5eac365a27ab3bbdcc164a85ca530a11792d4f2fcb4ef8e155a30",
+  "source_after": "10f3c29138e5eac365a27ab3bbdcc164a85ca530a11792d4f2fcb4ef8e155a30",
+  "source_stable": true,
+  "rss_sampling_available": true,
+  "environment": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "platform": "linux",
+    "cpu_count": 5,
+    "pytest_addopts": "",
+    "pythonhashseed": "0"
+  },
+  "limits": "Linux /proc sampling can miss short-lived peaks; summed live RSS includes shared pages, not PSS. CPU and block-I/O use waited child resource counters. /proc I/O fields are peak non-atomic sums of live process counters (including waited descendants), not exact final totals; read_bytes/write_bytes are storage bytes and rchar/wchar include cached I/O. Observed wall time includes up to one sampling interval of exit detection. No tracemalloc instrumentation. Same inherited environment; caller must retain identical extras and selection."
+}

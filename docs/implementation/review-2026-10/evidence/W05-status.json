@@ -1,0 +1,111 @@
+{
+  "package": "W05",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "requirements": [
+    {
+      "id": "W05-R01",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W05-R09",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W05.md",
+        "tests/test_state_reliability.py",
+        "evidence/final-qualification.json"
+      ]
+    }
+  ],
+  "evidence": [
+    "evidence/W05.md",
+    "tests/test_state_reliability.py"
+  ],
+  "limits": [
+    "The controlled state rerun is retained in evidence/state-before-final.json and evidence/state-after-final.json; correctness overhead is recorded, not presented as speedup. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+    "Persistent mutable state currently requires supported Linux mount discovery (including WSL2 Linux filesystems). macOS has no qualified filesystem detector in this revision and remains stateless via --no-state; no macOS runtime qualification is claimed. Restore persistent macOS support only after implementing and qualifying its local-filesystem identity and locking path on that platform."
+  ],
+  "focused_history": {
+    "validation": "Post-repair integrated state/archive/native telemetry/storage/config/CLI/allocation/W16 suite:796 tests passed in70.48s across29 modules. Tests include real bounded local maintenance subprocesses and Hypothesis fidelity/identity checks. The earlier ENOSPC pytest-finalization run is not counted as a clean gate. Final integrated revision CI/packaging remain root-owned."
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

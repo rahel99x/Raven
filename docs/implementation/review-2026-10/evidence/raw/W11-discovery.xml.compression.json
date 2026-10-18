@@ -1,0 +1,11 @@
+{
+  "schema": "raven.evidence-compression/v1",
+  "original_path": "W11-discovery.xml",
+  "original_bytes": 25509091,
+  "original_sha256": "2a16cb00c0004f7aea69e9c252ea04c90eef5f74a699fb81d3fa33ad0d6a7fce",
+  "compressed_path": "W11-discovery.xml.gz",
+  "compressed_bytes": 334421,
+  "compressed_sha256": "45403f1c9cb0fc852e51bf351838722818c239445e516d44e6d97aa3fb098801",
+  "encoding": "gzip, lossless, mtime=0",
+  "recovery": "gzip -dc W11-discovery.xml.gz > W11-discovery.xml"
+}

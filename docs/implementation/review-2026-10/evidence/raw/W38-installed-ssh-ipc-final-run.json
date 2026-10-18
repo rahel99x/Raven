@@ -1,0 +1,24 @@
+{
+  "command": [
+    ".venv/bin/python",
+    "/workspace/raven-w38-final/qualify_session_wheel.py",
+    "--wheel",
+    "/workspace/raven-distribution-final-3/full/dist/raven-7.0.0-py3-none-any.whl",
+    "--output",
+    "docs/implementation/review-2026-10/evidence/raw/W38-installed-ssh-ipc-final.json",
+    "--remapped-root-fixture"
+  ],
+  "started": "2026-10-18T02:05:28.608190+00:00",
+  "completed": "2026-10-18T02:05:33.952611+00:00",
+  "exit_code": 0,
+  "stderr": "",
+  "source_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+  "wheel_sha256": "f8aec82f42b45dda731c550e4c833bcadd942de51281016aebc97a0829a79724",
+  "source_hashes": {
+    "raven/session_service.py": "5ba7707290e03f3ffcaa4f066c829cde014d258200f10870cd252ee895b1b12e",
+    "raven/session_contract.py": "f8b6367fba25a220259d556cca423ab2a53279ef3f6df6f45d91fdb45fa09e58",
+    "raven/ssh_control.py": "f8983b12a369cc15b6a2211c47b53cdfabecb6ccdc5b0aea00a49107d9e92498",
+    "raven/remote.py": "b03522720142ba127db8b47cb43ee7a32eeb3ebfad2c83ae71436b2aa8357ac0",
+    "/workspace/raven-w38-final/qualify_session_wheel.py": "8772ad73a208910d00508344a92fc19548999e2103c21f9000df22ea1edaf3e0"
+  }
+}

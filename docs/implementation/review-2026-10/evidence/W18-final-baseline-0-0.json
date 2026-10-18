@@ -1,0 +1,1377 @@
+{
+  "schema": "raven.resource-benchmark/v1",
+  "variant": "light",
+  "mode": "idle",
+  "source_root": "/tmp/raven-review-baseline",
+  "source_sha256": "8bc2e43311f44f12a95c65ee85351e3b252c4a7b3daba5844b19c6f340ec6cd7",
+  "host": {
+    "system": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "logical_cpus": 5,
+    "cpu_scope": "100 percent means one logical CPU",
+    "cgroup_cpu_max": "400000 100000",
+    "cgroup_memory_max": "34359738368",
+    "affinity_cpus": 5
+  },
+  "child_python": "/workspace/Raven/.venv/bin/python",
+  "terminal": {
+    "width": 160,
+    "height": 48,
+    "type": "PTY/xterm-256color"
+  },
+  "duration_seconds": 45.00184712600003,
+  "warmup_seconds": 5.0,
+  "startup_to_full_fixture_seconds": 0.25670327499983614,
+  "fixture": {
+    "jobs": 100,
+    "running": 80,
+    "history_jobs": 25,
+    "gpu_jobs": 0,
+    "ordinary_shells": 0,
+    "heavy_workers": 0,
+    "steady_idle_timer_preaged": true,
+    "keyboard_events": 0
+  },
+  "readiness": {
+    "ui_waits": 226,
+    "ui_waits_per_second": 5.0220160823004845,
+    "site_packages_enabled_for_terminal_extra": false,
+    "input_dispatch_ms": {
+      "count": 0
+    },
+    "publication_to_flush_ms": {
+      "count": 0
+    },
+    "latency_probes_enabled": false,
+    "scope": "Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim."
+  },
+  "cpu_mean_percent_one_core": 2.0221392189793987,
+  "summary": {
+    "cpu_percent": {
+      "count": 45,
+      "mean": 2.024844859244866,
+      "min": 0.9929740591265285,
+      "p50": 1.9873699499637176,
+      "p95": 3.0571718186051116,
+      "p99": 3.974136107608138,
+      "max": 3.974136107608138
+    },
+    "rss_bytes": {
+      "count": 45,
+      "mean": 40247387.02222222,
+      "min": 39993344,
+      "p50": 40288256,
+      "p95": 40374272,
+      "p99": 40374272,
+      "max": 40374272
+    },
+    "pss_bytes": {
+      "count": 45,
+      "mean": 36941915.02222222,
+      "min": 36687872,
+      "p50": 36982784,
+      "p95": 37068800,
+      "p99": 37068800,
+      "max": 37068800
+    },
+    "processes": {
+      "count": 45,
+      "mean": 1.0,
+      "min": 1,
+      "p50": 1,
+      "p95": 1,
+      "p99": 1,
+      "max": 1
+    },
+    "threads": {
+      "count": 45,
+      "mean": 4.0,
+      "min": 4,
+      "p50": 4,
+      "p95": 4,
+      "p99": 4,
+      "max": 4
+    },
+    "descriptors": {
+      "count": 45,
+      "mean": 3.0,
+      "min": 3,
+      "p50": 3,
+      "p95": 3,
+      "p99": 3,
+      "max": 3
+    }
+  },
+  "io_observed_bytes": {
+    "read_bytes": 0,
+    "write_bytes": 0,
+    "rchar": 74755,
+    "wchar": 19232
+  },
+  "retained_disk_final": {
+    "files_and_directories": 2,
+    "bytes": 493,
+    "complete": true
+  },
+  "output_bytes_measured": 19377,
+  "output_bytes_total": 37288,
+  "output_sha256": "cfa5963c90ae06024fbb5b63f21fea7892ffa46ef629989c9e9d96628054538d",
+  "child": {
+    "frames": 72,
+    "max_jobs": 100,
+    "ready": 1078.168942892,
+    "managed": true,
+    "retained_jobs": 100,
+    "selected": "8000000",
+    "steady_idle_timer_preaged": true,
+    "process_id": 5994,
+    "version": "7.0.0",
+    "exit_code": 0,
+    "commands": {
+      "squeue": 2,
+      "sacct": 1,
+      "scontrol": 1
+    },
+    "responses": {
+      "response_bytes": 49611
+    },
+    "simulated_only": true,
+    "backend_instances": 1,
+    "waits_complete": true,
+    "input_dispatches": [],
+    "publication_frames": [],
+    "unpublished_sequences": []
+  },
+  "complete": true,
+  "pss_complete": true,
+  "samples": [
+    {
+      "at": 1084.239997572,
+      "cpu_inclusive_seconds": 0.41,
+      "cpu_complete": true,
+      "rss_bytes": 39993344,
+      "pss_bytes": 36687872,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9777756,
+          "wchar": 884521
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.986347894484486,
+      "elapsed": 1.0260997200000475
+    },
+    {
+      "at": 1085.221664151,
+      "cpu_inclusive_seconds": 0.43,
+      "cpu_complete": true,
+      "rss_bytes": 39997440,
+      "pss_bytes": 36691968,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9777756,
+          "wchar": 884875
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.0373516250675614,
+      "elapsed": 2.007766298999968
+    },
+    {
+      "at": 1086.228057565,
+      "cpu_inclusive_seconds": 0.45,
+      "cpu_complete": true,
+      "rss_bytes": 40009728,
+      "pss_bytes": 36704256,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9777756,
+          "wchar": 885250
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9872944041343716,
+      "elapsed": 3.0141597130000264
+    },
+    {
+      "at": 1087.234340536,
+      "cpu_inclusive_seconds": 0.47,
+      "cpu_complete": true,
+      "rss_bytes": 40026112,
+      "pss_bytes": 36720640,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9777756,
+          "wchar": 885603
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9875125164966736,
+      "elapsed": 4.020442684000045
+    },
+    {
+      "at": 1088.215555093,
+      "cpu_inclusive_seconds": 0.49,
+      "cpu_complete": true,
+      "rss_bytes": 40034304,
+      "pss_bytes": 36728832,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 886212
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.0382901840704593,
+      "elapsed": 5.001657240999975
+    },
+    {
+      "at": 1089.222075159,
+      "cpu_inclusive_seconds": 0.5,
+      "cpu_complete": true,
+      "rss_bytes": 40046592,
+      "pss_bytes": 36741120,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 886565
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 0.9935221698798011,
+      "elapsed": 6.008177307000096
+    },
+    {
+      "at": 1090.229536131,
+      "cpu_inclusive_seconds": 0.52,
+      "cpu_complete": true,
+      "rss_bytes": 40050688,
+      "pss_bytes": 36745216,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 886940
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9851885637114506,
+      "elapsed": 7.015638279000086
+    },
+    {
+      "at": 1091.236239525,
+      "cpu_inclusive_seconds": 0.55,
+      "cpu_complete": true,
+      "rss_bytes": 40071168,
+      "pss_bytes": 36765696,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 887293
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.9800237268298866,
+      "elapsed": 8.022341673000028
+    },
+    {
+      "at": 1092.217536429,
+      "cpu_inclusive_seconds": 0.57,
+      "cpu_complete": true,
+      "rss_bytes": 40099840,
+      "pss_bytes": 36794368,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 887902
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.038119137895656,
+      "elapsed": 9.003638576999947
+    },
+    {
+      "at": 1093.224075148,
+      "cpu_inclusive_seconds": 0.59,
+      "cpu_complete": true,
+      "rss_bytes": 40116224,
+      "pss_bytes": 36810752,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 888255
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9870075162002465,
+      "elapsed": 10.010177296000165
+    },
+    {
+      "at": 1094.230754203,
+      "cpu_inclusive_seconds": 0.6,
+      "cpu_complete": true,
+      "rss_bytes": 40132608,
+      "pss_bytes": 36827136,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 888630
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 0.993365258801427,
+      "elapsed": 11.016856351000115
+    },
+    {
+      "at": 1095.237164692,
+      "cpu_inclusive_seconds": 0.62,
+      "cpu_complete": true,
+      "rss_bytes": 40136704,
+      "pss_bytes": 36831232,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 888984
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9872606872243817,
+      "elapsed": 12.023266840000133
+    },
+    {
+      "at": 1096.217950663,
+      "cpu_inclusive_seconds": 0.65,
+      "cpu_complete": true,
+      "rss_bytes": 40161280,
+      "pss_bytes": 36855808,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 889593
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 3.058771320863653,
+      "elapsed": 13.004052811000065
+    },
+    {
+      "at": 1097.22427801,
+      "cpu_inclusive_seconds": 0.67,
+      "cpu_complete": true,
+      "rss_bytes": 40173568,
+      "pss_bytes": 36868096,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 889946
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9874248731908444,
+      "elapsed": 14.010380158000089
+    },
+    {
+      "at": 1098.231610984,
+      "cpu_inclusive_seconds": 0.69,
+      "cpu_complete": true,
+      "rss_bytes": 40189952,
+      "pss_bytes": 36884480,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9796444,
+          "wchar": 890321
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.985440814131299,
+      "elapsed": 15.017713132000154
+    },
+    {
+      "at": 1099.238666246,
+      "cpu_inclusive_seconds": 0.7,
+      "cpu_complete": true,
+      "rss_bytes": 40210432,
+      "pss_bytes": 36904960,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 890674
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 0.9929941659944442,
+      "elapsed": 16.024768394000148
+    },
+    {
+      "at": 1100.220526394,
+      "cpu_inclusive_seconds": 0.72,
+      "cpu_complete": true,
+      "rss_bytes": 40222720,
+      "pss_bytes": 36917248,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 891283
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.03694997100566,
+      "elapsed": 17.006628542000044
+    },
+    {
+      "at": 1101.227992167,
+      "cpu_inclusive_seconds": 0.74,
+      "cpu_complete": true,
+      "rss_bytes": 40222720,
+      "pss_bytes": 36917248,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 891636
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9851791034494601,
+      "elapsed": 18.014094314999966
+    },
+    {
+      "at": 1102.234250533,
+      "cpu_inclusive_seconds": 0.76,
+      "cpu_complete": true,
+      "rss_bytes": 40255488,
+      "pss_bytes": 36950016,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 892011
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.987561115094154,
+      "elapsed": 19.020352681000077
+    },
+    {
+      "at": 1103.215504988,
+      "cpu_inclusive_seconds": 0.78,
+      "cpu_complete": true,
+      "rss_bytes": 40275968,
+      "pss_bytes": 36970496,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 892364
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.0382073067887423,
+      "elapsed": 20.001607136000075
+    },
+    {
+      "at": 1104.222051813,
+      "cpu_inclusive_seconds": 0.8,
+      "cpu_complete": true,
+      "rss_bytes": 40280064,
+      "pss_bytes": 36974592,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 892996
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.986991514279555,
+      "elapsed": 21.008153961000062
+    },
+    {
+      "at": 1105.229467539,
+      "cpu_inclusive_seconds": 0.82,
+      "cpu_complete": true,
+      "rss_bytes": 40280064,
+      "pss_bytes": 36974592,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 893355
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9852777243620394,
+      "elapsed": 22.015569687000152
+    },
+    {
+      "at": 1106.235745816,
+      "cpu_inclusive_seconds": 0.84,
+      "cpu_complete": true,
+      "rss_bytes": 40288256,
+      "pss_bytes": 36982784,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 893730
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9875217876737197,
+      "elapsed": 23.021847964000017
+    },
+    {
+      "at": 1107.217149255,
+      "cpu_inclusive_seconds": 0.87,
+      "cpu_complete": true,
+      "rss_bytes": 40296448,
+      "pss_bytes": 36990976,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 894083
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 3.0568468387031986,
+      "elapsed": 24.00325140300015
+    },
+    {
+      "at": 1108.225104094,
+      "cpu_inclusive_seconds": 0.89,
+      "cpu_complete": true,
+      "rss_bytes": 40296448,
+      "pss_bytes": 36990976,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9815132,
+          "wchar": 894692
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9842158821166758,
+      "elapsed": 25.01120624200007
+    },
+    {
+      "at": 1109.231612148,
+      "cpu_inclusive_seconds": 0.93,
+      "cpu_complete": true,
+      "rss_bytes": 40312832,
+      "pss_bytes": 37007360,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 895045
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 3.974136107608138,
+      "elapsed": 26.017714296000122
+    },
+    {
+      "at": 1110.238245859,
+      "cpu_inclusive_seconds": 0.94,
+      "cpu_complete": true,
+      "rss_bytes": 40312832,
+      "pss_bytes": 37007360,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 895420
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 0.9934100051215551,
+      "elapsed": 27.02434800700007
+    },
+    {
+      "at": 1111.219785659,
+      "cpu_inclusive_seconds": 0.96,
+      "cpu_complete": true,
+      "rss_bytes": 40312832,
+      "pss_bytes": 37007360,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 895773
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.037614776293199,
+      "elapsed": 28.005887807000136
+    },
+    {
+      "at": 1112.226001992,
+      "cpu_inclusive_seconds": 0.98,
+      "cpu_complete": true,
+      "rss_bytes": 40349696,
+      "pss_bytes": 37044224,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 896382
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9876441421272701,
+      "elapsed": 29.01210414000002
+    },
+    {
+      "at": 1113.233080858,
+      "cpu_inclusive_seconds": 1.0,
+      "cpu_complete": true,
+      "rss_bytes": 40366080,
+      "pss_bytes": 37060608,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 896735
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9859417842256102,
+      "elapsed": 30.01918300600005
+    },
+    {
+      "at": 1114.21526771,
+      "cpu_inclusive_seconds": 1.02,
+      "cpu_complete": true,
+      "rss_bytes": 40370176,
+      "pss_bytes": 37064704,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 897110
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.03627242202171,
+      "elapsed": 31.00136985800009
+    },
+    {
+      "at": 1115.221938598,
+      "cpu_inclusive_seconds": 1.04,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 897464
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9867466357089754,
+      "elapsed": 32.008040746000006
+    },
+    {
+      "at": 1116.22834051,
+      "cpu_inclusive_seconds": 1.06,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 898073
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.987277623534562,
+      "elapsed": 33.01444265800001
+    },
+    {
+      "at": 1117.234371241,
+      "cpu_inclusive_seconds": 1.08,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 898426
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9880108413904727,
+      "elapsed": 34.02047338900002
+    },
+    {
+      "at": 1118.215670356,
+      "cpu_inclusive_seconds": 1.11,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9833821,
+          "wchar": 898801
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 3.0571718186051116,
+      "elapsed": 35.00177250399997
+    },
+    {
+      "at": 1119.222113058,
+      "cpu_inclusive_seconds": 1.13,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 899154
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9871970813889515,
+      "elapsed": 36.00821520600016
+    },
+    {
+      "at": 1120.228574805,
+      "cpu_inclusive_seconds": 1.14,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 899763
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 0.9935797391015975,
+      "elapsed": 37.01467695300016
+    },
+    {
+      "at": 1121.234929963,
+      "cpu_inclusive_seconds": 1.16,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 900116
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9873699499637176,
+      "elapsed": 38.02103211100007
+    },
+    {
+      "at": 1122.216518868,
+      "cpu_inclusive_seconds": 1.18,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 900491
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.037512842506953,
+      "elapsed": 39.00262101600015
+    },
+    {
+      "at": 1123.222905531,
+      "cpu_inclusive_seconds": 1.21,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 900844
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.980961602827311,
+      "elapsed": 40.00900767899998
+    },
+    {
+      "at": 1124.229720822,
+      "cpu_inclusive_seconds": 1.23,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 901453
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.9864616855524795,
+      "elapsed": 41.015822970000045
+    },
+    {
+      "at": 1125.236471425,
+      "cpu_inclusive_seconds": 1.25,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 901807
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 1.986589324148635,
+      "elapsed": 42.022573573000045
+    },
+    {
+      "at": 1126.217872536,
+      "cpu_inclusive_seconds": 1.27,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 902182
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.03790272660499,
+      "elapsed": 43.00397468400001
+    },
+    {
+      "at": 1127.22494819,
+      "cpu_inclusive_seconds": 1.28,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 902535
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 0.9929740591265285,
+      "elapsed": 44.01105033800013
+    },
+    {
+      "at": 1128.215744978,
+      "cpu_inclusive_seconds": 1.3,
+      "cpu_complete": true,
+      "rss_bytes": 40374272,
+      "pss_bytes": 37068800,
+      "pss_complete": true,
+      "processes": 1,
+      "threads": 4,
+      "descriptors": 3,
+      "tree_complete": true,
+      "io": {
+        "5994:107791": {
+          "read_bytes": 0,
+          "write_bytes": 0,
+          "rchar": 9852511,
+          "wchar": 903144
+        }
+      },
+      "disk": {
+        "files_and_directories": 2,
+        "bytes": 493,
+        "complete": true
+      },
+      "cpu_percent": 2.0185773957113478,
+      "elapsed": 45.00184712600003
+    }
+  ],
+  "candidate_targets": {
+    "cpu_percent_one_core": 1,
+    "rss_bytes": 268435456
+  },
+  "qualification": "Measured local fixture only; candidate targets are not claims of site qualification.",
+  "limitations": [
+    "CPU includes waited descendants; sampling can miss very short orphaned helpers.",
+    "Process tree capped at 64 processes/128 threads per process; incomplete flags prevent silent qualification.",
+    "PSS is Linux best-effort; IO counters omit work completed entirely between samples.",
+    "Idle mode pre-ages the actual idle timer at the first complete frame; no input is injected afterward.",
+    "No live Slurm, network latency, terminal emulator pixel latency or GPU job is represented.",
+    "An ordinary local /bin/sh PTY is opened only with --terminal-shell; latency publications are synthetic Store events."
+  ]
+}

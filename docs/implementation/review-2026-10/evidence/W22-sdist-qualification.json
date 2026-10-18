@@ -1,0 +1,29 @@
+{
+  "schema": "raven.sdist-regression/v1",
+  "before_revision": "bab48f682b189004832e14eaa86113dbb44dbafb",
+  "packaging_revision": "c89808b30a61d1c03deae7bd0b30742a0ba1a134",
+  "before": {
+    "path": "/workspace/raven-qualification-results/final/py3.12/dist/raven-7.0.0.tar.gz",
+    "sha256": "fcd3cf300df2397acc0960548ef54ad18ff6cbef85b3bfef6fc8c2372fc3316f",
+    "bytes": 4872084,
+    "required_members": {
+      "tests/fixtures/slurm/recorded/26.05.5/running-squeue-json.stdout.txt": false,
+      "scripts/slurm/versions.json": false,
+      "scripts/slurm/Dockerfile": false
+    }
+  },
+  "after": {
+    "path": "/workspace/raven-qualification-results/final/py3.10-packaging/dist/raven-7.0.0.tar.gz",
+    "sha256": "965ab1136197dbc8a65b92be56c6ba485623d1f253651293b1ececf265ca17f4",
+    "bytes": 6316127,
+    "required_members": {
+      "tests/fixtures/slurm/recorded/26.05.5/running-squeue-json.stdout.txt": true,
+      "scripts/slurm/versions.json": true,
+      "scripts/slurm/Dockerfile": true
+    }
+  },
+  "ci_change": "Extract the built source distribution using the data filter, verify local Raven imports, then run existing reader/qualification/identity tests against shipped inputs.",
+  "verification_log": "/workspace/raven-qualification-results/final/py3.10-packaging/sdist-fixtures.log",
+  "scope": "Manifest/CI/documentation only; runtime, tests and scripts are byte-identical to0d138fd. New patterns include recorded .txt/.log files, the Slurm build inputs, and raw implementation evidence formats.",
+  "review": "Independent packaging/security/CI review found no substantive issue; all added source scopes were regular files, no symlinks."
+}

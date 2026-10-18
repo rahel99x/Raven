@@ -1,0 +1,50 @@
+{
+  "revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "version": "slurm 26.05.5",
+  "accepted": 65,
+  "refused": [],
+  "evaluation": [
+    {
+      "origin": "recorded",
+      "model": "simple_cohort",
+      "eligible_attempts": 65,
+      "predictions": 25,
+      "prediction_coverage": 0.38461538461538464,
+      "mae_seconds": 0.3757994365692139,
+      "p95_absolute_error_seconds": 1.98872971534729,
+      "interval_coverage": 0.84,
+      "brier_score": 0.1411087058357448,
+      "log_score": 0.46585389283690365,
+      "interval_samples": 25,
+      "probability_samples": 25
+    },
+    {
+      "origin": "recorded",
+      "model": "current_predictor",
+      "eligible_attempts": 65,
+      "predictions": 25,
+      "prediction_coverage": 0.38461538461538464,
+      "mae_seconds": 0.36,
+      "p95_absolute_error_seconds": 2.0,
+      "interval_coverage": 0.84,
+      "brier_score": 0.1386996426154494,
+      "log_score": 0.4591499797950196,
+      "interval_samples": 25,
+      "probability_samples": 25
+    },
+    {
+      "origin": "recorded",
+      "model": "queue_residual",
+      "eligible_attempts": 65,
+      "predictions": 25,
+      "prediction_coverage": 0.38461538461538464,
+      "mae_seconds": 0.3757994365692139,
+      "p95_absolute_error_seconds": 1.98872971534729,
+      "interval_coverage": 0.84,
+      "brier_score": 0.1411087058357448,
+      "log_score": 0.46585389283690365,
+      "interval_samples": 25,
+      "probability_samples": 25
+    }
+  ]
+}

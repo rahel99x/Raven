@@ -1,0 +1,64 @@
+{
+  "analytics_prepare": {
+    "median_cpu_seconds": 0.003495453500000023,
+    "median_seconds": 0.0034944734999839966,
+    "p95_seconds": 0.0046088689999805865,
+    "python_peak_bytes": 227459,
+    "repetitions": 20
+  },
+  "archive_bytes": 759368,
+  "diff_prepare": {
+    "median_cpu_seconds": 0.004381363000000027,
+    "median_seconds": 0.004380492499933553,
+    "p95_seconds": 0.004677322000020467,
+    "python_peak_bytes": 335291,
+    "repetitions": 20
+  },
+  "encoded_snapshots_bytes": 752512,
+  "fixture": {
+    "frames_requested": 32,
+    "frames_retained": 32,
+    "jobs": 100,
+    "samples_per_frame": 200,
+    "sha256": "abb091b251608914be6be1328fb5d35d3c25b8ddc6afaff7a3f03bb9c342cd72"
+  },
+  "jobs_prepare": {
+    "median_cpu_seconds": 0.0018505764999999785,
+    "median_seconds": 0.0018499249999877065,
+    "p95_seconds": 0.002100616000006994,
+    "python_peak_bytes": 185685,
+    "repetitions": 20
+  },
+  "limits": "Single process fresh fixture; Python peaks are per operation, RSS is whole-process maximum. No scheduler/I/O commands; persistence bytes measured, no disk-throughput claim. This is a new capability, not an old/new speedup.",
+  "metadata_clone_on_ui": {
+    "median_cpu_seconds": 4.05600000000228e-06,
+    "median_seconds": 3.9659999515606614e-06,
+    "p95_seconds": 3.0006000088178553e-05,
+    "python_peak_bytes": 10832,
+    "repetitions": 20
+  },
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "process_max_rss_kib": 25764,
+  "python": "3.12.14",
+  "schema": "raven.historical-benchmark/v1",
+  "seek": {
+    "median_cpu_seconds": 0.0018715580000000231,
+    "median_seconds": 0.0018706514999280444,
+    "p95_seconds": 0.002582867000000988,
+    "python_peak_bytes": 186213,
+    "repetitions": 20
+  },
+  "snapshot_metadata_bytes": 6856,
+  "snapshot_prepare": {
+    "median_cpu_seconds": 0.001996037000000006,
+    "median_seconds": 0.001995315499982553,
+    "p95_seconds": 0.0022945289999825036,
+    "python_peak_bytes": 208938,
+    "repetitions": 20
+  },
+  "source_hashes": {
+    "charts.py": "2e379c9a02c703dede8ee3f2933d4e4dc7f72b797c085a5469695acfe4f9f2b7",
+    "historical_replay.py": "6d58d25908a99632e74c3cd93e50aefd77fafe4e73671d99154546345f8b1ede",
+    "historical_ui.py": "ebc6fa575f2100fb3fe80e1f88960a9845a25a863145798f8024b236e0b2e78c"
+  }
+}

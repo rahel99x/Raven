@@ -1,0 +1,59 @@
+{
+  "samples": 8192,
+  "repetitions": 8,
+  "storage": {
+    "jsonl": {
+      "median_ms": 19.7587975,
+      "p95_ms": 20.228396,
+      "cpu_seconds": 0.158640032,
+      "bytes": 504958
+    },
+    "simple_json_array_zlib": {
+      "median_ms": 19.629323,
+      "p95_ms": 19.857436,
+      "cpu_seconds": 0.157802706,
+      "bytes": 141057,
+      "framing_bytes_excluded": 1056
+    },
+    "production_blocks": {
+      "median_ms": 56.005905999999996,
+      "p95_ms": 58.539944,
+      "cpu_seconds": 0.45203868599999997,
+      "bytes": 141746
+    },
+    "fixed_numeric_array_zlib_prototype": {
+      "median_ms": 10.16216,
+      "p95_ms": 10.456289,
+      "cpu_seconds": 0.08198822100000003,
+      "bytes": 97846,
+      "limit": "Only the fixed three-number schema; fixture integers are exactly representable as binary64."
+    },
+    "xor_float_bits_zlib_prototype": {
+      "median_ms": 10.941911000000001,
+      "p95_ms": 11.376525,
+      "cpu_seconds": 0.09003121199999986,
+      "bytes": 74809,
+      "limit": "Fixed three-number schema only; general integer/metadata sidecars omitted, so this is not a general-format byte comparison."
+    }
+  },
+  "render": {
+    "build": {
+      "median_ms": 7.1689545,
+      "p95_ms": 7.43177,
+      "cpu_seconds": 0.058119355000000095
+    },
+    "scan_query": {
+      "median_ms": 6.085697,
+      "p95_ms": 7.953157,
+      "cpu_seconds": 0.054693563000000056
+    },
+    "indexed_query": {
+      "median_ms": 0.5695235000000001,
+      "p95_ms": 0.701027,
+      "cpu_seconds": 0.005101769000000145
+    },
+    "python_index_peak_bytes": 1428912,
+    "note": "Exact continuous envelope fixture. Build and query separated; UI signature/freezing cost is additional. Gaps and interpolation use existing renderer."
+  },
+  "process_peak_rss_kib": 25320
+}

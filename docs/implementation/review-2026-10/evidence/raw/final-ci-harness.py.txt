@@ -1,0 +1,168 @@
+"""Run retained final CI-equivalent checks one interpreter at a time."""
+from __future__ import annotations
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import runpy
+import shutil
+import signal
+import subprocess
+import tarfile
+import tempfile
+import time
+
+ROOT = Path('/workspace/Raven')
+BASE = Path('/workspace/raven-qualification-results/final')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version', required=True, choices=['3.10', '3.11', '3.12', '3.13', '3.14'])
+    parser.add_argument('--skip-tests', action='store_true')
+    parser.add_argument('--suffix', default='')
+    parser.add_argument('--workers', type=int, choices=[1, 2, 4], default=4)
+    parser.add_argument('--regression-only', action='store_true')
+    args = parser.parse_args()
+    if args.skip_tests and args.regression_only:
+        parser.error('--skip-tests and --regression-only are mutually exclusive')
+    name = 'py' + args.version + args.suffix
+    output = BASE / name
+    output.mkdir(parents=True, exist_ok=False)
+    python = ROOT / '.venv/bin/python' if args.version == '3.12' else Path('/workspace/raven-compat') / ('py' + args.version) / 'bin/python'
+    env = os.environ.copy()
+    env.pop('PYTHONPATH', None)
+    env.update(PYTHONHASHSEED='0', PYTHONDONTWRITEBYTECODE='1', PATH=str(python.parent) + ':/workspace/raven-tools/mpi-private-qualification/bin:' + env['PATH'])
+    profiling = runpy.run_path(str(ROOT / 'scripts/profile_test_suite.py'))
+    source_before = profiling['fingerprint']()
+    package_inputs = [ROOT / 'MANIFEST.in', ROOT / '.github/workflows/tests.yml']
+    package_before = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in package_inputs}
+    (output / 'sources.json').write_text(json.dumps(source_before, indent=2) + '\n')
+    report = {'schema': 'raven.final-ci-gates/v1', 'python': str(python), 'version': args.version,
+              'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+              'started': datetime.now(timezone.utc).isoformat(), 'checks': [], 'output': str(output)}
+    report.update(source_before=source_before['sha256'], packaging_inputs=package_before, environment_overrides={
+        'PYTHONHASHSEED': '0', 'PYTHONDONTWRITEBYTECODE': '1',
+        'PATH_prefix': str(python.parent) + ':/workspace/raven-tools/mpi-private-qualification/bin'},
+        interpreter=subprocess.check_output([python, '-c', 'import sys; print(sys.version)'], text=True).strip())
+    report_path = output / 'gates.json'
+
+    def save():
+        report_path.write_text(json.dumps(report, indent=2) + '\n')
+
+    def finish(dist=None):
+        source_after = profiling['fingerprint']()['sha256']
+        package_after = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in package_inputs}
+        report['packaging_inputs_stable'] = package_before == package_after
+        report.update(source_after=source_after, source_stable=source_before['sha256'] == source_after)
+        save()
+        if not report['source_stable'] or not report['packaging_inputs_stable']:
+            raise RuntimeError('Runtime/test/script/schema source changed during final gates')
+        report.update(ended=datetime.now(timezone.utc).isoformat(), passed=True,
+                      artifacts={} if dist is None else {
+                          path.name: {'bytes': path.stat().st_size, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+                          for path in sorted(dist.iterdir()) if path.is_file()})
+        save()
+        print(json.dumps({'complete': str(report_path), 'checks': len(report['checks'])}), flush=True)
+
+    def run(label, command, *, cwd=ROOT, run_env=None, timeout=1800):
+        command = [str(item) for item in command]
+        log = output / (label + '.log')
+        result = {'label': label, 'command': command, 'cwd': str(cwd), 'log': str(log),
+                  'started': datetime.now(timezone.utc).isoformat()}
+        report['checks'].append(result)
+        save()
+        print(json.dumps({'starting': label, 'command': command}), flush=True)
+        start = time.monotonic()
+        with log.open('xb') as stream:
+            child = subprocess.Popen(command, cwd=cwd, env=run_env or env, stdout=stream,
+                                     stderr=subprocess.STDOUT, start_new_session=True)
+            try:
+                code = child.wait(timeout=timeout)
+            except (subprocess.TimeoutExpired, KeyboardInterrupt):
+                if child.poll() is None:
+                    os.killpg(child.pid, signal.SIGKILL)
+                child.wait()
+                result.update(exit_code=child.returncode, interrupted=True)
+                save()
+                raise
+        result.update(exit_code=code, seconds=time.monotonic() - start,
+                      log_sha256=hashlib.sha256(log.read_bytes()).hexdigest())
+        save()
+        print(json.dumps({'finished': label, 'exit_code': code, 'seconds': result['seconds']}), flush=True)
+        if code:
+            raise RuntimeError(f'{label} failed; see {log}')
+        return log
+
+    if not args.skip_tests:
+        run('regression', [python, '-m', 'pytest', '-q', '-n', str(args.workers), '--hypothesis-seed=20261018', '--basetemp=/tmp/rv' + args.version.replace('.', ''),
+                           '--durations=20', '--junitxml=' + str(output / 'regression.xml')])
+        report['junit'] = profiling['junit'](output / 'regression.xml')
+        save()
+    if args.regression_only:
+        finish()
+        return
+    run('quality', [python, 'scripts/check_quality.py'])
+    run('operation-reference', [python, 'scripts/generate_operation_reference.py', '--check'])
+    run('capability-reference', [python, 'scripts/generate_capability_reference.py', '--check'])
+    run('schemas', [python, 'scripts/validate_operation_schemas.py'])
+    temporary = Path(tempfile.mkdtemp(prefix='rg' + args.version.replace('.', '') + '-'))
+    report['temporary_root'] = str(temporary)
+    save()
+    run('offline-setup', [python, 'scripts/setup.py', '--mode', 'demo', '--venv', temporary / 'setup', '--report', temporary / 'demo.txt'])
+    shutil.copyfile(temporary / 'demo.txt', output / 'demo.txt')
+    dist = output / 'dist'
+    run('build', [python, '-m', 'build', '--outdir', dist])
+    wheels = list(dist.glob('*.whl'))
+    sources = list(dist.glob('*.tar.gz'))
+    if len(wheels) != 1 or len(sources) != 1:
+        raise RuntimeError('Expected exactly one wheel and one sdist')
+    wheel, sdist = wheels[0], sources[0]
+    unpacked = temporary / 'sdist'
+    unpacked.mkdir()
+    with tarfile.open(sdist) as archive:
+        archive.extractall(unpacked, filter='data')
+    source, = unpacked.iterdir()
+    run('sdist-location', [python, '-c', 'import pathlib,raven; assert pathlib.Path(raven.__file__).resolve().is_relative_to(pathlib.Path.cwd())'], cwd=source)
+    run('sdist-fixtures', [python, '-m', 'pytest', '-q', 'tests/test_slurm_json.py',
+                          'tests/test_slurm_qualification.py', 'tests/test_completed_series_identity.py',
+                          '--basetemp=' + str(temporary / 'fixture-tests')], cwd=source)
+    installed = temporary / 'installed'
+    run('clean-venv', [python, '-m', 'venv', installed])
+    installed_python = installed / 'bin/python'
+    home = temporary / 'home'
+    home.mkdir(mode=0o700)
+    installed_env = {key: value for key, value in env.items() if not key.startswith('RAVEN_')}
+    installed_env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / 'config'), XDG_STATE_HOME=str(home / 'state'),
+                         XDG_CACHE_HOME=str(home / 'cache'), PATH=str(installed / 'bin') + ':' + env['PATH'])
+    run('install-wheel', [installed_python, '-m', 'pip', 'install', '--no-deps', wheel], cwd='/tmp', run_env=installed_env)
+    run('installed-location', [installed_python, '-c', 'import pathlib,raven,sys; p=pathlib.Path(raven.__file__).resolve(); print(p); assert p.is_relative_to(pathlib.Path(sys.prefix).resolve())'], cwd='/tmp', run_env=installed_env)
+    commands = [
+        ('doctor-fake', ['raven', '--doctor', '--fake']),
+        ('light-doctor', ['ravenl', '--site', 'desktop', 'doctor']),
+        ('heavy-plan', ['ravenh', '--site', 'desktop', '--plan']),
+        ('mcp-help', ['raven', 'mcp', '--help']),
+        ('light-mcp-help', ['ravenl', 'mcp', '--help']),
+        ('heavy-mcp-help', ['ravenh', 'mcp', '--help']),
+        ('qualify-offline', ['ravenl', 'qualify', '--offline']),
+        ('fake-report', ['raven', '--fake', '--no-state', '--no-plugins', '--report', str(temporary / 'wheel.txt')]),
+    ]
+    for label, argv in commands:
+        run(label, [installed / 'bin' / argv[0], *argv[1:]], cwd='/tmp', run_env=installed_env)
+    shutil.copyfile(temporary / 'wheel.txt', output / 'wheel.txt')
+    run('flagship', [python, 'scripts/qualify_flagship.py', '--wheel', wheel, '--output', temporary / 'flagship.json'])
+    shutil.copyfile(temporary / 'flagship.json', output / 'flagship.json')
+    run('install-terminal', [installed_python, '-m', 'pip', 'install', str(wheel) + '[terminal]'], cwd='/tmp', run_env=installed_env)
+    run('terminal-selftest', [installed / 'bin/raven', 'terminal', 'selftest', '--json'], cwd='/tmp', run_env=installed_env)
+    run('inventory-create', [python, 'scripts/release_inventory.py', 'create', '--output', dist / 'release-inventory.json',
+        '--spdx', dist / 'raven.spdx.json', '--checksums', dist / 'SHA256SUMS', '--source-commit', report['source_commit'], wheel, sdist])
+    run('inventory-verify', [python, 'scripts/release_inventory.py', 'verify', dist / 'release-inventory.json', wheel, sdist])
+    run('inventory-policy', [python, 'scripts/release_inventory.py', 'policy', dist / 'release-inventory.json',
+        '--expected-version', '7.0.0', '--expected-source', report['source_commit'], wheel, sdist])
+    finish(dist)
+
+
+if __name__ == '__main__':
+    main()

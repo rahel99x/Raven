@@ -1,0 +1,32 @@
+{
+  "command": [
+    "docker",
+    "--host=unix:///var/run/docker.sock",
+    "run",
+    "--rm",
+    "--name",
+    "raven-review-peer-qualification-ipc-final",
+    "--network",
+    "none",
+    "--entrypoint",
+    "/bin/sh",
+    "--mount",
+    "type=bind,src=/workspace/Raven,dst=/raven,readonly",
+    "raven-slurm-qualification:26.05.5",
+    "-c",
+    "mkdir -p /tmp/raven-peer-source/scripts && cp -R /raven/raven /tmp/raven-peer-source/raven && cp /raven/scripts/qualify_shared_peers.py /tmp/raven-peer-source/scripts/qualify_shared_peers.py && chmod -R a+rX /tmp/raven-peer-source && python3 /tmp/raven-peer-source/scripts/qualify_shared_peers.py"
+  ],
+  "started": "2026-10-18T02:05:28.617028+00:00",
+  "completed": "2026-10-18T02:05:35.149622+00:00",
+  "exit_code": 0,
+  "stderr": "Shared collector policy generation accepted: f76040c80ecb4b337e82bec7c01154de12e4d198f72b5fcb3bc99a98f912e7fc\nShared collector policy generation accepted: 820d0329a63a589b8df1fe77e58e73a72d29c205766bc4e332852bdc675a2dbf\nShared collector policy generation accepted: 05325574e37dbfb2ace2715de01b4ab3d69ffc7e0734d522afe3b77d23caf322\nShared collector policy generation accepted: 17066316dfc63e442ecc8a1b75d6413d476724cc7518a0a1c5e114c3d50f50d8\nShared collector policy generation accepted: 4aa2fba49cd3181d71a9b657b89c2830fb4d525f56d2db6f98c2d4e4bb62e5a8\n",
+  "source_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+  "source_hashes": {
+    "raven/session_service.py": "5ba7707290e03f3ffcaa4f066c829cde014d258200f10870cd252ee895b1b12e",
+    "raven/session_contract.py": "f8b6367fba25a220259d556cca423ab2a53279ef3f6df6f45d91fdb45fa09e58",
+    "raven/shared_host_service.py": "1046f5ae7a3438c12752b76b844e8df511b7998d431f44de77aca8f0526f4080",
+    "scripts/qualify_shared_peers.py": "6e92d0c354b03d1ac1d2da27988fee86597f4c3624591be29180082e2438e1be"
+  },
+  "image_id_observed_after_run": "sha256:0ad6e52a09d8041b3c68a4f19e4acce50fe6033ea92cfb7e87f36556fb8b52d6",
+  "image_identity_observed_at": "2026-10-18T02:09:24.791490+00:00"
+}

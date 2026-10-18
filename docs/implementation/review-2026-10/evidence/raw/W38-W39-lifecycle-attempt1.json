@@ -1,0 +1,1 @@
+{"exit_code":1,"phase":"before baseline measurement","finding":"Host omits /proc/PID/task/PID/children; fixture now enumerates /proc/*/stat PPIDs","product_defect":false,"owned_child_joined":true}

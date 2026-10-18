@@ -1,0 +1,10 @@
+{
+  "source": "/tmp/raven-review-baseline",
+  "fixture": "idle allocation manager, no backend, no scheduler commands",
+  "count": 30000,
+  "tick_median_us": 0.491,
+  "tick_p95_us": 0.561,
+  "loop_cpu_seconds": 0.024174952,
+  "python_peak_10000_ticks_bytes": 121,
+  "process_peak_rss_kib": 16072
+}

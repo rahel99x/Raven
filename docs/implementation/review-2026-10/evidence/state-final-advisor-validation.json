@@ -1,0 +1,23 @@
+{
+  "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_attempt_series.py tests/test_completed_series_identity.py tests/test_series_archive_concurrency.py tests/test_series_blocks.py tests/test_series_summary.py tests/test_series_retention.py tests/test_series_maintenance.py tests/test_series_settings.py tests/test_gpu_diagnostics.py tests/test_background_report.py tests/test_state_reliability.py tests/test_quick_advisor.py tests/test_forecast_integration.py tests/test_refresh_rate.py",
+  "passed": 482,
+  "seconds": 4.47,
+  "prior_focused": {
+    "passed": 262,
+    "seconds": 1.64,
+    "modules": [
+      "tests/test_quick_advisor.py",
+      "tests/test_series_blocks.py",
+      "tests/test_forecast_integration.py",
+      "tests/test_refresh_rate.py"
+    ]
+  },
+  "sha256": {
+    "raven/quick_advisor.py": "ccf5d345215038b167e9b6b8b66e25d483b697700f8dc0946f8ec7e1d7cb4c84",
+    "raven/series_blocks.py": "f4ab58d3d52e6bcee94970bc20bc2d795cf63908e830ebc4c86b717559b84fd5",
+    "tests/test_quick_advisor.py": "ab8fe2b010be657478de152dce6e2640f8821fd2e5a2e00fb6899c243a942ce7",
+    "tests/test_forecast_integration.py": "8127406b1f278073e1157127e32191697b44eeee06994c549f4685a64c54fe5b",
+    "tests/test_refresh_rate.py": "49a3b1f9fddb8fdd39ffc3c3a82881b0390062d2a1689bcb01603b33242ecbf8"
+  },
+  "scope": "Synthetic native samples and real local bounded file/background/lifecycle paths; no live scheduler/GPU efficacy claim."
+}

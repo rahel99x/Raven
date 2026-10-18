@@ -1,0 +1,97 @@
+"""Verify the completed local evidence bundle and index retained files."""
+from __future__ import annotations
+from collections import Counter
+import gzip
+import hashlib
+import json
+from pathlib import Path
+import runpy
+import subprocess
+
+ROOT = Path('/workspace/Raven')
+BASE = ROOT / 'docs/implementation/review-2026-10'
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def write(path, value):
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n')
+
+
+def main():
+    ledger = json.loads((BASE / 'coverage.json').read_text())
+    final = json.loads((BASE / 'evidence/final-qualification.json').read_text())
+    current = runpy.run_path(str(ROOT / 'scripts/profile_test_suite.py'))['fingerprint']()
+    assert current['sha256'] == final['source_fingerprint']
+    assert len(ledger['packages']) == 44
+    counts = Counter()
+    ids = set()
+    refs = set()
+    for package in ledger['packages']:
+        assert package['tested_revision'] == final['implementation_commit']
+        assert package['verification'] == 'local_integrated_gates_passed'
+        for req in package['requirements']:
+            assert req['id'] not in ids
+            ids.add(req['id'])
+            counts[req['state']] += 1
+            for ref in req['evidence']:
+                path = ref.partition('#')[0]
+                assert (BASE / path).is_file() or (ROOT / path).is_file(), ref
+                refs.add(ref)
+    assert len(ids) == 371
+    assert dict(counts) == ledger['dispositions']
+    assert not {'pending', 'in_progress'} & set(counts)
+    for source in ledger['source_manifest']:
+        data = (BASE / source['file']).read_bytes()
+        assert len(data) == source['bytes'] and digest(data) == source['sha256']
+    archive_count = 0
+    for records in final['archives'].values():
+        for record in records:
+            data = (BASE / 'evidence' / record['retained_path']).read_bytes()
+            assert digest(data) == record['retained_sha256']
+            original = gzip.decompress(data) if record['gzip'] else data
+            assert digest(original) == record['original_sha256']
+            assert len(original) == record['original_bytes']
+            archive_count += 1
+    unchanged_paths = ['raven', 'tests', 'scripts', 'pyproject.toml', 'docs/schemas',
+                       'MANIFEST.in', '.github/workflows']
+    diff = subprocess.check_output(['git', 'diff', '--name-only', final['implementation_commit'],
+                                    '--', *unchanged_paths], cwd=ROOT, text=True)
+    assert not diff, diff
+    commits = subprocess.check_output(['git', 'log', '--reverse', '--format=%H%x09%s',
+                                       ledger['baseline_revision'] + '..' + final['implementation_commit']],
+                                      cwd=ROOT, text=True)
+    review = json.loads((BASE / 'evidence/maintainer-review.json').read_text())
+    assert not any(item['state'] == 'pending' for item in review['reviews'])
+    audit = {'schema': 'raven.final-evidence-audit/v1', 'status': 'in_progress',
+             'implementation_commit': final['implementation_commit'],
+             'runtime_fingerprint': current['sha256'], 'runtime_packaging_ci_unchanged': True,
+             'packages': 44, 'clauses': 371, 'dispositions': dict(counts),
+             'external_gates': ledger['external_gates'], 'distinct_clause_citations': len(refs),
+             'verified_retained_gate_artifacts': archive_count,
+             'implementation_commits': [dict(zip(('commit', 'subject'), line.split('\t', 1))) for line in commits.splitlines()],
+             'limits': 'This is a local evidence and consistency audit, not a hosted CI run, signature, production deployment or human usability result.'}
+    write(BASE / 'evidence/final-audit.json', audit)
+    # The handback links both of these outputs. Create explicitly incomplete
+    # receipts before checking those links; publish final content only on success.
+    write(BASE / 'evidence-index.json', {'status': 'in_progress'})
+    audit['documentation'] = runpy.run_path(str(ROOT / 'scripts/qualify_flagship.py'))['documentation_check']()
+    audit['status'] = 'passed'
+    write(BASE / 'evidence/final-audit.json', audit)
+    entries = []
+    for path in sorted(BASE.rglob('*')):
+        if not path.is_file() or path.name == 'evidence-index.json' or '__pycache__' in path.parts:
+            continue
+        data = path.read_bytes()
+        entries.append({'path': str(path.relative_to(BASE)), 'bytes': len(data), 'sha256': digest(data)})
+    write(BASE / 'evidence-index.json', {'schema': 'raven.retained-evidence-index/v1',
+                                       'implementation_commit': final['implementation_commit'],
+                                       'scope': 'All retained review handoff files except this index itself; historical artifacts retain their original revision meaning.',
+                                       'files': entries})
+    print(json.dumps({'audit': audit, 'indexed_files': len(entries)}, indent=2))
+
+
+if __name__ == '__main__':
+    main()

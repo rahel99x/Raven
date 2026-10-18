@@ -1,0 +1,92 @@
+{
+  "schema": "raven.signing-cost/v1",
+  "started": "2026-10-18T01:24:21.277500+00:00",
+  "completed": "2026-10-18T01:24:24.283549+00:00",
+  "results": [
+    {
+      "mode": "unsigned",
+      "repetitions": 5,
+      "records": 1000,
+      "export_mean_ms": 152.25860740001735,
+      "export_p50_ms": 147.2070250001707,
+      "verify_mean_ms": null,
+      "cpu_seconds_including_verification_and_fidelity": 0.762333599,
+      "joined_child_cpu_seconds": 0.0,
+      "process_max_rss_kib": 23872,
+      "max_individual_child_rss_kib": 0,
+      "output_bytes": [
+        79610,
+        79610,
+        79610,
+        79610,
+        79610
+      ],
+      "data_artifacts_sha256": {
+        "raven-evidence.json": "14d366f18170f0eb7716fee7b0cd85f58751da9de5733ce40e74bfa29ab09a9e",
+        "ro-crate-metadata.json": "578bb0dd4d38bf605bfb214c2d8a93492b5be9b63a67a07836839d8bf287bbd3"
+      }
+    },
+    {
+      "mode": "legacy-identity",
+      "repetitions": 5,
+      "records": 1000,
+      "export_mean_ms": 190.62647199989442,
+      "export_p50_ms": 188.1601929999306,
+      "verify_mean_ms": 8.912306600086595,
+      "cpu_seconds_including_verification_and_fidelity": 0.850039541,
+      "joined_child_cpu_seconds": 0.15026,
+      "process_max_rss_kib": 24020,
+      "max_individual_child_rss_kib": 24020,
+      "output_bytes": [
+        81103,
+        81103,
+        81103,
+        81103,
+        81103
+      ],
+      "data_artifacts_sha256": {
+        "raven-evidence.json": "14d366f18170f0eb7716fee7b0cd85f58751da9de5733ce40e74bfa29ab09a9e",
+        "ro-crate-metadata.json": "578bb0dd4d38bf605bfb214c2d8a93492b5be9b63a67a07836839d8bf287bbd3"
+      }
+    },
+    {
+      "mode": "signed",
+      "repetitions": 5,
+      "records": 1000,
+      "export_mean_ms": 187.25324959996215,
+      "export_p50_ms": 181.31502699998236,
+      "verify_mean_ms": 9.53874380002162,
+      "cpu_seconds_including_verification_and_fidelity": 0.832290953,
+      "joined_child_cpu_seconds": 0.155802,
+      "process_max_rss_kib": 24004,
+      "max_individual_child_rss_kib": 24004,
+      "output_bytes": [
+        81103,
+        81103,
+        81103,
+        81103,
+        81103
+      ],
+      "data_artifacts_sha256": {
+        "raven-evidence.json": "14d366f18170f0eb7716fee7b0cd85f58751da9de5733ce40e74bfa29ab09a9e",
+        "ro-crate-metadata.json": "578bb0dd4d38bf605bfb214c2d8a93492b5be9b63a67a07836839d8bf287bbd3"
+      }
+    }
+  ],
+  "source_hashes": {
+    "scripts/benchmark_signed_evidence.py": "63d1870addc1ab1cfbd4465aeb2b13cd0eb71330d513d5a050c7ce9e2f743a97",
+    "raven/evidence_signing.py": "c8ddae2635fdf7abc8f3b1435032a03e893288f8138e263f00b7c95baa69a7ed",
+    "raven/evidence_verify.py": "b985df51e447d50dc8d8b90a91125b47380e3d73fc790675563ec3dae4151051",
+    "raven/ops_platform.py": "cd0415685d13bee3b5c6e8c920ba479504d1366cd774aa7fd1698be92eff5f77",
+    "raven/evidence.py": "c1acb8f359eb1fa06562343887785be19430b72ab13e47262d7ee087cf8c0532",
+    "raven/evidence_formats.py": "a9ac7701cd851493fb619862ff75cd9877da05157431929f12358af265e07bee",
+    "raven/science_files.py": "e02bdd3e5ec96f5ee707238252ea062e28abef4f822b1fb5efe40847fd20d42d"
+  },
+  "limits": [
+    "Current-code unsigned and signed comparison; legacy mode changes only the identity helper, not a historical source checkout",
+    "Synthetic 1000-metric fixture and generated test key; no live scheduler, GPU or remote key service",
+    "One sequential run; no universal overhead or statistically significant helper speed claim",
+    "OS process/individual child high-water RSS, not Python allocation or simultaneous process-tree memory",
+    "Imports/fixture/key generation excluded from export time; parent RSS includes imports, child CPU includes verification"
+  ]
+}

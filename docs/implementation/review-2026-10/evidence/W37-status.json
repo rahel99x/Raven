@@ -1,0 +1,139 @@
+{
+  "package": "W37",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "evidence_file": "evidence/W37.md",
+  "requirements": [
+    {
+      "id": "W37-R01",
+      "state": "implemented",
+      "conclusion": "Source B-10 reconciled against existing diagnostic runner; scoped experimental extension, no second submission engine.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    },
+    {
+      "id": "W37-R02",
+      "state": "implemented",
+      "conclusion": "Complete read-only planning/analysis, seeded full or block randomization, compatible factors, repeated controls, explicit resource budgets and reviewed existing execution path.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    },
+    {
+      "id": "W37-R03",
+      "state": "implemented",
+      "conclusion": "Actual local controlled Python and three-rank OpenMPI fixtures each completed16 trials with retained observations/source hashes.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    },
+    {
+      "id": "W37-R04",
+      "state": "implemented",
+      "conclusion": "Exact recipe sequence/arguments/intent/receipt identities, duplicate detection, committed declaration reconciliation and cumulative bounds; actual cancellation/new-workspace recovery test. Unsupported controls visibly excluded.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    },
+    {
+      "id": "W37-R05",
+      "state": "implemented",
+      "conclusion": "Bitwise hashes, scalar tolerance and semantic labels are independent checks; unsupported/semantic-mismatched controls cannot define reference hashes.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    },
+    {
+      "id": "W37-R06",
+      "state": "implemented",
+      "conclusion": "Main/pair interactions and block effects with QR rank/conditioning/residual checks, uncertainty assumptions and abstention; no causal percentages.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    },
+    {
+      "id": "W37-R07",
+      "state": "implemented",
+      "conclusion": "Known injected effects recovered;20 held-out synthetic designs retain interval coverage/error results, unexplained residual causes explicit.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    },
+    {
+      "id": "W37-R08",
+      "state": "implemented",
+      "conclusion": "No background execution: plans execute nothing; existing diagnostic launch requires review with explicit local or Slurm resources/account. Local qualification stayed within declared budgets; no Slurm jobs submitted.",
+      "evidence": [
+        "evidence/W37.md",
+        "evidence/W37-evaluation.json",
+        "evidence/raw/W37-performance.json",
+        "evidence/raw/W37-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "qualification_limits": "Experimental local/synthetic evidence; no live Slurm/GPU/BLAS/site efficacy claim. Local memory uses inherited per-process RLIMIT_AS, not aggregate process-tree RSS enforcement. Final integrated revision checks remain root-owned."
+    }
+  ],
+  "focused_validation": {
+    "command": ".venv/bin/python -m pytest -q tests/test_experiment_design.py tests/test_diagnostic_trials.py",
+    "result": "59 passed in15.80s after inherited resource-limit repair",
+    "production_sha256": "d5d50f72a57dbed199d50fb164928e093c17a3c52d5021aa5762177f7249bd74"
+  },
+  "actual_validation": {
+    "command": ".venv/bin/python scripts/evaluate_experiment_design.py --mpi-prefix /tmp/raven-openmpi-dev --output OUTPUT.json",
+    "python_trials": 16,
+    "mpi_trials": 16,
+    "heldout_synthetic_designs": 20,
+    "source_matches_current": true
+  },
+  "focused_history": {
+    "candidate_revision": "working tree; exact source hashes in W37-evaluation.json and controlled benchmark artifact"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

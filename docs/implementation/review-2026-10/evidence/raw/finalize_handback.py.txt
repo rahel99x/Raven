@@ -1,0 +1,110 @@
+"""Publish completed local gate outcomes in the review handback."""
+import json
+from pathlib import Path
+import shutil
+
+BASE = Path('/workspace/Raven/docs/implementation/review-2026-10')
+EVIDENCE = BASE / 'evidence'
+final = json.loads((EVIDENCE / 'final-qualification.json').read_text())
+implementation = final['implementation_commit']
+assert implementation == 'e3c7183286fccdda68660b5541ec2e8c6d2c7750'
+p = BASE / 'README.md'
+text = p.read_text()
+start = text.index('The implementation snapshot')
+end = text.index('\n## Scope, sequence, and provenance', start)
+text = text[:start] + f'''The reviewed implementation revision is `{implementation}`. Its application
+runtime is unchanged from `0d138fd`; subsequent commits corrected source-archive
+contents and two test-isolation assumptions. The complete Python 3.10–3.14
+matrix and all packaging gates passed locally on the reviewed revision.
+The ledger records **312 implemented, 35 already satisfied, 16 adjusted with
+evidence, and 8 externally blocked clauses**. No internal implementation or local
+validation gate remains pending. Experimental milestones retain their limits;
+the eight external acceptance gates are listed below.
+
+The final documentation/evidence commits preserve the qualified runtime, tests,
+scripts, schemas, package metadata and CI configuration. This work has not been
+pushed, published or merged. Local results do not imply a hosted CI run.
+''' + text[end:]
+start = text.index('**Pending final integration sign-off:**')
+end = text.index('\n## Measured benefits and costs', start)
+rows = '\n'.join(f"| {row['version']} | {row['counts']['passed']:,} | {row['counts']['skipped']} | {row['packaging_checks']} passed |"
+                 for row in final['matrix'])
+text = text[:start] + '''The [final integrated qualification](evidence/final-qualification.json) records
+the corrected revision separately:
+
+| Python | Passed | Skipped | Packaging and installed-command gates |
+| --- | ---: | ---: | --- |
+''' + rows + '''
+
+Every final full regression has zero failures/errors and the same recorded
+runtime/test/script/schema fingerprint. Optional tool/dependency skips are listed
+individually; the separate actual MPI qualification covers its conditional tests.
+The final Python 3.13/3.14 and 3.10/3.11 runs used two interpreters concurrently,
+two workers each; Python 3.12 used four workers. These are functional qualification
+runs, not replacements for the controlled serial/parallel comparison above.
+
+All five interpreters passed quality-boundary checks, generated references,
+78 schemas and 41 published examples, all 48 offline setup view cases, wheel and
+source builds, extracted-source fixture tests, optional-free installed commands,
+the terminal extra, flagship CLI/documentation/PTY checks, and release-content
+inventory verification. Build/install gates ran sequentially. CI contains the
+corresponding checks, including extracted-source testing; hosted execution remains
+unclaimed. The experimental full/core/lab installation qualification is retained
+separately under W42.
+
+The original Python 3.10 API failure, Python 3.13 watch-timeout failure and
+Python 3.14 shared-directory fixture failure remain in the archived evidence.
+Their corrections preserve behavioral assertions and retain independent reviews.
+The [maintainer review](evidence/maintainer-review.json),
+[final consistency audit](evidence/final-audit.json), and
+[artifact index](evidence-index.json) provide the final cross-checks.
+''' + text[end:]
+text = text.replace('only a reviewed local checkout or its exact qualified wheel. Final packaging\nqualification remains pending as stated above.',
+                    'only a reviewed local checkout or its exact qualified wheel. Wheel and source\narchive qualification passed as recorded above; pulling remote `main` alone\ndoes not obtain these unpublished changes.')
+p.write_text(text)
+
+p = EVIDENCE / 'maintainer-review.json'
+review = json.loads(p.read_text())
+review['implementation_revision'] = implementation
+for item in review['reviews']:
+    if item['id'] == 'MR-FINAL-01':
+        item['state'] = 'verified'
+        item['conclusion'] = 'All supported Python3.10–3.14 full regressions and25 packaging/installed/schema/reference/quality gates per interpreter passed on e3c7183 with unchanged source fingerprints. Historical failures and corrected fixtures remain retained. Eight external clauses and experimental/platform limits remain explicit; no hosted CI or publication is claimed.'
+p.write_text(json.dumps(review, indent=2) + '\n')
+
+p = BASE / 'progress.md'
+p.write_text(p.read_text() + f'''
+
+## Final local qualification and handback
+
+Application runtime `0d138fd` remains unchanged. Metadata-only `c89808b`
+restored omitted source-archive Slurm fixtures/build inputs and added extracted
+archive checks. The Python3.13 full run then exposed a fixed-startup-timeout race
+in an existing watch test; `6017669` separates bounded readiness from repeated
+output and strengthens deterministic cadence assertions. A paired Python3.14 run
+exposed a cleanup assertion against the shared per-user SSH root; `e3c7183`
+isolates that fixture without changing real preparation or its assertions.
+Both corrections received focused checks on all five versions and independent
+review. Earlier failures and source-bound passes remain historical evidence.
+
+All final Python3.10–3.14 full regressions and all25 non-regression gates per
+interpreter passed on `{implementation}`. No runtime/test/script/schema changes
+occurred during the runs. The full/core/lab comparison, actual60s service lifecycle
+measurements, final actual SSH/two-UID checks and campaign-cost refresh also
+completed; their original source bindings and negative results remain explicit.
+
+The final ledger accounts for all44 packages and371 exact clauses:312 implemented,
+35 already satisfied,16 adjusted with evidence,8 externally blocked. The internal
+W22 packaging/matrix gate is closed. The remaining gates require hosted provenance,
+graphical-terminal observations, independent scientific labels, administrator
+deployment participation, or consenting human workflow evidence and subsequent
+workflow-led core decomposition. macOS persistent state remains unsupported in
+this revision and is documented separately. No push, PR, release or merge was
+performed. The final handback, raw gate receipts and artifact index are review-ready.
+''')
+
+for name in ['collect_final_evidence.py', 'finalize_ledger.py', 'finalize_handback.py',
+             'final_audit.py', 'run_final_matrix.py']:
+    shutil.copyfile(Path('/workspace/raven-qualification-results') / name,
+                    EVIDENCE / 'raw' / (name + '.txt'))
+print('Handback and final review conclusions updated')

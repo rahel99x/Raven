@@ -1,0 +1,28 @@
+{
+  "base_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "working_tree": true,
+  "command": ".venv/bin/python -m pytest -q tests/test_slurm_parser_safety.py tests/test_finished_log_backend.py tests/test_slurm_json.py tests/test_raven_collection.py tests/test_checkpoint_advisor.py tests/test_slurm_simulator.py tests/test_forecast_scenarios.py tests/test_forecast.py tests/test_campaign_policy.py tests/test_ops_campaigns.py tests/test_execution_ui.py tests/test_orchestrator.py tests/test_raven_execution.py tests/test_setup_content.py tests/test_planning_commands.py tests/test_planning_empty.py tests/test_planning_integration.py tests/test_launch_settings.py tests/test_launch_wizard.py tests/test_automated_launch_planning.py tests/test_command_registry.py",
+  "result": "945 passed in 29.70s",
+  "source_sha256": {
+    "raven/slurm.py": "423e2f69e0d14a5094632c62f40d0c3fb41a2feb4ce9c67bf896935e712cecc4",
+    "raven/slurm_json.py": "684e4ba0c7747fd2e67cca58aa6d3f680e8fc630f258fc08ac8e5b861e79f7ae",
+    "raven/sampler.py": "6cbd3f681d002d0ad58d976c0a386af8f7e4be2f8fd61af32d1dd0758fc7ee8a",
+    "raven/checkpoint_advisor.py": "59bf67e36edc1c57d1824732d679230bb6f2da58410fa6cb2d60102efd7e909b",
+    "raven/slurm_simulator.py": "509113dc9b9891feb1f274b46e932106fcf584bc714bf49243e48f82e1cc2c53",
+    "raven/ops_queue_models.py": "8e01ed318db96c44746237b28b86335cdcd41ee45f9e4012189646ceb2fc0889",
+    "raven/forecast.py": "eae5cd11ae1a0d3355f4739f8e6055afae84cdb43c18df0b2810752ff9984a68",
+    "raven/forecast_scenarios.py": "22101279e79925d232015df8c73f84a0c4f809eaf5c69cdd99547ab1bb565d31",
+    "raven/campaign_policy.py": "3ddd754a6fe58ea373e420e3b0c657c71e175f4dd44ede2bf6fcad5d1e9f79a9",
+    "raven/ops_campaign_policy.py": "f592ac5840129676339d081e53ccfe4a1e98c8b116d130a9328166099da53b41",
+    "raven/planning.py": "370ddc2aea15f2836b4d3e9b810265c7126edd174bae3b5692de29244b9d1c62",
+    "raven/planning_views.py": "3a1c52a6551e7cd851cb0471adda2c850ceffacc9f87cae8112d0ea4d4059299",
+    "raven/execution_ui.py": "374c6aacf0ed2ebcb3e6f292393f7c6a763b39208c54b7402be1966f7fca036d",
+    "raven/operations.py": "d4a0892e10ca0ace64b32cae2ca889cb12e5cb406219ac88e434c8222746333c",
+    "raven/raven_execution.py": "97a42d47745ea95404f4c751e13c2a606c591322ba62c56317410f30aa537f0a",
+    "raven/setup_content.py": "d109c0aba99446fd9b08ab382e6982f2c7fc8b95a015371479811cdfb1383092"
+  },
+  "qualification_limits": [
+    "Focused regression; final integrated release revision and full CI are recorded by the parent ledger.",
+    "No production cluster or physical GPU claim."
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "channel": "terminal_service",
+  "fixture": "common",
+  "source": "/workspace/Raven",
+  "frames_per_iteration": 32,
+  "source_sha256": {
+    "raven/terminal_service.py": "3c31167d662474df9dc9509cc3436f10038ef42ca52b71aaf129842c99e992e8",
+    "raven/framing.py": "6b8b6ab21124ab91083240b8e3b701688c153f5a3f2f768da4815e71c0aea0a2",
+    "raven/transport/framing.py": "94dd9b29da980d79642501521ddcf1fbbce61f74be14172ff6c04d420293f7b7"
+  },
+  "wire_bytes_per_iteration": 24470,
+  "iterations": 150,
+  "repeats": 3,
+  "wall_seconds": [
+    0.21802750100323465,
+    0.21645821800484555,
+    0.21724955399986356
+  ],
+  "cpu_seconds": [
+    0.21788538500000001,
+    0.21631428599999997,
+    0.21722076599999995
+  ],
+  "verified_source_import_seconds": 0.020388357996125706,
+  "frames_per_second_median": 22094.40669324925,
+  "python_peak_allocated_bytes": 278924,
+  "process_peak_rss_kib": 17536,
+  "block_reads": 0,
+  "block_writes": 0,
+  "limits": "In-memory transport fixture; no scheduler, GPU, SSH or end-user terminal latency measurement"
+}

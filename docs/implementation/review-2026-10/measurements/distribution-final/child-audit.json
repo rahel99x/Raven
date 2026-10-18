@@ -1,0 +1,13 @@
+{
+  "schema": "raven.distribution-process-audit/v1",
+  "observed_utc": "2026-10-18T02:00:51.608004+00:00",
+  "roots": [
+    "/workspace/raven-qualification-results/w42-controlled-final-1/",
+    "/workspace/raven-distribution-final-3/"
+  ],
+  "scope": "Live processes whose argument tokens start with this qualification private environment/artifact roots; not unrelated root tests/services. Probe and local/Heavy children execute the private interpreter. Completed driver/probe commands exited zero.",
+  "matching_processes": [],
+  "unreadable_process_ids": [],
+  "status": "passed",
+  "not_a_claim": "No process-tree CPU sum or no-zombies-on-host claim; normal-success audit, not timeout qualification."
+}

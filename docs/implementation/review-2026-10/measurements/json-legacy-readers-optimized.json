@@ -1,0 +1,79 @@
+{
+  "scope": "500 copies of a real recorded pending job with unique IDs; same stable facts; no scheduler/network IO",
+  "memory": "tracemalloc peak and independent process peak RSS; fixture setup included only in RSS",
+  "samples": [
+    {
+      "mode": "legacy",
+      "cpu_ms_500_rows": [
+        2.9738300000000106,
+        3.317903000000011,
+        3.2845719999999856,
+        3.566683000000015,
+        3.0981449999999966,
+        2.9454279999999997,
+        2.9485929999999994
+      ],
+      "median_cpu_ms": 3.0981449999999966,
+      "peak_python_bytes": 769620,
+      "peak_process_rss_kib": 25088,
+      "fixture_bytes": 111391,
+      "records": 500
+    },
+    {
+      "mode": "json",
+      "cpu_ms_500_rows": [
+        86.50481900000001,
+        82.56228599999993,
+        82.38388900000004,
+        90.2754859999999,
+        86.97881499999993,
+        83.54550100000002,
+        95.65706199999991
+      ],
+      "median_cpu_ms": 86.50481900000001,
+      "peak_python_bytes": 8400401,
+      "peak_process_rss_kib": 44312,
+      "fixture_bytes": 2901426,
+      "records": 500
+    },
+    {
+      "mode": "json",
+      "cpu_ms_500_rows": [
+        90.25171100000001,
+        81.49742999999998,
+        86.631507,
+        92.81502799999997,
+        87.332062,
+        91.228847,
+        92.79491800000005
+      ],
+      "median_cpu_ms": 90.25171100000001,
+      "peak_python_bytes": 8401351,
+      "peak_process_rss_kib": 44276,
+      "fixture_bytes": 2901426,
+      "records": 500
+    },
+    {
+      "mode": "legacy",
+      "cpu_ms_500_rows": [
+        3.0293629999999796,
+        3.604858999999988,
+        3.0812699999999973,
+        2.797757000000012,
+        2.986588999999984,
+        2.8441160000000076,
+        3.452112999999979
+      ],
+      "median_cpu_ms": 3.0293629999999796,
+      "peak_python_bytes": 769620,
+      "peak_process_rss_kib": 25216,
+      "fixture_bytes": 111391,
+      "records": 500
+    }
+  ],
+  "source_sha256": {
+    "raven/slurm.py": "e68232841d6918767b96f3c27a0f99a1609cddc545743e15c18b0ee0929407fd",
+    "raven/slurm_json.py": "684e4ba0c7747fd2e67cca58aa6d3f680e8fc630f258fc08ac8e5b861e79f7ae",
+    "scripts/benchmark_slurm_readers.py": "52a182eee7639a27a98328c0514c4f532247e0c913ce2818af0bd99fa19ba6c9"
+  }
+}

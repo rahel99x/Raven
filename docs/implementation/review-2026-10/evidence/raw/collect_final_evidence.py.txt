@@ -1,0 +1,100 @@
+"""Retain completed local gates with lossless logs and exact source bindings."""
+from __future__ import annotations
+import gzip
+import hashlib
+import json
+from pathlib import Path
+import runpy
+import shutil
+import subprocess
+import xml.etree.ElementTree as ET
+
+ROOT = Path('/workspace/Raven')
+BASE = Path('/workspace/raven-qualification-results/final')
+DEST = ROOT / 'docs/implementation/review-2026-10/evidence'
+SELECTION = {version: ('py' + version + '-r4', 'py' + version + '-r4-packaging')
+             for version in ['3.10', '3.11', '3.12', '3.13', '3.14']}
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def retain(name):
+    source = BASE / name
+    target = DEST / 'raw/final-ci' / name
+    target.mkdir(parents=True, exist_ok=True)
+    records = []
+    for path in sorted(source.rglob('*')):
+        if not path.is_file() or path.suffix == '.whl' or path.name.endswith('.tar.gz'):
+            continue
+        relative = path.relative_to(source)
+        data = path.read_bytes()
+        output = target / relative
+        output.parent.mkdir(parents=True, exist_ok=True)
+        compressed = path.suffix in {'.xml', '.log', '.txt'}
+        if compressed:
+            output = output.with_name(output.name + '.gz')
+            output.write_bytes(gzip.compress(data, compresslevel=9, mtime=0))
+            assert gzip.decompress(output.read_bytes()) == data
+        else:
+            output.write_bytes(data)
+        records.append({'original_relative_path': str(relative),
+                        'retained_path': str(output.relative_to(DEST)),
+                        'original_bytes': len(data), 'original_sha256': digest(data),
+                        'retained_sha256': digest(output.read_bytes()), 'gzip': compressed})
+    return records
+
+
+def main():
+    rows = []
+    for version, (regression_name, package_name) in SELECTION.items():
+        regression = json.loads((BASE / regression_name / 'gates.json').read_text())
+        package = json.loads((BASE / package_name / 'gates.json').read_text())
+        assert regression['version'] == package['version'] == version
+        assert regression['passed'] and package['passed']
+        assert all(check['exit_code'] == 0 for gate in (regression, package) for check in gate['checks'])
+        assert regression['source_stable'] and package['source_stable']
+        assert package['packaging_inputs_stable']
+        assert regression['source_after'] == package['source_after']
+        cases = ET.parse(BASE / regression_name / 'regression.xml').findall('.//testcase')
+        skipped = [case for case in cases if case.find('skipped') is not None]
+        assert all(case.find('failure') is None and case.find('error') is None for case in cases)
+        counts = {'cases': len(cases), 'passed': len(cases)-len(skipped), 'skipped': len(skipped)}
+        rows.append({'version': version, 'regression_source_commit': regression['source_commit'],
+                     'packaging_source_commit': package['source_commit'],
+                     'source_fingerprint': package['source_after'], 'counts': counts,
+                     'regression': f'raw/final-ci/{regression_name}/gates.json',
+                     'packaging': f'raw/final-ci/{package_name}/gates.json',
+                     'regression_seconds': next(check['seconds'] for check in regression['checks'] if check['label']=='regression'),
+                     'packaging_checks': len(package['checks'])-int(any(check['label']=='regression' for check in package['checks'])),
+                     'skips': [{'class': case.get('classname'), 'name': case.get('name'),
+                                'reason': case.find('skipped').get('message')} for case in skipped]})
+    assert len({row['source_fingerprint'] for row in rows}) == 1
+    current = runpy.run_path(str(ROOT / 'scripts/profile_test_suite.py'))['fingerprint']()
+    assert current['sha256'] == rows[0]['source_fingerprint']
+    archives = {}
+    names = sorted({name for pair in SELECTION.values() for name in pair} | {'py3.10', 'py3.10-r2', 'py3.10-packaging', 'py3.11', 'py3.12', 'py3.12-r2', 'py3.13', 'py3.13-r3', 'py3.14-r3'})
+    for name in names:
+        archives[name] = retain(name)
+    harness = Path('/workspace/raven-qualification-results/final_gates.py')
+    retained_harness = DEST / 'raw/final-ci-harness.py.txt'
+    shutil.copyfile(harness, retained_harness)
+    report = {'schema': 'raven.final-integration/v1',
+              'implementation_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
+              'runtime_commit': '0d138fdacbcfb2d58c3d77a0494d439c7d2204e8',
+              'source_fingerprint': rows[0]['source_fingerprint'],
+              'matrix': rows, 'archives': archives,
+              'harness': {'path': str(retained_harness.relative_to(DEST)), 'sha256': digest(retained_harness.read_bytes()),
+                          'scope': 'Final harness revision including source-archive checks. Historical earlier gate reports retain their exact original command sets; this is not their original harness snapshot.'},
+              'limits': ['Local CI-equivalent execution; no hosted run, tag, release, PR or merge is claimed.',
+                         'All final full regressions and packaging gates binde3c7183. Runtime remains byte-identical to0d138fd; metadata was corrected inc89808b and two watch fixtures were improved in6017669 and SSH fixture isolation ine3c7183.',
+                         'Earlier bab48f6 serial/parallel measurements, the failed Python3.10 math.exp2 attempt and the Python3.13 fixed-startup-timeout failure and Python3.14 shared-SSH-test-directory failure remain historical, not final passes. The final two-worker pairs were functional regression runs, not controlled performance comparisons.',
+                         'Optional dependency and tool skips are listed individually. Actual explicit MPI qualification is retained separately.',
+                         'Wheel/sdist binaries remain in the recorded workspace output paths; repository receipts retain their inventories, sizes and hashes.']}
+    (DEST / 'final-qualification.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps({'matrix': [{key: row[key] for key in ('version','counts','packaging_checks')} for row in rows]}, indent=2))
+
+
+if __name__ == '__main__':
+    main()

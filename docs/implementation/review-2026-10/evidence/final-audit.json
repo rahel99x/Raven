@@ -1,0 +1,71 @@
+{
+  "schema": "raven.final-evidence-audit/v1",
+  "status": "passed",
+  "implementation_commit": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "runtime_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+  "runtime_packaging_ci_unchanged": true,
+  "packages": 44,
+  "clauses": 371,
+  "dispositions": {
+    "already_satisfied": 35,
+    "implemented": 312,
+    "adjusted": 16,
+    "blocked": 8
+  },
+  "external_gates": [
+    "W09-R04",
+    "W19-R06",
+    "W32-R09",
+    "W39-R09",
+    "W42-R02",
+    "W44-R03",
+    "W44-R06",
+    "W44-R08"
+  ],
+  "distinct_clause_citations": 123,
+  "verified_retained_gate_artifacts": 366,
+  "implementation_commits": [
+    {
+      "commit": "36b1ca99d556d29787d54bd4c0b80f262d8d3d90",
+      "subject": "docs: preserve accepted review sources and implementation scope"
+    },
+    {
+      "commit": "431fba831ebb93b0ec864d1843c0bc4179a6058d",
+      "subject": "feat: add bounded trust, ownership, transport and recording foundations"
+    },
+    {
+      "commit": "d26bc7dd684663f548b448d5f1d6f41c8b0462f1",
+      "subject": "feat: add bounded evidence analyses and research experiment paths"
+    },
+    {
+      "commit": "28b7f986737d84c72f701c5b55bcddfe8aab2ebd",
+      "subject": "feat: add optional session, shared-host, signing, WASI and MCP services"
+    },
+    {
+      "commit": "bab48f682b189004832e14eaa86113dbb44dbafb",
+      "subject": "feat: integrate reviewed workflows, compatibility fixes and qualification gates"
+    },
+    {
+      "commit": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+      "subject": "Fix Python 3.10 decay and bounded session exchanges"
+    },
+    {
+      "commit": "c89808b30a61d1c03deae7bd0b30742a0ba1a134",
+      "subject": "Ship qualification fixtures and verify extracted source archives"
+    },
+    {
+      "commit": "601766930b16af58a7590fa96a3e2d96c59a527a",
+      "subject": "test: separate watch readiness from repaint cadence"
+    },
+    {
+      "commit": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+      "subject": "test: isolate SSH wrapper cleanup from concurrent clients"
+    }
+  ],
+  "limits": "This is a local evidence and consistency audit, not a hosted CI run, signature, production deployment or human usability result.",
+  "documentation": {
+    "documents": 162,
+    "local_links": 1606,
+    "external_urls": "not tested"
+  }
+}

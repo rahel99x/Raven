@@ -1,0 +1,221 @@
+{
+  "package": "W39",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "requirements": [
+    {
+      "id": "W39-R01",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        "Design and authority: baseline source A-10 reconciled"
+      ]
+    },
+    {
+      "id": "W39-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        "Design and authority: optional read-only service reuses W38 and governed collection"
+      ]
+    },
+    {
+      "id": "W39-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/raw/W39-actual-peers.json",
+        "evidence/raw/W39-project-peer-run.json",
+        "evidence/raw/W39-actual-peers-ipc-final-run.json",
+        "evidence/raw/W39-actual-peers-ipc-final.json",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        {
+          "paths": [
+            "evidence/raw/W39-actual-peers.json",
+            "evidence/raw/W39-project-peer-run.json"
+          ],
+          "note": "final real two-UID project isolation, membership revocation and idle-flood fairness; exact source hashes"
+        },
+        "Design and authority / Verification: real kernel peer UID and independent grants",
+        "Project authorization correction: protected project IDs, exact native attempt membership, independent per-principal projects grants, visible UI scope and negative identity tests",
+        "real two-UID qualification on corrected0d138fd inherited dispatch"
+      ]
+    },
+    {
+      "id": "W39-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W39.md",
+        "tests/test_shared_host_service.py",
+        "evidence/raw/W39-actual-peers.json",
+        "evidence/raw/W39-project-peer-run.json",
+        "evidence/raw/W39-actual-peers-ipc-final-run.json",
+        "evidence/raw/W39-actual-peers-ipc-final.json",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        {
+          "paths": [
+            "evidence/raw/W39-actual-peers.json",
+            "evidence/raw/W39-project-peer-run.json"
+          ],
+          "note": "final real two-UID project isolation, membership revocation and idle-flood fairness; exact source hashes"
+        },
+        "Design and authority: filter before serialization; UID/grant/generation cache identity",
+        "membership changes invalidate cached and queued responses before bytes leave the service",
+        "real two-UID qualification on corrected0d138fd inherited dispatch"
+      ]
+    },
+    {
+      "id": "W39-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/raw/W39-actual-peers.json",
+        "evidence/raw/W39-project-peer-run.json",
+        "evidence/raw/W39-actual-peers-ipc-final-run.json",
+        "evidence/raw/W39-actual-peers-ipc-final.json",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        {
+          "paths": [
+            "evidence/raw/W39-actual-peers.json",
+            "evidence/raw/W39-project-peer-run.json"
+          ],
+          "note": "final real two-UID project isolation, membership revocation and idle-flood fairness; exact source hashes"
+        },
+        "Bounds, recovery and diagnostics / Verification: actual two-UID fixture plus unprivileged bounds/revocation tests",
+        "real two-UID qualification on corrected0d138fd inherited dispatch",
+        "Sustained source and policy lifecycle:60s real same-UID socket fixture,576 private publications,20 policy cycles, exact projections and cursor-preserving authority reconnection; CPU/RSS/fd/thread/I/O plateau and cleanup"
+      ]
+    },
+    {
+      "id": "W39-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        "Design and authority: no file, shell or mutation API"
+      ]
+    },
+    {
+      "id": "W39-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/raw/W39-W40-cost.json",
+        "evidence/raw/W39-W40-window.json",
+        "evidence/raw/W39-W40-cost-final-projects.json",
+        "evidence/raw/W39-W40-cost-optimized.json",
+        "evidence/raw/W39-W21-final-controlled-window.json",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Offline controlled fixture; no production efficacy or general security claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        {
+          "paths": [
+            "evidence/raw/W39-W40-cost.json",
+            "evidence/raw/W39-W40-window.json"
+          ],
+          "note": "original narrower implementation costs and failed clock-varying fixture attempt"
+        },
+        {
+          "paths": [
+            "evidence/raw/W39-W40-cost-optimized.json",
+            "evidence/raw/W39-W21-final-controlled-window.json"
+          ],
+          "note": "frozen optimized source, successful exact-output rerun and measured costs"
+        },
+        "Verification: controlled 1/10/200 full-source alternative comparison, exact projections and explicit offline limits",
+        "retained project-authority CPU/cache regression",
+        "Publication validation cost correction: strict source replacement tests and independently reviewed private-publication contract",
+        "Sustained source and policy lifecycle:60s real same-UID socket fixture,576 private publications,20 policy cycles, exact projections and cursor-preserving authority reconnection; CPU/RSS/fd/thread/I/O plateau and cleanup"
+      ]
+    },
+    {
+      "id": "W39-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Final integrated revision checks; production requires approved site access and administrator qualification.",
+      "evidence_notes": [
+        "Bounds, recovery and diagnostics / Remaining qualification gate: deployable module, schema, guide and tests"
+      ]
+    },
+    {
+      "id": "W39-R09",
+      "state": "blocked",
+      "evidence": [
+        "evidence/W39.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental local milestone. Production-site security and live scheduler efficacy are not qualified. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+      ],
+      "unblock": "Production qualification requires target administrator participation and approved service/scheduler identity, entitlements and deployment access.",
+      "evidence_notes": [
+        "Remaining qualification gate: actual disposable multi-UID test distinct from blocked target-site administrator qualification"
+      ]
+    }
+  ],
+  "focused_history": {
+    "validation": "Corrected0d138fd:82 session/shared checks pass; final actual two-UID security fixture rerun passes after IPC correction;60s shared-service publication/project-policy churn passes with576 publications,147 exchanges and explicit19 authority-transition errors; earlier controlled fan-out measurements retained; final integrated revision pending"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated_with_external_gates",
+  "external_gates": [
+    "W39-R09"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "raven/evidence_signing.py": "c8ddae2635fdf7abc8f3b1435032a03e893288f8138e263f00b7c95baa69a7ed",
+  "raven/evidence_verify.py": "b985df51e447d50dc8d8b90a91125b47380e3d73fc790675563ec3dae4151051",
+  "raven/ops_platform.py": "cd0415685d13bee3b5c6e8c920ba479504d1366cd774aa7fd1698be92eff5f77",
+  "raven/evidence.py": "c1acb8f359eb1fa06562343887785be19430b72ab13e47262d7ee087cf8c0532",
+  "raven/evidence_formats.py": "a9ac7701cd851493fb619862ff75cd9877da05157431929f12358af265e07bee",
+  "raven/science_files.py": "e02bdd3e5ec96f5ee707238252ea062e28abef4f822b1fb5efe40847fd20d42d",
+  "tests/test_evidence_signing.py": "96e3f39e568e707a859d0b02841ecda2c7a7a54925c7d17aef06f34d6cba3317",
+  "scripts/benchmark_signed_evidence.py": "63d1870addc1ab1cfbd4465aeb2b13cd0eb71330d513d5a050c7ce9e2f743a97"
+}

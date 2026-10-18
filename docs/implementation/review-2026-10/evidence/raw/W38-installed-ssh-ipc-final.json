@@ -1,0 +1,15 @@
+{
+  "kind": "actual installed wheel + loopback SSH + Unix IPC; simulated scheduler only",
+  "wheel": "raven-7.0.0-py3-none-any.whl",
+  "wheel_sha256": "f8aec82f42b45dda731c550e4c833bcadd942de51281016aebc97a0829a79724",
+  "installed_module": "/tmp/rv-session-qual-xcyl7tw5/installed/lib/python3.12/site-packages/raven/session_service.py",
+  "client_host_key_check": "strict exact generated key",
+  "server_strict_modes": false,
+  "same_session_after_crash": true,
+  "new_epoch_and_explicit_gap": true,
+  "failed_read_preserves_cursor": true,
+  "version_skew_rejected": true,
+  "normal_shutdown_removes_owned_socket": true,
+  "live_slurm_qualified": false,
+  "production_site_qualified": false
+}

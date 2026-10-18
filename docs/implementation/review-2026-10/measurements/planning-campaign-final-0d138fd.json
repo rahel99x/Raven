@@ -1,0 +1,102 @@
+{
+  "revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+  "started_utc": "2026-10-18T02:07:12.868098+00:00",
+  "ended_utc": "2026-10-18T02:07:15.199036+00:00",
+  "elapsed_seconds": 2.3309433550002723,
+  "scope": "W35 compatibility correction refresh; unchanged 32-job fixture, 2 warmups, 5 CPU samples and separate allocation pass per fresh process. FIFO is unchanged-work control; full comparison includes fairshare.",
+  "interpretation": "Different revision baseline, same fixture and host. Variation includes environment/import costs and is not attributed causally to one math call. No scheduler or scientific efficacy measurement.",
+  "baseline": "planning-costs.json",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "baseline_source_sha256": {
+    "scripts/benchmark_review_planning.py": "ce9851043f94d07bd223ff7960801f71107f30b1eb163c008954e407dde56e5c",
+    "raven/checkpoint_advisor.py": "59bf67e36edc1c57d1824732d679230bb6f2da58410fa6cb2d60102efd7e909b",
+    "raven/forecast.py": "eae5cd11ae1a0d3355f4739f8e6055afae84cdb43c18df0b2810752ff9984a68",
+    "raven/forecast_scenarios.py": "22101279e79925d232015df8c73f84a0c4f809eaf5c69cdd99547ab1bb565d31",
+    "raven/slurm_simulator.py": "509113dc9b9891feb1f274b46e932106fcf584bc714bf49243e48f82e1cc2c53",
+    "raven/campaign_policy.py": "3ddd754a6fe58ea373e420e3b0c657c71e175f4dd44ede2bf6fcad5d1e9f79a9",
+    "raven/orchestrator.py": "55cfd75dd0d1c3e742777e529ed6a779f647fdb2c8342149b57b3490e7b9d887",
+    "raven/ops_campaign_policy.py": "18b26edbb1ed2c6998463eaae46dcbfbc2e583414544a411013f21363bfbcc47"
+  },
+  "source_sha256": {
+    "scripts/benchmark_review_planning.py": "ce9851043f94d07bd223ff7960801f71107f30b1eb163c008954e407dde56e5c",
+    "raven/campaign_policy.py": "a4ed4d7c02a4806619530b2754976c57010c43a45994f3efd091f68ae904d275",
+    "raven/slurm_simulator.py": "509113dc9b9891feb1f274b46e932106fcf584bc714bf49243e48f82e1cc2c53",
+    "raven/orchestrator.py": "55cfd75dd0d1c3e742777e529ed6a779f647fdb2c8342149b57b3490e7b9d887",
+    "raven/ops_campaign_policy.py": "18b26edbb1ed2c6998463eaae46dcbfbc2e583414544a411013f21363bfbcc47"
+  },
+  "memory": "Python allocation peak and process peak RSS are distinct; RSS includes imports, fixture construction and allocation pass.",
+  "samples": [
+    {
+      "case": "campaign-fifo",
+      "cpu_ms": [
+        5.981977999999999,
+        6.618313000000001,
+        6.7926020000000085,
+        6.845059000000001,
+        7.081240000000003
+      ],
+      "median_cpu_ms": 6.7926020000000085,
+      "peak_python_bytes": 79216,
+      "peak_process_rss_kib": 16256,
+      "forecast_records": 500,
+      "campaign_jobs": 32,
+      "result_status": null,
+      "placement_operations": null,
+      "baseline_median_cpu_ms": 6.2042690000000125,
+      "median_cpu_change_percent": 9.482712628997781,
+      "baseline_peak_python_bytes": 79216,
+      "baseline_peak_process_rss_kib": 16256
+    },
+    {
+      "case": "campaign-complete-comparison",
+      "cpu_ms": [
+        106.087088,
+        104.49704799999998,
+        106.97508599999995,
+        103.55846499999998,
+        104.06444599999998
+      ],
+      "median_cpu_ms": 104.49704799999998,
+      "peak_python_bytes": 254098,
+      "peak_process_rss_kib": 16896,
+      "forecast_records": 500,
+      "campaign_jobs": 32,
+      "result_status": "shadow",
+      "placement_operations": 23760,
+      "baseline_median_cpu_ms": 105.34553700000005,
+      "median_cpu_change_percent": -0.8054342159744987,
+      "baseline_peak_python_bytes": 254098,
+      "baseline_peak_process_rss_kib": 16896
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "/workspace/Raven/.venv/bin/python",
+        "scripts/benchmark_review_planning.py",
+        "campaign-fifo"
+      ],
+      "cwd": "/workspace/Raven",
+      "environment_override": {
+        "PYTHONPATH": "/workspace/Raven"
+      },
+      "stdout": "{\"case\": \"campaign-fifo\", \"cpu_ms\": [5.981977999999999, 6.618313000000001, 6.7926020000000085, 6.845059000000001, 7.081240000000003], \"median_cpu_ms\": 6.7926020000000085, \"peak_python_bytes\": 79216, \"peak_process_rss_kib\": 16256, \"forecast_records\": 500, \"campaign_jobs\": 32, \"result_status\": null, \"placement_operations\": null}\n",
+      "stderr": "",
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "/workspace/Raven/.venv/bin/python",
+        "scripts/benchmark_review_planning.py",
+        "campaign-complete-comparison"
+      ],
+      "cwd": "/workspace/Raven",
+      "environment_override": {
+        "PYTHONPATH": "/workspace/Raven"
+      },
+      "stdout": "{\"case\": \"campaign-complete-comparison\", \"cpu_ms\": [106.087088, 104.49704799999998, 106.97508599999995, 103.55846499999998, 104.06444599999998], \"median_cpu_ms\": 104.49704799999998, \"peak_python_bytes\": 254098, \"peak_process_rss_kib\": 16896, \"forecast_records\": 500, \"campaign_jobs\": 32, \"result_status\": \"shadow\", \"placement_operations\": 23760}\n",
+      "stderr": "",
+      "exit_code": 0
+    }
+  ]
+}

@@ -1,0 +1,2082 @@
+[
+  {
+    "id": "2",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285175.0323539,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 0,
+      "snapshot": "2|PENDING|2026-10-18T00:59:35|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285175.0,
+    "actual_start": 1792285178.0,
+    "actual_end": 1792285179.0,
+    "state": "completed"
+  },
+  {
+    "id": "4",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285181.0174425,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 1,
+      "snapshot": "4|PENDING|2026-10-18T00:59:41|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285181.0,
+    "actual_start": 1792285184.0,
+    "actual_end": 1792285185.0,
+    "state": "completed"
+  },
+  {
+    "id": "6",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285187.0452106,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 2,
+      "snapshot": "6|PENDING|2026-10-18T00:59:47|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285187.0,
+    "actual_start": 1792285190.0,
+    "actual_end": 1792285191.0,
+    "state": "completed"
+  },
+  {
+    "id": "8",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285193.0292954,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 3,
+      "snapshot": "8|PENDING|2026-10-18T00:59:53|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285193.0,
+    "actual_start": 1792285196.0,
+    "actual_end": 1792285197.0,
+    "state": "completed"
+  },
+  {
+    "id": "10",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285199.063064,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 4,
+      "snapshot": "10|PENDING|2026-10-18T00:59:59|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285199.0,
+    "actual_start": 1792285202.0,
+    "actual_end": 1792285203.0,
+    "state": "completed"
+  },
+  {
+    "id": "12",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285206.0356362,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 5,
+      "snapshot": "12|PENDING|2026-10-18T01:00:06|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285206.0,
+    "actual_start": 1792285208.0,
+    "actual_end": 1792285210.0,
+    "state": "completed"
+  },
+  {
+    "id": "14",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285211.052203,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 6,
+      "snapshot": "14|PENDING|2026-10-18T01:00:11|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285211.0,
+    "actual_start": 1792285214.0,
+    "actual_end": 1792285215.0,
+    "state": "completed"
+  },
+  {
+    "id": "16",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285218.0510445,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 7,
+      "snapshot": "16|PENDING|2026-10-18T01:00:18|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285218.0,
+    "actual_start": 1792285220.0,
+    "actual_end": 1792285222.0,
+    "state": "completed"
+  },
+  {
+    "id": "18",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285224.040474,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 8,
+      "snapshot": "18|PENDING|2026-10-18T01:00:24|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285224.0,
+    "actual_start": 1792285229.0,
+    "actual_end": 1792285231.0,
+    "state": "completed"
+  },
+  {
+    "id": "20",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285232.1839135,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 9,
+      "snapshot": "20|PENDING|2026-10-18T01:00:32|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285232.0,
+    "actual_start": 1792285235.0,
+    "actual_end": 1792285236.0,
+    "state": "completed"
+  },
+  {
+    "id": "22",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285238.063932,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 10,
+      "snapshot": "22|PENDING|2026-10-18T01:00:38|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285238.0,
+    "actual_start": 1792285241.0,
+    "actual_end": 1792285242.0,
+    "state": "completed"
+  },
+  {
+    "id": "24",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285244.0644853,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 11,
+      "snapshot": "24|PENDING|2026-10-18T01:00:44|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285244.0,
+    "actual_start": 1792285247.0,
+    "actual_end": 1792285249.0,
+    "state": "completed"
+  },
+  {
+    "id": "26",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285250.047197,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 12,
+      "snapshot": "26|PENDING|2026-10-18T01:00:50|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285250.0,
+    "actual_start": 1792285253.0,
+    "actual_end": 1792285254.0,
+    "state": "completed"
+  },
+  {
+    "id": "28",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285257.044679,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 13,
+      "snapshot": "28|PENDING|2026-10-18T01:00:57|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285257.0,
+    "actual_start": 1792285262.0,
+    "actual_end": 1792285263.0,
+    "state": "completed"
+  },
+  {
+    "id": "30",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285265.0331237,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 14,
+      "snapshot": "30|PENDING|2026-10-18T01:01:05|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285265.0,
+    "actual_start": 1792285268.0,
+    "actual_end": 1792285270.0,
+    "state": "completed"
+  },
+  {
+    "id": "32",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285271.0517046,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 15,
+      "snapshot": "32|PENDING|2026-10-18T01:01:11|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285271.0,
+    "actual_start": 1792285274.0,
+    "actual_end": 1792285275.0,
+    "state": "completed"
+  },
+  {
+    "id": "34",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285277.0390468,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 16,
+      "snapshot": "34|PENDING|2026-10-18T01:01:17|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285277.0,
+    "actual_start": 1792285280.0,
+    "actual_end": 1792285281.0,
+    "state": "completed"
+  },
+  {
+    "id": "36",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285284.0701852,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 17,
+      "snapshot": "36|PENDING|2026-10-18T01:01:24|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285284.0,
+    "actual_start": 1792285286.0,
+    "actual_end": 1792285288.0,
+    "state": "completed"
+  },
+  {
+    "id": "38",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285289.0436335,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 18,
+      "snapshot": "38|PENDING|2026-10-18T01:01:29|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285289.0,
+    "actual_start": 1792285292.0,
+    "actual_end": 1792285293.0,
+    "state": "completed"
+  },
+  {
+    "id": "40",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285295.0233045,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 19,
+      "snapshot": "40|PENDING|2026-10-18T01:01:35|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285295.0,
+    "actual_start": 1792285298.0,
+    "actual_end": 1792285300.0,
+    "state": "completed"
+  },
+  {
+    "id": "42",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285301.048292,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 20,
+      "snapshot": "42|PENDING|2026-10-18T01:01:41|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285301.0,
+    "actual_start": 1792285304.0,
+    "actual_end": 1792285305.0,
+    "state": "completed"
+  },
+  {
+    "id": "44",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285307.033935,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 21,
+      "snapshot": "44|PENDING|2026-10-18T01:01:47|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285307.0,
+    "actual_start": 1792285310.0,
+    "actual_end": 1792285311.0,
+    "state": "completed"
+  },
+  {
+    "id": "46",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285313.0514164,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 22,
+      "snapshot": "46|PENDING|2026-10-18T01:01:53|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285313.0,
+    "actual_start": 1792285316.0,
+    "actual_end": 1792285317.0,
+    "state": "completed"
+  },
+  {
+    "id": "48",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285319.0399158,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 23,
+      "snapshot": "48|PENDING|2026-10-18T01:01:59|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285319.0,
+    "actual_start": 1792285322.0,
+    "actual_end": 1792285323.0,
+    "state": "completed"
+  },
+  {
+    "id": "50",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285326.0237124,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 24,
+      "snapshot": "50|PENDING|2026-10-18T01:02:06|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285326.0,
+    "actual_start": 1792285331.0,
+    "actual_end": 1792285332.0,
+    "state": "completed"
+  },
+  {
+    "id": "52",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285334.055384,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 25,
+      "snapshot": "52|PENDING|2026-10-18T01:02:14|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285334.0,
+    "actual_start": 1792285337.0,
+    "actual_end": 1792285338.0,
+    "state": "completed"
+  },
+  {
+    "id": "54",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285341.019443,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 26,
+      "snapshot": "54|PENDING|2026-10-18T01:02:21|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285341.0,
+    "actual_start": 1792285343.0,
+    "actual_end": 1792285345.0,
+    "state": "completed"
+  },
+  {
+    "id": "56",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285346.04446,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 27,
+      "snapshot": "56|PENDING|2026-10-18T01:02:26|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285346.0,
+    "actual_start": 1792285349.0,
+    "actual_end": 1792285350.0,
+    "state": "completed"
+  },
+  {
+    "id": "58",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285352.1648977,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 28,
+      "snapshot": "58|PENDING|2026-10-18T01:02:32|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285352.0,
+    "actual_start": 1792285355.0,
+    "actual_end": 1792285356.0,
+    "state": "completed"
+  },
+  {
+    "id": "60",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285358.0269618,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 29,
+      "snapshot": "60|PENDING|2026-10-18T01:02:38|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285358.0,
+    "actual_start": 1792285361.0,
+    "actual_end": 1792285362.0,
+    "state": "completed"
+  },
+  {
+    "id": "62",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285364.0173607,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 30,
+      "snapshot": "62|PENDING|2026-10-18T01:02:44|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285364.0,
+    "actual_start": 1792285367.0,
+    "actual_end": 1792285368.0,
+    "state": "completed"
+  },
+  {
+    "id": "64",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285370.0653458,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 31,
+      "snapshot": "64|PENDING|2026-10-18T01:02:50|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285370.0,
+    "actual_start": 1792285373.0,
+    "actual_end": 1792285374.0,
+    "state": "completed"
+  },
+  {
+    "id": "66",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285376.0225735,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 32,
+      "snapshot": "66|PENDING|2026-10-18T01:02:56|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285376.0,
+    "actual_start": 1792285379.0,
+    "actual_end": 1792285380.0,
+    "state": "completed"
+  },
+  {
+    "id": "68",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285382.0476203,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 33,
+      "snapshot": "68|PENDING|2026-10-18T01:03:02|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285382.0,
+    "actual_start": 1792285385.0,
+    "actual_end": 1792285386.0,
+    "state": "completed"
+  },
+  {
+    "id": "70",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285388.0221007,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 34,
+      "snapshot": "70|PENDING|2026-10-18T01:03:08|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285388.0,
+    "actual_start": 1792285391.0,
+    "actual_end": 1792285392.0,
+    "state": "completed"
+  },
+  {
+    "id": "72",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285394.0392692,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 35,
+      "snapshot": "72|PENDING|2026-10-18T01:03:14|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285394.0,
+    "actual_start": 1792285397.0,
+    "actual_end": 1792285398.0,
+    "state": "completed"
+  },
+  {
+    "id": "74",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285401.0583305,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 36,
+      "snapshot": "74|PENDING|2026-10-18T01:03:21|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285401.0,
+    "actual_start": 1792285406.0,
+    "actual_end": 1792285408.0,
+    "state": "completed"
+  },
+  {
+    "id": "76",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285410.017687,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 37,
+      "snapshot": "76|PENDING|2026-10-18T01:03:30|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285410.0,
+    "actual_start": 1792285412.0,
+    "actual_end": 1792285413.0,
+    "state": "completed"
+  },
+  {
+    "id": "78",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285415.0645478,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 38,
+      "snapshot": "78|PENDING|2026-10-18T01:03:35|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285415.0,
+    "actual_start": 1792285418.0,
+    "actual_end": 1792285419.0,
+    "state": "completed"
+  },
+  {
+    "id": "80",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285421.0276968,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 39,
+      "snapshot": "80|PENDING|2026-10-18T01:03:41|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285421.0,
+    "actual_start": 1792285424.0,
+    "actual_end": 1792285425.0,
+    "state": "completed"
+  },
+  {
+    "id": "82",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285428.0427802,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 40,
+      "snapshot": "82|PENDING|2026-10-18T01:03:48|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285428.0,
+    "actual_start": 1792285433.0,
+    "actual_end": 1792285434.0,
+    "state": "completed"
+  },
+  {
+    "id": "84",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285437.061979,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 41,
+      "snapshot": "84|PENDING|2026-10-18T01:03:57|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285437.0,
+    "actual_start": 1792285442.0,
+    "actual_end": 1792285443.0,
+    "state": "completed"
+  },
+  {
+    "id": "86",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285445.061616,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 42,
+      "snapshot": "86|PENDING|2026-10-18T01:04:05|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285445.0,
+    "actual_start": 1792285448.0,
+    "actual_end": 1792285449.0,
+    "state": "completed"
+  },
+  {
+    "id": "88",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285451.0539498,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 43,
+      "snapshot": "88|PENDING|2026-10-18T01:04:11|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285451.0,
+    "actual_start": 1792285454.0,
+    "actual_end": 1792285455.0,
+    "state": "completed"
+  },
+  {
+    "id": "90",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285457.0577853,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 44,
+      "snapshot": "90|PENDING|2026-10-18T01:04:17|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285457.0,
+    "actual_start": 1792285460.0,
+    "actual_end": 1792285461.0,
+    "state": "completed"
+  },
+  {
+    "id": "92",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285463.024078,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 45,
+      "snapshot": "92|PENDING|2026-10-18T01:04:23|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285463.0,
+    "actual_start": 1792285466.0,
+    "actual_end": 1792285467.0,
+    "state": "completed"
+  },
+  {
+    "id": "94",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285470.0503738,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 46,
+      "snapshot": "94|PENDING|2026-10-18T01:04:30|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285470.0,
+    "actual_start": 1792285472.0,
+    "actual_end": 1792285473.0,
+    "state": "completed"
+  },
+  {
+    "id": "96",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285475.028467,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 47,
+      "snapshot": "96|PENDING|2026-10-18T01:04:35|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285475.0,
+    "actual_start": 1792285478.0,
+    "actual_end": 1792285479.0,
+    "state": "completed"
+  },
+  {
+    "id": "98",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285481.0441806,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 48,
+      "snapshot": "98|PENDING|2026-10-18T01:04:41|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285481.0,
+    "actual_start": 1792285484.0,
+    "actual_end": 1792285485.0,
+    "state": "completed"
+  },
+  {
+    "id": "100",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285487.0595224,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 49,
+      "snapshot": "100|PENDING|2026-10-18T01:04:47|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285487.0,
+    "actual_start": 1792285490.0,
+    "actual_end": 1792285491.0,
+    "state": "completed"
+  },
+  {
+    "id": "102",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285493.0264797,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 50,
+      "snapshot": "102|PENDING|2026-10-18T01:04:53|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285493.0,
+    "actual_start": 1792285496.0,
+    "actual_end": 1792285497.0,
+    "state": "completed"
+  },
+  {
+    "id": "104",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285499.0550232,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 51,
+      "snapshot": "104|PENDING|2026-10-18T01:04:59|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285499.0,
+    "actual_start": 1792285502.0,
+    "actual_end": 1792285503.0,
+    "state": "completed"
+  },
+  {
+    "id": "106",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285505.0334835,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 52,
+      "snapshot": "106|PENDING|2026-10-18T01:05:05|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285505.0,
+    "actual_start": 1792285508.0,
+    "actual_end": 1792285509.0,
+    "state": "completed"
+  },
+  {
+    "id": "108",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285511.048918,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 53,
+      "snapshot": "108|PENDING|2026-10-18T01:05:11|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285511.0,
+    "actual_start": 1792285514.0,
+    "actual_end": 1792285515.0,
+    "state": "completed"
+  },
+  {
+    "id": "110",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285517.02048,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 54,
+      "snapshot": "110|PENDING|2026-10-18T01:05:17|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285517.0,
+    "actual_start": 1792285520.0,
+    "actual_end": 1792285521.0,
+    "state": "completed"
+  },
+  {
+    "id": "112",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285523.0251446,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 55,
+      "snapshot": "112|PENDING|2026-10-18T01:05:23|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285523.0,
+    "actual_start": 1792285526.0,
+    "actual_end": 1792285527.0,
+    "state": "completed"
+  },
+  {
+    "id": "114",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285529.0607123,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 56,
+      "snapshot": "114|PENDING|2026-10-18T01:05:29|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285529.0,
+    "actual_start": 1792285532.0,
+    "actual_end": 1792285533.0,
+    "state": "completed"
+  },
+  {
+    "id": "116",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285536.0643742,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 57,
+      "snapshot": "116|PENDING|2026-10-18T01:05:36|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285536.0,
+    "actual_start": 1792285541.0,
+    "actual_end": 1792285542.0,
+    "state": "completed"
+  },
+  {
+    "id": "118",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285544.0438724,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 58,
+      "snapshot": "118|PENDING|2026-10-18T01:05:44|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285544.0,
+    "actual_start": 1792285547.0,
+    "actual_end": 1792285548.0,
+    "state": "completed"
+  },
+  {
+    "id": "120",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285550.0355208,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 59,
+      "snapshot": "120|PENDING|2026-10-18T01:05:50|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285550.0,
+    "actual_start": 1792285553.0,
+    "actual_end": 1792285554.0,
+    "state": "completed"
+  },
+  {
+    "id": "122",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285556.0181608,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 60,
+      "snapshot": "122|PENDING|2026-10-18T01:05:56|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285556.0,
+    "actual_start": 1792285559.0,
+    "actual_end": 1792285560.0,
+    "state": "completed"
+  },
+  {
+    "id": "124",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285562.1975257,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 61,
+      "snapshot": "124|PENDING|2026-10-18T01:06:02|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285562.0,
+    "actual_start": 1792285565.0,
+    "actual_end": 1792285566.0,
+    "state": "completed"
+  },
+  {
+    "id": "126",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285568.0260067,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 62,
+      "snapshot": "126|PENDING|2026-10-18T01:06:08|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285568.0,
+    "actual_start": 1792285571.0,
+    "actual_end": 1792285572.0,
+    "state": "completed"
+  },
+  {
+    "id": "128",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285574.0213861,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 63,
+      "snapshot": "128|PENDING|2026-10-18T01:06:14|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285574.0,
+    "actual_start": 1792285577.0,
+    "actual_end": 1792285578.0,
+    "state": "completed"
+  },
+  {
+    "id": "130",
+    "request": {
+      "name": "owned-sleep-one-second-v1",
+      "partition": "local",
+      "account": "labx",
+      "qos": "normal",
+      "cpus": 1,
+      "nodes": 1,
+      "gpus": 0,
+      "mem_bytes": 33554432,
+      "time_seconds": 60
+    },
+    "context": {
+      "policy_digest": "bd3540d029b9d45cff31b3049c492df2530278635034d306289274e4afe37b8e",
+      "reservations_visible": true,
+      "policy_complete": true
+    },
+    "origin": "recorded",
+    "issued_at": 1792285581.0574741,
+    "model_wait_seconds": 2.0,
+    "metadata": {
+      "capture_index": 64,
+      "snapshot": "130|PENDING|2026-10-18T01:06:21|N/A|0:00|(JobHeldUser)",
+      "model_basis": "Prospectively declared 2-second holder program; includes unknown startup/scheduler timing",
+      "qualification_limit": "Owned two-CPU fixture with known demand, not a production-site cohort"
+    },
+    "submit": 1792285581.0,
+    "actual_start": 1792285586.0,
+    "actual_end": 1792285588.0,
+    "state": "completed"
+  }
+]

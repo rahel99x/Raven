@@ -1,0 +1,53 @@
+{
+  "samples_per_feature": 1024,
+  "features": 8,
+  "repeats": 3,
+  "source_sha256": {
+    "measurement_series.py": "c5b7085c8f5f02d6b017646a5e1b9b9262d9930a7d1d01b20d6a9f90d3170054",
+    "stream_anomalies.py": "f1f9f6af7d36e8d2779706085e1d3c6462c64e35696c7df587f50cab2eddc3d6",
+    "phase_alignment.py": "c9b6d81e48f6b1a94f525ef728a1004bb7ed7c58ba04433821fe39a94a456066"
+  },
+  "stream_robust_detector": {
+    "wall_seconds": [
+      0.0632567860011477,
+      0.07063351999386214,
+      0.063079130006372
+    ],
+    "cpu_seconds": [
+      0.063233082,
+      0.070627467,
+      0.06305501799999999
+    ],
+    "python_peak_bytes": 148500
+  },
+  "segmentation_alignment": {
+    "wall_seconds": [
+      0.07686695599113591,
+      0.07079771799908485,
+      0.07343241600028705
+    ],
+    "cpu_seconds": [
+      0.07686537999999998,
+      0.07079288399999994,
+      0.07321209799999995
+    ],
+    "python_peak_bytes": 2914706,
+    "work_units": 95056,
+    "dtw_cells": 1288
+  },
+  "fixed_window_baseline": {
+    "wall_seconds": [
+      1.2559001334011555e-05,
+      2.192988176830113e-06,
+      1.3730023056268692e-06
+    ],
+    "cpu_seconds": [
+      9.743999999978215e-06,
+      2.2530000001186323e-06,
+      1.3020000000363297e-06
+    ],
+    "python_peak_bytes": 280
+  },
+  "process_peak_rss_kib": 27760,
+  "limits": "In-memory synthetic fixture; fixed windows are cheaper but are not change detection. Process RSS includes fixture and all algorithms; Python allocations measured separately. No scheduler/GPU/deployment measurement."
+}

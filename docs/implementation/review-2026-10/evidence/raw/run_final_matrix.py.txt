@@ -1,0 +1,35 @@
+"""Run independent regressions in four-worker total pairs; serialize packaging."""
+from concurrent.futures import ThreadPoolExecutor
+import json
+from pathlib import Path
+import subprocess
+
+ROOT = Path('/workspace/Raven')
+OUT = Path('/workspace/raven-qualification-results/final')
+HARNESS = '/workspace/raven-qualification-results/final_gates.py'
+
+
+def run(version, *, packaging=False, workers=2):
+    suffix = '-r4-packaging' if packaging else '-r4'
+    command = [str(ROOT / '.venv/bin/python'), HARNESS, '--version', version,
+               '--suffix=' + suffix, '--workers', str(workers),
+               '--skip-tests' if packaging else '--regression-only']
+    print(json.dumps({'starting_version': version, 'packaging': packaging}), flush=True)
+    with (OUT / ('driver-py' + version + suffix + '.log')).open('xb') as stream:
+        result = subprocess.run(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT)
+    print(json.dumps({'finished_version': version, 'packaging': packaging,
+                      'exit_code': result.returncode}), flush=True)
+    return result.returncode
+
+
+for versions in [('3.13', '3.14'), ('3.10', '3.11')]:
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(run, versions))
+    if any(results):
+        raise SystemExit('Regression pair failed; subsequent phases were not started')
+if run('3.12', workers=4):
+    raise SystemExit('Final Python3.12 regression failed')
+for version in ['3.10', '3.11', '3.12', '3.13', '3.14']:
+    if run(version, packaging=True):
+        raise SystemExit('Packaging failed: ' + version)
+print('FINAL_MATRIX_PASSED', flush=True)

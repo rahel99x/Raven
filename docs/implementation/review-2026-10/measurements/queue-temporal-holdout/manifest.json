@@ -1,0 +1,1407 @@
+{
+  "revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "version": "slurm 26.05.5",
+  "commands": [
+    {
+      "argv": [
+        "scontrol",
+        "--version"
+      ],
+      "start": 1792281137.998523,
+      "seconds": 0.0049250125885009766,
+      "returncode": 0,
+      "stdout": "slurm 26.05.5\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "scontrol",
+        "show",
+        "config"
+      ],
+      "start": 1792281138.0034506,
+      "seconds": 0.0052661895751953125,
+      "returncode": 0,
+      "stdout": "Configuration data as of 2026-10-17T23:52:18\nAccountingStorageBackupHost = (null)\nAccountingStorageEnforce = associations\nAccountingStorageHost   = localhost\nAccountingStorageExternalHost = (null)\nAccountingStorageParameters = (null)\nAccountingStoragePort   = 6819\nAccountingStorageTRES   = cpu,mem,energy,node,billing,fs/disk,vmem,pages\nAccountingStorageType   = accounting_storage/slurmdbd\nAccountingStoreFlags    = (null)\nAcctGatherEnergyType    = (null)\nAcctGatherFilesystemType = (null)\nAcctGatherInterconnectType = (null)\nAcctGatherNodeFreq      = 0 sec\nAcctGatherProfileType   = (null)\nAllowSpecResourcesUsage = no\nAuthAltTypes            = (null)\nAuthAltParameters       = (null)\nAuthInfo                = (null)\nAuthType                = auth/munge\nBatchStartTimeout       = 10 sec\nBcastExclude            = /lib,/usr/lib,/lib64,/usr/lib64\nBcastParameters         = (null)\nBOOT_TIME               = 2026-10-17T23:52:17\nBurstBufferType         = (null)\nCertgenParameters       = (null)\nCertgenType             = (null)\nCertmgrParameters       = (null)\nCertmgrType             = (null)\nCliFilterParameters     = (null)\nCliFilterPlugins        = (null)\nClusterName             = raven-ci\nCommunicationParameters = (null)\nCompleteWait            = 0 sec\nCpuFreqDef              = Unknown\nCpuFreqGovernors        = OnDemand,Performance,UserSpace\nCredType                = cred/munge\nDataParserParameters    = (null)\nDebugFlags              = (null)\nDefMemPerNode           = UNLIMITED\nDependencyParameters    = (null)\nDisableRootJobs         = no\nEioTimeout              = 60\nEnforcePartLimits       = NO\nEpilogMsgTime           = 2000 usec\nFairShareDampeningFactor = 1\nFederationParameters    = (null)\nFirstJobId              = 1\nGresTypes               = (null)\nGpuFreqDef              = (null)\nGroupUpdateForce        = 1\nGroupUpdateTime         = 600 sec\nHASH_VAL                = Match\nHashPlugin              = hash/k12\nHealthCheckInterval     = 0 sec\nHealthCheckNodeState    = ANY\nHealthCheckProgram      = (null)\nHealthCheckTimeout      = 0 sec\nHttpParserType          = (null)\nInactiveLimit           = 0 sec\nInteractiveStepOptions  = --interactive --preserve-env --pty $SHELL\nJobAcctGatherFrequency  = task=1\nJobAcctGatherType       = jobacct_gather/linux\nJobAcctGatherParams     = (null)\nJobCompHost             = localhost\nJobCompLoc              = (null)\nJobCompParams           = (null)\nJobCompPass             = (null)\nJobCompPort             = 0\nJobCompType             = (null)\nJobCompUser             = root\nJobDefaults             = (null)\nJobFileAppend           = 0\nJobRequeue              = 1\nJobSubmitPlugins        = (null)\nKillOnBadExit           = 0\nKillWait                = 30 sec\nLaunchParameters        = (null)\nLicenseParameters       = (null)\nLicenses                = (null)\nLogTimeFormat           = iso8601_ms\nMailDomain              = (null)\nMailProg                = /bin/mail\nMaxArraySize            = 1001\nMaxBatchRequeue         = 5\nMaxDBDMsgs              = 20004\nMaxJobCount             = 10000\nMaxJobId                = 67043328\nMaxMemPerNode           = UNLIMITED\nMaxNodeCount            = 1\nMaxStepCount            = 40000\nMaxTasksPerNode         = 512\nMCSPlugin               = (null)\nMCSParameters           = (null)\nMessageTimeout          = 10 sec\nMetricsAuthUsers        = (null)\nMetricsParameters       = (null)\nMetricsType             = (null)\nMinJobAge               = 30 sec\nMpiDefault              = (null)\nMpiParams               = (null)\nNamespaceType           = (null)\nNEXT_JOB_ID             = 1\nNodeFeaturesPlugins     = (null)\nOverTimeLimit           = 0 min\nPluginDir               = /opt/slurm/lib/slurm\nPlugStackConfig         = (null)\nPreemptMode             = OFF\nPreemptParameters       = (null)\nPreemptType             = (null)\nPreemptExemptTime       = 00:00:00\nPrEpParameters          = (null)\nPrEpPlugins             = prep/script\nPriorityParameters      = (null)\nPrioritySiteFactorParameters = (null)\nPrioritySiteFactorPlugin = (null)\nPriorityDecayHalfLife   = 7-00:00:00\nPriorityCalcPeriod      = 00:05:00\nPriorityFavorSmall      = no\nPriorityFlags           = \nPriorityMaxAge          = 7-00:00:00\nPriorityType            = priority/multifactor\nPriorityUsageResetPeriod = NONE\nPriorityWeightAge       = 0\nPriorityWeightAssoc     = 0\nPriorityWeightFairShare = 0\nPriorityWeightJobSize   = 0\nPriorityWeightPartition = 0\nPriorityWeightQOS       = 0\nPriorityWeightTRES      = (null)\nPrivateData             = none\nProctrackType           = proctrack/linuxproc\nPrologEpilogTimeout     = 65534\nPrologFlags             = (null)\nPropagatePrioProcess    = 0\nPropagateResourceLimits = ALL\nPropagateResourceLimitsExcept = (null)\nRebootProgram           = (null)\nReconfigFlags           = (null)\nRequeueExit             = (null)\nRequeueExitHold         = (null)\nResumeFailProgram       = (null)\nResumeProgram           = (null)\nResumeRate              = 300 nodes/min\nResumeTimeout           = 60 sec\nResvEpilog              = (null)\nResvOverRun             = 0 min\nResvProlog              = (null)\nReturnToService         = 2\nSchedulerParameters     = requeue_delay=1\nSchedulerTimeSlice      = 30 sec\nSchedulerType           = sched/backfill\nScronParameters         = (null)\nSelectType              = select/cons_tres\nSelectTypeParameters    = CR_CPU_MEMORY\nSlurmUser               = slurm(999)\nSlurmctldAddr           = (null)\nSlurmctldDebug          = info\nSlurmctldHost[0]        = raven-ci\nSlurmctldHttpAuthParameters = (null)\nSlurmctldLogFile        = /var/log/slurm/slurmctld.log\nSlurmctldPort           = 6817\nSlurmctldSyslogDebug    = (null)\nSlurmctldPrimaryOffProg = (null)\nSlurmctldPrimaryOnProg  = (null)\nSlurmctldTimeout        = 120 sec\nSlurmctldParameters     = enable_configless\nSlurmdDebug             = info\nSlurmdHttpAuthParameters = (null)\nSlurmdLogFile           = /var/log/slurm/slurmd.log\nSlurmdParameters        = (null)\nSlurmdPidFile           = /tmp/slurmd.pid\nSlurmdPort              = 6818\nSlurmdSpoolDir          = /var/spool/slurmd\nSlurmdSyslogDebug       = (null)\nSlurmdTimeout           = 300 sec\nSlurmdUser              = root(0)\nSlurmSchedLogFile       = (null)\nSlurmSchedLogLevel      = 0\nSlurmctldPidFile        = /tmp/slurmctld.pid\nSLURM_CONF              = /etc/slurm/slurm.conf\nSLURM_VERSION           = 26.05.5\nSrunEpilog              = (null)\nSrunPortRange           = 0-0\nSrunProlog              = (null)\nStateSaveLocation       = /var/spool/slurmctld\nSuspendExcNodes         = (null)\nSuspendExcParts         = (null)\nSuspendExcStates        = (null)\nSuspendProgram          = (null)\nSuspendRate             = 60 nodes/min\nSuspendTime             = INFINITE\nSuspendTimeout          = 30 sec\nSwitchParameters        = (null)\nSwitchType              = (null)\nTaskEpilog              = (null)\nTaskPlugin              = (null)\nTaskPluginParam         = (null type)\nTaskProlog              = (null)\nTCPTimeout              = 2 sec\nTLSParameters           = (null)\nTLSType                 = tls/none\nTmpFS                   = /tmp\nTopologyParam           = (null)\nTopologyPlugin          = topology/flat\nTrackWCKey              = no\nTreeWidth               = 16\nUsePam                  = no\nUnkillableStepProgram   = (null)\nUnkillableStepTimeout   = 60 sec\nUrlParserType           = (null)\nVSizeFactor             = 0 percent\nWaitTime                = 0 sec\nX11Parameters           = (null)\n\nSlurmctld(primary) at raven-ci is UP\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "scontrol",
+        "show",
+        "nodes",
+        "-o"
+      ],
+      "start": 1792281138.0087197,
+      "seconds": 0.006514787673950195,
+      "returncode": 0,
+      "stdout": "NodeName=raven-ci Arch=x86_64 CoresPerSocket=1  CPUAlloc=0 CPUEfctv=2 CPUTot=2 CPULoad=0.26 AvailableFeatures=(null) ActiveFeatures=(null) Gres=(null) NodeAddr=raven-ci NodeHostName=raven-ci Version=26.05.5 OS=Linux 6.18.55 #1 SMP Wed Oct 14 19:45:18 UTC 2026  RealMemory=1024 AllocMem=0 FreeMem=9228 Sockets=2 Boards=1 State=IDLE ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A Partitions=local  BootTime=2026-10-17T05:32:50 SlurmdStartTime=2026-10-17T23:52:17 LastBusyTime=2026-10-17T23:52:17 ResumeAfterTime=None SuspendTime=INFINITE CfgTRES=cpu=2,mem=1G,billing=2 AllocTRES= CurrentWatts=0 AveWatts=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "mkdir",
+        "-p",
+        "/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd"
+      ],
+      "start": 1792281138.0334826,
+      "seconds": 0.003400087356567383,
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--hold",
+        "--account=labx",
+        "--partition=local",
+        "--nodes=1",
+        "--cpus-per-task=2",
+        "--mem=32M",
+        "--time=00:01:00",
+        "--job-name=raven-queue-model-a",
+        "--output=/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd/%j.log",
+        "--wrap=sleep 2"
+      ],
+      "start": 1792281138.0368888,
+      "seconds": 0.006258726119995117,
+      "returncode": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--hold",
+        "--account=labx",
+        "--partition=local",
+        "--nodes=1",
+        "--cpus-per-task=1",
+        "--mem=32M",
+        "--time=00:01:00",
+        "--job-name=raven-queue-model-b",
+        "--output=/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd/%j.log",
+        "--wrap=sleep 2"
+      ],
+      "start": 1792281138.0431597,
+      "seconds": 0.006888628005981445,
+      "returncode": 0,
+      "stdout": "2\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--hold",
+        "--account=labx",
+        "--partition=local",
+        "--nodes=1",
+        "--cpus-per-task=1",
+        "--mem=32M",
+        "--time=00:01:00",
+        "--job-name=raven-queue-model-c",
+        "--output=/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd/%j.log",
+        "--dependency=afterok:2",
+        "--wrap=sleep 2"
+      ],
+      "start": 1792281138.0500581,
+      "seconds": 0.005574941635131836,
+      "returncode": 0,
+      "stdout": "3\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "scontrol",
+        "release",
+        "1,2,3"
+      ],
+      "start": 1792281138.0556808,
+      "seconds": 0.006940603256225586,
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281138.062628,
+      "seconds": 0.0057032108306884766,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281138.3184578,
+      "seconds": 0.008043289184570312,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281138.5766795,
+      "seconds": 0.006745576858520508,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281138.8335555,
+      "seconds": 0.006314277648925781,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281139.0899913,
+      "seconds": 0.007993936538696289,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281139.348098,
+      "seconds": 0.007922887802124023,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281139.60615,
+      "seconds": 0.006242036819458008,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281139.862528,
+      "seconds": 0.0065958499908447266,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281140.1192598,
+      "seconds": 0.008244991302490234,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281140.3776937,
+      "seconds": 0.006670713424682617,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281140.6344857,
+      "seconds": 0.006513357162475586,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281140.8911304,
+      "seconds": 0.007162332534790039,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281141.1484337,
+      "seconds": 0.0067522525787353516,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281141.4053142,
+      "seconds": 0.006989717483520508,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281141.6624374,
+      "seconds": 0.006913423538208008,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281141.9195147,
+      "seconds": 0.0072553157806396484,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n1|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281142.1769059,
+      "seconds": 0.006537914276123047,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281142.433559,
+      "seconds": 0.006303071975708008,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281142.690005,
+      "seconds": 0.007149219512939453,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281142.9472806,
+      "seconds": 0.006171464920043945,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281143.2035964,
+      "seconds": 0.008287668228149414,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281143.462283,
+      "seconds": 0.008777618408203125,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281143.7211957,
+      "seconds": 0.00670623779296875,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281143.9780276,
+      "seconds": 0.005763530731201172,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281144.2339053,
+      "seconds": 0.006793975830078125,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281144.4908392,
+      "seconds": 0.0061054229736328125,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281144.7470627,
+      "seconds": 0.006076335906982422,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281145.0032883,
+      "seconds": 0.009653329849243164,
+      "returncode": 0,
+      "stdout": "3|PENDING\n2|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281145.2630517,
+      "seconds": 0.007474184036254883,
+      "returncode": 0,
+      "stdout": "3|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281145.5207117,
+      "seconds": 0.005805015563964844,
+      "returncode": 0,
+      "stdout": "3|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281145.776661,
+      "seconds": 0.005420207977294922,
+      "returncode": 0,
+      "stdout": "3|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281146.0321982,
+      "seconds": 0.006421566009521484,
+      "returncode": 0,
+      "stdout": "3|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281146.288747,
+      "seconds": 0.006529331207275391,
+      "returncode": 0,
+      "stdout": "3|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281146.5454037,
+      "seconds": 0.006471395492553711,
+      "returncode": 0,
+      "stdout": "3|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281146.8020065,
+      "seconds": 0.005944013595581055,
+      "returncode": 0,
+      "stdout": "3|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281147.0580852,
+      "seconds": 0.005646228790283203,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281147.3139026,
+      "seconds": 0.005888700485229492,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281147.569911,
+      "seconds": 0.009928226470947266,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281147.8299716,
+      "seconds": 0.00592350959777832,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281148.0860298,
+      "seconds": 0.006487846374511719,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281148.342692,
+      "seconds": 0.007231950759887695,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281148.6000578,
+      "seconds": 0.006198883056640625,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281148.8563733,
+      "seconds": 0.006000995635986328,
+      "returncode": 0,
+      "stdout": "3|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=1,2,3",
+        "--format=%i|%T"
+      ],
+      "start": 1792281149.1125076,
+      "seconds": 0.005993843078613281,
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sacct",
+        "--noheader",
+        "--parsable2",
+        "--duplicates",
+        "--allocations",
+        "--jobs=1,2,3",
+        "--starttime=now-1hours",
+        "--endtime=now",
+        "--format=JobID,State,Start,End,AllocCPUS,NNodes,Submit,Eligible"
+      ],
+      "start": 1792281149.1185248,
+      "seconds": 0.005623579025268555,
+      "returncode": 0,
+      "stdout": "1|COMPLETED|2026-10-17T23:52:20|2026-10-17T23:52:22|2|1|2026-10-17T23:52:18|2026-10-17T23:52:20\n2|COMPLETED|2026-10-17T23:52:23|2026-10-17T23:52:25|1|1|2026-10-17T23:52:18|2026-10-17T23:52:20\n3|COMPLETED|2026-10-17T23:52:26|2026-10-17T23:52:29|1|1|2026-10-17T23:52:18|2026-10-17T23:52:26\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--hold",
+        "--account=labx",
+        "--partition=local",
+        "--nodes=1",
+        "--cpus-per-task=1",
+        "--mem=32M",
+        "--time=00:01:00",
+        "--job-name=raven-queue-model-d",
+        "--output=/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd/%j.log",
+        "--wrap=sleep 4"
+      ],
+      "start": 1792281149.1242511,
+      "seconds": 0.005575418472290039,
+      "returncode": 0,
+      "stdout": "4\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--hold",
+        "--account=labx",
+        "--partition=local",
+        "--nodes=1",
+        "--cpus-per-task=2",
+        "--mem=32M",
+        "--time=00:01:00",
+        "--job-name=raven-queue-model-e",
+        "--output=/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd/%j.log",
+        "--wrap=sleep 2"
+      ],
+      "start": 1792281149.1298354,
+      "seconds": 0.005329132080078125,
+      "returncode": 0,
+      "stdout": "5\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--hold",
+        "--account=labx",
+        "--partition=local",
+        "--nodes=1",
+        "--cpus-per-task=1",
+        "--mem=32M",
+        "--time=00:01:00",
+        "--job-name=raven-queue-model-f",
+        "--output=/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd/%j.log",
+        "--wrap=sleep 2"
+      ],
+      "start": 1792281149.1351707,
+      "seconds": 0.004754066467285156,
+      "returncode": 0,
+      "stdout": "6\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--hold",
+        "--account=labx",
+        "--partition=local",
+        "--nodes=1",
+        "--cpus-per-task=1",
+        "--mem=32M",
+        "--time=00:01:00",
+        "--job-name=raven-queue-model-g",
+        "--output=/home/raven/queue-model-4a5feb283a35482ea5be7ec0a6c02acd/%j.log",
+        "--dependency=afterok:5",
+        "--wrap=sleep 2"
+      ],
+      "start": 1792281149.1399333,
+      "seconds": 0.005128383636474609,
+      "returncode": 0,
+      "stdout": "7\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "scontrol",
+        "release",
+        "4,5,6,7"
+      ],
+      "start": 1792281149.1450703,
+      "seconds": 0.006105184555053711,
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281149.1511812,
+      "seconds": 0.004709959030151367,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281149.4060047,
+      "seconds": 0.006192684173583984,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281149.662327,
+      "seconds": 0.0066432952880859375,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281149.9192152,
+      "seconds": 0.006164073944091797,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281150.1755183,
+      "seconds": 0.006609201431274414,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281150.4322326,
+      "seconds": 0.006903886795043945,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281150.6892543,
+      "seconds": 0.006852626800537109,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281150.9462314,
+      "seconds": 0.006856441497802734,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281151.2032247,
+      "seconds": 0.00634455680847168,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281151.4596956,
+      "seconds": 0.006554365158081055,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281151.7163808,
+      "seconds": 0.01070547103881836,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281151.9772162,
+      "seconds": 0.007056713104248047,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281152.234401,
+      "seconds": 0.009640932083129883,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281152.4941523,
+      "seconds": 0.009765148162841797,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281152.7540238,
+      "seconds": 0.005803346633911133,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281153.0099294,
+      "seconds": 0.005945920944213867,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281153.2659826,
+      "seconds": 0.007100820541381836,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281153.5232062,
+      "seconds": 0.008135080337524414,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281153.7814531,
+      "seconds": 0.009939193725585938,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n4|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281154.0415065,
+      "seconds": 0.007483243942260742,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281154.2991002,
+      "seconds": 0.008430242538452148,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281154.5576577,
+      "seconds": 0.006208658218383789,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281154.817819,
+      "seconds": 0.008805274963378906,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281155.077828,
+      "seconds": 0.009041070938110352,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281155.3369818,
+      "seconds": 0.009839057922363281,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281155.5969317,
+      "seconds": 0.010131120681762695,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281155.8571782,
+      "seconds": 0.0068798065185546875,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281156.1141832,
+      "seconds": 0.00655674934387207,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281156.3708994,
+      "seconds": 0.006204366683959961,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281156.6272337,
+      "seconds": 0.006817817687988281,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281156.884177,
+      "seconds": 0.006273508071899414,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n5|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281157.1406298,
+      "seconds": 0.009770393371582031,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281157.400684,
+      "seconds": 0.011578798294067383,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281157.6624136,
+      "seconds": 0.007608652114868164,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281157.9201803,
+      "seconds": 0.006358146667480469,
+      "returncode": 0,
+      "stdout": "7|PENDING\n6|PENDING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281158.1766915,
+      "seconds": 0.01062321662902832,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281158.4374275,
+      "seconds": 0.008413076400756836,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281158.6959465,
+      "seconds": 0.005620002746582031,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281158.9516945,
+      "seconds": 0.006485939025878906,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281159.2083178,
+      "seconds": 0.006412982940673828,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281159.4648778,
+      "seconds": 0.007506132125854492,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281159.7225056,
+      "seconds": 0.007338762283325195,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281159.979955,
+      "seconds": 0.0057468414306640625,
+      "returncode": 0,
+      "stdout": "6|RUNNING\n7|RUNNING\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "squeue",
+        "--noheader",
+        "--jobs=4,5,6,7",
+        "--format=%i|%T"
+      ],
+      "start": 1792281160.2358234,
+      "seconds": 0.006643772125244141,
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "sacct",
+        "--noheader",
+        "--parsable2",
+        "--duplicates",
+        "--allocations",
+        "--jobs=4,5,6,7",
+        "--starttime=now-1hours",
+        "--endtime=now",
+        "--format=JobID,State,Start,End,AllocCPUS,NNodes,Submit,Eligible"
+      ],
+      "start": 1792281160.2424753,
+      "seconds": 0.0057811737060546875,
+      "returncode": 0,
+      "stdout": "4|COMPLETED|2026-10-17T23:52:29|2026-10-17T23:52:34|1|1|2026-10-17T23:52:29|2026-10-17T23:52:29\n5|COMPLETED|2026-10-17T23:52:34|2026-10-17T23:52:37|2|1|2026-10-17T23:52:29|2026-10-17T23:52:29\n6|COMPLETED|2026-10-17T23:52:37|2026-10-17T23:52:40|1|1|2026-10-17T23:52:29|2026-10-17T23:52:29\n7|COMPLETED|2026-10-17T23:52:37|2026-10-17T23:52:40|1|1|2026-10-17T23:52:29|2026-10-17T23:52:37\n",
+      "stderr": ""
+    }
+  ]
+}

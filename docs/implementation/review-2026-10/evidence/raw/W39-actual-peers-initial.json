@@ -1,0 +1,13 @@
+{
+  "qualification": "actual Linux SO_PEERCRED across two Unix UIDs in disposable container",
+  "uids": [
+    0,
+    1100
+  ],
+  "own_user_isolation": true,
+  "explicit_lab_grant": true,
+  "revocation": true,
+  "private_fields_excluded": true,
+  "fixture_data": "synthetic scheduler records",
+  "production_site_security_qualified": false
+}

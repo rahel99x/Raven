@@ -1,0 +1,64 @@
+{
+  "analytics_prepare": {
+    "median_cpu_seconds": 0.01157775350000012,
+    "median_seconds": 0.011576397499766244,
+    "p95_seconds": 0.013197174000197265,
+    "python_peak_bytes": 987109,
+    "repetitions": 20
+  },
+  "archive_bytes": 4416968,
+  "diff_prepare": {
+    "median_cpu_seconds": 0.025065202500000217,
+    "median_seconds": 0.025063594500124964,
+    "p95_seconds": 0.026344822999817552,
+    "python_peak_bytes": 2072352,
+    "repetitions": 20
+  },
+  "encoded_snapshots_bytes": 4410112,
+  "fixture": {
+    "frames_requested": 32,
+    "frames_retained": 32,
+    "jobs": 1000,
+    "samples_per_frame": 200,
+    "sha256": "3e795923f0661c330682ab7b5e66a97c5cad5047e2b1a31f7d30811ae67f239e"
+  },
+  "jobs_prepare": {
+    "median_cpu_seconds": 0.010133605000000157,
+    "median_seconds": 0.01013243300008071,
+    "p95_seconds": 0.010999510000146984,
+    "python_peak_bytes": 987109,
+    "repetitions": 20
+  },
+  "limits": "Single process fresh fixture; Python peaks are per operation, RSS is whole-process maximum. No scheduler/I/O commands; persistence bytes measured, no disk-throughput claim. This is a new capability, not an old/new speedup.",
+  "metadata_clone_on_ui": {
+    "median_cpu_seconds": 4.061000000055159e-06,
+    "median_seconds": 4.046500180265866e-06,
+    "p95_seconds": 1.9770000108110253e-05,
+    "python_peak_bytes": 10832,
+    "repetitions": 20
+  },
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "process_max_rss_kib": 55840,
+  "python": "3.12.14",
+  "schema": "raven.historical-benchmark/v1",
+  "seek": {
+    "median_cpu_seconds": 0.00967664750000008,
+    "median_seconds": 0.009675766500095051,
+    "p95_seconds": 0.010051334999843675,
+    "python_peak_bytes": 987477,
+    "repetitions": 20
+  },
+  "snapshot_metadata_bytes": 6856,
+  "snapshot_prepare": {
+    "median_cpu_seconds": 0.010848907500000005,
+    "median_seconds": 0.010851650499716925,
+    "p95_seconds": 0.011536591000094631,
+    "python_peak_bytes": 1124662,
+    "repetitions": 20
+  },
+  "source_hashes": {
+    "charts.py": "2e379c9a02c703dede8ee3f2933d4e4dc7f72b797c085a5469695acfe4f9f2b7",
+    "historical_replay.py": "2ff658988e0ed262ded212e7dfbb21ced26d5cf8e9fb6191e69fceaf86fc02b4",
+    "historical_ui.py": "ebc6fa575f2100fb3fe80e1f88960a9845a25a863145798f8024b236e0b2e78c"
+  }
+}

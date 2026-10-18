@@ -1,0 +1,48 @@
+{
+  "schema": "raven.implementation-evidence/v1",
+  "package": "W28",
+  "captured_at": "2026-10-18T01:20:21.264883+00:00",
+  "base_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "source_state": "uncommitted integrated working tree; exact per-file hashes below",
+  "files": {
+    "raven/record.py": "40df508406c833da975f7f4a1f259394aa6b22e0f91f97efef90547014ffd286",
+    "raven/views.py": "defb8aeee8e9cf9ba7e963c058a452f089cfd8db1fb2d6114bcd01e568db531f",
+    "tests/test_historical_replay.py": "5ac4d8429f912e9ce3698b3bf4294ebdee0ab3338d11def90fc81e3f83dfd02c",
+    "docs/guides/historical-observations.md": "c3c3c4e0b016439da9d5a19e26ef4265ce683653586c7ea96e1ff448ab347e58"
+  },
+  "findings": [
+    {
+      "issue": "wall-clock rollback or appended observer segments can interleave later evidence while claiming known-at-time",
+      "resolution": "v3 observer ID, contiguous sequence and monotonic metadata stamped under writer lock; validate file-order provenance before timestamp sorting; sticky reconstruction reasons preserve older and ambiguous readability"
+    },
+    {
+      "issue": "malformed deep JSON and invalid dt escape runtime validation",
+      "resolution": "contain JSON recursion, duplicate/nonfinite constants and overflowing exponent values; finite nonnegative duration; readable UTF-8/compressed EOF errors; visible invalid-record counts; bounded header user before scheduler identity use"
+    }
+  ],
+  "design_tradeoff": "Conservative reconstructed classification reuses existing replay UI and file formats; an epoch-selection UI is unnecessary for this correction. Provenance establishes consistency, not producer authenticity. Metadata is additive and new schema is v3; older records remain readable.",
+  "checks": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_historical_replay.py tests/test_group_evidence_replay.py tests/test_core_quality.py tests/test_slurm_json.py tests/test_native_launch_evidence.py tests/test_forecast_integration.py tests/test_raven.py -k 'historical or replay or record or core_quality or slurm_json or native_launch or forecast'",
+      "result": "194 passed, 31 deselected in 3.85s"
+    },
+    {
+      "command": ".venv/bin/python scripts/check_quality.py",
+      "result": "2 architecture contracts kept; 3 formatted files; 3 strict-typing files passed"
+    },
+    {
+      "command": "git diff --check",
+      "result": "passed"
+    }
+  ],
+  "independent_review": {
+    "reviewer": "review_state",
+    "record_py_sha256": "40df508406c833da975f7f4a1f259394aa6b22e0f91f97efef90547014ffd286",
+    "result": "No remaining substantive findings after exponent-number and header-user corrections; sticky provenance reasons, bounds, legacy compatibility and action refusal verified by read-only diff review."
+  },
+  "performance": "No new speedup claim or controlled timing. W28 historical snapshot/seek/layout code and its measured path are unchanged by this command-recording correction. New metadata adds three scalar provenance fields per command/header and validation remains one pass before the existing sort.",
+  "limits": [
+    "Reconstructed recordings cannot distinguish overlapping observer/clock segments; this limitation is explicitly labelled.",
+    "Final integrated regression and installed/compatibility gates remain root-owned."
+  ]
+}

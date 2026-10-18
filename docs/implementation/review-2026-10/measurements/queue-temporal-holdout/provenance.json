@@ -1,0 +1,18 @@
+{
+  "base_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "scope": "actual isolated Slurm26.05.5 container, independent sequential calibration/validation queues",
+  "source_working_tree_sha256": {
+    "raven/slurm_simulator.py": "a3da682bf4bced8cb5af62326fa3e213646d027ebcbf4ee91090f87a186bebd5",
+    "scripts/slurm/queue_observations.py": "1a0a36393badf21d4bcd63ef7d0222f04e967dde897ba0fbbcd0baab76df2e88"
+  },
+  "artifacts": {
+    "commands.json": "cd2ae717f5dde2790364a26ae777294cfa9b0768ecf3f72d949c12f42df7f896",
+    "image-id.txt": "1e72b744b8f3168a0d23a6b3ddf6c71353dea5935d0b7a91741c427daf0179de",
+    "manifest.json": "4d2f457d4ba9389eb4c2ff56385a45bb34736419f6bba496e68968e4ec0f392e",
+    "model.json": "6e06b63591c2e57984f56b8226e8f73495faaf4c83acc800cbe7f4404bf9a11e",
+    "result.json": "056bef3d6a8a1125143c878e5d95822097643f801282c0fdd4c0131bb8c5b2ff",
+    "system-packages.txt": "e0862c717b3ff934d70ee16171dac58c69ba05e7b6379ae7c5ceadde4082e9f0"
+  },
+  "production_qualified": false,
+  "qualification_limit": "4 held-out outcomes, one node, CPU-only shell sleep workloads; no representative site workload or hidden-state fidelity"
+}

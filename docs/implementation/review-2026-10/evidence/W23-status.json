@@ -1,0 +1,136 @@
+{
+  "package": "W23",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "requirements": [
+    {
+      "id": "W23-R01",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R09",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W23-R10",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W23.md",
+        "tests/test_evidence_index.py",
+        "docs/guides/evidence-queries.md",
+        "evidence/W23-index-queries.json",
+        "evidence/W23-final-focused.json",
+        "evidence/final-qualification.json"
+      ]
+    }
+  ],
+  "limits": [
+    "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed. Local SQLite ownership requires a supported local filesystem; managed input/resource budgets may be lower than format ceilings. No expr-to-SQL translation is attempted."
+  ],
+  "focused_history": {
+    "validation": "Final 50 evidence-index/MCP checks passed on CPython3.12;36 evidence-index checks passed on CPython3.10. Exact commands/source hashes and three independently reviewed fidelity resolutions are in W23-final-focused.json. Full final integration remains root-owned."
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

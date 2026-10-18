@@ -1,0 +1,29 @@
+{
+  "channel": "terminal_service",
+  "fixture": "terminal-grid",
+  "source": "/tmp/raven-review-baseline",
+  "frames_per_iteration": 8,
+  "source_sha256": {
+    "raven/terminal_service.py": "75322f8fdb20776a8094c01a3244201c2fbe5c1d8a147ab60a36f9986fa57cab"
+  },
+  "wire_bytes_per_iteration": 193416,
+  "iterations": 30,
+  "repeats": 3,
+  "wall_seconds": [
+    0.14851045799878193,
+    0.1452999559987802,
+    0.14610031700431136
+  ],
+  "cpu_seconds": [
+    0.148501801,
+    0.14530123299999997,
+    0.14609208099999998
+  ],
+  "verified_source_import_seconds": 0.0189597770004184,
+  "frames_per_second_median": 1642.7069079728121,
+  "python_peak_allocated_bytes": 2622155,
+  "process_peak_rss_kib": 25264,
+  "block_reads": 0,
+  "block_writes": 0,
+  "limits": "In-memory transport fixture; no scheduler, GPU, SSH or end-user terminal latency measurement"
+}

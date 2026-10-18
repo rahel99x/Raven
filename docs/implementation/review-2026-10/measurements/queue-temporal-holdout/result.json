@@ -1,0 +1,93 @@
+{
+  "schema": "raven.queue-model-result/v1",
+  "status": "experimental",
+  "model": "observable-slurm-subset/1",
+  "input_sha256": "ab2fdcf7bed0bae64d0d9d6c7841092dd8ea6e954f7f3d95b79bca5f9af15a53",
+  "seed": 0,
+  "parameters": {
+    "runtime_factor": 1.0,
+    "calibration_samples": 3
+  },
+  "timeline": [
+    {
+      "id": "4",
+      "submit": 1792281149,
+      "start": 1792281149,
+      "end": 1792281153.0,
+      "wait_seconds": 0,
+      "nodes": [
+        "raven-ci"
+      ],
+      "reserved_until": 1792281209,
+      "runtime_clipped": false
+    },
+    {
+      "id": "6",
+      "submit": 1792281149,
+      "start": 1792281149,
+      "end": 1792281151.0,
+      "wait_seconds": 0,
+      "nodes": [
+        "raven-ci"
+      ],
+      "reserved_until": 1792281209,
+      "runtime_clipped": false
+    },
+    {
+      "id": "5",
+      "submit": 1792281149,
+      "start": 1792281153.0,
+      "end": 1792281155.0,
+      "wait_seconds": 4.0,
+      "nodes": [
+        "raven-ci"
+      ],
+      "reserved_until": 1792281213.0,
+      "runtime_clipped": false
+    },
+    {
+      "id": "7",
+      "submit": 1792281149,
+      "start": 1792281155.0,
+      "end": 1792281157.0,
+      "wait_seconds": 6.0,
+      "nodes": [
+        "raven-ci"
+      ],
+      "reserved_until": 1792281215.0,
+      "runtime_clipped": false
+    }
+  ],
+  "blocked": {},
+  "events": 5,
+  "placement_operations": 25,
+  "makespan_seconds": 8.0,
+  "completion_coverage": 1.0,
+  "validation": [
+    {
+      "trace_id": "queue-1",
+      "origin": "recorded",
+      "samples": 4,
+      "coverage": 1.0,
+      "start_mae_seconds": 2.75,
+      "wait_mae_seconds": 2.75,
+      "tail_start_error_seconds": 8.0,
+      "ranking_accuracy": 0.6,
+      "ranked_pairs": 5
+    }
+  ],
+  "hidden_state_sensitivity": {
+    "assumed_all_nodes_blocked_seconds": 10,
+    "maximum_start_shift_seconds": 10
+  },
+  "limits": [
+    "Experimental observable subset: no hidden jobs, full Slurm multifactor priority, topology, licenses, federation, heterogeneous components or preemption.",
+    "Resource requests are homogeneous per node; integer CPU/GPU counts and memory MiB use deterministic first-fit placement.",
+    "Backfill conservatively requires a lower-priority job to finish within the protected head reservation; wall limits reserve capacity.",
+    "Fairshare is an explicit decayed account-usage score, not Slurm's full hierarchical fair-tree algorithm.",
+    "QOS supports only declared running-job, CPU and wall-time limits. Missing policies are unknown, not observed unlimited capacity.",
+    "Calibration and held-out validation use different trace identities and chronological windows; simulated outcomes are not real ground truth."
+  ],
+  "production_qualified": false,
+  "summary": "A deterministic declared-policy simulation; observed-site fidelity requires independent held-out qualification."
+}

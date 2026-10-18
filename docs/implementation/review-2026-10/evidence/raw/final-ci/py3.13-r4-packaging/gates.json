@@ -1,0 +1,444 @@
+{
+  "schema": "raven.final-ci-gates/v1",
+  "python": "/workspace/raven-compat/py3.13/bin/python",
+  "version": "3.13",
+  "source_commit": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "started": "2026-10-18T03:01:31.236806+00:00",
+  "checks": [
+    {
+      "label": "quality",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/check_quality.py"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/quality.log",
+      "started": "2026-10-18T03:01:31.255063+00:00",
+      "exit_code": 0,
+      "seconds": 0.5653326020001259,
+      "log_sha256": "4c24f5bcae28e02164779331145f931c0821b1a14f9ad623ac395d41f3032926"
+    },
+    {
+      "label": "operation-reference",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/generate_operation_reference.py",
+        "--check"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/operation-reference.log",
+      "started": "2026-10-18T03:01:31.821116+00:00",
+      "exit_code": 0,
+      "seconds": 0.11427650900077424,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "capability-reference",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/generate_capability_reference.py",
+        "--check"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/capability-reference.log",
+      "started": "2026-10-18T03:01:31.936284+00:00",
+      "exit_code": 0,
+      "seconds": 0.11436068900002283,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "schemas",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/validate_operation_schemas.py"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/schemas.log",
+      "started": "2026-10-18T03:01:32.051176+00:00",
+      "exit_code": 0,
+      "seconds": 0.7160634129995742,
+      "log_sha256": "24e5e0c996f1a8b07b29d062c9496f79389bcf291e1ba5aca871e8a92f85cf2b"
+    },
+    {
+      "label": "offline-setup",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/setup.py",
+        "--mode",
+        "demo",
+        "--venv",
+        "/tmp/rg313-4fpmr3bd/setup",
+        "--report",
+        "/tmp/rg313-4fpmr3bd/demo.txt"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/offline-setup.log",
+      "started": "2026-10-18T03:01:32.768268+00:00",
+      "exit_code": 0,
+      "seconds": 20.674936511999476,
+      "log_sha256": "d7fad51e9e691880cd699b4fb5d5ed9de9aec51dddfdf08e3c7cd2e09bb45976"
+    },
+    {
+      "label": "build",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "-m",
+        "build",
+        "--outdir",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/build.log",
+      "started": "2026-10-18T03:01:53.444211+00:00",
+      "exit_code": 0,
+      "seconds": 10.140685614000176,
+      "log_sha256": "52e7059880702b7fb2398acecd8c76e0a901f20e9df22b54802d96484c1da00e"
+    },
+    {
+      "label": "sdist-location",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "-c",
+        "import pathlib,raven; assert pathlib.Path(raven.__file__).resolve().is_relative_to(pathlib.Path.cwd())"
+      ],
+      "cwd": "/tmp/rg313-4fpmr3bd/sdist/raven-7.0.0",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/sdist-location.log",
+      "started": "2026-10-18T03:02:03.882675+00:00",
+      "exit_code": 0,
+      "seconds": 0.032030766999014304,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "sdist-fixtures",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_slurm_json.py",
+        "tests/test_slurm_qualification.py",
+        "tests/test_completed_series_identity.py",
+        "--basetemp=/tmp/rg313-4fpmr3bd/fixture-tests"
+      ],
+      "cwd": "/tmp/rg313-4fpmr3bd/sdist/raven-7.0.0",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/sdist-fixtures.log",
+      "started": "2026-10-18T03:02:03.915375+00:00",
+      "exit_code": 0,
+      "seconds": 0.7660532699992473,
+      "log_sha256": "52afbe84478cffbed8e363fef0ce2be649d8c9978124f8ecceb5cd3feca5dac7"
+    },
+    {
+      "label": "clean-venv",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "-m",
+        "venv",
+        "/tmp/rg313-4fpmr3bd/installed"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/clean-venv.log",
+      "started": "2026-10-18T03:02:04.682091+00:00",
+      "exit_code": 0,
+      "seconds": 1.6186447650015907,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "install-wheel",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "--no-deps",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0-py3-none-any.whl"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/install-wheel.log",
+      "started": "2026-10-18T03:02:06.301716+00:00",
+      "exit_code": 0,
+      "seconds": 1.5181972909995238,
+      "log_sha256": "6adce56a8d640028e88f42a7f25e3591c5d5fa30645245e428b32df51ee7eb6a"
+    },
+    {
+      "label": "installed-location",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/python",
+        "-c",
+        "import pathlib,raven,sys; p=pathlib.Path(raven.__file__).resolve(); print(p); assert p.is_relative_to(pathlib.Path(sys.prefix).resolve())"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/installed-location.log",
+      "started": "2026-10-18T03:02:07.820633+00:00",
+      "exit_code": 0,
+      "seconds": 0.03212105800048448,
+      "log_sha256": "5a75778e31a5fa7d3926c4629e02f5acfedcfeda249d5c00a3683d3ea5f7f8e3"
+    },
+    {
+      "label": "doctor-fake",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/raven",
+        "--doctor",
+        "--fake"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/doctor-fake.log",
+      "started": "2026-10-18T03:02:07.853377+00:00",
+      "exit_code": 0,
+      "seconds": 0.11452345999896352,
+      "log_sha256": "c1aac1be0a4277b3125b4465d09d4e393db4dec042aa7335e53e79bbb6f5dee4"
+    },
+    {
+      "label": "light-doctor",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/ravenl",
+        "--site",
+        "desktop",
+        "doctor"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/light-doctor.log",
+      "started": "2026-10-18T03:02:07.968667+00:00",
+      "exit_code": 0,
+      "seconds": 0.06439834900083952,
+      "log_sha256": "02df7ed3b97e285162a9c87b516f4847698d75e0fb41e0cddfc4d2d62ebf798e"
+    },
+    {
+      "label": "heavy-plan",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/ravenh",
+        "--site",
+        "desktop",
+        "--plan"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/heavy-plan.log",
+      "started": "2026-10-18T03:02:08.033939+00:00",
+      "exit_code": 0,
+      "seconds": 0.06420922700090159,
+      "log_sha256": "15dc4e7b96862252a2b4064a47b36c4b91c0052406632e1da41f3aa3803831d9"
+    },
+    {
+      "label": "mcp-help",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/raven",
+        "mcp",
+        "--help"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/mcp-help.log",
+      "started": "2026-10-18T03:02:08.099037+00:00",
+      "exit_code": 0,
+      "seconds": 0.11436956000034115,
+      "log_sha256": "4e78b1ea054f792f50ec6ae0b84c92bdd3464809ae55caea49d5f72842fa43fa"
+    },
+    {
+      "label": "light-mcp-help",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/ravenl",
+        "mcp",
+        "--help"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/light-mcp-help.log",
+      "started": "2026-10-18T03:02:08.214202+00:00",
+      "exit_code": 0,
+      "seconds": 0.11441387700142513,
+      "log_sha256": "4e78b1ea054f792f50ec6ae0b84c92bdd3464809ae55caea49d5f72842fa43fa"
+    },
+    {
+      "label": "heavy-mcp-help",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/ravenh",
+        "mcp",
+        "--help"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/heavy-mcp-help.log",
+      "started": "2026-10-18T03:02:08.329523+00:00",
+      "exit_code": 0,
+      "seconds": 0.11437918399860791,
+      "log_sha256": "4e78b1ea054f792f50ec6ae0b84c92bdd3464809ae55caea49d5f72842fa43fa"
+    },
+    {
+      "label": "qualify-offline",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/ravenl",
+        "qualify",
+        "--offline"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/qualify-offline.log",
+      "started": "2026-10-18T03:02:08.444709+00:00",
+      "exit_code": 0,
+      "seconds": 11.847986459000822,
+      "log_sha256": "f2275532a02ae86880ed8df1baa966417d558241b5e0555c4ee95b29b6550a8a"
+    },
+    {
+      "label": "fake-report",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/raven",
+        "--fake",
+        "--no-state",
+        "--no-plugins",
+        "--report",
+        "/tmp/rg313-4fpmr3bd/wheel.txt"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/fake-report.log",
+      "started": "2026-10-18T03:02:20.293760+00:00",
+      "exit_code": 0,
+      "seconds": 1.317469469999196,
+      "log_sha256": "77319d9565ac2733e310669d35eee257de4ebee3b1f13917c59b9c29d1e1dfe4"
+    },
+    {
+      "label": "flagship",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/qualify_flagship.py",
+        "--wheel",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0-py3-none-any.whl",
+        "--output",
+        "/tmp/rg313-4fpmr3bd/flagship.json"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/flagship.log",
+      "started": "2026-10-18T03:02:21.612445+00:00",
+      "exit_code": 0,
+      "seconds": 13.199523421000777,
+      "log_sha256": "2749d7ad03fc8c584aa8d4ae10e43e442760d744bf222a56dfad7ab845e63244"
+    },
+    {
+      "label": "install-terminal",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0-py3-none-any.whl[terminal]"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/install-terminal.log",
+      "started": "2026-10-18T03:02:34.813164+00:00",
+      "exit_code": 0,
+      "seconds": 1.4181528270000854,
+      "log_sha256": "5b1ba6eed49d4080059fb55bb0076b3c422481a80f4d7897584c2393b1f4fcf1"
+    },
+    {
+      "label": "terminal-selftest",
+      "command": [
+        "/tmp/rg313-4fpmr3bd/installed/bin/raven",
+        "terminal",
+        "selftest",
+        "--json"
+      ],
+      "cwd": "/tmp",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/terminal-selftest.log",
+      "started": "2026-10-18T03:02:36.232426+00:00",
+      "exit_code": 0,
+      "seconds": 0.615959644999748,
+      "log_sha256": "36da6182701e3ee7cc25a643d71c5a99f6d5121ee0fef4aa3e54f0032cd0e12c"
+    },
+    {
+      "label": "inventory-create",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/release_inventory.py",
+        "create",
+        "--output",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/release-inventory.json",
+        "--spdx",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven.spdx.json",
+        "--checksums",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/SHA256SUMS",
+        "--source-commit",
+        "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0-py3-none-any.whl",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0.tar.gz"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/inventory-create.log",
+      "started": "2026-10-18T03:02:36.849345+00:00",
+      "exit_code": 0,
+      "seconds": 0.3149929350001912,
+      "log_sha256": "3785d7a255970a533d15fa1bc5f81d9ec680e534e6e272b699bc0876d2571ab2"
+    },
+    {
+      "label": "inventory-verify",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/release_inventory.py",
+        "verify",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/release-inventory.json",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0-py3-none-any.whl",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0.tar.gz"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/inventory-verify.log",
+      "started": "2026-10-18T03:02:37.165325+00:00",
+      "exit_code": 0,
+      "seconds": 0.31501599500006705,
+      "log_sha256": "ba148ebe2cd6b284a401d1f7558b0c94328a5bce65925fbdeec48812b76b9f74"
+    },
+    {
+      "label": "inventory-policy",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "scripts/release_inventory.py",
+        "policy",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/release-inventory.json",
+        "--expected-version",
+        "7.0.0",
+        "--expected-source",
+        "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0-py3-none-any.whl",
+        "/workspace/raven-qualification-results/final/py3.13-r4-packaging/dist/raven-7.0.0.tar.gz"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4-packaging/inventory-policy.log",
+      "started": "2026-10-18T03:02:37.481488+00:00",
+      "exit_code": 0,
+      "seconds": 0.3149893150002754,
+      "log_sha256": "ec31229a52d0ee43577c859fd35c6bf073489707567134dea4e6dc8c47af5378"
+    }
+  ],
+  "output": "/workspace/raven-qualification-results/final/py3.13-r4-packaging",
+  "source_before": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+  "packaging_inputs": {
+    "MANIFEST.in": "1555de724760f0fb660964133423fc68e07b3bed38ba810c8156a2b4b65eeff7",
+    ".github/workflows/tests.yml": "5d79a8347b8139f438b36ec94d249a332cf2c769ad406aaad21ae10f99e9a107"
+  },
+  "environment_overrides": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PATH_prefix": "/workspace/raven-compat/py3.13/bin:/workspace/raven-tools/mpi-private-qualification/bin"
+  },
+  "interpreter": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+  "temporary_root": "/tmp/rg313-4fpmr3bd",
+  "packaging_inputs_stable": true,
+  "source_after": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+  "source_stable": true,
+  "ended": "2026-10-18T03:02:37.837176+00:00",
+  "passed": true,
+  "artifacts": {
+    "SHA256SUMS": {
+      "bytes": 180,
+      "sha256": "59446ed99ab9b7808bda03ae403d9b69cedf588e13a803cd789209fa6baaf68e"
+    },
+    "raven-7.0.0-py3-none-any.whl": {
+      "bytes": 1854583,
+      "sha256": "c3abae922667a33491099cea78028dd8e278fa1dd3c04653ddc6317d8ce371e4"
+    },
+    "raven-7.0.0.tar.gz": {
+      "bytes": 6325954,
+      "sha256": "079f0e83af5679887c590de7f57c9d1a6fe5e1088333a417427098324991498a"
+    },
+    "raven.spdx.json": {
+      "bytes": 2299,
+      "sha256": "70c0e48ca3e10e7ca525334a0667cbb0c6a0281ce74e91eb1c4783376acdbcd3"
+    },
+    "release-inventory.json": {
+      "bytes": 531225,
+      "sha256": "f682dcc738e025bcb8c72a9d032e8416529b9dbbc71b05425f59e4994ed8e6e8"
+    }
+  }
+}

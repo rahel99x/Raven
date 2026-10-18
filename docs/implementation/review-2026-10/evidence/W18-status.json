@@ -1,0 +1,120 @@
+{
+  "schema": "raven.review-package-status/v1",
+  "package": "W18",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "candidate_source_manifest_sha256": "7bc56e0f4145e93d1325fc0bf66afe362d3e93cfd129b3c1e18c0658a9e2cf4b",
+  "requirements": [
+    {
+      "id": "W18-R01",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W18.md#complete-runtime-path",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Source claims reconciled to actual baseline and existing selector owners."
+    },
+    {
+      "id": "W18-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#complete-runtime-path",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "UI-owned readiness selector and typed coalesced publication hints attach to complete source/client lifecycle."
+    },
+    {
+      "id": "W18-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#complete-runtime-path",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Existing maintenance/live/selector/preview deadlines plus actual Escape and progress-icon boundaries govern waits."
+    },
+    {
+      "id": "W18-R04",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W18.md#complete-runtime-path",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Existing broker/client poll methods retain all byte and ownership semantics."
+    },
+    {
+      "id": "W18-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#complete-runtime-path",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "WorkerClient and allocation-helper waits use their existing selectors; terminal broker and bounded final reaping remain unchanged."
+    },
+    {
+      "id": "W18-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#validation-and-review",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Existing behavioral assertions preserved; 305 focused input/frame/PTY/latency-harness tests pass."
+    },
+    {
+      "id": "W18-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#validation-and-review",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "100000 coalesced notifications, concurrent drain, closed producers, descriptor exhaustion and EOF are covered."
+    },
+    {
+      "id": "W18-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#validation-and-review",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Finite input, decoder and broker drain budgets remain; 200 ms maintenance retained for providers lacking deadlines."
+    },
+    {
+      "id": "W18-R09",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#measurement-status",
+        "evidence/W18-final-measurements.json",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Clean frozen noPTY/actualPTY idle and latency comparisons complete; gains, CPU/RSS regressions and unchanged scheduler counts reported. Sub1% one-core idle target missed (2.200%/6.222%); no universal efficiency claim.",
+      "validation": "complete_with_explicit_missed_idle_target"
+    },
+    {
+      "id": "W18-R10",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W18.md#measurement-status",
+        "evidence/W18-final-measurements.json",
+        "evidence/final-qualification.json"
+      ],
+      "conclusion": "Clean frozen noPTY/actualPTY idle and latency comparisons complete; gains, CPU/RSS regressions and unchanged scheduler counts reported. Sub1% one-core idle target missed (2.200%/6.222%); no universal efficiency claim.",
+      "validation": "complete_with_explicit_missed_idle_target"
+    }
+  ],
+  "final_source_evidence": "evidence/W08-W18-W20-W27-W29-W36-W43-final-validation.json",
+  "subsequent_validation": "startup_cleanup_regression_resolved; 160_related_tests_passed; original_assertions_preserved",
+  "focused_history": {
+    "validation": "203_focused_tests_passed; quality_passed; controlled_benchmark_complete; root_final_gates_pending"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

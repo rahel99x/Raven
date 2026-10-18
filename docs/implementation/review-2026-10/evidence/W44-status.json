@@ -1,0 +1,126 @@
+{
+  "package": "W44",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "requirements": [
+    {
+      "id": "W44-R01",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "No human participants or live-site study; scripted preparation is real execution but not usability evidence.",
+      "unblock": null
+    },
+    {
+      "id": "W44-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "No human participants or live-site study; scripted preparation is real execution but not usability evidence.",
+      "unblock": null
+    },
+    {
+      "id": "W44-R03",
+      "state": "blocked",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Recruitment/contact authorization and five participants are unavailable.",
+      "unblock": "Authorize participant outreach, recruit five consenting users and obtain permitted site/account access."
+    },
+    {
+      "id": "W44-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "No human participants or live-site study; scripted preparation is real execution but not usability evidence.",
+      "unblock": null
+    },
+    {
+      "id": "W44-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "No human participants or live-site study; scripted preparation is real execution but not usability evidence.",
+      "unblock": null
+    },
+    {
+      "id": "W44-R06",
+      "state": "blocked",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Observation form covers every requested measure; no human observations exist.",
+      "unblock": "Run the five exact G5 tasks with consenting participants and record the declared measures."
+    },
+    {
+      "id": "W44-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "No human participants or live-site study; scripted preparation is real execution but not usability evidence.",
+      "unblock": null
+    },
+    {
+      "id": "W44-R08",
+      "state": "blocked",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "Human friction has not been observed; no fabricated ranking or efficacy claim.",
+      "unblock": "Complete the study, rank observed issues, ship focused fixes and rerun affected journeys."
+    },
+    {
+      "id": "W44-R09",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "No human participants or live-site study; scripted preparation is real execution but not usability evidence.",
+      "unblock": null
+    },
+    {
+      "id": "W44-R10",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W44.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": "No human participants or live-site study; scripted preparation is real execution but not usability evidence.",
+      "unblock": null
+    }
+  ],
+  "focused_history": {
+    "qualification": "working tree; final integrated revision checks pending"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated_with_external_gates",
+  "external_gates": [
+    "W44-R03",
+    "W44-R06",
+    "W44-R08"
+  ]
+}

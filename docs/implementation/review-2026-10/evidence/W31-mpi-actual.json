@@ -1,0 +1,463 @@
+{
+  "schema": "raven.mpi-health-qualification/v1",
+  "receipt": {
+    "cohort": "162429828b77a960ab1a9867292ddaddf40ddc97696055743286926d809299aa",
+    "comparison": {
+      "reason": "A single observation cannot identify unusual performance",
+      "status": "no-baseline"
+    },
+    "elapsed_seconds": 0.8365064039999197,
+    "execution": {
+      "host": "9057b8f37cff",
+      "pid": 65169,
+      "site_kind": "desktop",
+      "uid": 1000,
+      "verification": "explicit approved desktop policy",
+      "verified": true,
+      "verified_resources": {
+        "cpus": 2,
+        "memory_mib": 1024
+      }
+    },
+    "hardware": {
+      "affinity_truncated": false,
+      "allowed_cpus": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+      "cpu_topology": [
+        {
+          "core_id": 0,
+          "cpu": 0,
+          "physical_package_id": 0
+        },
+        {
+          "core_id": 1,
+          "cpu": 1,
+          "physical_package_id": 0
+        },
+        {
+          "core_id": 2,
+          "cpu": 2,
+          "physical_package_id": 0
+        },
+        {
+          "core_id": 3,
+          "cpu": 3,
+          "physical_package_id": 0
+        },
+        {
+          "core_id": 4,
+          "cpu": 4,
+          "physical_package_id": 0
+        }
+      ],
+      "implementation": "Python bytearray copy; cached scratch write/fsync/read",
+      "kernel": "6.18.55",
+      "libc": [
+        "glibc",
+        "2.41"
+      ],
+      "logical_cpus": 5,
+      "machine": "x86_64",
+      "python": "3.12.14"
+    },
+    "interference": "This diagnostic consumes resources in Raven's Heavy allocation; it neither runs nor cancels the scientific workload",
+    "mpi": {
+      "binary_sha256": "cf615b3ee28e9c35eb42f77f103f2e0aec1bc1fdbcc56b6255db7fa1dbad781f",
+      "commands": [
+        {
+          "argv": [
+            "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+            "-I/workspace/raven-tools/mpi-private-qualification/include",
+            "-O2",
+            "-pipe",
+            "-x",
+            "c",
+            "-c",
+            "/proc/65173/fd/3",
+            "-o",
+            "/proc/65173/fd/6"
+          ],
+          "output": "",
+          "returncode": 0,
+          "seconds": 0.13845878800020728,
+          "state": "finished"
+        },
+        {
+          "argv": [
+            "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+            "-L/workspace/raven-tools/mpi-private-qualification/lib",
+            "/proc/65173/fd/6",
+            "-o",
+            "/proc/65173/fd/8"
+          ],
+          "output": "",
+          "returncode": 0,
+          "seconds": 0.11638590500024293,
+          "state": "finished"
+        },
+        {
+          "argv": [
+            "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+            "-n",
+            "2",
+            "--host",
+            "localhost:2",
+            "--bind-to",
+            "none",
+            "--prtemca",
+            "plm",
+            "ssh",
+            "--prtemca",
+            "plm_ssh_agent",
+            "/usr/bin/false",
+            "--prtemca",
+            "ras",
+            "^slurm",
+            "--mca",
+            "btl",
+            "self,tcp",
+            "--mca",
+            "btl_tcp_if_include",
+            "lo",
+            "--mca",
+            "pml",
+            "ob1",
+            "--prtemca",
+            "prte_tmpdir_base",
+            "/tmp/raven-mpi-session-ogvrug7_",
+            "--timeout",
+            "30",
+            "/proc/65173/fd/8",
+            "1048576",
+            "1",
+            "3",
+            "30"
+          ],
+          "output": "RAVEN_MPI_LIBRARY Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 \nRAVEN_MPI_SAMPLE {\"repeat\":0,\"seconds\":0.013328516000000006,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":1,\"seconds\":0.00038405099999999637,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":2,\"seconds\":0.00033424599999999638,\"bytes\":1048576,\"verified\":true}\nRAVEN_MPI_SAMPLE {\"repeat\":3,\"seconds\":0.00029216299999999806,\"bytes\":1048576,\"verified\":true}\n",
+          "returncode": 0,
+          "seconds": 0.34186567200049467,
+          "state": "finished"
+        }
+      ],
+      "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+      "library_version": "Open MPI v5.0.7, package: Debian OpenMPI, ident: 5.0.7, repo rev: v5.0.7, Feb 14, 2025 ",
+      "limits": "Same-host communication only; no inter-node/interconnect or scientific workload efficacy",
+      "placement": "two ranks on the authenticated worker host",
+      "runtime_temp": "/tmp/raven-mpi-session-ogvrug7_",
+      "runtime_temp_cleanup": "owned janitor verifies removal before return; pidfd/pipe EOF also closes crash lifetime",
+      "toolchain": {
+        "compiler_version": "mpicc: Open MPI 5.0.7 (Language: C)",
+        "headers": [
+          {
+            "authority_sha256": "5d04479766b8ef245d1b6f4359df9efb55ade2959fb17a6099f3bd7d6eae873d",
+            "device": "27",
+            "inode": "1843276",
+            "mtime_ns": 1792286296833554486,
+            "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi.h",
+            "sha256": "84b26c8fe0b227168ac1753a0988d1e2139dc63bda8759378e33c8fe2a24e950",
+            "size": 200058
+          },
+          {
+            "authority_sha256": "69559bc675d5fe2475a6e0250c93cd51c8b7704260e2abb6bd5557326702e0da",
+            "device": "27",
+            "inode": "1843277",
+            "mtime_ns": 1792286296833957899,
+            "path": "/workspace/raven-tools/mpi-private-qualification/include/mpi_portable_platform.h",
+            "sha256": "9ae30899eb391eca5e72223b1131d3ff1f039599aa3c1dd34c021fccc3384e4b",
+            "size": 44232
+          }
+        ],
+        "include": "/workspace/raven-tools/mpi-private-qualification/include",
+        "library": "/workspace/raven-tools/mpi-private-qualification/lib",
+        "library_file": {
+          "authority_sha256": "4d133c9328cf544c23b745a1326ef1607b2c1413622b6e1cdc4e69e0733a01a2",
+          "device": "27",
+          "inode": "1843279",
+          "mtime_ns": 1792286296834325189,
+          "path": "/workspace/raven-tools/mpi-private-qualification/lib/libmpi.so",
+          "sha256": "dcca32f78fe6bda5ab10ca9019a3129e1869ffe6bb7a6f5461207563d2cea446",
+          "size": 3655472
+        },
+        "limits": {
+          "anonymous_compile_file_bytes": 65536,
+          "compile_output_bytes": 65536,
+          "maximum_message_bytes": 1048576,
+          "ranks": 2,
+          "runtime_file_bytes": 1048576,
+          "runtime_files": 128,
+          "runtime_output_bytes": 1048576,
+          "runtime_total_bytes": 8388608,
+          "same_host_only": true
+        },
+        "mpicc": {
+          "authority_sha256": "599c8b1180b8825f0bd4f9b5d5b2b590996859b79cbb04390e60576c58c3bd9c",
+          "device": "27",
+          "inode": "1843272",
+          "mtime_ns": 1792286296832161871,
+          "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc",
+          "sha256": "305f96a29cb3e2d1fb7cbd29e4448b33345ae7fb8a915c7ac7379d543166307f",
+          "size": 217104
+        },
+        "mpiexec": {
+          "authority_sha256": "a46c2d488fa0c4985b3a2467046e5cdcf01bd9dd26e6dfcc84b446197b4af7d8",
+          "device": "27",
+          "inode": "1843273",
+          "mtime_ns": 1792286296832846836,
+          "path": "/workspace/raven-tools/mpi-private-qualification/bin/mpiexec",
+          "sha256": "96ab74bcbe60c8b6a750cd3b726ce6b2360991bcbc2a16635525a1979fc252ff",
+          "size": 208848
+        },
+        "prefix": "/workspace/raven-tools/mpi-private-qualification",
+        "source_sha256": "8445c589c3348736f80125ee94ad1609470c123db66c7c089da11b4fe3db7603"
+      }
+    },
+    "review_digest": "51d99f4bcc6a0801f229159dfe370d47af37c9fb416c37dbb5a1a56920fbf74f",
+    "samples": [
+      {
+        "bytes": 1048576,
+        "repeat": 0,
+        "seconds": 0.013328516000000006,
+        "test": "mpi",
+        "verified": true,
+        "warmup": true
+      },
+      {
+        "bytes": 1048576,
+        "repeat": 1,
+        "seconds": 0.00038405099999999637,
+        "test": "mpi",
+        "verified": true,
+        "warmup": false
+      },
+      {
+        "bytes": 1048576,
+        "repeat": 2,
+        "seconds": 0.0003342459999999964,
+        "test": "mpi",
+        "verified": true,
+        "warmup": false
+      },
+      {
+        "bytes": 1048576,
+        "repeat": 3,
+        "seconds": 0.00029216299999999806,
+        "test": "mpi",
+        "verified": true,
+        "warmup": false
+      }
+    ],
+    "schema": "raven.allocation-health/v1",
+    "scratch": {},
+    "settings": {
+      "anonymous_mpi_compile_bytes": 196608,
+      "bytes": 1048576,
+      "maximum_buffer_bytes": 4194304,
+      "maximum_io_bytes": 0,
+      "peak_scratch_bytes": 0,
+      "repeats": 3,
+      "seconds": 30.0,
+      "tests": [
+        "mpi"
+      ],
+      "warmup": 1
+    },
+    "started_unix_seconds": 1792288032.3798454,
+    "status": "completed",
+    "summary": {
+      "mpi": {
+        "count": 3,
+        "maximum_seconds": 0.00038405099999999637,
+        "median_seconds": 0.0003342459999999964,
+        "minimum_seconds": 0.00029216299999999806,
+        "relative_range": 0.2749112928800922
+      }
+    },
+    "uncertainty": [
+      "Scratch reads may use the page cache; fsync does not measure distributed durability",
+      "Small Python probes are local fingerprints, not peak bandwidth or health ground truth",
+      "Kernel I/O stalls can delay process termination beyond the requested deadline"
+    ]
+  },
+  "actual_governed_worker": true,
+  "actual_same_host_mpi": true,
+  "actual_slurm": false,
+  "source_sha256": {
+    "raven/mpi_health.py": "9df1a5e4996f34384ad6901f821c89fd000683a4dc5ecde1bfffa0a2418835da",
+    "raven/allocation_health.py": "5a6e94c5b7a824de7925a7eb9539ab146700fc90613d01cc7ae695239c2be9f2",
+    "raven/raven_worker.py": "8426b65df7c6078421d9634bba98e687a725c8fcd3a75f0f00feb6d7775bdf01",
+    "raven/raven_execution.py": "5147cf0dae42ea056cce4d4a387c1c6eaaadd79fc26ed27e4648ceabef202bc9",
+    "raven/ops_health.py": "518feb933f1b338b29e0f1f05980b811943df8ded33f1d7ba3ddfc492eb67f14",
+    "raven/diagnostic_trials.py": "d293e110da00917fc2e9acbe883907dbfa9b44c7e8145f9dbabdea11e8282f13",
+    "raven/science_files.py": "e02bdd3e5ec96f5ee707238252ea062e28abef4f822b1fb5efe40847fd20d42d",
+    "tests/test_mpi_health.py": "e278334756ae59d443968060d00b67d42db8bccd38245efd9e2b7e7f31b9978d"
+  },
+  "actual_termination": {
+    "cancel": {
+      "observed_processes": {
+        "65212": {
+          "start_ticks": "519862",
+          "state": "S",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65213": {
+          "start_ticks": "519866",
+          "state": "R",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65214": {
+          "start_ticks": "519870",
+          "state": "R",
+          "executable": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc"
+        },
+        "65215": {
+          "start_ticks": "519873",
+          "state": "S",
+          "executable": "/usr/bin/x86_64-linux-gnu-gcc-14"
+        },
+        "65216": {
+          "start_ticks": "519873",
+          "state": "R",
+          "executable": "/usr/libexec/gcc/x86_64-linux-gnu/14/cc1"
+        },
+        "65217": {
+          "start_ticks": "519873",
+          "state": "S",
+          "executable": "/usr/bin/x86_64-linux-gnu-as"
+        },
+        "65218": {
+          "start_ticks": "519880",
+          "state": "R",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65219": {
+          "start_ticks": "519884",
+          "state": "S",
+          "executable": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc"
+        },
+        "65220": {
+          "start_ticks": "519887",
+          "state": "S",
+          "executable": "/usr/bin/x86_64-linux-gnu-gcc-14"
+        },
+        "65221": {
+          "start_ticks": "519888",
+          "state": "S",
+          "executable": "/usr/libexec/gcc/x86_64-linux-gnu/14/collect2"
+        },
+        "65222": {
+          "start_ticks": "519888",
+          "state": "R",
+          "executable": "/usr/bin/x86_64-linux-gnu-ld.bfd"
+        },
+        "65223": {
+          "start_ticks": "519892",
+          "state": "S",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65224": {
+          "start_ticks": "519896",
+          "state": "S",
+          "executable": "/usr/bin/prte"
+        },
+        "65227": {
+          "start_ticks": "519901",
+          "state": "R",
+          "executable": "/memfd:raven-mpi-health-executable (deleted)"
+        },
+        "65228": {
+          "start_ticks": "519902",
+          "state": "R",
+          "executable": "/memfd:raven-mpi-health-executable (deleted)"
+        }
+      },
+      "actual_rank_observed": true,
+      "all_observed_lifetimes_terminated": true,
+      "owned_runtime_directory_removed": true,
+      "limit": "Termination checks identify exact observed lifetimes; zombie removal by host init is not claimed"
+    },
+    "owner-sigkill": {
+      "observed_processes": {
+        "65236": {
+          "start_ticks": "519939",
+          "state": "S",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65237": {
+          "start_ticks": "519943",
+          "state": "R",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65238": {
+          "start_ticks": "519948",
+          "state": "S",
+          "executable": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc"
+        },
+        "65239": {
+          "start_ticks": "519951",
+          "state": "S",
+          "executable": "/usr/bin/x86_64-linux-gnu-gcc-14"
+        },
+        "65240": {
+          "start_ticks": "519951",
+          "state": "R",
+          "executable": "/usr/libexec/gcc/x86_64-linux-gnu/14/cc1"
+        },
+        "65241": {
+          "start_ticks": "519951",
+          "state": "S",
+          "executable": "/usr/bin/x86_64-linux-gnu-as"
+        },
+        "65242": {
+          "start_ticks": "519959",
+          "state": "R",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65243": {
+          "start_ticks": "519966",
+          "state": "S",
+          "executable": "/workspace/raven-tools/mpi-private-qualification/bin/mpicc"
+        },
+        "65244": {
+          "start_ticks": "519969",
+          "state": "S",
+          "executable": "/usr/bin/x86_64-linux-gnu-gcc-14"
+        },
+        "65245": {
+          "start_ticks": "519969",
+          "state": "S",
+          "executable": "/usr/libexec/gcc/x86_64-linux-gnu/14/collect2"
+        },
+        "65246": {
+          "start_ticks": "519969",
+          "state": "R",
+          "executable": "/usr/bin/x86_64-linux-gnu-ld.bfd"
+        },
+        "65247": {
+          "start_ticks": "519974",
+          "state": "S",
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12"
+        },
+        "65248": {
+          "start_ticks": "519979",
+          "state": "R",
+          "executable": "/usr/bin/prte"
+        },
+        "65251": {
+          "start_ticks": "519984",
+          "state": "R",
+          "executable": "/memfd:raven-mpi-health-executable (deleted)"
+        }
+      },
+      "actual_rank_observed": true,
+      "all_observed_lifetimes_terminated": true,
+      "owned_runtime_directory_removed": true,
+      "limit": "Termination checks identify exact observed lifetimes; zombie removal by host init is not claimed"
+    }
+  }
+}

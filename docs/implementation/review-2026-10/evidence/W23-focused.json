@@ -1,0 +1,21 @@
+{
+  "python": [
+    "3.12.14",
+    "3.10.22"
+  ],
+  "tests": 26,
+  "sources": {
+    "raven/evidence_index.py": "d4f7e35bb064e8b341e8dfcaa08f41c01d83dce160ee63c11687cf6eef7cccd8",
+    "raven/ops_evidence_queries.py": "f10a41d8504b0106c1967a82d8404056b759f1101e7b8b6a0ddbb064dc2bc6a6",
+    "raven/query_cli.py": "fcb1aad5524d4a20fe34807e1596132c509cfbaf32bf7f622fd3128274ecf68f",
+    "tests/test_evidence_index.py": "8d894d2919b3e44944321f85d87b444f48290b93ecc01c6f7e5795193cb2e643",
+    "scripts/benchmark_data_export.py": "74744d678b05bf2dbbf02fb4bea7af467af6801fb9ff5e61ea7de47797acc167"
+  },
+  "commands": [
+    ".venv/bin/python -m pytest -q tests/test_evidence_index.py",
+    "/tmp/raven-review-py310/bin/python -m pytest -q tests/test_evidence_index.py",
+    ".venv/bin/ravenh query --help",
+    ".venv/bin/ravenl query --index /tmp/raven-no-such-index"
+  ],
+  "installed_command_note": "Editable installed launchers; clean-wheel check remains separate. Light returned deferred exit3 without opening the requested path."
+}

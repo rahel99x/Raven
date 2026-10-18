@@ -1,0 +1,30 @@
+{
+  "source": "/tmp/raven-review-baseline",
+  "tags_atomic_publication": {
+    "count": 80,
+    "median_ms": 0.0134105,
+    "p95_ms": 0.048553,
+    "cpu_seconds": 0.0014180719999999994
+  },
+  "memory_append": {
+    "count": 10000,
+    "median_ms": 0.003435,
+    "p95_ms": 0.004907,
+    "cpu_seconds": 0.046760025000000004
+  },
+  "queue_1000_jobs": {
+    "count": 30,
+    "median_ms": 0.721142,
+    "p95_ms": 0.945015,
+    "cpu_seconds": 0.022940250999999995
+  },
+  "state_open_close": {
+    "count": 30,
+    "median_ms": 0.022514,
+    "p95_ms": 0.174112,
+    "cpu_seconds": 0.002158625999999997
+  },
+  "python_allocation_1000_samples_peak_bytes": 776160,
+  "process_peak_rss_kib": 19200,
+  "tags_bytes": 1074
+}

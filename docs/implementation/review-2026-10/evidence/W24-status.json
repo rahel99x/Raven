@@ -1,0 +1,194 @@
+{
+  "package": "W24",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "requirements": [
+    {
+      "id": "W24-R01",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R02",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/series-final.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R07",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/series-final.json",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/final-qualification.json"
+      ]
+    },
+    {
+      "id": "W24-R09",
+      "state": "adjusted",
+      "evidence": [
+        "evidence/W24.md",
+        "docs/guides/recording-storage.md",
+        "tests/test_series_blocks.py",
+        "tests/test_series_summary.py",
+        "tests/test_series_settings.py",
+        "tests/test_series_maintenance.py",
+        "evidence/series-final.json",
+        "evidence/final-qualification.json"
+      ],
+      "reason": "JSONL remains default. Compact blocks are opt-in; general storage/CPU/RSS payoff is workload-dependent and not qualified for default rollout."
+    }
+  ],
+  "evidence": [
+    "evidence/W24.md",
+    "docs/guides/recording-storage.md",
+    "tests/test_series_blocks.py",
+    "tests/test_series_summary.py",
+    "tests/test_series_settings.py",
+    "tests/test_series_maintenance.py",
+    "evidence/series-final.json",
+    "tests/test_quick_advisor.py",
+    "evidence/state-final-advisor-validation.json"
+  ],
+  "limits": [
+    "Local synthetic storage/CPU tests do not establish site-specific filesystem or workload payoff.",
+    "Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed."
+  ],
+  "measurements": {
+    "report": "evidence/series-final.json",
+    "utc_start": "2026-10-18T00:30:51.814362110Z",
+    "utc_end": "2026-10-18T00:30:54.814315606Z",
+    "exit_code": 0,
+    "source_sha256": {
+      "series_blocks.py": "2c3a61be5c86d2c7adcd39293a406ac746e580b09e82c2ed48227f3993339aa8",
+      "series_storage.py": "cb672a4c7149dfad3347a7a1a6f0119b2278f4f55f6b7a539b7c3b0f3c834936",
+      "series_retention.py": "e51d1a4f1655d8d172b170e04040c367012184ec7d12b5c2ad0e15ee2a070955",
+      "series_summary.py": "2882fc175ac487bc47fd7b6ec79af698b8bffdf7563af7f05c11645c055f0e69"
+    },
+    "fixture_sha256": "5e88ee06178bdd966a5efec7841bfa8dc4072f2fef368581867b08827abc2514"
+  },
+  "final_advisor_validation": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_attempt_series.py tests/test_completed_series_identity.py tests/test_series_archive_concurrency.py tests/test_series_blocks.py tests/test_series_summary.py tests/test_series_retention.py tests/test_series_maintenance.py tests/test_series_settings.py tests/test_gpu_diagnostics.py tests/test_background_report.py tests/test_state_reliability.py tests/test_quick_advisor.py tests/test_forecast_integration.py tests/test_refresh_rate.py",
+    "passed": 482,
+    "seconds": 4.47,
+    "prior_focused": {
+      "passed": 262,
+      "seconds": 1.64,
+      "modules": [
+        "tests/test_quick_advisor.py",
+        "tests/test_series_blocks.py",
+        "tests/test_forecast_integration.py",
+        "tests/test_refresh_rate.py"
+      ]
+    },
+    "sha256": {
+      "raven/quick_advisor.py": "ccf5d345215038b167e9b6b8b66e25d483b697700f8dc0946f8ec7e1d7cb4c84",
+      "raven/series_blocks.py": "f4ab58d3d52e6bcee94970bc20bc2d795cf63908e830ebc4c86b717559b84fd5",
+      "tests/test_quick_advisor.py": "ab8fe2b010be657478de152dce6e2640f8821fd2e5a2e00fb6899c243a942ce7",
+      "tests/test_forecast_integration.py": "8127406b1f278073e1157127e32191697b44eeee06994c549f4685a64c54fe5b",
+      "tests/test_refresh_rate.py": "49a3b1f9fddb8fdd39ffc3c3a82881b0390062d2a1689bcb01603b33242ecbf8"
+    },
+    "scope": "Synthetic native samples and real local bounded file/background/lifecycle paths; no live scheduler/GPU efficacy claim."
+  },
+  "focused_history": {
+    "validation": "Post-repair integrated state/archive/native telemetry/storage/config/CLI/allocation/W16 suite:796 tests passed in70.48s across29 modules. Tests include real bounded local maintenance subprocesses and Hypothesis fidelity/identity checks. The earlier ENOSPC pytest-finalization run is not counted as a clean gate. Final integrated revision CI/packaging remain root-owned. Subsequent nonblocking maintenance request-pipe correction: 7 maintenance/setup tests passed in 1.00 s, including a real stalled-child/4 KiB pipe regression. Final serialized storage/retention/envelope benchmark completed exit 0 with exact source hashes; gains and regressions are recorded in the evidence report."
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

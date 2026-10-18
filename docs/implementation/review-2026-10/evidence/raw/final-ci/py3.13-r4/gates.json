@@ -1,0 +1,57 @@
+{
+  "schema": "raven.final-ci-gates/v1",
+  "python": "/workspace/raven-compat/py3.13/bin/python",
+  "version": "3.13",
+  "source_commit": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "started": "2026-10-18T02:43:55.772172+00:00",
+  "checks": [
+    {
+      "label": "regression",
+      "command": [
+        "/workspace/raven-compat/py3.13/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-n",
+        "2",
+        "--hypothesis-seed=20261018",
+        "--basetemp=/tmp/rv313",
+        "--durations=20",
+        "--junitxml=/workspace/raven-qualification-results/final/py3.13-r4/regression.xml"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.13-r4/regression.log",
+      "started": "2026-10-18T02:43:55.791873+00:00",
+      "exit_code": 0,
+      "seconds": 299.83574908899936,
+      "log_sha256": "25c65b3b23e83cb2b60a6ff10b8507f743b28a2fcf7dd1fa39fbdab4050578bf"
+    }
+  ],
+  "output": "/workspace/raven-qualification-results/final/py3.13-r4",
+  "source_before": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+  "packaging_inputs": {
+    "MANIFEST.in": "1555de724760f0fb660964133423fc68e07b3bed38ba810c8156a2b4b65eeff7",
+    ".github/workflows/tests.yml": "5d79a8347b8139f438b36ec94d249a332cf2c769ad406aaad21ae10f99e9a107"
+  },
+  "environment_overrides": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PATH_prefix": "/workspace/raven-compat/py3.13/bin:/workspace/raven-tools/mpi-private-qualification/bin"
+  },
+  "interpreter": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+  "junit": {
+    "available": true,
+    "cases": 18295,
+    "failure": 0,
+    "error": 0,
+    "skipped": 36,
+    "identity_multiset_sha256": "2e47847cf21e48e2e5c964f2b09832d690fcf9b86e0631fd8e1e2ce020442a08",
+    "sha256": "144b06185fad2a609f69037d6c0db59354ea7bc9e5cb4d250f4c263937664604"
+  },
+  "packaging_inputs_stable": true,
+  "source_after": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+  "source_stable": true,
+  "ended": "2026-10-18T02:48:55.949269+00:00",
+  "passed": true,
+  "artifacts": {}
+}

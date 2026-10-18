@@ -1,0 +1,42 @@
+{
+  "schema": "raven.final-ci-gates/v1",
+  "python": "/workspace/raven-compat/py3.14/bin/python",
+  "version": "3.14",
+  "source_commit": "601766930b16af58a7590fa96a3e2d96c59a527a",
+  "started": "2026-10-18T02:35:50.477552+00:00",
+  "checks": [
+    {
+      "label": "regression",
+      "command": [
+        "/workspace/raven-compat/py3.14/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "-n",
+        "2",
+        "--hypothesis-seed=20261018",
+        "--basetemp=/tmp/rv314",
+        "--durations=20",
+        "--junitxml=/workspace/raven-qualification-results/final/py3.14-r3/regression.xml"
+      ],
+      "cwd": "/workspace/Raven",
+      "log": "/workspace/raven-qualification-results/final/py3.14-r3/regression.log",
+      "started": "2026-10-18T02:35:50.497816+00:00",
+      "exit_code": 1,
+      "seconds": 310.40442831900054,
+      "log_sha256": "474d728ec208d42cdb19aef081df8802e4b9a8456e47aea61402ea4906159648"
+    }
+  ],
+  "output": "/workspace/raven-qualification-results/final/py3.14-r3",
+  "source_before": "35bad8131f7363385f664fc0418d3ee3d871a00531d3011e9676c4e3af865ece",
+  "packaging_inputs": {
+    "MANIFEST.in": "1555de724760f0fb660964133423fc68e07b3bed38ba810c8156a2b4b65eeff7",
+    ".github/workflows/tests.yml": "5d79a8347b8139f438b36ec94d249a332cf2c769ad406aaad21ae10f99e9a107"
+  },
+  "environment_overrides": {
+    "PYTHONHASHSEED": "0",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PATH_prefix": "/workspace/raven-compat/py3.14/bin:/workspace/raven-tools/mpi-private-qualification/bin"
+  },
+  "interpreter": "3.14.8 (main, Oct  3 2026, 01:04:31) [Clang 22.1.3 ]"
+}

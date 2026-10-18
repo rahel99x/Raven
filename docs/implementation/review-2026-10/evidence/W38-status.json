@@ -1,0 +1,165 @@
+{
+  "package": "W38",
+  "baseline_revision": "33316a08bd583a242356c7722a21c10e00cff21b",
+  "requirements": [
+    {
+      "id": "W38-R01",
+      "state": "already_satisfied",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Source and baseline: A-09 and existing supervisor/cache verified"
+      ]
+    },
+    {
+      "id": "W38-R02",
+      "state": "adjusted",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Delivered milestone and boundary: optional Light owner, bounded versioned contract, compact reconnecting TUI/JSON/watch, actual installed SSH bridge and integration examples; full workspace/Heavy migration remains separate parity gate"
+      ]
+    },
+    {
+      "id": "W38-R03",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/raw/W38-installed-ssh-ipc-final-run.json",
+        "evidence/raw/W38-installed-ssh-ipc-final.json",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Recovery, limits and review: retained session, new epoch, bounded sequence replay and explicit gaps",
+        "Final IPC maintenance review: four reproduced baseline failures, absolute exchange deadlines, bounded retained-frame progress, independent review and82 focused checks",
+        "Full daemon lifecycle and resource measurement:60s actual Store/Sampler comparison,598 daemon reads,59 restart reads, exact job rows, resource plateau, cleanup and cold/retained availability; source-cadence boundary caveats retained",
+        "final-3 installed wheel actual SSH crash/restart/version/ownership requalification on0d138fd"
+      ]
+    },
+    {
+      "id": "W38-R04",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Delivered milestone and boundary: explicit module only; normal launchers/install do not start a daemon"
+      ]
+    },
+    {
+      "id": "W38-R05",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/raw/W38-installed-ssh-ipc-final-run.json",
+        "evidence/raw/W38-installed-ssh-ipc-final.json",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Validation and qualification: disconnect/crash/restart context, writer exclusion, bounded clients/replay, no client collection/action API; no external allocation ownership inferred",
+        "Final IPC maintenance review: four reproduced baseline failures, absolute exchange deadlines, bounded retained-frame progress, independent review and82 focused checks",
+        "Full daemon lifecycle and resource measurement:60s actual Store/Sampler comparison,598 daemon reads,59 restart reads, exact job rows, resource plateau, cleanup and cold/retained availability; source-cadence boundary caveats retained",
+        "final-3 installed wheel actual SSH crash/restart/version/ownership requalification on0d138fd"
+      ]
+    },
+    {
+      "id": "W38-R06",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Delivered milestone and boundary: real SO_PEERCRED, private socket, managed Light admission; Heavy remains existing verified path"
+      ]
+    },
+    {
+      "id": "W38-R07",
+      "state": "adjusted",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Delivered milestone and boundary: compatible installed bridge actually qualified; operation source-shipping retained until matching operation parity and profiling are available"
+      ]
+    },
+    {
+      "id": "W38-R08",
+      "state": "implemented",
+      "evidence": [
+        "evidence/W38.md",
+        "evidence/raw/W38-installed-ssh-ipc-final-run.json",
+        "evidence/raw/W38-installed-ssh-ipc-final.json",
+        "evidence/final-qualification.json"
+      ],
+      "limits": [
+        "Experimental read-only observation milestone. Full ordinary dashboard/Heavy service integration and live-site deployment are not claimed. Actual local60s Store/Sampler/daemon lifecycle measured with simulated sources; no long-term leak or source-shipping efficacy claim. Local integrated gates passed; see evidence/final-qualification.json. Hosted CI is not claimed.",
+        "Persistent ordinary state currently supports qualified Linux/WSL2 local storage; macOS persistent-state ownership remains unsupported. This is distinct from the optional Linux peer-credential service requirement."
+      ],
+      "unblock": "Complete matching operation/ownership parity before replacing normal frontend or source-shipping; live-site qualification needs authorized cluster access.",
+      "evidence_notes": [
+        "Validation and qualification: actual installed loopback version-skew/disconnect/crash tests; guide covers stop/uninstall/rollback; production site gate explicit",
+        "Final IPC maintenance review: four reproduced baseline failures, absolute exchange deadlines, bounded retained-frame progress, independent review and82 focused checks",
+        "Full daemon lifecycle and resource measurement:60s actual Store/Sampler comparison,598 daemon reads,59 restart reads, exact job rows, resource plateau, cleanup and cold/retained availability; source-cadence boundary caveats retained",
+        "final-3 installed wheel actual SSH crash/restart/version/ownership requalification on0d138fd"
+      ]
+    }
+  ],
+  "focused_history": {
+    "validation": "Corrected0d138fd:4 baseline IPC failures reproduced,82 focused session/shared checks pass; actual60s Store/Sampler and daemon lifecycle plus restart/resource plateau and exact job rows pass; final-3 installed wheel loopback SSH requalification passes; integrated full gate owned by root"
+  },
+  "tested_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+  "integrated_validation": {
+    "implementation_revision": "e3c7183286fccdda68660b5541ec2e8c6d2c7750",
+    "runtime_revision": "0d138fdacbcfb2d58c3d77a0494d439c7d2204e8",
+    "source_fingerprint": "f9abf58e0a8107709625480428ea97172cb035b3815c1bf4ec9486649e49559d",
+    "evidence": "evidence/final-qualification.json",
+    "outcome": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally.",
+    "limits": "Optional tool skips, actual supplementary qualifications, experimental milestones and external gates remain distinct. No hosted CI or publication is claimed."
+  },
+  "validation": "Supported Python 3.10–3.14 full regression and 25 packaging/installed/schema/reference checks per interpreter passed locally. Historical focused results and measurements retain their original revision/hash bindings.",
+  "historical_status": "evidence/raw/pre-final-package-statuses.json",
+  "state": "locally_validated",
+  "external_gates": []
+}

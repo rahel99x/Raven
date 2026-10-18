@@ -1,0 +1,101 @@
+{
+  "environment": "live loopback OpenSSH; no Slurm/GPU/site claim",
+  "server_strict_modes": false,
+  "client_host_key_check": "yes; exact generated host key",
+  "cpu_scope": "RUSAGE_CHILDREN of client driver; excludes persistent master and live server",
+  "directory": "/tmp/raven-ssh-qualification-t19zqgof",
+  "records": [
+    {
+      "multiplex": false,
+      "commands": 12,
+      "authentications": 12,
+      "latency_ms": [
+        86.091,
+        83.496,
+        83.42,
+        84.062,
+        84.432,
+        83.892,
+        85.323,
+        86.252,
+        80.62,
+        84.049,
+        87.808,
+        83.857
+      ],
+      "mean_ms": 84.44193324794469,
+      "p50_ms": 84.05580849648686,
+      "child_cpu_seconds": 0.13167099999999998
+    },
+    {
+      "multiplex": true,
+      "commands": 12,
+      "authentications": 1,
+      "latency_ms": [
+        88.31,
+        12.516,
+        11.127,
+        11.059,
+        10.417,
+        10.883,
+        10.771,
+        10.303,
+        10.32,
+        11.205,
+        13.249,
+        11.547
+      ],
+      "mean_ms": 17.64208366572954,
+      "p50_ms": 11.092677497799741,
+      "child_cpu_seconds": 0.11067199999999999
+    },
+    {
+      "multiplex": false,
+      "commands": 12,
+      "authentications": 12,
+      "latency_ms": [
+        82.702,
+        83.929,
+        83.651,
+        84.172,
+        87.985,
+        84.079,
+        83.604,
+        83.803,
+        83.766,
+        80.179,
+        79.772,
+        84.148
+      ],
+      "mean_ms": 83.48245216681487,
+      "p50_ms": 83.78431900200667,
+      "child_cpu_seconds": 0.12612800000000002
+    },
+    {
+      "multiplex": true,
+      "commands": 12,
+      "authentications": 1,
+      "latency_ms": [
+        87.691,
+        11.239,
+        10.493,
+        10.144,
+        10.487,
+        9.549,
+        9.715,
+        10.071,
+        10.365,
+        10.682,
+        9.895,
+        10.361
+      ],
+      "mean_ms": 16.72416924945234,
+      "p50_ms": 10.362580498622265,
+      "child_cpu_seconds": 0.10114499999999998
+    }
+  ],
+  "reconnect_authentications": 1,
+  "mutation_executions": 1,
+  "socket_mode": "0o600",
+  "socket_directory_mode": "0o700"
+}

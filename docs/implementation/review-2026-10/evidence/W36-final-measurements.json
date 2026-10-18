@@ -1,0 +1,180 @@
+{
+  "results": [
+    {
+      "fixture": "constant",
+      "intervals": 4000,
+      "ingest_median_ms": 5.967625,
+      "samples_ms": [
+        6.289623,
+        6.244204,
+        5.881946,
+        5.800572,
+        5.967625
+      ],
+      "query_five_ms": 0.569994,
+      "python_peak_bytes": 516900,
+      "summary_bytes": 3023,
+      "raw_fixture_bytes": 1138809,
+      "queries": [
+        {
+          "q": 0.5,
+          "exact_ns": 1000000,
+          "estimate_ns": 1003519,
+          "lower_ns": 999424,
+          "upper_ns": 1007615,
+          "absolute_error_ns": 3519
+        },
+        {
+          "q": 0.9,
+          "exact_ns": 1000000,
+          "estimate_ns": 1003519,
+          "lower_ns": 999424,
+          "upper_ns": 1007615,
+          "absolute_error_ns": 3519
+        },
+        {
+          "q": 0.95,
+          "exact_ns": 1000000,
+          "estimate_ns": 1003519,
+          "lower_ns": 999424,
+          "upper_ns": 1007615,
+          "absolute_error_ns": 3519
+        },
+        {
+          "q": 0.99,
+          "exact_ns": 1000000,
+          "estimate_ns": 1003519,
+          "lower_ns": 999424,
+          "upper_ns": 1007615,
+          "absolute_error_ns": 3519
+        },
+        {
+          "q": 1,
+          "exact_ns": 1000000,
+          "estimate_ns": 1003519,
+          "lower_ns": 999424,
+          "upper_ns": 1007615,
+          "absolute_error_ns": 3519
+        }
+      ]
+    },
+    {
+      "fixture": "heavy-tailed",
+      "intervals": 4000,
+      "ingest_median_ms": 8.117634,
+      "samples_ms": [
+        8.117634,
+        7.968458,
+        8.33926,
+        8.218658,
+        8.05523
+      ],
+      "query_five_ms": 17.168773,
+      "python_peak_bytes": 1284720,
+      "summary_bytes": 90702,
+      "raw_fixture_bytes": 1206064,
+      "queries": [
+        {
+          "q": 0.5,
+          "exact_ns": 79162778,
+          "estimate_ns": 79167487,
+          "lower_ns": 78643200,
+          "upper_ns": 79691775,
+          "absolute_error_ns": 4709
+        },
+        {
+          "q": 0.9,
+          "exact_ns": 235552991234256,
+          "estimate_ns": 236394999971839,
+          "lower_ns": 235295488344064,
+          "upper_ns": 237494511599615,
+          "absolute_error_ns": 842008737583
+        },
+        {
+          "q": 0.95,
+          "exact_ns": 1508374690092177,
+          "estimate_ns": 1504131906797567,
+          "lower_ns": 1495335813775360,
+          "upper_ns": 1512927999819775,
+          "absolute_error_ns": 4242783294610
+        },
+        {
+          "q": 0.99,
+          "exact_ns": 8928037709788981,
+          "estimate_ns": 8901646138474495,
+          "lower_ns": 8866461766385664,
+          "upper_ns": 8936830510563327,
+          "absolute_error_ns": 26391571314486
+        },
+        {
+          "q": 1,
+          "exact_ns": 17850889825121524,
+          "estimate_ns": 17803292276948991,
+          "lower_ns": 17732923532771328,
+          "upper_ns": 17873661021126655,
+          "absolute_error_ns": 47597548172533
+        }
+      ]
+    },
+    {
+      "fixture": "adversarial",
+      "intervals": 4000,
+      "ingest_median_ms": 6.627886,
+      "samples_ms": [
+        6.520353,
+        6.493162,
+        6.627886,
+        6.747217,
+        6.641357
+      ],
+      "query_five_ms": 1.809022,
+      "python_peak_bytes": 547280,
+      "summary_bytes": 9092,
+      "raw_fixture_bytes": 1195340,
+      "queries": [
+        {
+          "q": 0.5,
+          "exact_ns": 16777232,
+          "estimate_ns": 16908287,
+          "lower_ns": 16777216,
+          "upper_ns": 17039359,
+          "absolute_error_ns": 131055
+        },
+        {
+          "q": 0.9,
+          "exact_ns": 17592186044432,
+          "estimate_ns": 17729624997887,
+          "lower_ns": 17592186044416,
+          "upper_ns": 17867063951359,
+          "absolute_error_ns": 137438953455
+        },
+        {
+          "q": 0.95,
+          "exact_ns": 140737488355336,
+          "estimate_ns": 141836999983103,
+          "lower_ns": 140737488355328,
+          "upper_ns": 142936511610879,
+          "absolute_error_ns": 1099511627767
+        },
+        {
+          "q": 0.99,
+          "exact_ns": 562949953421320,
+          "estimate_ns": 567347999932415,
+          "lower_ns": 562949953421312,
+          "upper_ns": 571746046443519,
+          "absolute_error_ns": 4398046511095
+        },
+        {
+          "q": 1,
+          "exact_ns": 562949953421328,
+          "estimate_ns": 567347999932415,
+          "lower_ns": 562949953421312,
+          "upper_ns": 571746046443519,
+          "absolute_error_ns": 4398046511087
+        }
+      ]
+    }
+  ],
+  "process_maxrss_kib": 24776,
+  "scope": "Synthetic complete interval fixtures; RSS is whole process, Python peak measured separately; no event-order/causality query"
+}

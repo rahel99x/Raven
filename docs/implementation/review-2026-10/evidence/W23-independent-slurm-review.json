@@ -1,0 +1,40 @@
+{
+  "reviewer": "review_slurm",
+  "reviewed_at_utc": "2026-10-18T01:16:54.219234+00:00",
+  "mode": "read-only independent review; no production edits",
+  "source_sha256": {
+    "raven/evidence_index.py": "d4f7e35bb064e8b341e8dfcaa08f41c01d83dce160ee63c11687cf6eef7cccd8",
+    "raven/ops_evidence_queries.py": "f10a41d8504b0106c1967a82d8404056b759f1101e7b8b6a0ddbb064dc2bc6a6",
+    "raven/query_cli.py": "fcb1aad5524d4a20fe34807e1596132c509cfbaf32bf7f622fd3128274ecf68f",
+    "tests/test_evidence_index.py": "8d894d2919b3e44944321f85d87b444f48290b93ecc01c6f7e5795193cb2e643"
+  },
+  "findings": [
+    {
+      "id": "W23-exact-integer-lexemes",
+      "observation": "Integral decimal/exponent forms 9007199254740993.0 and 9.007199254740993e15 are stored as binary64 9007199254740992.0; plain integer form correctly becomes NULL. Integer magnitudes outside binary64 finite range raise rather than preserving value_text/NULL.",
+      "recommendation": "Classify finite source decimals before float conversion; retain exact lexemes and abstain on nonrepresentable integral values."
+    },
+    {
+      "id": "W23-project-row-omission",
+      "observation": "A row whose project differs from the single-project manifest is silently skipped, with no partial-coverage signal.",
+      "recommendation": "Reject inconsistent publication rows transactionally."
+    },
+    {
+      "id": "W23-source-attempt-binding",
+      "observation": "CSV rows use the whole capture identity set; unlike auxiliary sources, their exact file prefix is not bound to one attempt. A source under attempt A can carry attempt B identity if B is also inventoried.",
+      "recommendation": "Validate rows against the owning source attempt singleton identity."
+    }
+  ],
+  "verification": {
+    "command": "/workspace/raven-compat/py3.10/bin/python -m pytest -q tests/test_evidence_index.py::test_mid_query_cancellation_reaps_compatibility_child tests/test_evidence_index.py::test_small_vm_program_cannot_allocate_an_unbounded_string tests/test_evidence_index.py::test_project_authority_checked_on_the_actual_query_connection --basetemp=/tmp/raven-w23-review-py310",
+    "outcome": "3 passed in 1.69s",
+    "additional_actual_child_probe": {
+      "python": "3.10.22",
+      "launched_children": 1,
+      "cancel_result": "partial/cancelled",
+      "child_returncode": -9,
+      "child_reaped": true
+    }
+  },
+  "resolution": "Findings delivered to owning root; resolution and final source validation are recorded separately by that owner."
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "raven.benchmark-window/v1",
+  "date": "2026-10-18",
+  "timezone": "UTC",
+  "coordination": "Root granted serialized phases after all-agent acknowledgments; no reported competing tests/builds/services.",
+  "source_manifest_sha256": "7bc56e0f4145e93d1325fc0bf66afe362d3e93cfd129b3c1e18c0658a9e2cf4b",
+  "ui_window": [
+    "00:38:13.666715",
+    "00:38:30.443603"
+  ],
+  "readiness_window": [
+    "00:38:32.706475",
+    "00:42:47.081089"
+  ],
+  "command": ".venv/bin/python /tmp/raven-review-evidence/run-final.py ui; .venv/bin/python /tmp/raven-review-evidence/run-final.py readiness",
+  "driver": "run-trace-readiness-benchmarks.py",
+  "reports": {
+    "W08-final-frame-measurements.json": "e57aca0ac8cc9914a6c9a3ddf691520fab021329077cdffa5d0aa470c20969f3",
+    "W18-final-measurements.json": "b0471aa73155daa952f29f5e9d00f4ac4b622bedd044930057061537d5d21f6d",
+    "W18-final-baseline-0-0.json": "fc1f206b25dd52570d082f3a2227d52ded1165d2104676314ae9fd5c041e1a5d",
+    "W18-final-baseline-0-1.json": "25b65f76ce3aee776fa3aac8af30e69036eefd349507fdb2317f3ff2fa17e060",
+    "W18-final-baseline-1-0.json": "e17e5ae1753ce319181dc2b5fe308a109e38021a3db2e5243fc1c9bb4a23326d",
+    "W18-final-baseline-1-1.json": "517e1f778d46f614fe64d2127bc200dfdb271caf3787e1b09939a79f3b5f87a2",
+    "W18-final-integrated-0-0.json": "27590405dfc6bcfba2201c2622a1e14624eb228291c8fdaf8af8eb83c72e3b7c",
+    "W18-final-integrated-0-1.json": "a71092ba511f94618be97e692e294b1b80cf81cab38fa282d64f2c5686d7aec3",
+    "W18-final-integrated-1-0.json": "b0318f0c7c002abab3925f4d5c0659755c68055e7ad14fe01745caf5a3ca135b",
+    "W18-final-integrated-1-1.json": "2c1b52a214c3e9ec60c7c1c88fe6e4416af90e8e693cca1c27a9eab3b55a4a80"
+  }
+}

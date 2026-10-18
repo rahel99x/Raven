@@ -1,0 +1,78 @@
+{
+  "source_sha256": "1b8d3cc7a207024eb612e1f7cc95456946d31c7b85d88f961dbb2ebb8754b64a",
+  "measurements": [
+    {
+      "mode": "baseline",
+      "frames": 5000,
+      "seconds": 0.037808414999744855,
+      "cpu_seconds_writer_and_reader": 0.030121578000000003,
+      "bytes": 10240000
+    },
+    {
+      "mode": "off",
+      "frames": 5000,
+      "seconds": 0.05015112399996724,
+      "cpu_seconds_writer_and_reader": 0.049147231,
+      "bytes": 10240000
+    },
+    {
+      "mode": "on",
+      "frames": 5000,
+      "seconds": 0.11576634799712338,
+      "cpu_seconds_writer_and_reader": 0.108290102,
+      "bytes": 10320000
+    },
+    {
+      "mode": "on",
+      "frames": 5000,
+      "seconds": 0.10180159400624689,
+      "cpu_seconds_writer_and_reader": 0.09475060799999999,
+      "bytes": 10320000
+    },
+    {
+      "mode": "off",
+      "frames": 5000,
+      "seconds": 0.04690083699824754,
+      "cpu_seconds_writer_and_reader": 0.04335834500000002,
+      "bytes": 10240000
+    },
+    {
+      "mode": "baseline",
+      "frames": 5000,
+      "seconds": 0.03851409500930458,
+      "cpu_seconds_writer_and_reader": 0.03270793999999999,
+      "bytes": 10240000
+    },
+    {
+      "mode": "baseline",
+      "frames": 5000,
+      "seconds": 0.03525238599104341,
+      "cpu_seconds_writer_and_reader": 0.027248612000000005,
+      "bytes": 10240000
+    },
+    {
+      "mode": "off",
+      "frames": 5000,
+      "seconds": 0.05629425300867297,
+      "cpu_seconds_writer_and_reader": 0.052699206,
+      "bytes": 10240000
+    },
+    {
+      "mode": "on",
+      "frames": 5000,
+      "seconds": 0.08744865200424101,
+      "cpu_seconds_writer_and_reader": 0.074467383,
+      "bytes": 10320000
+    }
+  ],
+  "median_us_per_frame": {
+    "baseline": 7.561682999948971,
+    "off": 10.030224799993448,
+    "on": 20.360318801249377
+  },
+  "limits": [
+    "Actual local PTY writes/drain; no terminal emulator rendering, SSH or tmux qualification",
+    "CPU includes reader thread; no Python allocation/RSS claim",
+    "Identical 2048-byte payloads; negotiated enable behavior covered by focused tests, on mode explicitly forced here"
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "samples": 8192,
+  "repetitions": 8,
+  "storage": {
+    "jsonl": {
+      "median_ms": 20.635804,
+      "p95_ms": 21.199786,
+      "cpu_seconds": 0.165597856,
+      "bytes": 504958
+    },
+    "simple_json_array_zlib": {
+      "median_ms": 20.364554,
+      "p95_ms": 20.787374,
+      "cpu_seconds": 0.16242377900000002,
+      "bytes": 141057,
+      "framing_bytes_excluded": 1056
+    },
+    "production_blocks": {
+      "median_ms": 54.8667755,
+      "p95_ms": 55.480936,
+      "cpu_seconds": 0.436487249,
+      "bytes": 142113
+    },
+    "production_decode": {
+      "median_ms": 41.417281,
+      "p95_ms": 42.635018,
+      "cpu_seconds": 0.3362278149999999
+    },
+    "single_sample_append_128": {
+      "seconds": 0.007246119999990697,
+      "cpu_seconds": 0.007246635000000001,
+      "bytes": 25660,
+      "durability": "fsync each committed append"
+    },
+    "single_sample_jsonl_append_128": {
+      "seconds": 0.0009294150000869195,
+      "cpu_seconds": 0.0009302199999998706,
+      "bytes": 7858,
+      "durability": "fsync each complete append; matched to compact durability for this comparison"
+    },
+    "retention_working_copy": {
+      "build": {
+        "median_ms": 138.8589025,
+        "p95_ms": 141.551697,
+        "cpu_seconds": 1.109250012
+      },
+      "query": {
+        "median_ms": 6.0475995000000005,
+        "p95_ms": 7.19235,
+        "cpu_seconds": 0.05049382400000013
+      },
+      "source_raw_bytes_preserved": 504958,
+      "additional_archive_bytes": 16150,
+      "raw_records": 121,
+      "rollup_records": 114,
+      "warning": "Rollups lose within-bin information; these bytes and timings are not equivalent-fidelity replacements for raw data."
+    },
+    "fixed_numeric_array_zlib_prototype": {
+      "median_ms": 11.148331500000001,
+      "p95_ms": 11.643245,
+      "cpu_seconds": 0.09030031700000007,
+      "bytes": 97846,
+      "limit": "Only the fixed three-number schema; fixture integers are exactly representable as binary64."
+    },
+    "xor_float_bits_zlib_prototype": {
+      "median_ms": 11.823604,
+      "p95_ms": 12.407113,
+      "cpu_seconds": 0.09528287199999985,
+      "bytes": 74809,
+      "limit": "Fixed three-number schema only; general integer/metadata sidecars omitted, so this is not a general-format byte comparison."
+    }
+  },
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "fixture_sha256": "5e88ee06178bdd966a5efec7841bfa8dc4072f2fef368581867b08827abc2514",
+    "source_sha256": {
+      "series_blocks.py": "2c3a61be5c86d2c7adcd39293a406ac746e580b09e82c2ed48227f3993339aa8",
+      "series_storage.py": "cb672a4c7149dfad3347a7a1a6f0119b2278f4f55f6b7a539b7c3b0f3c834936",
+      "series_retention.py": "e51d1a4f1655d8d172b170e04040c367012184ec7d12b5c2ad0e15ee2a070955",
+      "series_summary.py": "2882fc175ac487bc47fd7b6ec79af698b8bffdf7563af7f05c11645c055f0e69"
+    }
+  },
+  "render": {
+    "build": {
+      "median_ms": 7.7933965,
+      "p95_ms": 8.02464,
+      "cpu_seconds": 0.0629005290000002
+    },
+    "scan_query": {
+      "median_ms": 6.5417105,
+      "p95_ms": 6.897871,
+      "cpu_seconds": 0.05538244999999975
+    },
+    "indexed_query": {
+      "median_ms": 0.63422,
+      "p95_ms": 0.792501,
+      "cpu_seconds": 0.005861288999999825
+    },
+    "python_index_peak_bytes": 1426984,
+    "note": "Exact continuous envelope fixture. Build and query separated; UI signature/freezing cost is additional. Gaps and interpolation use existing renderer."
+  },
+  "process_peak_rss_kib": 30340
+}

@@ -1,0 +1,31 @@
+{
+  "started": "2026-10-18T01:24:11.721627+00:00",
+  "coordination": "Root granted exclusive slot after setup benchmark exit; all other agents held",
+  "commands": [
+    {
+      "argv": [
+        "/workspace/Raven/.venv/bin/python",
+        "scripts/benchmark_optional_services.py",
+        "--output",
+        "docs/implementation/review-2026-10/evidence/raw/W39-W40-cost-optimized.json"
+      ],
+      "started": "2026-10-18T01:24:11.721636+00:00",
+      "completed": "2026-10-18T01:24:21.240949+00:00",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/workspace/Raven/.venv/bin/python",
+        "scripts/benchmark_signed_evidence.py",
+        "--output",
+        "docs/implementation/review-2026-10/evidence/raw/W21-signing-cost-final.json"
+      ],
+      "started": "2026-10-18T01:24:21.240964+00:00",
+      "completed": "2026-10-18T01:24:24.292211+00:00",
+      "exit_code": 0,
+      "stderr": ""
+    }
+  ],
+  "completed": "2026-10-18T01:24:24.292256+00:00"
+}

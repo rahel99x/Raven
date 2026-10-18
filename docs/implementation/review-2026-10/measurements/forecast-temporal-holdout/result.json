@@ -1,0 +1,107 @@
+{
+  "schema": "raven.forecast-scenarios-result/v1",
+  "model": "observable-queue-residual/1",
+  "input_sha256": "271db439eca41748dc8183105c40aedbb995f5dd5d79e170380ec4f271ad449f",
+  "status": "advisory",
+  "experimental": true,
+  "production_qualified": false,
+  "summary": "Review observational request alternatives and runtime risk; no requests have been changed.",
+  "alternatives": [
+    {
+      "id": "current",
+      "request": {
+        "name": "owned-sleep-one-second-v1",
+        "partition": "local",
+        "account": "labx",
+        "qos": "normal",
+        "cpus": 1,
+        "nodes": 1,
+        "gpus": 0,
+        "mem_bytes": 33554432,
+        "time_seconds": 60
+      },
+      "model_wait_seconds": 2.0,
+      "forecast": {
+        "status": "forecast",
+        "wait_seconds": 2.953796148300171,
+        "lower_wait_seconds": 1.9496262073516846,
+        "upper_wait_seconds": 3.9579660892486572,
+        "probability_wait_within_threshold": 0.8382352941176471,
+        "samples": 65,
+        "calibration_samples": 33,
+        "coverage_target": 0.8,
+        "interval_method": "chronological split-conformal absolute residual",
+        "probability_method": "empirical held-out residual CDF with Jeffreys smoothing"
+      },
+      "runtime_risk": {
+        "status": "estimated",
+        "samples": 65,
+        "observed_overruns": 0,
+        "probability": 0.0,
+        "upper_probability": 0.05580153132285689,
+        "method": "95% Wilson upper bound; unresolved timeout censoring abstains"
+      },
+      "eligible_for_comparison": true,
+      "warnings": []
+    }
+  ],
+  "preferred_scenario": "current",
+  "evaluation": [
+    {
+      "origin": "recorded",
+      "model": "simple_cohort",
+      "eligible_attempts": 65,
+      "predictions": 25,
+      "prediction_coverage": 0.38461538461538464,
+      "mae_seconds": 0.3757994365692139,
+      "p95_absolute_error_seconds": 1.98872971534729,
+      "interval_coverage": 0.84,
+      "brier_score": 0.1411087058357448,
+      "log_score": 0.46585389283690365,
+      "interval_samples": 25,
+      "probability_samples": 25
+    },
+    {
+      "origin": "recorded",
+      "model": "current_predictor",
+      "eligible_attempts": 65,
+      "predictions": 25,
+      "prediction_coverage": 0.38461538461538464,
+      "mae_seconds": 0.36,
+      "p95_absolute_error_seconds": 2.0,
+      "interval_coverage": 0.84,
+      "brier_score": 0.1386996426154494,
+      "log_score": 0.4591499797950196,
+      "interval_samples": 25,
+      "probability_samples": 25
+    },
+    {
+      "origin": "recorded",
+      "model": "queue_residual",
+      "eligible_attempts": 65,
+      "predictions": 25,
+      "prediction_coverage": 0.38461538461538464,
+      "mae_seconds": 0.3757994365692139,
+      "p95_absolute_error_seconds": 1.98872971534729,
+      "interval_coverage": 0.84,
+      "brier_score": 0.1411087058357448,
+      "log_score": 0.46585389283690365,
+      "interval_samples": 25,
+      "probability_samples": 25
+    }
+  ],
+  "limits": [
+    "Request alternatives are observational scenarios, not causal guarantees of earlier starts.",
+    "Hidden demand, invisible reservations and unreported policy can invalidate both model points and historical intervals.",
+    "Runtime evidence must describe the same application and resources; changing CPUs, nodes or memory can change scientific runtime.",
+    "Recorded and synthetic outcome audits remain separate; a simulator cannot supply independent outcome ground truth.",
+    "No job request, checkpoint or submission is changed by this analysis."
+  ],
+  "parameters": {
+    "coverage": 0.8,
+    "wait_threshold_seconds": 3.0,
+    "maximum_overrun_probability": 0.1,
+    "max_outcomes": 1000,
+    "max_evaluations_per_origin": 100
+  }
+}
