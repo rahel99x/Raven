@@ -63,6 +63,21 @@ checks command help outside the checkout, and runs this lifecycle on Python
 3.10–3.14. Live Slurm, GPU, remote cluster, macOS, and public download availability
 are outside the local maintenance qualification.
 
-Final local results are recorded alongside the delivered change after the
-integrated qualification completes. Earlier evidence under
-`review-2026-10/` remains bound to its recorded historical revisions.
+Local qualification at `02ac2786bb2c882989d434f00eae174f95a12b24` passed:
+
+- Full Python 3.12 regression: 18,487 passed, 12 skipped.
+- Focused maintenance suite: 234 passed on each of Python 3.10, 3.11, 3.13,
+  and 3.14; Python 3.12 runs these tests in the full suite.
+- Actual installed lifecycles: all 31 checks passed for managed and pipx
+  installations, including the piped bootstrap, overwrite, revert, second
+  recovery, and terminal extras.
+
+The [machine-readable receipt](installation-updates-evidence.json) records
+source hashes, commands, elapsed seconds, log hashes, review conclusions, and
+qualification limits. The first full run exposed a host-dependent profiler
+fixture; its correction preserves the original ownership assertions and adds
+explicit scan-exhaustion coverage. The production profiler is unchanged.
+
+Final packaging and installed-wheel checks run after this documentation-only
+receipt is committed. Earlier evidence under `review-2026-10/` remains bound to
+its recorded historical revisions.

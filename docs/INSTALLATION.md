@@ -340,6 +340,9 @@ configuration and state. A repository-installer installation reselects its
 validated retained previous release. A supported pipx installation reinstalls
 from the restored source; its recovery and failure guarantees remain those of
 pipx. Review the printed outcome if that reinstall fails.
+If you moved a managed checkout, pass `--source /new/path/to/Raven` when needed
+for recovery and later updates: a retained release still records its original
+source location.
 
 After an update or reversion, check the installed commands outside the checkout:
 
