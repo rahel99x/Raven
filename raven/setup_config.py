@@ -80,17 +80,11 @@ def parse_associations(text, username):
 
 
 def _read_snapshot(path):
+    from .config_trust import read
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
+        raw, info = read(path, limit=C.MAX_CONFIG, user_only=True)
     except FileNotFoundError:
         return None, None
-    with os.fdopen(fd, "rb") as stream:
-        info = os.fstat(stream.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_size > C.MAX_CONFIG:
-            raise ValueError("Setup can save only an owned, regular configuration of at most 256 KiB.")
-        raw = stream.read(C.MAX_CONFIG + 1)
-    if len(raw) > C.MAX_CONFIG:
-        raise ValueError("Configuration exceeded 256 KiB while reading.")
     return raw, _snapshot_token(info, raw)
 
 
@@ -147,17 +141,11 @@ def _encode(document, path):
 
 
 def _private_parent(path):
-    """Reject symlink destinations; never replace a linked config or directory."""
-    for parent in reversed(path.parents):
-        try:
-            info = parent.lstat()
-        except FileNotFoundError:
-            parent.mkdir(mode=0o700)
-            info = parent.lstat()
-        if not stat.S_ISDIR(info.st_mode):
-            raise ValueError("Configuration directories must be real directories, not symbolic links.")
-    if path.parent.stat().st_uid != os.getuid():
-        raise ValueError("The configuration directory must belong to the current user.")
+    """Create only beneath pinned, trusted ancestors; never follow a link."""
+    from .config_trust import directory_fd
+    with directory_fd(path.parent, create=True) as parent:
+        if os.fstat(parent).st_uid != os.getuid():
+            raise ValueError("The configuration directory must belong to the current user.")
 
 
 def _atomic_write(path, document, token):

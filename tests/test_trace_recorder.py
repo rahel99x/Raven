@@ -134,3 +134,43 @@ def test_sdk_dump_is_standalone_header(tmp_path):
     result = subprocess.run([sys.executable, "-m", "raven.trace_recorder", "native", "--sdk-header"], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0 and "raven_trace_emit" in result.stdout
     assert not (tmp_path / ".raven").exists()
+
+
+def test_code_metadata_cache_is_bounded_and_does_not_retain_dynamic_code(tmp_path):
+    import gc
+    import weakref
+    from raven.trace_recorder import Recorder, PythonCapture
+    with Recorder(tmp_path, background_flush=False) as recorder:
+        capture = PythonCapture(recorder, legacy=True)
+        code = compile('value = 1', 'temporary.py', 'exec')
+        reference = weakref.ref(code)
+        metadata = capture._code_metadata(code)
+        assert capture._code_metadata(code) is metadata
+        assert metadata['file'] == 'temporary.py'
+        del code
+        gc.collect()
+        assert reference() is None
+        assert not capture._metadata
+        codes = [compile(f'value = {index}', f'{index}.py', 'exec') for index in range(1100)]
+        for code in codes:
+            capture._code_metadata(code)
+        assert len(capture._metadata) == 1024
+
+
+@pytest.mark.skipif(not hasattr(sys, 'monitoring'), reason='CPython 3.12 monitoring')
+def test_monitoring_filter_does_not_disable_application_shared_across_threads(tmp_path):
+    result, _ = launch(tmp_path, '''
+import threading
+from raven.trace_recorder import PythonCapture
+# A function called on multiple threads must remain visible on all of them.
+def shared(): return 7
+shared()
+threads = [threading.Thread(target=shared) for _ in range(4)]
+for t in threads: t.start()
+for t in threads: t.join()
+shared()
+''')
+    events = [event for event in result['events'] if event['data'].get('function') == 'shared']
+    assert len([event for event in events if event['kind'] == 'call']) == 6
+    assert len([event for event in events if event['kind'] == 'return']) == 6
+    assert len({event['thread'] for event in events}) >= 2

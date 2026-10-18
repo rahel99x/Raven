@@ -70,7 +70,8 @@ def initialize(app):
 def _valid_pins(value):
     if not isinstance(value, (list, tuple)):
         return []
-    known = _presentation_specs()
+    from .distribution_profile import profile
+    known = set(_presentation_specs()) | set(profile()["operations"])
     return list(dict.fromkeys(key for key in value[:MAX_PINS]
                              if isinstance(key, str) and key in known))
 
@@ -935,6 +936,9 @@ CONTEXT_TOOLS = {
 def contextual_controls(g, width, keys, *, selected_job=None):
     items = []
     for key in keys:
+        from .distribution_profile import missing_operation
+        if missing_operation(key):
+            continue  # Explicit experimental extension absence, not a broken builtin.
         spec = _presentation_specs()[key]
         items.append((key, spec["title"], ("command", "ops " + key)))
     return buttons(g, width, items, group="operation-tools", prefix="operation-tools:")

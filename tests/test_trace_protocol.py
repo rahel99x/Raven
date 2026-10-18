@@ -267,3 +267,13 @@ def test_missing_old_registration_does_not_hide_current_trace(tmp_path):
         pass
     old.path.unlink()
     assert P.discover_trace(tmp_path, "123") == [str(current.path)]
+
+
+@pytest.mark.parametrize('data', [{}, {'text': 'unicode λ and ",\"stream\": fake'}, {'nested': {'sha256': 'not the envelope', 'stream': 'other'}}])
+def test_single_serialization_keeps_exact_v1_bytes_and_hash(data):
+    record = {'schema': 'raven.trace-event/v1', 'stream': 'abcdefgh', 'seq': 1, 'prev': '0' * 64,
+              'event': {'kind': 'note', 'mono_ns': 15, 'thread': 't', 'data': data}}
+    raw, digest = P.encode_event_record(record)
+    assert digest == P.event_digest(record)
+    assert raw == P.encoded(dict(record, sha256=digest)) + b'\n'
+    assert 'sha256' not in record

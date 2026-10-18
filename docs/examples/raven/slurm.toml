@@ -115,6 +115,7 @@ input_bytes = 8388608
 output_bytes = 8388608
 
 [storage]
+series_format = "jsonl"
 state_dir = "~/.local/state/raven"
 coordination_dir = "auto-host-local"
 durable_results = "~/raven-results"

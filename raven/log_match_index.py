@@ -121,3 +121,14 @@ def find(index, start, backwards=False):
     if result < 0:
         result = flags.find(b"\x01", 0, stop)
     return result if result >= 0 else None
+
+
+def template_key(line, rank):
+    """Conservative template: normalize time/rank prefix, preserve value tokens."""
+    import re
+    from .log_presentation import _STAMP
+    text = _STAMP.sub('<time>', line, count=1)
+    # Only a producer-declared rank's explicit prefix is variable. Exit codes,
+    # iteration numbers, counts and addresses remain evidence-bearing text.
+    return re.sub(r'^(\s*(?:<time>\s*)?)(?:\[rank[=: ]' + str(rank) +
+                  r'\]|rank[=: ]' + str(rank) + r'\b)', r'\1<rank>', text, count=1)

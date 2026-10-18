@@ -87,7 +87,7 @@ def classify(argv):
     args = list(argv[1:])
     if name == "id" and args in (["-u"], ["-un"]):
         return Descriptor("configuration", "local", "hostnames")
-    if name in ("squeue", "sacct", "sstat", "sinfo", "sshare", "sreport", "sacctmgr", "scontrol") and args in (["--version"], ["--help"]):
+    if name in ("squeue", "sacct", "sstat", "sinfo", "sshare", "sreport", "sacctmgr", "scontrol", "scancel") and args in (["--version"], ["--help"]):
         return Descriptor("configuration", "local", "hostnames")
     if name == "sh" and len(args) == 2 and args[0] == "-c":
         try:

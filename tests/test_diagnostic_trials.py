@@ -275,3 +275,27 @@ def test_offline_examples_measure_real_numerical_difference_and_all_views(tmp_pa
     for feature, name in [("recommendation", "recommendation.json"), ("investigation-plan", "planner.json"),
                           ("scientific-impact", "lineage.json"), ("regression-investigation", "regression.json")]:
         assert ops.run(feature, {"manifest": str(root/name)}, ctx)["rows"]
+
+
+@pytest.mark.parametrize("cpu_soft", [5, 30])
+def test_nested_supervisor_preserves_tighter_inherited_soft_and_hard_limits(tmp_path, cpu_soft):
+    # Run actual supervisors in a private child so pytest's own limits and
+    # signal handlers remain unchanged. CPU hard30 reproduces the old attempt
+    # to raise it to31; independent AS and FSIZE caps must also be retained.
+    script = r"""
+import json, resource, sys
+from raven import diagnostic_trials as D
+resource.setrlimit(resource.RLIMIT_CPU, (int(sys.argv[2]), 30))
+resource.setrlimit(resource.RLIMIT_AS, (256 << 20, 384 << 20))
+resource.setrlimit(resource.RLIMIT_FSIZE, (4096, 4096))
+probe = 'import json,resource;print(json.dumps({k:resource.getrlimit(getattr(resource,k)) for k in ("RLIMIT_CPU","RLIMIT_AS","RLIMIT_FSIZE")}))'
+limits = dict(trial_seconds=30, memory_mb=512, output_bytes=8192, cpus=1)
+print(json.dumps(D._execute([sys.executable, '-I', '-S', '-c', probe], sys.argv[1], limits, 5)))
+"""
+    completed = subprocess.run([sys.executable, '-c', script, str(tmp_path), str(cpu_soft)],
+                               capture_output=True, text=True, timeout=10, check=True)
+    result = json.loads(completed.stdout)
+    assert result['state'] == 'finished' and result['returncode'] == 0, result
+    observed = json.loads(result['output'])
+    assert observed == {'RLIMIT_CPU': [cpu_soft, 30], 'RLIMIT_AS': [256 << 20, 384 << 20],
+                        'RLIMIT_FSIZE': [4096, 4096]}

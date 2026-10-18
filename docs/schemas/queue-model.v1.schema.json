@@ -1,0 +1,381 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raven.local/schemas/queue-model.v1.schema.json",
+  "title": "Experimental observable Slurm queue model input",
+  "description": "Structural contract for slurm_simulator.simulate. Runtime enforces unique node/job/reservation/trace IDs, declared account/QOS/dependency references, acyclic dependencies, positive ordered observation/reservation windows, duration<=wall_limit, at most 10,000 distinct measured attempts, disjoint chronological calibration/validation and a 0.1..10 calibration factor. It also enforces finite values, 200,000 total items, depth 24, 8 MiB encoded evidence and placement/event/cancellation budgets. Descriptive observability and metadata do not enable unsupported scheduler policies. Standard JSON Schema integer accepts 1.0; strict runtime counts require integer JSON tokens. This is a declared subset, not a scheduler replacement or qualification of real outcomes.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.queue-model/v1"
+    },
+    "id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "hidden_delay_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 0
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "cpus": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "memory_mb": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000000000
+          },
+          "gpus": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "id",
+          "cpus",
+          "memory_mb",
+          "gpus"
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 256
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backfill": {
+          "type": "boolean"
+        },
+        "fairshare_weight": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "usage_half_life_seconds": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "exclusiveMinimum": 0
+        },
+        "accounts": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 256,
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "weight": {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0
+              },
+              "usage_cpu_seconds": {
+                "type": "number",
+                "maximum": 1e+18,
+                "minimum": 0
+              }
+            },
+            "required": [
+              "weight",
+              "usage_cpu_seconds"
+            ]
+          }
+        },
+        "qos": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 256,
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "max_running": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "max_cpus": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000000
+              },
+              "max_wall_seconds": {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "max_running",
+              "max_cpus",
+              "max_wall_seconds"
+            ]
+          }
+        }
+      },
+      "required": [
+        "backfill",
+        "fairshare_weight",
+        "usage_half_life_seconds",
+        "accounts",
+        "qos"
+      ]
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/job"
+      },
+      "minItems": 0,
+      "maxItems": 2000
+    },
+    "reservations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "start": {
+            "type": "number",
+            "maximum": 1000000000000.0,
+            "minimum": 0
+          },
+          "end": {
+            "type": "number",
+            "maximum": 1000000000000.0,
+            "minimum": 0
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/identifier"
+            },
+            "minItems": 0,
+            "maxItems": 256,
+            "uniqueItems": true
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/identifier"
+            },
+            "minItems": 0,
+            "maxItems": 256,
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "id",
+          "start",
+          "end",
+          "nodes",
+          "accounts"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 256
+    },
+    "traces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "role": {
+            "enum": [
+              "calibration",
+              "validation"
+            ]
+          },
+          "origin": {
+            "enum": [
+              "recorded",
+              "synthetic"
+            ]
+          },
+          "jobs": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/job"
+                },
+                {
+                  "required": [
+                    "actual_start",
+                    "actual_end"
+                  ]
+                }
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 2000
+          },
+          "source_sha256": {
+            "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "origin",
+          "jobs"
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 20
+    },
+    "metadata": {
+      "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+    },
+    "observability": {
+      "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "nodes",
+    "policy",
+    "jobs"
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@/+\\-]{0,127}$"
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "submit": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "duration": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 1e-06
+        },
+        "wall_limit": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 1e-06
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "cpus_per_node": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "memory_mb_per_node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "gpus_per_node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "account": {
+          "$ref": "#/$defs/identifier"
+        },
+        "qos": {
+          "$ref": "#/$defs/identifier"
+        },
+        "depends": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/identifier"
+          },
+          "minItems": 0,
+          "maxItems": 2000,
+          "uniqueItems": true
+        },
+        "success": {
+          "type": "boolean"
+        },
+        "actual_start": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "actual_end": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "metadata": {
+          "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+        }
+      },
+      "required": [
+        "id",
+        "submit",
+        "duration",
+        "wall_limit",
+        "nodes",
+        "cpus_per_node",
+        "memory_mb_per_node",
+        "gpus_per_node",
+        "priority",
+        "account",
+        "qos",
+        "depends"
+      ],
+      "dependentRequired": {
+        "actual_start": [
+          "actual_end"
+        ],
+        "actual_end": [
+          "actual_start"
+        ]
+      }
+    }
+  }
+}

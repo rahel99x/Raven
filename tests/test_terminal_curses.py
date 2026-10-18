@@ -72,8 +72,16 @@ def test_outer_curses_terminal_keeps_shortcuts_and_fragmented_mouse_in_their_own
 
     try:
         until(lambda: "File" in rendered() and "Jobs" in rendered(), "Initial Raven frame")
+        # Emulate a supporting terminal's reply through the actual PTY/input
+        # decoder, not an in-process capability mock.
+        until(lambda: b"\x1b[?2026$p" in output, "DEC 2026 capability query")
+        os.write(master, b"\x1b[?2026;2$y")
         os.write(master, b":terminal show\r")
         until(lambda: "OUTER_READY>" in rendered(), "Embedded shell prompt")
+        assert b"\x1b[?2026h" in output, output[-3000:]
+        # Duplicate terminal replies still belong to Raven while a shell owns
+        # ordinary keyboard input; they must not corrupt the next command.
+        os.write(master, b"\x1b[?2026;2$y")
 
         # Every character passes through ncurses, the production decoder,
         # controller, broker, child PTY, emulator and outer renderer. These
@@ -98,6 +106,7 @@ def test_outer_curses_terminal_keeps_shortcuts_and_fragmented_mouse_in_their_own
         os.write(master, b"\x1dtq")
         until(lambda: process.poll() is not None, "Explicit return to Raven and quit")
         assert process.returncode == 0, output.decode("utf-8", "replace")
+        assert output.count(b"\x1b[?2026h") == output.count(b"\x1b[?2026l")
         captured = json.loads(trace.read_text())
         assert captured["inputs"]["mouse"] >= len(reports)
         assert all(item["context"]["tab"] == item["after"]["tab"] == "jobs"

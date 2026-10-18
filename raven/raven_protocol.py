@@ -5,8 +5,9 @@ import hashlib
 import json
 import math
 from pathlib import Path
-import struct
 import sys
+
+from .framing import Decoder as FramedDecoder, FramePolicy, frame
 
 MAJOR = 1
 MINOR = 0
@@ -38,7 +39,7 @@ def validate(value):
         if item is None or isinstance(item, bool):
             return
         if isinstance(item, str):
-            if len(item.encode("utf-8")) > MAX_STRING:
+            if len(item) > MAX_STRING or len(item.encode("utf-8")) > MAX_STRING:
                 raise ProtocolError("Worker string exceeds its byte budget")
         elif isinstance(item, int):
             if not -(1 << 63) <= item < (1 << 63):
@@ -73,13 +74,13 @@ def digest(value):
     return hashlib.sha256(canonical(value)).hexdigest()
 
 
+POLICY = FramePolicy("Worker", MAX_FRAME, MAX_QUEUE, ProtocolError, eager_header=True, bytes_only=True)
+
+
 def encode(value):
     if not isinstance(value, dict):
         raise ProtocolError("Worker frame must contain an object")
-    data = canonical(value)
-    if len(data) > MAX_FRAME:
-        raise ProtocolError("Worker frame exceeds 1 MiB")
-    return struct.pack("!I", len(data)) + data
+    return frame(canonical(value), POLICY)
 
 
 def _pairs(items):
@@ -91,51 +92,28 @@ def _pairs(items):
     return result
 
 
-class Decoder:
-    def __init__(self):
-        self.buffer = bytearray()
+def _parse(raw):
+    try:
+        value = json.loads(raw, object_pairs_hook=_pairs,
+                           parse_constant=lambda value: (_ for _ in ()).throw(ProtocolError("Nonfinite worker number")))
+        return validate(value)
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise ProtocolError("Invalid worker JSON frame") from exc
 
-    def feed(self, data):
-        if not isinstance(data, bytes) or len(self.buffer) + len(data) > MAX_QUEUE:
-            raise ProtocolError("Worker receive queue exceeds 8 MiB")
-        self.buffer.extend(data)
-        if len(self.buffer) >= 4:
-            size = struct.unpack("!I", self.buffer[:4])[0]
-            if not 1 <= size <= MAX_FRAME:
-                raise ProtocolError("Invalid worker frame size")
+
+class Decoder(FramedDecoder):
+    def __init__(self):
+        super().__init__(POLICY, _parse)
 
     def take(self, count=32):
-        messages = []
-        consumed = 0
-        for _ in range(max(0, min(128, int(count)))):
-            if len(self.buffer) - consumed < 4:
-                break
-            size = struct.unpack("!I", self.buffer[consumed:consumed + 4])[0]
-            if not 1 <= size <= MAX_FRAME:
-                raise ProtocolError("Invalid worker frame size")
-            if len(self.buffer) - consumed < size + 4:
-                break
-            raw = bytes(self.buffer[consumed + 4:consumed + size + 4])
-            try:
-                value = json.loads(raw, object_pairs_hook=_pairs,
-                                   parse_constant=lambda value: (_ for _ in ()).throw(ProtocolError("Nonfinite worker number")))
-                validate(value)
-            except (ValueError, UnicodeError, RecursionError) as exc:
-                raise ProtocolError("Invalid worker JSON frame") from exc
-            if not isinstance(value, dict):
-                raise ProtocolError("Worker frame must contain an object")
-            messages.append(value)
-            consumed += size + 4
-        if consumed:
-            del self.buffer[:consumed]
-        return messages
+        return super().take(count)
 
 
 def build_digest():
     """Digest only the fixed worker implementation, never user paths or secrets."""
     root = Path(__file__).resolve().parent
     state = hashlib.sha256()
-    for name in ("__init__.py", "raven_protocol.py", "raven_worker.py", "raven_resources.py", "raven_execution.py", "raven_config.py"):
+    for name in ("__init__.py", "framing.py", "transport/__init__.py", "transport/framing.py", "protocol_contracts.py", "raven_protocol.py", "raven_worker.py", "raven_resources.py", "raven_execution.py", "raven_config.py", "distribution_profile.py", "_distribution_profile.json"):
         path = root / name
         state.update(name.encode() + b"\0")
         if path.is_file():

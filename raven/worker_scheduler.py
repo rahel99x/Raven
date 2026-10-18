@@ -87,7 +87,19 @@ class WorkerLane:
         self._max_workers = scheduler._limits[name]
 
     def submit(self, fn, /, *args, **kwargs):
-        return self.scheduler._submit(self, fn, args, kwargs)
+        trace = getattr(self.scheduler, "ui_trace", None)
+        if trace is not None:
+            future = trace.submit(lambda function, *values, **options:
+                                  self.scheduler._submit(self, function, values, options),
+                                  self.name, fn, *args, **kwargs)
+        else:
+            future = self.scheduler._submit(self, fn, args, kwargs)
+        wakeup = getattr(self.scheduler, "ui_wakeup", None)
+        if wakeup is not None:
+            from .ui_wakeup import UIWakeup
+            if type(wakeup) is UIWakeup:
+                future.add_done_callback(wakeup.notify)
+        return future
 
     def shutdown(self, wait=True, *, cancel_futures=False):
         self.scheduler._close_lane(self, wait, cancel_futures)

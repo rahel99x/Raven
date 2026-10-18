@@ -1,0 +1,24 @@
+{
+  "version": "26.05.5",
+  "command": [
+    "/workspace/Raven/.venv/bin/python",
+    "/workspace/Raven/scripts/qualify_slurm.py",
+    "--version",
+    "26.05.5",
+    "--skip-build",
+    "--output",
+    "/workspace/raven-qualification-results/26.05.5-final-2"
+  ],
+  "image_id": "sha256:0ad6e52a09d8041b3c68a4f19e4acce50fe6033ea92cfb7e87f36556fb8b52d6",
+  "started_utc": "2026-10-18T00:55:10.890886+00:00",
+  "source_sha256": {
+    "raven/slurm.py": "56dd6758c4c53c0b66c19935717b0cadb8ba4d2ecfa7aed07c5fff41d0190320",
+    "raven/slurm_json.py": "f9fc1c29f43f28413a77f0339e85ce8c40d6f43f411c59fd7265db2fef92d690",
+    "scripts/slurm/lifecycle.py": "5999de6c3dea35e64c8d88075b3868fb631e9e817d14fa550cfbf4795aa74ccd",
+    "scripts/slurm/entrypoint.sh": "54174b40f9e8bcb176a83869c0d18076f3e7ac67d4c7a16e585c9fa3a177972d",
+    "scripts/qualify_slurm.py": "165e288b68e244bc79c4a7072d8b132784728fb52587ada29281cc619e07f2de"
+  },
+  "qualification_limit": "Reused exact-version compiled image/package snapshot; current read-only source entrypoint explicitly supplied at runtime. Not a clean rebuild from current Debian snapshot Dockerfile.",
+  "exit_code": 0,
+  "ended_utc": "2026-10-18T00:55:47.186234+00:00"
+}

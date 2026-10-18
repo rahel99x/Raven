@@ -2,12 +2,31 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from dataclasses import replace
 
 import pytest
 
 from raven.model import Finished, Job, Store
 from raven.sampler import Sampler
 from raven.slurm import CommandError, FakeBackend, MAX_LOG_DETAIL_BYTES, SACCT_FIELDS, SACCT_LOG_FIELDS, Slurm
+
+
+IDENTITY = {"submit": "2026-10-01T12:00:00", "start": "2026-10-01T12:01:00", "user": "alice"}
+
+
+def accounting_reply(text):
+    # Match the requested Submit/Start/Cluster columns while preserving malformed
+    # fixture rows verbatim so corruption assertions still exercise the parser.
+    rows = []
+    for line in text.splitlines():
+        fields = line.split("|")
+        if len(fields) == 8 and fields[-1] == "":
+            fields.pop()
+        if len(fields) == 7:
+            fields.extend((IDENTITY["submit"], IDENTITY["start"], "alpha"))
+            line = "|".join(fields)
+        rows.append(line)
+    return "\n".join(rows)
 
 
 class AccountingBackend:
@@ -19,7 +38,7 @@ class AccountingBackend:
         self.calls.append((command, timeout))
         if self.error:
             raise CommandError(self.error)
-        return self.result, 0.01
+        return accounting_reply(self.result), 0.01
 
 
 class PurgedAccountingBackend(AccountingBackend):
@@ -32,7 +51,8 @@ class PurgedAccountingBackend(AccountingBackend):
 
 def sampler_for(slurm, finished, previous=None):
     store = Store(persist=False)
-    store.finished = finished
+    store.finished = [replace(item, submit=IDENTITY["submit"], start=IDENTITY["start"], user="alice")
+                      if isinstance(slurm, Slurm) else item for item in finished]
     store.details.update(previous or {})
     sampler = Sampler(slurm, store, {}, [], workers=1)
     return sampler, store
@@ -42,10 +62,12 @@ def test_historical_paths_query_is_lazy_and_does_not_change_bulk_history_fields(
     backend = AccountingBackend("77|77|failed job|/scratch/run 1|logs/%j.out|logs/%j.err|alice|\n")
     slurm = Slurm(backend, "alice", timeout=7)
     assert backend.calls == []
-    result = slurm.historical_details("77")
+    result = slurm.historical_details("77", identity=IDENTITY)
     assert result == {"JobId": "77", "JobIDRaw": "77", "JobName": "failed job", "WorkDir": "/scratch/run 1",
-                      "StdOut": "logs/%j.out", "StdErr": "logs/%j.err", "User": "alice", "LogPathSource": "sacct"}
-    assert backend.calls == [(["sacct", "-j", "77", "-X", "-S", "1970-01-01", "-n", "-P", "-o", SACCT_LOG_FIELDS], 7)]
+                      "StdOut": "logs/%j.out", "StdErr": "logs/%j.err", "User": "alice", "LogPathSource": "sacct",
+                      "SubmitTime": IDENTITY["submit"], "StartTime": IDENTITY["start"], "Cluster": "alpha"}
+    assert backend.calls == [(["sacct", "-j", "77", "-u", "alice", "-X", "-D", "-S", "2026-09-29T00:00:00",
+                               "-E", "2026-10-03T00:00:00", "-n", "-P", "-o", SACCT_LOG_FIELDS], 7)]
     assert "StdOut" not in SACCT_FIELDS and "StdErr" not in SACCT_FIELDS
 
 
@@ -56,7 +78,7 @@ def test_array_task_paths_cannot_come_from_parent_sibling_or_step():
         "100_2.batch|102.batch|batch|/wrong|batch.out|batch.err|alice",
         "100_2|102|task|/correct|logs/%A_%a_%j.out|logs/%A_%a_%j.err|alice",
     ]))
-    result = Slurm(backend, "alice").historical_details("100_2")
+    result = Slurm(backend, "alice").historical_details("100_2", identity=IDENTITY)
     assert result["JobIDRaw"] == "102"
     assert (result["ArrayJobId"], result["ArrayTaskId"]) == ("100", "2")
     assert result["WorkDir"] == "/correct"
@@ -68,14 +90,14 @@ def test_array_task_paths_cannot_come_from_parent_sibling_or_step():
                                      "7|7|incomplete|/wrong\n",
                                      "7|7|ambiguous|/run|literal|pipe.out|other.err|alice\n"])
 def test_absent_exact_record_never_uses_another_jobs_paths(text):
-    result = Slurm(AccountingBackend(text), "alice").historical_details("7")
+    result = Slurm(AccountingBackend(text), "alice").historical_details("7", identity=IDENTITY)
     assert result["JobId"] == "7"
     assert "LogPathError" in result
     assert "StdOut" not in result and "StdErr" not in result
 
 
 def test_accounting_null_paths_are_explicitly_missing():
-    result = Slurm(AccountingBackend("7|7|cancelled|/run|(null)|Unknown|alice\n"), "alice").historical_details("7")
+    result = Slurm(AccountingBackend("7|7|cancelled|/run|(null)|Unknown|alice\n"), "alice").historical_details("7", identity=IDENTITY)
     assert result["WorkDir"] == "/run"
     assert "StdOut" not in result and "StdErr" not in result
     assert "no stdout/stderr paths" in result["LogPathError"]
@@ -86,7 +108,7 @@ def test_accounting_null_paths_are_explicitly_missing():
                                       "7|7|incomplete|/other"])
 def test_reused_or_duplicate_exact_ids_never_choose_the_first_accounting_paths(second):
     backend = AccountingBackend("7|7|first|/run|first.out|first.err|alice\n" + second + "\n")
-    result = Slurm(backend, "alice").historical_details("7")
+    result = Slurm(backend, "alice").historical_details("7", identity=IDENTITY)
     assert result["JobId"] == "7"
     assert "multiple accounting records" in result["LogPathError"]
     assert "ambiguous" in result["LogPathError"]
@@ -96,11 +118,11 @@ def test_reused_or_duplicate_exact_ids_never_choose_the_first_accounting_paths(s
 @pytest.mark.parametrize("reply", ["x" * (MAX_LOG_DETAIL_BYTES + 1), "é" * (MAX_LOG_DETAIL_BYTES // 2 + 1)])
 def test_oversized_accounting_replies_are_rejected_without_parsing(reply):
     with pytest.raises(CommandError, match="1 MiB"):
-        Slurm(AccountingBackend(reply), "alice").historical_details("7")
+        Slurm(AccountingBackend(reply), "alice").historical_details("7", identity=IDENTITY)
 
 
 def test_oversized_accounting_paths_are_never_truncated_to_a_different_file():
-    result = Slurm(AccountingBackend(f"7|7|huge|/run|{'x' * 4097}|other.err|alice\n"), "alice").historical_details("7")
+    result = Slurm(AccountingBackend(f"7|7|huge|/run|{'x' * 4097}|other.err|alice\n"), "alice").historical_details("7", identity=IDENTITY)
     assert "oversized" in result["LogPathError"]
     assert "StdOut" not in result and "StdErr" not in result
 
@@ -109,7 +131,7 @@ def test_oversized_accounting_paths_are_never_truncated_to_a_different_file():
 def test_older_slurm_unsupported_log_columns_are_checked_only_once(field):
     backend = AccountingBackend(error=f'sacct exit 1: Invalid field requested: "{field}"')
     slurm = Slurm(backend, "alice")
-    first, second = slurm.historical_details("7"), slurm.historical_details("8")
+    first, second = slurm.historical_details("7", identity=IDENTITY), slurm.historical_details("8", identity=IDENTITY)
     assert len(backend.calls) == 1
     assert first["JobId"] == "7" and second["JobId"] == "8"
     assert first["LogPathError"] == second["LogPathError"]
@@ -121,10 +143,10 @@ def test_transient_or_unrelated_errors_do_not_disable_future_accounting_queries(
     backend = AccountingBackend(error=error)
     slurm = Slurm(backend, "alice")
     with pytest.raises(CommandError, match=".*"):
-        slurm.historical_details("7")
+        slurm.historical_details("7", identity=IDENTITY)
     backend.error = None
     backend.result = "7|7|retry|/run|retry.out|retry.err|alice\n"
-    assert slurm.historical_details("7")["StdOut"] == "retry.out"
+    assert slurm.historical_details("7", identity=IDENTITY)["StdOut"] == "retry.out"
     assert len(backend.calls) == 2
 
 
@@ -132,7 +154,7 @@ def test_fake_history_uses_the_same_accounting_log_query(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     slurm = Slurm(FakeBackend("alice"), "alice")
     finished = slurm.finished(2)
-    result = slurm.historical_details(finished[0].id)
+    result = slurm.record_details(finished[0], historical=True)
     assert result["WorkDir"] == str(tmp_path)
     assert finished[0].id in result["StdOut"]
     assert result["StdOut"] == result["StdErr"]
@@ -229,6 +251,37 @@ def test_real_scontrol_paths_survive_job_completion_without_additional_queries()
         sampler.shutdown()
 
 
+def test_previous_details_from_another_attempt_cannot_seed_completed_cache():
+    backend = PurgedAccountingBackend("7|7|new|/run|correct.out|correct.err|alice")
+    sampler, store = sampler_for(Slurm(backend, "alice"), [Finished("7", state="COMPLETED")],
+                                 {"7": {"JobId": "7", "SubmitTime": "2025-01-01T00:00:00",
+                                        "StdOut": "stale.out", "UserId": "alice(1000)"}})
+    try:
+        sampler.select("7")
+        sampler.src_details()
+        assert store.details["7"]["StdOut"] == "correct.out"
+        assert any(command[0] == "sacct" for command, _ in backend.calls)
+    finally:
+        sampler.shutdown()
+
+
+def test_inflight_accounting_identity_change_does_not_publish_old_paths():
+    backend = PurgedAccountingBackend("7|7|old|/run|old.out|old.err|alice")
+    sampler, store = sampler_for(Slurm(backend, "alice"), [Finished("7", state="COMPLETED")])
+    original = backend.run
+    def change_record(command, timeout):
+        if command[0] == "sacct":
+            store.finished = [replace(store.finished[0], submit="2026-10-02T12:00:00")]
+        return original(command, timeout)
+    backend.run = change_record
+    try:
+        sampler.select("7")
+        sampler.src_details()
+        assert "7" not in store.details
+    finally:
+        sampler.shutdown()
+
+
 def test_unsupported_history_columns_preserve_known_workdir_and_missing_path_error():
     def details(jid):
         raise CommandError("scontrol: Invalid job id specified")
@@ -289,3 +342,100 @@ def test_inflight_historical_fetch_cannot_remove_newly_selected_job_details():
         assert store.details["8"]["StdOut"] == "/correct-eight.out"
     finally:
         sampler.shutdown()
+
+
+def test_unknown_submission_uses_bounded_horizon_but_does_not_borrow_paths():
+    backend = AccountingBackend("7|7|unknown|/run|other.out|other.err|alice")
+    slurm = Slurm(backend, "alice")
+    result = slurm.historical_details("7")
+    assert "no verified submission time" in result["LogPathError"]
+    assert "StdOut" not in result
+    command = backend.calls[0][0]
+    assert command[command.index("-S") + 1] == "now-14days"
+    assert command[command.index("-E") + 1] == "now"
+    assert "-D" in command
+    assert slurm.accounting_diagnostics["details"]["commands"] == 1
+
+
+def test_explicit_bounded_history_lookup_can_locate_missing_attempt_identity():
+    backend = AccountingBackend("7|7|unknown|/run|exact.out|exact.err|alice")
+    slurm = Slurm(backend, "alice")
+    slurm.set_history_range("2026-10-01T00:00:00", "2026-10-02T00:00:00")
+    result = slurm.historical_details("7")
+    assert result["StdOut"] == "exact.out" and result["SubmitTime"] == IDENTITY["submit"]
+    assert slurm.accounting_diagnostics["details"]["window"] == "explicit history range"
+    slurm.set_history_range()
+    assert "StdOut" not in slurm.historical_details("7")
+
+
+def test_old_attempt_window_is_centered_on_retained_submission_not_today():
+    backend = AccountingBackend()
+    slurm = Slurm(backend, "alice")
+    slurm.historical_details("7", identity={**IDENTITY, "submit": "2010-01-03T23:59:59"})
+    command = backend.calls[0][0]
+    assert command[command.index("-S") + 1] == "2010-01-01T00:00:00"
+    assert command[command.index("-E") + 1] == "2010-01-05T00:00:00"
+
+
+@pytest.mark.parametrize("field,value", [("submit", "2026-10-02T12:00:00"),
+                                         ("start", "2026-10-01T13:00:00"), ("user", "other"), ("cluster", "other")])
+def test_accounting_identity_mismatch_is_unknown_not_another_attempt(field, value):
+    backend = AccountingBackend("7|7|recycled|/wrong|wrong.out|wrong.err|alice")
+    result = Slurm(backend, "alice").historical_details("7", identity={**IDENTITY, field: value})
+    assert "LogPathError" in result and "StdOut" not in result
+
+
+def test_equivalent_aware_timestamps_match_but_remote_zone_is_never_guessed():
+    backend = AccountingBackend("7|7|job|/run|exact.out|exact.err|alice|2026-10-01T12:00:00Z|2026-10-01T12:01:00Z|alpha")
+    slurm = Slurm(backend, "alice")
+    result = slurm.historical_details("7", identity={"submit": "2026-10-01T05:00:00-07:00", "start": "2026-10-01T05:01:00-07:00"})
+    assert result["StdOut"] == "exact.out"
+    result = slurm.historical_details("7", identity=IDENTITY)
+    assert "cannot verify" in result["LogPathError"] and "StdOut" not in result
+
+
+def test_recycled_live_scontrol_record_cannot_supply_historical_logs():
+    class RecycledBackend(AccountingBackend):
+        def run(self, command, timeout):
+            if command[0] == "scontrol":
+                return "JobId=7 UserId=alice(1000) SubmitTime=2026-10-02T12:00:00 StartTime=2026-10-02T12:01:00 StdOut=/wrong.out", 0
+            return super().run(command, timeout)
+    sampler, store = sampler_for(Slurm(RecycledBackend("7|7|old|/right|right.out|right.err|alice"), "alice"),
+                                 [Finished("7", state="COMPLETED")])
+    try:
+        sampler.select("7")
+        sampler.src_details()
+        assert store.details["7"]["StdOut"] == "right.out"
+    finally:
+        sampler.shutdown()
+
+
+@pytest.mark.parametrize("start,end", [("1970-01-01T00:00:00", "2026-10-01T00:00:00"),
+                                        ("2026-10-02T00:00:00", "2026-10-01T00:00:00"), ("bad", "bad")])
+def test_explicit_history_interval_has_finite_valid_bounds(start, end):
+    with pytest.raises(ValueError, match="3650 days"):
+        Slurm(AccountingBackend(), "alice").set_history_range(start, end)
+
+
+REAL_2311_STEPS = (
+    "1|Raven spaces = sample|COMPLETED|00:00:06|00:00.002|||||0:0|raven-ci|2026-10-18T00:05:20|2026-10-18T00:05:11|2026-10-18T00:05:14|raven|raven-ci\n"
+    "1.batch|batch|COMPLETED|00:00:06|00:00.002|5196K|raven-ci|0|1|0:0|raven-ci|2026-10-18T00:05:20|2026-10-18T00:05:14|2026-10-18T00:05:14||raven-ci\n"
+)
+
+
+def test_real_2311_empty_step_owner_inherits_only_unique_verified_parent():
+    backend = AccountingBackend(REAL_2311_STEPS)
+    backend.probe_json = False
+    reader = Slurm(backend, "raven")
+    identity = dict(submit="2026-10-18T00:05:11", start="2026-10-18T00:05:14", user="raven", cluster="raven-ci")
+    rows = reader._accounting_attempt_rows(REAL_2311_STEPS, "1", 12, identity, steps=True)
+    assert [row[0] for row in rows] == ["1", "1.batch"]
+    # Missing or contradictory parent evidence never licenses its child.
+    assert reader._accounting_attempt_rows(REAL_2311_STEPS.split("\n", 1)[1], "1", 12, identity, steps=True) == []
+    assert reader._accounting_attempt_rows(REAL_2311_STEPS.replace("|raven|", "|another|"), "1", 12, identity, steps=True) == []
+    child_conflict = REAL_2311_STEPS.replace("||raven-ci\n", "|another|raven-ci\n")
+    assert [row[0] for row in reader._accounting_attempt_rows(child_conflict, "1", 12, identity, steps=True)] == ["1"]
+    outside = REAL_2311_STEPS.replace("2026-10-18T00:05:14|2026-10-18T00:05:14||", "2026-10-18T00:05:21|2026-10-18T00:05:21||")
+    assert [row[0] for row in reader._accounting_attempt_rows(outside, "1", 12, identity, steps=True)] == ["1"]
+    with pytest.raises(CommandError, match="Multiple accounting steps"):
+        reader._accounting_attempt_rows(REAL_2311_STEPS + REAL_2311_STEPS.split("\n", 1)[1], "1", 12, identity, steps=True)

@@ -55,7 +55,7 @@ def drained(manager):
 
 def placement(candidate, cancel=None):
     assert not cancel or not cancel.is_set()
-    return {"probe_id": candidate["probe_id"], "job_record": f"JobId={candidate['job_id']} JobState=RUNNING UserId=test({os.getuid()}) NumCPUs=2 MinMemoryNode=512 SubmitTime=submit StartTime=start",
+    return {"probe_id": candidate["probe_id"], "job_record": f"JobId={candidate['job_id']} JobState=RUNNING UserId=test({os.getuid()}) NumCPUs=2 MinMemoryNode=512 SubmitTime=submit StartTime=start TimeLimit=01:00:00 RunTime=00:00:01",
             "step_record": f"StepId={candidate['job_id']}.{candidate['step_id']} CPUs=2 Nodes={candidate['host']}",
             "job_nodes": [candidate["host"]], "step_nodes": [candidate["host"]], "pids": [candidate["pid"]]}
 
@@ -378,7 +378,7 @@ def test_real_slurm_step_fields_admit_only_the_allocated_worker(tmp_path, fake_s
             probe = self.candidate
             if argv == ["scontrol", "show", "job", probe["job_id"], "-o"]:
                 return (f"JobId={probe['job_id']} JobState=RUNNING UserId=test({os.getuid()}) "
-                        f"NumCPUs=2 MinMemoryNode=512 NodeList={probe['host']}"), .001
+                        f"NumCPUs=2 MinMemoryNode=512 NodeList={probe['host']} TimeLimit=01:00:00 RunTime=00:00:01"), .001
             assert argv == ["scontrol", "show", "step", probe["job_id"] + "." + probe["step_id"], "-o"]
             node = "outside-allocation.invalid" if outside_step else probe["host"]
             return (f"StepId={probe['job_id']}.{probe['step_id']} State=RUNNING "

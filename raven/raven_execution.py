@@ -32,6 +32,8 @@ _PURE = {
     "statistics": ("science_stats", "compare", ("document",)),
     "acceptance": ("science_stats", "acceptance", ("document", "results")),
     "numerical-stability": ("science_diagnostics", "numerical", ("document",)),
+    "factorial-design": ("science_diagnostics", "factorial_plan", ("document",)),
+    "factorial-analysis": ("science_diagnostics", "factorial", ("document",)),
     "regression-investigation": ("science_diagnostics", "regression", ("document",)),
     "recommendation": ("science_contracts", "evaluate", ("document",)),
     "investigation-plan": ("investigation_planner", "plan", ("document",)),
@@ -42,6 +44,7 @@ _PURE = {
     "diagnostic-recipe": ("diagnostic_recipes", "compile_recipe", ("document", "capabilities")),
     "information-query": ("diagnostic_recipes", "summarize_query", ("document", "query")),
     "scientific-field": ("science_fields", "inspect_field", ("document",)),
+    "mcp-evidence-read": ("mcp_evidence", "read", ("document",)),
 }
 
 
@@ -58,7 +61,10 @@ def _contract(operation, *, handler=True, target="allocated-compute-or-desktop",
             "implemented_worker_adapter": handler}
 
 
+from .distribution_profile import absent as _extension_absent
+_PURE = {key: value for key, value in _PURE.items() if not _extension_absent("raven." + value[0])}
 OPERATIONS = {key: _contract(key) for key in _PURE}
+OPERATIONS["mcp-evidence-read"]["budget"].update(input_bytes=128 << 20, output_bytes=128 << 10, wall_seconds=10, cpu_seconds=5, max_records=10000)
 for _key in ("planning", "planning-command", "trace-file", "log-search", "log-search-files", "research-command", "scientific-inspection"):
     OPERATIONS[_key] = _contract(_key)
 OPERATIONS["trace-file"]["budget"]["input_bytes"] = 8 << 20
@@ -71,8 +77,10 @@ OPERATIONS["scientific-inspection"]["budget"]["input_bytes"] = 8 << 20
 FILE_OPERATIONS = frozenset({"environment", "reuse", "bottlenecks", "energy", "evidence",
     "research-portable", "qualification", "support-bundle", "investigation-workflow",
     "diagnostic-campaign", "minimize-reproducer", "regression-sweep", "workflow-engine",
-    "staging", "adapter", "checkpoint", "search", "packing", "dask", "heterogeneous",
-    "incidents", "investigation-timeline"})
+    "staging", "adapter", "wasi-analysis", "checkpoint", "search", "packing", "dask", "heterogeneous",
+    "incidents", "investigation-timeline", "evidence-query", "allocation-health", "process-profile", "telemetry-anomalies", "phase-alignment", "queue-model", "campaign-policy"})
+from .distribution_profile import missing_operation as _extension_operation_absent
+FILE_OPERATIONS = frozenset(key for key in FILE_OPERATIONS if not _extension_operation_absent(key))
 for _key in FILE_OPERATIONS:
     OPERATIONS[_key] = _contract(_key)
     OPERATIONS[_key]["budget"]["input_bytes"] = 8 << 20
@@ -101,6 +109,21 @@ DEFERRED_PATHS = {
 OPERATIONS["artifact-publish"] = _contract("artifact-publish", side_effects="reviewed no-clobber artifact publication")
 OPERATIONS["artifact-publish"]["retry"] = "never automatic; reconcile receipt before a new review"
 OPERATIONS["artifact-publish"]["budget"]["input_bytes"] = 8 << 20
+OPERATIONS["evidence-query"]["budget"].update(input_bytes=128 << 20, scratch_mib=128)
+OPERATIONS["evidence-index-update"] = _contract("evidence-index-update", side_effects="reviewed transactional evidence index update or consistent no-clobber backup")
+OPERATIONS["evidence-index-update"]["budget"].update(input_bytes=128 << 20, scratch_mib=128, max_records=200000)
+OPERATIONS["evidence-index-update"]["retry"] = "never automatic; reconcile immutable capture or publication receipt before retry"
+OPERATIONS["allocation-health-probe"] = _contract("allocation-health-probe", side_effects="reviewed bounded memory/scratch probes in verified owned allocation and no-clobber receipt")
+OPERATIONS["allocation-health-probe"]["budget"].update(wall_seconds=35, cpu_seconds=30, scratch_mib=16)
+OPERATIONS["allocation-health-probe"]["retry"] = "never automatic; inspect retained receipt before preparing a new review"
+for _health in ("allocation-health", "allocation-health-probe"):
+    OPERATIONS[_health]["budget"].update(cpus=2, memory_mib=1024)
+OPERATIONS["wasi-analysis-execute"] = _contract("wasi-analysis-execute", side_effects="reviewed bounded pure-analysis WASI module and optional no-clobber result receipt")
+OPERATIONS["wasi-analysis-execute"]["budget"].update(input_bytes=8 << 20, wall_seconds=35, cpu_seconds=30, scratch_mib=16)
+OPERATIONS["wasi-analysis-execute"]["retry"] = "never automatic; inspect retained receipt before preparing a new review"
+OPERATIONS["process-profile-capture"] = _contract("process-profile-capture", side_effects="reviewed read-only owned local process sampling and no-clobber receipt")
+OPERATIONS["process-profile-capture"]["budget"].update(wall_seconds=65, cpu_seconds=10, scratch_mib=4)
+OPERATIONS["process-profile-capture"]["retry"] = "never automatic; inspect receipt and revalidate exact PID/start-time identity"
 OPERATIONS["simulation-review"] = _contract("simulation-review")
 
 # These operations retain their existing explicit review/identity path in Light.
@@ -117,11 +140,11 @@ HEAVY_OPERATIONS = frozenset({
     "packing", "dask", "heterogeneous", "supervisor", "staging", "workflow-engine",
     "bottlenecks", "clusters", "incidents", "energy", "investigation-timeline",
     "investigation-workflow", "recommendation", "investigation-plan", "scientific-impact",
-    "numerical-stability", "regression-investigation", "diagnostic-campaign",
-    "minimize-reproducer", "regression-sweep", "site-telemetry", "evidence", "adapter",
+    "numerical-stability", "factorial-design", "factorial-analysis", "regression-investigation", "diagnostic-campaign",
+    "minimize-reproducer", "regression-sweep", "site-telemetry", "evidence", "adapter", "wasi-analysis",
     "research-portable", "qualification", "support-bundle", "execution-simulation",
     "diagnostic-recipe", "information-query", "scientific-field", "trace-inspect",
-    "causal-delay", "collective-audit",
+    "causal-delay", "collective-audit", "evidence-query", "allocation-health", "process-profile", "telemetry-anomalies", "phase-alignment",
 })
 
 # Only bounded existing source readers and centrally gated dispatchers may use
@@ -131,7 +154,7 @@ LIGHT_BACKGROUND_MODULES = frozenset({
     "project_ui", "session_tools", "research_commands", "ops_ui",
     "terminal_workflows", "shell_checks_ui", "terminal_fusion", "telemetry_ui",
     "job_progress", "views", "array_manifest_ui", "planning_commands", "trace_ui",
-    "quick_advisor", "analysis_ui", "log_tools", "log_workbench", "history_log_export", "data_export_ui", "auto_export_ui", "setup_ui",
+    "quick_advisor", "analysis_ui", "log_tools", "log_workbench", "history_log_export", "data_export_ui", "auto_export_ui", "setup_ui", "series_settings",
     "onboarding_ui", "launch_wizard_ui", "launch_wizard",
     "connect_data_ui", "connect_data", "run_home_ui", "run_home",
 })
@@ -201,7 +224,7 @@ class _Cancellation:
             raise AdmissionError("Execution cancelled or its deadline expired")
 
 
-def _execute_operation(operation, inputs, context=None, budget=None, cancelled=None):
+def _execute_operation(operation, inputs, context=None, budget=None, cancelled=None, verified_execution=None):
     """Worker-only, fixed named adapters; no source strings or commands execute.
 
     The runtime owns process CPU/RSS/lifetime enforcement. This function adds
@@ -223,15 +246,17 @@ def _execute_operation(operation, inputs, context=None, budget=None, cancelled=N
             raise ValueError("Unexpected or missing fields for " + operation)
         function = getattr(importlib.import_module("raven."+module), name)
         kwargs = {key: inputs[key] for key in ("axis", "index", "bins") if key in inputs}
-        if operation in {"execution-simulation", "diagnostic-recipe"}:
+        if operation in {"execution-simulation", "diagnostic-recipe", "mcp-evidence-read"}:
             kwargs["cancel"] = cancel
         result = function(*(inputs[key] for key in fields), **kwargs)
-    elif operation == "artifact-publish":
-        if set(inputs) != {"operation", "plan"} or inputs["operation"] not in PUBLISH_OPERATIONS:
+    elif operation in {"artifact-publish", "evidence-index-update", "allocation-health-probe", "wasi-analysis-execute", "process-profile-capture"}:
+        allowed = {"process-profile"} if operation == "process-profile-capture" else {"wasi-analysis"} if operation == "wasi-analysis-execute" else {"allocation-health"} if operation == "allocation-health-probe" else {"evidence-query"} if operation == "evidence-index-update" else PUBLISH_OPERATIONS
+        if set(inputs) != {"operation", "plan"} or inputs["operation"] not in allowed:
             raise ValueError("Unsupported reviewed artifact publication")
         from . import operations as O
         ctx = O.Context(selected=context.get("selected", ""), scope=context.get("scope", {}),
-                        jobs=tuple(context.get("attempts", [])), cancel=cancel)
+                        jobs=tuple(context.get("attempts", [])), cancel=cancel,
+                        verified_execution=verified_execution or {})
         payload = O.validate_plan(inputs["plan"], ctx, inputs["operation"])
         if inputs["operation"] == "log-export":
             from .log_bundle import export_logs
@@ -270,7 +295,7 @@ def _execute_operation(operation, inputs, context=None, budget=None, cancelled=N
             raise ValueError("Driver status and cancellation belong to the original execution host")
         ctx = O.Context(selected=context.get("selected", ""), scope=context.get("scope", {}),
                         jobs=tuple(context.get("attempts", [])), cancel=cancel,
-                        state_dir=context.get("state_dir", ""))
+                        state_dir=context.get("state_dir", ""), verified_execution=verified_execution or {})
         result = O._registry()[operation_key][0].run(operation_key, params, ctx)
     elif operation == "planning":
         allowed = {"view", "source", "snap", "job", "observations", "overrides"}
@@ -359,13 +384,13 @@ def _execute_operation(operation, inputs, context=None, budget=None, cancelled=N
     return json.loads(_json(receipt, limits["output_bytes"], "Task result"))
 
 
-def execute_operation(operation, inputs, context=None, budget=None, cancelled=None):
+def execute_operation(operation, inputs, context=None, budget=None, cancelled=None, verified_execution=None):
     if router_for().managed:
         raise AdmissionError("Worker adapters execute only in the admitted worker process; use managed dispatch")
     limits = budget_for(operation, budget)
     token = _SOURCE_BUDGET.set({"remaining": limits["input_bytes"], "files": 128})
     try:
-        return _execute_operation(operation, inputs, context, limits, cancelled)
+        return _execute_operation(operation, inputs, context, limits, cancelled, verified_execution)
     finally:
         _SOURCE_BUDGET.reset(token)
 
@@ -580,6 +605,8 @@ def capability_ledger():
         if key == "clusters":
             entry["availability"] = "prepared/deferred; governed live collector unavailable"
         entry["apply"] = ("existing exact-attempt reviewed target" if key in LIGHT_OPERATIONS
+                          else "reviewed verified-allocation probes and receipt" if key == "allocation-health"
+                          else "reviewed transactional index update or export" if key == "evidence-query"
                           else "reviewed worker publication" if key in PUBLISH_OPERATIONS
                           else "read-only or deferred until target adapter is registered")
         entries.append(entry)
@@ -609,10 +636,14 @@ def operation_route(feature, params, ctx):
     router = router_for(ctx)
     if not router.managed:
         return None
+    if feature == "campaign-policy" and params.get("action", "compare") != "compare":
+        return None  # Bounded interface-owned plan controls, never job submission.
     if feature == "clusters" or (feature == "supervisor" and params.get("action", "status") == "start") or (feature == "site-telemetry" and params.get("action", "inspect") == "query"):
         return deferred(feature, "This live collector needs a governed source adapter; a Heavy worker does not grant another polling entitlement.", supported=False)
     if feature in LIGHT_OPERATIONS:
         return None
+    if feature == "queue-model" and params.get("action", "discover") == "discover":
+        return None  # Explicit governed reads on the captured scheduler connection.
     trace = feature in {"trace-inspect", "causal-delay", "collective-audit"}
     simulation_review = feature == "execution-simulation" and bool(params.get("destination"))
     operation = "trace-file" if trace else "simulation-review" if simulation_review else "scientific-inspection" if feature in _PURE else feature
@@ -628,6 +659,9 @@ def operation_route(feature, params, ctx):
     if receipt.get("status") == "deferred":
         return receipt
     result = receipt["result"]
+    if feature == "campaign-policy":
+        from .ops_campaign_policy import controlled_report
+        result = controlled_report(result, ctx)
     result["execution_receipt"] = {key: value for key, value in receipt.items() if key != "result"}
     if result.get("plan"):
         from .operations import digest
@@ -642,12 +676,15 @@ def operation_route(feature, params, ctx):
 
 def apply_admission(feature, plan, ctx):
     router = router_for(ctx)
+    if feature == "campaign-policy" and isinstance(plan, dict) and plan.get("payload", {}).get("action") in {"pause", "resume", "cancel", "override"}:
+        return None  # The normal reviewed action lifecycle persists local controls.
     if router.managed and feature == "supervisor" and isinstance(plan, dict) and plan.get("payload", {}).get("action") == "start":
         raise AdmissionError("A persistent collector needs its own governed source adapter before it can start")
     if not router.managed or feature in LIGHT_OPERATIONS:
         return None
-    if feature in PUBLISH_OPERATIONS:
-        blocked = router.require(feature, worker_operation="artifact-publish")
+    if feature in PUBLISH_OPERATIONS or feature in {"evidence-query", "allocation-health", "wasi-analysis", "process-profile"}:
+        mutation_operation = "process-profile-capture" if feature == "process-profile" else "wasi-analysis-execute" if feature == "wasi-analysis" else "allocation-health-probe" if feature == "allocation-health" else "evidence-index-update" if feature == "evidence-query" else "artifact-publish"
+        blocked = router.require(feature, worker_operation=mutation_operation)
         if blocked is not None:
             raise AdmissionError(blocked["summary"])
         identity = hashlib.sha256(_json(router.worker().identity, 64 << 10, "Worker identity")).hexdigest()
@@ -656,7 +693,7 @@ def apply_admission(feature, plan, ctx):
         def publish(operation, captured, captured_ctx):
             identity_context = context_data(captured_ctx)
             identity_context["reviewed_plan_digest"] = captured["digest"]
-            receipt = router.dispatch("artifact-publish", {"operation": operation, "plan": captured},
+            receipt = router.dispatch(mutation_operation, {"operation": operation, "plan": captured},
                                       identity_context, cancel=captured_ctx.cancel)
             if receipt.get("status") == "deferred":
                 raise AdmissionError(receipt["summary"])
@@ -694,7 +731,7 @@ def cli_admission(argv, router=None):
         return None
     if needs_job_local(argv):
         return job_local_admission(argv, router)
-    if argv[0] == "trace" and argv[1:2] not in (["register"], ["inspect"]):
+    if argv[0] == "trace" and argv[1:2] not in (["register"], ["inspect"], ["export"], ["summary"]):
         return deferred("trace-cli", "Use the admitted Trace operation or an explicitly verified job-local instrumentation launcher; this CLI cannot execute on the interface host.", supported=False)
     if argv[0] in {"diagnostic", "diagnostic-trials"}:
         return deferred("diagnostic-campaign", "Review this diagnostic against its explicit allocation or desktop worker; interface-host execution is disabled.", supported=False)

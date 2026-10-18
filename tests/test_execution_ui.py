@@ -368,3 +368,22 @@ def test_form_and_review_render_within_terminal_bounds(app, script, tmp_path, as
         for y, x, row in rows:
             assert 0 <= y < height and 0 <= x < width
             assert x + vlen(row_text(row)) <= width
+
+
+def test_campaign_policy_export_captures_current_review_without_submission(app, script, tmp_path, monkeypatch):
+    from raven import campaign_policy
+    state = review(app, script, tmp_path)
+    captured = []
+    expected = state["review"]["review_id"]
+    def export(value, model, limits, destination, *, receipt=None):
+        captured.append((value, model, limits, destination, receipt))
+        return destination
+    monkeypatch.setattr(campaign_policy, "export_manifest", export)
+    execution_ui.run_command(app, ["execution", "policy", "queue.json", "limits.json", "policy.json"])
+    assert state["running"] and app.actions.slurm.calls == []
+    state["review"] = None  # A later UI change cannot retarget captured work.
+    app.research.complete()
+    assert captured[0][0]["review_id"] == expected
+    assert captured[0][1:4] == ("queue.json", "limits.json", "policy.json")
+    assert app.actions.slurm.calls == []
+    assert any("Campaign policy exported" in message for _, message in app.messages)

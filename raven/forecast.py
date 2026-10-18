@@ -560,3 +560,9 @@ class ForecastTracker:
             self._jobs = jobs
             self._outcomes = outcomes
             self._last_now = at
+
+
+def scenarios(document, *, cancel=None):
+    """Compare explicit request alternatives without changing scheduler state."""
+    from .forecast_scenarios import analyze
+    return analyze(document, cancel=cancel)

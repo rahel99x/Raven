@@ -71,7 +71,103 @@ def test_local_setup_checks_and_prints_selected_profile_without_running_slurm(tm
 def test_setup_covers_every_research_workspace():
     from raven.research import RESEARCH_VIEWS
     assert set(setup.RESEARCH_SMOKE_VIEWS) == {name for name, _ in RESEARCH_VIEWS}
-    assert len(setup.RESEARCH_SMOKE_VIEWS) == 13
+    assert len(setup.RESEARCH_SMOKE_VIEWS) == 14
+
+
+def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeypatch):
+    import signal
+    import threading
+    import time
+    from raven import cli, clock, raven_execution, screen
+
+    config = tmp_path / "config.json"
+    config.write_text("{}\n")
+    sessions, frames = [], []
+    build, render = cli.build, screen.once_text
+    cases = list(setup.view_cases())
+    # Repeat the same real frame after all other cases to detect shared UI state.
+    monkeypatch.setattr(setup, "view_cases", lambda: iter([*cases, cases[0]]))
+    monkeypatch.setattr(clock, "now", lambda: 1700000000.)
+    fake_init = cli.FakeBackend.__init__
+    monkeypatch.setattr(cli.FakeBackend, "__init__", lambda self, user: fake_init(self, user, t0=1700000000., speed=0.))
+
+    def tracked_build(*args, **kwargs):
+        if sessions:
+            previous = sessions[-1]
+            assert previous.store._storage_cancel.is_set()
+            assert previous.sampler.stop.is_set()
+            assert previous.app.worker_scheduler._closed
+        session = build(*args, **kwargs)
+        assert not session.store.persist and session.store._state_owner is None
+        assert not session.store._storage_cancel.is_set()
+        sessions.append(session)
+        return session
+
+    def tracked_render(*args, **kwargs):
+        result = render(*args, **kwargs)
+        frames.append(result)
+        return result
+
+    monkeypatch.setattr(cli, "build", tracked_build)
+    monkeypatch.setattr(screen, "once_text", tracked_render)
+    initial_threads = set(threading.enumerate())
+    initial_fds = len(list(Path('/proc/self/fd').iterdir())) if Path('/proc/self/fd').exists() else None
+    initial_env, initial_path, initial_argv = dict(os.environ), list(sys.path), list(sys.argv)
+    initial_signals = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+    initial_streams = sys.stdout, sys.stderr
+    initial_router = raven_execution.process_router()
+    result = setup.validate_views(config)
+    assert result == {"schema": "raven.setup-views/v1", "cases": [
+        {"case": name, "exit_code": 0, "text_valid": True} for name, _ in [*cases, cases[0]]]}
+    assert len(sessions) == len({id(item) for item in sessions}) == 49
+    assert len({id(item.store) for item in sessions}) == 49
+    assert len({id(item.app) for item in sessions}) == 49
+    assert all(item.store._storage_cancel.is_set() and item.sampler.stop.is_set() for item in sessions)
+    assert frames[0] == frames[-1]
+    assert dict(os.environ) == initial_env and list(sys.path) == initial_path and list(sys.argv) == initial_argv
+    assert (sys.stdout, sys.stderr) == initial_streams
+    assert {sig: signal.getsignal(sig) for sig in initial_signals} == initial_signals
+    assert raven_execution.process_router() is initial_router
+    assert clock._source is time.time
+    # Shutdown cancels pending work; allow already-running finite tasks to finish.
+    for thread in set(threading.enumerate()) - initial_threads:
+        thread.join(timeout=2)
+        assert not thread.is_alive(), f"View validation leaked thread {thread.name}"
+    if initial_fds is not None:
+        assert len(list(Path('/proc/self/fd').iterdir())) <= initial_fds
+
+
+@pytest.mark.parametrize("code,text,error,expected", [
+    (0, "", "", "clean ASCII"),
+    (0, "snowman \u2603", "", "clean ASCII"),
+    (0, "\x1b[0mtext", "", "clean ASCII"),
+    (2, "", "configuration is unreadable", "configuration is unreadable"),
+])
+def test_batched_views_identify_the_exact_failed_case(tmp_path, monkeypatch, code, text, error, expected):
+    from raven import raven_launch
+    def failing(_arguments):
+        print(text, end="")
+        print(error, file=sys.stderr)
+        return code
+    monkeypatch.setattr(raven_launch, "light_main", failing)
+    with pytest.raises(setup.SetupError, match=expected) as caught:
+        setup.validate_views(tmp_path / "unused.json")
+    assert "jobs/ascii" in str(caught.value)
+
+
+def test_parent_rejects_incomplete_batch_before_publishing_report(tmp_path, monkeypatch):
+    calls = []
+    def run(command, **kwargs):
+        calls.append(list(map(str, command)))
+        if "--json" in command:
+            return '{"jobs": [{"id": "1"}]}'
+        assert "--_validate-views" in command
+        return '{"schema": "raven.setup-views/v1", "cases": []}'
+    monkeypatch.setattr(setup, "run", run)
+    report = tmp_path / "report.txt"
+    with pytest.raises(setup.SetupError, match="every expected ASCII/Unicode case"):
+        setup.validate(sys.executable, "demo", "", report)
+    assert len(calls) == 2 and not report.exists()
 
 
 def test_setup_preserves_unrelated_paths(tmp_path):

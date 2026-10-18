@@ -87,6 +87,7 @@ class Sampler(threading.Thread):
         self.kick = threading.Event()
         self.want_detail: Optional[str] = None
         self._historical_details: Dict[str, Dict[str, str]] = {}
+        self._historical_detail_identities = {}
         self._details_refresh: Optional[tuple] = None
         self.sources: Dict[str, Callable[[], None]] = {
             "jobs": self.src_jobs, "starts": self.src_starts, "live": self.src_live, "gpu": self.src_gpu, "nodes": self.src_nodes,
@@ -474,6 +475,16 @@ class Sampler(threading.Thread):
                 prerequisite = self.health(dependency)
                 if prerequisite.enabled and (prerequisite.calls == 0 or prerequisite.inflight):
                     return False
+        if name in ("live", "gpu") and self.want_detail:
+            # The existing first selected-job inspection can establish the
+            # recording identity before its first native measurement. This
+            # changes order only: no extra scheduler request or blocking wait.
+            # Missing fields/errors still permit isolated provisional samples.
+            inspection = self.health("details")
+            if (inspection.enabled and self._collection_needed("details")
+                    and (not inspection.last_ok or inspection.inflight)
+                    and self.want_detail not in self.store.details and not inspection.backoff):
+                return False
         if name == "gpu" and not self.gpu_sampling:
             return False
         if name == "details" and not self.want_detail:
@@ -543,7 +554,11 @@ class Sampler(threading.Thread):
                 h.calls += 1
                 h.latency_ms = 1000 * (time.perf_counter() - t0)
                 h.last_ok = time.time()
-                h.error = ""
+                diagnostic = getattr(self.slurm, "parse_diagnostics", {}).get(name, {})
+                context["partial"] = bool(diagnostic.get("partial"))
+                h.error = diagnostic.get("message", "")
+                if context["partial"]:
+                    h.errors += diagnostic.get("rejected", 0) + diagnostic.get("ambiguous", 0)
                 h.backoff = 0.0
         except Deferred as e:
             # Admission deferral is observable but is not a failed scheduler
@@ -585,7 +600,7 @@ class Sampler(threading.Thread):
                     self._trace_handled = max(self._trace_handled, context["trace_requested"])
                 if self.collection is not None and not stale_trace:
                     import random
-                    failed = bool(h.error) and not context.get("deferred")
+                    failed = bool(h.error) and not context.get("deferred") and not context.get("partial")
                     failures = self._collection_failures.get(name, 0) + 1 if failed else 0
                     self._collection_failures[name] = failures
                     if context.get("deferred"):
@@ -663,6 +678,9 @@ class Sampler(threading.Thread):
         return min(.5, max(.05, shortest))
 
     def refresh_all(self):
+        invalidate = getattr(self.slurm, "invalidate_capabilities", None)
+        if callable(invalidate):
+            invalidate()
         if self.collection is not None:
             # Manual refresh requests the next admitted publication. It cannot
             # erase source clocks, failure recovery, per-job floors or quotas.
@@ -696,6 +714,10 @@ class Sampler(threading.Thread):
     def src_jobs(self):
         jobs = self.slurm.jobs()
         with self.store.lock:
+            if getattr(self.slurm, "parse_diagnostics", {}).get("jobs", {}).get("partial"):
+                # Partial observation cannot prove that an absent job departed.
+                seen = {job.id for job in jobs}
+                jobs = jobs + [job for job in self.store.jobs if job.id not in seen]
             returning = {job.id for job in jobs} & self.store.preserved_detail_ids()
             events = self.store.apply_jobs(jobs, _persist=False)
             self._gpu_cache_reapply_locked(time.monotonic())
@@ -786,6 +808,7 @@ class Sampler(threading.Thread):
         with self.store.lock:
             jobs = [j for j in self.store.jobs if not j.pending]
             attempts = {j.id: self.store.job_attempt(j.id) for j in jobs}
+            recording_identities = {j.id: self.store.capture_series_identity(j.id) for j in jobs}
             identities = {j.id: self._gpu_identity(j) for j in jobs}
             previous = {j.id: self.store.prev_cpu.get(j.id) for j in jobs}
         jobs = self._sampling_targets("live", jobs)
@@ -813,10 +836,11 @@ class Sampler(threading.Thread):
             with self.store.lock:
                 current = self.store.job(job.id)
                 if (current is None or self.store.job_attempt(job.id) != attempts[job.id]
-                        or self._gpu_identity(current) != identities[job.id]):
+                        or self._gpu_identity(current) != identities[job.id]
+                        or self.store.capture_series_identity(job.id) != recording_identities[job.id]):
                     continue
                 self.store.prev_cpu[job.id] = keep
-                self.store.apply_live(job.id, lv, _persist=False)
+                self.store.apply_live(job.id, lv, _persist=False, identity=recording_identities[job.id])
                 self.store.steps[job.id] = steps
             self.store.flush_persistence(_series_only=True)
         with self.store.lock:
@@ -885,6 +909,7 @@ class Sampler(threading.Thread):
             self._gpu_cache_reapply_locked(time.monotonic())
             running = [j for j in self.store.jobs if j.state == "RUNNING"]
             attempts = {j.id: self.store.job_attempt(j.id) for j in running}
+            recording_identities = {j.id: self.store.capture_series_identity(j.id) for j in running}
             identities = {j.id: self._gpu_identity(j) for j in running}
         failures, discovery_error = [], ""
         discover = getattr(self.slurm, "gpu_allocations", None)
@@ -957,9 +982,10 @@ class Sampler(threading.Thread):
                     current = self.store.job(job.id)
                     if (getattr(self.slurm, "gpu_provider_generation", 0) != provider_generation
                             or current is None or self.store.job_attempt(job.id) != attempts[job.id]
-                            or self._gpu_identity(current) != identities[job.id]):
+                            or self._gpu_identity(current) != identities[job.id]
+                            or self.store.capture_series_identity(job.id) != recording_identities[job.id]):
                         continue
-                    self.store.apply_gpu(job.id, samples, _persist=False)
+                    self.store.apply_gpu(job.id, samples, _persist=False, identity=recording_identities[job.id])
                     if error:
                         failures.append(error)
                     else:
@@ -1006,6 +1032,10 @@ class Sampler(threading.Thread):
         with self._schedule_lock:
             requested = self._finished_requested
         fin = self.slurm.finished(self.history_days)
+        if getattr(self.slurm, "parse_diagnostics", {}).get("finished", {}).get("partial"):
+            with self.store.lock:
+                seen = {job.id for job in fin}
+                fin = fin + [job for job in self.store.finished if job.id not in seen]
         self.store.apply_finished(fin, history_days=self.history_days)
         with self.store.lock:
             pending = bool(self.store.departed_jobs)
@@ -1033,6 +1063,10 @@ class Sampler(threading.Thread):
     def src_account(self):
         """Everyone's jobs in the account (the Group tab) and the account's load (the header)."""
         jobs = self.slurm.group(self.account)
+        if getattr(self.slurm, "parse_diagnostics", {}).get("account", {}).get("partial"):
+            with self.store.lock:
+                seen = {job.id for job in jobs}
+                jobs = jobs + [job for job in self.store.group if job.id not in seen]
         running = [j for j in jobs if not j.pending]
         info = dict(account=self.account, running=len(running), cpus=sum(j.cpus for j in running), gpus=sum(j.gpus for j in running),
                     pending=sum(1 for j in jobs if j.pending))
@@ -1207,8 +1241,14 @@ class Sampler(threading.Thread):
         jid = self.want_fin
         if not jid or jid in self.store.fin_steps:
             return
-        steps = self.slurm.fin_steps(jid)
         with self.store.lock:
+            record = next((job for job in self.store.finished if job.id == jid), None)
+            attempt = self.store.job_attempt(jid)
+        reader = getattr(self.slurm, "record_fin_steps", None)
+        steps = reader(record) if callable(reader) and record is not None else self.slurm.fin_steps(jid)
+        with self.store.lock:
+            if self.want_fin != jid or attempt != self.store.job_attempt(jid):
+                return
             self.store.fin_steps[jid] = steps
             if len(self.store.fin_steps) > 50:
                 self.store.fin_steps.pop(next(iter(self.store.fin_steps)))
@@ -1219,17 +1259,25 @@ class Sampler(threading.Thread):
             return
         with self.store.lock:
             finished = next((job for job in self.store.finished if job.id == jid), None)
+            selected_record = finished or next((job for job in self.store.jobs if job.id == jid), None)
             previous = dict(self.store.details.get(jid, {}))
             attempt = self.store.job_attempt(jid)
+        record_reader = getattr(self.slurm, "record_details", None)
+        detail_identity = (attempt, *(getattr(selected_record, key, "") for key in ("submit", "start", "user", "cluster")))
         if finished is None:
-            kv = self.slurm.details(jid)
+            kv = record_reader(selected_record) if callable(record_reader) and selected_record else self.slurm.details(jid)
         else:
             # Successful completed-job paths are immutable. Missing accounting
             # paths can lag completion, so retry them on the normal cadence or a
             # manual refresh. Keep real paths fetched while the job was alive.
             kv = self._historical_details.get(jid)
+            if self._historical_detail_identities.get(jid) != detail_identity:
+                kv = None
             if kv is None:
                 seed = dict(previous)
+                verify = getattr(self.slurm, "detail_identity_error", None)
+                if callable(verify) and verify(finished, seed):
+                    seed = {}
                 seed.pop("LogPathError", None)
                 seed.update({"JobId": jid, "JobName": finished.name, "JobState": finished.state})
                 if finished.workdir and not seed.get("WorkDir"):
@@ -1242,17 +1290,21 @@ class Sampler(threading.Thread):
 
                 if not known_path():
                     try:
-                        control = self.slurm.details(jid)
+                        control = record_reader(finished) if callable(record_reader) else self.slurm.details(jid)
                     except CommandError:
                         control = {}
                     seed.update(control)
                     if not known_path():
-                        seed.update(self.slurm.historical_details(jid))
+                        seed.update(record_reader(finished, historical=True) if callable(record_reader)
+                                    else self.slurm.historical_details(jid))
                 kv = seed
                 if known_path():
                     self._historical_details[jid] = dict(kv)
+                    self._historical_detail_identities[jid] = detail_identity
                     if len(self._historical_details) > 50:
                         self._historical_details.pop(next(iter(self._historical_details)))
+                    self._historical_detail_identities = {key: value for key, value in self._historical_detail_identities.items()
+                                                           if key in self._historical_details}
         with self.store.lock:
             # An in-flight fetch for an old cursor must not evict or overwrite
             # the newly selected job's details.
@@ -1267,9 +1319,13 @@ class Sampler(threading.Thread):
                 self._historical_details.pop(jid, None)
                 return
             current_finished = next((job for job in self.store.finished if job.id == jid), None)
+            current_record = current_finished or next((job for job in self.store.jobs if job.id == jid), None)
+            if detail_identity != (attempt, *(getattr(current_record, key, "") for key in ("submit", "start", "user", "cluster"))):
+                return
             if current_finished is not None:
                 kv = dict(kv, JobState=current_finished.state)
             self.store.details[jid] = kv
+            self.store.bind_series_scheduler(jid, kv)
             alive = {j.id for j in self.store.jobs}
             retained = set(self._historical_details) | self.store.preserved_detail_ids()
             for k in [k for k in self.store.details if k not in alive and k not in retained and k != jid]:

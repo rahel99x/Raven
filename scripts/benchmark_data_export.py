@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 import platform
 import resource
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -124,23 +125,76 @@ def measure(rows: int, metrics: int, layout: str = "category") -> dict:
                 "cancellation_checks": probes, **verified}
 
 
+def measure_index(rows: int, metrics: int) -> dict:
+    """Use the same verified export fixture for equivalent CSV/SQLite queries."""
+    from raven import data_export as D, evidence_index as I
+    with tempfile.TemporaryDirectory(prefix="raven-index-benchmark-") as temporary:
+        root = Path(temporary)
+        request = fixture(root, rows, metrics)
+        receipt = D.export_data(request)
+        if receipt["status"] != "complete":
+            raise RuntimeError(str(receipt))
+        verified = validate(receipt, rows, metrics)
+        bundle, index = Path(receipt["outputs"][0]), root / "index"
+        tracemalloc.start()
+        started, cpu = time.perf_counter(), time.process_time()
+        built = I.ingest(index, bundle, str(root))
+        ingestion_seconds, ingestion_cpu = time.perf_counter() - started, time.process_time() - cpu
+        _, peak = tracemalloc.get_traced_memory(); tracemalloc.stop()
+        attempt = I.query(index, "SELECT attempt_key FROM measurements LIMIT 1")["rows"][0][0]
+        cutoff = 1_700_000_000. + (rows - 50) / 8
+        sql = "SELECT timestamp,value,value_text,unit FROM measurements WHERE attempt_key=? AND metric=? AND timestamp>=? ORDER BY timestamp,source_row"
+        parameters = (attempt, "measurement_0", cutoff)
+        def csv_query():
+            with (bundle / "application-metrics.csv").open(newline="", encoding="utf-8") as stream:
+                return [[float(row["timestamp"]), float(row["value"]), row["value"], row["unit"]]
+                        for row in csv.DictReader(stream) if row["metric"] == "measurement_0" and float(row["timestamp"]) >= cutoff]
+        def indexed_query():
+            result = I.query(index, sql, parameters=parameters)
+            if result["status"] != "complete": raise RuntimeError(str(result))
+            return result["rows"]
+        expected = csv_query()
+        if indexed_query() != expected or len(expected) != 50:
+            raise RuntimeError("Indexed query changed observations, precision, units or ordering")
+        durations, cpus, allocations = {"csv": [], "sqlite": []}, {"csv": [], "sqlite": []}, {}
+        for iteration in range(20):
+            for name, function in (("csv", csv_query), ("sqlite", indexed_query))[::1 if iteration % 2 == 0 else -1]:
+                start, cpu = time.perf_counter(), time.process_time()
+                result = function()
+                durations[name].append(time.perf_counter() - start); cpus[name].append(time.process_time() - cpu)
+                if result != expected: raise RuntimeError("Query fidelity changed during repetitions")
+        for name, function in (("csv", csv_query), ("sqlite", indexed_query)):
+            tracemalloc.start(); function(); _, allocations[name] = tracemalloc.get_traced_memory(); tracemalloc.stop()
+        with I.reader(index) as connection:
+            query_plan = connection.execute("EXPLAIN QUERY PLAN " + sql, parameters).fetchall()
+        return {"input_rows": rows, "metrics_per_record": metrics, "matching_rows": 50, "repetitions": 20,
+                "ingestion_seconds": ingestion_seconds, "ingestion_cpu_seconds": ingestion_cpu,
+                "ingestion_python_peak_bytes": peak, "query_seconds": durations, "query_cpu_seconds": cpus,
+                "query_median_seconds": {key: statistics.median(value) for key, value in durations.items()},
+                "query_python_peak_bytes": allocations, "database_bytes": built["database_bytes"],
+                "query_plan": query_plan, "process_max_rss_platform_units": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+                **verified}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rows", type=int, nargs="+", default=[1000, 100000])
     parser.add_argument("--metrics", type=int, default=2)
     parser.add_argument("--layout", choices=("category", "metric"), default="category")
+    parser.add_argument("--index-queries", action="store_true", help="Compare repeated CSV/index queries; use bounded fixtures, e.g. --rows 1000 5000")
     parser.add_argument("--output", type=Path, help="new JSON report path; never overwrite an existing file")
     parser.add_argument("--child", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if any(value < 100 for value in args.rows) or not 1 <= args.metrics <= 64:
         parser.error("choose at least 100 rows and 1–64 metric names per record")
     if args.child:
-        print(json.dumps(measure(args.rows[0], args.metrics, args.layout), allow_nan=False))
+        print(json.dumps(measure_index(args.rows[0], args.metrics) if args.index_queries else measure(args.rows[0], args.metrics, args.layout), allow_nan=False))
         return 0
     measurements = []
     for rows in args.rows:
         command = [sys.executable, str(Path(__file__).resolve()), "--child", "--rows", str(rows),
                    "--metrics", str(args.metrics), "--layout", args.layout]
+        if args.index_queries: command.append("--index-queries")
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         measurements.append(json.loads(result.stdout))
     from raven import data_export
@@ -151,6 +205,13 @@ def main(argv=None):
                         "Tracemalloc includes planning/export, excludes input generation and validation.",
                         "Max RSS includes the entire fresh child; its units depend on the platform.",
                         "Measurements describe this machine and filesystem only."]}
+    if args.index_queries:
+        from raven import evidence_index
+        report.update(indexer_sha256=checksum(Path(evidence_index.__file__)), mode="bounded-index-queries")
+        report["notes"] = ["Equivalent synthetic CSV/index time-window queries, interleaved with cached filesystem reads; no scheduler commands.",
+                           "Build and query Python allocation peaks are distinct from fresh-child process max RSS (KiB on Linux).",
+                           "Raw exports are retained in addition to the index. This benchmark reports their separate disk costs.",
+                           "Direct engineering harness; managed worker input budgets still apply to user operations."]
     rendered = json.dumps(report, indent=2, allow_nan=False) + "\n"
     if args.output:
         with args.output.open("x", encoding="utf-8") as stream:

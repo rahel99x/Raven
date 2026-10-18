@@ -480,3 +480,22 @@ def test_unknown_scheduler_cluster_still_rejects_launch_swap_during_discovery(re
     monkeypatch.setattr(projects, "select_run", changed)
     result = projects.discover_job([str(root)], "901_2")
     assert result["status"] == "changed" and result["selected"] is None
+
+
+def test_checkpoint_advice_uses_explicit_bound_bundle_on_local_and_isolated_ssh(reported_project, backend):
+    from pathlib import Path
+    root, run = reported_project
+    source_path = run / "reports/planning.json"
+    source = json.loads(source_path.read_text())
+    source["checkpoint_advice"] = json.loads((Path(__file__).resolve().parents[1] / "examples/checkpoint-advice.json").read_text())
+    write_json(source_path, source)
+    app = make_app(root, backend)
+    try:
+        project_ui.settle(app)
+        app.research_view = "checkpoint-advice"
+        result = app.research.request(app.research.context(app.store.snapshot(), app), wait=True, force=True)
+        assert result["schema"] == "raven.checkpoint-advice-result/v1"
+        assert result["status"] == "advisory"
+        assert result["scope"] == source["checkpoint_advice"]["scope"]
+    finally:
+        app.research.close()

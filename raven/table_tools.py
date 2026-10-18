@@ -105,6 +105,7 @@ def restore(app, data):
         state["dates"] = validate_dates(data.get("dates"))
         if state["dates"]:
             _ensure_history_window(app, state["dates"]["start"])
+            _accounting_range(app, state["dates"])
     except ValueError:
         pass
     recent = data.get("recents", {})
@@ -360,6 +361,16 @@ def _ensure_history_window(app, start_ts):
         app.set_days(app.days_options.index(days))
 
 
+def _accounting_range(app, interval):
+    setter = getattr(getattr(getattr(app, "sampler", None), "slurm", None), "set_history_range", None)
+    if callable(setter):
+        if interval is None:
+            setter()
+        else:
+            setter(datetime.fromtimestamp(interval["start"]).isoformat(),
+                   datetime.fromtimestamp(interval["end"]).isoformat())
+
+
 def run_command(app, args):
     if not args or args[0] not in command_names():
         return False
@@ -392,6 +403,7 @@ def run_command(app, args):
                 app.say(date_label(app) + "; historyrange today|yesterday|week|all or START END")
             else:
                 interval = _date_range(app, values)
+                _accounting_range(app, interval)
                 state["dates"] = interval
                 app.cursor["history"], app.top["history"] = 0, 0
                 _persist(app, "history")

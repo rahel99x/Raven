@@ -31,6 +31,23 @@ def event_digest(record):
     return hashlib.sha256(encoded({key: value for key, value in record.items() if key != "sha256"})).hexdigest()
 
 
+def encode_event_record(record):
+    """Encode v1 once while preserving its exact canonical bytes and digest.
+
+    The fixed envelope's final canonical key is stream. Insert the checksum
+    immediately before it, so existing readers and archived hashes are unchanged.
+    This removes redundant event serialization without a new integrity format.
+    """
+    if set(record) != {"schema", "stream", "seq", "prev", "event"}:
+        raise ValueError("Expected an unsigned v1 trace event envelope")
+    raw = encoded(record)
+    digest = hashlib.sha256(raw).hexdigest()
+    prefix, separator, stream = raw.rpartition(b',"stream":')
+    if not separator:
+        raise ValueError("Trace event envelope has no stream")
+    return prefix + b',"sha256":"' + digest.encode('ascii') + b'"' + separator + stream + b'\n', digest
+
+
 def text(value, name, maximum=1024):
     if not isinstance(value, str) or not value or len(value) > maximum or not value.isprintable():
         raise ValueError(f"{name} must be a nonempty printable string of at most {maximum} characters")

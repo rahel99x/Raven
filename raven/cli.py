@@ -70,6 +70,15 @@ class Session:
         self.backend, self.files, self.api = backend, files, api
 
     def close(self):
+        try:
+            self._close_services()
+        finally:
+            if self.store is not None:
+                self.store.close()
+
+    def _close_services(self):
+        from .historical_ui import shutdown as shutdown_history
+        shutdown_history(self.app)
         from .raven_diagnostics import close as close_diagnostics
         close_diagnostics(self.app)
         from .terminal_ui import shutdown as shutdown_terminal
@@ -259,12 +268,15 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
             raven_allocation.set_placement_verifier(make_placement_verifier(backend))
     slurm = Slurm(backend, user, timeout=cfg["timeouts"]["command"], gpu_timeout=cfg["timeouts"]["gpu"], action_timeout=cfg["timeouts"]["action"],
                   gpu_provider=cfg.get("gpu_provider", "auto"))
+    state_read_only = bool(args.once or args.json or args.csv or args.report or args.eval)
+    state_options = dict(read_only=False, strict_owner=not state_read_only, source_scope=forecast_scope(backend, cfg, user),
+                         series_storage=cfg.get("raven", {}).get("storage", {}).get("series_format", cfg.get("series_storage", "jsonl")))
     if managed:
         from .raven_limits import LightLimits
         light_limits = LightLimits(raven["resources"]["light"], sdir)
-        store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]), raven_limits=light_limits)
+        store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]), raven_limits=light_limits, **state_options)
     else:
-        store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]))
+        store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]), **state_options)
     if args.interval:
         cfg.set("intervals.jobs", args.interval)
         cfg.ui_locked_settings = set(getattr(cfg, "ui_locked_settings", ())) | {"intervals.jobs"}
@@ -389,7 +401,20 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
         demand(tab or s.app.tab, selected_job or s.app.selected_id, sources=sources)
     if managed:
         s.sampler.prime_collection_snapshot()
-    s.sampler.round(wait=True)
+    # Resolve the first selected job before collecting native metrics. The
+    # following round already requests its details; no extra scheduler call
+    # is needed, and unverified samples need not be discarded immediately.
+    initial_metrics = {}
+    if not s.sampler.want_detail and not s.store.jobs:
+        for name in ("live", "gpu"):
+            if name in s.store.health:
+                initial_metrics[name] = s.store.health[name].enabled
+                s.store.health[name].enabled = False
+    try:
+        s.sampler.round(wait=True)
+    finally:
+        for name, enabled in initial_metrics.items():
+            s.store.health[name].enabled = enabled
     s.app.tab = "jobs"
     s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)     # settles the selected job
     if tab == "analytics":
@@ -779,6 +804,15 @@ def _dispatch_main(argv=None, *, raven=None, raven_allocation=None):
     if argv and argv[0] == "runtime":
         from .runtime_control import main as runtime_main
         return runtime_main(argv[1:])
+    if argv and argv[0] == "series":
+        from .series_cli import main as series_main
+        return series_main(argv[1:])
+    if argv and argv[0] == "query":
+        from .query_cli import main as query_main
+        return query_main(argv[1:])
+    if argv and argv[0] == "mcp":
+        from .mcp_server import main as mcp_main
+        return mcp_main(argv[1:])
     if argv and argv[0] == "report":
         from .research_reporting import main as reporting_main
         return reporting_main(argv[1:])
@@ -881,6 +915,9 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
         app, views, store, sampler, actions = s.app, s.views, s.store, s.sampler, s.actions
         if ui_trace is not None:
             app.ui_trace = ui_trace
+            sampler.ui_trace = ui_trace
+            if getattr(sampler, "worker_scheduler", None) is not None:
+                sampler.worker_scheduler.ui_trace = ui_trace
         width = args.width or max(1, shutil.get_terminal_size((130, 40)).columns)
         color = cfg["color"] and sys.stdout.isatty() and os.environ.get("TERM", "dumb") != "dumb"
         try:

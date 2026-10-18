@@ -357,3 +357,13 @@ is installed, a matching development package can be extracted into a user-owned
 directory for validation. Set `RAVEN_TEST_MPI_INCLUDE` to its Open MPI include
 directory and, if required, `RAVEN_TEST_MPI_LINK` to the matching linker flags.
 These test variables do not change application launch configuration.
+
+## Export an interoperable view
+
+Use `raven trace export MANIFEST --format perfetto --output NEW.json` for a
+bounded timeline, or `--format speedscope` for supported Python evented frame
+intervals. Both preserve the verified-prefix identity, coverage limits, and
+integrity evidence. See [self-tracing and application trace exports](self-tracing.md)
+for examples, limits, and the distinction between wall-time intervals and CPU
+sampling. Existing v1 journals and readers remain compatible; recording still
+uses per-event checksums and explicit durable commit checkpoints.

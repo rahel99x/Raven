@@ -140,9 +140,14 @@ def _checkpoint(path, recipe, params, ctx):
     root = C.directory(ctx, "checkpoint") / C.digest({"source": source, "checkpoint": expected, "script": base["script_sha256"], "id": run_id})[:24]
     payload = {**_evidence(path, recipe), "base_plan": base, "content": content, "script_path": str(root / "restart.sh"),
                "checkpoint": filename, "checkpoint_sha256": expected, "source_job": source, "receipt": str(root / "receipt.json")}
-    return payload, ["Application: " + compatibility["expected"]["application"], "Checkpoint: " + filename,
+    rows = ["Application: " + compatibility["expected"]["application"], "Checkpoint: " + filename,
                      "Verified SHA-256: " + expected, "Restart: " + base["command"],
                      "The application reads RAVEN_CHECKPOINT; Raven never guesses a restart flag."]
+    if "checkpoint_advice" in recipe:
+        from .checkpoint_advisor import advise, review_lines
+        payload["checkpoint_advice"] = advise(recipe["checkpoint_advice"])
+        rows.extend(review_lines(payload["checkpoint_advice"]))
+    return payload, rows
 
 
 def _search_candidates(recipe):
@@ -437,7 +442,18 @@ def _verify_checkpoint_attempt(payload, ctx):
     queued = O.command(ctx, ["squeue", "--noheader", "--jobs=" + job_id, "--format=%i|%T"])
     if queued.strip():
         raise ValueError("checkpoint source is still queued or active; restart refused")
+    from datetime import datetime, timedelta
+    try:
+        started = datetime.fromisoformat(source["start"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Checkpoint source requires a valid retained start timestamp") from exc
+    user = str(getattr(ctx.slurm, "user", ""))
+    if not user:
+        raise ValueError("Checkpoint restart requires a verified active scheduler user")
+    center = started.replace(tzinfo=None, hour=0, minute=0, second=0)
     output = O.command(ctx, ["sacct", "--noheader", "--parsable2", "--duplicates", "--jobs=" + job_id,
+                             "--user=" + user, "--starttime=" + (center - timedelta(days=2)).isoformat(),
+                             "--endtime=" + (center + timedelta(days=2)).isoformat(),
                              "--format=JobID%64,JobIDRaw%64,Cluster%256,Start,State%64"])
     matches = set()
     for line in output.splitlines():

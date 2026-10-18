@@ -15,6 +15,7 @@ FIELDS = (("application_metrics", "Application metrics JSONL file (project-relat
           ("workers", "Scientific worker count"), ("problem_size", "Problem size"),
           ("repeat", "Repeat identifier (number)"),
           ("report_python", "Compute-node Python executable"),
+          ("checkpoint_advice", "Optional checkpoint advice JSON (project-relative)"),
           ("recipe_name", "Save launch recipe name"))
 
 
@@ -63,7 +64,7 @@ def open_setup(app, *, root=None):
 
 def _fields(state):
     launch = state["setup_form"]
-    fields = {key: str(launch.get(key, "")) for key in ("application_metrics", "array_manifest", "report_python")}
+    fields = {key: str(launch.get(key, "")) for key in ("application_metrics", "array_manifest", "report_python", "checkpoint_advice")}
     fields.update({key: str(launch.get("scientific_context", {}).get(key, "")) for key in ("workers", "problem_size", "repeat")})
     from .launch_features import FEATURES
     fields.update({"report:" + item["name"]: str(launch.get("research_sources", {}).get(item["name"], ""))
@@ -133,7 +134,7 @@ def apply_field(app, key, value):
 def _resolved(state):
     launch = copy.deepcopy(state["setup_form"])
     fields = state["setup_fields"]
-    for key in ("application_metrics", "array_manifest", "report_python"):
+    for key in ("application_metrics", "array_manifest", "report_python", "checkpoint_advice"):
         if fields.get(key):
             launch[key] = fields[key]
         else:

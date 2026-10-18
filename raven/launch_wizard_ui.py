@@ -406,6 +406,9 @@ def _document(app):
                  for key, value in plan["effective_options"].items()]
         rows += [(item["label"] + ": " + item["status"] + ". " + item["reason"], None) for item in plan["readiness"]]
         rows += [(text, None) for text in plan["compatibility"]]
+        if plan.get("checkpoint_advice"):
+            from .checkpoint_advisor import review_lines
+            rows += [(line, None) for line in review_lines(plan["checkpoint_advice"])]
         command_label = ("Base launch command; also apply the retained settings shown above" if draft.get("captured_plan") else "Equivalent command")
         rows += [(command_label + " (run from " + plan["submit_dir"] + "): " + state["review"]["command"], None),
                  ("The original script stays unchanged. Launching creates a source snapshot and recorded attempt. Closing Raven leaves accepted workloads running.", None)]

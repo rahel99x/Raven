@@ -1,0 +1,4 @@
+Account|User|RawShares|NormShares|RawUsage|EffectvUsage|FairShare
+root|||0.000000|0|1.000000|
+ labx||1|0.500000|0|0.000000|
+  labx|raven|1|1.000000|0|0.000000|1.000000

@@ -59,7 +59,20 @@ def render(views, app, result, width):
     if result.get("job_id"):
         out.append(row(" Job " + clean(result["job_id"], g.ascii), "bold"))
     app.research_data_jobs = result.get("data_jobs", [])
-    if view == "predict":
+    if view == "forecast" and result.get("schema") == "raven.forecast-scenarios-result/v1":
+        from .forecast_scenarios import lines
+        out.extend(row(line) for line in lines(result))
+    elif view == "checkpoint-advice":
+        from .checkpoint_advisor import review_lines
+        if result.get("schema") == "raven.checkpoint-advice-result/v1":
+            out.extend(row(line, "yellow" if line.startswith("Assumption:") else "") for line in review_lines(result))
+            for item in result.get("baselines", []):
+                out.append(heading(item["name"] + " / approximate overhead"))
+                out.append(row(f" {item['writes']} writes; lost work {number(item['lost_work_seconds'], 's')}; write cost {number(item['write_seconds'], 's')}; restart {number(item['restart_seconds'], 's')}"))
+                out.append(row(f" Total {number(item['overhead_seconds'], 's')} | sensitivity {number(item['overhead_lower_seconds'])}..{number(item['overhead_upper_seconds'])} s", "cyan"))
+        else:
+            out.append(row(result.get("summary", "Attach checkpoint advice data."), "yellow"))
+    elif view == "predict":
         out.append(row(" Comparable completed runs; uncertainty is conditional on this cohort.", "dim"))
         cohort = result.get("cohort", {})
         out.append(row(" Cohort: " + clean(cohort, g.ascii), "dim"))

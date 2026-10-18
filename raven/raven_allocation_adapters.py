@@ -213,7 +213,7 @@ def prepare(config, reuse=None):
     return review
 
 
-def build_launch(plan, worker_argv):
+def build_launch(plan, worker_argv, *, request_id=None):
     """Quote remote argv once; no path or identifier becomes executable syntax."""
     if not isinstance(worker_argv, list) or not worker_argv or not all(isinstance(arg, str) and "\0" not in arg for arg in worker_argv):
         raise ValueError("Invalid fixed Raven worker argument vector")
@@ -221,7 +221,12 @@ def build_launch(plan, worker_argv):
     if plan["site_kind"] == "desktop" and worker_argv[1:] == ["-m", "raven.raven_worker"]:
         worker = [plan["worker_python"], "-c", "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('raven.raven_worker',run_name='__main__')",
                   str(Path(__file__).resolve().parent.parent)]
-    argv = [*plan["prefix"], *worker]
+    prefix = list(plan["prefix"])
+    if request_id is not None and plan["ownership"] == "dedicated-allocation":
+        if not isinstance(request_id, str) or not re.fullmatch(r"[0-9a-f]{32}", request_id):
+            raise ValueError("Allocation recovery requires an exact request token")
+        prefix.insert(1, "--job-name=raven-heavy-" + request_id)
+    argv = [*prefix, *worker]
     if plan["transport"] == "ssh":
         remote = [plan["worker_python"], "-m", "raven.raven_allocation_helper", "--remote-launch", *argv]
         return ["ssh", "-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", *plan.get("ssh_options", []),

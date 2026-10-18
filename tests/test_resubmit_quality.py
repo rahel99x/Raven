@@ -61,7 +61,7 @@ def test_clone_preview_uses_exact_arguments_and_workdir_before_confirmation(app,
     slurm = app.actions.slurm
     workdir = "/work/project with spaces"
     original = ["--no-kill", "--export-file", "env file", "--", "-job.sh", "value; still one argument"]
-    monkeypatch.setattr(slurm, "submit_info", lambda _: {"submit_line": shlex.join(["sbatch", *original]), "workdir": workdir})
+    monkeypatch.setattr(slurm, "record_submit_info", lambda _: {"submit_line": shlex.join(["sbatch", *original]), "workdir": workdir})
     count = len(slurm.b.spec)
     app.run_command("resubmit 12480001 --mem 8G")
     assert app.command_ok and app.mode == "confirm"
@@ -86,7 +86,7 @@ def test_failed_preview_cannot_reach_confirmation_or_submit(app, monkeypatch):
 
 
 def test_wrap_clone_reaches_confirmation_without_a_script(app, monkeypatch):
-    monkeypatch.setattr(app.actions.slurm, "submit_info", lambda _: {"submit_line": "sbatch --wrap 'printf hello'"})
+    monkeypatch.setattr(app.actions.slurm, "record_submit_info", lambda _: {"submit_line": "sbatch --wrap 'printf hello'"})
     app.run_command("resubmit 12480001")
     assert app.command_ok and app.mode == "confirm"
     assert app.confirm["clone"].argv == ["--wrap", "printf hello"]

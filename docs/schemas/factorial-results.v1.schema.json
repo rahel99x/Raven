@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raven.local/schemas/factorial-results.v1.schema.json",
+  "title": "Identified factorial observations",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.factorial-results/v1"
+    },
+    "design": {
+      "$ref": "factorial-design.v1.schema.json"
+    },
+    "observations": {
+      "type": "array",
+      "maxItems": 160,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$"
+          },
+          "value": {
+            "type": "number",
+            "minimum": -1e+100,
+            "maximum": 1e+100
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "output_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "semantic": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "controls": {
+            "type": "object",
+            "maxProperties": 4,
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "required": [
+          "id",
+          "value",
+          "unit",
+          "output_sha256",
+          "semantic",
+          "controls"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "design",
+    "observations"
+  ]
+}

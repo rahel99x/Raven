@@ -17,6 +17,8 @@ DEFAULTS: Dict[str, Any] = {
     "collection_cache_dir": "",          # optional private host-local shared scheduler cache; never a shared cluster filesystem
     "ascii": False,                      # solid Unicode blocks; auto-fallback for limited terminal encodings
     "color": True,
+    "terminal_raster": "off",            # opt-in Kitty prototype; text remains complete; Sixel falls back
+    "synchronized_output": "auto",       # auto DECRQM probe | on explicit override | off legacy fallback
     "mouse": True,                       # clicks and wheel input; keyboard controls always remain available
     "history_days": 2,                   # sacct window of the history tab
     "log_lines": 8,                      # stdout tail under the selected job
@@ -52,7 +54,8 @@ DEFAULTS: Dict[str, Any] = {
     "weather": True,                     # queue weather: pending work ahead per partition and sbatch --test-only probes
     "weather_probes": [],                # the probes: [{partition="gpu", gres="gpu:a100:1", cpus=8, mem="32G", limit="01:00:00"}, ...]; empty: one per GPU type and per partition with your jobs
     "budget": True,                      # the account's allocation from sreport and sacctmgr (used this month, last 7 days, limits)
-    "series_keep": 4000,                 # samples kept per job for the analytics tab (also appended to state/series/<job>.jsonl)
+    "series_storage": "jsonl",          # opt-in blocks-v1 keeps original JSONL on conversion
+    "series_keep": 4000,                 # samples kept per verified attempt; native files use state/series/v2-<job-id-hex>-<identity-digest>.jsonl
     "analytics_days": [1, 2, 7, 14, 30], # the history windows the analytics tab cycles through
     "research": {"metrics_file": "", "contract": "", "workdir": "", "passport": "", "planning_file": "", "interval": 5.0},
     "theme": "default",                  # named colour palettes; mono | high | cb | reader accessibility modes
@@ -91,6 +94,8 @@ collection_cache_dir = ""       # optional private host-local scheduler cache di
 show_all_partitions = false      # empty partition list: also show idle CPU-only partitions
 ascii = false                   # solid Unicode blocks (use --ascii for a plain-character fallback)
 color = true
+terminal_raster = "off"        # off | kitty experimental; unsupported terminals retain Braille/ASCII
+synchronized_output = "auto"    # auto probes DECRQM; on explicitly enables; off keeps legacy output
 mouse = true                    # enable terminal clicks and wheel input
 history_days = 2                # sacct window of the history tab
 log_lines = 8                   # stdout tail under the selected job
@@ -110,7 +115,7 @@ weather = true                  # queue weather on the Cluster tab: pending work
 budget = true                   # the account's allocation (sreport this month and the last 7 days, sacctmgr limits)
 gpu_types = ["a100", "a40", "a30", "v100", "l40s", "p100"]
 
-series_keep = 4000              # samples kept per job for the analytics tab (also appended to state/series/<job>.jsonl)
+series_keep = 4000              # samples kept per verified attempt; native files use state/series/v2-<job-id-hex>-<identity-digest>.jsonl
 analytics_days = [1, 2, 7, 14, 30]
 theme = "default"               # default | dark | light | darcula | modnokai | gruvbox-dark | terminal | mono | high | cb | reader
 
@@ -235,8 +240,8 @@ def state_dir() -> str:
 
 
 def load_file(path: str) -> Dict[str, Any]:
-    with open(path, "rb") as f:
-        data = f.read()
+    from .config_trust import read
+    data, _info = read(path)
     if path.endswith(".json"):
         return json.loads(data.decode("utf-8"))
     try:
@@ -269,7 +274,7 @@ class Config:
     def load(cls, path: Optional[str] = None) -> "Config":
         cand = [p for p in (path, os.environ.get("RAVEN_CONFIG"), default_path(), default_path()[:-5] + ".json") if p]
         for p in cand:
-            if os.path.exists(p):
+            if os.path.lexists(p):
                 cfg = cls(load_file(p))
                 cfg.path = p
                 return cfg
@@ -305,7 +310,9 @@ class Config:
 
     @staticmethod
     def write_default(path: str) -> str:
-        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-        with open(path, "x", encoding="utf-8") as f:
+        from .config_trust import directory_fd
+        with directory_fd(os.path.dirname(os.path.abspath(path)), create=True) as parent:
+            fd = os.open(os.path.basename(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=parent)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(json.dumps(DEFAULTS, indent=2) + "\n" if path.endswith(".json") else TEMPLATE)
         return path

@@ -120,11 +120,16 @@ class TimePointCache:
     """
     def __init__(self, *, budget=None):
         self.points = 0
+        self.index_points = 0
         from .raven_limits import BudgetCache
+        self.indexes = BudgetCache(budget, self._index_expired) if budget else OrderedDict()
         self.entries = BudgetCache(budget,self._expired) if budget else OrderedDict()
 
     def _expired(self, entry):
         self.points -= entry[3]
+
+    def _index_expired(self, entry):
+        self.index_points -= entry[1]
 
     def bind(self, values, sample_times, frozen_values=_UNCACHEABLE):
         if sample_times is None or frozen_values is _UNCACHEABLE:
@@ -146,7 +151,21 @@ class TimePointCache:
                 if details is not None:
                     details.update((x, dict(value)) for x, value in cached[2])
                 return list(cached[0]), copy.copy(cached[1])
-            points, resolved = charts._time_points(values, sample_times, width, times, interval, envelope, details)
+            indexed = None
+            if envelope and 1024 <= len(values) <= MAX_PREPARED_POINTS // 12:
+                indexed_entry = self.indexes.get(source)
+                index = indexed_entry[0] if indexed_entry else None
+                if index is None:
+                    from .series_summary import EnvelopeIndex
+                    index = EnvelopeIndex(values, sample_times)
+                    cost = len(values) * 12
+                    self.index_points += cost
+                    self.indexes[source] = index, cost
+                    while self.index_points > MAX_PREPARED_POINTS or len(self.indexes) > 4:
+                        _, old_index = self.indexes.popitem(last=False)
+                        self.index_points -= old_index[1]
+                indexed = index.points(width, times, interval, details=details)
+            points, resolved = indexed if indexed is not None else charts._time_points(values, sample_times, width, times, interval, envelope, details)
             # Count retained numeric fields as well as source-key elements;
             # small sources with wide output cannot escape the same budget.
             cost = source_points + len(points) * 4 + (len(details) * 8 if details is not None else 0)

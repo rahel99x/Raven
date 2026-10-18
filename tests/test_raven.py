@@ -386,11 +386,15 @@ def test_charts_resample_bars_histogram_and_gantt():
 def test_series_persist_and_reload(tmp_path):
     from raven.model import Live
     st = Store(state_dir=str(tmp_path / "s"))
+    binding = dict(run_root="/project", run_id="run", attempt="a1", job_id="7", submission_token="token", cluster="fixture")
+    st.bind_series_attempt("7", binding)
     st.apply_live("7", Live(cpu_time=10.0, rss=1e9, avg=0.5, rate=0.6, t=1000.0))
     st.apply_live("7", Live(cpu_time=20.0, rss=2e9, avg=0.55, rate=0.7, t=1010.0))
     st.apply_gpu("7", [__import__("raven.model", fromlist=["GpuSample"]).GpuSample(node="n", index=0, util=80.0, used=100.0, total=1000.0)])
-    assert len(st.series_of("7")) == 3 and (tmp_path / "s" / "series" / "7.jsonl").exists()
-    st2 = Store(state_dir=str(tmp_path / "s"))                          # a new session sees the file
+    assert len(st.series_of("7")) == 3 and Path(st._series_path("7")).exists()
+    st.close()
+    st2 = Store(state_dir=str(tmp_path / "s"))                          # a verified new session sees the file
+    st2.bind_series_attempt("7", binding)
     s = st2.series_of("7")
     assert [x["k"] for x in s] == ["live", "live", "gpu"] and s[1]["cpu"] == 0.7 and s[2]["gpu"]["n:0"][0] == 80.0 and st2.series_jobs() == ["7"]
     st2.apply_live("7", Live(cpu_time=30.0, rss=3e9, avg=0.6, rate=0.8, t=1020.0))
@@ -763,7 +767,7 @@ def test_ssh_backend_and_remote_files_through_a_local_shell(tmp_path):
         r = subprocess.run(["sh", "-c", argv[-1]], capture_output=True, text=True, timeout=timeout)
         return r.returncode, r.stdout, r.stderr
 
-    sb = SshBackend("login.example", user="alex", runner=runner)
+    sb = SshBackend("login.example", user="alex", opts=["-F", "none"], runner=runner)
     assert sb.argv(["squeue", "-o", "%i|%j"])[-1] == "squeue -o '%i|%j'"
     assert sb.run(["echo", "hi there"])[0] == "hi there\n" and sb.call(["true"]) == (True, "") and sb.call(["false"])[0] is False
     with pytest.raises(CommandError):
@@ -775,7 +779,7 @@ def test_ssh_backend_and_remote_files_through_a_local_shell(tmp_path):
     f = tmp_path / "x.out"
     f.write_text("abcdef\nghij\n")
     assert rf.stat(str(f))[0] == 12 and rf.read(str(f), 3, 4) == b"def\n" and rf.exists(str(f)) and not rf.exists(str(f) + ".nope")
-    assert rf.tail(str(f), 5) == (b"ghij\n", 12) and rf.less_argv(str(f))[:3] == ["ssh", "-t", "alex@login.example"] and "x.out" in rf.listdir(str(tmp_path))
+    assert rf.tail(str(f), 5) == (b"ghij\n", 12) and rf.less_argv(str(f))[:2] == ["ssh", "-t"] and rf.less_argv(str(f))[-3] == "alex@login.example" and "x.out" in rf.listdir(str(tmp_path))
     rf.min_refresh = 0.0
     buf = LogBuffer(str(f), files=rf)
     assert buf.refresh() and buf.lines == ["abcdef", "ghij"]

@@ -1,4 +1,5 @@
 """Light retention admission, cross-cache eviction, and durable-write quotas."""
+from pathlib import Path
 from types import SimpleNamespace
 import threading
 
@@ -118,18 +119,19 @@ def test_owned_storage_quota_refuses_new_data_without_deleting_evidence(tmp_path
     limits=LightLimits({'storage_bytes':100,'storage_files':1},str(tmp_path))
     store=Store(str(tmp_path),raven_limits=limits)
     store.record('1',{'value':'x'*40})
-    existing=(tmp_path/'series'/'1.jsonl').read_bytes()
+    existing=Path(store._series_path('1')).read_bytes()
     store.record('2',{'value':'y'*40})
     assert not (tmp_path/'series'/'2.jsonl').exists()
     store.record('1',{'value':'z'*90})
-    assert (tmp_path/'series'/'1.jsonl').read_bytes()==existing
+    assert Path(store._series_path('1')).read_bytes()==existing
     assert limits.coverage['storage']['limited'] and limits.pending_bytes==0
 
 
 def test_owned_history_symlink_is_never_followed(tmp_path):
     target=tmp_path/'outside'; target.write_text('private')
-    (tmp_path/'series').mkdir(); (tmp_path/'series'/'1.jsonl').symlink_to(target)
+    (tmp_path/'series').mkdir()
     limits=LightLimits({},str(tmp_path)); store=Store(str(tmp_path),raven_limits=limits)
+    Path(store._series_path('1')).symlink_to(target)
     store.record('1',{'t':1})
     assert target.read_text()=='private' and limits.coverage['storage']['limited']
 
@@ -151,9 +153,9 @@ def test_bind_caps_log_count_and_each_raw_window_without_changing_legacy(tmp_pat
 
 def test_archive_restore_obeys_series_budget(tmp_path):
     directory=tmp_path/'series'; directory.mkdir()
-    (directory/'1.jsonl').write_text(''.join('{"t":'+str(i)+',"v":"'+('x'*100)+'"}\n' for i in range(100)))
     limits=LightLimits({'series_bytes':2000},str(tmp_path))
     store=Store(str(tmp_path),raven_limits=limits)
+    Path(store._series_path('1')).write_text(''.join('{"t":'+str(i)+',"v":"'+('x'*100)+'"}\n' for i in range(100)))
     data=store.series_of('1')
     assert data and len(data)<100 and limits.series_bytes<=2000
     assert store.series_status('1')['status']=='limited'

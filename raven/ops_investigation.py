@@ -29,6 +29,8 @@ _READERS = {
     "recommendation": ("Recommendation validity", "Inspect pinned evidence, applicability, expiry and measured scientific outcome.", science_contracts.evaluate),
     "investigation-plan": ("Next investigation action", "Rank declared information actions within explicit time, resource and scientific-risk budgets.", investigation_planner.plan),
     "scientific-impact": ("Scientific impact and revalidation", "Trace affected claims and propose dependency-aware checks; missing lineage remains unknown.", scientific_lineage.analyze),
+    "factorial-design": ("Plan factorial experiment", "Compile declared compatible factors into a randomized bounded diagnostic campaign.", science_diagnostics.factorial_plan),
+    "factorial-analysis": ("Analyze factorial experiment", "Compare observed controls, equivalence, main effects and interactions without causal percentages.", science_diagnostics.factorial),
     "numerical-stability": ("Numerical stability laboratory", "Analyze measured configuration repeats, tolerance violations and missing measurements.", science_diagnostics.numerical),
     "regression-investigation": ("Performance regression investigation", "Compare ordered versions with scientific checks, noise and multiple comparisons accounted for.", science_diagnostics.regression),
 }
@@ -218,6 +220,10 @@ def _prepare(feature, params, ctx):
 
 
 def _rows(feature, data):
+    if feature == "factorial-design":
+        return [f"{data['trial_count']} exact trials; {data['control_repetitions']} control repeats", "Design: " + data["design_sha256"], data["qualification"], "Use the generated ordinary recipe in Run diagnostic campaign; execution needs an explicit review."]
+    if feature == "factorial-analysis":
+        return [f"Observed design: {data['state']}; missing trials: {len(data['missing_trials'])}", *[f"{item['term']}: contrast {item['contrast']:g} {data['unit']}; interval {item['interval']}" for item in data["fit"]["effects"]], data["limit"]]
     if feature == "recommendation":
         return [f"{data['contract_id']}: {data['state']}", data["intervention"], *data["reasons"],
                 *[f"Precondition {r['query']['source']}: {r['state']}" for r in data["preconditions"]],

@@ -24,6 +24,7 @@ class Command:
     raw_tail: bool = False
     review: str = "handler"
     core: bool = False
+    handler: str = ""
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ COMMANDS = (
     Command('days', 'Set the accounting and analytics window', usage='days DAYS', example='days 7', core=True),
     Command('tab', 'Open a main page', usage='tab PAGE', example='tab history', core=True),
     Command('view', "Choose the current page's workspace", usage='view <job|history|timeline|advisor|compare>', core=True),
-    Command('export', 'Export a table or report', usage='export <text|csv|json|report>', paths=True, core=True),
+    Command('export', 'Export a table or report', usage='export <text|csv|json|report>', paths=True, core=True, handler='export'),
     Command('copy', 'Copy selected raw log lines or the entire file', usage='copy [all|a b] (log lines or screen rows, 1-based)', example='copy all', core=True),
     Command('gpu', 'Enable or disable GPU sampling', usage='gpu <on|off>', core=True),
     Command('bell', 'Enable or disable notification sounds', usage='bell <on|off>', core=True),
@@ -68,8 +69,8 @@ COMMANDS = (
     Command('log', "Open a job's logs", usage='log <id>', example='log JOBID', job_ids=True, core=True),
     Command('find', 'Search log content with a regular expression', usage='find <text>  (regular expression; N / P next / previous match)', example='find ERROR', raw_tail=True, core=True),
     Command('profile', 'Switch a cluster configuration profile', usage='profile NAME', core=True),
-    Command('eval', 'Evaluate a local expression against cached jobs', usage='eval <expression>  e.g. [j.id for j in running if j.cpu < 0.3]', raw_tail=True, core=True),
-    Command('advise', 'Inspect evidence-based resource advice', usage='advise [id | name]  (what the job should ask for: --mem --cpus-per-task --time)', core=True),
+    Command('eval', 'Evaluate a local expression against cached jobs', usage='eval <expression>  e.g. [j.id for j in running if j.cpu < 0.3]', raw_tail=True, core=True, handler='evaluate'),
+    Command('advise', 'Inspect evidence-based resource advice', usage='advise [id | name]  (what the job should ask for: --mem --cpus-per-task --time)', core=True, handler='advise'),
     Command('compare', 'Compare selected jobs', usage='compare [ids | marked | clear]  (the Analytics compare view)', job_ids=True, core=True),
     Command('tag', 'Tag selected jobs', usage='tag [ids] <tags...>  (on the marked or selected jobs; filter #tag finds them)', job_ids=True, core=True),
     Command('untag', 'Remove a job tag', usage='untag [ids] <tags...>', job_ids=True, core=True),
@@ -77,9 +78,9 @@ COMMANDS = (
     Command('note', 'Annotate a job', usage='note [id] <text>  (a note shown with the job; empty clears)', job_ids=True, raw_tail=True, core=True),
     Command('chain', 'Review an action on a job and its downstream dependencies', usage='chain <cancel|hold|release> [id]  (the job and everything downstream)', review='required', core=True),
     Command('resubmit', 'Clone and review a job submission', usage='resubmit [id] [--mem 12G] [--time 03:00:00] [-c 4] [--gres gpu:a100:2] [-p gpu] [--dependency=] [--script PATH] [--advised]  (clone the job; sbatch --test-only previews it)', job_ids=True, review='required', core=True),
-    Command('replay', 'Navigate a recorded session', usage='replay <pause|play|back|fwd|slower|faster|speed N|seek HH:MM|+60|50%>', core=True),
-    Command('wrap', 'Toggle wrapped log lines', usage='wrap  (Log tab: wrap or cut long lines)', core=True),
-    Command('bookmark', 'Bookmark a log line', usage="bookmark  (Log tab: mark the current line; ' jumps)", core=True),
+    Command('replay', 'Navigate a recorded session', usage='replay <pause|play|back|fwd|slower|faster|speed N|seek HH:MM|+60|50%>', core=True, handler='replay'),
+    Command('wrap', 'Toggle wrapped log lines', usage='wrap  (Log tab: wrap or cut long lines)', core=True, handler='wrap'),
+    Command('bookmark', 'Bookmark a log line', usage="bookmark  (Log tab: mark the current line; ' jumps)", core=True, handler='bookmark'),
     Command('help', 'Search keyboard and page help', usage='help', owner='command_ui', core=True),
     Command('quit', 'Exit Raven', usage='quit', core=True),
     Command('metric', 'Record a metric sample', usage='metric FILE --value NAME=NUMBER [--step N] [--completed N --total N]', paths=True, core=True),
@@ -95,10 +96,12 @@ COMMANDS = (
     Command('forecast', 'Inspect scheduler start estimates', usage='forecast [JOBID] [--file FILE] (scheduler point and calibrated interval)', job_ids=True, paths=True, core=True),
     Command('blockers', 'Investigate why a job is waiting', usage='blockers [JOBID] [--file FILE] (scheduler reasons and evidence)', job_ids=True, paths=True, core=True),
     Command('tradeoffs', 'Compare explicit resource candidates', usage='tradeoffs FILE (compare explicit resource candidates)', paths=True, core=True),
+    Command('checkpoint-advice', 'Review measured checkpoint costs and failure uncertainty', usage='checkpoint-advice FILE (read-only interval and sensitivity review)', paths=True, core=True),
     Command('scaling', 'Plan, run, or analyze scaling experiments', usage='scaling analyze FILE | plan RECIPE [--workdir DIR]', paths=True, core=True),
     Command('workflow', 'Inspect or execute a dependency workflow', usage='workflow analyze FILE | plan RECIPE [--workdir DIR]', paths=True, core=True),
     Command('choose', 'Prepare a resource candidate', usage='choose INDEX SCRIPT --workdir DIR (prepare a tradeoff candidate)', paths=True, core=True),
     Command('about', 'Show Raven version and update controls', owner='toolbar'),
+    Command('asof', 'Inspect retained observations without changing live jobs', usage='asof [UTC_ISO_OR_UNIX [CLOCK_EPOCH] | live | record on/off | save NEW_DIRECTORY | load FILE]', owner='historical_ui', paths=True),
     Command('activity', 'Inspect notifications and background work', arguments=('show', 'clear'), owner='activity_ui'),
     Command('advisor-job', 'Select a published running job in Advisor', owner='job_selection'),
     Command('alerts', 'Configure alerts and quiet hours', owner='session_tools'),
@@ -153,6 +156,7 @@ COMMANDS = (
     Command('location', 'Save, open, or delete an exact destination', arguments=('list', 'save', 'open', 'delete'), example='location save failure', owner='navigation_tools'),
     Command('logalign', 'Align split log streams', owner='log_workbench'),
     Command('logdiff', 'Compare log streams', owner='log_workbench'),
+    Command('logdivergence', 'Compare declared rank logs within role cohorts', owner='log_workbench'),
     Command('logfold', 'Fold repeated log lines', owner='log_workbench'),
     Command('loggoto', 'Go to an exact log line', owner='log_tools'),
     Command('loggroup', 'Fold a group in the log-file browser', owner='log_workbench'),
@@ -405,6 +409,16 @@ def command_names(app=None, *, core=CORE_NAMES):
     from . import workbench
     plugins = getattr(getattr(app, "plugins", None), "commands", {})
     return list(dict.fromkeys(tuple(core) + tuple(workbench.command_names()) + tuple(sorted(plugins))))
+
+
+def execute_core(app, name, args, line):
+    """Dispatch migrated core commands after feature/plugin precedence checks."""
+    descriptor = BY_NAME.get(name)
+    if descriptor is None or not descriptor.handler:
+        return False
+    from . import command_handlers
+    getattr(command_handlers, descriptor.handler)(app, args, line)
+    return True
 
 
 def argument_choices(name, app=None):

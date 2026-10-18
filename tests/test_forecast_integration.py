@@ -1,5 +1,6 @@
 """Queue calibration persistence stays scoped; observers reuse existing samples."""
 from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
 import json
 import socket
 import threading
@@ -34,11 +35,19 @@ def collect_outcome(tracker):
 def dashboard_builder(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "state_dir", lambda: str(tmp_path / "state"))
     monkeypatch.setattr(socket, "gethostname", lambda: "login.carc.example")
+    # Scope identity is a CLI input; never replace os.getuid process-wide,
+    # which would also falsify filesystem ownership in config_trust.
+    monkeypatch.setattr(cli, "os", SimpleNamespace(**vars(cli.os)))
     monkeypatch.setattr(cli.os, "getuid", lambda: 1234)
     monkeypatch.setattr(clock, "now", lambda: 100000.)
     sessions = []
 
     def build(*, host="", user="alice", profile="", ssh_user="", ssh_opts=(), flags=(), recorded=False):
+        # These are sequential launches, not simultaneous mutable-state owners.
+        for previous in sessions:
+            if not previous.test_closed:
+                previous.close()
+                previous.test_closed = True
         def forbidden(*args, **kwargs):
             pytest.fail("constructing or restoring a dashboard queried a backend")
         cfg = Config({"profiles": {profile: {}}}) if profile else Config()
@@ -52,12 +61,14 @@ def dashboard_builder(tmp_path, monkeypatch):
         backend = RecordingBackend(actual, str(tmp_path / "recording.jsonl")) if recorded else actual
         monkeypatch.setattr(cli, "make_backend", lambda args, cfg, selected: (backend, files, None, selected))
         session = cli.build(cli.parse(["--no-plugins", "--user", user, *flags]), cfg)
+        session.test_closed = False
         sessions.append(session)
         return session
 
     yield build
     for session in sessions:
-        session.close()
+        if not session.test_closed:
+            session.close()
 
 
 def ui(session):
@@ -66,8 +77,19 @@ def ui(session):
 
 
 def save_ui(session, value):
+    # Model an offline persisted-state edit. Normal shutdown first publishes
+    # current preferences; the deliberate corruption is then written by a
+    # separate real owner, so shutdown cannot silently repair the fixture.
     ui_persistence.flush(session.app)
-    session.store.save_ui(value)
+    if not session.test_closed:
+        session.close()
+        session.test_closed = True
+    editor = Store(session.store.state_dir, strict_owner=True)
+    try:
+        assert editor.writable
+        editor.save_ui(value)
+    finally:
+        editor.close()
 
 
 def publish_ui(session):

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven terminal_raster UI configuration value",
+  "description": "Legacy UI configuration key terminal_raster. Off is default. Kitty is an opt-in conservative existing-chart prototype; Sixel requests retain text because its independent lifecycle is not qualified. This is separate from the raven.config/v1 managed runtime schema.",
+  "type": "string",
+  "enum": ["off", "kitty", "sixel"],
+  "default": "off"
+}

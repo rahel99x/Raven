@@ -659,6 +659,9 @@ class App:
 
     def _handle(self, key: str) -> None:
         """``key`` is a name: a-z A-Z 0-9 punctuation, or up down pgup pgdn home end tab btab enter esc space backspace."""
+        from .historical_ui import handle_key as historical_key
+        if historical_key(self, key):
+            return
         from .terminal_ui import handle_key as terminal_key
         if terminal_key(self, key):
             return
@@ -1089,6 +1092,10 @@ class App:
         return selected(self, "group", ids[self.clamp_cursor("group", len(ids))] if ids else None)
 
     def handle_action(self, action: str):
+        from .historical_ui import active as historical_active
+        if historical_active(self):
+            self.fail("Historical observations are read-only; return Live before changing the session")
+            return
         """Run one key action by name (what the palette's wrap / bookmark commands do)."""
         key = next((k for k, a in self.keymap.items() if a == action), None)
         if key:
@@ -1519,6 +1526,10 @@ class App:
             self.fail("empty command")
             return
         cmd, args = parts[0], parts[1:]
+        from .historical_ui import active as historical_active
+        if historical_active(self) and cmd != "asof":
+            self.fail("Historical observations are read-only; use asof live before other commands")
+            return
         cmds = self.commands()
         full = [c for c in cmds if c.startswith(cmd)]
         if cmd not in cmds and len(full) == 1:
@@ -1547,6 +1558,8 @@ class App:
             return
         from .research_commands import execute
         if execute(self, cmd, args):
+            return
+        if command_registry.execute_core(self, cmd, args, line):
             return
         if cmd in ("cancel", "hold", "release", "requeue", "top"):
             jobs = self._ids_arg(args)
@@ -1612,17 +1625,6 @@ class App:
                 self.enter_tab("analytics")
             else:
                 self.fail("view <job|history|timeline>")
-        elif cmd == "export":
-            if args and (len(args) != 1 or args[0] not in ("text", "csv", "json", "report")):
-                self.fail("export <text|csv|json|report>")
-                return
-            self.export(args[0] if args else "text")
-        elif cmd == "replay":
-            self.replay_control(args[0] if args else "", " ".join(args[1:]))
-        elif cmd == "wrap":
-            self.handle_action("wrap")
-        elif cmd == "bookmark":
-            self.handle_action("bookmark")
         elif cmd == "copy":
             if args == ["all"]:
                 if self.tab == "log":
@@ -1681,11 +1683,6 @@ class App:
                     self.switch_profile, self.quit = args[0], True
             else:
                 self.fail("profile <" + "|".join(self.cfg.profiles()) + ">" if self.cfg.profiles() else "no profiles configured ([profiles.<name>] in the config)")
-        elif cmd == "eval":
-            payload = line.strip().split(None, 1)
-            self.say(self.evaluate(payload[1] if len(payload) > 1 else ""))
-        elif cmd == "advise":
-            self.say(self.advise(args[0] if args else None))
         elif cmd == "compare":
             if args == ["clear"]:
                 self.compare_ids = []
@@ -1878,6 +1875,9 @@ class App:
 
         Shift-click extends text selection; other right-clicks clear selections.
         """
+        from .historical_ui import handle_mouse as historical_mouse
+        if historical_mouse(self, y, x, button=button, shift=shift):
+            return
         # A pointer report must never replace the frame's published hit map.
         # In particular, a late event can retain rows from a previous tab or
         # an inline Research view after the selected job has changed.
@@ -2224,14 +2224,16 @@ class App:
                 if adv.time_suggest:
                     over.setdefault("time", adv.time_suggest)
         try:
-            info = self.actions.slurm.submit_info(jid)
+            lookup = getattr(self.actions.slurm, "record_submit_info", None)
+            info = lookup(job or fin) if lookup else self.actions.slurm.submit_info(jid)
         except Exception as e:                            # sacct without SubmitLine (older Slurm), or unreachable: the record will do
             info = {}
             self.store.event("resubmit", f"sacct submit line unavailable for {jid}: {e}", job_id=jid)
         details = snap["details"].get(jid, {})
-        if job and not details:
+        details_lookup = getattr(self.actions.slurm, "record_details", None)
+        if job and (details_lookup or not details):
             try:
-                details = self.actions.slurm.details(jid)
+                details = details_lookup(job) if details_lookup else self.actions.slurm.details(jid)
             except Exception:
                 details = {}
         try:
@@ -2258,6 +2260,10 @@ class App:
         self.mode = "confirm"
 
     def finish_confirm(self, yes: bool):
+        from .historical_ui import active as historical_active
+        if historical_active(self):
+            self.fail("Historical observations cannot apply actions; return Live and prepare a new review")
+            return
         self.mode = "main"
         if not yes:
             self.say("kept")

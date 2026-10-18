@@ -41,7 +41,10 @@ def _render(rows, width: int) -> str:
 
 def _ui_copy(obj):
     """Copy mutable UI containers while retaining services, configuration and store bindings."""
+    from .historical_replay import Timeline
     def containers(value):
+        if isinstance(value, Timeline):
+            return value.clone()
         if isinstance(value, dict):
             cloned = copy.copy(value)
             for key, item in value.items():
@@ -85,6 +88,12 @@ class _ReportStore:
         self._reader.finished = snap["finished"]
         self._reader.departed_jobs = snap.get("departed_jobs", {})
         self._reader._job_attempts = dict(original._job_attempts)
+        self._reader.details = copy.deepcopy(snap.get("details", {}))
+        self._reader._recording_identities = dict(original._recording_identities)
+        self._reader._recording_observations = dict(original._recording_observations)
+        self._reader._recording_evidence = dict(original._recording_evidence)
+        self._reader._recording_bindings = copy.deepcopy(original._recording_bindings)
+        self._reader._state_owner = None
         self._reader._series_archive = SeriesArchive(self._reader)
         self._reader._series_archive.states = copy.deepcopy(original._series_archive.states)
         self._reader._series_archive.limited = set(original._series_archive.limited)
@@ -280,6 +289,11 @@ def build(snap: dict, app, views, actions=None, title: str = "", width: int = 13
     from .transitions import CompletionFeedback
     local.completion = CompletionFeedback(snap)
     local.interactive = False
+    # This report describes its explicitly captured scheduler snapshot. A
+    # transient historical overlay must not blank all of its pages, nor may
+    # clearing that overlay mutate the interactive observation timeline.
+    if getattr(local, "mode", None) == "historical":
+        local.mode = "main"
     display = _ui_copy(views)
     display.g = layout.Glyphs(True)
     local.labels = KEY_LABELS_ASCII

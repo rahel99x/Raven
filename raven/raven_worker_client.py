@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections import deque
 import os
+import hashlib
 import json
 import re
 import selectors
@@ -213,9 +214,10 @@ class WorkerClient:
                         receipt.get("request_digest") != task["request_digest"]):
                     raise ProtocolError("Worker result receipt identity mismatch")
             if op == "committed":
-                if not receipt or receipt.get("result_digest") != digest(message.get("result")):
+                result_bytes = canonical(message.get("result"))
+                if not receipt or receipt.get("result_digest") != hashlib.sha256(result_bytes).hexdigest():
                     raise ProtocolError("Worker result does not match its committed digest")
-                retained = len(canonical(message.get("result")))
+                retained = len(result_bytes)
                 if self.result_bytes - task.get("retained_bytes", 0) + retained > MAX_QUEUE:
                     raise ProtocolError("Committed Heavy results exceed the client retention budget")
                 self.result_bytes += retained - task.get("retained_bytes", 0)
@@ -253,13 +255,20 @@ class WorkerClient:
             if task["status"] in ("prepared", "accepted", "running"):
                 task.update(status="uncertain", error="Worker disconnected before a committed result")
 
-    def poll(self):
+    def readiness(self):
+        """Readiness hints for a supervisor; this client still drains its pipes."""
+        if self._closed:
+            return (), False
+        return tuple((key.fileobj, key.events) for key in self.selector.get_map().values()), self.decoder.has_complete_frame
+
+    def poll(self, timeout=0):
         if self.process is None or self._closed:
             return []
         try:
             for message in self.decoder.take(32):
                 self._consume(message)
-            for key, _mask in self.selector.select(0):
+            pending = self.decoder.has_complete_frame or bool(self._events)
+            for key, _mask in self.selector.select(0 if pending else max(0, min(1, timeout))):
                 if key.data == "write":
                     self._flush()
                     continue
@@ -310,7 +319,7 @@ class WorkerClient:
                 "inputs": inputs, "input_digest": digest(inputs), "context": context,
                 "budget": budget or {},
                 "side_effects": self.operations.get(operation, {}).get("side_effects", "none"),
-                "cancel_policy": "terminate-uncertain" if operation == "artifact-publish" else "terminate"}
+                "cancel_policy": "terminate-uncertain" if operation in {"artifact-publish", "evidence-index-update", "allocation-health-probe", "wasi-analysis-execute", "process-profile-capture"} else "terminate"}
         self._queue(self._message("admit", task=task))
         self.tasks[task_id] = {"status": "prepared", "result": None, "error": "", "context_digest": digest(context),
                                "request_digest": digest(task), "operation": operation, "acknowledged": False}
@@ -342,7 +351,7 @@ class WorkerClient:
             raise ValueError("Analysis wait requires a bounded positive timeout")
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
-            self.poll()
+            self.poll(timeout=min(.1, max(0, deadline - time.monotonic())))
             task = self.tasks.get(task_id)
             if task is None:
                 raise ValueError("Unknown Heavy task")
@@ -355,7 +364,6 @@ class WorkerClient:
             if cancelled is not None and cancelled():
                 self.cancel(task_id)
                 raise RuntimeError("Heavy analysis was cancelled; owned execution is draining")
-            time.sleep(.01)
         self.cancel(task_id)
         raise TimeoutError("Heavy analysis deadline expired; owned execution is draining")
 
@@ -373,8 +381,7 @@ class WorkerClient:
                 pass
             deadline = time.monotonic() + max(0, min(5, timeout))
             while self.process.poll() is None and time.monotonic() < deadline:
-                self.poll()
-                time.sleep(.01)
+                self.poll(timeout=min(.1, max(0, deadline - time.monotonic())))
             if self.process.poll() is None:
                 try:
                     os.killpg(self.process.pid, signal.SIGKILL)

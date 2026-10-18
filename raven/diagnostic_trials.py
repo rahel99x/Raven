@@ -345,11 +345,22 @@ def _child(limits, argv):
         raise OSError(ctypes.get_errno(), "Cannot establish diagnostic parent-death cleanup")
     if os.getppid() != limits["driver_pid"]:
         parent_died()
-    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    resource.setrlimit(resource.RLIMIT_CPU, (max(1, math.ceil(limits["trial_seconds"])), max(1, math.ceil(limits["trial_seconds"])) + 1))
+    def restrict(kind, soft, hard):
+        # A diagnostic nested inside an already-governed worker cannot raise
+        # either inherited ceiling. In particular CPU soft30/hard30 cannot be
+        # changed to the otherwise useful soft30/hard31 grace pair.
+        inherited_soft, inherited_hard = resource.getrlimit(kind)
+        if inherited_hard != resource.RLIM_INFINITY:
+            hard = min(hard, inherited_hard)
+        if inherited_soft != resource.RLIM_INFINITY:
+            soft = min(soft, inherited_soft)
+        resource.setrlimit(kind, (min(soft, hard), hard))
+    restrict(resource.RLIMIT_CORE, 0, 0)
+    cpu = max(1, math.ceil(limits["trial_seconds"]))
+    restrict(resource.RLIMIT_CPU, cpu, cpu + 1)
     memory = limits["memory_mb"] * 1024 * 1024
-    resource.setrlimit(resource.RLIMIT_AS, (memory, memory))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (limits["output_bytes"], limits["output_bytes"]))
+    restrict(resource.RLIMIT_AS, memory, memory)
+    restrict(resource.RLIMIT_FSIZE, limits["output_bytes"], limits["output_bytes"])
     if hasattr(os, "sched_getaffinity"):
         available = sorted(os.sched_getaffinity(0))
         os.sched_setaffinity(0, available[:limits["cpus"]])
@@ -591,7 +602,7 @@ def run(recipe, workspace, *, cancel=None):
     lifecycle = TrialLifecycle(root, limits, verify_sources, cancel)
     started, trials = lifecycle.budget.started, lifecycle.trials
 
-    def trial(arguments, candidate=None, revision=None):
+    def trial(arguments, candidate=None, revision=None, case_id=None):
         def prepare(directory, sequence):
             checkout = None
             if revision is not None:
@@ -617,6 +628,8 @@ def run(recipe, workspace, *, cancel=None):
                     argv.append(item)
             argv[0] = executable["path"]
             intent = {"sequence": sequence, "arguments": argv, "input_sha256": hashlib.sha256(candidate).hexdigest() if candidate is not None else None}
+            if case_id is not None:
+                intent["case_id"] = case_id
             return intent, (argv, checkout or directory)
 
         def execute(prepared, timeout):
@@ -629,6 +642,18 @@ def run(recipe, workspace, *, cancel=None):
             matched = result["state"] == "finished" and result["returncode"] == recipe["oracle"]["exit_code"] and recipe["oracle"]["contains"] in output
             result.update(sequence=sequence, oracle_matched=matched,
                           output_sha256=hashlib.sha256(output.encode()).hexdigest())
+            if case_id is not None:
+                result["case_id"] = case_id
+                if "{result}" in recipe["command"]:
+                    try:
+                        raw_result = _read(directory/"result.json", min(limits["output_bytes"], 65536))
+                        application = _json(raw_result)
+                        if not isinstance(application, dict):
+                            raise ValueError("Campaign result must be a JSON object")
+                        result["application"] = application
+                        result["application_sha256"] = hashlib.sha256(raw_result).hexdigest()
+                    except (OSError, ValueError, TypeError) as exc:
+                        result["application_error"] = str(exc)[:512]
             if revision is not None:
                 measurement, science, error = None, False, None
                 try:
@@ -656,7 +681,7 @@ def run(recipe, workspace, *, cancel=None):
             cases = []
             state = "completed"
             for case in recipe["cases"]:
-                answers = repeated_trials(lambda: trial(case["arguments"]), limits["repeats"])
+                answers = repeated_trials(lambda: trial(case["arguments"], case_id=case["id"]), limits["repeats"])
                 case_state = "inconclusive" if None in answers or len(set(answers)) > 1 else "matched" if all(answers) else "not-matched"
                 cases.append({"id": case["id"], "state": case_state})
                 if None in answers:

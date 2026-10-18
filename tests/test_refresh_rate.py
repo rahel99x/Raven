@@ -360,6 +360,7 @@ def test_real_app_command_restores_rate_from_scoped_ui_preferences(tmp_path):
     state_root = str(tmp_path / "desktop-state")
     store = Store(state_dir=state_root)
     worker = Sampler(SimpleNamespace(), store, {"jobs": 2}, [])
+    opened = [store]
     try:
         model = App(store, worker, None, Config(), "alice")
         assert "rate" in model.commands()
@@ -367,14 +368,26 @@ def test_real_app_command_restores_rate_from_scoped_ui_preferences(tmp_path):
         assert model.command_ok and "2.05s" in model.message and "20x" not in model.message
         assert worker.effective_interval("jobs") == pytest.approx(2.047457531190213)
         model.save()
-        restored = App(Store(state_dir=state_root), None, None, Config(), "alice")
+        from raven import ui_persistence
+        ui_persistence.flush(model)
+        worker.shutdown()
+        store.close()
+        restored_store = Store(state_dir=state_root, strict_owner=True)
+        opened.append(restored_store)
+        restored = App(restored_store, None, None, Config(), "alice")
         assert rate.multiplier(restored) == restored.logs.polling_multiplier == 20
         restored.run_command("rate reset")
         restored.save()
-        restarted = App(Store(state_dir=state_root), None, None, Config(), "alice")
+        ui_persistence.flush(restored)
+        restored_store.close()
+        restarted_store = Store(state_dir=state_root, strict_owner=True)
+        opened.append(restarted_store)
+        restarted = App(restarted_store, None, None, Config(), "alice")
         assert rate.multiplier(restarted) == 1
     finally:
         worker.shutdown()
+        for session_store in opened:
+            session_store.close()
 
 
 @pytest.mark.parametrize("value", [False, "50", 51, float("nan")])

@@ -191,8 +191,7 @@ class Recorder:
                 "thread": str(thread or threading.get_ident()), "data": data or {}}, check_size=False)
             record = {"schema": "raven.trace-event/v1", "stream": self.stream, "seq": self.sequence + 1,
                       "prev": self.previous, "event": event}
-            record["sha256"] = protocol.event_digest(record)
-            raw = protocol.encoded(record) + b"\n"
+            raw, digest = protocol.encode_event_record(record)
             if len(raw) > protocol.MAX_EVENT:
                 raise ValueError("Trace event envelope exceeds 64 KiB")
             if self.bytes + len(raw) > self.max_bytes:
@@ -208,7 +207,7 @@ class Recorder:
                     view = view[written:]
                 self.bytes += len(raw)
                 self.sequence += 1
-                self.previous = record["sha256"]
+                self.previous = digest
                 if self.sequence - self.committed_seq >= self.flush_events or time.monotonic() - self.last_flush >= self.flush_interval:
                     self.flush()
                 return True
@@ -288,6 +287,31 @@ class PythonCapture:
         self.callbacks = {}
         self.excluded = {str(Path(__file__).resolve()), str(Path(protocol.__file__).resolve())}
         self._stopped = False
+        self._metadata = {}
+        self._metadata_lock = threading.RLock()
+
+    def _code_metadata(self, code):
+        """Bounded immutable-code metadata without keeping dynamic code alive."""
+        key = id(code)
+        cached = self._metadata.get(key)
+        if cached is not None and cached[0]() is code:
+            return cached[1]
+        data = {"function": getattr(code, "co_qualname", code.co_name),
+                "file": code.co_filename, "line": code.co_firstlineno,
+                "frame": f"{code.co_filename}:{code.co_firstlineno}:{code.co_name}"}
+        owner = weakref.ref(self)
+        def discard(reference):
+            capture = owner()
+            if capture is not None:
+                with capture._metadata_lock:
+                    current = capture._metadata.get(key)
+                    if current is not None and current[0] is reference:
+                        del capture._metadata[key]
+        with self._metadata_lock:
+            if len(self._metadata) >= 1024:
+                del self._metadata[next(iter(self._metadata))]
+            self._metadata[key] = (weakref.ref(code, discard), data)
+        return data
 
     def _event(self, kind, code):
         if getattr(self.local, "busy", False) or self._stopped or self.recorder._fork_disabled or code.co_filename in self.excluded:
@@ -311,9 +335,7 @@ class PythonCapture:
                 self.threads[thread] = name
                 self.recorder.emit("thread_start", {"name": name,
                     "native_id": threading.get_native_id()}, thread=thread)
-            self.recorder.emit(kind, {"function": getattr(code, "co_qualname", code.co_name),
-                "file": code.co_filename, "line": code.co_firstlineno,
-                "frame": f"{code.co_filename}:{code.co_firstlineno}:{code.co_name}"}, thread=thread)
+            self.recorder.emit(kind, self._code_metadata(code), thread=thread)
         except Exception as exc:
             # Instrumentation must not inject errors into the research program.
             self.recorder._fail("ERROR", f"Python capture stopped: {type(exc).__name__}")
@@ -341,7 +363,13 @@ class PythonCapture:
             for name, kind in (("PY_START", "call"), ("PY_RESUME", "resume"), ("PY_RETURN", "return"),
                                ("PY_YIELD", "yield"), ("PY_THROW", "resume"), ("PY_UNWIND", "unwind")):
                 event_id = getattr(events, name)
-                def callback(code, offset, *args, _kind=kind):
+                def callback(code, offset, *args, _kind=kind, _disable=name in {"PY_START", "PY_RESUME", "PY_RETURN", "PY_YIELD"}):
+                    # DISABLE is per code/location across threads, so only use
+                    # it for permanently excluded code and local events. Never
+                    # disable on a transient recursion or flush-thread guard;
+                    # PY_THROW/PY_UNWIND do not permit this return value.
+                    if _disable and code.co_filename in self.excluded:
+                        return monitoring.DISABLE
                     self._event(_kind, code)
                 self.callbacks[event_id] = callback
                 monitoring.register_callback(self.tool_id, event_id, callback)
@@ -384,6 +412,9 @@ def main(argv=None):
     if blocked is not None:
         print(json.dumps(blocked, indent=2))
         return 3
+    if argv and argv[0] == "summary":
+        from .trace_summary import main as summary_main
+        return summary_main(argv[1:])
     if argv is not None and argv and argv[0] == "native":
         from .trace_native import main as native_main
         return native_main(argv[1:])
@@ -405,10 +436,24 @@ def main(argv=None):
     inspect = sub.add_parser("inspect", help="Read checked events and reconstructed stacks")
     inspect.add_argument("path")
     inspect.add_argument("--json", action="store_true")
+    export = sub.add_parser("export", help="Export a bounded verified prefix as a Perfetto timeline or evented speedscope view")
+    export.add_argument("path")
+    export.add_argument("--format", choices=("perfetto", "speedscope"), default="perfetto")
+    export.add_argument("--output", required=True, help="new private output file; existing files are never replaced")
     register = sub.add_parser("register", help="Register an existing project-contained trace manifest")
     register.add_argument("--project", required=True)
     register.add_argument("path")
     args = parser.parse_args(argv)
+    if args.action == "export":
+        from .trace_export import export as export_trace
+        from .raven_execution import router_for
+        try:
+            result = export_trace(args.path, args.output, format=args.format, managed=router_for().managed)
+        except (OSError, ValueError) as exc:
+            print(f"Raven trace export: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(result, indent=2))
+        return 0
     if args.action == "inspect":
         from .raven_execution import router_for
         value = (protocol.read_trace(args.path, max_events=512, max_bytes=256 << 10)

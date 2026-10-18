@@ -35,6 +35,9 @@ class Manager:
     def release(self,*,generation):
         self.calls.append(('release',generation))
         self.value.update(state='draining')
+    def retry_cleanup(self, *, generation):
+        self.calls.append(('cleanup', generation))
+        return True
     def shutdown(self):
         self.calls.append(('shutdown',))
 
@@ -176,10 +179,15 @@ def test_uncertain_cleanup_is_light_and_blocks_retry():
     m.value.update(state='heavy',cleanup_uncertain=True,error='lost connection',job_id='103')
     R.tick(a)
     assert R.status(a)['mode']=='light' and 'uncertain' in R.summary(a)
-    assert [key for key,label in R._choices(a)]==['inspect','close']
+    assert [key for key,label in R._choices(a)]==['inspect','cleanup','close']
     R.run_command(a,['raven','request'])
     assert not m.calls and 'changed' in a.messages[-1]
-    assert any('Cleanup uncertain' in line for line in R._lines(a))
+    assert any('Light remains available' in line for line in R._lines(a))
+    R.run_command(a,['raven','cleanup'])
+    assert not m.calls  # Reviewing cleanup never launches or cancels immediately.
+    R.run_command(a,['raven','accept'])
+    assert m.calls == [('cleanup', 0)]
+    assert R.status(a)['cleanup_uncertain']  # Only verified reconciliation clears it.
 
 
 def test_plain_reuse_jobid_never_attaches_to_scientific_job():

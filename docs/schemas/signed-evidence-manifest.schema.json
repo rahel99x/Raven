@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/signed-evidence-manifest.schema.json",
+  "description": "Structural validation only; independent signer trust and cryptographic/digest verification are required.",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "raven.signed-evidence-manifest/v1"
+    },
+    "namespace": {
+      "const": "raven.evidence.v1"
+    },
+    "identity": {
+      "$ref": "evidence.schema.json#/properties/identity"
+    },
+    "publication_receipt": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "raven.portable-bundle/v1"
+        },
+        "evidence_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "signature": {
+          "type": "object",
+          "properties": {
+            "manifest": {
+              "const": "signed-manifest.json"
+            },
+            "signature": {
+              "const": "signed-manifest.sig"
+            },
+            "namespace": {
+              "const": "raven.evidence.v1"
+            }
+          },
+          "required": [
+            "manifest",
+            "signature",
+            "namespace"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema",
+        "evidence_digest",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "signer": {
+      "type": "object",
+      "properties": {
+        "principal": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_@.+:/-]{1,256}$"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"
+        },
+        "public_key": {
+          "type": "string",
+          "maxLength": 32768,
+          "pattern": "^[A-Za-z0-9@.+-]+ [A-Za-z0-9+/=]+$"
+        }
+      },
+      "required": [
+        "principal",
+        "fingerprint",
+        "public_key"
+      ],
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 64,
+      "required": [
+        "raven-evidence.json"
+      ],
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9_.-]{1,128}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16777216
+          }
+        },
+        "required": [
+          "sha256",
+          "size"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "claims": {
+      "type": "object",
+      "properties": {
+        "authenticity": {
+          "const": "possession of the independently trusted signing key"
+        },
+        "scientific_validity": {
+          "const": false
+        },
+        "trusted_timestamp": {
+          "const": false
+        }
+      },
+      "required": [
+        "authenticity",
+        "scientific_validity",
+        "trusted_timestamp"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "namespace",
+    "identity",
+    "publication_receipt",
+    "signer",
+    "files",
+    "claims"
+  ],
+  "additionalProperties": false
+}

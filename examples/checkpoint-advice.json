@@ -1,0 +1,15 @@
+{
+  "schema": "raven.checkpoint-advice/v1",
+  "scope": {"partition": "cpu", "nodes": 2, "application": "example-solver-v1"},
+  "support": {"compatible": true, "restart_verified": true, "evidence": "Illustrative declarations; verify your application before use."},
+  "useful_seconds": 10000,
+  "checkpoint_seconds": {"lower_seconds": 1, "upper_seconds": 4, "source": "Illustrative estimate, not a measured workload"},
+  "restart_seconds": {"lower_seconds": 8, "upper_seconds": 12, "source": "Illustrative estimate, not a measured workload"},
+  "failure_model": {
+    "allocation_mtbf": {"lower_seconds": 80000, "upper_seconds": 120000, "source": "Illustrative allocation MTBF range; replace with your evidence"}
+  },
+  "fixed_interval_seconds": 3600,
+  "preemption_notice_seconds": 60,
+  "remaining_wall_seconds": 12000,
+  "metadata": {"purpose": "Synthetic example only; no real cluster or application qualification"}
+}

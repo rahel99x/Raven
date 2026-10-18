@@ -1,0 +1,11 @@
+COMMAND           RSS     TIME
+tini             1496 00:00:00
+sleep            1576 00:00:00
+munged           3764 00:00:00
+mariadbd        112592 00:00:00
+slurmdbd         9544 00:00:00
+slurmd           5452 00:00:00
+python3         27120 00:00:00
+slurmctld        8520 00:00:00
+slurmscriptd     4468 00:00:00
+ps               4924 00:00:00

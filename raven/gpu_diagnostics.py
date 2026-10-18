@@ -55,6 +55,7 @@ class EvidenceBackend(Backend):
     backends keep their own execution semantics. No shell interpolation occurs.
     """
     def __init__(self, inner, duration=DEADLINE):
+        self.probe_json = getattr(inner, "probe_json", False)
         self.inner = inner
         # Preserve the existing collection owner for local host-list expansion.
         # Recording evidence must not reintroduce extra scheduler commands.
@@ -259,7 +260,10 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
     live_jobs = []
     try:
         output, _ = evidence.run(["squeue", "-u", user, "-h", "-o", JOB_FMT], slurm.timeout)
-        live_jobs = parse_jobs(output)
+        live_jobs = slurm._parse("jobs", output, parse_jobs)
+        parse_status = slurm.parse_diagnostics.get("jobs", {})
+        if parse_status.get("partial"):
+            add("queue_parse", "warning", parse_status["message"], next_step="Inspect Sources for partial scheduler coverage; retry after resolving the reported row format.")
         ignored = [job.id for job in live_jobs if not JOB_ID.fullmatch(job.id)]
         live_jobs = [job for job in live_jobs if JOB_ID.fullmatch(job.id)]
         if ignored:
@@ -408,22 +412,46 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
 
         if state_path and not no_state:
             safe_id = "".join(char if char.isalnum() or char in "_-" else "_" for char in job.id)
-            series_path = os.path.join(state_path, "series", safe_id + ".jsonl")
+            from .series_identity import SeriesIdentity, fingerprint, scheduler_attempt
+            from .cli import forecast_scope
+            attempt = scheduler_attempt(job, detail)
+            verified = bool(attempt)
+            if verified:
+                identity = SeriesIdentity(job.id, fingerprint(forecast_scope(backend, cfg, user)), attempt, True)
+                series_path = os.path.join(state_path, "series", identity.filename)
+            else:
+                series_path = os.path.join(state_path, "series", safe_id + ".jsonl")
+            entry["retained_attribution"] = "verified" if verified else "legacy-ambiguous"
             entry["retained_gpu_rows"] = entry["retained_valid_gpu_rows"] = 0
             try:
                 local = LocalFiles()
-                metadata = local.snapshot_stat(series_path)
-                offset = max(0, metadata["size"] - MAX_SERIES)
-                data = local.read(series_path, offset, MAX_SERIES)
-                if offset:
-                    _, _, data = data.partition(b"\n")
+                from .series_storage import compact_path
+                packed = compact_path(series_path)
                 malformed = 0
-                for raw in data.splitlines():
-                    try:
-                        item = json.loads(raw)
-                    except (ValueError, RecursionError):
-                        malformed += 1
-                        continue
+                coverage = ""
+                if os.path.exists(packed):
+                    from .series_blocks import read
+                    series_path = packed
+                    items, status = read(packed, max_bytes=MAX_SERIES)
+                    metadata = local.snapshot_stat(series_path)
+                    inspected = status["bytes"]
+                    offset = 0
+                    malformed = status["ignored"]
+                    coverage = " " + status["message"] if status["status"] != "ready" else ""
+                else:
+                    metadata = local.snapshot_stat(series_path)
+                    offset = max(0, metadata["size"] - MAX_SERIES)
+                    data = local.read(series_path, offset, MAX_SERIES)
+                    inspected = len(data)
+                    if offset:
+                        _, _, data = data.partition(b"\n")
+                    items = []
+                    for raw in data.splitlines():
+                        try:
+                            items.append(json.loads(raw))
+                        except (ValueError, RecursionError):
+                            malformed += 1
+                for item in items:
                     if not isinstance(item, dict) or item.get("k") != "gpu" or not _counter(item.get("t")):
                         continue
                     devices = item.get("gpu")
@@ -433,9 +461,12 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
                     entry["retained_gpu_rows"] += 1
                     if any(isinstance(values, (list, tuple)) and values and _counter(values[0], percent=True) for values in devices.values()):
                         entry["retained_valid_gpu_rows"] += 1
+                if not verified:
+                    entry["legacy_measured_gpu_rows"] = entry["retained_valid_gpu_rows"]
+                    entry["retained_valid_gpu_rows"] = 0
                 add("retained_samples", "ok" if entry["retained_valid_gpu_rows"] else "warning",
-                    f"{entry['retained_gpu_rows']} retained GPU rows; {entry['retained_valid_gpu_rows']} have measured utilization; {malformed} malformed lines omitted.", job=job.id,
-                    evidence_data=dict(path=series_path, bytes=metadata["size"], inspected_bytes=len(data), tail_only=bool(offset)))
+                    f"{entry['retained_gpu_rows']} retained GPU rows; {entry['retained_valid_gpu_rows']} have verified current-attempt utilization; {malformed} malformed records omitted." + coverage + (" Legacy job-number-only data is unattributed and preserved; it cannot establish graph readiness." if not verified else ""), job=job.id,
+                    evidence_data=dict(path=series_path, bytes=metadata["size"], inspected_bytes=inspected, tail_only=bool(offset)))
             except OSError as exc:
                 add("retained_samples", "warning", f"Retained GPU cache unavailable: {exc}", job=job.id)
 

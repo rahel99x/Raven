@@ -1,0 +1,12 @@
+{
+  "source": "/workspace/raven-qualification-results/23.02.8-final-1/running-squeue-json.stdout.txt",
+  "sha256": "f5474602fec7915538725ab55f73ae07cbf101420f387574483a926c3c684093",
+  "actual_version": "23.02.8",
+  "qualification": "Real owned isolated Slurm; this records the formerly rejected metadata spelling, not JSON normalizer qualification",
+  "command": [
+    "squeue",
+    "--json",
+    "-u",
+    "raven"
+  ]
+}

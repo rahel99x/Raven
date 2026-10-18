@@ -1,0 +1,11 @@
+{
+  "schema": "raven.forecast-scenarios/v1",
+  "now": 1792282000,
+  "request": {"name": "solver-v1", "partition": "local", "account": "lab", "qos": "normal", "cpus": 1, "nodes": 1, "gpus": 0, "mem_bytes": 1073741824, "time_seconds": 3600},
+  "alternatives": [
+    {"id": "review-30-minutes", "request": {"name": "solver-v1", "partition": "local", "account": "lab", "qos": "normal", "cpus": 1, "nodes": 1, "gpus": 0, "mem_bytes": 1073741824, "time_seconds": 1800}, "model_wait_seconds": 60}
+  ],
+  "context": {"policy_digest": "replace-with-observed-policy-digest", "reservations_visible": false, "policy_complete": false},
+  "observations": [],
+  "metadata": {"purpose": "Format-only example. Supply real pre-start predictions and completed outcomes; empty evidence deliberately abstains."}
+}

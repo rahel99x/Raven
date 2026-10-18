@@ -1,0 +1,1975 @@
+{
+  "jobs": [
+    {
+      "account": "labx",
+      "comment": {
+        "administrator": "",
+        "job": "",
+        "system": ""
+      },
+      "allocation_nodes": 1,
+      "array": {
+        "job_id": 0,
+        "limits": {
+          "max": {
+            "running": {
+              "tasks": 0
+            }
+          }
+        },
+        "task_id": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "task": ""
+      },
+      "association": {
+        "account": "labx",
+        "cluster": "raven-ci",
+        "partition": "",
+        "user": "raven",
+        "id": 4
+      },
+      "block": "",
+      "cluster": "raven-ci",
+      "constraints": "",
+      "container": "",
+      "derived_exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "time": {
+        "elapsed": 6,
+        "eligible": 1792284806,
+        "end": 1792284812,
+        "start": 1792284806,
+        "submission": 1792284803,
+        "suspended": 0,
+        "system": {
+          "seconds": 0,
+          "microseconds": 399
+        },
+        "limit": {
+          "set": true,
+          "infinite": false,
+          "number": 2
+        },
+        "total": {
+          "seconds": 0,
+          "microseconds": 2854
+        },
+        "user": {
+          "seconds": 0,
+          "microseconds": 2455
+        }
+      },
+      "exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "extra": "",
+      "failed_node": "",
+      "flags": [
+        "STARTED_ON_SCHEDULE",
+        "START_RECEIVED"
+      ],
+      "group": "raven",
+      "het": {
+        "job_id": 0,
+        "job_offset": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "job_id": 1,
+      "name": "Raven spaces = sample",
+      "licenses": "",
+      "mcs": {
+        "label": ""
+      },
+      "nodes": "raven-ci",
+      "partition": "local",
+      "hold": false,
+      "priority": {
+        "set": true,
+        "infinite": false,
+        "number": 1
+      },
+      "qos": "normal",
+      "required": {
+        "CPUs": 1,
+        "memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 32
+        }
+      },
+      "kill_request_user": "",
+      "reservation": {
+        "id": 0,
+        "name": ""
+      },
+      "script": "",
+      "state": {
+        "current": [
+          "COMPLETED"
+        ],
+        "reason": "None"
+      },
+      "steps": [
+        {
+          "time": {
+            "elapsed": 6,
+            "end": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284812
+            },
+            "start": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284806
+            },
+            "suspended": 0,
+            "system": {
+              "seconds": 0,
+              "microseconds": 399
+            },
+            "total": {
+              "seconds": 0,
+              "microseconds": 2854
+            },
+            "user": {
+              "seconds": 0,
+              "microseconds": 2455
+            }
+          },
+          "exit_code": {
+            "status": [
+              "SUCCESS"
+            ],
+            "return_code": {
+              "set": true,
+              "infinite": false,
+              "number": 0
+            },
+            "signal": {
+              "id": {
+                "set": false,
+                "infinite": false,
+                "number": 0
+              },
+              "name": ""
+            }
+          },
+          "nodes": {
+            "count": 1,
+            "range": "raven-ci",
+            "list": [
+              "raven-ci"
+            ]
+          },
+          "tasks": {
+            "count": 1
+          },
+          "pid": "",
+          "CPU": {
+            "requested_frequency": {
+              "min": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              },
+              "max": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            },
+            "governor": "0"
+          },
+          "kill_request_user": "",
+          "state": [
+            "COMPLETED"
+          ],
+          "statistics": {
+            "CPU": {
+              "actual_frequency": 4657927079445135360
+            },
+            "energy": {
+              "consumed": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            }
+          },
+          "step": {
+            "id": "1.batch",
+            "name": "batch"
+          },
+          "task": {
+            "distribution": "Unknown"
+          },
+          "tres": {
+            "requested": {
+              "max": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 5201920,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10462,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "min": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 5201920,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10462,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "average": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 5201920
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10462
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0
+                }
+              ],
+              "total": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 5201920
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10462
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0
+                }
+              ]
+            },
+            "consumed": {
+              "max": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 22,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "min": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 22,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "average": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 22
+                }
+              ],
+              "total": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 22
+                }
+              ]
+            },
+            "allocated": [
+              {
+                "type": "cpu",
+                "name": "",
+                "id": 1,
+                "count": 1
+              },
+              {
+                "type": "mem",
+                "name": "",
+                "id": 2,
+                "count": 32
+              },
+              {
+                "type": "node",
+                "name": "",
+                "id": 4,
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "submit_line": "sbatch --parsable --account=labx --time=00:02:00 --mem=32M --chdir=\/home\/raven\/work with spaces --output=\/home\/raven\/work with spaces\/%j.log --hold --job-name=Raven spaces = sample \/home\/raven\/work with spaces\/job with spaces.sh",
+      "tres": {
+        "allocated": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "energy",
+            "name": "",
+            "id": 3,
+            "count": -2
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ],
+        "requested": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ]
+      },
+      "used_gres": "",
+      "user": "raven",
+      "wckey": {
+        "wckey": "",
+        "flags": [
+        ]
+      },
+      "working_directory": "\/home\/raven\/work with spaces"
+    },
+    {
+      "account": "labx",
+      "comment": {
+        "administrator": "",
+        "job": "",
+        "system": ""
+      },
+      "allocation_nodes": 1,
+      "array": {
+        "job_id": 2,
+        "limits": {
+          "max": {
+            "running": {
+              "tasks": 0
+            }
+          }
+        },
+        "task_id": {
+          "set": true,
+          "infinite": false,
+          "number": 1
+        },
+        "task": ""
+      },
+      "association": {
+        "account": "labx",
+        "cluster": "raven-ci",
+        "partition": "",
+        "user": "raven",
+        "id": 4
+      },
+      "block": "",
+      "cluster": "raven-ci",
+      "constraints": "",
+      "container": "",
+      "derived_exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "time": {
+        "elapsed": 1,
+        "eligible": 1792284815,
+        "end": 1792284816,
+        "start": 1792284815,
+        "submission": 1792284813,
+        "suspended": 0,
+        "system": {
+          "seconds": 0,
+          "microseconds": 219
+        },
+        "limit": {
+          "set": true,
+          "infinite": false,
+          "number": 2
+        },
+        "total": {
+          "seconds": 0,
+          "microseconds": 1545
+        },
+        "user": {
+          "seconds": 0,
+          "microseconds": 1326
+        }
+      },
+      "exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "extra": "",
+      "failed_node": "",
+      "flags": [
+        "STARTED_ON_SCHEDULE",
+        "START_RECEIVED"
+      ],
+      "group": "raven",
+      "het": {
+        "job_id": 0,
+        "job_offset": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "job_id": 3,
+      "name": "job with spaces.sh",
+      "licenses": "",
+      "mcs": {
+        "label": ""
+      },
+      "nodes": "raven-ci",
+      "partition": "local",
+      "hold": false,
+      "priority": {
+        "set": true,
+        "infinite": false,
+        "number": 1
+      },
+      "qos": "normal",
+      "required": {
+        "CPUs": 1,
+        "memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 32
+        }
+      },
+      "kill_request_user": "raven",
+      "reservation": {
+        "id": 0,
+        "name": ""
+      },
+      "script": "",
+      "state": {
+        "current": [
+          "CANCELLED"
+        ],
+        "reason": "None"
+      },
+      "steps": [
+        {
+          "time": {
+            "elapsed": 1,
+            "end": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284816
+            },
+            "start": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284815
+            },
+            "suspended": 0,
+            "system": {
+              "seconds": 0,
+              "microseconds": 219
+            },
+            "total": {
+              "seconds": 0,
+              "microseconds": 1545
+            },
+            "user": {
+              "seconds": 0,
+              "microseconds": 1326
+            }
+          },
+          "exit_code": {
+            "status": [
+              "SIGNALED"
+            ],
+            "return_code": {
+              "set": false,
+              "infinite": false,
+              "number": 0
+            },
+            "signal": {
+              "id": {
+                "set": true,
+                "infinite": false,
+                "number": 15
+              },
+              "name": "TERM"
+            }
+          },
+          "nodes": {
+            "count": 1,
+            "range": "raven-ci",
+            "list": [
+              "raven-ci"
+            ]
+          },
+          "tasks": {
+            "count": 1
+          },
+          "pid": "",
+          "CPU": {
+            "requested_frequency": {
+              "min": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              },
+              "max": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            },
+            "governor": "0"
+          },
+          "kill_request_user": "",
+          "state": [
+            "CANCELLED"
+          ],
+          "statistics": {
+            "CPU": {
+              "actual_frequency": 0
+            },
+            "energy": {
+              "consumed": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            }
+          },
+          "step": {
+            "id": "3.batch",
+            "name": "batch"
+          },
+          "task": {
+            "distribution": "Unknown"
+          },
+          "tres": {
+            "requested": {
+              "max": [
+              ],
+              "min": [
+              ],
+              "average": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ],
+              "total": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ]
+            },
+            "consumed": {
+              "max": [
+              ],
+              "min": [
+              ],
+              "average": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ],
+              "total": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ]
+            },
+            "allocated": [
+              {
+                "type": "cpu",
+                "name": "",
+                "id": 1,
+                "count": 1
+              },
+              {
+                "type": "mem",
+                "name": "",
+                "id": 2,
+                "count": 32
+              },
+              {
+                "type": "node",
+                "name": "",
+                "id": 4,
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "submit_line": "sbatch --parsable --account=labx --time=00:02:00 --mem=32M --chdir=\/home\/raven\/work with spaces --output=\/home\/raven\/work with spaces\/%j.log --array=1-2%1 --hold \/home\/raven\/work with spaces\/job with spaces.sh",
+      "tres": {
+        "allocated": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "energy",
+            "name": "",
+            "id": 3,
+            "count": -2
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ],
+        "requested": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ]
+      },
+      "used_gres": "",
+      "user": "raven",
+      "wckey": {
+        "wckey": "",
+        "flags": [
+        ]
+      },
+      "working_directory": "\/home\/raven\/work with spaces"
+    },
+    {
+      "account": "labx",
+      "comment": {
+        "administrator": "",
+        "job": "",
+        "system": ""
+      },
+      "allocation_nodes": 1,
+      "array": {
+        "job_id": 0,
+        "limits": {
+          "max": {
+            "running": {
+              "tasks": 0
+            }
+          }
+        },
+        "task_id": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "task": ""
+      },
+      "association": {
+        "account": "labx",
+        "cluster": "raven-ci",
+        "partition": "",
+        "user": "raven",
+        "id": 4
+      },
+      "block": "",
+      "cluster": "raven-ci",
+      "constraints": "",
+      "container": "",
+      "derived_exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "time": {
+        "elapsed": 1,
+        "eligible": 1792284816,
+        "end": 1792284819,
+        "start": 1792284818,
+        "submission": 1792284816,
+        "suspended": 0,
+        "system": {
+          "seconds": 0,
+          "microseconds": 0
+        },
+        "limit": {
+          "set": true,
+          "infinite": false,
+          "number": 2
+        },
+        "total": {
+          "seconds": 0,
+          "microseconds": 2064
+        },
+        "user": {
+          "seconds": 0,
+          "microseconds": 2064
+        }
+      },
+      "exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "extra": "",
+      "failed_node": "",
+      "flags": [
+        "STARTED_ON_SCHEDULE",
+        "START_RECEIVED"
+      ],
+      "group": "raven",
+      "het": {
+        "job_id": 0,
+        "job_offset": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "job_id": 4,
+      "name": "requeue.sh",
+      "licenses": "",
+      "mcs": {
+        "label": ""
+      },
+      "nodes": "raven-ci",
+      "partition": "local",
+      "hold": false,
+      "priority": {
+        "set": true,
+        "infinite": false,
+        "number": 1
+      },
+      "qos": "normal",
+      "required": {
+        "CPUs": 1,
+        "memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 32
+        }
+      },
+      "kill_request_user": "",
+      "reservation": {
+        "id": 0,
+        "name": ""
+      },
+      "script": "",
+      "state": {
+        "current": [
+          "PENDING",
+          "REQUEUED"
+        ],
+        "reason": "None"
+      },
+      "steps": [
+        {
+          "time": {
+            "elapsed": 1,
+            "end": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284819
+            },
+            "start": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284818
+            },
+            "suspended": 0,
+            "system": {
+              "seconds": 0,
+              "microseconds": 0
+            },
+            "total": {
+              "seconds": 0,
+              "microseconds": 2064
+            },
+            "user": {
+              "seconds": 0,
+              "microseconds": 2064
+            }
+          },
+          "exit_code": {
+            "status": [
+              "SIGNALED"
+            ],
+            "return_code": {
+              "set": false,
+              "infinite": false,
+              "number": 0
+            },
+            "signal": {
+              "id": {
+                "set": true,
+                "infinite": false,
+                "number": 15
+              },
+              "name": "TERM"
+            }
+          },
+          "nodes": {
+            "count": 1,
+            "range": "raven-ci",
+            "list": [
+              "raven-ci"
+            ]
+          },
+          "tasks": {
+            "count": 1
+          },
+          "pid": "",
+          "CPU": {
+            "requested_frequency": {
+              "min": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              },
+              "max": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            },
+            "governor": "0"
+          },
+          "kill_request_user": "",
+          "state": [
+            "CANCELLED"
+          ],
+          "statistics": {
+            "CPU": {
+              "actual_frequency": 4657927079445135360
+            },
+            "energy": {
+              "consumed": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            }
+          },
+          "step": {
+            "id": "4.batch",
+            "name": "batch"
+          },
+          "task": {
+            "distribution": "Unknown"
+          },
+          "tres": {
+            "requested": {
+              "max": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 4993024,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10626,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "min": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 4993024,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10626,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "average": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 4993024
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10626
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0
+                }
+              ],
+              "total": [
+                {
+                  "type": "cpu",
+                  "name": "",
+                  "id": 1,
+                  "count": 0
+                },
+                {
+                  "type": "mem",
+                  "name": "",
+                  "id": 2,
+                  "count": 4993024
+                },
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 10626
+                },
+                {
+                  "type": "vmem",
+                  "name": "",
+                  "id": 7,
+                  "count": 7364608
+                },
+                {
+                  "type": "pages",
+                  "name": "",
+                  "id": 8,
+                  "count": 0
+                }
+              ]
+            },
+            "consumed": {
+              "max": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 11,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "min": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0,
+                  "task": 0,
+                  "node": "raven-ci"
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 11,
+                  "task": 0,
+                  "node": "raven-ci"
+                }
+              ],
+              "average": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 11
+                }
+              ],
+              "total": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                },
+                {
+                  "type": "fs",
+                  "name": "disk",
+                  "id": 6,
+                  "count": 11
+                }
+              ]
+            },
+            "allocated": [
+              {
+                "type": "cpu",
+                "name": "",
+                "id": 1,
+                "count": 1
+              },
+              {
+                "type": "mem",
+                "name": "",
+                "id": 2,
+                "count": 32
+              },
+              {
+                "type": "node",
+                "name": "",
+                "id": 4,
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "submit_line": "sbatch --parsable --account=labx --time=00:02:00 --mem=32M --chdir=\/home\/raven\/work with spaces --output=\/home\/raven\/work with spaces\/%j.log \/home\/raven\/work with spaces\/requeue.sh",
+      "tres": {
+        "allocated": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "energy",
+            "name": "",
+            "id": 3,
+            "count": -2
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ],
+        "requested": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ]
+      },
+      "used_gres": "",
+      "user": "raven",
+      "wckey": {
+        "wckey": "",
+        "flags": [
+        ]
+      },
+      "working_directory": "\/home\/raven\/work with spaces"
+    },
+    {
+      "account": "labx",
+      "comment": {
+        "administrator": "",
+        "job": "",
+        "system": ""
+      },
+      "allocation_nodes": 1,
+      "array": {
+        "job_id": 0,
+        "limits": {
+          "max": {
+            "running": {
+              "tasks": 0
+            }
+          }
+        },
+        "task_id": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "task": ""
+      },
+      "association": {
+        "account": "labx",
+        "cluster": "raven-ci",
+        "partition": "",
+        "user": "raven",
+        "id": 4
+      },
+      "block": "",
+      "cluster": "raven-ci",
+      "constraints": "",
+      "container": "",
+      "derived_exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "time": {
+        "elapsed": 0,
+        "eligible": 1792284830,
+        "end": 1792284833,
+        "start": 1792284833,
+        "submission": 1792284819,
+        "suspended": 0,
+        "system": {
+          "seconds": 0,
+          "microseconds": 1359
+        },
+        "limit": {
+          "set": true,
+          "infinite": false,
+          "number": 2
+        },
+        "total": {
+          "seconds": 0,
+          "microseconds": 1520
+        },
+        "user": {
+          "seconds": 0,
+          "microseconds": 161
+        }
+      },
+      "exit_code": {
+        "status": [
+          "SUCCESS"
+        ],
+        "return_code": {
+          "set": true,
+          "infinite": false,
+          "number": 0
+        },
+        "signal": {
+          "id": {
+            "set": false,
+            "infinite": false,
+            "number": 0
+          },
+          "name": ""
+        }
+      },
+      "extra": "",
+      "failed_node": "",
+      "flags": [
+        "STARTED_ON_BACKFILL",
+        "START_RECEIVED"
+      ],
+      "group": "raven",
+      "het": {
+        "job_id": 0,
+        "job_offset": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        }
+      },
+      "job_id": 4,
+      "name": "requeue.sh",
+      "licenses": "",
+      "mcs": {
+        "label": ""
+      },
+      "nodes": "raven-ci",
+      "partition": "local",
+      "hold": false,
+      "priority": {
+        "set": true,
+        "infinite": false,
+        "number": 1
+      },
+      "qos": "normal",
+      "required": {
+        "CPUs": 1,
+        "memory_per_cpu": {
+          "set": false,
+          "infinite": false,
+          "number": 0
+        },
+        "memory_per_node": {
+          "set": true,
+          "infinite": false,
+          "number": 32
+        }
+      },
+      "kill_request_user": "",
+      "reservation": {
+        "id": 0,
+        "name": ""
+      },
+      "script": "",
+      "state": {
+        "current": [
+          "COMPLETED"
+        ],
+        "reason": "BeginTime"
+      },
+      "steps": [
+        {
+          "time": {
+            "elapsed": 0,
+            "end": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284833
+            },
+            "start": {
+              "set": true,
+              "infinite": false,
+              "number": 1792284833
+            },
+            "suspended": 0,
+            "system": {
+              "seconds": 0,
+              "microseconds": 1359
+            },
+            "total": {
+              "seconds": 0,
+              "microseconds": 1520
+            },
+            "user": {
+              "seconds": 0,
+              "microseconds": 161
+            }
+          },
+          "exit_code": {
+            "status": [
+              "SUCCESS"
+            ],
+            "return_code": {
+              "set": true,
+              "infinite": false,
+              "number": 0
+            },
+            "signal": {
+              "id": {
+                "set": false,
+                "infinite": false,
+                "number": 0
+              },
+              "name": ""
+            }
+          },
+          "nodes": {
+            "count": 1,
+            "range": "raven-ci",
+            "list": [
+              "raven-ci"
+            ]
+          },
+          "tasks": {
+            "count": 1
+          },
+          "pid": "",
+          "CPU": {
+            "requested_frequency": {
+              "min": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              },
+              "max": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            },
+            "governor": "0"
+          },
+          "kill_request_user": "",
+          "state": [
+            "COMPLETED"
+          ],
+          "statistics": {
+            "CPU": {
+              "actual_frequency": 0
+            },
+            "energy": {
+              "consumed": {
+                "set": true,
+                "infinite": false,
+                "number": 0
+              }
+            }
+          },
+          "step": {
+            "id": "4.batch",
+            "name": "batch"
+          },
+          "task": {
+            "distribution": "Unknown"
+          },
+          "tres": {
+            "requested": {
+              "max": [
+              ],
+              "min": [
+              ],
+              "average": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ],
+              "total": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ]
+            },
+            "consumed": {
+              "max": [
+              ],
+              "min": [
+              ],
+              "average": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ],
+              "total": [
+                {
+                  "type": "energy",
+                  "name": "",
+                  "id": 3,
+                  "count": 0
+                }
+              ]
+            },
+            "allocated": [
+              {
+                "type": "cpu",
+                "name": "",
+                "id": 1,
+                "count": 1
+              },
+              {
+                "type": "mem",
+                "name": "",
+                "id": 2,
+                "count": 32
+              },
+              {
+                "type": "node",
+                "name": "",
+                "id": 4,
+                "count": 1
+              }
+            ]
+          }
+        }
+      ],
+      "submit_line": "sbatch --parsable --account=labx --time=00:02:00 --mem=32M --chdir=\/home\/raven\/work with spaces --output=\/home\/raven\/work with spaces\/%j.log \/home\/raven\/work with spaces\/requeue.sh",
+      "tres": {
+        "allocated": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "energy",
+            "name": "",
+            "id": 3,
+            "count": -2
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ],
+        "requested": [
+          {
+            "type": "cpu",
+            "name": "",
+            "id": 1,
+            "count": 1
+          },
+          {
+            "type": "mem",
+            "name": "",
+            "id": 2,
+            "count": 32
+          },
+          {
+            "type": "node",
+            "name": "",
+            "id": 4,
+            "count": 1
+          },
+          {
+            "type": "billing",
+            "name": "",
+            "id": 5,
+            "count": 1
+          }
+        ]
+      },
+      "used_gres": "",
+      "user": "raven",
+      "wckey": {
+        "wckey": "",
+        "flags": [
+        ]
+      },
+      "working_directory": "\/home\/raven\/work with spaces"
+    }
+  ],
+  "meta": {
+    "plugin": {
+      "type": "",
+      "name": "",
+      "data_parser": "data_parser\/v0.0.40",
+      "accounting_storage": "accounting_storage\/slurmdbd"
+    },
+    "client": {
+      "source": "",
+      "user": "raven",
+      "group": "raven"
+    },
+    "command": [
+      "sacct",
+      "--json",
+      "--duplicates",
+      "-u",
+      "raven",
+      "-S"
+    ],
+    "slurm": {
+      "version": {
+        "major": "23",
+        "micro": "11",
+        "minor": "11"
+      },
+      "release": "23.11.11",
+      "cluster": "raven-ci"
+    }
+  },
+  "errors": [
+  ],
+  "warnings": [
+  ]
+}

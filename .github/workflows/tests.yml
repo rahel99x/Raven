@@ -3,6 +3,7 @@ name: tests
 on:
   push:
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -21,10 +22,17 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install development and optional terminal dependencies
         run: python -m pip install -e '.[dev,terminal]'
+      - name: Install optional MCP and WASI adapters for runtime qualification
+        if: matrix.python == '3.12'
+        run: python -m pip install -e '.[mcp,wasi]'
       - name: Run regression suite
         run: python -m pytest -q
+      - name: Check incremental package and typing boundaries
+        run: python scripts/check_quality.py
       - name: Check generated operation reference
         run: python scripts/generate_operation_reference.py --check
+      - name: Check generated capability reference
+        run: python scripts/generate_capability_reference.py --check
       - name: Validate reporting schemas and published examples
         run: python scripts/validate_operation_schemas.py
       - name: Exercise offline setup
@@ -40,6 +48,9 @@ jobs:
           /tmp/raven-wheel-venv/bin/raven --doctor --fake
           /tmp/raven-wheel-venv/bin/ravenl --site desktop doctor
           /tmp/raven-wheel-venv/bin/ravenh --site desktop --plan
+          /tmp/raven-wheel-venv/bin/raven mcp --help
+          /tmp/raven-wheel-venv/bin/ravenl mcp --help
+          /tmp/raven-wheel-venv/bin/ravenh mcp --help
           /tmp/raven-wheel-venv/bin/ravenl qualify --offline > /tmp/raven-offline-qualification.json
           /tmp/raven-wheel-venv/bin/raven --fake --no-state --no-plugins --report /tmp/raven-wheel.txt
       - name: Qualify local CLI, documentation and terminal boundaries
@@ -54,10 +65,14 @@ jobs:
           /tmp/raven-wheel-venv/bin/python -m pip install "${wheel[0]}[terminal]"
           cd /tmp
           /tmp/raven-wheel-venv/bin/raven terminal selftest --json
+      - name: Qualify experimental core and lab extraction
+        if: matrix.python == '3.12'
+        run: python scripts/distribution_prototype.py --output /tmp/raven-distribution-prototype
       - name: Record and verify release contents and checksums
         run: |
           python scripts/release_inventory.py create --output dist/release-inventory.json --spdx dist/raven.spdx.json --checksums dist/SHA256SUMS --source-commit "$GITHUB_SHA" dist/*.whl dist/*.tar.gz
           python scripts/release_inventory.py verify dist/release-inventory.json dist/*.whl dist/*.tar.gz
+          python scripts/release_inventory.py policy dist/release-inventory.json --expected-version "$(python -c 'from importlib.metadata import version; print(version("raven"))')" --expected-source "$GITHUB_SHA" dist/*.whl dist/*.tar.gz
       - uses: actions/upload-artifact@v4
         if: matrix.python == '3.12'
         with:
@@ -67,3 +82,4 @@ jobs:
             /tmp/raven-demo.txt
             /tmp/raven-qualification.json
             /tmp/raven-offline-qualification.json
+            /tmp/raven-distribution-prototype/manifest.json

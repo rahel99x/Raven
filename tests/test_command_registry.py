@@ -40,6 +40,28 @@ def test_all_installed_handlers_are_discoverable_with_owned_metadata(app):
     assert flagship_commands.command_rows() == registry.task_rows()
 
 
+def test_registry_owned_core_handlers_preserve_raw_text_and_plugin_precedence(app, monkeypatch):
+    calls = []
+    monkeypatch.setattr(app, "evaluate", lambda value: calls.append(value) or "evaluated")
+    app.run_command('eval "quoted text" + " and spaces"')
+    assert calls == ['"quoted text" + " and spaces"']
+    monkeypatch.setattr(app, "export", lambda value: calls.append(value))
+    app.run_command("export csv")
+    assert calls[-1] == "csv"
+    app.run_command("export csv ignored")
+    assert not app.command_ok and calls[-1] == "csv"
+    app.plugins = SimpleNamespace(commands={"export": (lambda owner, args: calls.append(tuple(args)), "Plugin export")})
+    app.run_command("export plugin-target")
+    assert calls[-1] == ("plugin-target",)
+
+
+def test_transport_compatibility_import_is_same_public_class():
+    from raven import framing
+    from raven.transport import framing as transport
+    assert framing.Decoder is transport.Decoder
+    assert framing.FramePolicy is transport.FramePolicy
+
+
 def test_command_help_uses_live_tab_profiles_and_registered_descriptions(app):
     app.tab = "jobs"
     app.palette_edit = "sort "

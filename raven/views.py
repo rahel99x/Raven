@@ -1086,7 +1086,8 @@ class Views:
         bar_w = max(10, min(60, width - 70))
         n = int(round(c.frac * bar_w))
         fmt = "%H:%M:%S"
-        return [(" replay ", "magenta+bold"), (g.full * n, "magenta"), (g.empty * (bar_w - n), "dim"),
+        label = " observed replay " if getattr(rp, "replay_mode", "") == "known-at-time" else " reconstructed replay "
+        return [(label, "magenta+bold"), (g.full * n, "magenta"), (g.empty * (bar_w - n), "dim"),
                 (f" {time.strftime(fmt, time.localtime(c.now()))} of {time.strftime(fmt, time.localtime(c.t0))}..{time.strftime(fmt, time.localtime(c.t1))}  x{c.speed:g}"
                  + ("  paused" if c.paused else ("  end" if c.at_end else "")) + "   | pause  < > 60 s  { } speed", "dim")]
 
@@ -2716,6 +2717,21 @@ class Views:
         out.append([("", "")])
         out.append([("   jobs: squeue (your jobs)   starts: squeue --start   live: sstat (CPU time, peak memory)   gpu: allocation-scoped vendor tools", "dim")])
         out.append([("   nodes: scontrol show node   partitions: sinfo   finished: sacct   share: sshare   account: squeue -A   details: scontrol show job (the selected job)", "dim")])
+        scheduler = getattr(getattr(app, "actions", None), "slurm", None)
+        selected_source = app.source_ids[cur] if 0 <= cur < len(app.source_ids) else ""
+        reader = getattr(scheduler, "reader_status", {}).get(selected_source, {})
+        if reader:
+            note = f"   Reader: {reader.get('format', 'unknown')} | {reader.get('parser') or reader.get('reason', '')}"
+            out.append([(display_text(note), "dim")])
+        accounting = getattr(scheduler, "accounting_diagnostics", {}).get(selected_source, {})
+        if accounting:
+            out.append([(display_text(f"   Accounting: {accounting['start']} -> {accounting['end']} | {accounting['commands']} commands | {accounting['window']}"), "dim")])
+        transport = getattr(scheduler, "b", None)
+        connection_note = getattr(transport, "control_diagnostic", "")
+        if not connection_note:
+            connection_note = getattr(getattr(getattr(app, "files", None), "ssh", None), "control_diagnostic", "")
+        if connection_note:
+            out.append([(display_text("   Connection: " + str(connection_note)), "yellow")])
         ev = snap["events"][-8:]
         if ev:
             out += self.event_rows(ev, width, limit=8)
@@ -3289,6 +3305,14 @@ class Views:
         return out
 
     def compose(self, snap: dict, app, width: int, height: Optional[int], actions=None, *, feedback=True) -> Tuple[List[Row], List[Tuple[int, str, str]]]:
+        from .historical_ui import active as historical_active
+        if historical_active(app):
+            # A read-only historical overlay never reveals later live rows
+            # around its border or leaves their hit targets active underneath.
+            app.width, app.height = width, height
+            rows = [[(" " * max(0, width), "")] for _ in range(max(0, height or 30))]
+            app.frame_rows, app.last_rows, app.last_hits, app.tab_hits = rows, [], [], []
+            return rows, []
         from .job_groups import frame
         from .table_tools import snapshot
         from .job_list_controls import mode as list_mode

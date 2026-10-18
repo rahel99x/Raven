@@ -14,7 +14,7 @@ from .derived_results import RESULTS, ResultKey
 
 SCHEMA = "raven.investigation-workflow/v1"
 VERSION = "1"
-READERS = {"recommendation", "scientific-impact", "numerical-stability", "regression-investigation"}
+READERS = {"recommendation", "scientific-impact", "numerical-stability", "regression-investigation", "factorial-analysis"}
 TRACE_READERS = {"causal-delay", "collective-audit"}
 DIAGNOSTICS = {"diagnostic-campaign", "minimize-reproducer", "regression-sweep"}
 UNKNOWN = {"unknown", "inconclusive", "expired", "stale", "inapplicable", "scientifically-incomparable"}

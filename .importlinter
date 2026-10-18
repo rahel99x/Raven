@@ -1,0 +1,27 @@
+[importlinter]
+root_package = raven
+
+[importlinter:contract:transport]
+name = Transport primitives cannot import application owners
+type = forbidden
+source_modules =
+    raven.transport
+forbidden_modules =
+    raven.controller
+    raven.model
+    raven.slurm
+    raven.remote
+    raven.operations
+    raven.terminal_service
+    raven.raven_worker
+
+[importlinter:contract:command-handlers]
+name = Core command callbacks use context APIs instead of scheduler owners
+type = forbidden
+source_modules =
+    raven.command_handlers
+forbidden_modules =
+    raven.controller
+    raven.slurm
+    raven.remote
+    raven.raven_allocation

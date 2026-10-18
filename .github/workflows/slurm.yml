@@ -1,0 +1,57 @@
+name: real-slurm
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 5 * * *'
+  pull_request:
+    paths:
+      - 'raven/slurm*.py'
+      - 'raven/raven_resources.py'
+      - 'tests/fixtures/slurm/**'
+      - 'raven/raven_allocation*.py'
+      - 'scripts/slurm/**'
+      - 'scripts/qualify_slurm.py'
+      - '.github/workflows/slurm.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    # No privileged fixtures or credentials for untrusted fork pull requests.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: matrix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          values = json.load(open('scripts/slurm/versions.json'))['versions']
+          if os.environ['GITHUB_EVENT_NAME'] == 'pull_request':
+              values = [v for v in values if v['role'] == 'maintained-smoke']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write('value=' + json.dumps({'version': [v['version'] for v in values]}) + '\n')
+          PY
+  lifecycle:
+    needs: versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real controller, compute node and accounting lifecycle
+        run: python3 scripts/qualify_slurm.py --version '${{ matrix.version }}' --output '/tmp/slurm-${{ matrix.version }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: slurm-${{ matrix.version }}-${{ github.sha }}
+          path: /tmp/slurm-${{ matrix.version }}
+          retention-days: 14

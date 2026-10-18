@@ -112,6 +112,8 @@ name = pathlib.Path(sys.argv[0]).name
 with open(os.environ['RAVEN_DESKTOP_CALLS'], 'a') as output:
     output.write(json.dumps([name, *sys.argv[1:]]) + '\n')
 scenario = json.loads(pathlib.Path(os.environ['RAVEN_DESKTOP_SCENARIO']).read_text())
+if '--help' in sys.argv:
+    print('Usage: ' + name + ' (legacy fixture command)'); sys.exit(0)
 if name == 'squeue':
     print('' if '--start' in sys.argv else scenario.get('jobs', ''), end='')
     sys.exit(0)
@@ -126,7 +128,8 @@ if name == 'scontrol':
         print('NodeName=fedora-box State=IDLE CPUTot=8 CPUAlloc=0 CPULoad=0 RealMemory=32768 '
               'FreeMem=25000 Gres=(null) GresUsed=(null) Partitions=localcpu'); sys.exit(0)
     if 'job' in sys.argv:
-        print('JobId=7 JobName=desktop-cpu JobState=RUNNING WorkDir=' + os.environ['RAVEN_DESKTOP_ROOT']
+        print('JobId=7 JobName=desktop-cpu JobState=RUNNING SubmitTime=2026-10-07T00:00:00 '
+              'StartTime=2026-10-07T00:00:00 Restarts=0 UserId=' + os.environ['USER'] + '(1000) WorkDir=' + os.environ['RAVEN_DESKTOP_ROOT']
               + ' StdOut=' + os.environ['RAVEN_DESKTOP_STDOUT']
               + ' StdErr=' + os.environ['RAVEN_DESKTOP_STDERR']); sys.exit(0)
 if name == 'sstat' and scenario.get('live', True):
@@ -309,6 +312,10 @@ def test_desktop_scope_does_not_restore_or_change_legacy_carc_state(native_deskt
     restored = fixture.build()
     try:
         assert restored.store.tags['7']['tags'] == ['DESKTOP_TAG']
+        assert restored.store.series_of('7') == []  # Job numbers alone cannot restore an attempt.
+        restored.store.apply_jobs(session.store.jobs)
+        restored.store.details = dict(session.store.details)
+        restored.store.bind_series_scheduler('7', restored.store.details['7'])
         assert restored.store.series_of('7') == own_samples
         assert all(sample.get('t') != 1 for sample in own_samples)
     finally:
@@ -362,6 +369,8 @@ def test_scoped_stores_for_other_user_and_remote_backend_do_not_import_local_job
         initial = native_desktop.build('--user', 'alice')
         sessions.append(initial)
         initial.store.tag('7', 'ALICE_LOCAL')
+        recording = dict(run_root='/project', run_id='run', attempt='a1', job_id='7', submission_token='token', cluster='fixture')
+        initial.store.bind_series_attempt('7', recording)
         initial.store.record('7', {'t': 3, 'k': 'live', 'cpu': .75})
         initial.app.table_state['facets']['jobs'] = {'partition': 'localcpu'}
         initial.app.save()
@@ -376,6 +385,8 @@ def test_scoped_stores_for_other_user_and_remote_backend_do_not_import_local_job
         sessions.append(same)
         assert same.store.state_dir == initial.store.state_dir
         assert same.store.tags['7']['tags'] == ['ALICE_LOCAL']
+        assert not same.store.writable  # A headless reader can coexist without overwriting mutable state.
+        same.store.bind_series_attempt('7', recording)
         assert same.store.series_of('7') == [{'t': 3, 'k': 'live', 'cpu': .75}]
         assert native_desktop.calls() == []
     finally:

@@ -19,6 +19,7 @@ import sys
 import time
 import uuid
 
+from .protocol_contracts import worker_control
 from .raven_protocol import MAJOR, MINOR, MAX_QUEUE, Decoder, ProtocolError, build_digest, canonical, digest, encode, worker_argv
 from .raven_resources import apply_limits, child_environment, limits, placement_probe, task_limits, verify_placement
 
@@ -76,7 +77,7 @@ def task_main(expected_parent):
         operation = request["operation"]
         if operation not in OPERATIONS or request.get("version") != OPERATIONS[operation].get("version", 1):
             raise ValueError("Unsupported Heavy operation or version")
-        result = execute_operation(operation, request["inputs"], context=request["context"], budget={key: value for key, value in budget.items() if key in DEFAULT_BUDGET}, cancelled=lambda: False)
+        result = execute_operation(operation, request["inputs"], context=request["context"], budget={key: value for key, value in budget.items() if key in DEFAULT_BUDGET}, cancelled=lambda: False, verified_execution=request.get("verified_execution"))
         if len(canonical(result)) > budget["output_bytes"]:
             raise ValueError("Analysis result exceeds its admitted output budget")
         reply = {"op": "task_result", "id": request["id"], "result": result, "enforcement": enforcement}
@@ -161,6 +162,7 @@ class Worker:
         if not isinstance(session, str) or not 1 <= len(session) <= 128 or type(generation) is not int or generation < 1:
             raise ProtocolError("Invalid worker session generation")
         self.session, self.generation = session, generation
+        worker_control(message)
         if type(message.get("major")) is not int or message.get("major") != MAJOR or type(message.get("minor")) is not int or message["minor"] < 0:
             raise ProtocolError("Worker protocol major version mismatch")
         if message.get("build_digest") != build_digest():
@@ -244,7 +246,7 @@ class Worker:
             raise ValueError("Task input digest mismatch")
         if len(canonical(inputs)) > self.config["resources"]["input_bytes"]:
             raise ValueError("Task input exceeds its admitted byte budget")
-        mutation = operation == "artifact-publish"
+        mutation = operation in {"artifact-publish", "evidence-index-update", "allocation-health-probe", "wasi-analysis-execute", "process-profile-capture"}
         expected_effects = self.operations[operation]["side_effects"]
         if task.get("side_effects", "none") != expected_effects:
             raise ValueError("Task side-effect contract differs from the declared operation")
@@ -265,7 +267,13 @@ class Worker:
         for key, ceiling in contract["budget"].items():
             if key in budget:
                 budget[key] = min(budget[key], ceiling)
-        request = {**task, "budget": budget}
+        verified_execution = self.identity
+        if operation in {"allocation-health", "allocation-health-probe"}:
+            # Resource grants are supervisor-owned, never task/context claims.
+            verified_execution = {**self.identity, "verified_resources": {
+                "cpus": min(int(budget["cpus"]), len(os.sched_getaffinity(0))),
+                "memory_mib": int(budget["memory_mib"])}}
+        request = {**task, "budget": budget, "verified_execution": verified_execution}
         raw = encode(request)
         entry = {"request_digest": task_hash, "context_digest": digest(context), "status": "accepted",
                  "result": None, "process": None, "started": time.monotonic(), "deadline": time.monotonic() + budget["wall_seconds"],
@@ -292,14 +300,15 @@ class Worker:
 
     def finish(self, task_id, status, *, result=None, error=None, enforcement=None):
         entry = self.tasks[task_id]
+        result_bytes = canonical(result)
         receipt = {"schema": "raven.worker-result/v1", "task_id": task_id, "session_id": self.session,
                    "generation": self.generation, "worker_id": self.worker_id,
                    "context_digest": entry["context_digest"], "request_digest": entry["request_digest"],
                    "policy_digest": self.config["policy_digest"], "execution": self.identity,
                    "status": status, "process_pid": entry.get("pid"), "completed_unix": time.time(), "elapsed_seconds": time.monotonic() - entry["started"],
-                   "result_digest": digest(result), "enforcement": enforcement or {}, "error": error or ""}
+                   "result_digest": hashlib.sha256(result_bytes).hexdigest(), "enforcement": enforcement or {}, "error": error or ""}
         entry["status"], entry["receipt"], entry["result"] = status, receipt, result
-        entry["retained_bytes"] = len(canonical(result))
+        entry["retained_bytes"] = len(result_bytes)
         self.receipt_bytes += entry["retained_bytes"]
         self.emit(status, id=task_id, result=result, receipt=receipt, error=error or "")
 
@@ -307,6 +316,7 @@ class Worker:
         op = message.get("op")
         if op == "hello":
             return self.hello(message)
+        worker_control(message)
         if message.get("session_id") != self.session or message.get("generation") != self.generation:
             raise ProtocolError("Worker message belongs to a different execution generation")
         if op == "placement":

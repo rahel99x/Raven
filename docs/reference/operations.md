@@ -29,11 +29,23 @@ See [review and recovery rules](../guides/operations.md#review-background-work-a
 | Pinned | `:workbench pinned` | Show saved operation shortcuts with current selection context. |
 | All | `:workbench all` | Show the complete operation catalog. |
 
-## Operations (57)
+## Operations (67)
 
 Required fields are required by the form. A blank default means an empty input;
 the operation can require further values for a selected action. Choices are
 literal values accepted by the interface.
+
+### Campaign submission policy
+
+Command: <code>:ops campaign-policy</code>. Group: Campaigns.
+
+Compare owned campaign shadow policies; pause, cancel or override the local reviewed plan.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>path</code> | Campaign policy JSON | Yes | (blank) | — |
+| <code>action</code> | Action | No | <code>compare</code> | <code>compare</code>, <code>pause</code>, <code>resume</code>, <code>cancel</code>, <code>override</code> |
+| <code>policy</code> | Override policy | No | <code>fifo</code> | <code>fifo</code>, <code>submit-all</code>, <code>shortest</code>, <code>backfill-friendly</code>, <code>fairshare</code> |
 
 ### Checkpoint recovery
 
@@ -245,6 +257,26 @@ Run explicit configurations under one reviewed Slurm allocation or explicit loca
 | <code>destination</code> | Diagnostic workspace (new for launch) | Yes | (blank) | — |
 | <code>action</code> | Action | No | <code>inspect</code> | <code>inspect</code>, <code>launch</code>, <code>status</code>, <code>cancel</code> |
 
+### Analyze factorial experiment
+
+Command: <code>:ops factorial-analysis</code>. Group: Investigation.
+
+Compare observed controls, equivalence, main effects and interactions without causal percentages.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>manifest</code> | Investigation manifest | Yes | (blank) | — |
+
+### Plan factorial experiment
+
+Command: <code>:ops factorial-design</code>. Group: Investigation.
+
+Compile declared compatible factors into a randomized bounded diagnostic campaign.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>manifest</code> | Investigation manifest | Yes | (blank) | — |
+
 ### Next investigation action
 
 Command: <code>:ops investigation-plan</code>. Group: Investigation.
@@ -332,6 +364,17 @@ Trace affected claims and propose dependency-aware checks; missing lineage remai
 | --- | --- | --- | --- | --- |
 | <code>manifest</code> | Investigation manifest | Yes | (blank) | — |
 
+### Observable queue model
+
+Command: <code>:ops queue-model</code>. Group: Planning.
+
+Inspect permitted scheduler configuration or simulate an explicitly bounded queue-policy subset.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Action | No | <code>discover</code> | <code>discover</code>, <code>simulate</code> |
+| <code>path</code> | Model JSON (simulate) | No | (blank) | — |
+
 ### External adapter workbench
 
 Command: <code>:ops adapter</code>. Group: Platform.
@@ -379,6 +422,8 @@ Import actual Perfetto, Caliper and RO-Crate JSON; export a reviewed portable bu
 | <code>attempt</code> | Exact attempt | Yes | (blank) | — |
 | <code>export_format</code> | Export format | No | <code>workflow-run-ro-crate</code> | <code>raven-evidence</code>, <code>perfetto-json</code>, <code>caliper-json-records</code>, <code>workflow-run-ro-crate</code>, <code>otlp-json-traces</code> |
 | <code>destination</code> | New bundle directory (optional) | No | (blank) | — |
+| <code>signing_key</code> | Optional SSH signing key (private file or agent public key) | No | (blank) | — |
+| <code>signing_principal</code> | Signing principal (required when signing) | No | (blank) | — |
 
 ### Site collection admission
 
@@ -413,6 +458,94 @@ Collect explicitly listed reports with credential redaction and prepare a privat
 | --- | --- | --- | --- | --- |
 | <code>manifest</code> | Report list manifest | Yes | (blank) | — |
 | <code>destination</code> | New bundle directory (optional) | No | (blank) | — |
+
+### WASI analysis boundary
+
+Command: <code>:ops wasi-analysis</code>. Group: Platform.
+
+Review a pinned pure-analysis module with explicit memory, I/O, fuel and wall-time limits.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>manifest</code> | WASI analysis manifest | Yes | (blank) | — |
+| <code>input</code> | Finite f64 series JSON | Yes | (blank) | — |
+| <code>destination</code> | New result directory (optional) | No | (blank) | — |
+| <code>action</code> | Action | No | <code>inspect</code> | <code>inspect</code>, <code>run</code> |
+
+### Check Heavy allocation performance
+
+Command: <code>:ops allocation-health</code>. Group: Research.
+
+Opt-in bounded memory/scratch and conditional same-host MPI fingerprints of Raven's verified Heavy allocation.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>tests</code> | Local probes | No | <code>memory,scratch</code> | <code>memory</code>, <code>scratch</code>, <code>memory,scratch</code>, <code>mpi</code>, <code>memory,scratch,mpi</code> |
+| <code>bytes</code> | Bytes per probe (4 KiB–16 MiB) | No | <code>1048576</code> | — |
+| <code>seconds</code> | Time budget in seconds (0.1–30) | No | <code>10</code> | — |
+| <code>repeats</code> | Measured repeats (2–8) | No | <code>3</code> | — |
+| <code>warmup</code> | Excluded warmup repeats (0–2) | No | <code>1</code> | — |
+| <code>scratch</code> | Existing private scratch directory | No | (blank) | — |
+| <code>mpi_prefix</code> | Optional Open MPI development prefix | No | (blank) | — |
+| <code>baseline</code> | Previous receipt JSON (optional) | No | (blank) | — |
+| <code>destination</code> | New receipt directory | Yes | (blank) | — |
+
+### Query retained measurements
+
+Command: <code>:ops evidence-query</code>. Group: Research.
+
+Index an immutable export, query exact attempts, or export a consistent SQLite snapshot.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Action | No | <code>query</code> | <code>query</code>, <code>index</code>, <code>export</code>, <code>rate</code>, <code>delta</code>, <code>window</code> |
+| <code>index</code> | Local index directory | Yes | (blank) | — |
+| <code>bundle</code> | Completed export directory (index only) | No | (blank) | — |
+| <code>project</code> | Exact project path from export (index only) | No | (blank) | — |
+| <code>view</code> | Measurement view | No | <code>sources</code> | <code>sources</code>, <code>application</code>, <code>cpu-memory</code>, <code>gpu</code>, <code>attempts</code>, <code>logs</code>, <code>transitions</code> |
+| <code>sql</code> | Advanced read-only SELECT (optional) | No | (blank) | — |
+| <code>source_id</code> | Exact source ID (series transform only) | No | (blank) | — |
+| <code>attempt</code> | Exact attempt key (series transform only) | No | (blank) | — |
+| <code>metric</code> | Metric/counter name (series transform only) | No | (blank) | — |
+| <code>selector</code> | Stream dimensions as JSON, e.g. {"rank":"0"} | No | <code>{}</code> | — |
+| <code>max_gap</code> | Largest valid rate interval in seconds | No | <code>30</code> | — |
+| <code>window_seconds</code> | Sample-average window seconds (window only) | No | <code>60</code> | — |
+| <code>destination</code> | New SQLite export directory (export only) | No | (blank) | — |
+
+### Compare observed phases (experimental)
+
+Command: <code>:ops phase-alignment</code>. Group: Research.
+
+Find bounded change points and possible phase correspondences while retaining original timestamps and gaps.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>path</code> | Phase comparison JSON | Yes | (blank) | — |
+| <code>view</code> | Time view | No | <code>original</code> | <code>original</code>, <code>aligned</code> |
+
+### Observe an owned local process
+
+Command: <code>:ops process-profile</code>. Group: Research.
+
+Read available Linux process/thread counters without modifying the workload; local PID scope is explicit.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>pid</code> | Owned PID on the Heavy worker node | Yes | (blank) | — |
+| <code>seconds</code> | Capture seconds (0.1–60) | No | <code>5</code> | — |
+| <code>interval_ms</code> | Requested interval ms (100–2000) | No | <code>100</code> | — |
+| <code>cpu_budget_percent</code> | Adaptive collector CPU target (0.1–10%) | No | <code>2</code> | — |
+| <code>destination</code> | New private receipt directory | Yes | (blank) | — |
+
+### Telemetry changes (experimental)
+
+Command: <code>:ops telemetry-anomalies</code>. Group: Research.
+
+Inspect exact-attempt changes with evidence windows and explicit abstention; causes remain unknown.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>path</code> | Measurement series JSON | Yes | (blank) | — |
 
 ### Compile diagnostic intent
 

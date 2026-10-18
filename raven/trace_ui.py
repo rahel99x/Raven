@@ -17,7 +17,7 @@ def initialize(app):
     if not isinstance(getattr(app, "trace_panel_state", None), dict):
         app.trace_panel_state = dict(token=0, context=None, status="idle", error="", result=None,
             reader=None, callback=None, cancel=None, next_read=0.0, path="", explicit="", sources=[],
-            index=0, paused=False, verified=False, paint=None, discover_at=0.0)
+            index=0, paused=False, verified=False, paint=None, discover_at=0.0, summary=False)
     return app.trace_panel_state
 
 
@@ -89,6 +89,9 @@ def run_command(app, args):
             cancel(app, clear=True)
             state.update(explicit=args[2], context=_context(app), next_read=0.0)
             _activate(app, "trace")
+    elif args[1:] in (["summary"], ["events"]):
+        state.update(summary=args[1] == "summary", next_read=0.0, paint=None)
+        app.say("Trace summaries use matched retained intervals; order and causality remain unanswerable" if state["summary"] else "Original retained trace events")
     elif args[1:] in (["refresh"], ["pause"], ["follow"], ["clear"]):
         operation = args[1]
         if operation == "clear":
@@ -186,8 +189,20 @@ def tick(app):
     explicit, index, path, reader = state["explicit"], state["index"], state["path"], state["reader"]
     source_cache = list(state["sources"]) if time.monotonic() < state["discover_at"] else None
 
+    summary_requested = state.get("summary", False)
     def work():
-        return _read(context, explicit, index, path, reader, event, source_cache)
+        result = _read(context, explicit, index, path, reader, event, source_cache)
+        if summary_requested and result is not None and result.get("snapshot") is not None:
+            from .trace_summary import summarize, answer
+            try:
+                summary = summarize(result["snapshot"])
+                result["snapshot"]["query_summary"] = [
+                    {"phase": group["phase"], "rank": group["rank"], "count": group["count"],
+                     "p95": answer(summary, "quantile", phase=group["phase"], rank=group["rank"])}
+                    for group in summary["sources"][0]["groups"]]
+            except ValueError as exc:
+                result["snapshot"]["query_summary_error"] = str(exc)
+        return result
 
     def done(result):
         current = _context(app)
@@ -220,7 +235,7 @@ def panel(views, app, job, width):
         # attempt's frames under the new job's heading.
         state = dict(state, result=None, error="", status="waiting for job evidence", sources=[])
     signature = (context["key"] if context else None, job.id, width, id(state["result"]), state["status"],
-                 state["error"], state["paused"], state["verified"], state["index"], tuple(state["sources"][:128]), views.g.ascii)
+                 state["error"], state["paused"], state.get("summary", False), state["verified"], state["index"], tuple(state["sources"][:128]), views.g.ascii)
     cached = owner_state.get("paint")
     if cached is not None and cached[0] == signature:
         return cached[1]
@@ -228,6 +243,8 @@ def panel(views, app, job, width):
                 ("follow", "Follow" if state["paused"] else "Pause view", ("command", "trace follow" if state["paused"] else "trace pause")),
                 ("plan", "Capture plan", ("command", "ops trace-capture")),
                 ("snapshot", "Python snapshot", ("command", "ops trace-snapshot"))]
+    controls.append(("summary", "Events" if state.get("summary") else "Summaries",
+                     ("command", "trace events" if state.get("summary") else "trace summary")))
     rows, raw_hits = buttons(views.g, width, controls, group="trace", prefix="trace:")
     hits = [(y, "job_panel_action", (("trace_command", {"job": job.id, "command": value["action"][1]}), value["left"], value["right"]))
             for y, _, value in raw_hits]
@@ -249,7 +266,16 @@ def panel(views, app, job, width):
                 ("command", "trace select " + str(i)))], selected=str(state["index"]), group="trace-sources", prefix="trace-source:")
             hits.extend((len(rows) + y, "job_panel_action", (("trace_command", {"job": job.id, "command": value["action"][1]}), value["left"], value["right"])) for y, _, value in source_hits)
             rows.extend(source_rows)
-        for message in snapshot.get("rows", ())[:1600]:
+        if state.get("summary"):
+            rows.append([("Experimental: matched retained intervals; emitter-declared rank, unknown when absent.", "warning")])
+            rows.append([("P95 bounds measure duration values; no event-order or causal guarantee.", "dim")])
+            if snapshot.get("query_summary_error"):
+                rows.append([(snapshot["query_summary_error"], "warning")])
+            for group in snapshot.get("query_summary", []):
+                answer = group['p95']
+                interval = str(answer.get('lower', '?')) + '–' + str(answer.get('upper', '?')) + ' ns'
+                rows.append([(f"{group['phase']} / rank {group['rank']}: count {group['count']} exact; p95 {interval} ({answer['answerability']})", "text")])
+        for message in (() if state.get("summary") else snapshot.get("rows", ())[:1600]):
             rows.append([(str(message), "text")])
         for message in snapshot.get("warnings", ())[:32]:
             rows.append([(str(message), "warning")])

@@ -76,7 +76,7 @@ def _attempt(store, jid):
     record, _ = store.record_context(jid)
     if record is None:
         return None
-    key = (store.job_attempt(jid), type(record).__name__, record.id, record.name, record.state,
+    key = (store.job_attempt(jid), store.capture_series_identity(jid), type(record).__name__, record.id, record.name, record.state,
            getattr(record, "submit", ""), getattr(record, "start", ""), record.cpus,
            record.nodes, record.gpus, record.limit)
     return key + ((record.end, record.cpu_time, record.rss, record.req_mem, record.elapsed)
@@ -182,7 +182,7 @@ def _sample(item):
     return sample
 
 
-def _recorded_series(store, jid, event, *, max_series=MAX_SERIES, max_bytes=MAX_SERIES_BYTES):
+def _recorded_series(store, jid, event, *, max_series=MAX_SERIES, max_bytes=MAX_SERIES_BYTES, identity=None):
     """Read a bounded persistent tail outside the Store lock.
 
     Headless Store.series_of restores retained history synchronously. This
@@ -190,42 +190,59 @@ def _recorded_series(store, jid, event, *, max_series=MAX_SERIES, max_bytes=MAX_
     interactive series cache untouched.
     """
     with store.lock:
+        current = store.capture_series_identity(jid)
+        if identity is not None and current != identity:
+            raise ValueError("Recording attempt changed before Advisor acquisition; retry for the current attempt.")
+        identity = current
         source = store.series.get(jid, ())
         source_count = len(source)
         memory = [_sample(item) for item in reversed(list(islice(reversed(source), max_series)))]
         already_loaded = jid in store._series_loaded
-        path = store._series_path(jid) if not already_loaded else None
+        path = store._series_identity_path(identity) if not already_loaded else None
     points, warnings = deque(maxlen=max_series), []
     retained = min(max_series, store.series_keep)
     if source_count > retained:
         warnings.append(f"Analysis uses the latest {retained:,} of {source_count:,} in-memory observations.")
     if path:
-        try:
-            opener = lambda target, flags: os.open(target, flags | os.O_NONBLOCK | os.O_NOFOLLOW)
-            with open(path, "rb", opener=opener) as stream:
-                metadata = os.fstat(stream.fileno())
-                if not stat.S_ISREG(metadata.st_mode):
-                    raise OSError("Recorded series must be a regular file.")
-                size = metadata.st_size
-                offset = max(0, size - max_bytes)
-                stream.seek(offset)
-                data = stream.read(max_bytes)
-            if offset:
-                data = data.partition(b"\n")[2]
-                warnings.append(f"Persistent series exceeds the {max_bytes:,}-byte budget; only its latest bounded tail was read.")
-            for index, line in enumerate(data.splitlines()):
-                if index % 256 == 0 and event.is_set():
-                    return [], warnings
-                try:
-                    sample = _sample(json.loads(line))
-                except (ValueError, TypeError, RecursionError):
-                    continue
-                if sample is not None:
-                    points.append(sample)
-        except FileNotFoundError:
-            pass
-        except OSError as exc:
-            warnings.append("Persistent series unavailable: " + clean(exc, limit=160))
+        from .series_storage import uses_blocks, compact_path
+        if uses_blocks(path):
+            from .series_blocks import read
+            rows, status = read(compact_path(path), max_series, max_bytes=max_bytes,
+                                max_decoded_bytes=max_bytes, cancel=event)
+            points.extend(sample for row in rows if (sample := _sample(row)) is not None)
+            if status["status"] not in {"ready", "missing"}:
+                warnings.append(status["message"])
+            if status["verified_samples"] > max_series:
+                warnings.append(f"Analysis uses the latest {max_series:,} observations from the verified compact prefix.")
+            if event.is_set():
+                return [], warnings
+        else:
+            try:
+                opener = lambda target, flags: os.open(target, flags | os.O_NONBLOCK | os.O_NOFOLLOW)
+                with open(path, "rb", opener=opener) as stream:
+                    metadata = os.fstat(stream.fileno())
+                    if not stat.S_ISREG(metadata.st_mode):
+                        raise OSError("Recorded series must be a regular file.")
+                    size = metadata.st_size
+                    offset = max(0, size - max_bytes)
+                    stream.seek(offset)
+                    data = stream.read(max_bytes)
+                if offset:
+                    data = data.partition(b"\n")[2]
+                    warnings.append(f"Persistent series exceeds the {max_bytes:,}-byte budget; only its latest bounded tail was read.")
+                for index, line in enumerate(data.splitlines()):
+                    if index % 256 == 0 and event.is_set():
+                        return [], warnings
+                    try:
+                        sample = _sample(json.loads(line))
+                    except (ValueError, TypeError, RecursionError):
+                        continue
+                    if sample is not None:
+                        points.append(sample)
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                warnings.append("Persistent series unavailable: " + clean(exc, limit=160))
     seen = {(item.get("t"), item.get("k")) for item in memory if item is not None
             and isinstance(item.get("t"), (str, int, float, type(None)))
             and isinstance(item.get("k"), (str, type(None)))}
@@ -236,6 +253,9 @@ def _recorded_series(store, jid, event, *, max_series=MAX_SERIES, max_bytes=MAX_
     merged.sort(key=lambda item: _timestamp(item.get("t")) or 0)
     if len(merged) > retained:
         warnings.append(f"Analysis uses the latest {retained:,} retained observations.")
+    with store.lock:
+        if store.capture_series_identity(jid) != identity:
+            raise ValueError("Recording attempt changed during Advisor acquisition; retry for the current attempt.")
     return merged[-retained:], warnings
 
 
@@ -243,6 +263,7 @@ def capture(store, jid, event=None, *, light=False):
     """Capture exact published job evidence on the worker, with fixed bounds."""
     event = event or threading.Event()
     with store.lock:
+        identity = store.capture_series_identity(jid)
         job, details = store.record_context(jid)
         if job is None:
             raise ValueError("This job is no longer in the scheduler or accounting history.")
@@ -265,7 +286,7 @@ def capture(store, jid, event=None, *, light=False):
             if len(same) < MAX_HISTORY:
                 same.append(copy.deepcopy(record))
     series, warnings = _recorded_series(store, jid, event,
-        max_series=512 if light else MAX_SERIES, max_bytes=256 << 10 if light else MAX_SERIES_BYTES)
+        max_series=512 if light else MAX_SERIES, max_bytes=256 << 10 if light else MAX_SERIES_BYTES, identity=identity)
     if light:
         warnings.append("Light Advisor uses at most 512 retained samples and 512 history records; this is a bounded summary.")
     if matched > MAX_HISTORY:

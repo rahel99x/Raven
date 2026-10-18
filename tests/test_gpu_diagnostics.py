@@ -39,6 +39,7 @@ def finished_row(job="7", *, workdir="", tres="cpu=8,gres/gpu=1"):
 
 class ProbeBackend(Backend):
     """Replay real scheduler text while recording every read-only command."""
+    probe_json = False  # This fixture records the legacy command contract.
     def __init__(self, queue=None, *, details=None, host=VALID_GPU, live=None,
                  ssh=None, accounting="", hosts="desktop\n", pci="", errors=None,
                  allocations=""):
@@ -361,7 +362,12 @@ def test_exact_id_is_not_replaced_by_array_sibling_or_prefix():
 def test_nonindividual_or_unsafe_queue_ids_cannot_be_probed_or_read_as_files(job):
     backend = ProbeBackend(queue_row(job))
     result = check(backend)
-    assert not result["jobs"] and findings(result, "nonindividual_queue_ids")
+    assert not result["jobs"]
+    if job == "7_[1-9]":
+        assert findings(result, "nonindividual_queue_ids")
+    else:
+        assert findings(result, "queue") and not result["ok"]
+        assert "parse coverage" in G.render(result)
     assert not any(cmd[0] in {"srun", "ssh", "sacct"} or cmd[:3] == ["scontrol", "show", "job"]
                    for cmd, _ in backend.calls)
     assert "\x1b" not in G.render(result)
@@ -554,7 +560,9 @@ def test_retained_gpu_payloads_only_count_real_graph_data_and_never_write(tmp_pa
     path.write_text("not json\n[]\n" + json.dumps({"t": 1., "k": "gpu", "gpu": {"desktop:0": reading}}) + "\n{truncated")
     original = path.read_bytes()
     result = check(ProbeBackend(live="0: 0, N/A, 1, 2, GPU\n"), state_path=str(state))
-    assert bool(result["summary"]["jobs_with_graph_data"]) is bool(expected)
+    assert result["summary"]["jobs_with_graph_data"] == 0
+    assert result["jobs"][0]["legacy_measured_gpu_rows"] == expected
+    assert result["jobs"][0]["retained_attribution"] == "legacy-ambiguous"
     assert findings(result, "retained_samples", job="7")
     assert path.read_bytes() == original
     assert sorted(str(p.relative_to(state)) for p in state.rglob("*")) == ["series", "series/7.jsonl"]
@@ -609,7 +617,8 @@ def test_large_retained_cache_reads_only_a_bounded_regular_file_tail(tmp_path, m
     assert reads == [(str(path), len(original) - 128, 128)]
     retained = findings(result, "retained_samples", job="7")[0]
     assert retained["evidence"]["tail_only"] and retained["evidence"]["inspected_bytes"] <= 128
-    assert result["jobs"][0]["retained_valid_gpu_rows"] == 1
+    assert result["jobs"][0]["retained_valid_gpu_rows"] == 0
+    assert result["jobs"][0]["legacy_measured_gpu_rows"] == 1
     assert path.read_bytes() == original
 
 

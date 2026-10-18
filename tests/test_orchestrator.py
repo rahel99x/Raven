@@ -227,6 +227,21 @@ def test_recovery_requires_exact_unique_submit_line_then_resume_uses_id(recipe, 
     assert done["status"] == "submitted"
 
 
+def test_recovery_passes_durable_intent_time_and_retains_scheduler_evidence(recipe, tmp_path):
+    scheduler = Scheduler([(True, "accepted but no ID", None)])
+    receipt = orchestrator.execute(reviewed(recipe, tmp_path), scheduler, tmp_path / "state", confirmed=True)
+    attempt = receipt["nodes"][0]["attempts"][-1]
+    calls = []
+    def bounded(job, since):
+        calls.append((job, since))
+        return {"id": job, "workdir": attempt["workdir"], "submit_line": attempt["command"],
+                "submit": "2026-10-17T10:00:00"}
+    scheduler.intent_submit_info = bounded
+    recovered = orchestrator.recover(receipt["receipt_path"], "first", "777", scheduler, confirmed=True)
+    assert calls == [("777", attempt["started"])]
+    assert recovered["nodes"][0]["attempts"][-1]["recovery"]["scheduler_submit"] == "2026-10-17T10:00:00"
+
+
 def test_historical_receipt_validation_does_not_reopen_changed_or_missing_scripts(recipe, tmp_path, monkeypatch):
     receipt = orchestrator.execute(reviewed(recipe, tmp_path), Scheduler(), tmp_path / "state", confirmed=True)
     for name in ("first", "second", "third"):

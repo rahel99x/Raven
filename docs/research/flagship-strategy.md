@@ -2,6 +2,11 @@
 
 Research snapshot: 10 October 2026, America/Los_Angeles. Repository baseline: **4.16.1**, commit `fd1c68304e3adbf5c11d715bb9851d0d2b187510`.
 
+For the current source inventory and its qualification limits, use the
+[October review audit](../implementation/review-2026-10/evidence/W10.md).
+Its runtime contracts, executable handoffs, recorded checks and external gates
+are separate evidence classes; this archived proposal is not a release result.
+
 This archived strategy proposes product and research work from the 4.16.1
 baseline. At that baseline, the 5.0 tracer and the ten previously discussed 6.0
 capabilities were proposals. The findings, priorities, and acceptance targets

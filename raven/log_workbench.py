@@ -86,7 +86,7 @@ def _sync_selected_source(app):
 
 
 def command_names():
-    return ["logview", "logpan", "loggroup", "logpreview", "logalign", "logdiff", "logjson", "logfold", "logunread"]
+    return ["logview", "logpan", "loggroup", "logpreview", "logalign", "logdiff", "logjson", "logfold", "logunread", "logdivergence"]
 
 
 def visible_entries(app, entries):
@@ -168,6 +168,21 @@ def run_command(app, args):
             state["view"], state["scroll"], state["cursor"] = values[0], 0, 0
             app.tab = "log"
             app.say("Log view " + values[0] + "; Esc returns to original lines")
+        elif command == "logdivergence":
+            from .log_divergence import MAX_RANKS
+            context = _divergence_context(app)
+            if context is None:
+                raise ValueError("Connect the selected job to its exact run before comparing rank logs")
+            entries = _entries(app)
+            if not 2 <= len(values) <= MAX_RANKS or len(set(values)) != len(values):
+                raise ValueError(f"logdivergence LOG_ID LOG_ID ... (2–{MAX_RANKS} distinct registered logs)")
+            selected = [next((entry for entry in entries if entry.get("id") == value), None) for value in values]
+            if any(entry is None for entry in selected) or len({entry['path'] for entry in selected}) != len(selected):
+                raise ValueError("Choose distinct registered log sources")
+            state.update(divergence_sources=selected, divergence_context=context, view="divergence", scroll=0, cursor=0)
+            state["generation"] += 1
+            app.tab, app.logs.browser = "log", False
+            app.say("Comparing producer-declared rank/attempt headers in the background; o opens original evidence")
         elif command == "logalign":
             if values not in (["on"], ["off"]):
                 raise ValueError("logalign on|off")
@@ -295,7 +310,7 @@ def handle_key(app, key):
             state["view"] = "plain"
             app.say("Original source view for bookmarks and source search")
             return False
-        if key == "o" and state["view"] in ("json", "fold", "diff"):
+        if key == "o" and state["view"] in ("json", "fold", "diff", "divergence"):
             from .job_selection import lines_cleared
             if lines_cleared(app):
                 app.say("Select a log row with arrows or a click before opening its source")
@@ -637,9 +652,61 @@ def _split_entries(app):
     return result[:2]
 
 
+def _divergence_context(app):
+    binding = (getattr(app, "project_state", {}) or {}).get("binding") or {}
+    job = str(getattr(app, "log_job", None) or getattr(app, "selected_id", None) or "")
+    if binding.get("job_id") != job or not binding.get("run_id"):
+        return None
+    store = getattr(app, "store", None)
+    generation = store.job_attempt(job) if store is not None and hasattr(store, "job_attempt") else None
+    return job, binding["run_id"], generation
+
+
+def _divergence_snapshot(app):
+    from . import log_divergence as divergence
+    state, files = _state(app), _backend(app)
+    context = _divergence_context(app)
+    if context is None or context != state.get("divergence_context"):
+        return {"error": "Selected job/run attempt changed; issue logdivergence again for current sources"}
+    entries = state["divergence_sources"]
+    key = ("divergence", id(files), context, tuple(entry["path"] for entry in entries))
+    def read():
+        sources = []
+        for entry in entries:
+            source = dict(path=entry['path'], label=entry.get('label', entry['path']), lines=[])
+            try:
+                before = files.snapshot_stat(entry['path'])
+                header = divergence.identity(files.read(entry['path'], 0, divergence.HEADER_BYTES),
+                                             attempt=context[1], job_id=context[0])
+                raw, size, identity, truncated = _snapshot_tail(files, entry['path'], VIEW_BYTES)
+                if before != identity:
+                    raise ValueError('Log changed or rotated while reading its rank identity; retry')
+                lines = raw.decode('utf-8', 'replace').split('\n')
+                if lines and not lines[-1]:
+                    lines.pop()
+                if not truncated and lines:
+                    lines.pop(0)  # declaration is metadata, not a workload event
+                omitted = max(0, len(lines) - divergence.MAX_ROWS)
+                lines = lines[-divergence.MAX_ROWS:]
+                if any(len(line) > divergence.MAX_LINE for line in lines):
+                    raise ValueError('A rank log line exceeds the 8192-character comparison budget')
+                source.update(lines=lines, size=size, file_identity=identity, truncated=truncated,
+                              omitted_lines=omitted, rank_identity=header)
+            except (OSError, ValueError, TypeError) as exc:
+                source['error'] = clean(exc)
+            sources.append(source)
+        report = divergence.compare(sources)
+        if sources:
+            sources[0]['divergence_report'] = report
+        return {'sources': sources}
+    return _request(app, key, read, ttl=2.0)
+
+
 def _alternate(app):
     state, files = _state(app), _backend(app)
     view = state["view"]
+    if view == "divergence":
+        return _divergence_snapshot(app)
     entries = (state["diff_sources"] or _split_entries(app)) if view in ("split", "diff") else [dict(path=app.logs.path, label=(app.logs.entry or {}).get("label", "selected log"))] if app.logs.path else []
     key = ("alternate", id(files), view, tuple(entry["path"] for entry in entries))
     def read():
@@ -672,7 +739,11 @@ def _presentation_rows(state, sources):
     view = state["view"]
     item = sources[0]
     note = ""
-    if view == "split" and len(sources) == 2:
+    if view == "divergence":
+        from .log_divergence import rows
+        result = rows(sources[0]["divergence_report"])
+        note = "Producer declarations matched to selected run; original order, not causal order | o opens evidence"
+    elif view == "split" and len(sources) == 2:
         if state["align"]:
             pairs, note = presentation.aligned(item["lines"], sources[1]["lines"])
         else:
@@ -694,6 +765,8 @@ def _presentation_rows(state, sources):
     for row in result:
         source_item = item
         index = row.get("original")
+        if view == "divergence" and row.get("source_path"):
+            source_item = next(source for source in sources if source["path"] == row["source_path"])
         if view == "diff" and len(sources) == 2:
             side = 0 if row.get("left") is not None else 1
             source_item = sources[side]
@@ -774,7 +847,9 @@ def overlay(views, snap, app, width, height):
                                           group="log_sources", prefix="log-source:")
                 button_hits = [(y + len(rows), kind, value) for y, kind, value in hits]
                 rows.extend(controls)
-            for item in sources:
+            if state['view'] == 'divergence':
+                rows.append([(f" {len(sources)} declared streams; bounded 64 KiB / 240 rows per rank", "cyan+bold")])
+            for item in ([] if state['view'] == 'divergence' else sources):
                 source_label_rows.append(len(rows))
                 rows.append([(" " + clean(item["label"] + " | " + item["path"], views.g.ascii), "cyan+bold")])
                 if item.get("error"):

@@ -32,12 +32,35 @@ def dashboard():
     app.selected_id = "900"
     release = []
     result = SimpleNamespace(app=app, store=store, views=views, release=release)
-    result.render = lambda width=70: J.render(views, store.snapshot(), app, app.job_record(app.selected_id), width, 40)
+    result.render = lambda width=70: J.render(views, result.store.snapshot(), app, app.job_record(app.selected_id), width, 40)
     yield result
     for event in release:
         event.set()
     if app.research:
         app.research.close()
+    result.store.close()
+
+
+
+def persistent_attempt(dashboard, directory, *, storage="jsonl"):
+    """Create a real owned scope and bind its exact scheduler attempt."""
+    from pathlib import Path
+    previous = dashboard.store
+    store = Store(str(directory), series_storage=storage)
+    jobs = copy.deepcopy(previous.jobs)
+    jobs[0].submit = "1970-01-01T00:00:00+00:00"
+    jobs[0].start = "1970-01-01T00:00:01+00:00"
+    jobs[0].cluster = "advisor-test"
+    store.apply_jobs(jobs)
+    details = dict(JobId="900", SubmitTime=jobs[0].submit, StartTime=jobs[0].start,
+                   Restarts="0", Cluster=jobs[0].cluster)
+    store.details["900"] = details
+    assert store.bind_series_scheduler("900", details)
+    previous.close()
+    dashboard.store = dashboard.app.store = store
+    path = Path(store._series_path("900"))
+    path.parent.mkdir(exist_ok=True)
+    return store, path
 
 
 def ready(dashboard):
@@ -442,11 +465,8 @@ def test_live_rank_imbalance_does_not_divide_sstat_avecpu_by_task_count_twice():
 
 
 def test_capture_reads_persistent_tail_without_store_series_io_or_ui_thread(dashboard, tmp_path, monkeypatch):
-    store = dashboard.store
-    store.persist, store.state_dir = True, str(tmp_path)
-    directory = tmp_path / "series"
-    directory.mkdir()
-    (directory / "900.jsonl").write_text(json.dumps({"t": 1, "k": "live", "cpu": .7}) + "\n" +
+    store, path = persistent_attempt(dashboard, tmp_path)
+    path.write_text(json.dumps({"t": 1, "k": "live", "cpu": .7}) + "\n" +
                                        "truncated json\n" + json.dumps({"t": 2, "k": "live", "rss": GIB}) + "\n")
     store.series["900"].append(dict(t=3, k="live", cpu=.8))
     def forbidden(*args, **kwargs):
@@ -491,11 +511,7 @@ def test_persistent_reader_releases_store_lock_before_file_read(dashboard, tmp_p
     import builtins
     entered, release = Event(), Event()
     dashboard.release.append(release)
-    store = dashboard.store
-    store.persist, store.state_dir = True, str(tmp_path)
-    directory = tmp_path / "series"
-    directory.mkdir()
-    path = directory / "900.jsonl"
+    store, path = persistent_attempt(dashboard, tmp_path)
     path.write_text(json.dumps(dict(t=1, k="live", cpu=.2)) + "\n")
     original = builtins.open
     class Held:
@@ -532,11 +548,9 @@ def test_persistent_reader_releases_store_lock_before_file_read(dashboard, tmp_p
 
 
 def test_bounded_disk_tail_and_large_in_memory_series_are_reported(dashboard, tmp_path, monkeypatch):
-    store = dashboard.store
-    store.persist, store.state_dir, store.series_keep = True, str(tmp_path), 20
-    directory = tmp_path / "series"
-    directory.mkdir()
-    (directory / "900.jsonl").write_text("".join(json.dumps(dict(t=index, k="live", cpu=.2)) + "\n"
+    store, path = persistent_attempt(dashboard, tmp_path)
+    store.series_keep = 20
+    path.write_text("".join(json.dumps(dict(t=index, k="live", cpu=.2)) + "\n"
                                                 for index in range(100)))
     monkeypatch.setattr(Q, "MAX_SERIES_BYTES", 256)
     monkeypatch.setattr(Q, "MAX_SERIES", 3)
@@ -556,11 +570,8 @@ def test_cpu_interval_mean_uses_each_rate_for_its_preceding_interval():
 
 def test_nonregular_series_does_not_block_the_shared_worker(dashboard, tmp_path):
     import os
-    store = dashboard.store
-    store.persist, store.state_dir = True, str(tmp_path)
-    directory = tmp_path / "series"
-    directory.mkdir()
-    os.mkfifo(directory / "900.jsonl")
+    store, path = persistent_attempt(dashboard, tmp_path)
+    os.mkfifo(path)
     J.run_command(dashboard.app, ["jobpanel", "quick"])
     result = ready(dashboard)
     assert "must be a regular file" in text(result)
@@ -584,3 +595,110 @@ def test_history_quick_advisor_is_explicit_and_reads_the_finished_job(dashboard,
     result = ready(dashboard)
     assert requested == ["700"] and result["job"] == "700"
     assert app.tab == "history" and app.selected_id == "700"
+
+
+@pytest.mark.parametrize("preference", ["jsonl", "blocks-v1"])
+def test_quick_advisor_reads_verified_compact_stream_and_keeps_cache_detached(dashboard, tmp_path, preference):
+    from raven import series_blocks as B
+    from raven.series_storage import compact_path
+    store, path = persistent_attempt(dashboard, tmp_path, storage=preference)
+    packed = compact_path(path)
+    B.append(packed, [dict(t=1, k="live", cpu=.7), dict(t=2, k="live", rss=GIB)])
+    store.series["900"].append(dict(t=3, k="live", cpu=.8))
+    J.run_command(dashboard.app, ["jobpanel", "quick"])
+    result = ready(dashboard)
+    assert result["sample_count"] == 3
+    assert "900" not in store._series_loaded
+
+
+def test_compact_decoded_budget_is_checked_before_decompression(dashboard, tmp_path, monkeypatch):
+    from raven import series_blocks as B
+    store, path = persistent_attempt(dashboard, tmp_path, storage="blocks-v1")
+    B.append(path, [dict(t=1, k="live", cpu=.7, padding="x" * 4096)])
+    assert path.stat().st_size < 1024
+    monkeypatch.setattr(Q, "MAX_SERIES_BYTES", 1024)
+    monkeypatch.setattr(B, "decode", lambda *args: pytest.fail("decoded beyond Advisor budget"))
+    store.series["900"].append(dict(t=2, k="live", cpu=.8))
+    value = Q.capture(store, "900")
+    assert [row['t'] for row in value['series']] == [2]
+    assert "budget reached; verified prefix" in " ".join(value['warnings'])
+
+
+def test_compact_corruption_exposes_verified_prefix_and_error(dashboard, tmp_path):
+    from raven import series_blocks as B
+    store, path = persistent_attempt(dashboard, tmp_path, storage="blocks-v1")
+    B.append(path, [dict(t=1, k="live", cpu=.7)])
+    original = path.read_bytes() + next(B.frames([dict(t=2, k="live", cpu=.8)], path))[:-3]
+    path.write_bytes(original)
+    value = Q.capture(store, "900")
+    assert [row['t'] for row in value['series']] == [1]
+    assert "Compact coverage stopped" in " ".join(value['warnings'])
+    assert path.read_bytes() == original
+
+
+def test_compact_read_cancellation_stops_between_frames(dashboard, tmp_path, monkeypatch):
+    from raven import series_blocks as B
+    store, path = persistent_attempt(dashboard, tmp_path, storage="blocks-v1")
+    B.append(path, [dict(t=1, k="live", cpu=.7)])
+    B.append(path, [dict(t=2, k="live", cpu=.8)])
+    cancel, calls, decode = Event(), [], B.decode
+    def stop_after_first(*args):
+        calls.append(True)
+        value = decode(*args)
+        cancel.set()
+        return value
+    monkeypatch.setattr(B, "decode", stop_after_first)
+    payload = Q.capture(store, "900", cancel)
+    assert len(calls) == 1 and payload['series'] == []
+    assert "cancelled" in " ".join(payload['warnings'])
+
+
+@pytest.mark.parametrize("storage", ["jsonl", "blocks-v1"])
+def test_capture_refuses_same_timestamp_restart_during_disk_acquisition(dashboard, tmp_path, monkeypatch, storage):
+    from raven import series_blocks as B
+    store, path = persistent_attempt(dashboard, tmp_path, storage=storage)
+    if storage == "jsonl":
+        path.write_text(json.dumps(dict(t=1, k="live", cpu=.7)) + "\n")
+    else:
+        B.append(path, [dict(t=1, k="live", cpu=.7)])
+    original = Q._sample
+    def restarted(row):
+        store.details['900'] = dict(store.details['900'], Restarts='1')
+        assert store.bind_series_scheduler('900', store.details['900'])
+        return original(row)
+    monkeypatch.setattr(Q, '_sample', restarted)
+    with pytest.raises(ValueError, match='attempt changed during Advisor acquisition'):
+        Q.capture(store, '900')
+    assert path.exists() and path.stat().st_size
+
+
+def test_same_timestamp_restart_discards_delayed_ui_result(dashboard, tmp_path, monkeypatch):
+    store, _ = persistent_attempt(dashboard, tmp_path)
+    entered, release = Event(), Event()
+    dashboard.release.append(release)
+    original = Q.capture
+    def held(*args, **kwargs):
+        payload = original(*args, **kwargs)
+        entered.set()
+        assert release.wait(3)
+        return payload
+    monkeypatch.setattr(Q, 'capture', held)
+    J.run_command(dashboard.app, ['jobpanel', 'quick'])
+    assert entered.wait(1)
+    future = dashboard.app.research.future
+    store.details['900'] = dict(store.details['900'], Restarts='1')
+    assert store.bind_series_scheduler('900', store.details['900'])
+    release.set()
+    future.result(timeout=3)
+    dashboard.app.research.poll_task()
+    assert Q.initialize(dashboard.app)['status'] == 'idle'
+    assert Q.initialize(dashboard.app)['result'] is None
+
+
+def test_quick_advisor_never_attributes_legacy_job_number_file(dashboard, tmp_path):
+    store, path = persistent_attempt(dashboard, tmp_path)
+    legacy = path.parent / '900.jsonl'
+    original = json.dumps(dict(t=1, k='live', cpu=.7)) + "\n"
+    legacy.write_text(original)
+    assert Q.capture(store, '900')['series'] == []
+    assert legacy.read_text() == original

@@ -1,0 +1,14 @@
+{
+  "schema": "raven.slurm-qualification-versions/v1",
+  "checked_at": "2026-10-17",
+  "source": "https://download.schedmd.com/slurm/",
+  "support_reference": "https://slurm.schedmd.com/upgrades.html#compatibility_window",
+  "note": "Historical lines are compatibility candidates, not vendor support claims. The current upstream documentation identifies 26.05; TLS-downloaded archive hashes pin bytes, not an independent signature.",
+  "versions": [
+    {"version": "23.02.8", "role": "historical-compatibility", "sha256": "74a706e62d342a43e677991c92b1a30435148e44cf5d2e2a7bac8471f1a2006e"},
+    {"version": "23.11.11", "role": "historical-compatibility", "sha256": "4a1713dceb5bfad74d3f43c9bfedf23603933f0d7148cdad7feedea57da4e45d"},
+    {"version": "24.05.8", "role": "historical-compatibility", "sha256": "59c33ee924bdf105fe288b65798d6db0fca12244aec8bcb4b346a89ccddd39d0"},
+    {"version": "24.11.7", "role": "historical-compatibility", "sha256": "8bcbaae09f4962b72fb322b6ef97b77cc2633f59fda151e90338cf5d9187b9cf"},
+    {"version": "26.05.5", "role": "maintained-smoke", "sha256": "4680cafc82b0689865c885eb703441e7ebf764896c40fd03a50f2fcb60664f68"}
+  ]
+}

@@ -5,6 +5,7 @@ import builtins
 import json
 import threading
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 
@@ -14,8 +15,8 @@ from raven.sampler import Sampler
 from raven import series_archive as archive
 
 
-def write_series(directory, jid, samples):
-    path = directory / "series" / (jid + ".jsonl")
+def write_series(directory, jid, samples, store=None):
+    path = Path(store._series_path(jid)) if store else directory / "series" / (jid + ".jsonl")
     path.parent.mkdir(exist_ok=True)
     path.write_text("".join(json.dumps(item) + "\n" for item in samples))
     return path
@@ -62,7 +63,7 @@ def test_sampler_publishes_atomically_before_slow_disk_and_releases_store_lock(t
     slurm = SimpleNamespace(live=lambda *args: (live, (2., live.t), ["step"]),
                             gpu=lambda *args: gpu, jobs=lambda: [])
     sampler = Sampler(slurm, store, {}, [], workers=1)
-    path = tmp_path / ("events.jsonl" if source == "jobs" else "series/7.jsonl")
+    path = tmp_path / "events.jsonl" if source == "jobs" else Path(store._series_path("7"))
     pool = ThreadPoolExecutor(max_workers=1)
     try:
         with blocked_open(monkeypatch, path, "a") as (entered, release, calls):
@@ -92,8 +93,8 @@ def test_sampler_publishes_atomically_before_slow_disk_and_releases_store_lock(t
 
 
 def test_background_cold_restore_returns_immediately_deduplicates_active_request_and_keeps_live_append(tmp_path, monkeypatch):
-    path = write_series(tmp_path, "7", [{"t": 1., "k": "live", "cpu": .1}, {"t": 2., "k": "live", "cpu": .2}])
     store = Store(state_dir=str(tmp_path))
+    path = write_series(tmp_path, "7", [{"t": 1., "k": "live", "cpu": .1}, {"t": 2., "k": "live", "cpu": .2}], store)
     pool = ThreadPoolExecutor(max_workers=1)
     store.configure_series_loader(pool.submit)
     try:
@@ -122,9 +123,9 @@ def test_background_cold_restore_returns_immediately_deduplicates_active_request
 
 @pytest.mark.parametrize("change", ["attempt", "shutdown"])
 def test_inflight_restore_cannot_publish_into_another_attempt_or_after_shutdown(tmp_path, monkeypatch, change):
-    path = write_series(tmp_path, "7", [{"t": 1., "k": "live"}])
     store = Store(state_dir=str(tmp_path))
     store.apply_jobs([Job("7", "old", "cpu", "RUNNING", submit="old")])
+    path = write_series(tmp_path, "7", [{"t": 1., "k": "live"}], store)
     pool = ThreadPoolExecutor(max_workers=1)
     store.configure_series_loader(pool.submit)
     try:
@@ -188,7 +189,7 @@ def test_directory_inventory_is_off_thread_and_cached(tmp_path, monkeypatch):
 
 def test_persistence_queue_keeps_publication_order_during_competing_flushes(tmp_path, monkeypatch):
     store = Store(state_dir=str(tmp_path))
-    path = tmp_path / "series/7.jsonl"
+    path = Path(store._series_path("7"))
     first = {"t": 1.0005, "k": "live"}
     second = {"t": 1.001, "k": "gpu", "gpu": {"node:0": [50., 100., 1000.]}}
     with ThreadPoolExecutor(max_workers=2) as pool:
@@ -224,11 +225,12 @@ def test_bounded_restore_is_explicit_and_synchronous_export_upgrades_it(tmp_path
     old = {"t": 1., "k": "live"}
     large = {"t": 2., "k": "live", "extra": "x" * 200}
     recent = {"t": 3., "k": "gpu"}
-    write_series(tmp_path, "7", [old, large, recent])
+
     monkeypatch.setattr(archive, "READ_CHUNK", 32)
     monkeypatch.setattr(archive, "COLD_READ_BYTES", 90 if limit == "bytes" else 4096)
     monkeypatch.setattr(archive, "COLD_LINE_BYTES", 1024 if limit == "bytes" else 64)
     store = Store(state_dir=str(tmp_path))
+    write_series(tmp_path, "7", [old, large, recent], store)
     queued = []
     store.configure_series_loader(queued.append)
     store.series_view("7")
@@ -251,9 +253,9 @@ def test_bounded_restore_is_explicit_and_synchronous_export_upgrades_it(tmp_path
 
 
 def test_bad_timestamp_types_do_not_disable_worker_or_lose_other_jobs(tmp_path):
-    write_series(tmp_path, "7", [{"t": [], "k": {}}, {"t": 2., "k": "live"}])
-    write_series(tmp_path, "8", [{"t": 3., "k": "gpu"}])
     store = Store(state_dir=str(tmp_path))
+    write_series(tmp_path, "7", [{"t": [], "k": {}}, {"t": 2., "k": "live"}], store)
+    write_series(tmp_path, "8", [{"t": 3., "k": "gpu"}], store)
     queue = []
     store.configure_series_loader(queue.append)
     store.series_view("7")
@@ -267,7 +269,7 @@ def test_bad_timestamp_types_do_not_disable_worker_or_lose_other_jobs(tmp_path):
 @pytest.mark.parametrize("blocked", ["series", "events"])
 def test_independent_event_and_metric_writes_never_wait_for_each_other(tmp_path, monkeypatch, blocked):
     store = Store(state_dir=str(tmp_path))
-    series_path, event_path = tmp_path / "series/7.jsonl", tmp_path / "events.jsonl"
+    series_path, event_path = Path(store._series_path("7")), tmp_path / "events.jsonl"
     path = series_path if blocked == "series" else event_path
     first = (lambda: store.record("7", {"t": 1., "k": "live"})) if blocked == "series" else (lambda: store.event("queued", "queued 7"))
     second = (lambda: store.event("copy", "copied lines")) if blocked == "series" else (lambda: store.record("7", {"t": 2., "k": "gpu"}))

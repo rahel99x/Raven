@@ -167,6 +167,10 @@ class GovernedBackend:
         start = time.monotonic()
         return self._query(cmd, timeout, 4 << 20, None, fresh=False), time.monotonic() - start
 
+    def observe(self, cmd, timeout, limit, cancel):
+        """Cancellable background observation under normal source admission."""
+        return self._query(cmd, timeout, limit, cancel, fresh=False)
+
     def command(self, cmd, timeout, limit, cancel):
         """Bounded exact-review path; retain cancellation and cache admission."""
         return self._query(cmd, timeout, limit, cancel, fresh=True)

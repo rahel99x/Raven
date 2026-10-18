@@ -256,7 +256,7 @@ def _choices(app):
     snap = status(app)
     choices = [('inspect', 'Inspect allocation')]
     if snap.get('cleanup_uncertain'):
-        pass  # Inspection only until ownership/cleanup has been reconciled.
+        choices.append(('cleanup', 'Retry cleanup'))
     elif snap.get('state') == 'light':
         choices.append(('retry', 'Retry Heavy') if snap.get('startup', {}).get('retryable')
                        else ('request', 'Request compute'))
@@ -330,7 +330,7 @@ def run_command(app, args):
         _open(app)
         _say(app, 'Compute is unavailable: start Raven with an explicit site profile.', True)
         return True
-    if action in ('request', 'retry', 'cancel', 'release'):
+    if action in ('request', 'retry', 'cancel', 'release', 'cleanup'):
         _collect(app)
         snap = status(app)
         if action not in {item[0] for item in _choices(app)}:
@@ -380,6 +380,8 @@ def run_command(app, args):
                     result = startup.retry(plan=review['plan'])
                 else:
                     result = manager.request(plan=review['plan'])
+            elif action == 'cleanup':
+                result = manager.retry_cleanup(generation=review['snapshot'].get('generation'))
             elif action in ('cancel', 'release'):
                 startup = getattr(manager, 'background_startup', None)
                 result = (startup.cancel(generation=review['snapshot'].get('generation')) if startup is not None
@@ -427,7 +429,7 @@ def _lines(app):
                 lines.append('Reverify and reuse allocation '+_text(snap['startup']['reuse_job'])+'; never request a replacement allocation.')
         else:
             lines.append('Only this Raven request and its owned worker are targeted.')
-    for key in ('generation', 'request_id', 'job_id', 'host', 'remaining_seconds', 'ownership', 'resources', 'qualification', 'error'):
+    for key in ('generation', 'request_id', 'job_id', 'host', 'remaining_seconds', 'ownership', 'resources', 'qualification', 'recovery', 'error'):
         if snap.get(key) is not None:
             value = snap[key]
             if isinstance(value, dict):
@@ -435,7 +437,7 @@ def _lines(app):
             else:
                 lines.append(key + ': ' + _text(value))
     if snap.get('cleanup_uncertain'):
-        lines.append('Cleanup uncertain. Heavy work is unavailable. Reconcile the exact request before retrying.')
+        lines.append('Cleanup is being reconciled using its private receipt. Light remains available. Retry cleanup resumes a bounded check; it never resubmits scientific jobs.')
     if getattr(app, 'raven_allocation_manager', None) is None:
         lines.append('No allocation manager is attached. Use an explicit Raven site profile to request compute.')
     if state['message']:

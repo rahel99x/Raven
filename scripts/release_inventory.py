@@ -291,6 +291,35 @@ def verify_inventory(path, artifacts, license_path=DEFAULT_LICENSE):
     return actual
 
 
+def verify_release_policy(path, artifacts, *, expected_version, expected_source, tag=None,
+                          license_path=DEFAULT_LICENSE):
+    """Check release consistency; cryptographic provenance is verified separately."""
+    actual = verify_inventory(path, artifacts, license_path)
+    if not re.fullmatch(r"[0-9a-f]{40}", expected_source):
+        raise ValueError("Release policy requires the full expected source commit")
+    if actual["source_commit"] != expected_source:
+        raise ValueError("Inventory source commit does not match the tested revision")
+    if actual["version"] != expected_version:
+        raise ValueError("Artifact version does not match the installed/tested version")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:a[0-9]+|b[0-9]+|rc[0-9]+)?", expected_version):
+        raise ValueError("Unsupported release version; use a three-part version with optional prerelease")
+    if tag is not None and tag != "v" + expected_version:
+        raise ValueError("Release tag must be v followed by the exact artifact version")
+    kinds = {item["build"]["format"] for item in actual["artifacts"]}
+    if kinds != {"wheel", "sdist"} or len(actual["artifacts"]) != 2:
+        raise ValueError("Release policy requires exactly one wheel and one source archive")
+    source_maps = {}
+    for artifact in actual["artifacts"]:
+        kind = artifact["build"]["format"]
+        prefix = "" if kind == "wheel" else "raven-" + expected_version + "/"
+        source_maps[kind] = {item["path"][len(prefix):]: item["sha256"]
+                             for item in artifact["members"]
+                             if item["path"].startswith(prefix + "raven/")}
+    if not source_maps["wheel"] or source_maps["wheel"] != source_maps["sdist"]:
+        raise ValueError("Wheel and source archive contain different Raven source bytes")
+    return actual
+
+
 def _write(path, content):
     path = _safe_path(path)
     if path.exists() and not path.is_file():
@@ -318,11 +347,21 @@ def main(argv=None):
     create.add_argument("--source-commit")
     verify = commands.add_parser("verify", help="Recompute hashes and archive metadata against an inventory")
     verify.add_argument("inventory")
-    for command in (create, verify):
+    policy = commands.add_parser("policy", help="Check version, tag, source identity and wheel/source agreement")
+    policy.add_argument("inventory")
+    policy.add_argument("--expected-version", required=True)
+    policy.add_argument("--expected-source", required=True)
+    policy.add_argument("--tag")
+    for command in (create, verify, policy):
         command.add_argument("--license", default=str(DEFAULT_LICENSE))
         command.add_argument("artifacts", nargs="+")
     args = parser.parse_args(argv)
     try:
+        if args.command == "policy":
+            verify_release_policy(args.inventory, args.artifacts, expected_version=args.expected_version,
+                                  expected_source=args.expected_source, tag=args.tag, license_path=args.license)
+            print("Release policy verified; authenticate provenance separately before trusting its source claim.")
+            return 0
         if args.command == "verify":
             verify_inventory(args.inventory, args.artifacts, args.license)
             print("Release inventory verified; this is not signature verification.")

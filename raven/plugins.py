@@ -81,7 +81,11 @@ def load(paths: List[str], api: Optional[PluginAPI] = None) -> PluginAPI:
         try:
             spec = importlib.util.spec_from_file_location(f"raven_plugin_{name}", path)
             mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
+            from .config_trust import read
+            source, _info = read(path, limit=1024 * 1024)
+            # Execute the verified bytes; exec_module would reopen the pathname
+            # (or select a bytecode cache) after its trust check.
+            exec(compile(source, path, "exec", dont_inherit=True), mod.__dict__)
             setup = getattr(mod, "setup", None)
             if setup is None:
                 raise RuntimeError("no setup(api) function")

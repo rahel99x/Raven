@@ -146,7 +146,7 @@ class LightLimits:
         self.disk=None
         self.disk_bytes=0
         self.lock=threading.RLock()
-        self.disk_lock=threading.Lock()
+        self.disk_lock=threading.RLock()
 
     def rows(self,rows,key):
         limit=self.values['max_job_rows' if key=='jobs' else 'max_history_rows']
@@ -227,7 +227,7 @@ class LightLimits:
                             self.disk_bytes=self.values['storage_bytes']+1
                             self.coverage['storage']={'limited':True,'reason':'owned inventory scan limit reached'}
                             return
-                        if not (entry.name.endswith('.jsonl') if series else entry.name=='events.jsonl'):
+                        if not (entry.name.endswith(('.jsonl','.rvb','.rvt')) if series else entry.name=='events.jsonl'):
                             continue
                         if len(self.disk)>=self.values['storage_files']:
                             self.disk_bytes=self.values['storage_bytes']+1
@@ -251,7 +251,7 @@ class LightLimits:
             if (self.disk_bytes+len(payload)>self.values['storage_bytes'] or
                     new and len(self.disk)>=self.values['storage_files']):
                 self.coverage['storage']={'limited':True,'reason':'owned history quota reached'}
-                return
+                return False
             os.makedirs(os.path.dirname(path),exist_ok=True)
             fd=os.open(path,os.O_WRONLY|os.O_APPEND|os.O_CREAT|getattr(os,'O_NOFOLLOW',0),0o600)
             try:
@@ -261,7 +261,7 @@ class LightLimits:
                 previous=self.disk.get(path,0)
                 if self.disk_bytes-previous+info.st_size+len(payload)>self.values['storage_bytes']:
                     self.coverage['storage']={'limited':True,'reason':'owned history grew beyond quota'}
-                    return
+                    return False
                 view=memoryview(payload)
                 try:
                     while view:
@@ -274,6 +274,7 @@ class LightLimits:
                     self.disk[path]=actual
             finally:
                 os.close(fd)
+            return True
 
     def drain(self,store,queue,io_lock):
         with io_lock:
@@ -281,14 +282,35 @@ class LightLimits:
                 with store._persist_queue_lock:
                     if not queue: return
                     batch=list(queue); queue.clear()
-                for path,payload in batch:
+                paths = {}
+                for path, payload in batch:
+                    paths.setdefault(path, []).append(payload)
+                for path, payloads in paths.items():
                     try:
-                        self.write(path,payload)
-                    except OSError as exc:
-                        self.coverage['storage']={'limited':True,'reason':str(exc)[:128]}
+                        compact = False
+                        if path != store._events_path:
+                            from .series_storage import append as append_recordings, compact_path, uses_blocks
+                            with self.disk_lock:
+                                self._inventory()
+                                packed = compact_path(path)
+                                available = self.values['storage_bytes'] - self.disk_bytes
+                                if packed not in self.disk and len(self.disk) >= self.values['storage_files']:
+                                    available = 0
+                                def write_block(target, payload):
+                                    if not self.write(target, payload):
+                                        raise OSError('owned history quota reached')
+                                if uses_blocks(path, store._series_format_cache):
+                                    compact = append_recordings(path, [json.loads(payload) for payload in payloads],
+                                        writer=write_block, quota=available, cache=store._series_format_cache)
+                        if not compact:
+                            for payload in payloads:
+                                self.write(path, payload)
+                    except (OSError, ValueError) as exc:
+                        self.coverage['storage']={'limited':True,'reason':str(exc)[:256]}
+                        store._state_health("state recordings", str(exc))
                     finally:
                         with self.lock:
-                            self.pending_bytes-=len(payload)
+                            self.pending_bytes -= sum(map(len, payloads))
 
 
 def bind(app, store=None, views=None, logs=None):

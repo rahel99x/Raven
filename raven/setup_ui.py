@@ -319,12 +319,15 @@ def run_command(app, args):
     state = initialize(app)
     parts = list(args[1:]) or ["overview"]
     action = parts[0]
+    if action in ("storage-format", "storage-preview", "storage-convert", "storage-retain-preview", "storage-retain", "storage-tier-query"):
+        from .series_settings import command
+        return command(app, parts)
     if parts == ["updates"]:
         from .telemetry_settings_ui import open_settings
         open_settings(app)
     elif action in ("research", "analytics") and len(parts) == 2:
         _open(app, action + "." + parts[1])
-    elif action in ("overview", "allocation", "project", "exports", "telemetry", "installation") and len(parts) == 1:
+    elif action in ("overview", "allocation", "project", "exports", "telemetry", "installation", "storage") and len(parts) == 1:
         _open(app, action)
     elif getattr(app, "mode", "") != "setup":
         _say(app, "Open Setup before using its controls.", error=True)
@@ -483,6 +486,8 @@ def _document(app):
     else:
         from .setup_content import topic
         result += [(line, None) for line in topic(state["page"]).get("lines", ())]
+        if state["page"] == "storage":
+            result += [(line, None) for line in state.get("retention_lines", ())]
     return result
 
 

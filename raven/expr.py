@@ -20,6 +20,45 @@ class ExprError(ValueError):
     pass
 
 
+MAX_TEXT = 16384
+MAX_NODES = 2048
+MAX_STEPS = 100000
+MAX_ITEMS = 100000
+MAX_STRING = 1 << 20
+MAX_INTEGER_BITS = 4096
+
+
+def _bounded(value):
+    if isinstance(value, (str, bytes)) and len(value) > MAX_STRING:
+        raise ExprError("expression string budget exceeded")
+    if isinstance(value, (list, tuple, dict, set, frozenset)) and len(value) > MAX_ITEMS:
+        raise ExprError("expression collection budget exceeded")
+    if isinstance(value, int) and value.bit_length() > MAX_INTEGER_BITS:
+        raise ExprError("expression integer budget exceeded")
+    return value
+
+
+def _conversion_cost(value, remaining, depth=0):
+    """Bound native str(container) before it can allocate an oversized repr."""
+    if depth > 32:
+        raise ExprError("expression conversion depth budget exceeded")
+    remaining[0] -= 1
+    if isinstance(value, str):
+        remaining[1] -= 6 * len(value) + 2  # Worst-case escaped JSON-like text.
+    elif isinstance(value, int):
+        remaining[1] -= value.bit_length() + 3
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            _conversion_cost(key, remaining, depth + 1)
+            _conversion_cost(child, remaining, depth + 1)
+    elif isinstance(value, (list, tuple, set, frozenset)):
+        for child in value:
+            _conversion_cost(child, remaining, depth + 1)
+    remaining[1] -= 8
+    if min(remaining) < 0:
+        raise ExprError("expression conversion budget exceeded")
+
+
 class NS(dict):
     """A namespace: ``ns.key`` and ``ns["key"]`` both work; a missing attribute is None (so ``j.gpu < 20`` on a
     CPU job compares None and reads as False rather than raising)."""
@@ -72,14 +111,21 @@ def _check(node: ast.AST) -> None:
 
 
 class _Eval:
-    def __init__(self, ns: Dict[str, Any]):
+    def __init__(self, ns: Dict[str, Any], budget=None):
         self.ns = ns
+        self.budget = [MAX_STEPS] if budget is None else budget
+
+    def spend(self):
+        self.budget[0] -= 1
+        if self.budget[0] < 0:
+            raise ExprError("expression evaluation budget exceeded")
 
     def run(self, node: ast.AST) -> Any:
+        self.spend()
         m = getattr(self, "n_" + type(node).__name__, None)
         if m is None:
             raise ExprError(f"not allowed in an expression: {type(node).__name__}")
-        return m(node)
+        return _bounded(m(node))
 
     def n_Expression(self, n):
         return self.run(n.body)
@@ -152,6 +198,16 @@ class _Eval:
 
     def n_BinOp(self, n):
         a, b = self.run(n.left), self.run(n.right)
+        if isinstance(n.op, ast.Mult):
+            sequence, factor = (a, b) if isinstance(b, int) else (b, a)
+            if isinstance(sequence, (str, bytes, list, tuple)) and isinstance(factor, int):
+                maximum = MAX_STRING if isinstance(sequence, (str, bytes)) else MAX_ITEMS
+                if len(sequence) * max(0, factor) > maximum:
+                    raise ExprError("expression repetition budget exceeded")
+            elif isinstance(a, int) and isinstance(b, int) and a.bit_length() + b.bit_length() > MAX_INTEGER_BITS:
+                raise ExprError("expression integer budget exceeded")
+        if isinstance(n.op, ast.Mod) and isinstance(a, (str, bytes)):
+            raise ExprError("string formatting is not supported in expressions")
         try:
             return BIN[type(n.op)](a, b)
         except (TypeError, ZeroDivisionError) as e:
@@ -196,6 +252,30 @@ class _Eval:
                 return None
             if not callable(fn):
                 raise ExprError(f"not callable: .{n.func.attr}")
+            if n.func.attr == "replace" and isinstance(getattr(fn, "__self__", None), str) and len(args) >= 2:
+                source = fn.__self__
+                old, new = args[:2]
+                if isinstance(old, str) and isinstance(new, str):
+                    count = source.count(old)
+                    if len(args) > 2 and isinstance(args[2], int) and args[2] >= 0:
+                        count = min(count, args[2])
+                    if len(source) + count * (len(new) - len(old)) > MAX_STRING:
+                        raise ExprError("expression replacement budget exceeded")
+        # Native aggregations must share the same work budget as comprehensions.
+        # Snapshot namespaces contain sized collections, not arbitrary iterators.
+        for value in args:
+            if not isinstance(value, (str, bytes)) and hasattr(value, "__len__"):
+                size = len(value)
+                if size > MAX_ITEMS or size > self.budget[0]:
+                    raise ExprError("expression collection budget exceeded")
+                self.budget[0] -= size
+            elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+                raise ExprError("expression functions require bounded sized collections")
+        if fn in (list, set, sorted, sum, min, max, any, all):
+            if any(isinstance(value, (str, bytes)) and len(value) > MAX_ITEMS for value in args):
+                raise ExprError("expression collection budget exceeded")
+        if fn is str and args and isinstance(args[0], (dict, list, tuple, set, frozenset)):
+            _conversion_cost(args[0], [MAX_ITEMS, MAX_STRING])
         try:
             return fn(*args, **kwargs)
         except (TypeError, ValueError) as e:
@@ -209,10 +289,11 @@ class _Eval:
                 out.append(elt_fn(ns))
                 return
             g = gens[i]
-            it = _Eval(ns).run(g.iter)
+            it = _Eval(ns, self.budget).run(g.iter)
             if it is None:
                 return
             for item in it:
+                self.spend()
                 ns2 = dict(ns)
                 if isinstance(g.target, ast.Name):
                     ns2[g.target.id] = item
@@ -223,7 +304,7 @@ class _Eval:
                         raise ExprError(f"expected {len(names)} values to unpack, got {len(values)}")
                     for name, val in zip(names, values):
                         ns2[name] = val
-                ev = _Eval(ns2)
+                ev = _Eval(ns2, self.budget)
                 if all(ev.run(c) for c in g.ifs):
                     rec(i + 1, ns2)
 
@@ -231,7 +312,7 @@ class _Eval:
         return out
 
     def n_GeneratorExp(self, n):
-        return self._comp(n.generators, lambda ns: _Eval(ns).run(n.elt))
+        return self._comp(n.generators, lambda ns: _Eval(ns, self.budget).run(n.elt))
 
     n_ListComp = n_GeneratorExp
 
@@ -243,13 +324,19 @@ class Expr:
     """A compiled expression; ``expr(ns)`` evaluates it over a namespace (a dict)."""
 
     def __init__(self, text: str):
+        if len(text) > MAX_TEXT:
+            raise ExprError("expression text budget exceeded")
         self.text = text.strip()
         if not self.text:
             raise ExprError("empty expression")
         try:
             self.tree = ast.parse(self.text, mode="eval")
+        except (RecursionError, MemoryError) as exc:
+            raise ExprError("expression syntax budget exceeded") from exc
         except SyntaxError as e:
             raise ExprError(f"syntax: {e.msg} at column {e.offset}")
+        if sum(1 for _ in ast.walk(self.tree)) > MAX_NODES:
+            raise ExprError("expression syntax budget exceeded")
         _check(self.tree)
         self.names = sorted({n.id for n in ast.walk(self.tree) if isinstance(n, ast.Name)} - set(FUNCS) - {"None", "True", "False"})
 
@@ -258,7 +345,7 @@ class Expr:
             return _Eval(dict(ns)).run(self.tree)
         except ExprError:
             raise
-        except (TypeError, ValueError, ArithmeticError, LookupError, AttributeError) as exc:
+        except (TypeError, ValueError, ArithmeticError, LookupError, AttributeError, RecursionError) as exc:
             raise ExprError(f"{type(exc).__name__}: {exc}") from exc
 
     def __repr__(self):

@@ -35,6 +35,27 @@ _GENERAL = {
          ("Refresh and performance", "refreshsettings", False),
          ("Installation and diagnostics", "setup installation", False)),
     ),
+    "storage": (
+        "Recording storage and retention",
+        (
+            "JSONL is the default. Compact blocks are opt-in: they preserve raw values, timestamps, missing fields and attempt identity while compressing groups of records.",
+            "Preview a selected job before converting. Conversion copies and verifies every admitted row, then publishes a new file; the original JSONL is preserved. Incomplete or oversized inputs are refused with their actual error.",
+            "Saving a format affects new streams; existing JSONL changes only through explicit conversion. An existing compact file remains canonical if JSONL is selected later, preventing a stale original from replacing newer observations.",
+            "Each compact block has bounds, checksums and an append commit marker. Corruption exposes only its verified prefix and a coverage error; the damaged file is never silently repaired or overwritten.",
+            "Native retained archives are local to Raven's state directory. Project scientific metrics remain authoritative in the project and are not converted by these actions.",
+            "For reproducible commands: raven series inspect FILE; raven series migrate FILE (preview); raven series migrate FILE --apply; raven series export FILE --output NEW.jsonl.",
+            "Retention working archives use configured raw, 10-second and 1-minute tiers. Raw protection is enabled by default; originals and receipt references are always preserved. Set storage.retention in the managed configuration to choose ages and protect_raw for the working copy.",
+            "Tier results label raw versus rollup, counts, extrema, exact decimal sums, unknown units, source rows and observed gaps. Rollups cannot answer original ordering, quantiles, rates or smaller boundary intervals exactly. They never replace raw chart or export inputs.",
+            "Stop other Raven writers before applying a CLI migration. Keep state and original JSONL when downgrading. Compact storage is experimental until its storage, CPU and memory tradeoffs are measured for your recording workload.",
+        ),
+        (("Preview selected recording conversion", "setup storage-preview", False),
+         ("Convert selected recording, preserve original", "setup storage-convert", False),
+         ("Save compact block format", "setup storage-format blocks-v1", False),
+         ("Save default JSONL format", "setup storage-format jsonl", False),
+         ("Preview retention policy", "setup storage-retain-preview", False),
+         ("Publish protected retention working copy", "setup storage-retain", False),
+         ("Inspect explicit-fidelity tiers", "setup storage-tier-query", False)),
+    ),
     "exports": (
         "Automated reporting and exports",
         (
@@ -113,7 +134,8 @@ _GENERAL = {
             "SSH authentication and jump hosts belong in SSH configuration. Restart after changing the connection/profile; existing workers and terminals remain tied to their original target.",
             "On CARC or UCI HPC3, use the site's approved account, partition, compute environment, and storage. Site policies remain authoritative. Student login, lab billing account, and project directory are separate choices.",
         ),
-        (("Heavy allocation settings", "setup allocation", False),
+        (("Recording storage", "setup storage", False),
+         ("Heavy allocation settings", "setup allocation", False),
          ("Open preferences", "settings", False),
          ("Test terminal", "terminaltest", False),
          ("Inspect Heavy", "raven inspect", False),
@@ -123,6 +145,18 @@ _GENERAL = {
 
 
 _RESEARCH = {
+    "checkpoint-advice": (
+        "Checkpoint advice",
+        (
+            "Source: a raven.checkpoint-advice/v1 JSON document; examples/checkpoint-advice.json provides a complete starting point.",
+            "1. Declare the application and allocation scope, useful work in seconds, and whether checkpoint/restart support has been verified.",
+            "2. Supply measured checkpoint and restart duration samples, or explicitly labelled estimated ranges. File size and modification times cannot establish checkpoint duration.",
+            "3. Supply attempt exposure and outcomes. Node failures inform the interruption model; timeouts and preemption remain separate constraints. Sparse or incompatible evidence produces an explanation instead of an interval recommendation.",
+            "4. Attach the document and review the advised, fixed-interval, and no-checkpoint comparisons, uncertainty, and assumptions. These are advisory model estimates, not measured site efficacy.",
+            "Launch review can attach the same document through advanced launch settings. Raven does not insert checkpoint hooks or alter a submitted job automatically.",
+        ),
+        (("Attach checkpoint advice", "checkpoint-advice ", True),),
+    ),
     "experiment": (
         "Experiment",
         (
@@ -223,6 +257,7 @@ _RESEARCH = {
             "2. For historical validation, record each forecast before the job starts: job_id, submit, issued_at, and predicted_start in epoch seconds. Add actual_start only after it occurs.",
             "3. Open Forecast or attach the retained planning source. Read source age, revision, sample count, and calibration coverage alongside any start interval.",
             "A scheduler estimate can change. Application runtime predictions and values filled in after execution cannot establish a historical queue forecast.",
+            "Optional request alternatives use raven.forecast-scenarios/v1 (examples/forecast-scenarios.json). Supply pre-start model points, complete request/context and distinct completed outcomes. Missing runtime-risk or policy evidence causes abstention; alternatives never change a job automatically.",
         ),
         (("Attach forecast evidence", "forecast --file ", True),),
     ),

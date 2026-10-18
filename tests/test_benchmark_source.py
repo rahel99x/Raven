@@ -44,6 +44,18 @@ def test_metadata_free_unit_fixture_uses_current_namespace(tmp_path):
     assert B.package_directory(tmp_path) == tmp_path / "raven"
 
 
+def test_exact_subpackage_discovery_remains_source_bound(tmp_path):
+    source = checkout(tmp_path / "source", declaration='''[project]
+name = "another-product"
+[tool.setuptools.packages.find]
+include = ["retained_fixture", "retained_fixture.*"]
+[tool.setuptools.package-data]
+"retained_fixture.transport" = ["py.typed"]
+''')
+    assert B.namespace(source) == "retained_fixture"
+    assert B.package_directory(source) == source / "retained_fixture"
+
+
 @pytest.mark.parametrize("declaration", [
     '[project]\nname = "other"\n',
     '[tool.setuptools]\npackages = ["first", "second"]\n',
@@ -53,6 +65,10 @@ def test_metadata_free_unit_fixture_uses_current_namespace(tmp_path):
     '[tool.setuptools]\npackages = ["retained_fixture"]\npackages = ["different"]\n',
     '[tool.setuptools]\npackages = ["retained_fixture"]\n[tool.setuptools]\npackages = ["different"]\n',
     '[tool.setuptools.packages.find]\nwhere = ["."]\n',
+    '[tool.setuptools.packages.find]\ninclude = ["raven", "*"]\n',
+    '[tool.setuptools.packages.find]\ninclude = ["raven", "raven.other"]\n',
+    '[tool.setuptools.packages.find]\ninclude = ["../other", "../other.*"]\n',
+    '[tool.setuptools]\npackages = ["raven"]\n[tool.setuptools.packages.find]\ninclude = ["raven", "raven.*"]\n',
 ])
 def test_ambiguous_or_unsupported_metadata_refuses_without_fallback(tmp_path, declaration):
     (tmp_path / "pyproject.toml").write_text(declaration)

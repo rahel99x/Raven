@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raven.readthedocs.io/schemas/shared-host-policy.schema.json",
+  "title": "Raven explicit shared-host visibility policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "socket_gid",
+    "principals",
+    "interval_seconds",
+    "max_records"
+  ],
+  "properties": {
+    "schema": {
+      "const": "raven.shared-host-policy/v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "socket_gid": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "interval_seconds": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 3600
+    },
+    "max_records": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "principals": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 256,
+      "propertyNames": {
+        "pattern": "^(0|[1-9][0-9]{0,9})$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "user",
+          "accounts",
+          "site"
+        ],
+        "properties": {
+          "user": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "accounts": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "site": {
+            "type": "boolean"
+          },
+          "projects": {
+            "type": "array",
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/$defs/projectId"
+            }
+          }
+        }
+      }
+    },
+    "project_memberships": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": {
+        "$ref": "#/$defs/projectId"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "maxItems": 1024,
+        "uniqueItems": true,
+        "items": {
+          "$ref": "#/$defs/attempt"
+        }
+      }
+    }
+  },
+  "description": "Protected administrator-owned grants; 256 KiB encoded and 1024 total project attempts maximum. Project references and total membership bounds are enforced by the runtime.",
+  "$defs": {
+    "projectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cluster",
+        "job_id",
+        "submit_time",
+        "start_time",
+        "restart_count"
+      ],
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "job_id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[1-9][0-9]*(?:_[0-9]+|\\+[0-9]+)?$"
+        },
+        "submit_time": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 253402300799
+        },
+        "start_time": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 253402300799
+        },
+        "restart_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      }
+    }
+  }
+}

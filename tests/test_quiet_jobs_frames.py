@@ -168,3 +168,44 @@ def test_input_geometry_and_feedback_animation_deadlines_are_not_delayed(scene):
     s.cache.next_animation=s.now[0]+.01
     s.now[0]+=.02
     assert s.cache.due(s.app,160,40)
+
+
+def test_curses_early_and_unchanged_maintenance_turns_do_not_repaint(scene, monkeypatch):
+    import curses
+    s = scene
+    s.app.cfg.data["animations"] = False
+    monkeypatch.setattr(curses, 'has_colors', lambda: False)
+    for name in ('curs_set', 'mousemask', 'mouseinterval', 'doupdate', 'set_escdelay'):
+        monkeypatch.setattr(curses, name, lambda *args: None)
+
+    class Window:
+        def getmaxyx(self): return 40, 160
+        def get_wch(self): raise curses.error('no input')
+        def keypad(self, enabled): pass
+        def timeout(self, milliseconds): pass
+        def erase(self): pass
+        def addstr(self, *args): pass
+        def noutrefresh(self): pass
+
+    monkeypatch.setattr(curses, 'wrapper', lambda callback: callback(Window()))
+    waits = []
+    def wait(*args):
+        waits.append(s.now[0])
+        if len(waits) == 1:
+            s.now[0] += .199  # A rounded timeout can return before any deadline.
+        elif len(waits) == 2:
+            s.now[0] += .002  # Known unchanged maintenance still must execute.
+        else:
+            return ('q', None)
+        return None
+    monkeypatch.setattr(screen, '_wait_for_input', wait)
+    original, paints = screen._FrameCache.feedback, []
+    def feedback(*args):
+        paints.append(s.now[0])
+        return original(*args)
+    monkeypatch.setattr(screen._FrameCache, 'feedback', feedback)
+    prior_ticks = len(s.ticks)
+    screen.run_curses(s.app, s.views, None, s.store, None, s.app.cfg)
+    assert s.app.quit and len(waits) == 3
+    assert len(s.ticks) == prior_ticks + 2  # Initial document and due maintenance.
+    assert len(paints) == 1  # Initial frame only; no lost user action.

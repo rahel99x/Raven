@@ -139,3 +139,93 @@ def test_cli_trace_rejects_nonterminal_before_creating_file(tmp_path, monkeypatc
     assert cli.main(["--ui-trace", str(path)]) == 1
     assert not path.exists()
     assert "requires an interactive terminal" in capsys.readouterr().err
+
+
+def test_perfetto_timeline_keeps_nested_stall_and_process_thread_identity(monkeypatch):
+    import os
+    import threading
+    wall = [10_000_000]
+    monkeypatch.setattr(ui_trace.time, 'perf_counter_ns', lambda: wall[0])
+    trace, dashboard = ui_trace.UITrace(), app()
+    def child():
+        wall[0] += 40_000_000
+    def parent():
+        wall[0] += 1_000_000
+        trace.measure(dashboard, 'paint', child)
+        wall[0] += 2_000_000
+    trace.measure(dashboard, 'document', parent)
+    outer, inner = trace.report()['traceEvents']
+    assert (outer['name'], outer['ts'], outer['dur']) == ('document', 0, 43000)
+    assert (inner['name'], inner['ts'], inner['dur']) == ('paint', 1000, 40000)
+    assert inner['args']['parent_id'] == outer['args']['span_id']
+    assert inner['pid'] == os.getpid() and inner['tid'] == threading.get_native_id()
+    assert trace.report()['timeline']['complete']
+
+
+def test_timeline_ring_overwrite_reports_incomplete_and_remains_bounded():
+    trace = ui_trace.UITrace()
+    for _ in range(ui_trace.MAX_EVENTS + 17):
+        with trace.span('paint'):
+            pass
+    report = trace.report()
+    assert len(report['traceEvents']) == ui_trace.MAX_EVENTS
+    assert report['timeline']['dropped_events'] == 17
+    assert not report['timeline']['complete']
+
+
+def test_scheduler_correlates_nested_work_without_capturing_arguments():
+    from raven.worker_scheduler import WorkerScheduler
+    trace = ui_trace.UITrace()
+    scheduler = WorkerScheduler(workers=1, mode='single')
+    scheduler.ui_trace = trace
+    source, research = scheduler.lane('source'), scheduler.lane('research')
+    try:
+        with trace.span('input_dispatch'):
+            future = source.submit(lambda private: research.submit(lambda: private).result(), '/secret/project/job-123')
+        assert future.result(timeout=3) == '/secret/project/job-123'
+    finally:
+        scheduler.shutdown(wait=True)
+    report = trace.report()
+    events = report['traceEvents']
+    starts = {event['id']: event for event in events if event['ph'] == 's'}
+    finishes = {event['id']: event for event in events if event['ph'] == 'f'}
+    assert starts.keys() == finishes.keys() and len(starts) == 2
+    work = [event for event in events if event['ph'] == 'X' and event['args']['correlation_id'] is not None]
+    assert {event['cat'] for event in work} == {'sampler', 'worker'}
+    assert {event['args']['correlation_id'] for event in work} == starts.keys()
+    assert report['timeline']['pending_tasks'] == 0
+    assert '/secret' not in json.dumps(report) and 'job-123' not in json.dumps(report)
+    # Perfetto binds flows to an enclosing slice, not merely a nearby timestamp.
+    # A finish before the worker span starts silently loses the arrow.
+    for event in [*starts.values(), *finishes.values()]:
+        assert any(span['ph'] == 'X' and span['pid'] == event['pid'] and span['tid'] == event['tid']
+                   and span['ts'] <= event['ts'] <= span['ts'] + span['dur'] for span in events)
+
+
+def test_cancelled_and_rejected_tasks_do_not_leave_invented_execution_spans():
+    import threading
+    from raven.worker_scheduler import WorkerScheduler, WorkerQueueFull
+    trace, entered, release = ui_trace.UITrace(), threading.Event(), threading.Event()
+    scheduler = WorkerScheduler(workers=1, mode='single', max_queue=1, lanes=('source',))
+    scheduler.ui_trace = trace
+    lane = scheduler.lane('source')
+    def work():
+        entered.set()
+        assert release.wait(3)
+    try:
+        first = lane.submit(work)
+        assert entered.wait(3)
+        second = lane.submit(lambda: pytest.fail('cancelled task ran'))
+        with pytest.raises(WorkerQueueFull):
+            lane.submit(lambda: None)
+        assert second.cancel()
+        release.set()
+        first.result(timeout=3)
+    finally:
+        release.set()
+        scheduler.shutdown(wait=True)
+    report = trace.report()
+    assert report['timeline']['pending_tasks'] == 0
+    executions = [event for event in report['traceEvents'] if event['ph'] == 'X' and event['args']['correlation_id'] is not None]
+    assert len(executions) == 1
+    assert {event['args']['status'] for event in report['traceEvents'] if event['ph'] == 'f'} == {'started', 'cancelled', 'rejected'}

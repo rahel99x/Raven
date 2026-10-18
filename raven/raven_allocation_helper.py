@@ -8,6 +8,7 @@ import hashlib
 import json
 import math
 import os
+import secrets
 from pathlib import Path
 import selectors
 import shutil
@@ -28,25 +29,35 @@ def process_start(pid):
         return "unavailable"
 
 
+def boot_identity():
+    try:
+        return Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    except OSError:
+        return "unavailable"
+
+
 class OwnershipRecord:
     """Per-user/context lock and private receipt; old uncertainty blocks replay."""
-    def __init__(self, directory, plan, request_id):
+    def __init__(self, directory, plan, request_id, *, reconcile=False):
+        from .state_ownership import filesystem_kind, LOCAL_FILESYSTEMS
+        from .config_trust import directory_fd
         directory = Path(directory).expanduser() / "allocations"
-        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-        info = directory.lstat()
-        if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
-            raise ValueError("Allocation receipts need a private directory owned by this user")
+        if filesystem_kind(directory) not in LOCAL_FILESYSTEMS:
+            raise ValueError("Allocation ownership requires node-local state with reliable kernel locks")
+        with directory_fd(directory, create=True, private=True) as parent:
+            self.directory_fd = os.dup(parent)
+        self.previous = None
+        self.fd = -1
         key = hashlib.sha256(json.dumps({"site": plan["site_kind"], "cluster": plan["cluster_id"], "target": plan["target"]}, sort_keys=True).encode()).hexdigest()[:32]
         self.path = directory / (key + ".json")
-        lock = directory / (key + ".lock")
-        self.fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, 0o600)
         try:
+            self.fd = os.open(key + ".lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK, 0o600, dir_fd=self.directory_fd)
             info = os.fstat(self.fd)
             if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
                 raise ValueError("Invalid allocation ownership lock")
             fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             try:
-                receipt_fd = os.open(self.path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK)
+                receipt_fd = os.open(self.path.name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self.directory_fd)
             except FileNotFoundError:
                 receipt_fd = -1
             if receipt_fd >= 0:
@@ -54,29 +65,38 @@ class OwnershipRecord:
                     meta = os.fstat(source.fileno())
                     if not stat.S_ISREG(meta.st_mode) or meta.st_uid != os.getuid() or meta.st_mode & 0o077 or meta.st_size > 65536:
                         raise ValueError("Invalid prior allocation receipt")
-                    previous = json.loads(source.read(65537))
-                    if previous.get("state") != "light" or previous.get("cleanup_uncertain"):
+                    from .framing import finite_constant, unique_object
+                    previous = json.loads(source.read(65537), parse_constant=finite_constant, object_pairs_hook=unique_object)
+                    if not isinstance(previous, dict) or previous.get("schema") != "raven.allocation-receipt/v1":
+                        raise ValueError("Unsupported prior allocation receipt schema; preserve it for the compatible Raven version")
+                    if any(previous.get(key) is not None and not isinstance(previous[key], dict) for key in ("identity", "recovery")):
+                        raise ValueError("Invalid prior allocation receipt identity or recovery metadata")
+                    self.previous = previous
+                    if not reconcile and (previous.get("state") != "light" or previous.get("cleanup_uncertain")):
                         raise ValueError("A previous allocation request needs reconciliation; inspect its private receipt before starting another")
             self.request_id = request_id
         except BaseException:
-            os.close(self.fd)
-            self.fd = -1
+            self.close()
             raise
 
     def write(self, value):
-        data = (json.dumps({"schema": "raven.allocation-receipt/v1", **value}, allow_nan=False, sort_keys=True) + "\n").encode()
+        if value.get("schema", "raven.allocation-receipt/v1") != "raven.allocation-receipt/v1":
+            raise ValueError("Unsupported allocation receipt schema")
+        data = (json.dumps({**value, "schema": "raven.allocation-receipt/v1"}, allow_nan=False, sort_keys=True) + "\n").encode()
         if len(data) > 65536:
             raise ValueError("Allocation receipt exceeds its budget")
-        temporary = self.path.with_name(self.path.name + "." + self.request_id + ".tmp")
-        fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+        temporary = self.path.name + "." + secrets.token_hex(8) + ".tmp"
+        fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=self.directory_fd)
         try:
             with os.fdopen(fd, "wb") as output:
                 output.write(data)
                 output.flush()
-            os.replace(temporary, self.path)
+                os.fsync(output.fileno())
+            os.replace(temporary, self.path.name, src_dir_fd=self.directory_fd, dst_dir_fd=self.directory_fd)
+            os.fsync(self.directory_fd)
         finally:
             try:
-                temporary.unlink()
+                os.unlink(temporary, dir_fd=self.directory_fd)
             except FileNotFoundError:
                 pass
 
@@ -84,6 +104,9 @@ class OwnershipRecord:
         if self.fd >= 0:
             os.close(self.fd)
             self.fd = -1
+        if self.directory_fd >= 0:
+            os.close(self.directory_fd)
+            self.directory_fd = -1
 
 
 class Supervisor:
@@ -130,8 +153,9 @@ class Supervisor:
         self.state = {**self.state, **extra, "state": state, "mode": "heavy" if state == "heavy" else "light",
                       "generation": self.generation, "request_id": self.request_id}
         if self.record is not None:
-            receipt = {key: self.state.get(key) for key in ("state", "request_id", "generation", "target", "ownership", "identity", "job_id", "allocation_observation", "host", "error", "cleanup_uncertain")}
-            receipt.update(helper_pid=os.getpid(), helper_start=process_start(os.getpid()), updated_at=time.time())
+            receipt = {key: self.state.get(key) for key in ("state", "request_id", "generation", "target", "ownership", "identity", "job_id", "allocation_observation", "host", "error", "cleanup_uncertain", "request_name", "connection_binding", "created_at", "owner_uid", "cluster_id", "cleanup_on_loss")}
+            receipt.update(helper_pid=os.getpid(), helper_start=process_start(os.getpid()),
+                           helper_host=socket.gethostname(), helper_boot=boot_identity(), updated_at=time.time())
             try:
                 self.record.write(receipt)
             except (OSError, ValueError) as exc:
@@ -154,7 +178,10 @@ class Supervisor:
         if checked["digest"] != plan.get("digest"):
             raise ValueError("Reviewed allocation plan changed before launch")
         self.plan = checked
-        self.state.update({**checked, "identity": {}, "job_id": "", "allocation_observation": {}, "host": "", "cleanup_uncertain": False})
+        from .raven_allocation_recovery import connection_binding
+        self.state.update({"created_at": time.time(), "cleanup_on_loss": True,
+                           "request_name": "raven-heavy-" + self.request_id if checked["ownership"] == "dedicated-allocation" else "",
+                           "connection_binding": connection_binding(checked), **checked, "identity": {}, "job_id": "", "allocation_observation": {}, "host": "", "cleanup_uncertain": False})
         try:
             self.record = OwnershipRecord(message["state_dir"], checked, self.request_id)
             self.state["receipt_path"] = str(self.record.path)
@@ -164,7 +191,7 @@ class Supervisor:
             return
         self.publish("preparing")
         launch_environment = scrub_launch_environment(cpus=checked["resources"]["cpus"])
-        first_executable = build_launch(checked, [sys.executable, "-m", "raven.raven_worker"])[0]
+        first_executable = build_launch(checked, [sys.executable, "-m", "raven.raven_worker"], request_id=self.request_id)[0]
         if shutil.which(first_executable, path=launch_environment.get("PATH")) is None:
             self.publish("light", error="Required launch executable is unavailable: " + first_executable, cleanup_uncertain=False)
             self.done = True
@@ -181,7 +208,7 @@ class Supervisor:
                   "session_id": self.request_id, "generation": self.generation, "policy_digest": message["policy_digest"],
                   "context": context, "resources": checked["resources"]}
         launcher = str(Path(__file__).with_name("raven_allocation_exec.py"))
-        self.client = WorkerClient(config, build_launch=lambda argv: [sys.executable, launcher, str(os.getpid()), *build_launch(checked, argv)],
+        self.client = WorkerClient(config, build_launch=lambda argv: [sys.executable, launcher, str(os.getpid()), *build_launch(checked, argv, request_id=self.request_id)],
                                    launch_env=launch_environment, observe_allocation=checked["ownership"] == "dedicated-allocation")
         try:
             self.client.start()
@@ -211,12 +238,15 @@ class Supervisor:
                 from .slurm import parse_kv
                 from .raven_allocation_reuse import duration
                 fields = parse_kv(records.get("job_record", ""))
-                if fields.get("TimeLimit") and fields.get("RunTime"):
+                try:
                     remaining = duration(fields["TimeLimit"]) - duration(fields["RunTime"])
-                    if remaining <= 1:
-                        self.client.provide_placement(error="Allocation expires before worker admission")
-                        return
-                    self.lease_deadline = time.monotonic() + min(self.plan["resources"]["wall_seconds"], remaining - 1)
+                except (KeyError, ValueError):
+                    self.client.provide_placement(error="Allocation lease fields are missing, ambiguous or invalid")
+                    return
+                if remaining <= 1:
+                    self.client.provide_placement(error="Allocation expires before worker admission")
+                    return
+                self.lease_deadline = time.monotonic() + min(self.plan["resources"]["wall_seconds"], remaining - 1)
             self.client.provide_placement(message.get("records"), message.get("error"))
         elif op == "submit":
             if not self.client.ready or self.state["state"] != "heavy":
@@ -342,6 +372,7 @@ class Supervisor:
                 self.out.popleft()
 
     def run(self):
+        client_fds = set()
         try:
             while True:
                 for message in self.decoder.take():
@@ -353,7 +384,36 @@ class Supervisor:
                 self.flush()
                 if self.done and (not self.out or self.disconnect):
                     break
-                for _key, _events in self.selector.select(.01):
+                # The client's selector remains the sole pipe reader. Mirror
+                # its readiness interests here so allocation commands, output,
+                # process exit and leases can wake the existing helper owner.
+                for fd in client_fds:
+                    try:
+                        self.selector.unregister(fd)
+                    except (KeyError, ValueError, OSError):
+                        pass
+                client_fds.clear()
+                buffered = self.decoder.has_complete_frame
+                if self.client is not None:
+                    descriptors, pending = self.client.readiness()
+                    buffered = buffered or pending
+                    for fileobj, events in descriptors:
+                        try:
+                            key = self.selector.register(fileobj, events, "worker")
+                            client_fds.add(key.fd)
+                        except (KeyError, ValueError, OSError):
+                            pass
+                self.selector.modify(self.channel, selectors.EVENT_READ | (selectors.EVENT_WRITE if self.out else 0))
+                now = time.monotonic()
+                deadlines = [self.started + (self.plan["pending_timeout_seconds"] if self.request_id else 10)]
+                if self.ready_at:
+                    deadlines = [self.last_summary + 1, self.lease_deadline or now + 1]
+                    if self.plan["idle_release_seconds"] and not self.retained:
+                        deadlines.append(self.last_work + self.plan["idle_release_seconds"])
+                delay = 0 if buffered else max(0, min(1, min(deadlines) - now))
+                for _key, _events in self.selector.select(delay):
+                    if _key.data == "worker" or not _events & selectors.EVENT_READ:
+                        continue
                     try:
                         data = self.channel.recv(65536)
                     except (BlockingIOError, InterruptedError):

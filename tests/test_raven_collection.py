@@ -792,7 +792,9 @@ def test_managed_initial_and_periodic_jitter_never_schedule_below_source_floor(m
     timer = Timer()
     monkeypatch.setattr("raven.sampler.time.time", timer)
     monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
-    sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 2}, [], collection={})
+    raw = Recorder()
+    raw.response = ""  # A successful empty queue, not a malformed two-column record.
+    sampler = Sampler(Slurm(raw, "test"), Store(persist=False), {"jobs": 2}, [], collection={})
     try:
         assert not sampler.due("jobs", 1000.)
         assert sampler.due("jobs", 1012.)
@@ -810,7 +812,9 @@ def test_explicit_snapshot_primes_only_first_visible_attempts(monkeypatch):
     timer = Timer()
     monkeypatch.setattr("raven.sampler.time.time", timer)
     monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
-    sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
+    raw = Recorder()
+    raw.response = ""  # A successful empty queue, not a malformed two-column record.
+    sampler = Sampler(Slurm(raw, "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
         sampler.prime_collection_snapshot()
         assert sampler.due("jobs", 1000.)
@@ -833,7 +837,9 @@ def test_new_visible_demand_primes_only_unsampled_sources(monkeypatch):
     timer = Timer()
     monkeypatch.setattr("raven.sampler.time.time", timer)
     monkeypatch.setattr("random.SystemRandom.uniform", lambda self, first, last: last)
-    sampler = Sampler(Slurm(Recorder(), "test"), Store(persist=False), {"jobs": 60}, [], collection={})
+    raw = Recorder()
+    raw.response = ""  # A successful empty queue, not a malformed two-column record.
+    sampler = Sampler(Slurm(raw, "test"), Store(persist=False), {"jobs": 60}, [], collection={})
     try:
         sampler.prime_collection_snapshot()
         sampler.run_source("jobs")

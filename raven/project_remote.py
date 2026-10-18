@@ -12,21 +12,26 @@ import json
 from pathlib import Path
 import hashlib
 import secrets
-import zlib
+import lzma
 
 from .remote import RemoteFiles
 
 _MODULES = ("projects", "artifacts", "remote", "slurm", "model", "clock", "history_snapshots", "ui_state",
             "series_archive", "series_publication", "series_cache_limits", "predict", "planning_io", "log_catalog", "provenance", "array_manifest",
-            "artifact_pages", "log_presentation", "retained_telemetry_io")
+            "artifact_pages", "log_presentation", "retained_telemetry_io",
+            "series_identity", "state_ownership", "config_trust")
 _OPERATIONS = {"discover_project", "discover_job", "select_run", "read_bound_json",
                "read_bound_passport", "read_bound_artifacts", "read_bound_tail",
                "read_bound_metric_chunk", "read_bound_telemetry", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"}
 MAX_REPLY = 96 * 1024 * 1024
 
 _BOOTSTRAP = r'''
-import base64, importlib.abc, importlib.util, json, sys, zlib
-sources = json.loads(zlib.decompress(base64.b64decode("".join(sys.argv[2:]))))
+import base64, importlib.abc, importlib.util, json, sys, lzma
+decoder = lzma.LZMADecompressor(memlimit=32 * 1024 * 1024)
+source_bytes = decoder.decompress(base64.b64decode("".join(sys.argv[2:]), validate=True), max_length=2 * 1024 * 1024 + 1)
+if len(source_bytes) > 2 * 1024 * 1024 or not decoder.eof or decoder.unused_data:
+    raise ValueError("Invalid or oversized project reader bundle")
+sources = json.loads(source_bytes)
 class ReaderLoader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
     def find_spec(self, fullname, path=None, target=None):
         if fullname in sources:
@@ -89,8 +94,12 @@ def _payload():
     for name in _MODULES:
         sources["raven." + name] = (root / (name + ".py")).read_text(encoding="utf-8")
     data = json.dumps(sources, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
-    packed = base64.b64encode(zlib.compress(data, 9)).decode("ascii")
-    # Keep every SSH argument beneath the POSIX per-argument limit.
+    if len(data) > 2 * 1024 * 1024:
+        raise ValueError("project reader source exceeds its transfer budget")
+    # Source is compressed once per local process. XZ keeps the transitive
+    # reader modules below SSH's single remote-command argument limit; splitting
+    # argv locally cannot evade that limit. The remote decoder is bounded.
+    packed = base64.b64encode(lzma.compress(data, preset=6)).decode("ascii")
     if len(packed) > 512 * 1024:
         raise ValueError("project reader bundle exceeds its transfer budget")
     return tuple(packed[i:i + 32000] for i in range(0, len(packed), 32000))

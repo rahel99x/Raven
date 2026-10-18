@@ -271,7 +271,20 @@ def run_command(app, args):
                         "Preparing a bounded execution review locally")
         else:
             action = words[0] if words else "show"
-            if action in {"resume", "retry", "recover", "collect"}:
+            if action == "policy":
+                if len(words) != 4 or not state["review"]:
+                    raise ValueError("Open an orchestration review, then use execution policy QUEUE_MODEL.json LIMITS.json OUTPUT.json")
+                if getattr(app, "replay", None) or getattr(getattr(app, "files", None), "remote", False):
+                    raise ValueError("Campaign policy export requires the original local review context")
+                from .campaign_policy import export_manifest
+                import copy
+                _require_connection(app, state["review"])
+                captured = copy.deepcopy(state["review"])
+                captured_receipt = copy.deepcopy(state["receipt"])
+                _background(app, lambda: export_manifest(captured, words[1], words[2], words[3], receipt=captured_receipt),
+                            lambda path: app.say("Campaign policy exported: " + path + "; open Operations > Campaign submission policy"),
+                            "Exporting the immutable campaign review; no jobs are submitted")
+            elif action in {"resume", "retry", "recover", "collect"}:
                 if not state["receipt_path"]:
                     raise ValueError("open an execution receipt first: execution RECEIPT.json")
                 if action == "collect":

@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rahel99x/Raven/docs/schemas/allocation-health.v1.schema.json",
+  "title": "Reviewed allocation health receipt",
+  "type": "object",
+  "required": [
+    "schema",
+    "execution",
+    "hardware",
+    "settings",
+    "samples",
+    "summary",
+    "status",
+    "cohort",
+    "elapsed_seconds",
+    "uncertainty",
+    "comparison"
+  ],
+  "properties": {
+    "schema": {
+      "const": "raven.allocation-health/v1"
+    },
+    "execution": {
+      "type": "object",
+      "required": [
+        "site_kind",
+        "host",
+        "uid",
+        "verified",
+        "verification"
+      ],
+      "properties": {
+        "site_kind": {
+          "enum": [
+            "desktop",
+            "slurm"
+          ]
+        },
+        "verified": {
+          "const": true
+        },
+        "host": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "hardware": {
+      "type": "object"
+    },
+    "settings": {
+      "type": "object",
+      "required": [
+        "tests",
+        "bytes",
+        "seconds",
+        "repeats",
+        "warmup",
+        "maximum_io_bytes",
+        "peak_scratch_bytes",
+        "maximum_buffer_bytes"
+      ],
+      "properties": {
+        "tests": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "memory",
+              "scratch",
+              "mpi"
+            ]
+          }
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 16777216
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 30
+        },
+        "repeats": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        },
+        "warmup": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      }
+    },
+    "samples": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "required": [
+          "test",
+          "repeat",
+          "warmup",
+          "seconds",
+          "bytes",
+          "verified"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "test": {
+            "enum": [
+              "memory",
+              "scratch",
+              "mpi"
+            ]
+          },
+          "repeat": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9
+          },
+          "warmup": {
+            "type": "boolean"
+          },
+          "seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 4096,
+            "maximum": 16777216
+          },
+          "verified": {
+            "const": true
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "cancelled",
+        "budget-exhausted",
+        "error"
+      ]
+    },
+    "cohort": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "uncertainty": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason"
+      ]
+    },
+    "review_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$comment": "Descriptive hardware fields may be extended. Schema validity does not establish worker ownership, hardware health or cross-site efficacy; runtime validates the reviewed target separately."
+}

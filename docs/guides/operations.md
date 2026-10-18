@@ -10,7 +10,9 @@ introduced in the 4.15 release. The catalog also includes the `queue-order` and
 `rerun-job` job-management operations.
 
 Read the [generated catalog](../reference/operations.md) for the current
-operations and field definitions. Use
+operations and field definitions. The [reliability and research guide index](reliability-and-research.md)
+links evidence queries, historical observations, profiling, scientific comparisons
+and optional services to their prerequisites and qualification limits. Use
 `:workbench run|investigate|compare|results|connect|all` to open a task workspace.
 The [implementation ledger](../FLAGSHIP_IMPLEMENTATION.md) records the supported
 scope of tracing, scientific investigation, site integration, and cooperative

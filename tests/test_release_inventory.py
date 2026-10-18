@@ -31,11 +31,11 @@ def wheel(tmp_path, *, version="6.0.0", license_bytes=LICENSE, extra=(), runtime
     return path
 
 
-def sdist(tmp_path, *, special=None):
+def sdist(tmp_path, *, special=None, source=b"pass\n"):
     path = tmp_path / "raven-6.0.0.tar.gz"
     metadata = b'Metadata-Version: 2.4\nName: raven\nVersion: 6.0.0\nLicense-Expression: MIT\nRequires-Python: >=3.10\n\n'
     with tarfile.open(path, "w:gz") as archive:
-        for name, content in (("PKG-INFO", metadata), ("LICENSE", LICENSE), ("raven/__init__.py", b"pass\n")):
+        for name, content in (("PKG-INFO", metadata), ("LICENSE", LICENSE), ("raven/__init__.py", source)):
             entry = tarfile.TarInfo("raven-6.0.0/" + name)
             entry.size = len(content)
             archive.addfile(entry, io.BytesIO(content))
@@ -169,6 +169,73 @@ def test_invalid_archive_is_a_clean_cli_failure(tmp_path):
     artifact.write_bytes(b"invalid")
     assert R.main(["create", "--output", str(tmp_path / "out.json"), str(artifact)]) == 2
     assert not (tmp_path / "out.json").exists()
+
+
+def release_pair(tmp_path):
+    artifacts = [wheel(tmp_path), sdist(tmp_path, source=b"VERSION = '6.0.0'\n")]
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps(R.create_inventory(artifacts, source_commit="a" * 40)))
+    return inventory, artifacts
+
+
+def test_release_policy_binds_version_tag_revision_and_source_members(tmp_path):
+    inventory, artifacts = release_pair(tmp_path)
+    value = R.verify_release_policy(inventory, artifacts, expected_version="6.0.0",
+                                    expected_source="a" * 40, tag="v6.0.0")
+    assert value["version"] == "6.0.0"
+
+
+@pytest.mark.parametrize("change,reason", [
+    ({"expected_version": "6.0.1"}, "version"),
+    ({"expected_source": "b" * 40}, "revision"),
+    ({"expected_source": "abcdef0"}, "full expected"),
+    ({"tag": "v6.0.1"}, "tag"),
+])
+def test_release_policy_refuses_wrong_expected_identity(tmp_path, change, reason):
+    inventory, artifacts = release_pair(tmp_path)
+    options = {"expected_version": "6.0.0", "expected_source": "a" * 40, "tag": "v6.0.0"}
+    options.update(change)
+    with pytest.raises(ValueError, match=reason):
+        R.verify_release_policy(inventory, artifacts, **options)
+
+
+def test_release_policy_rejects_different_source_even_with_valid_inventory(tmp_path):
+    artifacts = [wheel(tmp_path), sdist(tmp_path)]
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps(R.create_inventory(artifacts, source_commit="a" * 40)))
+    with pytest.raises(ValueError, match="different Raven source"):
+        R.verify_release_policy(inventory, artifacts, expected_version="6.0.0", expected_source="a" * 40)
+
+
+def test_provenance_verifier_uses_caller_identity_and_no_shell(tmp_path, monkeypatch):
+    import sys
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "scripts"))
+    import verify_release as verifier
+    inventory, artifacts = release_pair(tmp_path)
+    called = []
+    monkeypatch.setattr(verifier.subprocess, "run", lambda command, **kw: called.append((command, kw)))
+    arguments = [str(inventory), *map(str, artifacts), "--repository", "rahel99x/Raven",
+                 "--source", "a" * 40, "--version", "6.0.0", "--bundle", str(tmp_path / "bundle.jsonl")]
+    assert verifier.main(arguments + ["--plan"]) == 0 and called == []
+    assert verifier.main(arguments) == 0 and len(called) == 2
+    for command, options in called:
+        assert command[:3] == ["gh", "attestation", "verify"]
+        assert command[command.index("--signer-workflow") + 1] == "rahel99x/Raven/.github/workflows/release-candidate.yml"
+        assert command[command.index("--signer-digest") + 1] == "a" * 40
+        assert command[command.index("--source-digest") + 1] == "a" * 40
+        assert "--deny-self-hosted-runners" in command
+        assert options["check"] and options["timeout"] == 90 and "shell" not in options
+
+
+def test_provenance_verifier_does_not_ignore_signature_failure(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "scripts"))
+    import verify_release as verifier
+    inventory, artifacts = release_pair(tmp_path)
+    def rejected(command, **kwargs):
+        raise verifier.subprocess.CalledProcessError(1, command)
+    monkeypatch.setattr(verifier.subprocess, "run", rejected)
+    assert verifier.main([str(inventory), *map(str, artifacts), "--repository", "rahel99x/Raven",
+                          "--source", "a" * 40, "--version", "6.0.0"]) == 2
 
 
 def test_zip_directory_budget_checked_before_constructing_zipfile(tmp_path, monkeypatch):

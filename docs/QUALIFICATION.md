@@ -121,6 +121,10 @@ results, connect a project, and prepare a reviewed rerun. Record task completion
 errors, time, accessibility failures, and observer cost. Evaluate scientific
 outcomes against a stated hypothesis, baseline, and acceptance rule.
 
+Use the [G5 preparation and observation guide](guides/usability-study.md) for
+the existing five tasks, disposable example files, consent boundaries and a
+separate demo/real-account record. No completed human study is implied.
+
 ## Preserve the evaluation record
 
 Publish enough information to reproduce each recorded check:

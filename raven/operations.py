@@ -26,7 +26,7 @@ import uuid
 
 from .remote import LocalFiles
 
-MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale", "ops_queue_order", "ops_workspace", "ops_investigation", "ops_platform", "ops_runtime", "ops_trace")
+MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale", "ops_queue_order", "ops_workspace", "ops_investigation", "ops_platform", "ops_runtime", "ops_trace", "ops_evidence_queries", "ops_health", "ops_process_profile", "ops_queue_models", "ops_signal_analysis", "ops_campaign_policy")
 PLAN_SCHEMA = "raven.operation-plan/v1"
 REPORT_SCHEMA = "raven.operation/v1"
 MAX_DOCUMENT = 4 << 20
@@ -47,6 +47,7 @@ class Context:
     replay: bool = False
     ui_state_status: dict = field(default_factory=dict)
     execution: object = None
+    verified_execution: dict = field(default_factory=dict)
 
 
 def cancelled(ctx):
@@ -341,6 +342,9 @@ def atomic_json(path, value, overwrite=False):
 def _registry():
     entries = {}
     for name in MODULES:
+        from .distribution_profile import absent
+        if absent("raven." + name):
+            continue
         module = importlib.import_module("raven." + name)
         for specification in module.SPECIFICATIONS:
             key = specification["key"]
@@ -358,6 +362,9 @@ def specification(feature):
     try:
         return copy.deepcopy(_registry()[feature][1])
     except KeyError as exc:
+        from .distribution_profile import missing_operation, unavailable
+        if missing_operation(feature):
+            raise ValueError(unavailable(feature)) from exc
         raise ValueError("Unknown operation: " + clean(feature)) from exc
 
 

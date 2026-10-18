@@ -420,7 +420,11 @@ def overlay(views, snap, app, width, height):
                 [(" |" + ("[][].[][].[][].[][]." if views.g.ascii else "████▁▂▃▄▅▆▇█⣿⣿┌┐└┘░▒▓") + "|", "cyan")],
                 [(" cyan ", "cyan"), (" green ", "green"), (" yellow ", "yellow"), (" red ", "red"), (" magenta ", "magenta"), (" blue ", "blue")],
                 [(" Press keys or click anywhere. These events do not activate commands.", "dim")]]
-        rows += [[(" " + clean(event, views.g.ascii), "")] for event in state["probe_events"][-max(1, height - 10):]]
+        sync = getattr(app, "terminal_sync", None)
+        if sync is not None:
+            status = sync.snapshot()
+            rows.append([(" " + L.cut("Frame synchronization: " + status["reason"], max(1, width - 8), views.g.ascii), "dim")])
+        rows += [[(" " + clean(event, views.g.ascii), "")] for event in state["probe_events"][-max(1, height - 10 - int(sync is not None)):]]
         rows.append([(" Esc closes | :terminaltest clipboard requests a copy test outside this probe", "dim")])
         return L.box(views.g, rows, width, height, "Terminal input test")
     return None

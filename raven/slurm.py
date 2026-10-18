@@ -10,6 +10,8 @@ import math
 import re
 import subprocess
 import time
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .model import Finished, GpuSample, Job, Live, Node, NodeCell, Partition, Step, fint, fnum, gres_gpus, gpus_in_tres, hms, nbytes, secs, stamp
@@ -23,10 +25,125 @@ PEND_FMT = "%P|%C|%b|%D"
 SACCT_LEGACY_FIELDS = "JobID,JobName,State,Elapsed,AllocCPUS,TotalCPU,ReqMem,MaxRSS,Start,End,Partition,NNodes,ExitCode,AllocTRES,NodeList,Submit,WorkDir,Timelimit"
 SACCT_FIELDS = SACCT_LEGACY_FIELDS + ",User,Account,Comment"
 SSTAT_FIELDS = "JobID,AveCPU,MaxRSS,MaxRSSTask,MaxRSSNode,AveRSS,NTasks,MinCPU,MinCPUTask,MinCPUNode"
-SACCT_STEP_FIELDS = "JobID,JobName,State,Elapsed,TotalCPU,MaxRSS,MaxRSSNode,MaxRSSTask,NTasks,ExitCode,NodeList"
-SACCT_SUBMIT_FIELDS = "JobID,SubmitLine,WorkDir,JobName,Partition,Account,QOS,ReqCPUS,ReqMem,Timelimit,NNodes,ReqTRES"
-SACCT_LOG_FIELDS = "JobID,JobIDRaw,JobName,WorkDir,StdOut,StdErr,User"
+SACCT_STEP_FIELDS = "JobID,JobName,State,Elapsed,TotalCPU,MaxRSS,MaxRSSNode,MaxRSSTask,NTasks,ExitCode,NodeList,End,Submit,Start,User,Cluster"
+SACCT_SUBMIT_FIELDS = "JobID,SubmitLine,WorkDir,JobName,Partition,Account,QOS,ReqCPUS,ReqMem,Timelimit,NNodes,ReqTRES,Submit,Start,User,Cluster"
+SACCT_LOG_FIELDS = "JobID,JobIDRaw,JobName,WorkDir,StdOut,StdErr,User,Submit,Start,Cluster"
+ACCOUNTING_FALLBACK_DAYS = 14
+ACCOUNTING_MAX_EXPLICIT_DAYS = 3650
 MAX_LOG_DETAIL_BYTES = 1 << 20
+MAX_PARSER_BYTES = 16 << 20
+MAX_PARSER_ROW_BYTES = 65536
+_JOB_ID = re.compile(r"[0-9]+(?:_(?:[0-9]+|\[[0-9,:%-]+\]))?(?:\+[0-9]+)?(?:\.[A-Za-z0-9_+-]+)?\Z")
+_JOB_STATE = re.compile(r"[A-Z][A-Z_+]*\Z")
+
+
+@dataclass
+class ParseDiagnostics:
+    """Bounded coverage metadata; never retains potentially private raw rows."""
+
+    source: str
+    rows: int = 0
+    accepted: int = 0
+    rejected: int = 0
+    ambiguous: int = 0
+    reasons: dict = field(default_factory=dict)
+
+    def issue(self, reason, *, rejected=True):
+        if rejected:
+            self.rejected += 1
+        else:
+            self.ambiguous += 1
+        if reason in self.reasons or len(self.reasons) < 8:
+            self.reasons[reason] = self.reasons.get(reason, 0) + 1
+
+    @property
+    def partial(self):
+        return bool(self.rejected or self.ambiguous)
+
+    def summary(self):
+        reasons = "; ".join(f"{reason}: {count}" for reason, count in self.reasons.items())
+        return (f"{self.source} parse coverage: {self.accepted}/{self.rows} rows, "
+                f"{self.rejected} rejected, {self.ambiguous} ambiguous fields" + (f" ({reasons})" if reasons else ""))
+
+
+def _parser_lines(text, report):
+    if not isinstance(text, str) or len(text) > MAX_PARSER_BYTES or (not text.isascii() and len(text.encode("utf-8")) > MAX_PARSER_BYTES):
+        raise CommandError(f"{report.source} reply exceeds the 16 MiB parser limit")
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        report.rows += 1
+        if len(line) > MAX_PARSER_ROW_BYTES or (not line.isascii() and len(line.encode("utf-8")) > MAX_PARSER_ROW_BYTES):
+            report.issue("oversized row")
+            continue
+        yield line
+
+
+def _unsigned(value):
+    return bool(value) and len(value) <= 20 and value.isascii() and value.isdecimal()
+
+
+def _scheduler_time(value):
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})?", value):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _same_scheduler_time(first, second):
+    a, b = _scheduler_time(first), _scheduler_time(second)
+    # Comparing a remote wall clock with a timezone-aware instant cannot prove
+    # identity without the remote timezone. Do not guess the client's timezone.
+    return a is not None and b is not None and (a.tzinfo is None) == (b.tzinfo is None) and a == b
+
+
+def _record_identity(record):
+    identity = {name: (record.get(name, "") if isinstance(record, dict) else getattr(record, name, ""))
+                for name in ("submit", "start", "user", "cluster")}
+    state = record.get("state", "") if isinstance(record, dict) else getattr(record, "state", "")
+    if state == "PENDING":
+        identity["start"] = ""  # A pending estimate can move; it is not an attempt start.
+    return identity
+
+
+def _identity_error(fields, jid, identity, *, require_submit=True):
+    observed = fields.get("JobId", "")
+    if fields.get("ArrayJobId") and fields.get("ArrayTaskId"):
+        observed = fields["ArrayJobId"] + "_" + fields["ArrayTaskId"]
+    if "+" in jid and fields.get("HetJobId") and fields.get("HetJobOffset"):
+        observed = fields["HetJobId"] + "+" + fields["HetJobOffset"]
+    if observed != jid:
+        return "scheduler response does not name the exact selected job"
+    submit = identity.get("submit", "")
+    if require_submit and _scheduler_time(submit) is None:
+        return "selected attempt has no verified submission time; choose an explicit historyrange START END to locate it"
+    if submit and not _same_scheduler_time(submit, fields.get("SubmitTime")):
+        return "scheduler submission time differs from, or cannot verify, the selected attempt"
+    start = identity.get("start", "")
+    if _scheduler_time(start) is not None and not _same_scheduler_time(start, fields.get("StartTime")):
+        return "scheduler start time differs from, or cannot verify, the selected attempt"
+    owner = fields.get("User", fields.get("UserId", "").split("(", 1)[0])
+    if identity.get("user") and owner != identity["user"]:
+        return "scheduler owner differs from, or cannot verify, the selected attempt"
+    if identity.get("cluster") and fields.get("Cluster", fields.get("ClusterName")) != identity["cluster"]:
+        return "scheduler cluster differs from, or cannot verify, the selected attempt"
+    return ""
+
+
+def _queue_core(fields, report, *, group=False):
+    minimum = 12 if group else 15
+    state, nodes, cpus, priority = (4, 7, 8, 11) if group else (3, 6, 7, 14)
+    if len(fields) < minimum:
+        report.issue("short row")
+        return False
+    if (not _JOB_ID.fullmatch(fields[0]) or "." in fields[0]
+            or not _JOB_STATE.fullmatch(fields[state])
+            or not all(_unsigned(fields[index]) for index in (nodes, cpus, priority))):
+        report.issue("invalid identity, state or numeric column")
+        return False
+    return True
 SINFO_NODE_FMT = "NodeList:24,Partition:20,Gres:60,GresUsed:60,StateCompact:14,CPUsState:16,Memory:12,AllocMem:12"
 NVSMI = ["nvidia-smi", "--query-gpu=index,utilization.gpu,memory.used,memory.total,name", "--format=csv,noheader,nounits"]
 
@@ -38,6 +155,8 @@ class CommandError(RuntimeError):
 # ------------------------------------------------------------------------------------------------ backends
 class Backend:
     """Runs a command; returns (stdout, latency seconds).  Raises CommandError on failure or timeout."""
+
+    probe_json = True
 
     def run(self, cmd: Sequence[str], timeout: float = 8.0) -> Tuple[str, float]:
         t0 = time.perf_counter()
@@ -66,6 +185,8 @@ class Backend:
 class FakeBackend(Backend):
     """A small cluster that evolves with the wall clock: jobs start, finish, get cancelled or held, GPU load
     breathes.  Answers the exact commands the real layer issues, as text, so every parser runs."""
+
+    probe_json = False
 
     def __init__(self, user: str = "alex", t0: Optional[float] = None, speed: float = 1.0):
         self.user, self.t0, self.speed = user, (time.time() if t0 is None else t0), speed
@@ -336,7 +457,8 @@ class FakeBackend(Backend):
                 for f in self._finished_rows():
                     if f["id"] == jid:
                         out = os.path.join(wd, "logs", f"{f['name'].split('_')[0]}-{jid}.out")
-                        return "|".join([jid, jid, f["name"], wd, out, out, self.user]) + "\n", 0.1
+                        return "|".join([jid, jid, f["name"], wd, out, out, self.user,
+                                         f.get("submit") or self._before(f["start"], 600), f["start"], "fake"]) + "\n", 0.1
                 return "", 0.1
             if "-j" in cmd and "SubmitLine" in " ".join(cmd):   # the submit line of one job
                 jid = cmd[cmd.index("-j") + 1]
@@ -344,20 +466,24 @@ class FakeBackend(Backend):
                     if s["id"] == jid:
                         gres = f",gres/gpu={s['gn']},gres/gpu:{s['gt']}={s['gn']}" if s["gn"] else ""
                         line = f"sbatch jobs/{s['name'].split('_')[0].replace('-', '_')}.sbatch" if s.get("submit_line") is None else s["submit_line"]
-                        return f"{jid}|{line}|{wd}|{s['name']}|{s['part']}|lab_01|normal|{s['cpus']}|{s['mem']}|{s['limit']}|{s['nodes']}|cpu={s['cpus']},mem={s['mem']},node={s['nodes']}{gres}\n{jid}.batch|||||||||||\n", 0.1
+                        start = self._ts(s["start"]) if s.get("start") is not None else "Unknown"
+                        return f"{jid}|{line}|{wd}|{s['name']}|{s['part']}|lab_01|normal|{s['cpus']}|{s['mem']}|{s['limit']}|{s['nodes']}|cpu={s['cpus']},mem={s['mem']},node={s['nodes']}{gres}|{self._ts(s['submit'])}|{start}|{self.user}|fake\n", 0.1
                 for f in self._finished_rows():
                     if f["id"] == jid:
                         line = f"sbatch jobs/{f['name'].split('_')[0].replace('-', '_')}.sbatch"
-                        return f"{jid}|{line}|{wd}|{f['name']}|{f['part']}|lab_01|normal|{f['cpus']}|{f['mem']}|{f.get('limit', '02:00:00')}|{f['nodes']}|{f['tres']}\n", 0.1
+                        sub = f.get("submit") or self._before(f["start"], 600)
+                        return f"{jid}|{line}|{wd}|{f['name']}|{f['part']}|lab_01|normal|{f['cpus']}|{f['mem']}|{f.get('limit', '02:00:00')}|{f['nodes']}|{f['tres']}|{sub}|{f['start']}|{self.user}|fake\n", 0.1
                 return "", 0.1
             if "-j" in cmd:                                 # the steps of one finished job
                 jid = cmd[cmd.index("-j") + 1]
                 for f in self._finished_rows():
                     if f["id"] == jid:
                         st = f["state"].split()[0]
-                        return (f"{jid}|{f['name']}|{st}|{f['elapsed']}|{f['cpu']}||||{f['nodes']}|{f['exit']}|{f['nl']}\n"
-                                f"{jid}.batch|batch|{st}|{f['elapsed']}|{f['cpu']}|{f['rss']}|{f['nl'].split('[')[0]}|0|1|{f['exit']}|{f['nl']}\n"
-                                f"{jid}.extern|extern|COMPLETED|{f['elapsed']}|00:00:00|1200K|{f['nl'].split('[')[0]}|0|{f['nodes']}|0:0|{f['nl']}\n"), 0.1
+                        sub = f.get("submit") or self._before(f["start"], 600)
+                        suffix = f"|{f['end']}|{sub}|{f['start']}|{self.user}|fake\n"
+                        return (f"{jid}|{f['name']}|{st}|{f['elapsed']}|{f['cpu']}||||{f['nodes']}|{f['exit']}|{f['nl']}" + suffix +
+                                f"{jid}.batch|batch|{st}|{f['elapsed']}|{f['cpu']}|{f['rss']}|{f['nl'].split('[')[0]}|0|1|{f['exit']}|{f['nl']}" + suffix +
+                                f"{jid}.extern|extern|COMPLETED|{f['elapsed']}|00:00:00|1200K|{f['nl'].split('[')[0]}|0|{f['nodes']}|0:0|{f['nl']}" + suffix), 0.1
                 return "", 0.1
             lines = []
             for f in self._finished_rows():
@@ -460,43 +586,66 @@ class FakeBackend(Backend):
 
 
 # ------------------------------------------------------------------------------------------------ parsers
-def parse_jobs(text: str) -> List[Job]:
+def parse_jobs(text: str, diagnostics=None) -> List[Job]:
+    report = diagnostics or ParseDiagnostics("jobs")
     out = []
-    for line in text.splitlines():
+    seen = set()
+    duplicates = set()
+    for line in _parser_lines(text, report):
         f = line.split("|")
-        if len(f) < 15:
+        if not _queue_core(f, report):
             continue
+        if f[0] in seen:
+            report.issue("duplicate job identity")
+            duplicates.add(f[0])
+            continue
+        seen.add(f[0])
         gtype, gcount = gres_gpus(f[8])
         nodes = fint(f[6]) or 1
         # Old recordings have twenty fields. Extra separators in a command or
         # path make the optional WorkDir ambiguous; omit grouping evidence.
         modern = len(f) == 23 and f[-1] == GROUP_WIRE_MARKER
+        tail_safe = len(f) <= 21 or modern
+        if not tail_safe:
+            report.issue("ambiguous optional columns", rejected=False)
         workdir = f[20] if (len(f) == 21 or modern) and os.path.isabs(f[20]) and "\0" not in f[20] else ""
         comment = f[21] if modern and workdir else ""
         out.append(Job(id=f[0], name=f[1], partition=f[2], state=f[3], elapsed=f[4], limit=f[5], nodes=nodes, cpus=fint(f[7]), gpu_type=gtype,
                        gpus=gcount * nodes, nodelist="" if f[9].startswith("(") else f[9], mem_req=f[10], start=f[11], submit=f[12], reason=f[13],
                        priority=fint(f[14]), dependency=("" if len(f) < 16 or f[15] in ("(null)", "") else f[15]), account=f[16] if len(f) > 16 else "",
-                       qos=f[17] if len(f) > 17 else "", end=f[18] if len(f) > 18 else "", command=f[19] if len(f) > 19 else "", workdir=workdir, comment=comment))
-    return out
+                       qos=f[17] if len(f) > 17 else "", end=f[18] if len(f) > 18 else "", command=f[19] if len(f) > 19 and tail_safe else "", workdir=workdir, comment=comment))
+        report.accepted += 1
+    return [job for job in out if job.id not in duplicates] if duplicates else out
 
 
-def parse_group(text: str) -> List[Job]:
+def parse_group(text: str, diagnostics=None) -> List[Job]:
     """squeue -A <account> with GROUP_FMT: everyone's jobs, with the user."""
     out = []
-    for line in text.splitlines():
+    seen, duplicates = set(), set()
+    report = diagnostics or ParseDiagnostics("account")
+    for line in _parser_lines(text, report):
         f = line.split("|")
-        if len(f) < 12:
+        if not _queue_core(f, report, group=True):
             continue
+        if f[0] in seen:
+            duplicates.add(f[0])
+            report.issue("duplicate job identity")
+            continue
+        seen.add(f[0])
         gtype, gcount = gres_gpus(f[9])
         nodes = fint(f[7]) or 1
         modern = len(f) == 20 and f[-1] == GROUP_WIRE_MARKER
+        tail_safe = len(f) <= 18 or modern
+        if not tail_safe:
+            report.issue("ambiguous optional columns", rejected=False)
         workdir = f[17] if (len(f) == 18 or modern) and os.path.isabs(f[17]) and "\0" not in f[17] else ""
         comment = f[18] if modern and workdir else ""
         out.append(Job(id=f[0], user=f[1], name=f[2], partition=f[3], state=f[4], elapsed=f[5], limit=f[6], nodes=nodes, cpus=fint(f[8]), gpu_type=gtype,
                        gpus=gcount * nodes, reason=f[10], priority=fint(f[11]), nodelist=f[12] if len(f) > 12 and not f[12].startswith("(") else "",
                        submit=f[13] if len(f) > 13 else "", start=f[14] if len(f) > 14 and f[14] != "N/A" else "",
-                       account=f[15] if len(f) > 15 else "", command=f[16] if len(f) > 16 else "", workdir=workdir, comment=comment))
-    return out
+                       account=f[15] if len(f) > 15 else "", command=f[16] if len(f) > 16 and tail_safe else "", workdir=workdir, comment=comment))
+        report.accepted += 1
+    return [job for job in out if job.id not in duplicates] if duplicates else out
 
 
 def parse_pending_ahead(text: str) -> Dict[str, dict]:
@@ -712,12 +861,61 @@ def parse_gpu_allocations(text: str) -> Dict[str, Tuple[str, int]]:
     return out
 
 
-def parse_kv(text: str) -> Dict[str, str]:
-    kv = {}
-    for tok in text.split():
-        if "=" in tok:
-            k, v = tok.split("=", 1)
-            kv[k] = v
+_KV_BOUNDARY = re.compile(r"(?:^|\s)([A-Z][A-Za-z0-9_/:]*)=")
+_KV_FIELDS = frozenset("""JobId JobName ArrayJobId ArrayTaskId ArrayTaskThrottle HetJobId HetJobOffset
+    UserId GroupId MCS_label Priority Nice Account QOS JobState Reason Dependency Requeue Restarts BatchFlag
+    Reboot ExitCode DerivedExitCode RunTime TimeLimit TimeMin SubmitTime EligibleTime AccrueTime StartTime
+    EndTime Deadline SuspendTime SecsPreSuspend LastSchedEval Scheduler Partition AllocNode:Sid ReqNodeList
+    ExcNodeList NodeList NumNodes NumCPUs NumTasks CPUs/Task ReqB:S:C:T ReqTRES AllocTRES TRES Socks/Node
+    NtasksPerN:B:S:C CoreSpec MinCPUsNode MinMemoryNode MinMemoryCPU MinTmpDiskNode Features Prefer DelayBoot
+    OverSubscribe Shared Exclusive Contiguous Licenses LicensesAlloc Network Command SubmitLine WorkDir StdErr
+    StdIn StdOut Comment AdminComment SystemComment Cluster ClusterName Reservation WcKey Switches
+    SwitchWaitTime BurstBuffer BurstBufferState Power NtasksPerNode TresPerJob TresPerNode TresPerSocket
+    TresPerTask TresBind TresFreq CPUsPerTres MemPerTres BatchHost AllocNode Container ContainerId ContainerType
+    StepId Name State Nodes CPUs Tasks StepTimeLimit ThreadsPerCore CPUSpecList CPUAlloc CPUEfctv CPUTot
+    CPULoad RealMemory AllocMem FreeMem Sockets Boards CoresPerSocket CoreSpecCount NodeName NodeAddr
+    NodeHostName Version Arch OS Gres GresUsed AvailableFeatures ActiveFeatures Weight Owner MCS_label
+    Partitions BootTime SlurmdStartTime LastBusyTime ResumeAfterTime CfgTRES CurrentWatts AveWatts TmpDisk
+    Energy TresPerStep NumCPUsPerNode SrunHost:Pid CPU_IDs Mem GRES RespTime ReqResv MailUser MailType
+    PreemptTime PreemptEligibleTime ResizeTime HetJobIdSet BitFlags SLUID OriginalSLUID""".split())
+
+
+def parse_kv(text: str, diagnostics=None) -> Dict[str, str]:
+    """Read Slurm field boundaries, preserving unquoted spaces and embedded '='.
+
+    Slurm's legacy form has no escaping contract. Duplicate keys are therefore
+    ambiguous, not last-write-wins. Lower-case shell assignments remain values;
+    callers must still validate identity/lease fields before acting on them.
+    """
+    report = diagnostics or ParseDiagnostics("details")
+    if not isinstance(text, str) or len(text) > MAX_PARSER_ROW_BYTES or len(text.encode("utf-8")) > MAX_PARSER_ROW_BYTES:
+        report.rows = 1
+        report.issue("oversized record")
+        return {}
+    lines = [line for line in text.splitlines() if line.strip()]
+    report.rows = len(lines)
+    if not lines:
+        return {}
+    if len(lines) != 1 or "\0" in text:
+        report.issue("multiple or invalid records")
+        return {}
+    line = lines[0]
+    boundaries = [match for match in _KV_BOUNDARY.finditer(line) if match[1] in _KV_FIELDS]
+    if not boundaries or line[:boundaries[0].start()].strip():
+        report.issue("missing field boundary")
+        return {}
+    kv, duplicates = {}, set()
+    for index, match in enumerate(boundaries):
+        key = match[1]
+        end = boundaries[index + 1].start() if index + 1 < len(boundaries) else len(line)
+        value = line[match.end():end].rstrip()
+        if key in kv:
+            duplicates.add(key)
+            report.issue("duplicate field", rejected=False)
+        kv[key] = value
+    for key in duplicates:
+        kv.pop(key, None)
+    report.accepted = 1 if kv else 0
     return kv
 
 
@@ -739,13 +937,28 @@ def parse_node(text: str) -> Optional[Node]:
                 partitions=kv.get("Partitions", ""))
 
 
-def parse_sacct(text: str) -> List[Finished]:
+def parse_sacct(text: str, diagnostics=None) -> List[Finished]:
+    report = diagnostics or ParseDiagnostics("finished")
     jobs: Dict[str, Finished] = {}
-    for line in text.splitlines():
+    parents, duplicates = set(), set()
+    for line in _parser_lines(text, report):
         f = line.split("|")
+        if f[-1:] == [""] and len(f) in (19, 22):
+            f.pop()
         if len(f) < 13:
+            report.issue("short row")
+            continue
+        if (not _JOB_ID.fullmatch(f[0]) or not _unsigned(f[4]) or not _unsigned(f[11])
+                or not re.fullmatch(r"[A-Z][A-Z_+]*(?: by [0-9]+)?", f[2])):
+            report.issue("invalid identity, state or numeric column")
             continue
         base = f[0].split(".")[0]
+        if "." not in f[0]:
+            if base in parents:
+                report.issue("duplicate accounting attempt")
+                duplicates.add(base)
+                continue
+            parents.add(base)
         j = jobs.setdefault(base, Finished(id=base))
         if "." not in f[0]:
             j.name, j.state, j.elapsed, j.cpus = f[1], f[2].split()[0] if f[2] else "", f[3], fint(f[4])
@@ -755,6 +968,9 @@ def parse_sacct(text: str) -> List[Finished]:
             j.submit = f[15] if len(f) > 15 else ""
             j.workdir = f[16] if len(f) > 16 else ""
             j.limit = f[17] if len(f) > 17 else ""
+            if len(f) not in (13, 14, 15, 16, 17, 18, 21):
+                j.workdir, j.limit = "", ""
+                report.issue("ambiguous optional columns", rejected=False)
             # Unescaped pipes in names, paths or comments make provenance
             # ambiguous. Do not infer a launch from shifted optional fields.
             provenance = (len(f) == 21 and os.path.isabs(j.workdir) and "\0" not in j.workdir
@@ -772,7 +988,8 @@ def parse_sacct(text: str) -> List[Finished]:
             if j.cpu_time is None and f[5]:
                 j.cpu_time = secs(f[5])
         j.rss = max(j.rss, nbytes(f[7]))
-    done = [j for j in jobs.values() if j.state and j.state not in ("RUNNING", "PENDING", "COMPLETING", "CONFIGURING", "SUSPENDED")]
+        report.accepted += 1
+    done = [j for j in jobs.values() if j.id not in duplicates and j.state and j.state not in ("RUNNING", "PENDING", "COMPLETING", "CONFIGURING", "SUSPENDED")]
     done.sort(key=lambda j: j.end, reverse=True)
     return done
 
@@ -831,7 +1048,7 @@ def parse_share(text: str) -> List[dict]:
 
 # ------------------------------------------------------------------------------------------------ the layer
 class Slurm:
-    def __init__(self, backend: Backend, user: str, timeout: float = 8.0, gpu_timeout: float = 12.0, action_timeout: float = 15.0, gpu_provider: str = "auto"):
+    def __init__(self, backend: Backend, user: str, timeout: float = 8.0, gpu_timeout: float = 12.0, action_timeout: float = 15.0, gpu_provider: str = "auto", json_mode=None):
         from .gpu_collectors import provider_name
         self._gpu_lock = threading.Lock()
         self.gpu_provider = provider_name(gpu_provider)
@@ -844,11 +1061,123 @@ class Slurm:
         self._sacct_log_paths_supported: Optional[bool] = None
         self._gpu_allocations_supported: Optional[bool] = None
         self._sacct_group_fields_supported: Optional[bool] = None
+        self.parse_diagnostics = {}
+        self._diagnostic_lock = threading.Lock()
+        self.accounting_diagnostics = {}
+        self._history_range = None
+        self.json_mode = json_mode or os.environ.get("RAVEN_SLURM_FORMAT", "auto")
+        if self.json_mode not in ("auto", "json", "legacy"):
+            raise ValueError("RAVEN_SLURM_FORMAT must be auto, json or legacy")
+        self._json_capabilities = {}
+        self._capability_lock = threading.RLock()
+        self.reader_status = {}
+
+    def invalidate_capabilities(self, command=None):
+        """Reprobe after an explicit refresh or tool/plugin upgrade."""
+        with self._capability_lock:
+            if command is None:
+                self._json_capabilities.clear()
+            else:
+                self._json_capabilities.pop(command, None)
+
+    def _json_supported(self, command, source):
+        check = getattr(self.b, "can_probe_json", None)
+        probe = bool(check(command)) if callable(check) else getattr(self.b, "probe_json", False)
+        if self.json_mode == "legacy" or (self.json_mode == "auto" and not probe):
+            self.reader_status[source] = {"format": "legacy", "reason": "explicit legacy mode" if self.json_mode == "legacy" else "backend uses the legacy contract"}
+            return False
+        with self._capability_lock:
+            known = self._json_capabilities.get(command)
+            if known is None or time.monotonic() - known[0] >= 3600:
+                help_text, _ = self.b.run([command, "--help"], self.timeout)
+                if len(help_text) > 1 << 20:
+                    raise CommandError("Slurm capability help exceeds its 1 MiB bound")
+                supported = bool(re.search(r"(?:^|\s)--json(?:[=\s\[]|$)", help_text))
+                reason = "command advertises --json" if supported else "command help does not advertise --json"
+                known = (time.monotonic(), supported, reason)
+                self._json_capabilities[command] = known
+            self.reader_status[source] = {"format": "json" if known[1] else "legacy fallback", "reason": known[2]}
+            if not known[1] and self.json_mode == "json":
+                raise CommandError("Required Slurm JSON capability is unavailable: " + known[2])
+            return known[1]
+
+    def _json_read(self, command, source, normalize):
+        if not self._json_supported(command[0], source):
+            return None
+        from . import slurm_json
+        try:
+            raw, _ = self.b.run(command, max(self.timeout, 20.) if source == "finished" else self.timeout)
+        except CommandError as exc:
+            reason = str(exc).lower()
+            if self.json_mode == "json" or "json" not in reason or not any(term in reason for term in ("unrecognized option", "unknown option", "invalid option", "unsupported")):
+                raise
+            with self._capability_lock:
+                self._json_capabilities[command[0]] = (time.monotonic(), False, "command rejects --json")
+            self.reader_status[source] = {"format": "legacy fallback", "reason": "command rejects --json", "json_attempted": True}
+            return None
+        try:
+            value = slurm_json.document(raw)
+        except slurm_json.UnsupportedShape as exc:
+            if self.json_mode == "json":
+                raise CommandError(str(exc)) from exc
+            with self._capability_lock:
+                self._json_capabilities[command[0]] = (time.monotonic(), False, str(exc))
+            self.reader_status[source] = {"format": "legacy fallback", "reason": str(exc), "json_attempted": True}
+            return None
+        except ValueError as exc:
+            report = ParseDiagnostics(source, rows=1)
+            report.issue("invalid JSON document")
+            self._publish_parse(report)
+            raise CommandError(f"{source}: invalid Slurm JSON: {exc}; legacy fallback is not permitted for malformed data") from exc
+        report = ParseDiagnostics(source)
+        if value.get("warnings"):
+            report.issue("scheduler returned JSON warnings", rejected=False)
+        try:
+            result = normalize(value, report)
+        except (ValueError, TypeError, KeyError) as exc:
+            report.issue("invalid structured scheduler record")
+            self._publish_parse(report)
+            raise CommandError(f"{source}: invalid structured scheduler record: {exc}") from exc
+        self._publish_parse(report)
+        self.reader_status[source] = {"format": "json", "parser": value["meta"]["plugin"]["data_parser"],
+                                      "reason": "qualified recorded data-parser shape"}
+        if report.rows and (not report.accepted or (source in ("jobs", "account", "details") and not result)):
+            raise CommandError(report.summary() + "; keeping the last trustworthy snapshot")
+        return result
+
+    def _parse(self, source, text, parser):
+        report = ParseDiagnostics(source)
+        try:
+            result = parser(text, report)
+        except CommandError:
+            report.rows, report.rejected = 1, 1
+            report.reasons = {"response limit exceeded": 1}
+            self._publish_parse(report)
+            raise
+        self._publish_parse(report)
+        if (source == "details" and not result) or (report.rows and (not report.accepted or (source in ("jobs", "account") and not result))):
+            raise CommandError(report.summary() + "; keeping the last trustworthy snapshot")
+        return result
+
+    def _publish_parse(self, report):
+        with self._diagnostic_lock:
+            previous = self.parse_diagnostics.get(report.source, {})
+            self.parse_diagnostics[report.source] = {
+                "rows": report.rows, "accepted": report.accepted, "rejected": report.rejected,
+                "ambiguous": report.ambiguous, "partial": report.partial,
+                "total_errors": previous.get("total_errors", 0) + report.rejected + report.ambiguous,
+                "message": report.summary() if report.partial else "", "observed": time.time(),
+                "reasons": dict(report.reasons)}
 
     def jobs(self) -> List[Job]:
-        out, _ = self.b.run(["squeue", "-u", self.user, "-h", "-o", JOB_FMT], self.timeout)
-        jobs = parse_jobs(out)
+        from .slurm_json import queue
+        jobs = self._json_read(["squeue", "--json", "-u", self.user], "jobs", queue)
+        if jobs is None:
+            out, _ = self.b.run(["squeue", "-u", self.user, "-h", "-o", JOB_FMT], self.timeout)
+            jobs = self._parse("jobs", out, parse_jobs)
         for j in jobs:
+            if j.user and j.user != self.user:
+                raise CommandError("Structured queue response contains another scheduler user; refusing publication")
             j.user = self.user        # The existing queue request is explicitly -u scoped.
             j.hosts = self.hostnames(j.nodelist) if j.nodelist else []
         return jobs
@@ -1015,22 +1344,103 @@ class Slurm:
         return result
 
     def details(self, jid: str) -> Dict[str, str]:
+        from .slurm_json import detail
+        result = self._json_read(["scontrol", "show", "job", jid, "--json"], "details", lambda value, report: detail(value, jid, report))
+        if result is not None:
+            return result
         out, _ = self.b.run(["scontrol", "show", "job", "-o", jid], self.timeout)
-        return parse_kv(out)
+        return self._parse("details", out, parse_kv)
 
-    def historical_details(self, jid: str) -> Dict[str, str]:
-        """Read the selected accounting record's exact log paths, when Slurm stores them.
+    def set_history_range(self, start=None, end=None):
+        """Explicit user-selected wall-clock interval, never an epoch-wide scan."""
+        if start is None and end is None:
+            self._history_range = None
+            return
+        first, last = _scheduler_time(start), _scheduler_time(end)
+        if (first is None or last is None or first.tzinfo is not None or last.tzinfo is not None
+                or not first < last or last - first > timedelta(days=ACCOUNTING_MAX_EXPLICIT_DAYS)):
+            raise ValueError("Accounting range requires ordered local scheduler timestamps spanning at most 3650 days")
+        self._history_range = (start, end)
 
-        Older Slurm versions lack StdOut/StdErr accounting columns. Discover that
-        lazily, without adding incompatible fields to the regular history query
-        or repeatedly submitting an unsupported command for each selected job.
-        JobIDRaw preserves an array task's allocation ID for the %j filename token.
+    def record_details(self, record, *, historical=False):
+        """Resolve details only after verifying the retained attempt's identity."""
+        jid = record.get("id", "") if isinstance(record, dict) else getattr(record, "id", "")
+        identity = _record_identity(record)
+        identity["user"] = identity.get("user") or self.user
+        if historical:
+            return self.historical_details(jid, identity=identity)
+        fields = self.details(jid)
+        error = self.detail_identity_error(record, fields)
+        if error:
+            raise CommandError(error)
+        return fields
+
+    def detail_identity_error(self, record, fields):
+        """Verify retained metadata before it can seed an immutable log cache."""
+        jid = record.get("id", "") if isinstance(record, dict) else getattr(record, "id", "")
+        identity = _record_identity(record)
+        identity["user"] = identity.get("user") or self.user
+        return _identity_error(fields, jid, identity)
+
+    def accounting_window(self, identity=None):
+        submitted = _scheduler_time((identity or {}).get("submit"))
+        if submitted is not None:
+            date = submitted.replace(tzinfo=None, hour=0, minute=0, second=0)
+            return (date - timedelta(days=2)).isoformat(), (date + timedelta(days=2)).isoformat(), "retained submission"
+        if self._history_range is not None:
+            return *self._history_range, "explicit history range"
+        return f"now-{ACCOUNTING_FALLBACK_DAYS}days", "now", "bounded fallback"
+
+    def _accounting_json(self, command, jid, kind):
+        from .slurm_json import accounting_rows
+        arguments = []
+        skip = False
+        for token in command:
+            if skip:
+                skip = False
+                continue
+            if token == "-o":
+                skip = True
+                continue
+            if token not in ("-n", "-P"):
+                arguments.append(token)
+        arguments.append("--json")
+        source = {"logs": "details", "submit": "submit", "steps": "fin_details"}[kind]
+        return self._json_read(arguments, source, lambda value, report: accounting_rows(value, jid, kind, report))
+
+    def _accounting_query(self, source, jid, start, end, kind):
+        previous = self.accounting_diagnostics.get(source, {})
+        self.accounting_diagnostics[source] = {"commands": previous.get("commands", 0) + 1, "start": start,
+                                               "end": end, "window": kind, "job_id": jid, "observed": time.time()}
+
+    def _accounting_fallback(self, source):
+        if self.reader_status.get(source, {}).get("json_attempted"):
+            self.accounting_diagnostics[source]["commands"] += 1
+
+    def historical_details(self, jid: str, *, identity=None) -> Dict[str, str]:
+        """Bounded, duplicate-aware lookup of one retained accounting attempt.
+
+        A known submission uses a four-day window around its original scheduler
+        wall clock, even for very old jobs. Unknown submissions use the last 14
+        days, or an explicit history range, and never borrow unverified paths.
         """
+        if not isinstance(jid, str) or not re.fullmatch(r"[0-9]+(?:_[0-9]+)?(?:\+[0-9]+)?", jid):
+            raise ValueError("Accounting lookup requires an exact job or array/component ID")
+        identity = dict(identity or {})
+        identity["user"] = identity.get("user") or self.user
         unsupported = "this Slurm version does not expose historical stdout/stderr paths through sacct"
         if self._sacct_log_paths_supported is False:
             return {"JobId": jid, "LogPathError": unsupported}
+        start, end, kind = self.accounting_window(identity)
+        command = ["sacct", "-j", jid, "-u", identity["user"], "-X", "-D", "-S", start, "-E", end,
+                   "-n", "-P", "-o", SACCT_LOG_FIELDS]
+        # -D is essential: without duplicates Slurm can hide a recycled ID.
+        self._accounting_query("details", jid, start, end, kind)
+        structured = self._accounting_json(command, jid, "logs")
+        if structured is None:
+            self._accounting_fallback("details")
         try:
-            out, _ = self.b.run(["sacct", "-j", jid, "-X", "-S", "1970-01-01", "-n", "-P", "-o", SACCT_LOG_FIELDS], self.timeout)
+            out, _ = self.b.run(command, self.timeout) if structured is None else ("", 0)
         except CommandError as exc:
             message = str(exc).lower()
             if "invalid field" in message and ("stdout" in message or "stderr" in message):
@@ -1040,30 +1450,35 @@ class Slurm:
         self._sacct_log_paths_supported = True
         if len(out) > MAX_LOG_DETAIL_BYTES or len(out.encode("utf-8")) > MAX_LOG_DETAIL_BYTES:
             raise CommandError("historical log-path accounting reply exceeds the 1 MiB inspection limit")
-        matches = []
-        for line in out.splitlines():
-            fields = line.split("|")
-            if len(fields) == 8 and fields[-1] == "":
+        matches, reasons = [], []
+        names = ("JobId", "JobIDRaw", "JobName", "WorkDir", "StdOut", "StdErr", "User",
+                 "SubmitTime", "StartTime", "Cluster")
+        if structured is not None:
+            names += ("Restarts",)
+        for fields in (structured if structured is not None else (line.split("|") for line in out.splitlines())):
+            if structured is None and len(fields) == 11 and fields[-1] == "":
                 fields.pop()
-            # Array parents, siblings, and batch/extern steps must never supply
-            # the selected task's logs. Only the exact parent accounting row does.
             if fields[0] != jid:
                 continue
-            matches.append(fields)
+            if len(fields) != len(names):
+                return {"JobId": jid, "LogPathError": ("multiple accounting records include an ambiguous or incomplete selected job"
+                                                        if matches else "the selected job has an ambiguous or incomplete log-path accounting record")}
+            if any(len(value.encode("utf-8")) > 4096 for value in fields):
+                return {"JobId": jid, "LogPathError": "the selected job has an oversized log-path accounting field"}
+            candidate = dict(zip(names, fields))
+            error = _identity_error(candidate, jid, identity, require_submit=kind != "explicit history range")
+            if error:
+                reasons.append(error)
+                continue
+            matches.append(candidate)
             if len(matches) > 1:
-                return {"JobId": jid, "LogPathError": "multiple accounting records match the selected job ID; log paths are ambiguous"}
+                return {"JobId": jid, "LogPathError": "multiple accounting records match the selected attempt; log paths are ambiguous"}
         if not matches:
-            return {"JobId": jid, "LogPathError": "the selected job has no matching log-path accounting record"}
-        fields = matches[0]
-        # A literal delimiter in a path cannot be disambiguated in -P output.
-        if len(fields) != 7:
-            return {"JobId": jid, "LogPathError": "the selected job has an ambiguous or incomplete log-path accounting record"}
-        if any(len(value.encode("utf-8")) > 4096 for value in fields):
-            return {"JobId": jid, "LogPathError": "the selected job has an oversized log-path accounting field"}
-        result = {"JobId": jid, "LogPathSource": "sacct"}
-        for key, value in zip(("JobIDRaw", "JobName", "WorkDir", "StdOut", "StdErr", "User"), fields[1:7]):
-            if value and value.lower() not in ("unknown", "n/a", "(null)", "none"):
-                result[key] = value
+            reason = reasons[0] if reasons else "the selected attempt has no matching log-path accounting record; accounting may be delayed"
+            return {"JobId": jid, "LogPathError": reason}
+        result = {key: value for key, value in matches[0].items()
+                  if value and value.lower() not in ("unknown", "n/a", "(null)", "none")}
+        result["LogPathSource"] = "sacct"
         array = re.fullmatch(r"(\d+)_(\d+)", jid)
         if array:
             result["ArrayJobId"], result["ArrayTaskId"] = array.groups()
@@ -1072,6 +1487,12 @@ class Slurm:
         return result
 
     def finished(self, days: float) -> List[Finished]:
+        from .slurm_json import accounting
+        result = self._json_read(["sacct", "--json", "-u", self.user, "-S", f"now-{int(days * 24)}hours"], "finished", accounting)
+        if result is not None:
+            if any(record.user and record.user != self.user for record in result):
+                raise CommandError("Structured accounting response contains another scheduler user; refusing publication")
+            return result
         fields = SACCT_LEGACY_FIELDS if self._sacct_group_fields_supported is False else SACCT_FIELDS
         command = ["sacct", "-u", self.user, "-n", "-P", "-S", f"now-{int(days * 24)}hours", "-o", fields]
         try:
@@ -1087,7 +1508,7 @@ class Slurm:
         else:
             if fields == SACCT_FIELDS:
                 self._sacct_group_fields_supported = True
-        return parse_sacct(out)
+        return self._parse("finished", out, parse_sacct)
 
     def partitions(self, gpu_types: Sequence[str]) -> Tuple[List[Partition], Dict[str, Dict[str, int]], Dict[str, NodeCell]]:
         out, _ = self.b.run(["sinfo", "-h", "-o", "%P|%a|%l|%D|%F|%C"], self.timeout)
@@ -1100,8 +1521,12 @@ class Slurm:
 
     def group(self, account: str) -> List[Job]:
         """Everyone's jobs in the account."""
+        from .slurm_json import queue
+        result = self._json_read(["squeue", "--json", "-A", account], "account", queue)
+        if result is not None:
+            return result
         out, _ = self.b.run(["squeue", "-h", "-A", account, "-o", GROUP_FMT], self.timeout)
-        return parse_group(out)
+        return self._parse("account", out, parse_group)
 
     def pending_ahead(self) -> Dict[str, dict]:
         out, _ = self.b.run(["squeue", "-h", "-t", "PD", "-o", PEND_FMT], max(self.timeout, 12.0))
@@ -1135,11 +1560,44 @@ class Slurm:
         return dict(account=account, month=month, used=used.get("", {}), by_user={k: v for k, v in used.items() if k}, week=week.get("", {}),
                     week_by_user={k: v for k, v in week.items() if k}, limit=limit, t=time.time())
 
-    def submit_info(self, jid: str) -> Dict[str, str]:
+    def record_submit_info(self, record):
+        return self.submit_info(record.id, identity=_record_identity(record))
+
+    def intent_submit_info(self, jid, since):
+        """Bound lost-ack recovery to its retained intent, without inventing SubmitTime."""
+        if type(since) not in (int, float) or not math.isfinite(since) or since <= 0 or since > time.time() + 60:
+            raise ValueError("Recovery requires a valid retained intent timestamp")
+        # Scheduler time can be remote local time. The four-day envelope covers
+        # timezone offsets and bounded clock skew; exact token/command evidence
+        # remains the recovery caller's required ownership proof.
+        center = datetime.fromtimestamp(since, timezone.utc).replace(tzinfo=None, hour=0, minute=0, second=0)
+        window = ((center - timedelta(days=2)).isoformat(), (center + timedelta(days=2)).isoformat())
+        info = self.submit_info(jid, window=window)
+        submitted = _scheduler_time(info.get("submit"))
+        if submitted is None or not datetime.fromisoformat(window[0]) <= submitted.replace(tzinfo=None) < datetime.fromisoformat(window[1]):
+            raise CommandError("Accounting submission time does not verify the retained intent window")
+        return info
+
+    def submit_info(self, jid: str, *, identity=None, window=None) -> Dict[str, str]:
         """sacct's submit line and record of one job (any state)."""
-        from .resubmit import parse_submit_info
-        out, _ = self.b.run(["sacct", "-j", jid, "-n", "-P", "-o", SACCT_SUBMIT_FIELDS], self.timeout)
-        return parse_submit_info(out)
+        start, end, kind = self.accounting_window(identity)
+        if window is not None:
+            first, last = (_scheduler_time(value) for value in window)
+            if first is None or last is None or first.tzinfo or last.tzinfo or not timedelta(0) < last - first <= timedelta(days=4):
+                raise ValueError("Intent lookup window must span at most four days")
+            start, end = window
+            kind = "retained submission intent"
+        command = ["sacct", "-j", jid, "-u", self.user, "-D", "-S", start, "-E", end, "-n", "-P", "-o", SACCT_SUBMIT_FIELDS]
+        self._accounting_query("submit", jid, start, end, kind)
+        out = self._accounting_json(command, jid, "submit")
+        if out is None:
+            self._accounting_fallback("submit")
+            out, _ = self.b.run(command, self.timeout)
+        rows = self._accounting_attempt_rows(out, jid, 12, identity)
+        if not rows:
+            return {}
+        return dict(zip(("id", "submit_line", "workdir", "name", "partition", "account", "qos", "cpus", "mem", "limit", "nodes", "tres",
+                         "submit", "start", "user", "cluster"), rows[0]))
 
     def preview_submit(self, argv: Sequence[str], workdir: str = "") -> Tuple[bool, str]:
         """Ask Slurm to validate the exact submission without creating a job."""
@@ -1157,9 +1615,73 @@ class Slurm:
         ok, out = self.b.call(cmd, self.action_timeout)
         return ok, out, (parse_submitted(out) if ok else None)
 
-    def fin_steps(self, jid: str) -> List[Step]:
-        out, _ = self.b.run(["sacct", "-j", jid, "-n", "-P", "-o", SACCT_STEP_FIELDS], self.timeout)
-        return parse_sacct_steps(out)
+    def record_fin_steps(self, record):
+        return self.fin_steps(record.id, identity=_record_identity(record))
+
+    def fin_steps(self, jid: str, *, identity=None) -> List[Step]:
+        start, end, kind = self.accounting_window(identity)
+        command = ["sacct", "-j", jid, "-u", self.user, "-D", "-S", start, "-E", end, "-n", "-P", "-o", SACCT_STEP_FIELDS]
+        self._accounting_query("fin_details", jid, start, end, kind)
+        out = self._accounting_json(command, jid, "steps")
+        if out is None:
+            self._accounting_fallback("fin_details")
+            out, _ = self.b.run(command, self.timeout)
+        rows = self._accounting_attempt_rows(out, jid, 12, identity, steps=True)
+        return [Step(id=row[0], name=row[1], state=row[2].split()[0] if row[2] else "", elapsed=row[3],
+                     cpu_time=secs(row[4]), rss=nbytes(row[5]), rss_node=row[6], rss_task=row[7],
+                     ntasks=fint(row[8]), exit=row[9], nodelist=row[10]) for row in rows]
+
+    def _accounting_attempt_rows(self, text, jid, columns, identity, *, steps=False):
+        if not isinstance(jid, str) or not _JOB_ID.fullmatch(jid) or "." in jid or "[" in jid:
+            raise ValueError("Accounting lookup requires an exact job identity")
+        report = ParseDiagnostics("fin_details" if steps else "submit")
+        parents, children = [], []
+        expected = dict(identity or {})
+        expected["user"] = expected.get("user") or self.user
+        for fields in (text if isinstance(text, list) else (line.split("|") for line in _parser_lines(text, report))):
+            if len(fields) == columns + 5 and fields[-1] == "":
+                fields.pop()
+            if fields[0] != jid and not (steps and fields[0].startswith(jid + ".")):
+                continue
+            if len(fields) != columns + 4:
+                raise CommandError("Accounting record has ambiguous or incomplete fields; refusing attempt attribution")
+            actual = {"JobId": jid, **dict(zip(("SubmitTime", "StartTime", "User", "Cluster"), fields[columns:]))}
+            # Steps have their own submit/start times. The parent verifies the
+            # attempt; each child must match its owner/cluster and time window.
+            check = dict(expected)
+            if fields[0] != jid:
+                check.pop("start", None)
+                check.pop("submit", None)
+                # Older real Slurm releases leave User empty on step rows.
+                # Inherit only that absent field from the verified parent
+                # selected below; explicit contradictions still fail. No
+                # child can be published without that unique parent and its
+                # start/end interval, even when encountered before the parent.
+                if actual["User"] == "":
+                    actual["User"] = expected["user"]
+            error = _identity_error(actual, jid, check, require_submit=identity is not None and fields[0] == jid)
+            if error:
+                continue
+            (parents if fields[0] == jid else children).append(fields)
+        if len(parents) > 1:
+            raise CommandError("Multiple accounting attempts match this job ID; select a retained attempt before inspecting or resubmitting")
+        if not parents:
+            return []
+        if not steps:
+            return parents
+        first, last = _scheduler_time(parents[0][columns + 1]), _scheduler_time(parents[0][11])
+        if first is None or last is None or (first.tzinfo is None) != (last.tzinfo is None):
+            return parents
+        selected = []
+        selected_ids = set()
+        for row in children:
+            began = _scheduler_time(row[columns + 1])
+            if began is not None and (first.tzinfo is None) == (began.tzinfo is None) and first <= began <= last:
+                if row[0] in selected_ids:
+                    raise CommandError("Multiple accounting steps match this attempt; refusing ambiguous step attribution")
+                selected_ids.add(row[0])
+                selected.append(row)
+        return parents + selected
 
     @staticmethod
     def gpu_trace(path: str, files, max_bytes: int = 1 << 20) -> List[dict]:

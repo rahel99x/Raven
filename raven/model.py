@@ -9,6 +9,7 @@ import os
 import re
 import threading
 import time
+import uuid
 from dataclasses import asdict, dataclass, field, is_dataclass, replace
 from functools import lru_cache
 from typing import Any, Deque, Dict, List, Optional, Sequence
@@ -148,6 +149,9 @@ def _cached_stamp(s, zone):
 
 def _parse_stamp(s):
     try:
+        if isinstance(s, str) and (s.endswith("Z") or "+" in s[10:] or "-" in s[10:]):
+            from datetime import datetime
+            return datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
         return time.mktime(time.strptime(s, "%Y-%m-%dT%H:%M:%S"))
     except (TypeError, ValueError):
         return None
@@ -458,9 +462,23 @@ def terminal_state(state: str) -> str:
 class Store:
     """Everything the screen reads; updated by the sampler under a lock.  ``snapshot()`` is a shallow copy."""
 
-    def __init__(self, state_dir: Optional[str] = None, persist: bool = True, max_events: int = 200, series_keep: int = 4000, *, raven_limits=None):
+    def _notify_ui(self):
+        # Called under the Store lock: admit only a nonblocking, callback-free
+        # wake primitive, never arbitrary embedding or plugin code.
+        if self.ui_wakeup is None:
+            return
+        from .ui_wakeup import notify
+        notify(self)
+
+    def __init__(self, state_dir: Optional[str] = None, persist: bool = True, max_events: int = 200, series_keep: int = 4000, *, raven_limits=None, read_only=False, strict_owner=False, source_scope=None, series_storage="jsonl"):
         self.raven_limits = raven_limits
         self._ui_revision = 0
+        if series_storage not in ("jsonl", "blocks-v1"):
+            raise ValueError("Series storage must be jsonl or blocks-v1")
+        self.series_storage = series_storage
+        self._series_format_cache = {}
+        self._storage_cancel = threading.Event()
+        self.ui_wakeup = None
         self.lock = threading.RLock()
         self.jobs: List[Job] = []
         self.live: Dict[str, Live] = {}
@@ -498,6 +516,13 @@ class Store:
         self.series: Dict[str, Deque[dict]] = collections.defaultdict(lambda: SeriesDeque(maxlen=series_keep, lock=self.lock))
         self.series_keep = series_keep
         self._series_scope = object()
+        from .series_identity import default_scope, fingerprint
+        self._recording_scope = fingerprint(source_scope if source_scope is not None else default_scope(state_dir))
+        self._recording_session = uuid.uuid4().hex
+        self._recording_identities = {}
+        self._recording_observations = {}
+        self._recording_evidence = {}
+        self._recording_bindings = {}
         self._publications = collections.OrderedDict()
         self._series_loaded: set = set()
         self.gpu_mean: Dict[str, List[float]] = collections.defaultdict(lambda: [0.0, 0])
@@ -512,6 +537,15 @@ class Store:
         if self.raven_limits is not None and self.raven_limits.state_dir is None:
             self.raven_limits.state_dir = state_dir
         self.persist = persist and bool(state_dir)
+        from .state_ownership import StateOwner
+        self._state_owner = StateOwner(state_dir, read_only=read_only, strict=strict_owner) if self.persist else None
+        self.state_status = self._state_owner.status if self._state_owner else {"state": "disabled", "message": ""}
+        self._tags_io_lock = threading.Lock()
+        self._tags_dirty = False
+        self._tags_revision = 0
+        self._tags_last_try = 0.0
+        self.tags_status = {"state": "ready", "message": ""}
+        self._tags_load_error = ""
         self._ui_io_lock = threading.Lock()
         self.ui_state_status = {"state": "unread", "message": ""}
         self._series_archive = SeriesArchive(self)
@@ -524,7 +558,6 @@ class Store:
         self._persist_event_io_lock = threading.Lock()
         self._events_path = os.path.join(state_dir, "events.jsonl") if self.persist else None
         if self.persist:
-            os.makedirs(state_dir, exist_ok=True)
             self._load_events()
             self._load_tags()
 
@@ -532,24 +565,91 @@ class Store:
     def _load_tags(self):
         try:
             with open(os.path.join(self.state_dir, "tags.json")) as f:
-                data = json.loads(f.read(2<<20)) if self.raven_limits else json.load(f)
+                data = json.loads(f.read((2 << 20) + 1))
+                if f.tell() > 2 << 20:
+                    raise ValueError("Tags exceed the 2 MiB read limit")
             if isinstance(data, dict):
                 self.tags = {k: v for k, v in data.items() if isinstance(v, dict)}
-        except (OSError, ValueError):
+        except FileNotFoundError:
             pass
+        except (OSError, ValueError) as exc:
+            self._tags_load_error = "Existing tags could not be read; preserved without replacement: " + str(exc)[:400]
+            self.tags_status = {"state": "error", "message": self._tags_load_error}
+            self._state_health("state tags", self._tags_load_error)
+
+    @property
+    def writable(self):
+        return bool(self.persist and self._state_owner and self._state_owner.writable)
+
+    def close(self):
+        self._storage_cancel.set()
+        try:
+            # A finite maintenance child owns this lock until it is reaped.
+            # Read-only sessions also wait; no helper outlives session close.
+            with self._persist_io_lock:
+                pass
+            self.flush_persistence()
+            if self._tags_dirty:
+                self._save_tags()
+        finally:
+            if self._state_owner:
+                self._state_owner.close()
+
+    def _state_health(self, name, error=""):
+        with self.lock:
+            health = self.health.setdefault(name, Health(name))
+            health.calls += 1
+            health.last_try = clock.now()
+            health.error = error
+            if error:
+                health.errors += 1
+            else:
+                health.last_ok = health.last_try
+            self._ui_revision += 1
+            self._notify_ui()
 
     def _save_tags(self):
         if not self.persist:
             return
-        try:
-            with open(os.path.join(self.state_dir, "tags.json"), "w") as f:
-                json.dump(self.tags, f)
-        except OSError:
-            pass
+        # Serialize first, then capture the newest publication. A delayed
+        # older caller can never overwrite a newer snapshot. IO owns no Store lock.
+        with self._tags_io_lock:
+            self._tags_last_try = time.monotonic()
+            try:
+                if not self.writable:
+                    raise OSError(self.state_status["message"])
+                if self._tags_load_error:
+                    raise OSError(self._tags_load_error)
+                with self.lock:
+                    # Check an upper bound before copying/serializing a large
+                    # user note or imported document under the foreground lock.
+                    size = 0
+                    for key, value in self.tags.items():
+                        size += len(key) + len(value.get("note", "")) + sum(len(tag) for tag in value.get("tags", ())) + 64
+                        if size > 2 << 20:
+                            raise ValueError("Tags, pins and notes exceed the 2 MiB persistence limit; in-memory edits are retained.")
+                    snapshot = {key: dict(value, tags=list(value.get("tags", ()))) for key, value in self.tags.items()}
+                    revision = self._tags_revision
+                payload = json.dumps(snapshot, ensure_ascii=True, allow_nan=False).encode("utf-8")
+                if len(payload) > 2 << 20:
+                    raise ValueError("Tags, pins and notes exceed the 2 MiB persistence limit; in-memory edits are retained.")
+                ui_state._atomic(os.path.join(self.state_dir, "tags.json"), payload)
+                with self.lock:
+                    if self._tags_revision == revision:
+                        self._tags_dirty = False
+                self.tags_status = {"state": "ready", "message": ""}
+                self._state_health("state tags")
+            except (OSError, ValueError, TypeError, RecursionError) as exc:
+                message = "Could not save tags, pins and notes: " + str(exc)[:480] + "; edits remain in memory. Retry an edit or close after fixing storage."
+                self.tags_status = {"state": "error", "message": message}
+                self._state_health("state tags", message)
 
     def tag(self, jid: str, *tags: str, remove: bool = False) -> List[str]:
         with self.lock:
+            self._tags_dirty = True
+            self._tags_revision += 1
             self._ui_revision += 1
+            self._notify_ui()
             rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
             for t in tags:
                 t = t.lstrip("#").strip()
@@ -567,7 +667,10 @@ class Store:
 
     def pin(self, jid: str, value: Optional[bool] = None) -> bool:
         with self.lock:
+            self._tags_dirty = True
+            self._tags_revision += 1
             self._ui_revision += 1
+            self._notify_ui()
             rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
             rec["pinned"] = (not rec["pinned"]) if value is None else bool(value)
             out = rec["pinned"]
@@ -578,7 +681,10 @@ class Store:
 
     def note(self, jid: str, text: str) -> str:
         with self.lock:
+            self._tags_dirty = True
+            self._tags_revision += 1
             self._ui_revision += 1
+            self._notify_ui()
             rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
             rec["note"] = text.strip()
             if not rec["tags"] and not rec["pinned"] and not rec["note"]:
@@ -602,6 +708,7 @@ class Store:
         with self.lock:
             self.events.append(ev)
             self._ui_revision += 1
+            self._notify_ui()
             self._queue_persistence(os.path.join(self.state_dir, "events.jsonl") if self.persist else None, ev)
         if _persist:
             self.flush_persistence(_events_only=True)
@@ -636,6 +743,7 @@ class Store:
         out = []
         with self.lock:
             self._ui_revision += 1
+            self._notify_ui()
             limited = False
             if self.raven_limits:
                 jobs, limited = self.raven_limits.rows(jobs, 'jobs')
@@ -707,6 +815,8 @@ class Store:
                 if not j.est_start:
                     j.est_start = old.get(j.id, "")
             self.jobs = list(jobs)
+            for job in jobs:
+                self.capture_series_identity(job.id, record=job)
             confirmed = False
             for jid in list(self.departed_jobs):
                 candidate = self._accounting_jobs.get(jid)
@@ -808,6 +918,7 @@ class Store:
         """
         with self.lock:
             self._ui_revision += 1
+            self._notify_ui()
             if self.raven_limits:
                 jobs, _ = self.raven_limits.rows(jobs, 'history')
             active = {job.id: job for job in self.jobs}
@@ -848,19 +959,104 @@ class Store:
     def apply_starts(self, starts: Dict[str, str]):
         with self.lock:
             self._ui_revision += 1
+            self._notify_ui()
             for j in self.jobs:
                 if j.id in starts:
                     j.est_start = starts[j.id]
 
     # ---- per-job time series -----------------------------------------------------------------------
-    def _series_path(self, jid: str) -> Optional[str]:
-        if not self.persist:
+    def capture_series_identity(self, jid, *, record=None):
+        """Capture before acquisition; the immutable token follows delayed writes."""
+        from .series_identity import SeriesIdentity, fingerprint, scheduler_attempt
+        with self.lock:
+            if record is None:
+                record, details = self.record_context(jid)
+            else:
+                details = self.details.get(jid, {})
+            observation = (self._job_attempts.get(jid, 0), getattr(record, "submit", ""),
+                           getattr(record, "start", ""), getattr(record, "cluster", ""))
+            binding = self._recording_bindings.get(jid)
+            if binding and binding[0] != observation:
+                self._recording_bindings.pop(jid, None)
+                binding = None
+            evidence = observation + tuple(details.get(key) for key in ("JobId", "ArrayJobId", "ArrayTaskId", "HetJobId", "HetJobOffset", "SubmitTime", "StartTime", "Restarts", "Cluster")) + (binding[1] if binding else None,)
+            if self._recording_evidence.get(jid) == evidence and jid in self._recording_identities:
+                return self._recording_identities[jid]
+            verified = binding[1] if binding else scheduler_attempt(record, details)
+            # An in-session observation change also invalidates a previously
+            # verified identity; missing new details never reuse an old token.
+            identity = SeriesIdentity(jid, self._recording_scope,
+                verified or fingerprint((self._recording_session, jid, observation)), bool(verified))
+            previous = self._recording_identities.get(jid)
+            if previous is not None and previous != identity:
+                # Samples captured before verification retain their original
+                # session identity. Equal second-resolution timestamps do not
+                # prove that a rapid requeue did not occur between observations.
+                self.series.pop(jid, None)
+                self.prev_cpu.pop(jid, None)
+                self.live.pop(jid, None)
+                self.gpu.pop(jid, None)
+                self.hist_cpu.pop(jid, None)
+                for key in tuple(self.hist_gpu):
+                    if key.startswith(jid + ":"):
+                        self.hist_gpu.pop(key, None)
+                        self.gpu_mean.pop(key, None)
+                self._series_loaded.discard(jid)
+                self._series_archive.limited.discard(jid)
+                self._series_archive.states.pop(jid, None)
+                publication = self._publications.pop(jid, None)
+                if publication:
+                    publication[0].release_publication()
+            self._recording_identities[jid] = identity
+            self._recording_observations[jid] = observation
+            self._recording_evidence[jid] = evidence
+            return identity
+
+    def bind_series_scheduler(self, jid, details):
+        """Called only after acquisition's queue-generation guard succeeded."""
+        with self.lock:
+            current = self.details.get(jid)
+            if current != details:
+                return False
+            return self.capture_series_identity(jid).verified
+
+    def bind_series_attempt(self, jid, binding):
+        """Bind a previously verified retained launch identity, never a job ID.
+
+        The caller must have verified the manifest against its scheduler job.
+        Required identity fields prevent accidental job-number-only binding.
+        """
+        from .series_identity import fingerprint
+        required = ("run_root", "run_id", "attempt", "job_id", "submission_token", "cluster")
+        if (not isinstance(binding, dict) or any(not isinstance(binding.get(key), str) or not binding[key] for key in required)
+                or binding["job_id"] != jid):
+            raise ValueError("A verified retained run requires run root, run ID, attempt, job ID, submission token and cluster.")
+        with self.lock:
+            self.capture_series_identity(jid)
+            self._recording_bindings[jid] = (self._recording_observations[jid], fingerprint({key: binding[key] for key in required}))
+            return self.capture_series_identity(jid)
+
+    def _series_identity_path(self, identity):
+        if not self.persist or not identity.filename:
             return None
+        filename = identity.filename[:-6] + ".rvb" if self.series_storage == "blocks-v1" else identity.filename
+        return os.path.join(self.state_dir, "series", filename)
+
+    def _series_path(self, jid: str) -> Optional[str]:
+        return self._series_identity_path(self.capture_series_identity(jid))
+
+    def legacy_series(self, jid):
+        """Explicit recovery read, never merged or attributed to a current run."""
         safe = "".join(c if c.isalnum() or c in "_-" else "_" for c in jid)
-        return os.path.join(self.state_dir, "series", f"{safe}.jsonl")
+        from .series_archive import read_tail
+        if not self.persist:
+            return [], {"status": "missing", "message": "Persistence is disabled."}
+        values, status = read_tail(os.path.join(self.state_dir, "series", safe + ".jsonl"), self.series_keep,
+                                   max_bytes=64 << 20, max_line=1 << 20)
+        return values, dict(status, attribution="legacy-ambiguous", message="Legacy job-number-only samples are unattributed; original file preserved.")
 
     def _queue_persistence(self, path, sample):
-        if path is not None:
+        if path is not None and self.writable:
             with self._persist_queue_lock:
                 queue = self._persist_event_queue if path == self._events_path else self._persist_queue
                 if self.raven_limits:
@@ -876,8 +1072,10 @@ class Store:
         publish while storage is slow, with per-file order preserved. A copy
         event never waits for an unrelated metrics append.
         """
-        if not self.persist:
+        if not self.writable:
             return
+        if self._tags_dirty and time.monotonic() - self._tags_last_try >= 5:
+            self._save_tags()
         if not _series_only:
             self._drain_persistence(self._persist_event_queue, self._persist_event_io_lock)
         if not _events_only:
@@ -898,25 +1096,40 @@ class Store:
                     paths.setdefault(path, []).append(sample)
                 for path, samples in paths.items():
                     try:
+                        if path != self._events_path:
+                            from .series_storage import append as append_recordings
+                            if append_recordings(path, samples, cache=self._series_format_cache):
+                                continue
                         os.makedirs(os.path.dirname(path), exist_ok=True)
                         with open(path, "a") as stream:
                             for sample in samples:
                                 stream.write(json.dumps(sample) + "\n")
-                    except OSError:
-                        pass
+                    except (OSError, ValueError) as exc:
+                        self._state_health("state recordings", str(exc))
 
-    def record(self, jid: str, sample: dict, *, _persist: bool = True):
+    def record(self, jid: str, sample: dict, *, _persist: bool = True, identity=None):
         """Append a captured sample; defer IO when inside a larger publication."""
         with self.lock:
+            current = self.capture_series_identity(jid)
+            if identity is not None and identity != current:
+                return None
+            identity = current
             self._ui_revision += 1
+            self._notify_ui()
             series = self.series[jid]
             captured = series.append_owned(sample) if type(series) is SeriesDeque else None
             if type(series) is not SeriesDeque:
                 series.append(sample)
+            if identity.verified and sample.get("k") in ("live", "gpu"):
+                from .stream_anomalies import Monitor
+                monitor = getattr(self, "anomalies", None)
+                if monitor is None:
+                    monitor = self.anomalies = Monitor()
+                monitor.observe(identity, sample)
             if self.raven_limits:
                 from .raven_limits import retained_size
                 self.raven_limits.retain_series(self,jid,retained_size(sample,self.raven_limits.values['series_bytes']))
-            self._queue_persistence(self._series_path(jid), captured if captured is not None else sample)
+            self._queue_persistence(self._series_identity_path(identity), captured if captured is not None else sample)
         if _persist:
             self.flush_persistence(_series_only=True)
         return sample
@@ -969,9 +1182,12 @@ class Store:
         """Return cached IDs and refresh the filesystem inventory off-thread."""
         return self._series_archive.jobs(background=True)
 
-    def apply_live(self, jid: str, lv: Live, *, _persist: bool = True):
+    def apply_live(self, jid: str, lv: Live, *, _persist: bool = True, identity=None):
         with self.lock:
+            if identity is not None and identity != self.capture_series_identity(jid):
+                return None
             self._ui_revision += 1
+            self._notify_ui()
             self.live[jid] = lv
             value = lv.rate if lv.rate is not None else lv.avg
             if value is not None:
@@ -991,9 +1207,12 @@ class Store:
             self.flush_persistence(_series_only=True)
         return sample
 
-    def apply_gpu(self, jid: str, samples: Optional[List[GpuSample]], *, _persist: bool = True):
+    def apply_gpu(self, jid: str, samples: Optional[List[GpuSample]], *, _persist: bool = True, identity=None):
         with self.lock:
+            if identity is not None and identity != self.capture_series_identity(jid):
+                return None
             self._ui_revision += 1
+            self._notify_ui()
             self.gpu[jid] = samples
             for s in samples or []:
                 key = f"{jid}:{s.device_key}"
@@ -1102,6 +1321,9 @@ class Store:
     def save_ui(self, data: dict):
         if not self.persist:
             return
+        if not self.writable:
+            self.ui_state_status = {"state": "read-only", "message": self.state_status["message"]}
+            return False
         with self._ui_io_lock:
             self.ui_state_status = ui_state.write(os.path.join(self.state_dir, "ui.json"), data)
             return self.ui_state_status["state"] == "ready"

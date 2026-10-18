@@ -88,7 +88,12 @@ Rendered text selections cache at most 20,000 lines and 8 MiB.
 Incomplete cache coverage refuses copying instead of publishing a partial range.
 See [Pane navigation](pane-navigation.md) for controls and editor-delivery bounds.
 
-Use the top-right update slider or `:rate N` to change source sampling.
+Open the **Queue / Recordings** summary or **Setup → Refresh and performance →
+Refresh settings** to change queue polling and retained-recording reads. The
+compatibility command `:rate N` changes the queue interval. Neither control
+changes how often a running application's recorder produces samples. The panel
+shows effective intervals and observed freshness separately; see
+[Refresh settings](telemetry-updates.md).
 Use `:smoothscroll off` to request immediate wheel movement.
 These settings control different operations.
 Disabling smoothing does not make Slurm commands complete sooner.
@@ -108,6 +113,11 @@ The display optimizations reduce Raven's repeated work.
 They do not impose a universal response-time guarantee.
 
 ## Validate a source change
+
+For an observed stall, use the opt-in [self-tracing guide](self-tracing.md) to
+capture bounded UI and background spans in a Perfetto-compatible timeline.
+Trace-enabled measurements include instrumentation cost; compare ordinary
+execution separately. A timeline is not a CPU call-stack profile.
 
 Use the reproducible benchmark to measure UI work on your computer:
 

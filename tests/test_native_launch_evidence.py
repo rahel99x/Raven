@@ -81,7 +81,7 @@ def test_unusable_or_ambiguous_user_workdir_does_not_become_grouping_evidence(wo
 def test_extra_delimiter_in_command_does_not_create_false_workdir():
     record, = parse_jobs(user_row(command="/project/train.sh | /project/another.sh", workdir="/project"))
     assert record.workdir == ""
-    assert record.command == "/project/train.sh "  # Existing command-field parsing remains compatible.
+    assert record.command == ""  # Ambiguous command text is unknown, never a truncated launch recipe.
 
 
 def test_legacy_fifteen_field_account_rows_remain_compatible():

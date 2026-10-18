@@ -27,8 +27,10 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "build>=1,<2", "jsonschema>=4.18,<5"]
+dev = ["pytest>=8,<10", "build>=1,<2", "jsonschema>=4.18,<5", "hypothesis>=6,<7", "pytest-xdist>=3,<4", "import-linter>=2,<3", "ruff>=0.14,<1", "mypy>=1.18,<2"]
 terminal = ["pyte>=0.8.2,<0.9", "wcwidth>=0.2.13,<1"]
+wasi = ["wasmtime==49.0.0"]
+mcp = ["mcp>=2.3.0,<2.4"]
 
 [project.urls]
 Homepage = "https://github.com/rahel99x/Raven"
@@ -41,8 +43,11 @@ raven = "raven.raven_launch:light_main"
 ravenl = "raven.raven_launch:light_main"
 ravenh = "raven.raven_launch:heavy_main"
 
-[tool.setuptools]
-packages = ["raven"]
+[tool.setuptools.packages.find]
+include = ["raven", "raven.*"]
+
+[tool.setuptools.package-data]
+"raven.transport" = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

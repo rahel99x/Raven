@@ -77,7 +77,8 @@ def test_explicit_advice_keeps_full_saved_evidence_and_ignores_corrupt_counters(
     store.apply_jobs(slurm.jobs())
     series = tmp_path / "series"
     series.mkdir(exist_ok=True)
-    path = series / "12480001.jsonl"
+    from pathlib import Path
+    path = Path(store._series_path("12480001"))
     peak = 1 << 40
     records = [{"k": "live", "t": 1, "rss": peak},
                {"k": "live", "t": 2, "rss": {"corrupt": True}},

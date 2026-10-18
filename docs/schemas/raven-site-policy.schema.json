@@ -584,6 +584,41 @@
               "type": "string",
               "maxLength": 4096,
               "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "series_format": {
+              "enum": [
+                "blocks-v1",
+                "jsonl"
+              ]
+            },
+            "retention": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "raw_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "ten_second_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "minute_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "gap_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "protect_raw": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         },
@@ -1230,6 +1265,26 @@
               "type": "integer",
               "minimum": 0.001,
               "maximum": 1099511627776
+            },
+            "storage.retention.raw_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "storage.retention.ten_second_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "storage.retention.minute_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
+            },
+            "storage.retention.gap_seconds": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 31536000
             }
           }
         }
@@ -1809,6 +1864,41 @@
               "type": "string",
               "maxLength": 4096,
               "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "series_format": {
+              "enum": [
+                "blocks-v1",
+                "jsonl"
+              ]
+            },
+            "retention": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "raw_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "ten_second_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "minute_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "gap_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "protect_raw": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         },

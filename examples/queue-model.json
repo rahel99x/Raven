@@ -1,0 +1,21 @@
+{
+  "schema": "raven.queue-model/v1",
+  "id": "synthetic-one-node-example",
+  "seed": 1,
+  "nodes": [{"id": "node1", "cpus": 4, "memory_mb": 16000, "gpus": 0}],
+  "policy": {
+    "backfill": true,
+    "fairshare_weight": 0,
+    "usage_half_life_seconds": 86400,
+    "accounts": {"lab": {"weight": 1, "usage_cpu_seconds": 0}},
+    "qos": {"normal": {"max_running": 4, "max_cpus": 4, "max_wall_seconds": 3600}}
+  },
+  "jobs": [
+    {"id": "prepare", "submit": 0, "duration": 60, "wall_limit": 60, "nodes": 1, "cpus_per_node": 4, "memory_mb_per_node": 4000, "gpus_per_node": 0, "priority": 100, "account": "lab", "qos": "normal", "depends": []},
+    {"id": "fit-a", "submit": 0, "duration": 120, "wall_limit": 120, "nodes": 1, "cpus_per_node": 2, "memory_mb_per_node": 4000, "gpus_per_node": 0, "priority": 50, "account": "lab", "qos": "normal", "depends": ["prepare"]},
+    {"id": "fit-b", "submit": 0, "duration": 90, "wall_limit": 90, "nodes": 1, "cpus_per_node": 2, "memory_mb_per_node": 4000, "gpus_per_node": 0, "priority": 50, "account": "lab", "qos": "normal", "depends": ["prepare"]}
+  ],
+  "reservations": [],
+  "hidden_delay_seconds": 60,
+  "metadata": {"origin": "synthetic, hand-computable example; not a captured site configuration"}
+}

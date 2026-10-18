@@ -176,7 +176,9 @@ def _job_details(item, slurm, warnings):
             if fn is None:
                 continue
             try:
-                value = fn(jid)
+                record_reader = getattr(slurm, "record_details", None)
+                value = (record_reader(record, historical=method == "historical_details")
+                         if callable(record_reader) else fn(jid))
                 if not isinstance(value, dict) or value.get("JobId", jid) != jid:
                     raise ValueError("scheduler response named a different job")
                 details.update(value)

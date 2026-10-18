@@ -105,6 +105,8 @@ def run_case(args, ascii_):
     backend = FakeBackend("benchmark", speed=0)
     slurm = Slurm(backend, "benchmark")
     app = App(store, None, None, cfg, "benchmark", ascii_=ascii_, interactive=True)
+    if getattr(args, "ui_trace", False):
+        app.ui_trace = load_module(source, "ui_trace").UITrace()
     app.headless = False
     views = Views(L.Glyphs(ascii_), cfg)
     app.views_ref = views
@@ -324,7 +326,8 @@ def run_case(args, ascii_):
                                 "controls": sum(item.get("control_hover_events", 0) for item in counts)},
             "phases_ms": {name: summary([1000 * item.get(name, 0) for item in timings]) for name in sorted(phase_keys)},
             "counts_per_frame": {name: summary([item.get(name, 0) for item in counts]) for name in sorted(count_keys)},
-            "io_attempts": dict(io_counts)}
+            "io_attempts": dict(io_counts), "ui_trace": bool(getattr(args, "ui_trace", False)),
+            "trace_timeline": app.ui_trace.report().get("timeline") if getattr(args, "ui_trace", False) else None}
     finally:
         hub.close()
 
@@ -347,6 +350,7 @@ def main():
     parser.add_argument("--label", default="", help="optional commit or comparison label")
     parser.add_argument("--output", type=Path, help="save the full JSON report")
     parser.add_argument("--json", action="store_true", help="print JSON instead of a short report")
+    parser.add_argument("--ui-trace", action="store_true", help="include opt-in UI timing/timeline capture overhead; no trace file is written")
     args = parser.parse_args()
     if args.gesture == "chart-hover" and args.scenario == "advisor":
         parser.error("chart-hover supports jobs, analytics, and research; use hover for advisor controls")

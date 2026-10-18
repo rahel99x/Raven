@@ -17,7 +17,7 @@ SCHEMA = "raven.automation-settings/v1"
 MAX_SETTINGS = 256 << 10
 MAX_PRESETS = 64
 _ROOT_KEYS = {"schema", "launch", "recipes", "export_presets", "default_export_preset", "export_preferences", "associations"}
-_LAUNCH_KEYS = {"features", "gpu", "trace", "trace_adapter", "cpu_memory", "sampling_seconds", "storage_bytes", "telemetry", "sbatch_defaults", "parameters", "resources", "application_metrics", "artifacts", "research_sources", "passport", "scientific_context", "array_manifest", "auto_export", "auto_export_scope", "report_python", "environment"}
+_LAUNCH_KEYS = {"features", "gpu", "trace", "trace_adapter", "cpu_memory", "sampling_seconds", "storage_bytes", "telemetry", "sbatch_defaults", "parameters", "resources", "application_metrics", "artifacts", "research_sources", "passport", "scientific_context", "array_manifest", "auto_export", "auto_export_scope", "report_python", "environment", "checkpoint_advice"}
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 
 
@@ -45,7 +45,7 @@ def _launch(value):
     for key in ("parameters", "resources", "research_sources", "passport", "scientific_context", "sbatch_defaults", "environment", "telemetry"):
         if key in result and not isinstance(result[key], dict):
             raise ValueError(key + " must be an object")
-    for key in ("application_metrics", "array_manifest", "report_python"):
+    for key in ("application_metrics", "array_manifest", "report_python", "checkpoint_advice"):
         if key in result and (not isinstance(result[key], str) or not result[key] or len(result[key]) > 4096):
             raise ValueError(key + " must be a bounded path")
     if "artifacts" in result and (not isinstance(result["artifacts"], list) or len(result["artifacts"]) > 256):

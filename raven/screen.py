@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import codecs
 import json
+import math
 import os
 import re
 import subprocess
@@ -156,6 +157,7 @@ class _InputReader:
         self.control_escape = False
         self.paste_overflow = False
         self.paste_bytes = 0
+        self.control_response = None
 
     def _value(self, curses):
         if not self.raw:
@@ -207,6 +209,12 @@ class _InputReader:
     @property
     def pending(self):
         return bool(self.escape or self.pasting or self.control_string or self.control_discard or self.utf8.getstate()[0])
+
+    def deadline(self):
+        """Only ambiguous standalone Escape has a timer; fragments await bytes."""
+        if self.escape == "\x1b":
+            return self.escape_time + max(_ESCAPE_SECONDS, self.escape_grace)
+        return float("inf")
 
     def _mouse_result(self, report):
         if report is not None:
@@ -437,6 +445,9 @@ class _InputReader:
                     # Unknown terminal control sequences are indivisible;
                     # replaying their bytes can activate unrelated shortcuts.
                     self.escape = ""
+                    if callable(self.control_response) and self.control_response(candidate):
+                        self.recovered_escape = False
+                        return None, None
                     if self.frame_origin is not None:
                         self.recovered_escape = False
                         return "terminal-raw", candidate
@@ -1530,6 +1541,7 @@ class _FrameCache:
         self.document_token = None
         self.next_live = float("inf")
         self.next_selector = float("inf")
+        self.next_feedback = float("inf")
         self.live_revision = 0
         self.preview_ready = 0.0
         self.next_preview = float("inf")
@@ -1554,7 +1566,7 @@ class _FrameCache:
                 self.document_token is None or _quiet_jobs_token(app) is None):
             return False
         _timed_ui(app,'maintenance',app.tick)
-        self.next_maintenance=now+MAINTENANCE_SECONDS
+        self.next_maintenance=(math.floor(now/MAINTENANCE_SECONDS)+1)*MAINTENANCE_SECONDS
         current=_quiet_jobs_token(app)
         if current is None or current!=self.document_token:
             self.dirty=True
@@ -1602,6 +1614,8 @@ class _FrameCache:
         now = time.monotonic()
         self.next_maintenance = now + MAINTENANCE_SECONDS
         self.document_token=_quiet_jobs_token(app,publication=snap.get('_ui_publication_token'))
+        if self.document_token is not None:
+            self.next_maintenance = (math.floor(now / MAINTENANCE_SECONDS) + 1) * MAINTENANCE_SECONDS
         # Visible elapsed/clock labels use whole seconds. Keep their refresh
         # boundary even when no source or asynchronous callback publishes.
         from . import clock
@@ -1660,6 +1674,8 @@ class _FrameCache:
         rows = decorate(app, self.rows)
         from .job_progress import animate_rows
         rows = animate_rows(app, rows)
+        from .job_progress import next_animation_deadline
+        self.next_feedback = next_animation_deadline(app)
         from .terminal_ui import feedback as terminal_feedback
         rows = terminal_feedback(app, rows)
         from .job_group_drag import feedback as group_drag_feedback
@@ -1685,7 +1701,8 @@ class _FrameCache:
     def wait_ms(self, now=None):
         now = time.monotonic() if now is None else now
         return max(1, min(200, round(1000 * (min(self.next_maintenance, self.next_animation,
-                                              self.next_live, self.next_selector, self.next_preview, self.next_document) - now))))
+                                              self.next_live, self.next_selector, self.next_feedback,
+                                              self.next_preview, self.next_document) - now))))
 
 
 def _mouse_reporting(enabled):
@@ -1704,10 +1721,81 @@ def _mouse_reporting(enabled):
     sys.stdout.flush()
 
 
+def _wait_for_input(app, stdscr, curses, cache, waiter):
+    """Drain ncurses first, then await producers without taking their bytes."""
+    reader = _INPUT_READERS.get(id(stdscr))
+    if not waiter.available:
+        # Blocking getch already returns buffered input immediately. Preserve
+        # that single-reader fallback when no selector can observe stdin.
+        seconds = cache.wait_ms() / 1000
+        if reader is not None:
+            seconds = min(seconds, max(0, reader.deadline() - time.monotonic()))
+        from .terminal_ui import showing
+        if showing(app):
+            seconds = min(seconds, .016)
+        stdscr.timeout(max(1, round(seconds * 1000)))
+        return _read_input(stdscr, curses)
+    stdscr.timeout(0)
+    event = _read_input(stdscr, curses)
+    if event is not None and event != (None, None):
+        return event
+    seconds = cache.wait_ms() / 1000
+    if reader is not None:
+        seconds = min(seconds, max(0, reader.deadline() - time.monotonic()))
+    terminal = getattr(getattr(app, "terminal_state", None), "service", None)
+    allocation = getattr(app, "raven_allocation_manager", None)
+    if allocation is not None:
+        allocation.ui_wakeup = waiter.wakeup
+    ready = waiter.wait(seconds, (terminal, allocation))
+    if "publication" in ready:
+        # Poll completion callbacks and compare published identity immediately.
+        # The normal maintenance path decides whether a new document is needed.
+        cache.next_maintenance = 0
+    if "client" in ready:
+        app._readiness_repaint = True
+    event = _read_input(stdscr, curses)
+    if event is None or event == (None, None):
+        if "stdin" in ready and waiter.input_closed():
+            app.quit = True
+        return None
+    return event
+
+
 def run_curses(app, views, sampler, store, actions, cfg):
     import curses
     import locale
+    scheduler = getattr(sampler, "worker_scheduler", None)
+    if scheduler is not None:
+        scheduler.ui_trace = getattr(app, "ui_trace", None)
     locale.setlocale(locale.LC_ALL, "")
+    from .terminal_sync import TerminalSync
+    synchronized = TerminalSync(sys.stdout, cfg.get("synchronized_output", "auto"))
+    if app is not None:
+        app.terminal_sync = synchronized
+    raster = None
+    if cfg.get("terminal_raster", "off") != "off":
+        from .terminal_raster import TerminalRaster
+        raster = TerminalRaster(sys.stdout, cfg.get("terminal_raster"))
+        if not raster.enabled and hasattr(app, "say"):
+            app.say("Raster plots: " + raster.status + "; using text")
+    if app is not None:
+        app.terminal_raster = raster
+    from .ui_wakeup import UIWakeup, UIWaiter
+    try:
+        wakeup = UIWakeup()
+    except OSError:
+        # Descriptor exhaustion or an unsupported platform retains the bounded
+        # curses timeout path; monitoring must still remain usable.
+        wakeup = None
+    waiter = UIWaiter(sys.stdin, wakeup)
+    previous_wakeup = getattr(store, "ui_wakeup", None)
+    if store is not None:
+        store.ui_wakeup = wakeup
+    if scheduler is not None:
+        scheduler.ui_wakeup = wakeup
+    manager = getattr(app, "raven_allocation_manager", None)
+    if manager is not None:
+        manager.ui_wakeup = wakeup
 
     def main(stdscr):
         try:
@@ -1750,6 +1838,7 @@ def run_curses(app, views, sampler, store, actions, cfg):
         hits = []
         rung = 0
         pending_input = None
+        paint_requested = True
         cache = _FrameCache()
         painter = _DifferentialPainter(stdscr, paint)
         app.views_ref = views
@@ -1758,8 +1847,10 @@ def run_curses(app, views, sampler, store, actions, cfg):
         startup.begin(app)
         from . import terminal_ui, raven_ui, raven_diagnostics
         _bind_input(stdscr, app)
+        _INPUT_READERS[id(stdscr)].control_response = synchronized.receive
+        synchronized.start()
         while not app.quit or defer_operation_quit(app):
-            terminal_ui.tick(app)
+            terminal_changed = terminal_ui.tick(app)
             diagnostics_changed = raven_diagnostics.tick(app)
             if (raven_ui.tick(app) or diagnostics_changed) and app.mode == "raven":
                 cache.dirty = True
@@ -1786,7 +1877,8 @@ def run_curses(app, views, sampler, store, actions, cfg):
                 _mouse_reporting(mouse_enabled)
             height, width = stdscr.getmaxyx()
             maintained=cache.maintain(app,width,height)
-            if cache.due(app, width, height):
+            document_due = cache.due(app, width, height)
+            if document_due:
                 _timed_ui(app, "document", cache.rebuild, app, views, store, actions, width, height,maintained=maintained)
                 pending_input = _timed_ui(app, "prepaint_input", _drain_prepaint_motion,
                                          app, stdscr, curses, cache.hits, pending_input)
@@ -1795,26 +1887,44 @@ def run_curses(app, views, sampler, store, actions, cfg):
                 painter.invalidate()
                 cache.dirty = True
                 continue
-            rows, overlays, bar = _timed_ui(app, "feedback", cache.feedback, app, views)
             hits, snap = cache.hits, cache.snapshot
-            # A PTY is independent of the Slurm polling interval. A short,
-            # bounded readiness check keeps interactive echo responsive while
-            # preserving the cached underlying graph/document.
-            stdscr.timeout(min(cache.wait_ms(), 16) if terminal_ui.showing(app) else cache.wait_ms())
             reader = _INPUT_READERS.get(id(stdscr))
             if reader:
                 reader.protect_escape = _protect_pointer_escape(app)
-                if reader.pending:
-                    stdscr.timeout(5)
-            _timed_ui(app, "paint", painter.draw, rows, overlays, width, height, bar=bar)
+            if not waiter.available:
+                stdscr.timeout(min(cache.wait_ms(), 16) if terminal_ui.showing(app) else cache.wait_ms())
+            # Quiet maintenance still runs on time. When its publication token
+            # is unchanged, no feedback, geometry or terminal bytes need work
+            # until the next visible animation boundary or actual input.
+            repaint = (paint_requested or document_due or terminal_changed or cache.document_token is None
+                       or getattr(app, "_readiness_repaint", False)
+                       or time.monotonic() >= min(cache.next_feedback, cache.next_selector))
+            app._readiness_repaint = False
+            if repaint:
+                rows, overlays, bar = _timed_ui(app, "feedback", cache.feedback, app, views)
+                text_rows = rows
+                if raster is not None:
+                    rows = raster.prepare(app, rows, overlays, width, height)
+                changed_rows = _timed_ui(app, "paint", painter.draw, rows, overlays, width, height, bar=bar)
+                paint_requested = False
             started = sum(1 for e in snap["events"] if e.get("kind") == "started" and not e.get("old"))
             if app.bell and started > rung:
                 curses.beep()
             rung = started
-            stdscr.noutrefresh()
-            _timed_ui(app, "terminal_flush", curses.doupdate)
+            if repaint:
+                with synchronized.frame(changed=bool(changed_rows) or bool(raster and raster.changed)):
+                    if raster is not None:
+                        raster.before_flush()
+                    stdscr.noutrefresh()
+                    _timed_ui(app, "terminal_flush", curses.doupdate)
+                    if raster is not None and not raster.after_flush():
+                        painter.invalidate()
+                        painter.draw(text_rows, overlays, width, height, bar=bar)
+                        stdscr.noutrefresh()
+                        _timed_ui(app, "terminal_flush", curses.doupdate)
             try:
-                event = pending_input if pending_input is not None else _timed_ui(app, "input_wait", _read_input, stdscr, curses)
+                event = pending_input if pending_input is not None else _timed_ui(
+                    app, "input_wait", _wait_for_input, app, stdscr, curses, cache, waiter)
             except KeyboardInterrupt:
                 if terminal_ui.focused(app):
                     terminal_ui.handle_key(app, "ctrl-c")
@@ -1827,6 +1937,7 @@ def run_curses(app, views, sampler, store, actions, cfg):
             before = (app.mode, app.tab, getattr(app, "selected_id", None))
             pending_input = _timed_ui(app, "input_batch", _consume_input_batch,
                                       app, stdscr, curses, hits, event, effects=effects)
+            paint_requested = True
             cache.dirty = (effects.document or pending_input is not None
                            or before != (app.mode, app.tab, getattr(app, "selected_id", None))
                            or not getattr(views, "feedback_options", False))
@@ -1835,6 +1946,8 @@ def run_curses(app, views, sampler, store, actions, cfg):
                 files = views.files
                 path = views.pager_path(store.snapshot(), app)
                 if path and files.exists(path):
+                    if raster is not None:
+                        raster.close()
                     curses.endwin()
                     _mouse_reporting(False)
                     try:
@@ -1855,6 +1968,19 @@ def run_curses(app, views, sampler, store, actions, cfg):
     try:
         curses.wrapper(main)
     finally:
+        if store is not None and getattr(store, "ui_wakeup", None) is wakeup:
+            store.ui_wakeup = previous_wakeup
+        if scheduler is not None and getattr(scheduler, "ui_wakeup", None) is wakeup:
+            scheduler.ui_wakeup = None
+        for manager in (manager, getattr(app, "raven_allocation_manager", None)):
+            if manager is not None and getattr(manager, "ui_wakeup", None) is wakeup:
+                manager.ui_wakeup = None
+        waiter.close()
+        if wakeup is not None:
+            wakeup.close()
+        if raster is not None:
+            raster.close()
+        synchronized.close()
         _INPUT_READERS.clear()
         _mouse_reporting(False)
         if bracketed:
@@ -1868,6 +1994,9 @@ def _operation_terminal(app, stdscr, curses, mouse_enabled):
     argv = ops_ui.take_terminal(app)
     if argv is None:
         return False
+    raster = getattr(app, "terminal_raster", None)
+    if raster is not None:
+        raster.close()
     bracketed = sys.stdout.isatty()
     curses.endwin()
     _mouse_reporting(False)

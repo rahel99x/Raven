@@ -21,7 +21,7 @@ MAX_ARGUMENT_BYTES = 1 << 20
 # Both entry-point layers use this exact boundary, including dashboard values.
 GLOBAL_VALUES = frozenset("--site --profile --config --host --ssh-user --account --site-policy --allocation --interface --user --interval --rate --days --tab --research-view --metrics-file --contract --workdir --passport --planning-file --record --replay --speed --run --eval --wait-for --timeout --poll --alert --width --ui-trace --workers --gpu-check-output".split())
 GLOBAL_OPTIONAL = frozenset(("--gpu-check", "--report", "--write-config"))
-KNOWN_COMMANDS = frozenset(("run", "report", "trace", "runtime", "terminal", "migrate", "config", "doctor", "qualify", "launch", "export-data", "setup"))
+KNOWN_COMMANDS = frozenset(("run", "report", "trace", "runtime", "terminal", "migrate", "config", "doctor", "qualify", "launch", "export-data", "setup", "query"))
 _ALIASES = {"A": "account", "J": "job-name", "D": "chdir", "o": "output", "e": "error", "a": "array", "d": "dependency", "p": "partition", "q": "qos", "t": "time", "N": "nodes", "n": "ntasks", "c": "cpus-per-task", "G": "gpus"}
 _FLAGS = {"exclusive", "oversubscribe", "requeue", "no-requeue", "hold", "parsable", "contiguous", "spread-job", "use-min-nodes", "verbose", "quiet", "overcommit", "no-kill", "no-requeue"}
 _FORBIDDEN = {"wrap", "wait", "test-only", "help", "version", "clusters", "export-file", "het-group", "batch", "usage"}
@@ -73,6 +73,7 @@ def parser():
         group.add_argument("--no-" + name, dest=name.replace("-", "_"), action="store_false", help="Explicitly disable " + name + " recording")
     ap.add_argument("--trace-adapter", choices=("python-monitoring", "python-legacy-profile", "native-cooperative", "mpi"))
     ap.add_argument("--metrics-file", help="Declared project-relative native application JSONL producer")
+    ap.add_argument("--checkpoint-advice", help="Project-relative checkpoint duration/exposure JSON; read-only launch advice")
     ap.add_argument("--artifact", action="append", default=None, help="Explicit project-relative output path; repeatable")
     ap.add_argument("--research-source", action="append", default=None, metavar="VIEW=PATH", help="Bind a native Research report file without a manual manifest")
     ap.add_argument("--parameter", action="append", default=None, metavar="KEY=VALUE", help="Scientific parameter; JSON value or literal string")
@@ -355,7 +356,7 @@ def _pairs(values):
 def _declared_paths(settings, root):
     from .reporting import _under
     paths = []
-    for key in ("application_metrics", "array_manifest"):
+    for key in ("application_metrics", "array_manifest", "checkpoint_advice"):
         if settings.get(key):
             paths.append((key, settings[key]))
     for key, value in settings.get("research_sources", {}).items():
@@ -444,6 +445,8 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
             explicit[key] = getattr(args, key)
     if args.metrics_file is not None:
         explicit["application_metrics"] = args.metrics_file
+    if args.checkpoint_advice is not None:
+        explicit["checkpoint_advice"] = args.checkpoint_advice
     if args.artifact is not None:
         explicit["artifacts"] = args.artifact
     if args.research_source is not None:
@@ -540,6 +543,16 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
             "readiness": F.readiness(settings["features"], settings, execution="local" if args.local else "slurm", gpu=settings.get("gpu", False), trace=settings.get("trace", False), effective_options=effective),
             "compatibility": ["$0 and BASH_SOURCE identify the immutable script snapshot; source-relative programs need RAVEN_SOURCE_SCRIPT or an explicit application hook.", "Static preview is not Slurm acceptance; shared project and reporting Python must be visible on compute nodes."], "mutations": 0}
     plan["receipt_file"] = receipt_path
+    if settings.get("checkpoint_advice"):
+        from .checkpoint_advisor import advise
+        from .evidence import loads
+        from .projects import _root, _read
+        _, advice_fd = _root(str(root))
+        try:
+            advice_data, _ = _read(advice_fd, settings["checkpoint_advice"], 1 << 20)
+        finally:
+            os.close(advice_fd)
+        plan["checkpoint_advice"] = advise(loads(advice_data))
     # Use the producer validators before creating an intent.
     from .reporting import _encoded, _parameters, _resources
     _parameters(settings.get("parameters", {}))
@@ -556,6 +569,9 @@ def format_plan(plan):
     for row in plan["readiness"]:
         lines.append(row["label"] + ": " + labels.get(row["status"], row["status"]) + " — " + row["reason"])
     lines += ["", *plan["compatibility"]]
+    if plan.get("checkpoint_advice"):
+        from .checkpoint_advisor import review_lines
+        lines.extend(review_lines(plan["checkpoint_advice"]))
     return "\n".join(lines)
 
 

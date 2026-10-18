@@ -1,0 +1,69 @@
+name: release-candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      attest:
+        description: 'Create GitHub/Sigstore provenance after tests (no tag or release publication)'
+        type: boolean
+        default: false
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: read
+
+jobs:
+  qualification:
+    uses: ./.github/workflows/tests.yml
+  provenance:
+    needs: qualification
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions-and-demo
+          path: qualified
+      - name: Locate the exact tested artifacts and check release policy
+        id: policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          inventory="$(find qualified -name release-inventory.json -type f)"
+          test -n "$inventory"
+          artifact_dir="$(dirname "$inventory")"
+          version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$inventory")"
+          tag_args=()
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then tag_args=(--tag "$GITHUB_REF_NAME"); fi
+          python3 scripts/release_inventory.py policy "$inventory" \
+            --expected-version "$version" --expected-source "$GITHUB_SHA" "${tag_args[@]}" \
+            "$artifact_dir"/*.whl "$artifact_dir"/*.tar.gz
+          printf 'directory=%s\nversion=%s\n' "$artifact_dir" "$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest-build-provenance@v2
+        id: attest
+        if: github.ref_type == 'tag' || inputs.attest
+        with:
+          subject-path: |
+            ${{ steps.policy.outputs.directory }}/*.whl
+            ${{ steps.policy.outputs.directory }}/*.tar.gz
+      - name: Verify expected signer, source and artifact bytes
+        if: github.ref_type == 'tag' || inputs.attest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_DIR: ${{ steps.policy.outputs.directory }}
+          RELEASE_VERSION: ${{ steps.policy.outputs.version }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          python3 scripts/verify_release.py "$ARTIFACT_DIR/release-inventory.json" \
+            --repository "$GITHUB_REPOSITORY" --source "$GITHUB_SHA" --version "$RELEASE_VERSION" \
+            --bundle "$BUNDLE" "$ARTIFACT_DIR"/*.whl "$ARTIFACT_DIR"/*.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: github.ref_type == 'tag' || inputs.attest
+        with:
+          name: verified-release-provenance-${{ github.sha }}
+          path: ${{ steps.attest.outputs.bundle-path }}

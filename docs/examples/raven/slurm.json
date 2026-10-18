@@ -124,7 +124,15 @@
   "storage": {
     "state_dir": "~/.local/state/raven",
     "coordination_dir": "auto-host-local",
-    "durable_results": "~/raven-results"
+    "durable_results": "~/raven-results",
+    "series_format": "jsonl",
+    "retention": {
+      "raw_seconds": 86400,
+      "ten_second_seconds": 604800,
+      "minute_seconds": 2592000,
+      "gap_seconds": 2.0,
+      "protect_raw": true
+    }
   },
   "ui": {
     "theme": "terminal",

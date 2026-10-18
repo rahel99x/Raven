@@ -246,6 +246,48 @@ Pulling source alone does not update a normally installed package. Reinstallatio
 preserves user configuration and state; it needs the recorded source checkout.
 Repeat the version, doctor, and plan checks from outside the checkout afterward.
 
+### Reliability revision compatibility
+
+Use the ordinary Raven package and the installer that already owns your commands.
+The review implementation is not a published release merely because its source
+or evidence exists. Before publication, install only a reviewed local checkout
+or its exact built wheel; do not assume a remote branch or `main` contains it.
+
+Close old dashboards and their owned workers before changing the package.
+Retain your config and state directories. Review the selected billing account,
+partition and worker interpreter with `ravenl config explain` and `ravenh --plan`;
+the latter does not request compute. A workstation with Slurm continues to use
+local Slurm. Selecting `--site desktop` instead selects standalone execution.
+
+The stricter [configuration trust checks](guides/configuration-trust.md) can
+reject symlinked or group-writable configuration and plugin paths that previously
+loaded. Inspect the reported path and use a reviewed regular file with trusted
+ownership. Raven does not silently repair permissions or execute a rejected plugin.
+Separate Raven writers need separate state directories; unsupported shared
+filesystem ownership remains read-only rather than risking conflicting writes.
+
+On a cluster whose home directory uses NFS or Lustre, ask the site administrator
+for an approved local state location and select it with `RAVEN_STATE_DIR`.
+Check the effective paths with `ravenl --show-paths config explain`. Project
+scientific files can remain on shared storage. A temporary node-local directory
+does not provide retention after logout, reboot or site cleanup; choose it only
+when that loss of local cache is acceptable. Do not delete `.writer.lock` to
+bypass a live owner; close that session or choose a separate state scope.
+
+Native [recordings](guides/recording-storage.md) now distinguish exact execution
+attempts. Older unattributed files remain preserved and visibly unverified; a
+matching job number alone cannot attach them to a new run. JSONL remains the
+default. Compact blocks, tiered working archives, historical recording, optional
+services and raster rendering require explicit selection. Preserve originals
+when trying them, and use the documented raw export before a downgrade that
+cannot read a new format. Never run old and new writers against one state directory.
+
+The [core/lab split](guides/distribution-experiment.md) is a separate unpublished
+experiment. Its generated wheels belong only in its private qualification
+environments. [MCP](guides/mcp-evidence.md) and [WASI](guides/wasi-analysis.md)
+dependencies are optional; ordinary monitoring does not require them. New
+analysis tools retain their individual experimental and site-qualification limits.
+
 ### Move from pipx to the repository installer
 
 Changing installation methods is optional. The repository installer preserves

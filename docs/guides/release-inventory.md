@@ -1,4 +1,4 @@
-# Release inventory and checksums
+# Release inventory and provenance
 
 Use the release inventory to record the final wheel, source archive, license,
 and bundled member checksums. Build and qualify the artifacts first. The
@@ -72,6 +72,62 @@ when the expected records come from a trusted source. They do not authenticate a
 publisher, sign a release, establish provenance, scan for vulnerabilities, or
 prove that code is safe. The SPDX schema was validated against the upstream
 [SPDX 2.3 JSON schema](https://github.com/spdx/spdx-spec/blob/v2.3/schemas/spdx-schema.json).
+
+## Check version and source consistency
+
+Release tags use `v` followed by the exact package version, for example `v7.0.0`.
+Never move an existing release tag or replace published bytes. Use a new patch
+version for corrected artifacts; prereleases use `aN`, `bN`, or `rcN` suffixes.
+No tag or release is created by the commands below.
+
+```bash
+python3 scripts/release_inventory.py policy dist/release-inventory.json \
+  --expected-version 7.0.0 --expected-source FULL_TESTED_COMMIT \
+  --tag v7.0.0 dist/raven-7.0.0-py3-none-any.whl dist/raven-7.0.0.tar.gz
+```
+
+Supply the complete 40-character source commit from the qualified revision.
+The policy checks the tag/version, recorded commit, one wheel plus one source
+archive, and identical bundled Raven source files. CI also compares this version
+with the installed package metadata. This detects consistency errors; it cannot
+authenticate a caller-supplied source claim.
+
+## Verify authenticated build provenance
+
+The `release-candidate` workflow reuses the complete Python 3.10–3.14 test and
+packaging workflow, downloads its exact qualified artifacts, and checks the
+release policy. A manual run defaults to a dry run. An explicitly selected
+attestation run, or a separately authorized version tag, creates GitHub/Sigstore
+build provenance using GitHub OIDC and verifies it before uploading the bundle.
+The workflow creates neither a Git tag nor a GitHub/PyPI release. Fork PRs have
+no signing token. This procedure does not retroactively sign historical binaries.
+
+Select the repository, workflow and source commit independently of an untrusted
+download. With a current GitHub CLI supporting `gh attestation verify`, run:
+
+```bash
+python3 scripts/verify_release.py dist/release-inventory.json \
+  --repository rahel99x/Raven \
+  --workflow .github/workflows/release-candidate.yml \
+  --source FULL_TESTED_COMMIT --version 7.0.0 --tag v7.0.0 \
+  --bundle /path/to/downloaded-attestation.jsonl \
+  dist/raven-7.0.0-py3-none-any.whl dist/raven-7.0.0.tar.gz
+```
+
+The verifier checks archive/member hashes first, then requires the expected
+repository, signer workflow, signer revision and source revision. It rejects
+self-hosted-runner attestations under this release policy. An unavailable or
+failing verifier is a failure, not a fallback to unsigned checksums. `--plan`
+validates local consistency and prints the exact verification commands while
+explicitly reporting that signatures were not verified.
+
+Checksums establish byte identity. A signed Git tag authenticates a source
+reference when its signing key is trusted. An artifact signature authenticates
+the signed artifact. A build attestation binds artifact digests to a verified
+workflow identity and provenance statement. None proves scientific correctness,
+security, reproducible builds, or hardware/site compatibility. OIDC signing and
+its hosted verification require an authorized workflow run; local dry-run tests
+cannot establish that external gate.
 
 ## Scope and limits
 

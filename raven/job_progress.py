@@ -451,12 +451,24 @@ def _replace_glyph(row, x, glyph):
     return row
 
 
+def next_animation_deadline(app, *, now=None):
+    """Next visible icon boundary; absent/offscreen animations need no wake."""
+    state = getattr(app, "job_progress_state", {})
+    if (not isinstance(state, dict) or state.get("animation_context") != _animation_context(app)
+            or not getattr(app, "animations_enabled", False)):
+        return float("inf")
+    now = time.monotonic() if now is None else now
+    intervals = {CLOCK_INTERVAL if kind == "clock" else HOURGLASS_INTERVAL
+                 for _, _, kind in state.get("animation_slots", ())}
+    return min(((math.floor(now / interval) + 1) * interval for interval in intervals), default=float("inf"))
+
+
 def animate_rows(app, rows, *, now=None):
     """Patch visible progress icons without rebuilding the cached document.
 
-    The existing <=200ms input wakeup is sufficient for 400/800ms frames.
-    Animation therefore never increases scheduler/file polling or triggers a
-    chart/research recomputation. Hover, marks and cursor colours are retained.
+    The owner wakes at the next visible 400/800ms icon boundary. Animation does
+    not change scheduler/file polling or trigger a chart/research recomputation.
+    Hover, marks and cursor colours are retained.
     """
     state = getattr(app, "job_progress_state", {})
     if (not isinstance(state, dict) or state.get("animation_context") != _animation_context(app)

@@ -83,7 +83,8 @@ def planning_dashboard(planning_files, monkeypatch):
     store.finished = [Finished("900_2", "array experiment", "OUT_OF_MEMORY", elapsed="00:01:00", exit="0:125")]
     store.details["900_2"] = {"StdOut": str(planning_files["stdout"]), "StdErr": str(planning_files["stdout"])}
     hub.configure(metrics_file=str(planning_files["metrics"]), contract=str(planning_files["contract"]),
-                  workdir=str(planning_files["root"]))
+                  workdir=str(planning_files["root"]),
+                  planning_files={"checkpoint-advice": str(Path(__file__).parents[1] / "examples/checkpoint-advice.json")})
     hub.passport = capture(planning_files["root"], script=planning_files["script"], parameters={"model": "模型"})
     hub.plan = prepare(planning_files["script"], workdir=planning_files["root"])
     calls = []
@@ -111,7 +112,7 @@ def test_all_twelve_views_fit_terminal_and_preserve_character_fallback(planning_
     session.views.set_ascii(ascii_)
     session.app._ascii_cfg = ascii_
     session.app.set_theme(session.app.theme)
-    assert len(RESEARCH_VIEWS) == 13
+    assert len(RESEARCH_VIEWS) == 14
     for view, _ in RESEARCH_VIEWS:
         result = load_view(session, view)
         assert result.get("status") not in {"loading", "error", "empty"}, (view, result)
@@ -334,6 +335,7 @@ def test_cached_foreign_status_is_visible_without_losing_terminal_safety(plannin
 @pytest.mark.parametrize("view", [name for name, _ in PLANNING_VIEWS])
 def test_malformed_planning_bundles_are_errors_or_unknowns_not_ui_crashes(planning_dashboard, view):
     session, files, calls = planning_dashboard
+    session.app.research.configure(planning_files={})
     rng = random.Random(527)
     base = files["bundle"]
     malformed = [None, 2, "bad", [], {}, {"jobs": None}, {"history": None}, {"nodes": "bad"},

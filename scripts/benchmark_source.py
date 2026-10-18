@@ -12,7 +12,7 @@ _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 
 
 def namespace(source_root):
-    """Read the static setuptools package list without executing checkout code.
+    """Read a bounded static package list or exact namespace discovery pattern.
 
     The bounded literal parser also works on Python 3.10. Metadata-free unit
     fixtures use the current namespace; an existing but unsupported declaration
@@ -30,19 +30,22 @@ def namespace(source_root):
         lines = raw.decode("utf-8").splitlines()
     except UnicodeError as exc:
         raise ValueError("Source checkout metadata must be UTF-8") from exc
-    sections, selected = [], None
+    sections, selected, discovery = [], None, False
     for line in lines:
         header = re.fullmatch(r"\s*\[([^\[\]]+)\]\s*(?:#.*)?", line)
         if header:
-            selected = [] if header[1].strip() == "tool.setuptools" else None
+            section = header[1].strip()
+            selected = [] if section in {"tool.setuptools", "tool.setuptools.packages.find"} else None
             if selected is not None:
                 sections.append(selected)
+                discovery = section == "tool.setuptools.packages.find"
         elif selected is not None:
             selected.append(line)
     if len(sections) != 1:
-        raise ValueError("Source checkout must declare one [tool.setuptools] section")
+        raise ValueError("Source checkout must declare one static setuptools package or discovery section")
+    key = "include" if discovery else "packages"
     declarations = [(index, match[1]) for index, line in enumerate(sections[0])
-                    if (match := re.fullmatch(r"\s*packages\s*=\s*(.*)", line))]
+                    if (match := re.fullmatch(r"\s*" + key + r"\s*=\s*(.*)", line))]
     if len(declarations) != 1:
         raise ValueError("Source checkout must declare one static setuptools packages list")
     index, literal = declarations[0]
@@ -54,6 +57,11 @@ def namespace(source_root):
         except (SyntaxError, ValueError):
             continue
         break
+    if discovery:
+        if (not isinstance(value, list) or len(value) != 2 or not all(isinstance(item, str) for item in value)
+                or not _IDENTIFIER.fullmatch(value[0]) or value[1] != value[0] + ".*"):
+            raise ValueError("Source discovery must name one exact top-level package and its subpackages")
+        return value[0]
     if (not isinstance(value, list) or len(value) != 1 or not isinstance(value[0], str)
             or not _IDENTIFIER.fullmatch(value[0])):
         raise ValueError("Source checkout must declare exactly one top-level package")

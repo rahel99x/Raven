@@ -371,6 +371,8 @@ def published_workspaces(dashboard, monkeypatch):
         "tradeoffs": {"status": "ok", "candidates": []},
         "scaling": {"status": "ok", "points": []},
         "workflow": {"status": "ok", "nodes": []},
+        "checkpoint-advice": {"schema": "raven.checkpoint-advice-result/v1", "status": "advisory",
+                              "summary": "Review measured checkpoint costs", "assumptions": ["Conditional on measured costs"], "baselines": []},
     }
     requests = []
     def request(context, **kwargs):
@@ -386,7 +388,7 @@ def published_workspaces(dashboard, monkeypatch):
                          + [("analytics", key) for key, _ in J._choices("analytics")])
 @pytest.mark.parametrize("width,height,ascii_", [(40, 80, True), (80, 50, False),
                                                (120, 60, False), (200, 60, False)])
-def test_all_seventeen_inline_views_fit_and_leave_global_workspaces_unchanged(published_workspaces, group, view, width, height, ascii_):
+def test_all_inline_views_fit_and_leave_global_workspaces_unchanged(published_workspaces, group, view, width, height, ascii_):
     dashboard, app = published_workspaces, published_workspaces.app
     dashboard.views.set_ascii(ascii_)
     if ascii_:

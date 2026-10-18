@@ -40,6 +40,15 @@ def _sample_key(sample):
 
 def read_tail(path, keep, *, max_bytes=None, max_line=None):
     """Read the newest valid objects without parsing the entire append file."""
+    # Compact is authoritative after verified conversion; JSONL stays intact
+    # as recovery evidence. File inspection remains outside the Store lock.
+    if path and (str(path).endswith(".rvb") or os.path.basename(path).startswith("v2-")):
+        from .series_storage import compact_path, json_path
+        packed = compact_path(path)
+        if os.path.exists(packed):
+            from .series_blocks import read
+            return read(packed, keep, max_bytes=max_bytes if max_bytes is not None else COLD_READ_BYTES)
+        path = json_path(path)
     if keep <= 0:
         return [], dict(status="ready", message="Metric history retention is disabled.")
     old, skipped, oversized, consumed = [], 0, 0, 0
@@ -135,9 +144,7 @@ class SeriesArchive:
             self.active.clear()
 
     def _identity(self, jid):
-        record, _ = self.store.record_context(jid)
-        return (self.store._job_attempts.get(jid, 0),
-                getattr(record, "submit", None), getattr(record, "start", None))
+        return self.store.capture_series_identity(jid)
 
     def _status(self, key, value):
         self.states[key] = value
@@ -174,6 +181,10 @@ class SeriesArchive:
         with self.store.lock:
             if ((epoch is not None and epoch != self.epoch) or self._identity(jid) != identity):
                 return
+            if not identity.verified:
+                status = dict(status, attribution="session-only", message=status.get("message", "") +
+                    " Attempt identity is unverified; a matching submission/start identity and restart counter are required."
+                    " These recordings are isolated to this session. Legacy files are preserved but not merged.")
             mem = list(self.store.series[jid])
             seen = {key for sample in mem if (key := _sample_key(sample)) is not None}
             merged = [sample for sample in old if _sample_key(sample) not in seen] + mem
@@ -199,6 +210,7 @@ class SeriesArchive:
             else:
                 self.limited.discard(jid)
             self._status(jid, status)
+            self.store._notify_ui()
 
     def read(self, jid, *, background=False, publication=False):
         def published():
@@ -254,7 +266,13 @@ class SeriesArchive:
                     limits.coverage['archive_inventory']={'limited':True,'retained':len(ids),
                         'reason':'saved history inventory scan budget reached'}
                     break
-                if entry.name.endswith('.jsonl'):
+                from .series_identity import inventory_job
+                jid = inventory_job(entry.name)
+                if jid:
+                    ids.add(jid)
+                elif entry.name.endswith('.jsonl'):
+                    # Keep old jobs discoverable for recovery, without silently
+                    # attaching their ambiguous samples to current attempts.
                     ids.add(entry.name[:-6])
         return ids
 
@@ -274,7 +292,7 @@ class SeriesArchive:
                     return
                 key, identity = self.pending.popitem(last=False)
                 self.active[key] = identity
-                path = self.store._series_path(key) if key is not _INDEX else None
+                path = self.store._series_identity_path(identity) if key is not _INDEX else None
             try:
                 if key is _INDEX:
                     ids=self._disk_inventory()

@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raven.local/schemas/checkpoint-advice.v1.schema.json",
+  "title": "Experimental checkpoint advice input",
+  "description": "Structural input contract for checkpoint_advisor. Runtime also validates printable text, range ordering, unique exposure identities, finite values, 100,000 total items, depth 24 and the 8 MiB receipt limit. It determines model applicability, censoring, rare-failure limits and bounded checkpoint counts. Schema validation does not establish application compatibility or scientific efficacy. Optional numerical fields have their declared bounds even when runtime can abstain before using them. JSON Schema integer is mathematical: runtime requires an integer JSON token for scope.nodes (1.0 is not accepted).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.checkpoint-advice/v1"
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "partition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "application": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "cluster": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "partition",
+        "nodes",
+        "application"
+      ]
+    },
+    "support": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "compatible": {
+          "type": "boolean"
+        },
+        "restart_verified": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+        }
+      },
+      "required": [
+        "compatible",
+        "restart_verified"
+      ]
+    },
+    "useful_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 1e-09
+    },
+    "checkpoint_seconds": {
+      "$ref": "#/$defs/duration"
+    },
+    "restart_seconds": {
+      "$ref": "#/$defs/duration"
+    },
+    "failure_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/exposure"
+          },
+          "minItems": 0,
+          "maxItems": 10000
+        },
+        "stationary": {
+          "description": "Only literal true declares stationarity. Other bounded JSON values leave the history-derived hazard unavailable; runtime does not coerce truthy values."
+        },
+        "representative": {
+          "description": "Only literal true declares a representative cohort. Other bounded JSON values cause abstention unless an independent MTBF estimate is provided."
+        },
+        "allocation_mtbf": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/estimatedRange"
+            }
+          ]
+        }
+      },
+      "required": []
+    },
+    "fixed_interval_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 1e-09
+    },
+    "preemption_notice_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 0
+    },
+    "remaining_wall_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 0
+    },
+    "metadata": {
+      "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+    }
+  },
+  "required": [
+    "schema",
+    "scope",
+    "support",
+    "useful_seconds",
+    "failure_model"
+  ],
+  "$defs": {
+    "duration": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "lower_seconds": {
+              "type": "number",
+              "maximum": 1000000000.0,
+              "minimum": 1e-09
+            },
+            "upper_seconds": {
+              "type": "number",
+              "maximum": 1000000000.0,
+              "minimum": 1e-09
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          },
+          "required": [
+            "lower_seconds",
+            "upper_seconds",
+            "source"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "samples_seconds": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "minimum": 1e-09
+              },
+              "minItems": 1,
+              "maxItems": 1000
+            },
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            }
+          },
+          "required": [
+            "samples_seconds",
+            "source"
+          ]
+        }
+      ]
+    },
+    "estimatedRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lower_seconds": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 1e-09
+        },
+        "upper_seconds": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 1e-09
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      },
+      "required": [
+        "lower_seconds",
+        "upper_seconds",
+        "source"
+      ]
+    },
+    "exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "exposure_seconds": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 1e-09
+        },
+        "outcome": {
+          "enum": [
+            "node_failure",
+            "preempted",
+            "timeout",
+            "completed",
+            "censored"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "exposure_seconds",
+        "outcome"
+      ]
+    }
+  }
+}

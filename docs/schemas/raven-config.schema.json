@@ -573,6 +573,41 @@
           "type": "string",
           "maxLength": 4096,
           "pattern": "^[^\\u0000\\r\\n]*$"
+        },
+        "series_format": {
+          "enum": [
+            "blocks-v1",
+            "jsonl"
+          ]
+        },
+        "retention": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "raw_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "ten_second_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "minute_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "gap_seconds": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1099511627776
+            },
+            "protect_raw": {
+              "type": "boolean"
+            }
+          }
         }
       }
     },
@@ -1301,6 +1336,41 @@
               "type": "string",
               "maxLength": 4096,
               "pattern": "^[^\\u0000\\r\\n]*$"
+            },
+            "series_format": {
+              "enum": [
+                "blocks-v1",
+                "jsonl"
+              ]
+            },
+            "retention": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "raw_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "ten_second_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "minute_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "gap_seconds": {
+                  "type": "number",
+                  "minimum": 0.001,
+                  "maximum": 1099511627776
+                },
+                "protect_raw": {
+                  "type": "boolean"
+                }
+              }
             }
           }
         },

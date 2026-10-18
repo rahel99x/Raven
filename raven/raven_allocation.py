@@ -5,16 +5,17 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import secrets
 import socket
-import struct
 import subprocess
 import sys
 import threading
 import time
 
+from .framing import Decoder as FramedDecoder, FramePolicy, finite_constant, frame, unique_object, write_pending
 from .raven_allocation_adapters import VerifiedReuse, config_data, prepare
 
 MAX_FRAME = 1024 * 1024
@@ -31,50 +32,44 @@ def _validate(value, depth=0, budget=None):
     if isinstance(value, str):
         if len(value) > MAX_FRAME:
             raise ValueError("Allocation message string exceeds its limit")
+        value.encode("utf-8")
     elif isinstance(value, dict):
         for key, item in value.items():
             if not isinstance(key, str):
                 raise ValueError("Allocation message keys must be strings")
+            key.encode("utf-8")
             _validate(item, depth + 1, budget)
     elif isinstance(value, (list, tuple)):
         for item in value:
             _validate(item, depth + 1, budget)
+    elif isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("Allocation message numbers must be finite")
     elif value is not None and not isinstance(value, (bool, int, float)):
         raise ValueError("Allocation message contains an unsupported value")
+
+
+POLICY = FramePolicy("Allocation", MAX_FRAME, MAX_FRAME + 65540)
 
 
 def encode(message):
     _validate(message)
     data = json.dumps(message, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()
-    if len(data) > MAX_FRAME:
-        raise ValueError("Allocation message exceeds 1 MiB; use a bounded input reference")
-    return struct.pack("!I", len(data)) + data
+    return frame(data, POLICY)
 
 
-class Decoder:
+def _parse(raw):
+    try:
+        value = json.loads(raw, parse_constant=finite_constant, object_pairs_hook=unique_object)
+        _validate(value)
+        return value
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise ValueError("Invalid allocation JSON frame") from exc
+
+
+class Decoder(FramedDecoder):
     def __init__(self):
-        self.data = bytearray()
-
-    def feed(self, data):
-        if len(self.data) + len(data) > MAX_FRAME + 65540:
-            raise ValueError("Allocation receive buffer exceeds its limit")
-        self.data.extend(data)
-
-    def take(self, limit=32):
-        result = []
-        while len(result) < limit and len(self.data) >= 4:
-            size = struct.unpack_from("!I", self.data)[0]
-            if size > MAX_FRAME:
-                raise ValueError("Allocation protocol frame exceeds its limit")
-            if len(self.data) < size + 4:
-                break
-            value = json.loads(self.data[4:size + 4], parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Non-finite allocation value")))
-            del self.data[:size + 4]
-            if not isinstance(value, dict):
-                raise ValueError("Allocation message must be an object")
-            _validate(value)
-            result.append(value)
-        return result
+        super().__init__(POLICY, _parse)
+        self.data = self.buffer  # Retain the published buffer attribute.
 
 
 def plan(config, reuse=None):
@@ -192,6 +187,12 @@ class AllocationManager:
         self._reuse_receipt = None
         self._reuse_cancel = threading.Event()
         self.collection_backend = None
+        self._recovery_future = None
+        self._recovery_checked = False
+        self._recovery_next = 0.
+        self._recovery_reset = False
+        self._recovery_failures = 0
+        self._recovery_cancel = threading.Event()
 
     def plan(self, reuse=None):
         return prepare(self.config, reuse)
@@ -203,6 +204,25 @@ class AllocationManager:
 
     def snapshot(self):
         return dict(self._state)
+
+    def readiness(self):
+        """UI readiness hints; tick retains all protocol and ownership actions."""
+        import selectors
+        if not self._lock.acquire(blocking=False):
+            return (), False
+        try:
+            if self._socket is None or self._closed:
+                return (), False
+            mask = selectors.EVENT_READ | (selectors.EVENT_WRITE if self._queue else 0)
+            return ((self._socket, mask),), self._decoder.has_complete_frame
+        finally:
+            self._lock.release()
+
+    def _wake_on_completion(self, future):
+        from .ui_wakeup import UIWakeup
+        wakeup = getattr(self, "ui_wakeup", None)
+        if type(wakeup) is UIWakeup:
+            future.add_done_callback(wakeup.notify)
 
     def request_reuse_review(self, job_id):
         """Start one fresh, finite owned-allocation read; never run it on the UI."""
@@ -236,6 +256,7 @@ class AllocationManager:
         self._reuse_cancel = threading.Event()
         future = self._verification_pool.submit(review, self.collection_backend, job_id, reviewed_plan, self._reuse_cancel)
         self._reuse_future = (future, token, self.generation, reviewed_plan["digest"])
+        self._wake_on_completion(future)
         self._state = {**self._state, "reuse_review": {"state": "reviewing", "token": token, "job_id": job_id, "generation": self.generation}}
         return token
 
@@ -344,22 +365,13 @@ class AllocationManager:
             return self._socket is not None
 
     def _flush(self):
-        budget = 65536
-        while self._queue and self._socket is not None and budget:
-            try:
-                size = self._socket.send(self._queue[0][:budget])
-            except (BlockingIOError, InterruptedError):
-                break
-            except OSError:
-                self._disconnect("Allocation helper connection was lost; cleanup is uncertain")
-                break
-            if not size:
-                break
-            budget -= size
-            self._queued -= size
-            self._queue[0] = self._queue[0][size:]
-            if not self._queue[0]:
-                self._queue.popleft()
+        if self._socket is None:
+            return
+        try:
+            for size in write_pending(self._queue, self._socket.send):
+                self._queued -= size
+        except OSError:
+            self._disconnect("Allocation helper connection was lost; cleanup is uncertain")
 
     def _uncertain(self, error):
         if self._state["state"] != "light":
@@ -417,6 +429,7 @@ class AllocationManager:
         generation, request_id = self.generation, self.request_id
         future = self._verification_pool.submit(self._placement_verifier, candidate, cancel=self._verify_cancel)
         self._verification = (future, generation, request_id)
+        self._wake_on_completion(future)
 
     def _finish_verification(self):
         if not self._verification or not self._verification[0].done():
@@ -429,6 +442,68 @@ class AllocationManager:
             self._send({"op": "placement", "records": future.result()})
         except Exception as exc:
             self._send({"op": "placement", "error": str(exc)[:1000]})
+
+    def retry_cleanup(self, generation=None):
+        """Resume one bounded cleanup cycle; never allocate or resubmit a job."""
+        with self._lock:
+            if self._closed or generation is not None and generation != self.generation:
+                return False
+            if not self._state.get("cleanup_uncertain") or self._recovery_future is not None:
+                return False
+            self._recovery_reset = True
+            self._recovery_failures = 0
+            self._recovery_next = 0.
+            return True
+
+    def _tick_recovery(self):
+        if self._closed:
+            return
+        now = time.time()
+        if self._recovery_future is not None:
+            future, generation, request_id = self._recovery_future
+            if not future.done():
+                return
+            self._recovery_future = None
+            if (generation, request_id) != (self.generation, self.request_id):
+                return
+            self._recovery_checked = True
+            try:
+                result = future.result()
+                if result is None and self._state.get("cleanup_uncertain"):
+                    result = {"state": "reconciling", "mode": "light", "cleanup_uncertain": True,
+                              "error": "The ownership receipt is unavailable; elapsed time cannot establish cleanup",
+                              "recovery": {"phase": "paused", "next_retry": 0.,
+                                           "next_action": "Restore the original private receipt and choose Retry cleanup"}}
+                self._recovery_failures = 0
+            except Exception as exc:
+                self._recovery_failures += 1
+                result = {"state": "reconciling", "mode": "light", "cleanup_uncertain": True,
+                          "error": "Allocation recovery: " + str(exc)[:1000],
+                          "recovery": {"phase": "paused" if self._recovery_failures >= 8 else "owner unavailable",
+                                       "attempts": self._recovery_failures, "next_retry": now + 30.,
+                                       "next_action": "Wait for the existing owner or inspect the private receipt; no PID was signalled"}}
+            if result is not None:
+                self._state = {**self._state, **result}
+                self._recovery_next = max(now + 1., result.get("recovery", {}).get("next_retry", now + 30.))
+            return
+        if self._socket is not None or self._process is not None and self._process.poll() is None:
+            return
+        if self._verification is not None or self._reuse_future is not None:
+            return
+        if self._recovery_checked and not self._state.get("cleanup_uncertain"):
+            return
+        if now < self._recovery_next or self._state.get("recovery", {}).get("phase") == "paused" and not self._recovery_reset:
+            return
+        if self.collection_backend is None and not self._state.get("cleanup_uncertain"):
+            return
+        from .raven_allocation_recovery import reconcile
+        if self._verification_pool is None:
+            self._verification_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="raven-placement")
+        future = self._verification_pool.submit(reconcile, self.state_dir, self.plan(), self.collection_backend,
+                                                self._recovery_cancel, reset=self._recovery_reset)
+        self._recovery_reset = False
+        self._recovery_future = (future, self.generation, self.request_id)
+        self._wake_on_completion(future)
 
     def tick(self):
         if not self._lock.acquire(blocking=False):
@@ -460,6 +535,7 @@ class AllocationManager:
                     self._disconnect("Allocation helper protocol failed; cleanup is uncertain")
             if self._process is not None and self._process.poll() is not None and self._state["state"] != "light":
                 self._uncertain("Allocation helper stopped; inspect the exact request before taking recovery action")
+            self._tick_recovery()
             return changed or before != self._state
         finally:
             self._lock.release()
@@ -494,6 +570,7 @@ class AllocationManager:
             self._socket.close()
             self._socket = None
         self._closed = True
+        self._recovery_cancel.set()
         if self._verification_pool is not None:
             self._verification_pool.shutdown(wait=False, cancel_futures=True)
         if self._process is not None:

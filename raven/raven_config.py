@@ -15,7 +15,6 @@ import os
 from pathlib import Path
 import shutil
 import socket
-import stat
 import sys
 
 from .telemetry_profiles import DEFAULTS as TELEMETRY_DEFAULTS, PRESETS, validate_custom
@@ -58,7 +57,9 @@ DEFAULTS = {
         "heavy": {"max_workers": 2, "memory_mib": 4096, "scratch_mib": 8192, "max_tasks": 2,
                   "enforcement": "best-available", "cpu_seconds": 3600, "wall_seconds": 3600,
                   "input_bytes": 8388608, "output_bytes": 8388608}},
-    "storage": {"state_dir": "", "coordination_dir": "auto-host-local", "durable_results": ""},
+    "storage": {"state_dir": "", "coordination_dir": "auto-host-local", "durable_results": "", "series_format": "jsonl",
+                "retention": {"raw_seconds": 86400, "ten_second_seconds": 604800, "minute_seconds": 2592000,
+                              "gap_seconds": 2., "protect_raw": True}},
     "telemetry": copy.deepcopy(TELEMETRY_DEFAULTS),
     "ui": {"theme": "terminal", "show_execution_target": True, "show_observation_age": True,
            "ascii": False, "animations": True, "density": "comfortable", "worker_mode": "multi", "profile_label": ""},
@@ -70,6 +71,7 @@ DESKTOP = {"profile": "desktop", "site": {"kind": "desktop"}, "connection": {"tr
 
 _ENUMS = {
     "telemetry.preset": set(PRESETS),
+    "storage.series_format": {"jsonl", "blocks-v1"},
     "site.kind": {"slurm", "desktop"}, "connection.transport": {"none", "local", "ssh"},
     "execution.startup": {"light", "heavy"}, "execution.heavy_target": {"slurm", "local"},
     "execution.desktop_execution": {"disabled", "explicit"}, "execution.on_allocation_end": {"light"},
@@ -200,6 +202,11 @@ def validate(document, *, partial=False):
                     raise ValueError("Expected " + SCHEMA)
     walk(document, DEFAULTS)
     def telemetry_checks(value):
+        if "retention" in value.get("storage", {}):
+            from .series_retention import policy
+            retention = value["storage"]["retention"]
+            if all(key in retention for key in ("raw_seconds", "ten_second_seconds", "minute_seconds")):
+                policy(retention)
         if "custom" in value.get("telemetry", {}):
             validate_custom(value["telemetry"]["custom"], partial=True)
         for profile in value.get("profiles", {}).values():
@@ -236,16 +243,8 @@ def validate(document, *, partial=False):
 
 
 def read_file(path, *, trusted=False):
-    fd = os.open(os.fspath(path), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
-    with os.fdopen(fd, "rb") as stream:
-        info = os.fstat(stream.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_CONFIG:
-            raise ValueError("Configuration must be a regular file of at most 256 KiB.")
-        if trusted and (info.st_uid != 0 or info.st_mode & 0o022):
-            raise ValueError("Mandatory Raven policy must be root-owned and not group/world writable.")
-        raw = stream.read(MAX_CONFIG + 1)
-    if len(raw) > MAX_CONFIG:
-        raise ValueError("Configuration exceeded its size limit while reading.")
+    from .config_trust import read
+    raw, _info = read(path, limit=MAX_CONFIG, site=trusted)
     if str(path).lower().endswith(".toml"):
         try:
             import tomllib
@@ -440,7 +439,7 @@ def resolve(config_path=None, *, site=None, legacy_profile=None, launcher="light
             apply(document.get("recommendations", {}), "site recommendation")
     explicit = config_path or env.get("RAVEN_CONFIG")
     candidates = [Path(explicit).expanduser()] if explicit else [config_root / "raven/config.json", config_root / "raven/config.toml"]
-    source = next((str(path) for path in candidates if path.exists()), "")
+    source = next((str(path) for path in candidates if os.path.lexists(path)), "")
     if explicit and not source:
         raise ValueError("The explicitly requested Raven/legacy configuration does not exist.")
     legacy_source = ""

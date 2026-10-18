@@ -8,14 +8,16 @@ from __future__ import annotations
 
 from collections import deque
 import json
+import math
 import os
 from pathlib import Path
 import socket
-import struct
 import subprocess
 import sys
 import time
 import uuid
+
+from .framing import Decoder as FramedDecoder, FramePolicy, finite_constant, frame as encode_frame, unique_object, write_pending
 
 MAX_SESSIONS = 8
 MAX_FRAME = 8 * 1024 * 1024
@@ -23,40 +25,98 @@ MAX_PENDING = 8 * 1024 * 1024
 MAX_EVENT = 1024 * 1024
 
 
+POLICY = FramePolicy("Terminal IPC", MAX_FRAME, MAX_FRAME + 65540)
+
+
+def _validate(value):
+    # Terminal grids can contain many cells. Keep their channel-specific budget
+    # larger than worker documents; metadata still cannot recurse indefinitely.
+    remaining = 1_000_000
+    stack = [(value, 0)]
+    while stack:
+        item, depth = stack.pop()
+        remaining -= 1
+        if remaining < 0 or depth > 32:
+            raise ValueError("Terminal IPC document exceeds structure limits")
+        if isinstance(item, dict):
+            for key, child in item.items():
+                if not isinstance(key, str):
+                    raise ValueError("Terminal IPC object keys must be strings")
+                if len(key) > MAX_FRAME:
+                    raise ValueError("Terminal IPC key exceeds its byte budget")
+                key.encode("utf-8")
+                stack.append((child, depth + 1))
+        elif isinstance(item, (list, tuple)):
+            stack.extend((child, depth + 1) for child in item)
+        elif isinstance(item, str):
+            if len(item) > MAX_FRAME:
+                raise ValueError("Terminal IPC string exceeds its byte budget")
+            item.encode("utf-8")
+        elif isinstance(item, float):
+            if not math.isfinite(item):
+                raise ValueError("Terminal IPC numbers must be finite")
+        elif item is not None and not isinstance(item, (bool, int)):
+            raise ValueError("Terminal IPC contains unsupported data")
+    return value
+
+
 def frame(value):
-    data = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
-    if len(data) > MAX_FRAME:
-        raise ValueError("Terminal message exceeds the IPC limit")
-    return struct.pack("!I", len(data)) + data
+    # json.dumps already enforces finite JSON values and UTF-8 encoding rejects
+    # surrogate text. Complete grids come from the owned engine; traversing
+    # their scalar cells again on the sender adds no transport protection.
+    try:
+        data = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    except RecursionError as exc:
+        raise ValueError("Terminal IPC document exceeds nesting limits") from exc
+    return encode_frame(data, POLICY)
 
 
-class Decoder:
+def _finite_float(text):
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError("Terminal IPC numbers must be finite")
+    return value
+
+
+def _structure(value, escaped_surrogates):
+    # JSON parsing has already checked types and numbers. Count all children,
+    # but visit only containers; avoid one temporary stack tuple per grid cell.
+    remaining = 999999
+    stack = [(value, 0)]
+    while stack:
+        item, depth = stack.pop()
+        if isinstance(item, dict):
+            children = item.values()
+            if escaped_surrogates:
+                for key in item:
+                    key.encode("utf-8")
+        elif isinstance(item, list):
+            children = item
+        else:
+            continue
+        remaining -= len(item)
+        if remaining < 0 or depth > 32 or depth == 32 and item:
+            raise ValueError("Terminal IPC document exceeds structure limits")
+        for child in children:
+            if type(child) in (dict, list):
+                stack.append((child, depth + 1))
+            elif escaped_surrogates and isinstance(child, str):
+                child.encode("utf-8")
+    return value
+
+
+def _parse(raw):
+    try:
+        value = json.loads(raw, object_pairs_hook=unique_object, parse_constant=finite_constant, parse_float=_finite_float)
+        return _structure(value, b"\\ud" in raw or b"\\uD" in raw)
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise ValueError("Invalid terminal IPC JSON frame") from exc
+
+
+class Decoder(FramedDecoder):
     """Bounded length framing, including partial headers and payloads."""
     def __init__(self):
-        self.buffer = bytearray()
-
-    def feed(self, data):
-        if len(self.buffer) + len(data) > MAX_FRAME + 65536 + 4:
-            raise ValueError("Terminal IPC receive buffer exceeds its limit")
-        self.buffer.extend(data)
-
-    def take(self, limit=32):
-        out = []
-        consumed = 0
-        while len(out) < limit and len(self.buffer) - consumed >= 4:
-            size = struct.unpack_from("!I", self.buffer, consumed)[0]
-            if size > MAX_FRAME:
-                raise ValueError("Terminal IPC frame exceeds its limit")
-            if len(self.buffer) - consumed < size + 4:
-                break
-            value = json.loads(self.buffer[consumed + 4:consumed + 4 + size])
-            if not isinstance(value, dict):
-                raise ValueError("Terminal IPC message must be an object")
-            out.append(value)
-            consumed += size + 4
-        if consumed:
-            del self.buffer[:consumed]
-        return out
+        super().__init__(POLICY, _parse)
 
 
 def dimensions(rows, cols):
@@ -121,22 +181,13 @@ class TerminalService:
         return self._socket is not None
 
     def _flush(self):
-        budget = 65536
-        while self._socket is not None and self._out and budget > 0:
-            try:
-                sent = self._socket.send(self._out[0][:budget])
-            except (BlockingIOError, InterruptedError):
-                break
-            except OSError:
-                self._disconnect("Terminal broker connection closed")
-                break
-            if not sent:
-                break
-            self._pending -= sent
-            budget -= sent
-            self._out[0] = self._out[0][sent:]
-            if not self._out[0]:
-                self._out.popleft()
+        if self._socket is None:
+            return
+        try:
+            for sent in write_pending(self._out, self._socket.send):
+                self._pending -= sent
+        except OSError:
+            self._disconnect("Terminal broker connection closed")
 
     def open(self, argv=None, cwd=None, label=None, env=None, kind="local", metadata=None, rows=24, cols=80,
              session_id=None, env_factory=None, history_lines=2000, history_bytes=4 * 1024 * 1024):
@@ -163,6 +214,7 @@ class TerminalService:
                    "history_lines": max(1, min(10000, int(history_lines))),
                    "history_bytes": max(0, min(4 * 1024 * 1024, int(history_bytes)))}
         # Validate before spawning, and avoid retaining argv/environment in snapshots.
+        _validate(command)
         frame(command)
         self._start()
         self._identities.add(sid)
@@ -183,12 +235,14 @@ class TerminalService:
         if not state or state.get("status") not in ("starting", "running") or not isinstance(event, dict):
             return False
         try:
+            _validate({"event": event})
             payload = event.get("text", event.get("data", ""))
             if isinstance(payload, str) and len(payload.encode("utf-8")) > MAX_EVENT:
                 self.error = "Terminal input exceeds 1 MiB; send smaller chunks"
                 return False
             frame(event)
         except (TypeError, ValueError, OverflowError):
+            self.error = "Terminal input is invalid or exceeds its size limit"
             return False
         return self._queue({"op": "input", "id": sid, "event": event})
 
@@ -257,6 +311,14 @@ class TerminalService:
             self.sessions[sid] = {**old, "result": value, "results": tuple(results)}
             return True
         return False
+
+    def readiness(self):
+        """Expose readiness without transferring broker/channel ownership."""
+        import selectors
+        if self._socket is None or self._closed:
+            return (), False
+        mask = selectors.EVENT_READ | (selectors.EVENT_WRITE if self._out else 0)
+        return ((self._socket, mask),), self._decoder.has_complete_frame
 
     def poll(self):
         changed = False

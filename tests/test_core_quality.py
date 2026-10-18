@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
+from pathlib import Path
 import subprocess
 import threading
 from types import SimpleNamespace
@@ -190,8 +191,8 @@ def test_replay_playback_uses_monotonic_elapsed_time(monkeypatch):
 def test_series_load_keeps_valid_tail_after_interrupted_write(tmp_path):
     series = tmp_path / "series"
     series.mkdir()
-    (series / "1.jsonl").write_text("".join(json.dumps({"t": i, "k": "live"}) + "\n" for i in range(100)) + '{"t":')
     store = Store(state_dir=str(tmp_path), series_keep=5)
+    Path(store._series_path("1")).write_text("".join(json.dumps({"t": i, "k": "live"}) + "\n" for i in range(100)) + '{"t":')
     assert [row["t"] for row in store.series_of("1")] == list(range(95, 100))
 
 

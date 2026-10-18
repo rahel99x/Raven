@@ -20,13 +20,25 @@ class SshBackend(Backend):
         self.host, self.user, self.opts, self.control = host, user, list(opts), control
         self.runner = runner or self._run
         self.target = f"{user}@{host}" if user else host
+        self.control_path = ""
+        self.control_diagnostic = ""
 
     def argv(self, remote: Sequence[str]) -> List[str]:
-        base = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=15", "-o", "LogLevel=ERROR"]
+        target, options = self.target, list(self.opts)
         if self.control:
-            d = os.path.join(os.path.expanduser("~"), ".ssh")
-            base += ["-o", "ControlMaster=auto", "-o", f"ControlPath={os.path.join(d, 'raven-%r@%h:%p')}", "-o", "ControlPersist=600"]
-        return base + self.opts + [self.target, "--", shlex.join(remote)]
+            from .ssh_control import MultiplexUnavailable, prepare
+            try:
+                prefix, control_path = prepare(target, options)
+                self.control_path, self.control_diagnostic = control_path, ""
+            except MultiplexUnavailable as exc:
+                self.control_diagnostic = str(exc)
+                self.control_path = ""
+                prefix = ["ssh", "-o", "ControlMaster=no", "-o", "ControlPath=none", *options, "-S", "none"]
+        else:
+            # Explicit opt-out also overrides multiplexing in ~/.ssh/config.
+            prefix = ["ssh", "-o", "ControlMaster=no", "-o", "ControlPath=none", *options, "-S", "none"]
+        defaults = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=15", "-o", "LogLevel=ERROR"]
+        return [*prefix, *defaults, target, "--", shlex.join(remote)]
 
     @staticmethod
     def _run(argv: List[str], timeout: float) -> Tuple[int, str, str]:
@@ -39,7 +51,7 @@ class SshBackend(Backend):
             rc, out, err = self.runner(self.argv(cmd), timeout + 5)
         except subprocess.TimeoutExpired:
             raise CommandError(f"{cmd[0]}@{self.host}: timed out after {timeout:g}s")
-        except OSError as e:
+        except (OSError, ValueError) as e:
             raise CommandError(f"ssh: {e}")
         dt = time.perf_counter() - t0
         if rc == 255:
@@ -51,7 +63,7 @@ class SshBackend(Backend):
     def call(self, cmd: Sequence[str], timeout: float = 15.0) -> Tuple[bool, str]:
         try:
             rc, out, err = self.runner(self.argv(cmd), timeout + 5)
-        except (OSError, subprocess.TimeoutExpired) as e:
+        except (OSError, ValueError, subprocess.TimeoutExpired) as e:
             return False, str(e)
         return rc == 0, (out + err).strip()
 
@@ -156,7 +168,8 @@ class RemoteFiles(LocalFiles):
             return False
 
     def less_argv(self, path: str) -> List[str]:
-        return ["ssh", "-t", self.ssh.target, "--", shlex.join(["less", "+G", "--", path])]
+        argv = self.ssh.argv(["less", "+G", "--", path])
+        return [argv[0], "-t", *argv[1:]]
 
     def listdir(self, path: str) -> List[str]:
         try:

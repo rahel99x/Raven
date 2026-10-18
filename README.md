@@ -195,6 +195,7 @@ current project and job context.
 | Work in an embedded shell | [Terminal guide](docs/guides/terminal-fusion.md) |
 | Inspect prepared Python or native recordings | [Stack tracing](docs/guides/stack-tracing.md) |
 | Review and apply supported operations | [Operation catalog](docs/guides/operations.md) |
+| Explore retained evidence, research tools and qualification limits | [Reliability and research guides](docs/guides/reliability-and-research.md) |
 
 The **Details | Terminal** controls select the secondary pane. Press **Ctrl-]**,
 then **t**, to return terminal input to Raven. Allocation changes do not move an

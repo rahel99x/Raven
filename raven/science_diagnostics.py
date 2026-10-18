@@ -108,3 +108,15 @@ def regression(document):
             "nonmonotonic": nonmonotonic, "family_confidence": confidence,
             "method": "Student t comparisons with Bonferroni family adjustment; supplied version order, no binary-search assumption",
             "limit": "A regression association does not identify a causal source commit. Missing science checks, noisy or zero-variance samples remain inconclusive."}
+
+
+def factorial(document):
+    """Analyze an explicit randomized factorial design with observed controls."""
+    from .experiment_design import analyze
+    return analyze(document)
+
+
+def factorial_plan(document):
+    """Compile an ordinary reviewed campaign; planning executes no program."""
+    from .experiment_design import prepare
+    return prepare(document)

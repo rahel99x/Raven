@@ -15,7 +15,7 @@ Example:
 from __future__ import annotations
 
 import argparse
-from collections import Counter
+from collections import Counter, deque
 import hashlib
 import json
 import math
@@ -50,8 +50,9 @@ def summary(values):
 
 def source_digest(root):
     state = hashlib.sha256()
-    for path in sorted(package_directory(root).glob('*.py')):
-        state.update(path.name.encode() + b'\0' + path.read_bytes())
+    package = package_directory(root)
+    for path in sorted(package.rglob('*.py')):
+        state.update(str(path.relative_to(package)).encode() + b'\0' + path.read_bytes())
     return state.hexdigest()
 
 
@@ -69,9 +70,45 @@ def child(args):
     slurm = load_module(args.source_root, 'slurm')
     Backend, CommandError, FakeBackend = slurm.Backend, slurm.CommandError, slurm.FakeBackend
     Views = load_module(args.source_root, 'views').Views
+    screen = load_module(args.source_root, 'screen')
     calls, results, observation = Counter(), Counter(), {'frames': 0, 'max_jobs': 0}
     backends = []
     original_init, original_run, original_compose = FakeBackend.__init__, FakeBackend.run, Views.compose
+    original_timed, original_input = screen._timed_ui, screen._apply_input
+    waits, dispatched, publications = deque(maxlen=65536), [], []
+    pending_publications, composed_publications = {}, set()
+    import threading
+    publication_stop = threading.Event()
+    publisher = None
+
+    def timed(app, phase, operation, *values, **kwargs):
+        if phase == 'input_wait':
+            waits.append(time.monotonic())
+        result = original_timed(app, phase, operation, *values, **kwargs)
+        if phase == 'terminal_flush' and composed_publications:
+            now = time.monotonic()
+            for sequence in sorted(composed_publications):
+                started = pending_publications.pop(sequence, None)
+                if started is not None:
+                    publications.append((sequence, started, now))
+            composed_publications.clear()
+        return result
+
+    def apply_input(app, event, *values, **kwargs):
+        if args.probe_latency and event[0] in ('up', 'down'):
+            dispatched.append((event[0], time.monotonic()))
+        return original_input(app, event, *values, **kwargs)
+
+    def publish_events(app):
+        if publication_stop.wait(args.warmup + .3):
+            return
+        sequence = 0
+        while sequence < 512 and not publication_stop.is_set():
+            sequence += 1
+            pending_publications[sequence] = time.monotonic()
+            app.store.event('benchmark', 'Readiness publication', benchmark_sequence=sequence)
+            if publication_stop.wait(.317):
+                break
 
     def fake_init(self, *values, **kwargs):
         original_init(self, *values, **kwargs)
@@ -96,9 +133,13 @@ def child(args):
         raise CommandError('Benchmark forbids real scheduler commands')
 
     def compose(self, snap, app, *values, **kwargs):
+        nonlocal publisher
         observation['frames'] += 1
         observation['max_jobs'] = max(observation['max_jobs'], len(snap.get('jobs', ())))
         rendered = original_compose(self, snap, app, *values, **kwargs)
+        if args.probe_latency:
+            composed_publications.update(event['benchmark_sequence'] for event in snap.get('events', ())
+                                         if event.get('benchmark_sequence') in pending_publications)
         if observation['max_jobs'] >= args.jobs and 'ready' not in observation:
             managed = bool(app.cfg.get('raven', {}).get('managed'))
             if managed != (args.variant == 'light'):
@@ -113,10 +154,21 @@ def child(args):
                                retained_jobs=len(app.store.jobs), selected=app.selected_id,
                                steady_idle_timer_preaged=preaged,
                                process_id=os.getpid(), version=application.__version__)
+            if args.terminal_shell:
+                terminal = load_module(args.source_root, 'terminal_ui')
+                terminal.run_command(app, ['terminal', 'show'])
+                state = terminal.initialize(app)
+                if state.service is None or not state.active:
+                    raise RuntimeError('Embedded PTY could not start; install the terminal extra for the benchmark interpreter')
+                observation['shell_requested'] = True
             publish(args.ready, observation)
+            if args.probe_latency:
+                publisher = threading.Thread(target=publish_events, args=(app,), name='benchmark-publication', daemon=True)
+                publisher.start()
         return rendered
 
     FakeBackend.__init__, FakeBackend.run, Views.compose = fake_init, fake_run, compose
+    screen._timed_ui, screen._apply_input = timed, apply_input
     Backend.run = Backend.call = no_external
     exit_code = 2
     try:
@@ -131,8 +183,13 @@ def child(args):
         observation['error_type'] = type(exc).__name__
         raise
     finally:
+        publication_stop.set()
+        if publisher is not None:
+            publisher.join(1)
         observation.update(exit_code=exit_code, commands=dict(calls), responses=dict(results),
-                           simulated_only=True, backend_instances=len(backends))
+                           simulated_only=True, backend_instances=len(backends), wait_times=list(waits),
+                           waits_complete=len(waits) < waits.maxlen, input_dispatches=dispatched,
+                           publication_frames=publications, unpublished_sequences=sorted(pending_publications))
         publish(args.child_report, observation)
 
 
@@ -229,11 +286,17 @@ def run(args):
         master, slave = pty.openpty()
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', args.height, args.width, 0, 0))
         os.set_blocking(master, False)
-        command = [args.python, '-S', str(Path(__file__).resolve()), '--child', '--source-root', str(args.source_root),
+        command = [args.python, *([] if args.terminal_shell else ['-S']), str(Path(__file__).resolve()), '--child', '--source-root', str(args.source_root),
                    '--variant', args.variant, '--mode', args.mode, '--jobs', str(args.jobs), '--config', str(config),
-                   '--ready', str(ready), '--child-report', str(child_report)]
+                   '--ready', str(ready), '--child-report', str(child_report), '--warmup', str(args.warmup)]
+        if args.terminal_shell:
+            command.append('--terminal-shell')
+        if args.probe_latency:
+            command.append('--probe-latency')
         env = dict(os.environ, TERM='xterm-256color', LC_ALL='C.UTF-8', PYTHONDONTWRITEBYTECODE='1',
                    XDG_CONFIG_HOME=str(scratch / 'config'), XDG_STATE_HOME=str(scratch / 'state'))
+        if args.terminal_shell:
+            env.update(SHELL='/bin/sh', ENV='', PS1='RAVEN_BENCHMARK_SHELL> ')
         launched = time.monotonic()
         process = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave, cwd=args.source_root,
                                    env=env, close_fds=True, start_new_session=True)
@@ -257,7 +320,7 @@ def run(args):
                     tail.extend(raw[-8192:])
                     del tail[:-8192]
 
-        samples, error, sent = [], '', 0
+        samples, error, sent, input_sends = [], '', 0, []
         try:
             deadline = launched + 90
             while not ready.exists() and time.monotonic() < deadline and process.poll() is None:
@@ -273,17 +336,20 @@ def run(args):
             initial_io = previous['io']
             initial_cpu = previous['cpu_inclusive_seconds']
             initial_bytes = byte_count
-            next_sample, next_input = start + args.sample_seconds, start + 15
+            input_interval = .211 if args.probe_latency else 15
+            next_sample, next_input = start + args.sample_seconds, start + input_interval
             while time.monotonic() - start < args.duration:
                 if process.poll() is not None:
                     raise RuntimeError('PTY application exited before measurement completed')
                 now = time.monotonic()
-                if args.mode == 'monitor' and now >= next_input:
+                if (args.mode == 'monitor' or args.probe_latency) and now >= next_input:
                     # Occasional real keyboard navigation, fixed viewport;
                     # no pointer flood or hidden render-loop shortcuts.
-                    os.write(master, b'\x1b[B' if sent % 2 == 0 else b'\x1b[A')
+                    key = 'down' if sent % 2 == 0 else 'up'
+                    input_sends.append((key, time.monotonic()))
+                    os.write(master, b'\x1b[B' if key == 'down' else b'\x1b[A')
                     sent += 1
-                    next_input += 15
+                    next_input += input_interval
                 if now >= next_sample:
                     current = process_sample(process.pid, scratch)
                     elapsed = current['at'] - previous['at']
@@ -299,13 +365,21 @@ def run(args):
             final['elapsed'] = elapsed
             samples.append(final)
             average_cpu = max(0., final['cpu_inclusive_seconds'] - initial_cpu) / elapsed * 100
-            os.write(master, b'q')
+            os.write(master, b'\x1dtq' if args.terminal_shell else b'q')
             deadline = time.monotonic() + 10
             while process.poll() is None and time.monotonic() < deadline:
                 drain(.05)
             if process.poll() is None or process.returncode != 0:
                 raise RuntimeError('PTY did not shut down cleanly after quit')
             child_result = json.loads(child_report.read_text())
+            dispatches = child_result.get('input_dispatches', [])
+            if args.probe_latency and (len(dispatches) != len(input_sends) or
+                                      any(a[0] != b[0] for a, b in zip(input_sends, dispatches))):
+                raise RuntimeError('Input latency fixture lost, duplicated or reordered an injected arrow')
+            input_latency = [1000 * (b[1] - a[1]) for a, b in zip(input_sends, dispatches)]
+            publication_latency = [1000 * (painted - published) for _, published, painted in child_result.get('publication_frames', ())
+                                   if start <= published <= start + elapsed]
+            waits = sum(start <= at <= start + elapsed for at in child_result.pop('wait_times', ()))
             if child_result.get('backend_instances') != 1 or child_result.get('max_jobs') != args.jobs:
                 raise RuntimeError('Benchmark did not use exactly one complete simulated fixture')
             if source_digest(args.source_root) != measured_source:
@@ -322,8 +396,14 @@ def run(args):
                       'duration_seconds': elapsed, 'warmup_seconds': args.warmup,
                       'startup_to_full_fixture_seconds': readiness['ready'] - launched,
                       'fixture': {'jobs': args.jobs, 'running': args.jobs - math.ceil(args.jobs/5), 'history_jobs': 25,
-                                  'gpu_jobs': 0, 'ordinary_shells': 0, 'heavy_workers': 0,
+                                  'gpu_jobs': 0, 'ordinary_shells': int(args.terminal_shell), 'heavy_workers': 0,
                                   'steady_idle_timer_preaged': readiness['steady_idle_timer_preaged'], 'keyboard_events': sent},
+                      'readiness': {'ui_waits': waits, 'ui_waits_per_second': waits / elapsed,
+                                    'site_packages_enabled_for_terminal_extra': args.terminal_shell,
+                                    'input_dispatch_ms': summary(input_latency),
+                                    'publication_to_flush_ms': summary(publication_latency),
+                                    'latency_probes_enabled': args.probe_latency,
+                                    'scope': 'Input write to Raven dispatch; Store event publication to completed curses flush. No pixel/display or scheduler latency claim.'},
                       'cpu_mean_percent_one_core': average_cpu,
                       'summary': {key: summary([sample[key] for sample in samples]) for key in
                                   ('cpu_percent', 'rss_bytes', 'pss_bytes', 'processes', 'threads', 'descriptors')},
@@ -338,7 +418,8 @@ def run(args):
                                       'Process tree capped at 64 processes/128 threads per process; incomplete flags prevent silent qualification.',
                                       'PSS is Linux best-effort; IO counters omit work completed entirely between samples.',
                                       'Idle mode pre-ages the actual idle timer at the first complete frame; no input is injected afterward.',
-                                      'No live Slurm, network latency, terminal emulator pixel latency, GPU job or opened shell is represented.']}
+                                      'No live Slurm, network latency, terminal emulator pixel latency or GPU job is represented.',
+                                      'An ordinary local /bin/sh PTY is opened only with --terminal-shell; latency publications are synthetic Store events.']}
             publish(args.output, report)
             return report
         except Exception as exc:
@@ -370,6 +451,8 @@ def main(argv=None):
     parser.add_argument('--width', type=int, default=160)
     parser.add_argument('--height', type=int, default=48)
     parser.add_argument('--python', default=sys.executable)
+    parser.add_argument('--terminal-shell', action='store_true', help='include one actual idle embedded /bin/sh PTY')
+    parser.add_argument('--probe-latency', action='store_true', help='inject arrow keys and background Store publications; maximum 60 seconds')
     parser.add_argument('--output', type=Path, default=Path('/tmp/raven-resource-benchmark.json'))
     parser.add_argument('--child', action='store_true', help=argparse.SUPPRESS)
     for name in ('config', 'ready', 'child-report'):
@@ -382,6 +465,8 @@ def main(argv=None):
             parser.error(key + ' is outside its bounded measurement range')
     if args.sample_seconds > args.duration or not 1 <= args.jobs <= 10000 or not 40 <= args.width <= 400 or not 15 <= args.height <= 160:
         parser.error('Invalid fixture size, terminal dimensions or sampling interval')
+    if args.probe_latency and args.duration > 60 and not args.child:
+        parser.error('Latency probes are limited to 60 seconds and 512 publications')
     if args.child:
         return child(args)
     report = run(args)

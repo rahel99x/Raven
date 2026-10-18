@@ -186,6 +186,9 @@ def _activate(app, action):
     try:
         if action == "close":
             app.mode = state["return_mode"] if state["return_mode"] not in ("run_home", "launch_job", "palette") else "main"
+        elif action == "historical":
+            from .historical_ui import run_command
+            run_command(app, ["asof"])
         elif action == "recover":
             if state["busy"]:
                 return
@@ -260,7 +263,8 @@ def _document(app):
         rows.append(("Read error: " + state["error"], None))
     if state["busy"]:
         rows.append(("Reading this exact run in the background...", None))
-    rows += [("Reconnect this run / refresh evidence", "recover"), ("Choose original connection", "connections")]
+    rows += [("Reconnect this run / refresh evidence", "recover"), ("Choose original connection", "connections"),
+             ("Inspect historical observations (read-only)", "historical")]
     result = state["result"]
     if not result:
         rows.append(("Reconnecting reads existing inventories and receipts. It never submits or repeats a workload.", None))

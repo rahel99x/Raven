@@ -16,6 +16,11 @@ def _field(key, label, **kw):
 
 
 SPECIFICATIONS = [
+    {"key": "wasi-analysis", "title": "WASI analysis boundary", "group": "Platform", "proposal": "W40",
+     "summary": "Review a pinned pure-analysis module with explicit memory, I/O, fuel and wall-time limits.",
+     "fields": [_field("manifest", "WASI analysis manifest", required=True), _field("input", "Finite f64 series JSON", required=True),
+                _field("destination", "New result directory (optional)"),
+                _field("action", "Action", default="inspect", choices=["inspect", "run"])]},
     {"key": "site-telemetry", "title": "Site telemetry evidence", "group": "Platform", "proposal": "F19",
      "summary": "Inspect or explicitly query a bounded Prometheus source with exact job-attempt labels.",
      "fields": [_field("manifest", "Prometheus query manifest", required=True),
@@ -36,7 +41,9 @@ SPECIFICATIONS = [
      "fields": [_field("path", "Source JSON", required=True), _field("format", "Source format", default="raven-evidence", choices=list(F.FORMATS)),
                 _field("cluster", "Exact cluster", required=True), _field("job_id", "Exact job ID", required=True), _field("attempt", "Exact attempt", required=True),
                 _field("export_format", "Export format", default="workflow-run-ro-crate", choices=list(F.FORMATS)),
-                _field("destination", "New bundle directory (optional)")]},
+                _field("destination", "New bundle directory (optional)"),
+                _field("signing_key", "Optional SSH signing key (private file or agent public key)"),
+                _field("signing_principal", "Signing principal (required when signing)")]},
     {"key": "qualification", "title": "Compatibility qualification", "group": "Platform", "proposal": "F34",
      "summary": "Run bounded, hashed format fixtures and report exact compatibility checks; no live cluster certification.",
      "fields": [_field("manifest", "Qualification manifest", required=True)]},
@@ -188,6 +195,25 @@ def _support(params, ctx):
 
 def run(feature, params, ctx):
     O.checkpoint(ctx)
+    if feature == "wasi-analysis":
+        O.local_only(ctx)
+        from . import wasi_analysis as W
+        value, source = _read(ctx, params.get("manifest", ""), 65536)
+        manifest = W.manifest(value)
+        module = O.read_bytes(ctx, manifest["module"], W.MAX_MODULE)
+        data, input_source = _read(ctx, params.get("input", ""), W.MAX_INPUT)
+        preview = W.inspect(manifest, module, data)
+        action = params.get("action", "inspect")
+        if action not in {"inspect", "run"}:
+            raise ValueError("WASI action must be inspect or run")
+        destination = SF.destination(params["destination"]) if params.get("destination") else ""
+        plan = O.prepare_plan(ctx, feature, params, {"sources": [source, input_source], "reviewed": preview, "destination": destination}) if action == "run" else None
+        return O.report(feature, "WASI analysis reviewed; Apply executes the pinned module." if plan else "WASI analysis inspected without executing guest code.",
+                        rows=[f"Runtime: {preview['runtime']} {preview['version']}", "ABI: "+preview["abi"],
+                              f"Samples: {preview['samples']}; memory: {preview['limits']['memory_bytes']} bytes; fuel: {preview['limits']['fuel']}",
+                              f"Wall time: {preview['limits']['wall_seconds']} s; guest output: {preview['limits']['output_bytes']} bytes",
+                              "No preopened directories, environment, network, clocks or randomness; bounded in-memory stdin/stdout only."],
+                        data=preview, plan=plan, warnings=["Experimental compatible pure-analysis boundary. Runtime vulnerabilities remain possible; results are adapter claims, not verified scientific truth."])
     if feature == "site-telemetry":
         from . import prometheus_source as T
         value, _ = _read(ctx, params.get("manifest", ""))
@@ -249,12 +275,23 @@ def run(feature, params, ctx):
                         warnings=["Installed adapters are executable code. Process/virtual-environment isolation is not a security sandbox; assets, dependencies and permissions require trust."])
     if feature == "research-portable":
         receipt, exported, source, verified = _portable(params, ctx)
-        plan = None
+        plan, signer = None, None
+        if params.get("signing_key") or params.get("signing_principal"):
+            O.local_only(ctx)
+            if not params.get("signing_key") or not params.get("signing_principal"):
+                raise ValueError("Signing requires both signing_key and signing_principal; omit both for an unsigned export.")
+            from . import evidence_signing as signing
+            signer = signing.preview(params["signing_key"], params["signing_principal"])
         if params.get("destination"):
             O.local_only(ctx)
             destination = SF.destination(params["destination"])
-            plan = O.prepare_plan(ctx, feature, params, {"sources": [source], "receipt_digest": E.digest(receipt), "export_digest": E.digest(exported), "destination": destination})
+            payload = {"sources": [source], "receipt_digest": E.digest(receipt), "export_digest": E.digest(exported), "destination": destination}
+            if signer:
+                payload["signer"] = signer
+            plan = O.prepare_plan(ctx, feature, params, payload)
         warnings = list(receipt.get("metadata", {}).get("warnings", []))
+        if signer:
+            warnings.append("Signing on Apply: " + signer["principal"] + " | " + signer["fingerprint"] + "; namespace " + signer["namespace"] + ". Reviewer trust must come from an independent allowlist; authenticity does not establish scientific validity or trusted time.")
         if not verified:
             warnings.append("Declared execution identity is not independently verified by this connection.")
         return O.report(feature, "Portable evidence prepared." if plan else "Portable evidence inspected; choose a new destination to export.", rows=_rows(receipt), data=receipt, warnings=warnings, plan=plan)
@@ -273,11 +310,29 @@ def run(feature, params, ctx):
 
 def apply(feature, plan, ctx):
     payload = O.validate_plan(plan, ctx, feature)
-    if feature not in {"adapter", "research-portable", "support-bundle"}:
+    if feature not in {"adapter", "research-portable", "support-bundle", "wasi-analysis"}:
         raise ValueError("This platform inspection has no write action")
     O.local_only(ctx)
     _verify(ctx, payload["sources"])
     params = plan["params"]
+    if feature == "wasi-analysis":
+        from . import wasi_analysis as W
+        manifest = W.manifest(_read(ctx, params["manifest"], 65536)[0])
+        module = O.read_bytes(ctx, manifest["module"], W.MAX_MODULE)
+        data = _read(ctx, params["input"], W.MAX_INPUT)[0]
+        if W.inspect(manifest, module, data) != payload["reviewed"]:
+            raise ValueError("WASI module, input, runtime or limits changed after review")
+        result = W.execute(manifest, module, data, cancel=ctx.cancel)
+        _verify(ctx, payload["sources"])
+        if payload["destination"]:
+            destination = SF.publish(payload["destination"], files=[("analysis.json", E.canonical(result)+b"\n", False)],
+                                     receipt={"schema": "raven.wasi-analysis-receipt/v1", "result_sha256": E.digest(result),
+                                              "module_sha256": result["module_sha256"], "input_sha256": result["input_sha256"]},
+                                     cancel=ctx.cancel, final_check=lambda: _verify(ctx, payload["sources"]))
+            result["destination"] = destination
+        return O.report(feature, "WASI analysis finished within the declared boundary.", data=result,
+                        rows=[f"Count: {result['summary']['count']}; sum: {result['summary']['sum']:g}",
+                              f"Minimum: {result['summary']['minimum']:g}; maximum: {result['summary']['maximum']:g}"])
     if feature == "adapter":
         manifest, _ = _read(ctx, params["manifest"])
         request = _read(ctx, params["request"])[0] if params.get("request") else {}
@@ -293,9 +348,17 @@ def apply(feature, plan, ctx):
         files = [("raven-evidence.json", E.canonical(receipt) + b"\n", False)]
         if filename != "raven-evidence.json":
             files.append((filename, E.canonical(exported) + b"\n", False))
-        destination = SF.publish(payload["destination"], files=files, receipt={"schema": "raven.portable-bundle/v1", "evidence_digest": E.digest(receipt)},
+        bundle_receipt = {"schema": "raven.portable-bundle/v1", "evidence_digest": E.digest(receipt)}
+        if payload.get("signer"):
+            from . import evidence_signing as signing
+            bundle_receipt["signature"] = {"manifest": signing.MANIFEST, "signature": signing.SIGNATURE, "namespace": signing.NAMESPACE}
+            _manifest, signatures = signing.sign(params["signing_key"], payload["signer"], files=files,
+                                                  receipt=bundle_receipt, identity=receipt["identity"], cancel=ctx.cancel)
+            files.extend(signatures)
+        destination = SF.publish(payload["destination"], files=files, receipt=bundle_receipt,
                                  cancel=ctx.cancel, final_check=lambda: _verify(ctx, payload["sources"]))
-        return O.report(feature, "Portable bundle saved.", rows=[destination], data={"destination": destination, "evidence_digest": E.digest(receipt)})
+        return O.report(feature, "Signed portable bundle saved." if payload.get("signer") else "Portable bundle saved.",
+                        rows=[destination], data={"destination": destination, "evidence_digest": E.digest(receipt), "signed": bool(payload.get("signer"))})
     if feature == "support-bundle":
         bundle, sources = _support(params, ctx)
         if sources != payload["sources"] or E.digest(bundle) != payload["bundle_digest"]:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -96,7 +97,7 @@ def test_completed_job_keeps_recorded_series_without_fabricating_new_samples(man
 def test_memory_only_observation_survives_persistence_and_prepares_memory_graph(tmp_path):
     store = Store(state_dir=str(tmp_path / "state"))
     store.apply_live("7", Live(cpu_time=None, rss=1024 ** 3, t=1000.))
-    sample = json.loads((tmp_path / "state" / "series" / "7.jsonl").read_text())
+    sample = json.loads(Path(store._series_path("7")).read_text())
     assert sample["rss"] == 1024 ** 3
     assert sample["cpu_time"] is None and sample["cpu"] is None and sample["eff"] is None
     prepared = _prepare_native_metrics([sample], 2 * 1024 ** 3, True, {"live": 60, "gpu": 60})

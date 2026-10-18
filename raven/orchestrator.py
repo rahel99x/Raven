@@ -461,8 +461,9 @@ def recover(receipt_path, node_id, job_id, slurm, *, confirmed=False, expected_r
             raise ValueError("only an unknown or interrupted launching intent can be recovered")
         if any(item.get("job_id") == job_id for item in receipt["nodes"]):
             raise ValueError("scheduler ID is already assigned to another node")
-        info = slurm.submit_info(job_id)
         attempt = node["attempts"][-1]
+        lookup = getattr(slurm, "intent_submit_info", None)
+        info = lookup(job_id, attempt["started"]) if lookup else slurm.submit_info(job_id)
         try:
             exact = (info.get("id") == job_id and info.get("workdir") == attempt["workdir"]
                      and shlex.split(info.get("submit_line", "")) == shlex.split(attempt["command"]))
@@ -471,6 +472,8 @@ def recover(receipt_path, node_id, job_id, slurm, *, confirmed=False, expected_r
         if not exact:
             raise ValueError("accounting does not verify the exact reviewed submit command and working directory; recovery refused")
         attempt["recovery"] = {"verified": time.time(), "job_id": job_id, "submit_line": info["submit_line"]}
+        if info.get("submit"):
+            attempt["recovery"]["scheduler_submit"] = info["submit"]
         attempt["state"], attempt["job_id"] = "accepted", job_id
         node["state"], node["job_id"] = "accepted", job_id
         receipt["status"], receipt["updated"] = "prepared", time.time()

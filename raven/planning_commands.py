@@ -9,13 +9,16 @@ from .planning_io import load_json
 from .research_commands import parser
 from .research import clean
 
-COMMANDS = ("predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow", "choose")
+COMMANDS = ("predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow", "choose", "checkpoint-advice")
 
 
 def options(cmd, args):
     if cmd not in COMMANDS:
         raise ValueError("unknown planning command")
     p = parser(cmd)
+    if cmd == "checkpoint-advice":
+        p.add_argument("file")
+        return p.parse_args(args)
     if cmd in ("predict", "forecast", "blockers"):
         p.add_argument("job_id", nargs="?")
         p.add_argument("--file")
@@ -48,7 +51,7 @@ def options(cmd, args):
 
 
 def is_offline(cmd, args):
-    return cmd in ("tradeoffs", "scaling", "workflow", "choose") or cmd in ("predict", "forecast", "blockers") and any(a == "--file" or a.startswith("--file=") for a in args)
+    return cmd in ("tradeoffs", "scaling", "workflow", "choose", "checkpoint-advice") or cmd in ("predict", "forecast", "blockers") and any(a == "--file" or a.startswith("--file=") for a in args)
 
 
 def _finished(output, opts, source):
@@ -86,6 +89,8 @@ def result(cmd, args, *, snap=None, job=None, observations=(), choices=None, exe
     overrides = {}
     opts.analysis_overrides = overrides
     opts.selected_job_id = None
+    if cmd == "checkpoint-advice":
+        return _finished(analyze(cmd, source), opts, source)
     if cmd in ("predict", "forecast", "blockers"):
         if isinstance(source, list) and cmd in ("forecast", "blockers"):
             source = {"jobs": source}

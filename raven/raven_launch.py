@@ -67,7 +67,7 @@ def configure_placement(resolved, manager):
     from .raven_collection import make_placement_verifier
     connection = data["connection"]
     if connection["transport"] == "ssh":
-        backend = SshBackend(connection["host"], user=connection["user"], opts=connection["ssh_options"], control=False)
+        backend = SshBackend(connection["host"], user=connection["user"], opts=connection["ssh_options"])
         host, kind, ssh_user = connection["host"], "ssh", connection["user"]
         options = hashlib.sha256(json.dumps(connection["ssh_options"], ensure_ascii=True, separators=(",", ":")).encode()).hexdigest()
     else:
@@ -181,7 +181,7 @@ def _background_dashboard(arguments, *, json_mode=False):
     """Only an interactive/watch dashboard can keep servicing admission."""
     if json_mode or (not sys.stdout.isatty() and "--watch" not in arguments):
         return False
-    if arguments[:1] and arguments[0] in {"terminal", "trace", "runtime", "report", "run"}:
+    if arguments[:1] and arguments[0] in {"terminal", "trace", "runtime", "report", "run", "query", "series", "mcp"}:
         return False
     from .cli import parse
     args = parse(arguments)
@@ -257,7 +257,7 @@ def _main(argv=None, *, heavy=False):
         print("Raven: " + str(exc), file=sys.stderr)
         return 2
     parser = _parser(heavy)
-    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run", "setup"}
+    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run", "setup", "query", "series", "mcp"}
     # Global options stop at the subcommand. A nested --help/--config belongs
     # to that command, even when a global --site precedes it. Skip option values
     # so a hostname or profile named 'terminal' is not mistaken for a command.

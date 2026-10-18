@@ -22,7 +22,7 @@ def context(tmp_path):
         if argv[0] == "squeue":
             return "", 0
         return "77|77|test|2026-01-01T10:00:00|FAILED\n", 0
-    slurm = SimpleNamespace(b=SimpleNamespace(run=query), submit=submit)
+    slurm = SimpleNamespace(b=SimpleNamespace(run=query), submit=submit, user="researcher")
     ctx = operations.Context(slurm=slurm, state_dir=str(tmp_path / "state"),
                              scope={"cluster": "test", "user": "researcher"},
                              finished=({"id": "77", "start": "2026-01-01T10:00:00", "cluster": "test", "state": "FAILED"},))
@@ -396,3 +396,25 @@ def test_file_hash_detects_atomic_replacement(tmp_path, monkeypatch):
     monkeypatch.setattr(common.os, "fstat", replace_during_hash)
     with pytest.raises(ValueError, match="changed"):
         common.file_hash(original)
+
+
+def test_checkpoint_advice_review_and_bounded_owned_accounting(context, tmp_path):
+    ctx, calls = context
+    recipe = recipes(tmp_path)["checkpoint"]
+    recipe["checkpoint_advice"] = json.loads((Path(__file__).resolve().parents[1] / "examples/checkpoint-advice.json").read_text())
+    queries = []
+    query = ctx.slurm.b.run
+    def recorded(argv, timeout):
+        queries.append(argv)
+        return query(argv, timeout)
+    ctx.slurm.b.run = recorded
+    result, _ = prepare("checkpoint", recipe, tmp_path, ctx)
+    assert any("Assumption:" in row for row in result["rows"])
+    assert any("Checkpoint advice (experimental)" in row for row in result["rows"])
+    assert not calls and not queries
+    ops.apply("checkpoint", result["plan"], ctx)
+    accounting = next(argv for argv in queries if argv[0] == "sacct")
+    assert "--user=researcher" in accounting
+    assert "--starttime=2025-12-30T00:00:00" in accounting
+    assert "--endtime=2026-01-03T00:00:00" in accounting
+    assert len(calls) == 1

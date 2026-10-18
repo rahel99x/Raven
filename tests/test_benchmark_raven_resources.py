@@ -50,6 +50,16 @@ def test_source_digest_tracks_content_and_filename(tmp_path):
     assert B.source_digest(tmp_path) != changed
 
 
+def test_source_digest_tracks_namespace_modules(tmp_path):
+    package = tmp_path / 'raven' / 'transport'
+    package.mkdir(parents=True)
+    module = package / 'framing.py'
+    module.write_text('policy = 1\n')
+    before = B.source_digest(tmp_path)
+    module.write_text('policy = 2\n')
+    assert B.source_digest(tmp_path) != before
+
+
 def test_source_digest_uses_selected_checkout_package_metadata(tmp_path):
     (tmp_path / 'pyproject.toml').write_text('[tool.setuptools]\npackages = ["retained_fixture"]\n')
     package = tmp_path / 'retained_fixture'
@@ -75,6 +85,7 @@ def test_quantiles_preserve_units_and_report_empty_series():
     ['--duration', 'nan'], ['--duration', 'inf'], ['--duration', '0'],
     ['--jobs', '10001'], ['--sample-seconds', '61'], ['--width', '401'],
     ['--height', '14'], ['--warmup', '-1'], ['--duration', '1', '--sample-seconds', '2'],
+    ['--probe-latency', '--duration', '61'],
 ])
 def test_invalid_measurements_refuse_before_process_launch(monkeypatch, args):
     monkeypatch.setattr(B, 'run', lambda _: pytest.fail('Invalid benchmark launched an application'))

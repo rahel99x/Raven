@@ -11,7 +11,8 @@ from . import clock
 from .model import secs
 
 PLANNING_VIEWS = [("predict", "Resources"), ("forecast", "Forecast"), ("blockers", "Blockers"),
-                  ("tradeoffs", "Tradeoffs"), ("scaling", "Scaling"), ("workflow", "Workflow")]
+                  ("tradeoffs", "Tradeoffs"), ("scaling", "Scaling"), ("workflow", "Workflow"),
+                  ("checkpoint-advice", "Checkpoint advice")]
 
 
 def record(value):
@@ -103,6 +104,20 @@ def analyze(view, source, *, snap=None, job=None, observations=(), now=None, ove
     snap = snap or {}
     source = source if source is not None else {}
     mapping = source if isinstance(source, Mapping) else {}
+    if view == "forecast" and mapping.get("schema") == "raven.forecast-scenarios/v1":
+        from .forecast import scenarios
+        return scenarios(mapping)
+    if view == "checkpoint-advice":
+        from .checkpoint_advisor import advise
+        # A bound generic planning report is shared by all research views. Its
+        # presence does not mean the run supplied checkpoint measurements.
+        if mapping.get("kind") == "raven.planning" and mapping.get("version") == 1:
+            if "checkpoint_advice" not in mapping:
+                return {"status": "incomplete", "summary": "This planning report has no checkpoint advice inputs. Attach measured durations and allocation exposure with checkpoint-advice FILE."}
+            return advise(mapping["checkpoint_advice"])
+        if not mapping:
+            return {"status": "incomplete", "summary": "Attach measured durations and allocation exposure with checkpoint-advice FILE."}
+        return advise(mapping)
     now = _now(mapping.get("now", now))
     coverage = mapping.get("coverage", .8)
     if isinstance(coverage, bool) or not isinstance(coverage, (int, float)) or not 0 < coverage < 1:

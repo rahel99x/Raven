@@ -441,6 +441,17 @@ def sync(app, snap):
                 run = identity(binding)
         center.condition(key, error, source=name, setting=setting, run=run)
     engine = getattr(getattr(app, "store", None), "alerts", None)
+    store = getattr(app, "store", None)
+    monitor = getattr(store, "anomalies", None)
+    # Detection runs during bounded sample publication, never during painting.
+    # Each evidence episode has a stable attempt-bound id and immutable text.
+    if monitor is not None:
+        with store.lock:
+            episodes = tuple(monitor.recent)
+        for episode in episodes:
+            key = ("telemetry-change", episode["id"])
+            keys.add(key)
+            center.condition(key, episode["text"], level="mild", source="Telemetry changes (experimental)")
     # The rule engine already evaluated conditions and retained its last fifty
     # events. Reading these records never evaluates rules or sends notifications.
     # Event time distinguishes a later firing of the same rule after dismissal.

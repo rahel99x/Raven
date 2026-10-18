@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -16,7 +18,7 @@ import venv
 ROOT = Path(__file__).resolve().parents[1]
 RESEARCH_SMOKE_VIEWS = (
     "experiment", "arrays", "evidence", "artifacts", "passport", "submit",
-    "predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow", "operations",
+    "predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow", "checkpoint-advice", "operations",
 )
 
 
@@ -129,6 +131,49 @@ def publish_report(source, destination):
     return True
 
 
+def view_cases():
+    """Exact CLI cases shared by the isolated renderer and its parent check."""
+    for tab in ("jobs", "cluster", "history", "analytics", "nodes", "group", "deps", "log", "sources", "research"):
+        for encoding in ("ascii", "unicode"):
+            yield f"{tab}/{encoding}", ["--tab", tab, "--" + encoding, "--width", "120"]
+    for view in RESEARCH_SMOKE_VIEWS:
+        for encoding in ("ascii", "unicode"):
+            yield f"Research/{view}/{encoding}", ["--tab", "research", "--research-view", view, "--" + encoding]
+
+
+def validate_views(config):
+    """Run fresh full CLI sessions in the selected interpreter, sharing imports.
+
+    This is an internal child process, never the setup driver's interpreter.
+    Every case still resolves configuration, builds and settles its own demo,
+    renders through the launcher, and closes that session in the CLI's finally.
+    """
+    sys.path.insert(0, str(ROOT))
+    try:
+        from raven.raven_launch import light_main
+        completed = []
+        for name, options in view_cases():
+            output, errors = io.StringIO(), io.StringIO()
+            command = ["--config", str(config), "--no-state", "--no-plugins",
+                       "--fake", "--once", "--no-color", *options]
+            try:
+                with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                    code = light_main(command)
+            except SystemExit as exc:
+                code = exc.code
+            except Exception as exc:
+                raise SetupError(f"The {name} view raised {type(exc).__name__}: {exc}") from exc
+            if code != 0:
+                raise SetupError(f"The {name} view exited {code}: {errors.getvalue().strip()}")
+            frame = output.getvalue()
+            if not frame.strip() or (name.endswith("/ascii") and not frame.isascii()) or "\x1b" in frame:
+                raise SetupError(f"The {name} view did not produce clean {'ASCII' if name.endswith('/ascii') else 'Unicode'} text output.")
+            completed.append({"case": name, "exit_code": code, "text_valid": True})
+        return {"schema": "raven.setup-views/v1", "cases": completed}
+    finally:
+        del sys.path[0]
+
+
 def validate(python, mode, host, report, profile=""):
     with tempfile.TemporaryDirectory(prefix="raven-setup-") as temporary:
         scratch = Path(temporary)
@@ -139,20 +184,11 @@ def validate(python, mode, host, report, profile=""):
         snapshot = json.loads(run([*command, "--fake", "--json"], capture=True))
         if not isinstance(snapshot, dict) or not snapshot.get("jobs"):
             raise SetupError("The simulated cluster did not produce any jobs.")
-        for tab in ("jobs", "cluster", "history", "analytics", "nodes", "group", "deps", "log", "sources", "research"):
-            frame = run([*command, "--fake", "--once", "--tab", tab, "--ascii", "--no-color", "--width", "120"], capture=True)
-            if not frame.strip() or not frame.isascii():
-                raise SetupError(f"The {tab} terminal view did not produce plain ASCII output.")
-            rich = run([*command, "--fake", "--once", "--tab", tab, "--unicode", "--no-color", "--width", "120"], capture=True)
-            if not rich.strip() or "\x1b" in rich:
-                raise SetupError(f"The {tab} Unicode terminal view did not produce clean text output.")
-        for view in RESEARCH_SMOKE_VIEWS:
-            frame = run([*command, "--fake", "--once", "--tab", "research", "--research-view", view, "--ascii", "--no-color"], capture=True)
-            if not frame.strip() or not frame.isascii():
-                raise SetupError(f"The Research/{view} view did not produce plain ASCII output.")
-            rich = run([*command, "--fake", "--once", "--tab", "research", "--research-view", view, "--unicode", "--no-color"], capture=True)
-            if not rich.strip() or "\x1b" in rich:
-                raise SetupError(f"The Research/{view} Unicode view did not produce clean text output.")
+        manifest = json.loads(run([python, Path(__file__).resolve(), "--_validate-views", config], capture=True))
+        expected = {"schema": "raven.setup-views/v1", "cases": [
+            {"case": name, "exit_code": 0, "text_valid": True} for name, _ in view_cases()]}
+        if manifest != expected:
+            raise SetupError("The terminal view validation did not complete every expected ASCII/Unicode case.")
         preview = scratch / "demo.txt"
         run([*command, "--fake", "--report", preview], capture=True)
         page = preview.read_text(encoding="utf-8")
@@ -180,8 +216,14 @@ def parser():
 
 
 def main(argv=None):
-    args = parser().parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
     try:
+        if arguments[:1] == ["--_validate-views"]:
+            if len(arguments) != 2:
+                raise SetupError("Internal view validation requires one configuration path.")
+            print(json.dumps(validate_views(Path(arguments[1])), ensure_ascii=True))
+            return 0
+        args = parser().parse_args(arguments)
         if sys.version_info < (3, 10):
             raise SetupError("Python 3.10 or newer is required. Select a newer python3 and rerun setup.")
         if os.name != "posix":

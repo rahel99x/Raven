@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raven.example/schemas/wasi-analysis-v1",
+  "title": "Reviewed pure-analysis WASI manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "module", "sha256", "abi", "limits"],
+  "properties": {
+    "schema": {"const": "raven.wasi-analysis/v1"},
+    "module": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "abi": {"const": "raven.f64-summary/wasi-preview1-v1"},
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["memory_bytes", "fuel", "wall_seconds", "output_bytes"],
+      "properties": {
+        "memory_bytes": {"type": "integer", "minimum": 65536, "maximum": 33554432},
+        "fuel": {"type": "integer", "minimum": 1000, "maximum": 100000000},
+        "wall_seconds": {"type": "integer", "minimum": 1, "maximum": 30},
+        "output_bytes": {"type": "integer", "minimum": 32, "maximum": 65536}
+      }
+    }
+  }
+}

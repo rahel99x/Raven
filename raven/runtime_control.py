@@ -34,12 +34,15 @@ def _machine():
 
 def _private_directory(path):
     path = Path(path).absolute()
-    for parent in (path, *path.parents):
-        if parent.is_symlink():
-            raise ValueError("Runtime mailbox paths cannot contain symlinks")
-    info = path.stat()
-    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
-        raise ValueError("Runtime mailbox directory must be owned by this user with mode 0700")
+    from .config_trust import directory_fd
+    # Share the configuration integrity policy, retaining the stricter private
+    # mailbox requirement and the existing host-local SQLite restriction below.
+    # A private child under a writable ancestor is not a trusted mailbox path.
+    try:
+        with directory_fd(path, private=True):
+            pass
+    except OSError as exc:
+        raise ValueError("Runtime mailbox paths require real, trusted directories without symlinks") from exc
     # SQLite coordination on distributed filesystems is not a supported transport.
     # Refuse known network filesystems rather than advertise unreliable locking.
     try:
@@ -104,10 +107,9 @@ def initialize(directory, configuration, *, clock=time.monotonic):
     """Create a new private mailbox. Existing paths are never overwritten."""
     validate_configuration(configuration)
     path = Path(directory).absolute()
-    for parent in (path.parent, *path.parent.parents):
-        if parent.is_symlink():
-            raise ValueError("Mailbox parents cannot contain symlinks")
-    os.mkdir(path, 0o700)
+    from .config_trust import directory_fd
+    with directory_fd(path.parent) as parent:
+        os.mkdir(path.name, 0o700, dir_fd=parent)
     db = path / "control.sqlite3"
     try:
         fd = os.open(db, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

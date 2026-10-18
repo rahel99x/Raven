@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raven.local/schemas/forecast-scenarios.v1.schema.json",
+  "title": "Experimental observational forecast alternatives input",
+  "description": "Structural contract for forecast_scenarios.analyze. Runtime validates unique alternative/outcome IDs, the same scientific application across alternatives, submit<=issued_at<actual_start<actual_end<=now, exactly one model target, homogeneous per-node divisibility and scientific/model applicability. Queue-model origin is explicit in that model clock; recorded and synthetic evidence remain separate. Runtime finite/depth 24/200,000-item/8 MiB evidence bounds and cohort normalization remain authoritative. Resource integers follow the existing forecast cohort normalizer, which accepts integral numeric values such as 1.0; nested queue-model strict counts do not. Passing this schema grants no submission or mutation authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "raven.forecast-scenarios/v1"
+    },
+    "now": {
+      "type": "number",
+      "maximum": 1000000000000.0,
+      "minimum": 0
+    },
+    "request": {
+      "$ref": "#/$defs/request"
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/alternative"
+      },
+      "minItems": 0,
+      "maxItems": 8
+    },
+    "context": {
+      "$ref": "#/$defs/context"
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/outcome"
+      },
+      "minItems": 0,
+      "maxItems": 1000
+    },
+    "coverage": {
+      "type": "number",
+      "maximum": 0.99,
+      "minimum": 0.01
+    },
+    "wait_threshold_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 0
+    },
+    "maximum_overrun_probability": {
+      "type": "number",
+      "maximum": 0.5,
+      "minimum": 0.001
+    },
+    "queue_model": {
+      "allOf": [
+        {
+          "$ref": "queue-model.v1.schema.json"
+        },
+        {
+          "properties": {
+            "jobs": {
+              "maxItems": 256
+            }
+          }
+        }
+      ]
+    },
+    "target_job_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "queue_model_issued_at": {
+      "type": "number",
+      "maximum": 1000000000000.0,
+      "minimum": 0
+    },
+    "model_wait_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 0
+    },
+    "scheduler_wait_seconds": {
+      "type": "number",
+      "maximum": 1000000000.0,
+      "minimum": 0
+    },
+    "metadata": {
+      "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+    }
+  },
+  "required": [
+    "schema",
+    "now",
+    "request",
+    "alternatives",
+    "context",
+    "observations"
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:@/+\\-]{0,127}$"
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 65536
+            },
+            {
+              "type": "number",
+              "maximum": 1e+100,
+              "minimum": -1e+100
+            }
+          ],
+          "description": "Compatibility with the existing cohort reader: string or numeric label, normalized to at most 256 printable characters. Runtime rejects absent placeholders such as N/A, NONE and UNKNOWN; numbers are labels, not scheduler authority."
+        },
+        "partition": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 65536
+            },
+            {
+              "type": "number",
+              "maximum": 1e+100,
+              "minimum": -1e+100
+            }
+          ],
+          "description": "Compatibility with the existing cohort reader: string or numeric label, normalized to at most 256 printable characters. Runtime rejects absent placeholders such as N/A, NONE and UNKNOWN; numbers are labels, not scheduler authority."
+        },
+        "account": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 65536
+            },
+            {
+              "type": "number",
+              "maximum": 1e+100,
+              "minimum": -1e+100
+            }
+          ],
+          "description": "Compatibility with the existing cohort reader: string or numeric label, normalized to at most 256 printable characters. Runtime rejects absent placeholders such as N/A, NONE and UNKNOWN; numbers are labels, not scheduler authority."
+        },
+        "qos": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 65536
+            },
+            {
+              "type": "number",
+              "maximum": 1e+100,
+              "minimum": -1e+100
+            }
+          ],
+          "description": "Compatibility with the existing cohort reader: string or numeric label, normalized to at most 256 printable characters. Runtime rejects absent placeholders such as N/A, NONE and UNKNOWN; numbers are labels, not scheduler authority."
+        },
+        "cpus": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        },
+        "gpus": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        },
+        "mem_bytes": {
+          "type": "number",
+          "maximum": 1e+100,
+          "exclusiveMinimum": 0
+        },
+        "time_seconds": {
+          "type": "number",
+          "maximum": 1e+100,
+          "exclusiveMinimum": 0
+        },
+        "gpu_type": {
+          "description": "Existing cohort normalization accepts string/numeric GPU labels; an empty string means an explicitly generic GPU request. With zero GPUs an unavailable optional value is ignored. With GPUs the runtime requires a recognized label."
+        }
+      },
+      "required": [
+        "name",
+        "partition",
+        "account",
+        "qos",
+        "cpus",
+        "nodes",
+        "gpus",
+        "mem_bytes",
+        "time_seconds"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "gpus": {
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "gpus"
+            ]
+          },
+          "then": {
+            "required": [
+              "gpu_type"
+            ]
+          }
+        }
+      ]
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policy_digest": {
+          "$ref": "#/$defs/identifier"
+        },
+        "reservations_visible": {
+          "type": "boolean"
+        },
+        "policy_complete": {
+          "type": "boolean"
+        },
+        "queue_depth": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 0
+        },
+        "idle_cpus": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "policy_digest",
+        "reservations_visible",
+        "policy_complete"
+      ]
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/identifier"
+            },
+            {
+              "not": {
+                "const": "current"
+              }
+            }
+          ]
+        },
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "model_wait_seconds": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 0
+        },
+        "scheduler_wait_seconds": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "request"
+      ]
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "request": {
+          "$ref": "#/$defs/request"
+        },
+        "context": {
+          "$ref": "#/$defs/context"
+        },
+        "origin": {
+          "enum": [
+            "recorded",
+            "synthetic"
+          ]
+        },
+        "submit": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "issued_at": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "actual_start": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "actual_end": {
+          "type": "number",
+          "maximum": 1000000000000.0,
+          "minimum": 0
+        },
+        "state": {
+          "enum": [
+            "completed",
+            "timeout"
+          ]
+        },
+        "model_wait_seconds": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 0
+        },
+        "scheduler_wait_seconds": {
+          "type": "number",
+          "maximum": 1000000000.0,
+          "minimum": 0
+        },
+        "metadata": {
+          "description": "Descriptive JSON only. Runtime enforces finite values, printable bounded keys, strings, nesting, total items and encoded document size; this field grants no action authority."
+        }
+      },
+      "required": [
+        "id",
+        "request",
+        "context",
+        "origin",
+        "submit",
+        "issued_at",
+        "actual_start",
+        "actual_end",
+        "state"
+      ]
+    }
+  },
+  "dependentRequired": {
+    "queue_model": [
+      "queue_model_issued_at",
+      "target_job_id"
+    ],
+    "queue_model_issued_at": [
+      "queue_model"
+    ],
+    "target_job_id": [
+      "queue_model"
+    ]
+  }
+}

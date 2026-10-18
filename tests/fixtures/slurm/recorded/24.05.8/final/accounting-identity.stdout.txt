@@ -1,0 +1,2 @@
+1|1|Raven spaces = sample|/home/raven/work with spaces|/home/raven/work with spaces/%j.log||raven|2026-10-18T00:54:04|2026-10-18T00:54:06|raven-ci
+1.batch|1.batch|batch|||||2026-10-18T00:54:06|2026-10-18T00:54:06|raven-ci
