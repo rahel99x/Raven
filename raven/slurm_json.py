@@ -23,7 +23,7 @@ class UnsupportedShape(ValueError):
     pass
 
 
-def document(text):
+def _bounded_document(text):
     if not isinstance(text, str) or len(text) > MAX_BYTES or len(text.encode("utf-8")) > MAX_BYTES:
         raise ValueError("Slurm JSON exceeds the 16 MiB reply bound")
     def pairs(items):
@@ -62,6 +62,23 @@ def document(text):
         raise ValueError("Invalid bounded Slurm JSON") from exc
     if not isinstance(value, dict) or not isinstance(value.get("jobs"), list):
         raise ValueError("Slurm JSON has no jobs array")
+    return value
+
+
+def job_record_count(text):
+    """Count jobs and direct step rows, independently of JSON presentation.
+
+    Parser qualification belongs to document(): older dialects must reach the
+    native reader's explicit compatibility fallback. Counting never validates
+    job identity or drops malformed/duplicate rows before admission.
+    """
+    value = _bounded_document(text)
+    return len(value["jobs"]) + sum(len(job["steps"]) for job in value["jobs"]
+        if isinstance(job, dict) and isinstance(job.get("steps"), list))
+
+
+def document(text):
+    value = _bounded_document(text)
     if value.get("errors"):
         raise ValueError("Slurm JSON reports scheduler errors; inspect the source diagnostics")
     meta = value.get("meta")

@@ -45,6 +45,18 @@ different costs. A short display window does not authorize more polling.
 Use exact allocation and device identity and check effective intervals in the
 interface. Do not infer ownership from a GPU ordinal or a shared node alone.
 
+Scheduler response budgets count jobs and their direct accounting steps in JSON,
+or rows in the native text format. JSON indentation, field counts and line breaks
+do not consume additional records. The default managed response limit is 10,000
+records (`raven.collection.max_response_records`); an explicit collection policy
+uses `limits.max_records`. Byte and parsing bounds apply independently.
+
+If **Scheduler read exceeded the site record budget** appears, the diagnostic
+identifies the scheduler command, returned record count and effective limit.
+Narrow the account/user scope or History date range first. Review the applicable
+policy before changing a limit; repeated refreshes cannot make an oversized
+response fit. Raven rejects the response without silently truncating jobs.
+
 The shared worker scheduler admits native nested cluster collectors and drains
 accepted work when changing Single/Multi mode. Long-lived instrumentation and
 application safe points have their own declared transport and storage contracts;

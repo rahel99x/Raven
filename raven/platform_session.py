@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import shlex
 import threading
 import time
 import tempfile
@@ -39,13 +40,39 @@ def read_operation(argv):
     return None
 
 
+def _response_records(cmd, raw):
+    """Count native job/step records, not the lines used to format their JSON."""
+    # Match only the same exact working-directory wrapper admitted by the
+    # command classifier. Never interpret arbitrary shell programs as argv.
+    while os.path.basename(cmd[0]) == "sh" and len(cmd) == 3 and cmd[1] == "-c":
+        try:
+            words = shlex.split(cmd[2])
+        except ValueError:
+            break
+        if (len(words) < 4 or words[0] != "cd" or words[2] != "&&"
+                or cmd[2] != "cd " + shlex.quote(words[1]) + " && " + shlex.join(words[3:])):
+            break
+        cmd = words[3:]
+    name = os.path.basename(cmd[0])
+    if (name in {"squeue", "sacct", "scontrol"}
+            and any(arg == "--json" or arg.startswith("--json=") for arg in cmd[1:])):
+        from .slurm_json import job_record_count
+        try:
+            return name, job_record_count(raw)
+        except ValueError as exc:
+            raise ValueError(f"{name}: invalid bounded scheduler JSON: {exc}") from exc
+    return name, len(raw.splitlines())
+
+
 class GovernedBackend:
     def __init__(self, backend, policy, cache, scope, *, interval=None, collection=None):
         self.inner = backend
         self.policy = P.validate(policy)
         self.cache = cache
         self.acquisition = for_cache(cache)
-        self.scope = {"connection": E.digest(scope), "generation": "native-slurm-cli/v1", "user": str(scope.get("user") or os.getuid()),
+        # v1 admitted compact JSON by physical line count. Do not reuse those
+        # responses under semantic job/step record admission.
+        self.scope = {"connection": E.digest(scope), "generation": "native-slurm-cli/v2", "user": str(scope.get("user") or os.getuid()),
                       "cluster": str(scope.get("cluster") or "configured-default")}
         self.interval = self.policy["limits"]["min_interval"] if interval is None else E.finite(interval, "collection interval", .001)
         self.capabilities = P.capabilities({"schema": P.CAPABILITIES, "source": "slurm-cli", "version": "raven-native-read-subset/v1",
@@ -137,8 +164,11 @@ class GovernedBackend:
                     raw = self._execute(cmd, max(.01, duration - .1), min(limit, request["max_bytes"]), stop)
             else:
                 raw = self._execute(cmd, max(.01, duration - .1), min(limit, request["max_bytes"]), stop)
-            if len(raw.splitlines()) > request["max_records"]:
-                raise ValueError("Scheduler read exceeded the site record budget")
+            source, count = _response_records(cmd, raw)
+            if count > request["max_records"]:
+                raise ValueError(f"Scheduler read exceeded the site record budget: {source} returned "
+                                 f"{count} records (limit {request['max_records']}); narrow the query "
+                                 "scope or history window, or review the configured record limit")
             # Evidence strings are individually bounded to 64 KiB. Preserve
             # normal large queue/accounting responses as bounded chunks;
             # cache admission still checks their total serialized byte size.
