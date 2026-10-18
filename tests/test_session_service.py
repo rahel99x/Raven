@@ -283,3 +283,81 @@ def test_real_optional_daemon_demo_restart_and_cleanup(directory):
         assert process.returncode == 0, error
         assert not (directory/S.SOCKET).exists()
     assert sessions[0] == sessions[1]
+
+
+@pytest.mark.parametrize('count', [9, 17])
+def test_complete_coalesced_requests_drain_without_more_network_bytes(server, count, monkeypatch):
+    # Exercise real sockets and polling without allowing a slow CI scheduler
+    # to replenish the four-request admission burst while this test runs.
+    admit = server.admit_read
+    monkeypatch.setattr(server, 'admit_read', lambda client, now: admit(client, client['rate_updated']))
+    sequence = server.observations.sequence
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.settimeout(1)
+        connection.connect(str(server.root/S.SOCKET))
+        connection.sendall(C.message(C.request('hello'), request=True)*count)
+        decoder, values = C.decoder(), []
+        while len(values) < count:
+            values.extend(decoder.take(16))
+            if len(values) < count and not decoder.has_complete_frame:
+                block = connection.recv(65536)
+                assert block, 'Server closed before processing all complete requests'
+                decoder.feed(block)
+    assert len(values) == count
+    assert sum('error' not in value for value in values) == 4
+    assert all('quota' in value['error'] for value in values[4:])
+    assert server.metrics['queries'] == count
+    assert server.observations.sequence == sequence
+
+
+def test_real_slow_drip_cannot_extend_absolute_exchange_deadline(directory):
+    stop = threading.Event()
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+        listener.bind(str(directory/S.SOCKET))
+        listener.listen(1)
+        payload = C.message(C.Observations({}).query(C.request('hello')))
+        def drip():
+            with listener.accept()[0] as peer:
+                peer.recv(C.MAX_REQUEST)
+                try:
+                    for byte in payload:
+                        if stop.wait(.01):
+                            break
+                        peer.sendall(bytes([byte]))
+                except OSError:
+                    pass
+        thread = threading.Thread(target=drip, daemon=True)
+        thread.start()
+        client = S.Client(directory, timeout=.08)
+        identity = client.session, client.epoch, client.cursor
+        try:
+            with pytest.raises(TimeoutError):
+                client.query()
+            assert (client.session, client.epoch, client.cursor) == identity
+        finally:
+            stop.set()
+            thread.join(timeout=2)
+        assert not thread.is_alive()
+
+
+@pytest.mark.parametrize('connect_cost,send_cost,recv_cost', [(.06, .06, 0), (.03, .03, .05)])
+def test_exchange_deadline_includes_connect_send_and_late_complete_response(directory, monkeypatch, connect_cost, send_cost, recv_cost):
+    now = [0.]
+    response = C.message(C.Observations({}).query(C.request('hello')))
+    class Connection:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def settimeout(self, value): assert 0 < value <= .1
+        def connect(self, path): now[0] += connect_cost
+        def sendall(self, payload): now[0] += send_cost
+        def recv(self, size):
+            now[0] += recv_cost
+            return response
+    monkeypatch.setattr(S.socket, 'socket', lambda *args: Connection())
+    monkeypatch.setattr(S, 'peer_uid', lambda connection: os.getuid())
+    monkeypatch.setattr(S.time, 'monotonic', lambda: now[0])
+    client = S.Client(directory, timeout=.1)
+    identity = client.session, client.epoch, client.cursor
+    with pytest.raises(TimeoutError, match='absolute timeout'):
+        client.query()
+    assert (client.session, client.epoch, client.cursor) == identity

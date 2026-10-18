@@ -109,7 +109,7 @@ def _key(policy, job, now, model, limits, order):
         score = job["wall_limit"] * max(1, _units(job)[0])
     elif policy == "fairshare":
         account = model["policy"]["accounts"][job["account"]]
-        score = account["usage_cpu_seconds"] * math.exp2(-max(0, now-job["submit"])/model["policy"]["usage_half_life_seconds"]) / account["weight"]
+        score = account["usage_cpu_seconds"] * math.pow(2.0, -max(0, now-job["submit"])/model["policy"]["usage_half_life_seconds"]) / account["weight"]
     else:
         score = order[job["id"]]
     return (1, score, order[job["id"]])

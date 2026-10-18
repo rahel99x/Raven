@@ -167,6 +167,10 @@ class Server:
             return
         client['last'] = time.monotonic()
         client['decoder'].feed(data)
+        self._drain(connection, client)
+
+    def _drain(self, connection, client):
+        """One bounded batch; complete retained frames need no new socket bytes."""
         for value in client['decoder'].take(8):
             now = time.monotonic()
             try:
@@ -184,10 +188,22 @@ class Server:
             client['queue'].append(memoryview(raw))
             client['queued'] += len(raw)
             self.metrics['queries'] += 1
-        self.selector.modify(connection, selectors.EVENT_READ | selectors.EVENT_WRITE, client)
+        self.selector.modify(connection, selectors.EVENT_READ | (selectors.EVENT_WRITE if client['queue'] else 0), client)
 
     def poll(self, timeout=.5):
-        for key, mask in self.selector.select(timeout):
+        # Each peer gets one finite drain before waiting. Partial frames do not
+        # wake the selector; a complete retained frame must make progress even
+        # when the peer has sent all its bytes already.
+        buffered = False
+        for connection, client in tuple(self.clients.items()):
+            if not client['decoder'].has_complete_frame:
+                continue
+            try:
+                self._drain(connection, client)
+                buffered |= connection in self.clients and client['decoder'].has_complete_frame
+            except (OSError, ValueError):
+                self._drop(connection)
+        for key, mask in self.selector.select(0 if buffered else timeout):
             connection, client = key.fileobj, key.data
             try:
                 if client is None:
@@ -237,22 +253,30 @@ class Client:
     def query(self, operation='events'):
         # Each exchange reconnects independently. There is no mutation replay;
         # request frequency does not trigger collection or reset its deadlines.
+        deadline = time.monotonic() + self.timeout
+        def remaining():
+            budget = deadline - time.monotonic()
+            if budget <= 0:
+                raise TimeoutError('Session exchange exceeded its absolute timeout; retained client state is unchanged')
+            return budget
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-            connection.settimeout(self.timeout)
+            connection.settimeout(remaining())
             connection.connect(str(self.root / SOCKET))
             if peer_uid(connection) != self.expected_server_uid:
                 raise ValueError('Session server has a different local owner')
+            connection.settimeout(remaining())
             connection.sendall(C.message(C.request(operation, session=self.session, epoch=self.epoch, cursor=self.cursor), request=True))
             decoder = C.decoder()
-            deadline = time.monotonic() + self.timeout
             while True:
-                connection.settimeout(max(.001, deadline-time.monotonic()))
+                connection.settimeout(remaining())
                 block = connection.recv(65536)
+                remaining()
                 if not block:
                     raise ConnectionError('Session disconnected before its response; retained client state is unchanged')
                 decoder.feed(block)
                 values = decoder.take(1)
                 if values:
+                    remaining()
                     return self.accept(values[0])
 
     def accept(self, value):
