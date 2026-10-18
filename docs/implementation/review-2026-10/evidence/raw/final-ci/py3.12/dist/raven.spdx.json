@@ -1,0 +1,64 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "comment": "Bundled release archive bytes and declared package metadata; no signatures or publisher authentication",
+  "creationInfo": {
+    "created": "2026-10-18T01:48:36Z",
+    "creators": [
+      "Tool: Raven-release-inventory-v1"
+    ]
+  },
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://spdx.org/spdxdocs/raven-82e73da4-2c4b-507d-b0a2-8b2eb7fa2b2a",
+  "name": "raven-7.0.0-distributions",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Artifact-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "af428987a49ea85d2c3b1d9d850aa692b60b450ab348dfd8733bb786583358c1"
+        }
+      ],
+      "comment": "Distribution artifact; archive members are in the companion Raven inventory. Runtime Requires-Dist is empty. External interpreters, schedulers, MPI/GPU runtimes, optional tools and dev dependencies are excluded.",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "raven",
+      "packageFileName": "raven-7.0.0-py3-none-any.whl",
+      "versionInfo": "7.0.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Artifact-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "fcd3cf300df2397acc0960548ef54ad18ff6cbef85b3bfef6fc8c2372fc3316f"
+        }
+      ],
+      "comment": "Distribution artifact; archive members are in the companion Raven inventory. Runtime Requires-Dist is empty. External interpreters, schedulers, MPI/GPU runtimes, optional tools and dev dependencies are excluded.",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "raven",
+      "packageFileName": "raven-7.0.0.tar.gz",
+      "versionInfo": "7.0.0"
+    }
+  ],
+  "relationships": [
+    {
+      "relatedSpdxElement": "SPDXRef-Artifact-1",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Artifact-2",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    }
+  ],
+  "spdxVersion": "SPDX-2.3"
+}

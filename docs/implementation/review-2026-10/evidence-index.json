@@ -896,7 +896,7 @@
     {
       "path": "evidence/final-audit.json",
       "bytes": 2346,
-      "sha256": "db72854082f1365779b4bcff0abf217a2b1ee9414ba1c4ae19879f3c9bcfaaef"
+      "sha256": "19b4fe66036b0c80e792ccec84c33b2d0faf0b7a82ce55fc3dbda08a5eb8748b"
     },
     {
       "path": "evidence/final-functional-refresh.json",
@@ -3459,6 +3459,11 @@
       "sha256": "a571d7e10167ac142bb44c10507fec292f83cd480c8437ca89448defaa3c615c"
     },
     {
+      "path": "evidence/repository-retention.json",
+      "bytes": 4845,
+      "sha256": "bb64a4a2cf776b22fae77cd287f8814d39da191c740e0c379197461fd2108806"
+    },
+    {
       "path": "evidence/run-trace-readiness-benchmarks.py",
       "bytes": 3182,
       "sha256": "57bb944f31babdb50dc9e6f5730343c4e14a53f9acbaeb172da7b0921db80c85"
@@ -4070,8 +4075,8 @@
     },
     {
       "path": "progress.md",
-      "bytes": 15443,
-      "sha256": "fb2b12d0aeb3212d4840c43e20714e6ba0c78935c9bfd7cf8e604240ef3c7be5"
+      "bytes": 15846,
+      "sha256": "341b10318761d112533a71516f3094697e7d699df0d282786ed6b5c4b2b26f9c"
     },
     {
       "path": "refresh-coverage.py",
