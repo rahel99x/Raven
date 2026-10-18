@@ -102,3 +102,16 @@ on an arbitrary host executable fitting the 4 MiB review bound.
 The focused command `python -m pytest -q tests/test_mpi_health.py` passed on
 each of Python 3.10–3.14: 11 passed, four explicitly gated MPI runtime tests
 skipped. These fixture checks do not qualify a live MPI installation.
+
+The subsequent [CI run](https://github.com/rahel99x/Raven/actions/runs/39098404015)
+passed all five regression suites and four complete matrix jobs. Its additional
+Python 3.12 extraction gate found a missing development prerequisite:
+`build --no-isolation` could not import `setuptools.build_meta`. Isolated package
+builds had installed that backend only in temporary build environments. The
+`dev` extra now declares `setuptools>=77`, matching the build-system requirement.
+The core runtime remains dependency-free. A fresh Python 3.12 environment,
+initially verified to lack setuptools, passed the unchanged extraction qualifier
+after installing `.[dev,terminal]`: all six installation, removal, reinstallation,
+upgrade, and downgrade scenarios passed. The following managed and pipx
+update/revert qualifier also passed all 31 checks with that environment's
+commands on `PATH`.
