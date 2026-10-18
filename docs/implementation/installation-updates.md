@@ -81,3 +81,10 @@ explicit scan-exhaustion coverage. The production profiler is unchanged.
 Final packaging and installed-wheel checks run after this documentation-only
 receipt is committed. Earlier evidence under `review-2026-10/` remains bound to
 its recorded historical revisions.
+
+For publication, the unpublished commits were recreated with the account's
+GitHub noreply address to respect its email privacy settings. Author names,
+dates, messages, and source trees were preserved. The
+[identity mapping](publication-identity-map.json) connects the recorded
+qualification commits to their public equivalents; historical receipts retain
+the exact hashes that were tested.
