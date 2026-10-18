@@ -12,17 +12,54 @@ supported or qualified; use `ravenl --no-state` for a stateless session there.
 macOS behavior has not been exercised in this qualification environment. Install
 Python's `venv` support if it is packaged separately by your operating system.
 The repository installer needs no pipx or administrator access. Package
-installation needs access to the
-configured Python package index. The core has no third-party runtime
-dependencies; the optional embedded terminal uses `pyte` and `wcwidth`.
+installation needs access to the configured Python package index. The core has
+no third-party runtime dependencies; the optional embedded terminal uses `pyte`
+and `wcwidth`.
+
+## Install with one command
+
+With Python 3.10+, `venv`, Git, and curl available, run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rahel99x/Raven/main/install.sh | bash
+```
+
+The bootstrap downloads Raven's source and delegates to the same repository
+installer used below. It keeps the checkout at
+`~/.local/share/raven/source`, or `$XDG_DATA_HOME/raven/source`. An existing valid
+checkout there is reused without pulling or resetting it. Guided setup opens
+when a controlling terminal is available; otherwise the installer prints the
+command to run next. Installation does not request an allocation.
+
+The commands normally appear in `~/.local/bin`. If that directory is absent
+from your current shell's PATH, follow the exact `export PATH=...` instruction
+printed by the installer, or use the printed absolute command. An installer
+cannot change its parent shell's environment and does not edit shell files.
+
+To choose paths or a Python interpreter, pass options to Bash:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rahel99x/Raven/main/install.sh | \
+  bash -s -- --source-dir "$HOME/Raven" --python python3 --no-setup
+```
+
+`--source-dir PATH` selects the bootstrap checkout; `--python EXEC` selects
+Python. Other options are forwarded to the repository installer.
+`--plan` makes no checkout, environment, or command changes and does not fetch
+source. With an existing checkout, it also checks installation destinations;
+without one, it previews where source would be cloned. The initial download of
+`install.sh` still occurs when using the curl form.
 
 ## Install from a checkout
 
 ```bash
 git clone https://github.com/rahel99x/Raven.git
 cd Raven
-python3 scripts/install.py
+bash install.sh
 ```
+
+The local script installs its own checkout. You can also invoke
+`python3 scripts/install.py` directly when Git and curl are unnecessary.
 
 The installer creates an isolated application environment under
 `~/.local/share/raven/installations` (or `$XDG_DATA_HOME/raven/installations`)
@@ -68,7 +105,9 @@ installer cannot change an already running parent shell's PATH.
 
 ### Existing pipx users and alternative installation
 
-Keep using pipx if it already owns your Raven installation. For a new pipx
+Keep using pipx if it already owns your Raven installation; `raven update`
+supports verified user-owned pipx installations made from a local Git checkout.
+The repository installer does not take over their commands. For a new pipx
 installation, install pipx through your operating system's package manager
 first; for example, on Fedora use `sudo dnf install pipx`.
 
@@ -199,42 +238,130 @@ legacy state.
 
 ## Update the installed package
 
-The repository is now `rahel99x/Raven`. Existing checkouts can retain their
-directory name. Update an old remote from that checkout:
+Close Raven dashboards and their owned Heavy workers before updating. The
+updater does not cancel scientific jobs or terminate running Raven processes.
+Then run:
 
 ```bash
-git remote set-url origin https://github.com/rahel99x/Raven.git
+raven update
 ```
 
-Close Raven before replacing its installed package. Check `command -v ravenl`
-and update through the same method that owns that executable. Configuration,
-project reporting files, and application state remain outside the installed
-package.
+The command fetches the configured upstream for the source checkout's current
+branch and updates through the installer that owns the running command. It
+does not silently switch to `main`. A branch without an upstream, local code
+edits, untracked source files, or local commits beyond upstream stop the update
+with guidance. Changes to recognized user configuration are preserved and do
+not block an ordinary update.
+There is no background update check or automatic replacement during a session.
 
-For the repository installer, update its checkout and rerun it:
+Recognized configuration, application state, installation paths, and recorded
+extras are preserved. Project data outside the source checkout is unaffected.
+For the repository installer, a fresh release
+is built and checked before the active release changes. A failed build keeps
+the previous environment active. Its stable worker interpreter remains
+`PREFIX/current/bin/python`, using the prefix printed during installation.
 
 ```bash
-cd /path/to/Raven
-git pull --ff-only
-python3 scripts/install.py --no-setup
-hash -r
+raven update --plan
+raven update --check
 ```
 
-If Git reports local source edits, preserve or deliberately discard those edits
-before pulling. The installer does not reset the checkout. If you selected
-custom installation paths or `--without-terminal`, retain those choices for the
-update. Each successful installation builds and checks a fresh environment
-before switching the active release. The previous release is retained; a failed
-build leaves it selected. The stable worker interpreter is
-`PREFIX/current/bin/python`, using the release prefix shown by the installer.
+`--plan` shows the source, branch, installer, destinations, and cached upstream
+revision without network access or changes. `--check` fetches upstream
+information and reports available changes without updating the checkout or
+installed package. Use
+`raven update --reinstall` to rebuild an installation even when its recorded
+revision is already current.
+
+If you moved a repository-installer checkout, identify its new location:
+
+```bash
+raven update --source /new/path/to/Raven
+```
+
+For older installer markers, Raven uses the owned command link and installed
+dependencies to recover installation choices where they are unambiguous.
+Otherwise it prints a reinstall path rather than guessing. Ordinary virtual
+environments, system installations, administrator-owned or other-user pipx
+installations, and packages installed from a wheel or package index remain with
+their existing installer. The updater does not replace them automatically.
+
+The default XDG configuration and `RAVEN_CONFIG` are recognized automatically.
+If you keep additional configuration files inside the checkout, identify each
+one explicitly, including during an ordinary update:
+
+```bash
+raven update --config /path/to/Raven/my-config.json
+```
+
+Repeat `--config PATH` for additional files. This preserves those paths while
+updating surrounding source. Do not assume an arbitrary edited file is
+configuration merely because it contains settings.
+
+### Replace local source edits deliberately
+
+Commit or copy development work you intend to keep. To explicitly replace local
+code and untracked source with the fetched upstream revision, run:
+
+```bash
+raven update --overwrite
+```
+
+Raven first creates a backup outside the checkout and prints its location and
+recovery command. User configuration, state, and ignored environments remain
+preserved. `raven/config.py` is application code, so edits to it are source
+changes; use a user configuration file for persistent settings.
+Other nonignored files inside the source checkout count as source, including
+personal notes or datasets; move them outside the checkout or explicitly protect
+their paths before using `--overwrite`.
+
+Include the same configuration paths when replacing local code deliberately:
+
+```bash
+raven update --overwrite --config /path/to/Raven/my-config.json
+```
+
+### Restore a backup
+
+Use the exact recovery command printed by the updater. For example, with the
+actual backup directory substituted for `/path/to/raven-backup`:
+
+```bash
+raven revert /path/to/raven-backup --plan
+raven revert /path/to/raven-backup
+```
+
+The preview requires no network access. Reversion saves the current source
+before restoring the selected backup and preserves your **current** user
+configuration and state. A repository-installer installation reselects its
+validated retained previous release. A supported pipx installation reinstalls
+from the restored source; its recovery and failure guarantees remain those of
+pipx. Review the printed outcome if that reinstall fails.
+
+After an update or reversion, check the installed commands outside the checkout:
+
+```bash
+raven --version
+ravenl doctor
+ravenh --plan
+```
 
 ### Update a pipx installation
 
-Pipx records the source directory used during installation. Keep using that
-directory for updates; the repository rename does not require moving it.
+`raven update` supports a same-user pipx installation when its metadata identifies
+the running environment and an original local Git checkout. It retains that
+source and its extras and delegates package replacement to pipx. The updater
+derives `PIPX_HOME` and the command directory from that verified installation,
+including a custom user-owned location. Pipx does not inherit the repository
+installer's atomic release-switch guarantee.
 
-Pull changes in the checkout used for the original pipx installation, then
-reinstall the application:
+Keep the original checkout path recorded by pipx. A moved pipx checkout cannot
+be adopted with `--source`; follow the diagnostic to repair or reinstall through
+pipx first. Wheel, package-index, suffixed, administrator-owned, other-user, or
+mismatched pipx environments use their owning installation workflow instead.
+
+For an older Raven version that does not yet provide `raven update`, update the
+checkout used by pipx and reinstall:
 
 ```bash
 cd /path/to/Raven
@@ -243,12 +370,29 @@ pipx reinstall raven
 ```
 
 Pipx retains the original installation source and extras. Use the same
-`PIPX_BIN_DIR` override if you selected one. For an administrator installation,
-use `sudo pipx reinstall --global raven`.
+`PIPX_HOME` and `PIPX_BIN_DIR` overrides if you selected them. For an administrator
+installation, use `sudo pipx reinstall --global raven`.
 
 Pulling source alone does not update a normally installed package. Reinstallation
 preserves user configuration and state; it needs the recorded source checkout.
-Repeat the version, doctor, and plan checks from outside the checkout afterward.
+
+### Update an older repository installation
+
+If `raven update` is not yet available, run the installer from the original
+checkout after updating it:
+
+```bash
+cd /path/to/Raven
+git pull --ff-only
+python3 scripts/install.py --no-setup
+hash -r
+```
+
+Keep any original `--prefix`, `--bin-dir`, or `--without-terminal` choices for
+this manual step. If Git reports local edits, preserve them before pulling.
+For a checkout whose remote still uses an old repository name, first run
+`git remote set-url origin https://github.com/rahel99x/Raven.git` there.
+The checkout directory itself does not need to move.
 
 ### Reliability revision compatibility
 

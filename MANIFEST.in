@@ -1,6 +1,7 @@
 include LICENSE README.md CONTRIBUTING.md SECURITY.md
 include CITATION.cff
 include CHANGELOG.md
+include install.sh
 recursive-include docs *.md *.json *.toml
 recursive-include docs/implementation *.py *.txt *.log *.gz *.jsonl *.xml *.lock
 recursive-include docs/examples *.sbatch *.txt

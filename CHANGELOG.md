@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add a one-command installer, explicit `raven update` with saved installation
+  options, and `--overwrite` source replacement with recoverable backups.
+  Restore a backup with `raven revert BACKUP_DIRECTORY` while preserving current
+  user configuration and state. Updates keep the existing installation owner
+  and selected Git tracking branch.
 - Open interactive Heavy sessions immediately while allocation admission and
   worker verification proceed in the background, with visible progress and
   reviewed cancellation or retry.

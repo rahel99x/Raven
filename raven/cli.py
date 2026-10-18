@@ -788,6 +788,9 @@ def _managed_main(argv, *, raven, raven_allocation=None):
 
 def _dispatch_main(argv=None, *, raven=None, raven_allocation=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] in (["update"], ["revert"]):
+        from .update import cli as maintenance
+        return maintenance(argv)
     from .launch import dispatch as dispatch_workload
     workload = dispatch_workload(argv, resolved=raven)
     if workload is not None:

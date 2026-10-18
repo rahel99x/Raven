@@ -21,7 +21,7 @@ MAX_ARGUMENT_BYTES = 1 << 20
 # Both entry-point layers use this exact boundary, including dashboard values.
 GLOBAL_VALUES = frozenset("--site --profile --config --host --ssh-user --account --site-policy --allocation --interface --user --interval --rate --days --tab --research-view --metrics-file --contract --workdir --passport --planning-file --record --replay --speed --run --eval --wait-for --timeout --poll --alert --width --ui-trace --workers --gpu-check-output".split())
 GLOBAL_OPTIONAL = frozenset(("--gpu-check", "--report", "--write-config"))
-KNOWN_COMMANDS = frozenset(("run", "report", "trace", "runtime", "terminal", "migrate", "config", "doctor", "qualify", "launch", "export-data", "setup", "query"))
+KNOWN_COMMANDS = frozenset(("run", "report", "trace", "runtime", "terminal", "migrate", "config", "doctor", "qualify", "launch", "export-data", "setup", "query", "update", "revert"))
 _ALIASES = {"A": "account", "J": "job-name", "D": "chdir", "o": "output", "e": "error", "a": "array", "d": "dependency", "p": "partition", "q": "qos", "t": "time", "N": "nodes", "n": "ntasks", "c": "cpus-per-task", "G": "gpus"}
 _FLAGS = {"exclusive", "oversubscribe", "requeue", "no-requeue", "hold", "parsable", "contiguous", "spread-job", "use-min-nodes", "verbose", "quiet", "overcommit", "no-kill", "no-requeue"}
 _FORBIDDEN = {"wrap", "wait", "test-only", "help", "version", "clusters", "export-file", "het-group", "batch", "usage"}

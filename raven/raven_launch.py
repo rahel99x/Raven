@@ -240,7 +240,7 @@ def _wait_heavy(manager, resolved, reuse=None):
 
 def _help(parser):
     parser.print_help()
-    print("\nCommands: setup; config explain; doctor; migrate --plan|--apply; qualify --offline.")
+    print("\nCommands: setup; update [--check|--plan|--overwrite]; revert BACKUP; config explain; doctor; migrate --plan|--apply; qualify --offline.")
     print("Dashboard options remain available: --once, --watch, --fake, --tab, --interval, --host, run COMMAND.")
     print("Use ravenl for Light. ravenh explicitly requests admission; missing Slurm never selects desktop Heavy.")
     print("Interactive ravenh opens immediately in Light while Heavy starts; the compute badge opens Cancel and Retry controls.")
@@ -257,7 +257,7 @@ def _main(argv=None, *, heavy=False):
         print("Raven: " + str(exc), file=sys.stderr)
         return 2
     parser = _parser(heavy)
-    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run", "setup", "query", "series", "mcp"}
+    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run", "setup", "query", "series", "mcp", "update", "revert"}
     # Global options stop at the subcommand. A nested --help/--config belongs
     # to that command, even when a global --site precedes it. Skip option values
     # so a hostname or profile named 'terminal' is not mistaken for a command.
@@ -284,6 +284,20 @@ def _main(argv=None, *, heavy=False):
         from . import __version__
         print("Raven " + __version__)
         return 0
+    # Package maintenance is independent of scheduler configuration, admission,
+    # plugins and first-run setup under all three installed commands.
+    if remaining[:1] in (["update"], ["revert"]):
+        if (options.site or options.profile or options.host or options.ssh_user
+                or options.account is not None or options.site_policy or options.allocation
+                or options.plan or options.write_config is not None or options.json
+                or options.show_paths or options.interface != "local"):
+            print("Raven: put update/revert options after the command; scheduler options do not apply.", file=sys.stderr)
+            return 2
+        from .update import cli as maintenance
+        arguments = list(remaining)
+        if options.config:
+            arguments += ["--config", options.config]
+        return maintenance(arguments)
     if options.interface == "compute":
         print("Raven: allocation-first full-interface transfer is unavailable; use the persistent Light interface with an admitted worker.", file=sys.stderr)
         return 2

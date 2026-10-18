@@ -4,9 +4,38 @@ Raven is a terminal workbench for Slurm-based research. It combines job
 monitoring, resource graphs, logs, project evidence, and an embedded shell with
 governed data collection and explicit ownership of analysis compute.
 
-The core uses Python's standard library on POSIX systems. Python 3.10 or later
-is required. Unicode and ASCII interfaces are available; the embedded terminal
-uses optional `pyte` and `wcwidth` dependencies.
+## Install
+
+On Linux or WSL2, with Python 3.10+, `venv`, Git, and curl available:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rahel99x/Raven/main/install.sh | bash
+```
+
+The installer creates a private environment for your user and opens guided setup
+when a terminal is available. No pipx or administrator access is needed. Follow
+the printed PATH instruction if required, then open Raven with `ravenl`.
+
+## Update
+
+Close Raven dashboards and their owned Heavy workers, then run:
+
+```bash
+raven update
+```
+
+Updates follow your source checkout's tracking branch and preserve configuration,
+state, and installation choices. Local code edits stop the update for review;
+changes to recognized user configuration are preserved.
+Raven updates only when you request it; it does not update in the background.
+See [installation and updates](docs/INSTALLATION.md) for existing installations,
+pipx, custom paths, and explicit replacement of local code edits.
+
+[Getting started](docs/guides/getting-started.md) · [Configuration migration](docs/MIGRATION.md) ·
+[Runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
+[Implementation status](docs/raven/implementation.md) · [Validation](docs/raven/validation.md)
+
+## Commands
 
 | Command | Behavior |
 | --- | --- |
@@ -14,6 +43,8 @@ uses optional `pyte` and `wcwidth` dependencies.
 | `ravenh` | Opens the dashboard while Heavy starts in the background; analysis becomes available after verification. A first bare interactive launch opens setup in Light. |
 | `raven` | Opens the governed Light interface; equivalent to `ravenl`. |
 | `raven setup` | Guides workstation or cluster setup and reviews configuration before saving. |
+| `raven update` | Updates through the owning installer from the source checkout's tracking branch. |
+| `raven revert BACKUP_DIRECTORY` | Restores an updater backup while preserving current configuration and state. |
 | `raven launch SCRIPT` | Submits an existing shell script with retained run evidence; use `--local` for explicit workstation execution. |
 | `raven export-data` | Exports selected retained measurements without opening the dashboard. |
 
@@ -21,33 +52,25 @@ The Python distribution and import namespace are **`raven`**. Current evidence
 schemas use the `raven.*` namespace. Install from this repository or a wheel
 built from it; an identically named package on an index is not this implementation.
 
-[Getting started](docs/guides/getting-started.md) · [Installation](docs/INSTALLATION.md) · [Configuration migration](docs/MIGRATION.md) ·
-[Runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
-[Implementation status](docs/raven/implementation.md) · [Validation](docs/raven/validation.md)
+The core uses Python's standard library. Unicode and ASCII interfaces are
+available; the embedded terminal uses optional `pyte` and `wcwidth` dependencies.
+Linux and WSL2 support persistent local state. See the installation guide for
+platform limits and stateless macOS use.
 
-## Installation
+## Install from a checkout or try the demo
 
-With Python 3.10+ available, install from a checkout:
+For an existing checkout, run its installer directly:
 
 ```bash
-git clone https://github.com/rahel99x/Raven.git
-cd Raven
+cd /path/to/Raven
 python3 scripts/install.py
-ravenl
 ```
 
-The installer creates a private application environment for your user, without
-pipx or administrator access. It reports the installed command paths and any
-PATH change needed for the current shell. It preserves commands owned by other
-installations and opens guided setup when run in an interactive terminal. Run
-`raven setup` to reopen setup later. Existing pipx users can continue with `pipx reinstall raven`
-after updating their original checkout.
-
-The executable directory must be on your shell's `PATH`; user installations
-normally use `~/.local/bin`. The [installation guide](docs/INSTALLATION.md)
-covers installer options, pipx, administrator installation, and updates without
-shell-startup edits. The [first-job guide](docs/guides/getting-started.md) walks
-through local Slurm, a cluster lab account, and explicit standalone execution.
+Run `raven setup` to reopen guided configuration later. The installer preserves
+commands owned by other installations; existing pipx users should follow the
+[pipx update instructions](docs/INSTALLATION.md#update-a-pipx-installation).
+The [first-job guide](docs/guides/getting-started.md) covers local Slurm, a cluster
+lab account, and explicit standalone execution.
 
 For an offline demonstration from the source checkout:
 
