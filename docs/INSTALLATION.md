@@ -5,7 +5,11 @@ executables. The installed commands run from any working directory without
 aliases, virtual-environment activation, or changes to `.bashrc`. They use the
 installed package, so launching them does not require the source checkout.
 
-Use Linux, macOS, or WSL with Python 3.10 or later and curses support. Install
+Use Linux or WSL2 with Python 3.10 or later and curses support for an installation
+with persistent local state. This revision verifies mutable-state filesystems
+through Linux mount information. macOS persistent-state ownership is not yet
+supported or qualified; use `ravenl --no-state` for a stateless session there.
+macOS behavior has not been exercised in this qualification environment. Install
 Python's `venv` support if it is packaged separately by your operating system.
 The repository installer needs no pipx or administrator access. Package
 installation needs access to the

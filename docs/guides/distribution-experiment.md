@@ -32,10 +32,17 @@ current checkout, creates private clean virtual environments, and exercises:
 - Config/data preservation and disjoint wheel ownership.
 
 The manifest records exact source digests, shipped/installed bytes, imported
-modules, process peak RSS in KiB and workflow seconds. Python allocations are not
-reported as RSS. These short local samples are not a general startup-speed or
-human-usability claim. The complete installation is the equivalent baseline;
-synthetic scheduler observations are not live Slurm qualification.
+modules, process peak RSS in KiB and workflow seconds. The final
+[controlled comparison](../implementation/review-2026-10/evidence/W42.md)
+also alternates equivalent full/core workflows in fresh processes and measures
+Python allocations separately from RSS. In that warm-cache local fixture, core
+used 3.5% less installed space and imported 183 Raven modules instead of 202.
+Its constructed first frame was faster in all eight pairs, while some complete
+workflow timings regressed. These observations are not installed-CLI readiness,
+general startup-speed or human-usability claims. The complete installation is
+the equivalent baseline; synthetic scheduler observations are not live Slurm
+qualification. The reproducible harness and raw measurements remain linked from
+the evidence record.
 
 ## Installation and migration boundary
 
