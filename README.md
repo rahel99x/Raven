@@ -258,6 +258,21 @@ still need a producer; missing evidence remains visible. The
 [runnable example](examples/automated-reporting/README.md) needs no handwritten
 manifests.
 
+To explore a deeper trace, run the [heat-diffusion lab](examples/trace-lab/README.md):
+
+```bash
+bash examples/trace-lab/run.sh --slurm
+# Open the exact receipt path printed by the launcher:
+bash examples/trace-lab/view.sh /absolute/project/path/launch.json
+```
+
+Each normal run lasts about two minutes. The variants record nested numerical
+calls, processes or ranks, resource samples, and scientific metrics. MPI requires
+mpi4py and a compatible MPI launcher; CUDA requires CUDA-enabled PyTorch and a
+GPU. Select them with `--variant mpi` or `--variant cuda`; CUDA traces cover
+Python host calls. Add `--history` to the viewer after completion, or use
+`run.sh --local` and the retained CLI inspector without Slurm.
+
 Use the [reporting V2 guide](docs/PROJECT_REPORTING_V2.md) to connect an
 existing application using a portable Bash launcher. It covers Linux, CARC,
 UCI HPC3, student and lab allocations, exact file formats, and every Research

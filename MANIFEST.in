@@ -21,4 +21,5 @@ recursive-include examples/project-template *.py *.json *.sbatch *.md .gitignore
 recursive-include examples/project-template/.raven *.json
 recursive-include examples/reporting-v2 *.py *.sh *.md
 recursive-include examples/automated-reporting *.py *.sh *.md
+recursive-include examples/trace-lab *.py *.sh *.md
 recursive-include .github/workflows *.yml

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add a runnable heat-diffusion trace lab with CPU, MPI and CUDA variants,
+  roughly two-minute defaults, spawned analysis workers or distributed ranks,
+  scientific metrics, isolated project copies, and receipt-based launch/view
+  helpers for Slurm Jobs/History and standalone trace inspection.
 - Add automatic Python attachment for `raven launch --trace`, project-scoped
   filtering, bounded block journals and per-process coverage. Existing
   `raven_exec` hooks remain available; isolated interpreters, native code and

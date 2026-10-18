@@ -42,7 +42,7 @@ jobs:
         run: python scripts/setup.py --mode demo --venv /tmp/raven-offline-venv --report /tmp/raven-demo.txt
       - name: Build source and wheel distributions
         run: python -m build
-      - name: Verify recorded Slurm fixtures from the source distribution
+      - name: Verify recorded Slurm fixtures and runnable example from the source distribution
         shell: bash
         run: |
           python - <<'PY'
@@ -64,7 +64,8 @@ jobs:
                   cwd=source, check=True)
               subprocess.run([sys.executable, "-m", "pytest", "-q",
                   "tests/test_slurm_json.py", "tests/test_slurm_qualification.py",
-                  "tests/test_completed_series_identity.py"], cwd=source, check=True)
+                  "tests/test_completed_series_identity.py", "tests/test_trace_lab_example.py",
+                  "tests/test_trace_lab_accelerators.py"], cwd=source, check=True)
           PY
       - name: Smoke-test the installed wheel outside the checkout
         shell: bash

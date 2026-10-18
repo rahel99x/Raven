@@ -6,6 +6,15 @@ and every process shares the exact reporting attempt. Explicit `raven_exec`,
 native instrumentation, distributed adapters and current-stack snapshots remain
 available for their respective coverage.
 
+For a complete exercise, use the [heat-diffusion trace lab](../../examples/trace-lab/README.md).
+Its launch and viewer scripts preserve an exact receipt, with instructions for
+live Slurm inspection, History, and standalone CLI inspection. Nested solver
+calls, spawned analysis workers, scientific metrics, and deliberate failure
+provide several paths to explore without extra application dependencies.
+Optional MPI and CUDA variants use mpi4py and PyTorch respectively. All normal
+runs include about two minutes of pacing for live inspection; CUDA records
+Python host calls rather than device kernels.
+
 ## Automatic attachment
 
 Keep the application's existing Bash command, for example `python3 solve.py`,
