@@ -329,6 +329,24 @@ def test_official_declared_url_cannot_hide_a_rewritten_fork(checkout, tmp_path):
         V.verify(info, allow_fork=True, require_attestation=True, artifact=artifact)
 
 
+def test_rewritten_source_requires_authorization_before_checkout_mutation(checkout):
+    seed, root = checkout
+    original = source_git(root, 'rev-parse', 'HEAD')
+    target = advance(seed)
+    declared = 'https://github.com/rahel99x/Raven.git'
+    source_git(root, 'remote', 'set-url', 'origin', declared)
+    source_git(root, 'config', 'url.' + str(root.parent / 'remote.git') + '.insteadOf', declared)
+    backups = root.parent / 'authorization-backups'
+    with pytest.raises(S.SourceUpdateError, match='effective fetch URLs: custom'):
+        S.update_source(root, backup_root=backups, authorize=V.verify)
+    assert source_git(root, 'rev-parse', 'HEAD') == original
+    assert not backups.exists()
+    result = S.update_source(root, backup_root=backups,
+        authorize=lambda info: V.verify(info, allow_fork=True))
+    assert result['verification']['source_channel'] == 'explicit-fork'
+    assert result['changed'] and source_git(root, 'rev-parse', 'HEAD') == target
+
+
 @pytest.mark.parametrize('declared,effective', [
     ('https://github.com/rahel99x/Raven.git\n',
      'https://github.com/rahel99x/Raven.git\nhttps://unreviewed.invalid/fork.git\n'),
