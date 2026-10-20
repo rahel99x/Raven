@@ -1,0 +1,170 @@
+{
+  "schema": "raven.installed-review-smoke/v1",
+  "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+  "wheel_sha256": "007120050d14c51a63a904794ecd3a36e42a2ece605e671aa379c6382d9550ae",
+  "cwd": "Temporary directory outside the source checkout",
+  "checks": [
+    {
+      "command": [
+        "raven",
+        "--version"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenl",
+        "--version"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenh",
+        "--version"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "raven",
+        "update",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "raven",
+        "revert",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "raven",
+        "trust",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenl",
+        "update",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenl",
+        "revert",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenl",
+        "trust",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenh",
+        "update",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenh",
+        "revert",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenh",
+        "trust",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "raven",
+        "trace",
+        "cleanup-runtime",
+        "--help"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "raven",
+        "trace",
+        "capabilities",
+        "--json"
+      ],
+      "exit_code": 0,
+      "status": "passed",
+      "valid_json": true
+    },
+    {
+      "command": [
+        "ravenl",
+        "--site",
+        "desktop",
+        "doctor"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "ravenh",
+        "--site",
+        "desktop",
+        "--plan"
+      ],
+      "exit_code": 0,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "raven",
+        "--fake",
+        "--no-state",
+        "--no-plugins",
+        "--record",
+        "/tmp/raven-final-installed-phuyg5ca/commands.jsonl",
+        "--json"
+      ],
+      "exit_code": 0,
+      "status": "passed",
+      "valid_json": true,
+      "recording_created": true
+    }
+  ],
+  "status": "qualified-local"
+}

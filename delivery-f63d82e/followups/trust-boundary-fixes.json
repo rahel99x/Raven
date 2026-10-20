@@ -1,0 +1,89 @@
+{
+  "schema": "raven.final-trust-boundary-fixes/v1",
+  "baseline": "3fd4d97c5f4d1a0e7bb5fad8322ab32912691e52",
+  "runtime_fix_revision": "a352f67991c821281a8163bd5b092fba926b9402",
+  "findings": [
+    {
+      "id": "LOG-8-review-explicit-plugin-directory-root",
+      "related_source_claims": [
+        "LOG-8",
+        "T-2"
+      ],
+      "reviewer": "review_install_trust",
+      "status": "fixed_verified",
+      "evidence": "On baseline 3fd4d97c5f4d1a0e7bb5fad8322ab32912691e52, discover(config, [chosen_symlink_directory]) returned lexical plugin paths and load rejected NotADirectoryError, while the same canonical directory loaded successfully. Exact baseline reproduction is /workspace/review-final-trust-skeptical-repro.json.",
+      "fix": "Resolve only a user-selected extra plugin directory to its real root once during discovery. Existing verified-byte loading and no-follow traversal remain unchanged: final-file symlinks, substituted root symlinks and unsafe writable roots refuse execution; retargeting the selected alias after discovery cannot redirect the pinned path.",
+      "design": "Resolving each complete plugin filename would incorrectly authorize internal/final symlinks. Resolving only the selected directory reuses the shared trust walker, costs one realpath per explicit directory and adds no recursive scan.",
+      "validation": "Four exact cases cover successful explicit alias, post-discovery alias retargeting, final-file symlink, substituted canonical-root symlink and writable-root refusal. Existing pinned-byte and unsafe-file assertions remain. 105 passed in 12.20s; 236 passed in 32.85s.",
+      "files": [
+        "raven/plugins.py",
+        "tests/test_config_trust.py",
+        "docs/guides/configuration-trust.md"
+      ],
+      "fix_revision": "a352f67991c821281a8163bd5b092fba926b9402",
+      "validation_logs": [
+        "/workspace/review-final-trust-boundaries.log",
+        "/workspace/review-final-trust-coordinators.log"
+      ],
+      "limits": "Actual local Git repositories, Git rewrite resolution, plugin discovery/execution and filesystem confinement; no public fetch, live SSH/proxy connection, live successful artifact attestation, multiuser cluster or performance claim. Final delivered full regression/packaging/CI remains required. Runtime fixes are in a352f67; the final end-to-end regression and documentation were added afterward. Source hashes pin the tested local files."
+    },
+    {
+      "id": "INS-12-review-effective-fetch-url-policy",
+      "related_source_claims": [
+        "INS-12"
+      ],
+      "reviewer": "review_install_trust",
+      "status": "fixed_verified",
+      "evidence": "On baseline 3fd4d97c5f4d1a0e7bb5fad8322ab32912691e52, declared origin https://github.com/rahel99x/Raven.git plus local url.<different-local-origin>.insteadOf caused git remote get-url origin to report the different endpoint, yet verify labeled the channel official-repository. Exact baseline reproduction is /workspace/review-final-trust-skeptical-repro.json.",
+      "fix": "Check every declared URL and every effective fetch URL from git remote get-url --all under the same bounded Git environment as fetch. Both sets must be exclusively official; otherwise require explicit --allow-fork and classify explicit-fork. The official artifact-attestation policy refuses such a fork. Refusals show declared/effective classifications and recovery commands without exposing endpoint credentials.",
+      "design": "Inspecting effective Git configuration preserves existing SSH, proxy and credential behavior. Disabling all Git rewrite/transport configuration would break legitimate official HTTPS-to-SSH workflows. There is one additional bounded local Git process per policy check, with no added network request; no timing improvement is claimed.",
+      "validation": "Actual Git tests accept official scp-style SSH and ssh:// rewrites, refuse an official spelling redirected to a local fork, preserve the explicit fork path and fail closed for official attestation. A real redirected local fetch refuses before checkout/backup mutation, then updates with explicit authorization. Multiple URLs, trailing whitespace, official URL equivalence and credential-free diagnostics are covered. 105 passed in 12.20s; 236 passed in 32.85s.",
+      "files": [
+        "raven/installation/update_verification.py",
+        "tests/test_review_install_trust.py",
+        "docs/INSTALLATION.md"
+      ],
+      "fix_revision": "a352f67991c821281a8163bd5b092fba926b9402",
+      "test_only_post_fix_revision": "test_rewritten_source_requires_authorization_before_checkout_mutation added after a352f67991c821281a8163bd5b092fba926b9402",
+      "validation_logs": [
+        "/workspace/review-final-trust-boundaries.log",
+        "/workspace/review-final-trust-coordinators.log"
+      ],
+      "limits": "Actual local Git repositories, Git rewrite resolution, plugin discovery/execution and filesystem confinement; no public fetch, live SSH/proxy connection, live successful artifact attestation, multiuser cluster or performance claim. Final delivered full regression/packaging/CI remains required. Runtime fixes are in a352f67; the final end-to-end regression and documentation were added afterward. Source hashes pin the tested local files."
+    }
+  ],
+  "checks": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_review_install_trust.py tests/test_config_trust.py tests/test_update_source.py",
+      "result": "105 passed in 12.20s",
+      "log": "/workspace/review-final-trust-boundaries.log"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_update.py tests/test_update_revert.py tests/test_update_qualification.py tests/test_user_install.py tests/test_install_bootstrap.py tests/test_shell_install.py tests/test_release_inventory.py",
+      "result": "236 passed in 32.85s",
+      "log": "/workspace/review-final-trust-coordinators.log"
+    },
+    {
+      "command": ".venv/bin/python -m ruff check raven/installation/update_verification.py raven/plugins.py --select E4,E7,E9,F",
+      "result": "All checks passed"
+    },
+    {
+      "command": ".venv/bin/python -m ruff format --check raven/installation/update_verification.py",
+      "result": "1 file already formatted"
+    },
+    {
+      "command": "git diff --check -- raven/installation/update_verification.py raven/plugins.py tests/test_review_install_trust.py tests/test_config_trust.py docs/INSTALLATION.md docs/guides/configuration-trust.md",
+      "result": "passed"
+    }
+  ],
+  "source_sha256": {
+    "raven/installation/update_verification.py": "b157ce18ab13105853f61de2dabb4f72859efb21a5512b097bef2c754a9d7780",
+    "raven/plugins.py": "e73478c6af5252b444898064e24cd4a659c35cf5aecd30050abd0640a622612d",
+    "tests/test_review_install_trust.py": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0",
+    "tests/test_config_trust.py": "6fce61c6a26bb14cdc4c46c6aa3b7531ffa7a105b40a8b459f725cca1af3d74e",
+    "docs/INSTALLATION.md": "94ba2a3a91f24f76b3055f2d993c2c0a3ddbe86cfc8f893f7a446ced5d99d6ac",
+    "docs/guides/configuration-trust.md": "60204cd2b0fac3678e1ab2913acab9fa9e38a4839b5fedd999135ce52b1ebb93"
+  },
+  "runtime_and_tests_frozen": true,
+  "limits": "Actual local Git repositories, Git rewrite resolution, plugin discovery/execution and filesystem confinement; no public fetch, live SSH/proxy connection, live successful artifact attestation, multiuser cluster or performance claim. Final delivered full regression/packaging/CI remains required. Runtime fixes are in a352f67; the final end-to-end regression and documentation were added afterward. Source hashes pin the tested local files."
+}

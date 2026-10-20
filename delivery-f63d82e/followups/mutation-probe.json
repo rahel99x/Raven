@@ -1,0 +1,20 @@
+{
+  "schema": "raven.mutation-completion-ownership-probe/v1",
+  "baseline_revision": "3fd4d97c5f4d1a0e7bb5fad8322ab32912691e52",
+  "baseline": {
+    "new_connection_mark_preserved": false,
+    "new_connection_message_preserved": false,
+    "old_audit_records": 1,
+    "reviewed_user": "alex",
+    "current_user": "bob"
+  },
+  "fixed": {
+    "new_connection_mark_preserved": true,
+    "new_connection_message_preserved": true,
+    "old_audit_records": 1,
+    "reviewed_user": "alex",
+    "current_user": "bob"
+  },
+  "current_controller_sha256": "8b1428fb8cb49d5cda9d9a8bce42f551822e760ecd84228a3448a47815bed9de",
+  "limits": "Actual local worker and audit with controlled fake cancellation transport; no live scheduler, remote host or performance claim."
+}

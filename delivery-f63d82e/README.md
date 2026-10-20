@@ -1,0 +1,5 @@
+# Final delivery qualification evidence
+
+Exact code checkpoint: `f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0`. This append preserves completed local regression, source/artifact equality, quality, schema, interpreter/environment, installed-command and experimental prototype evidence. Read `provenance.json`, `input-contract.json` and the individual reports for source identities, actual commands and limits. Full pytest logs and JUnit XML are deterministic gzip files. The wheel and source distribution are the exact tested bytes, not reconstructed binaries.
+
+The earlier live Slurm matrix tested `003f3a5c515d70b48982d6c856c57a1d6607d613`. Forty-eight qualified backend files match; six later runtime files are explicitly delimited in provenance. No whole-final-tree live Slurm, physical GPU, production SSH, multinode deployment, human usability, efficacy or hosted CI qualification is implied. Focused checks overlap; counts are not additive. Prior v1/v2 payloads and manifests remain byte-for-byte unchanged.

@@ -1,0 +1,91 @@
+{
+  "schema": "raven.delivery-content-audit/v1",
+  "objects_inspected": 2942,
+  "content_mapping_sha256": "f04184f3770d88455e8815a518fae8fc574b0bf6bdf90c1560679917abb6a5ea",
+  "archives": [
+    {
+      "path": "delivery-f63d82e/artifacts/raven-7.0.0-py3-none-any.whl",
+      "format": "zip",
+      "members": 632,
+      "crc": "passed"
+    },
+    {
+      "path": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz",
+      "format": "tar.gz",
+      "members": 2310,
+      "safe_paths_no_links_full_read": true
+    }
+  ],
+  "credential_candidates": [
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_prometheus_source.py",
+      "kind": "credential-url",
+      "file_sha256": "80313034f4f7011a24adf6ff41549031faeef773827ab4a30d270ccbca582969"
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_provenance.py",
+      "kind": "credential-url",
+      "file_sha256": "11200a23ea90a5c26a02858f80e5913e5e17eaba6798c81045982727ffd17942"
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0"
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "5973f0a05bbf86035b4139a5cdb2a6bf84e702c93e3d4b164839ed3877dfed32"
+    },
+    {
+      "name": "delivery-f63d82e/drivers/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0"
+    },
+    {
+      "name": "delivery-f63d82e/drivers/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "5973f0a05bbf86035b4139a5cdb2a6bf84e702c93e3d4b164839ed3877dfed32"
+    }
+  ],
+  "explicit_fixture_allowances": [
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_prometheus_source.py",
+      "kind": "credential-url",
+      "file_sha256": "80313034f4f7011a24adf6ff41549031faeef773827ab4a30d270ccbca582969",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_provenance.py",
+      "kind": "credential-url",
+      "file_sha256": "11200a23ea90a5c26a02858f80e5913e5e17eaba6798c81045982727ffd17942",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/drivers/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "5973f0a05bbf86035b4139a5cdb2a6bf84e702c93e3d4b164839ed3877dfed32",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/drivers/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "5973f0a05bbf86035b4139a5cdb2a6bf84e702c93e3d4b164839ed3877dfed32",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    }
+  ],
+  "unresolved_candidates": [],
+  "limits": "High-confidence credential patterns, filename and complete bounded archive inspection; not exhaustive secret detection. No archived program was executed."
+}

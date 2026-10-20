@@ -1,0 +1,661 @@
+{
+  "schema": "raven.delivery-evidence-inputs/v1",
+  "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+  "ready": true,
+  "publication_authorization": "parent reviewed completed outputs; local append only",
+  "records": [
+    {
+      "id": "full-log",
+      "source": "/workspace/review-final-regression-f63d82e.log",
+      "relative": "regression/full.log.gz",
+      "role": "Complete final integrated pytest output, deterministically compressed",
+      "kind": "pytest",
+      "status": "passed",
+      "command": ".venv/bin/python -m pytest -v -n 2 --maxfail=3 --junitxml=/workspace/review-final-regression-f63d82e.xml > /workspace/review-final-regression-f63d82e.log 2>&1",
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "full-xml",
+      "source": "/workspace/review-final-regression-f63d82e.xml",
+      "relative": "regression/full.xml.gz",
+      "role": "Complete final integrated JUnit report, deterministically compressed",
+      "kind": "junit",
+      "status": "passed",
+      "command": ".venv/bin/python -m pytest -v -n 2 --maxfail=3 --junitxml=/workspace/review-final-regression-f63d82e.xml > /workspace/review-final-regression-f63d82e.log 2>&1",
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "artifact-completion",
+      "source": "/workspace/review-final-artifacts-f63d82e.json",
+      "relative": "artifacts/completion.json",
+      "role": "Artifact-driver completion marker for the exact code revision",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py; .venv/bin/python /workspace/qualify-review-final-source-proof.py",
+      "equals": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "passed"
+      },
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "wheel",
+      "source": "/workspace/review-final-dist-f63d82e/raven-7.0.0-py3-none-any.whl",
+      "relative": "artifacts/raven-7.0.0-py3-none-any.whl",
+      "role": "Exact tested final distribution or its inventory/SBOM/checksums",
+      "kind": "raw",
+      "status": "passed",
+      "command": null
+    },
+    {
+      "id": "sdist",
+      "source": "/workspace/review-final-dist-f63d82e/raven-7.0.0.tar.gz",
+      "relative": "artifacts/raven-7.0.0.tar.gz",
+      "role": "Exact tested final distribution or its inventory/SBOM/checksums",
+      "kind": "raw",
+      "status": "passed",
+      "command": null
+    },
+    {
+      "id": "inventory",
+      "source": "/workspace/review-final-dist-f63d82e/release-inventory.json",
+      "relative": "artifacts/release-inventory.json",
+      "role": "Exact tested final distribution or its inventory/SBOM/checksums",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py; .venv/bin/python /workspace/qualify-review-final-source-proof.py",
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "spdx",
+      "source": "/workspace/review-final-dist-f63d82e/raven.spdx.json",
+      "relative": "artifacts/raven.spdx.json",
+      "role": "Exact tested final distribution or its inventory/SBOM/checksums",
+      "kind": "json",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "checksums",
+      "source": "/workspace/review-final-dist-f63d82e/SHA256SUMS",
+      "relative": "artifacts/SHA256SUMS",
+      "role": "Exact tested final distribution or its inventory/SBOM/checksums",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "source-proof",
+      "source": "/workspace/review-final-source-proof-f63d82e.json",
+      "relative": "qualification/source-proof.json",
+      "role": "Exact final626file source/artifact equality and six-file later-change proof",
+      "kind": "json",
+      "status": "passed",
+      "command": [
+        "git rev-parse HEAD; .venv/bin/python /workspace/qualify-review-final-source-proof.py",
+        ".venv/bin/python /workspace/run-review-final-artifacts.py; .venv/bin/python /workspace/qualify-review-final-source-proof.py"
+      ],
+      "equals": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "runtime_files": 626,
+        "python_files": 625,
+        "qualified_backend_files_unchanged": 48
+      },
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "flagship",
+      "source": "/workspace/review-final-flagship-f63d82e.json",
+      "relative": "qualification/flagship.json",
+      "role": "Bounded local source/CLI/actual terminal/installed-wheel qualification; production_qualified remains false",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "equals": {
+        "status": "qualified-for-recorded-checks",
+        "production_qualified": false
+      },
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "installed-smoke",
+      "source": "/workspace/review-final-installed-smoke-f63d82e.json",
+      "relative": "qualification/installed-smoke.json",
+      "role": "Final installed console-command journeys outside checkout against exact wheel",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "equals": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "qualified-local"
+      },
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "quality",
+      "source": "/workspace/review-final-quality-f63d82e.log",
+      "relative": "quality/quality.log.gz",
+      "role": "Completed final quality/layer command output; parent records actual exit status",
+      "kind": "raw",
+      "status": "passed",
+      "command": ".venv/bin/python scripts/check_quality.py; .venv/bin/python scripts/check_import_layers.py --require-acyclic --json /workspace/review-structural-imports.json",
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "acyclic",
+      "source": "/workspace/review-final-acyclic-f63d82e.log",
+      "relative": "quality/acyclic.log.gz",
+      "role": "Completed final quality/layer command output; parent records actual exit status",
+      "kind": "raw",
+      "status": "passed",
+      "command": ".venv/bin/python scripts/check_import_layers.py --require-acyclic --json /workspace/review-structural-imports.json",
+      "gzip": true
+    },
+    {
+      "id": "schemas",
+      "source": "/workspace/review-final-schemas-f63d82e.json",
+      "relative": "quality/schemas.json",
+      "role": "Completed final schema compatibility report",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python scripts/validate_operation_schemas.py; .venv/bin/python scripts/generate_operation_reference.py --check; .venv/bin/python scripts/generate_capability_reference.py --check",
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "compat310",
+      "source": "/workspace/review-final-compat-310-f63d82e.log",
+      "relative": "compatibility/python-310.log.gz",
+      "role": "Exact-final-revision focused interpreter compatibility; counts overlap regression",
+      "kind": "pytest",
+      "status": "passed",
+      "command": [
+        "/workspace/raven-compat/py3.10/bin/python -m pytest -q tests/test_review_collection_analysis.py tests/test_heavy_package_layout.py tests/test_review_injob_client.py tests/test_runtime_cleanup_governance.py tests/test_review_install_trust.py tests/test_config_trust.py tests/test_review_environment.py tests/test_trace_browser.py tests/test_trace_cpu.py tests/test_collection_package_layout.py tests/test_entry_capture_execution_architecture.py tests/test_job_group_domain_architecture.py tests/test_job_logs_package.py tests/test_recordings_package_layout.py tests/test_workbench_composition_identity.py tests/test_operation_composition_architecture.py tests/test_mutation_review.py tests/test_capture_protocol.py",
+        "/workspace/raven-compat/py3.14/bin/python -m pytest -q tests/test_review_collection_analysis.py tests/test_heavy_package_layout.py tests/test_review_injob_client.py tests/test_runtime_cleanup_governance.py tests/test_review_install_trust.py tests/test_config_trust.py tests/test_review_environment.py tests/test_trace_browser.py tests/test_trace_cpu.py tests/test_collection_package_layout.py tests/test_entry_capture_execution_architecture.py tests/test_job_group_domain_architecture.py tests/test_job_logs_package.py tests/test_recordings_package_layout.py tests/test_workbench_composition_identity.py tests/test_operation_composition_architecture.py tests/test_mutation_review.py tests/test_capture_protocol.py"
+      ],
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "compat314",
+      "source": "/workspace/review-final-compat-314-f63d82e.log",
+      "relative": "compatibility/python-314.log.gz",
+      "role": "Exact-final-revision focused interpreter compatibility; counts overlap regression",
+      "kind": "pytest",
+      "status": "passed",
+      "command": [
+        "/workspace/raven-compat/py3.10/bin/python -m pytest -q tests/test_review_collection_analysis.py tests/test_heavy_package_layout.py tests/test_review_injob_client.py tests/test_runtime_cleanup_governance.py tests/test_review_install_trust.py tests/test_config_trust.py tests/test_review_environment.py tests/test_trace_browser.py tests/test_trace_cpu.py tests/test_collection_package_layout.py tests/test_entry_capture_execution_architecture.py tests/test_job_group_domain_architecture.py tests/test_job_logs_package.py tests/test_recordings_package_layout.py tests/test_workbench_composition_identity.py tests/test_operation_composition_architecture.py tests/test_mutation_review.py tests/test_capture_protocol.py",
+        "/workspace/raven-compat/py3.14/bin/python -m pytest -q tests/test_review_collection_analysis.py tests/test_heavy_package_layout.py tests/test_review_injob_client.py tests/test_runtime_cleanup_governance.py tests/test_review_install_trust.py tests/test_config_trust.py tests/test_review_environment.py tests/test_trace_browser.py tests/test_trace_cpu.py tests/test_collection_package_layout.py tests/test_entry_capture_execution_architecture.py tests/test_job_group_domain_architecture.py tests/test_job_logs_package.py tests/test_recordings_package_layout.py tests/test_workbench_composition_identity.py tests/test_operation_composition_architecture.py tests/test_mutation_review.py tests/test_capture_protocol.py"
+      ],
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "environment",
+      "source": "/workspace/review-final-environment-f63d82e.log",
+      "relative": "compatibility/environment.log.gz",
+      "role": "Exact final source with USER unset and non-UTC timezone; counts overlap regression",
+      "kind": "pytest",
+      "status": "passed",
+      "command": "env -u USER TZ=America/Los_Angeles .venv/bin/python -m pytest -q -n2 tests/test_review_environment.py tests/test_doctor.py tests/test_adversarial_ui_review.py tests/test_setup_profiles.py tests/test_raven_config.py tests/test_forecast_scenarios.py tests/test_slurm_simulator.py",
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "prototype",
+      "source": "/workspace/review-final-prototype-f63d82e/manifest.json",
+      "relative": "prototype/manifest.json",
+      "role": "Final experimental private-venv package-split journeys; published/production_rename remain false",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python scripts/distribution_prototype.py --output /workspace/review-final-prototype-f63d82e",
+      "equals": {
+        "source_commit": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "passed-experimental-extraction",
+        "experimental": true,
+        "published": false,
+        "production_rename": false
+      },
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "artifact-driver",
+      "source": "/workspace/run-review-final-artifacts.py",
+      "relative": "drivers/artifact-qualification.py",
+      "role": "Exact artifact driver retained at final snapshot; no rerun during publication",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py"
+    },
+    {
+      "id": "installed-driver",
+      "source": "/workspace/qualify-final-installed-smoke-f63d82e.py",
+      "relative": "drivers/installed-smoke.py",
+      "role": "Exact installed-command qualification driver",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py"
+    },
+    {
+      "id": "trust-report",
+      "source": "/workspace/review-final-trust-boundary-fixes.json",
+      "relative": "followups/trust-boundary-fixes.json",
+      "role": "Source-labelled plugin/update trust fixes and focused regression evidence; final full suite is separate",
+      "kind": "json",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "trust-probe",
+      "source": "/workspace/review-final-trust-skeptical-repro.json",
+      "relative": "followups/trust-skeptical-probe.json",
+      "role": "Original skeptical trust-boundary reproduction; original source/diagnostic context retained",
+      "kind": "json",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "mutation-report",
+      "source": "/workspace/review-mutation-completion-final.json",
+      "relative": "followups/mutation-completion.json",
+      "role": "Late mutation completion scope/Store/Actions guard diagnosis and focused regression",
+      "kind": "json",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "mutation-probe",
+      "source": "/workspace/review-stale-mutation-completion-probe.json",
+      "relative": "followups/mutation-probe.json",
+      "role": "Controlled baseline/fixed real-worker ownership reproduction; no live scheduler or performance claim",
+      "kind": "json",
+      "status": "captured",
+      "command": "PYTHONPATH=/workspace/Raven .venv/bin/python /workspace/review-stale-mutation-completion-probe.py > /workspace/review-stale-mutation-completion-probe.json"
+    },
+    {
+      "id": "mutation-probe-driver",
+      "source": "/workspace/review-stale-mutation-completion-probe.py",
+      "relative": "drivers/mutation-completion-probe.py",
+      "role": "Original baseline/current real-worker probe driver",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "independent-review",
+      "source": "/workspace/review-independent-root-findings.json",
+      "relative": "followups/independent-findings.json",
+      "role": "Independent skeptical findings with per-finding source/validation limits",
+      "kind": "json",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "artifact-log-build",
+      "source": "/workspace/review-final-build-f63d82e.log",
+      "relative": "artifacts/logs/build.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true
+    },
+    {
+      "id": "artifact-log-inventory-create",
+      "source": "/workspace/review-final-inventory-create-f63d82e.log",
+      "relative": "artifacts/logs/inventory-create.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true
+    },
+    {
+      "id": "artifact-log-inventory-verify",
+      "source": "/workspace/review-final-inventory-verify-f63d82e.log",
+      "relative": "artifacts/logs/inventory-verify.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true
+    },
+    {
+      "id": "artifact-log-inventory-policy",
+      "source": "/workspace/review-final-inventory-policy-f63d82e.log",
+      "relative": "artifacts/logs/inventory-policy.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true
+    },
+    {
+      "id": "artifact-log-flagship",
+      "source": "/workspace/review-final-flagship-f63d82e.log",
+      "relative": "artifacts/logs/flagship.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true
+    },
+    {
+      "id": "artifact-log-installed-smoke",
+      "source": "/workspace/review-final-installed-smoke-f63d82e.log",
+      "relative": "artifacts/logs/installed-smoke.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true
+    },
+    {
+      "id": "artifact-log-offline",
+      "source": "/workspace/review-final-offline-f63d82e.log",
+      "relative": "artifacts/logs/offline.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "artifact-log-sdist-source",
+      "source": "/workspace/review-final-sdist-source-f63d82e.log",
+      "relative": "artifacts/logs/sdist-source.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "artifact-log-sdist",
+      "source": "/workspace/review-final-sdist-f63d82e.log",
+      "relative": "artifacts/logs/sdist.log.gz",
+      "role": "Completed artifact-driver step log; command/exit status is retained by completion contract",
+      "kind": "raw",
+      "status": "captured",
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "gzip": true,
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "trust-log",
+      "source": "/workspace/review-final-trust-boundaries.log",
+      "relative": "followups/trust-log.log.gz",
+      "role": "Focused regression output from the labelled followup source; not another final full-suite count",
+      "kind": "pytest",
+      "status": "captured",
+      "command": ".venv/bin/python -m pytest -q tests/test_review_install_trust.py tests/test_config_trust.py tests/test_update_source.py",
+      "gzip": true
+    },
+    {
+      "id": "trust-coordinators-log",
+      "source": "/workspace/review-final-trust-coordinators.log",
+      "relative": "followups/trust-coordinators-log.log.gz",
+      "role": "Focused regression output from the labelled followup source; not another final full-suite count",
+      "kind": "pytest",
+      "status": "captured",
+      "command": ".venv/bin/python -m pytest -q tests/test_update.py tests/test_update_revert.py tests/test_update_qualification.py tests/test_user_install.py tests/test_install_bootstrap.py tests/test_shell_install.py tests/test_release_inventory.py",
+      "gzip": true
+    },
+    {
+      "id": "mutation-log",
+      "source": "/workspace/review-mutation-completion-focused.log",
+      "relative": "followups/mutation-log.log.gz",
+      "role": "Focused regression output from the labelled followup source; not another final full-suite count",
+      "kind": "pytest",
+      "status": "captured",
+      "command": ".venv/bin/python -m pytest -q tests/test_mutation_review.py tests/test_qol_tables.py tests/test_resubmit_quality.py tests/test_cli_commands.py tests/test_ops_receipts.py tests/test_action_trial_lifecycle.py tests/test_operation_composition_architecture.py tests/test_operations_sequences.py",
+      "gzip": true
+    },
+    {
+      "id": "test-driver-test_review_install_trust",
+      "source": "git:f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0:tests/test_review_install_trust.py",
+      "relative": "drivers/test_review_install_trust.py",
+      "role": "Exact final-revision regression source for trust/update/mutation followups; fixtures require Raven checkout",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "test-driver-test_config_trust",
+      "source": "git:f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0:tests/test_config_trust.py",
+      "relative": "drivers/test_config_trust.py",
+      "role": "Exact final-revision regression source for trust/update/mutation followups; fixtures require Raven checkout",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "test-driver-test_update_source",
+      "source": "git:f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0:tests/test_update_source.py",
+      "relative": "drivers/test_update_source.py",
+      "role": "Exact final-revision regression source for trust/update/mutation followups; fixtures require Raven checkout",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "test-driver-test_update",
+      "source": "git:f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0:tests/test_update.py",
+      "relative": "drivers/test_update.py",
+      "role": "Exact final-revision regression source for trust/update/mutation followups; fixtures require Raven checkout",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "test-driver-test_mutation_review",
+      "source": "git:f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0:tests/test_mutation_review.py",
+      "relative": "drivers/test_mutation_review.py",
+      "role": "Exact final-revision regression source for trust/update/mutation followups; fixtures require Raven checkout",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "updates",
+      "source": "/workspace/review-final-updates-f63d82e/result.json",
+      "relative": "qualification/installed-updates.json",
+      "role": "Actual33managed/pipx update/revert checks, umask002, exact source revision, local owned origin only",
+      "kind": "json",
+      "status": "passed",
+      "command": "umask 002; env PATH=/tmp/raven-pipx-review-venv/bin:$PATH .venv/bin/python /workspace/review-final-update-source-f63d82e/scripts/qualify_updates.py --pipx --pipx-backend pip --output /workspace/review-final-updates-f63d82e",
+      "equals": {
+        "passed": true,
+        "source_commit": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "pipx_backend": "pip"
+      },
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "integration",
+      "source": "/workspace/review-delivery-integration.json",
+      "relative": "qualification/integration.json",
+      "role": "Completed local qualification report before archive identity binding; historical failures and all source/CI limits retained",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python /workspace/build-review-final-integration.py",
+      "equals": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "qualified-local"
+      }
+    },
+    {
+      "id": "integration-driver",
+      "source": "/workspace/build-review-final-integration.py",
+      "relative": "drivers/build-integration-report.py",
+      "role": "Exact final local evidence aggregation driver; no execution during archive publication",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "source-proof-driver",
+      "source": "/workspace/qualify-review-final-source-proof.py",
+      "relative": "drivers/source-proof.py",
+      "role": "Exact source/artifact equality qualification driver",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "graph",
+      "source": "/workspace/review-structural-imports.json",
+      "relative": "quality/import-graph.json",
+      "role": "Final all-depth source import graph and dependency checks; not merely a baseline-debt pass",
+      "kind": "json",
+      "status": "passed",
+      "command": ".venv/bin/python scripts/check_quality.py; .venv/bin/python scripts/check_import_layers.py --require-acyclic --json /workspace/review-structural-imports.json",
+      "equals": {
+        "cyclic_components": [],
+        "dynamic_module_expressions": [],
+        "violations": []
+      },
+      "qualification": "Command retained verbatim from the completed parent integration report; overlapping checks remain separate units."
+    },
+    {
+      "id": "update-driver",
+      "source": "git:f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0:scripts/qualify_updates.py",
+      "relative": "drivers/qualify-updates.py",
+      "role": "Exact final actual local-origin update/revert qualification harness",
+      "kind": "raw",
+      "status": "captured",
+      "command": null
+    },
+    {
+      "id": "historical-E-log",
+      "source": "/workspace/review-architecture-regression.log",
+      "relative": "historical/E.log.gz",
+      "role": "Intermediate003f3a5 run:204failed6445passed4skipped, interrupted for actual process-global callback leak and stale-fixture diagnosis; historical failure retained, not final acceptance",
+      "kind": "raw",
+      "status": "historical-failed",
+      "command": null,
+      "gzip": true
+    },
+    {
+      "id": "historical-E-xml",
+      "source": "/workspace/review-architecture-regression.xml",
+      "relative": "historical/E.xml.gz",
+      "role": "Intermediate003f3a5 run:204failed6445passed4skipped, interrupted for actual process-global callback leak and stale-fixture diagnosis; historical failure retained, not final acceptance",
+      "kind": "raw",
+      "status": "historical-failed",
+      "command": null,
+      "gzip": true
+    },
+    {
+      "id": "historical-F-log",
+      "source": "/workspace/review-final-regression-3fd4d97.log",
+      "relative": "historical/F.log.gz",
+      "role": "Intermediate3fd4d97 run:22failed13948passed10skipped, stopped for missing fixture ports and canonical spy diagnosis; historical failure retained, not final acceptance",
+      "kind": "raw",
+      "status": "historical-failed",
+      "command": null,
+      "gzip": true
+    },
+    {
+      "id": "historical-F-xml",
+      "source": "/workspace/review-final-regression-3fd4d97.xml",
+      "relative": "historical/F.xml.gz",
+      "role": "Intermediate3fd4d97 run:22failed13948passed10skipped, stopped for missing fixture ports and canonical spy diagnosis; historical failure retained, not final acceptance",
+      "kind": "raw",
+      "status": "historical-failed",
+      "command": null,
+      "gzip": true
+    },
+    {
+      "id": "historical-tail-log",
+      "source": "/workspace/review-final-tail-preflight.log",
+      "relative": "historical/tail.log.gz",
+      "role": "Intermediate183file tail preflight:18failed6550passed16skipped; canonical spies/fixture assumptions corrected without weakening behavioral budgets; historical failure retained, not final acceptance",
+      "kind": "raw",
+      "status": "historical-failed",
+      "command": null,
+      "gzip": true
+    },
+    {
+      "id": "historical-tail-xml",
+      "source": "/workspace/review-final-tail-preflight.xml",
+      "relative": "historical/tail.xml.gz",
+      "role": "Intermediate183file tail preflight:18failed6550passed16skipped; canonical spies/fixture assumptions corrected without weakening behavioral budgets; historical failure retained, not final acceptance",
+      "kind": "raw",
+      "status": "historical-failed",
+      "command": null,
+      "gzip": true
+    },
+    {
+      "id": "historical-a352f67-log",
+      "source": "/workspace/review-final-regression-a352f67.log",
+      "relative": "historical/a352f67-interrupted.log.gz",
+      "role": "Intermediatea352f67 run:1217passed1skipped, deliberately interrupted6percent to add last end-to-end update regression before final freeze; incomplete run does not support full-suite acceptance",
+      "kind": "raw",
+      "status": "historical-interrupted",
+      "command": null,
+      "gzip": true
+    }
+  ],
+  "credential_fixture_allowances": [
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_prometheus_source.py",
+      "kind": "credential-url",
+      "file_sha256": "80313034f4f7011a24adf6ff41549031faeef773827ab4a30d270ccbca582969",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_provenance.py",
+      "kind": "credential-url",
+      "file_sha256": "11200a23ea90a5c26a02858f80e5913e5e17eaba6798c81045982727ffd17942",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/drivers/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/artifacts/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "5973f0a05bbf86035b4139a5cdb2a6bf84e702c93e3d4b164839ed3877dfed32",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    },
+    {
+      "name": "delivery-f63d82e/drivers/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "5973f0a05bbf86035b4139a5cdb2a6bf84e702c93e3d4b164839ed3877dfed32",
+      "reason": "Manually reviewed immutable test source: deliberate static credential-URL redaction/refusal fixture targeting example.invalid or loopback127.0.0.1:1. Not a live provider credential; preserve the original regression bytes. Allowance applies only to this exact file SHA, path and detection kind."
+    }
+  ],
+  "limits": [
+    "Local artifact/source/CLI/terminal/interpreter checks do not qualify physical GPUs, production SSH, multinode deployment, shared filesystems or scientific efficacy.",
+    "Live Slurm qualification remains exact003f3a5;48backendfiles match finalsource, while six later runtime files are separately covered by focused/full/artifact checks. Do not claim whole-final-tree livequalification.",
+    "Full, focused, environment, compatibility, installed-command and prototype cases overlap; do not add them as distinct test counts.",
+    "Archived regression durations are not controlled performance measurements. Original controlled reports and regressions remain in prior immutable evidence.",
+    "Prototype extraction stays experimental, unpublished and private-venv-only; no human usability study or proposed few-dozen-module core is established.",
+    "Hosted CI results and publication are owned by final delivery integration and are not asserted by this local archive preparation.",
+    "Historical failed/interrupted logs are retained for diagnosis and are explicitly excluded from final acceptance counts. Their source checkpoints differ from the final complete run."
+  ],
+  "completion_review": {
+    "full_passed": 19486,
+    "full_skipped": 24,
+    "junit_tests": 19510,
+    "junit_failures": 0,
+    "junit_errors": 0,
+    "required_local_gates": 12,
+    "integration_report_sha256": "b9cd6f08f284208dca7fb10f904406b8cc47b28b57570455e30a8802fd3d9101",
+    "archive_identity_binding": "Parent binds new archive commit from main evidence-archive.md; this archived integration report intentionally predates that binding."
+  }
+}

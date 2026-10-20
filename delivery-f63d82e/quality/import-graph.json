@@ -1,0 +1,10 @@
+{
+  "schema": "raven.import-layers/v1",
+  "modules": 625,
+  "function_import_statements": 2067,
+  "modules_with_function_imports": 270,
+  "cyclic_components": [],
+  "cyclic_edges": [],
+  "dynamic_module_expressions": [],
+  "violations": []
+}

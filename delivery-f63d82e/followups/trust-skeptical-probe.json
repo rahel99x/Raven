@@ -1,0 +1,23 @@
+{
+  "explicit_plugin_directory_alias": {
+    "discovered": [
+      "/tmp/raven-final-trust-review-oqac170d/chosen-plugins/proof.py"
+    ],
+    "loaded": [],
+    "errors": {
+      "proof": "NotADirectoryError: [Errno 20] Not a directory: 'chosen-plugins'\nNotADirectoryError: [Errno 20] Not a directory: 'chosen-plugins'"
+    },
+    "canonical_directory_loaded": [
+      "proof"
+    ]
+  },
+  "effective_remote_policy": {
+    "declared": "https://github.com/rahel99x/Raven.git",
+    "effective": "/tmp/raven-final-trust-review-oqac170d/different-origin",
+    "policy": {
+      "source_channel": "official-repository",
+      "artifact_attestation": "not-requested",
+      "source_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  }
+}

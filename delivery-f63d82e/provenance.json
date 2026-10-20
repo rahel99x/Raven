@@ -1,0 +1,230 @@
+{
+  "schema": "raven.final-delivery-archive-provenance/v1",
+  "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+  "qualified_runtime_mapping_sha256": "90e57f3991c6de7e12df0a368a40461ed023f35d198d57589e0479d6300b3164",
+  "full_regression": {
+    "tests": 19510,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 24,
+    "passed": 19486
+  },
+  "record_validation": {
+    "full-log": {
+      "passed": 19486,
+      "skipped": 24
+    },
+    "full-xml": {
+      "tests": 19510,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 24,
+      "passed": 19486
+    },
+    "artifact-completion": {
+      "valid_json": true
+    },
+    "wheel": {
+      "bytes_bound_and_stable_read": true
+    },
+    "sdist": {
+      "bytes_bound_and_stable_read": true
+    },
+    "inventory": {
+      "valid_json": true
+    },
+    "spdx": {
+      "valid_json": true
+    },
+    "checksums": {
+      "bytes_bound_and_stable_read": true
+    },
+    "source-proof": {
+      "valid_json": true
+    },
+    "flagship": {
+      "valid_json": true
+    },
+    "installed-smoke": {
+      "valid_json": true
+    },
+    "quality": {
+      "bytes_bound_and_stable_read": true
+    },
+    "acyclic": {
+      "bytes_bound_and_stable_read": true
+    },
+    "schemas": {
+      "valid_json": true
+    },
+    "compat310": {
+      "passed": 329,
+      "skipped": 1
+    },
+    "compat314": {
+      "passed": 330
+    },
+    "environment": {
+      "passed": 222
+    },
+    "prototype": {
+      "valid_json": true
+    },
+    "artifact-driver": {
+      "bytes_bound_and_stable_read": true
+    },
+    "installed-driver": {
+      "bytes_bound_and_stable_read": true
+    },
+    "trust-report": {
+      "valid_json": true
+    },
+    "trust-probe": {
+      "valid_json": true
+    },
+    "mutation-report": {
+      "valid_json": true
+    },
+    "mutation-probe": {
+      "valid_json": true
+    },
+    "mutation-probe-driver": {
+      "bytes_bound_and_stable_read": true
+    },
+    "independent-review": {
+      "valid_json": true
+    },
+    "artifact-log-build": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-inventory-create": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-inventory-verify": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-inventory-policy": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-flagship": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-installed-smoke": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-offline": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-sdist-source": {
+      "bytes_bound_and_stable_read": true
+    },
+    "artifact-log-sdist": {
+      "bytes_bound_and_stable_read": true
+    },
+    "trust-log": {
+      "passed": 105
+    },
+    "trust-coordinators-log": {
+      "passed": 236
+    },
+    "mutation-log": {
+      "passed": 694
+    },
+    "test-driver-test_review_install_trust": {
+      "bytes_bound_and_stable_read": true
+    },
+    "test-driver-test_config_trust": {
+      "bytes_bound_and_stable_read": true
+    },
+    "test-driver-test_update_source": {
+      "bytes_bound_and_stable_read": true
+    },
+    "test-driver-test_update": {
+      "bytes_bound_and_stable_read": true
+    },
+    "test-driver-test_mutation_review": {
+      "bytes_bound_and_stable_read": true
+    },
+    "updates": {
+      "valid_json": true
+    },
+    "integration": {
+      "valid_json": true
+    },
+    "integration-driver": {
+      "bytes_bound_and_stable_read": true
+    },
+    "source-proof-driver": {
+      "bytes_bound_and_stable_read": true
+    },
+    "graph": {
+      "valid_json": true
+    },
+    "update-driver": {
+      "bytes_bound_and_stable_read": true
+    },
+    "historical-E-log": {
+      "bytes_bound_and_stable_read": true
+    },
+    "historical-E-xml": {
+      "bytes_bound_and_stable_read": true
+    },
+    "historical-F-log": {
+      "bytes_bound_and_stable_read": true
+    },
+    "historical-F-xml": {
+      "bytes_bound_and_stable_read": true
+    },
+    "historical-tail-log": {
+      "bytes_bound_and_stable_read": true
+    },
+    "historical-tail-xml": {
+      "bytes_bound_and_stable_read": true
+    },
+    "historical-a352f67-log": {
+      "bytes_bound_and_stable_read": true
+    }
+  },
+  "source_bytes_compared_to_git": 626,
+  "wheel_runtime_members_compared": 626,
+  "sdist_runtime_members_compared": 626,
+  "live_slurm_checkpoint": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+  "unchanged_qualified_backend_files": 48,
+  "six_later_runtime_files": {
+    "raven/controller.py": {
+      "live_checkpoint_sha256": "a9ab708576b2130bb2e85e48836ac15fc5ee72d3989df141a3532b2188ff7022",
+      "delivery_sha256": "8b1428fb8cb49d5cda9d9a8bce42f551822e760ecd84228a3448a47815bed9de"
+    },
+    "raven/installation/update_verification.py": {
+      "live_checkpoint_sha256": "092a16635b9ff8b156bbbb13bd1c63e65b84826665b0db40ccc59810b34f8bbe",
+      "delivery_sha256": "b157ce18ab13105853f61de2dabb4f72859efb21a5512b097bef2c754a9d7780"
+    },
+    "raven/plugins.py": {
+      "live_checkpoint_sha256": "9a3b043f96f3cbe2c20cfcd43e1d67ac9d8034817ded2a32174e1a2159aea1e4",
+      "delivery_sha256": "e73478c6af5252b444898064e24cd4a659c35cf5aecd30050abd0640a622612d"
+    },
+    "raven/pointer_routing.py": {
+      "live_checkpoint_sha256": "ce086e0d628eec61bfecc80709b18f3eca6709b37c53f035f1bcae19c0887685",
+      "delivery_sha256": "3700032b3d74a8ccb21f97c7a69a5c2550e25a948823cdb91af1ae4bfdbb6ebe"
+    },
+    "raven/tracing/ui.py": {
+      "live_checkpoint_sha256": "cbdac121ff041b5f0a23233d68feb8aae22bf5723b0e57677c332c4de041b5a4",
+      "delivery_sha256": "dcb0d186c7f0907df63c800cf72209672ce9661adaa6579d89df59ec8e2b5c4e"
+    },
+    "raven/workbench.py": {
+      "live_checkpoint_sha256": "be41f4910dbf3e5ef43b6fbea1ea8629e0eea1263297c37656088cffd859a620",
+      "delivery_sha256": "8708eb19dc1896bb90d54df4345ab7a43f370a62b7f84fcbb1078a67f00f4ba5"
+    }
+  },
+  "whole_delivery_live_slurm_qualified": false,
+  "hosted_ci_claim": false,
+  "limits": [
+    "Local artifact/source/CLI/terminal/interpreter checks do not qualify physical GPUs, production SSH, multinode deployment, shared filesystems or scientific efficacy.",
+    "Live Slurm qualification remains exact003f3a5;48backendfiles match finalsource, while six later runtime files are separately covered by focused/full/artifact checks. Do not claim whole-final-tree livequalification.",
+    "Full, focused, environment, compatibility, installed-command and prototype cases overlap; do not add them as distinct test counts.",
+    "Archived regression durations are not controlled performance measurements. Original controlled reports and regressions remain in prior immutable evidence.",
+    "Prototype extraction stays experimental, unpublished and private-venv-only; no human usability study or proposed few-dozen-module core is established.",
+    "Hosted CI results and publication are owned by final delivery integration and are not asserted by this local archive preparation.",
+    "Historical failed/interrupted logs are retained for diagnosis and are explicitly excluded from final acceptance counts. Their source checkpoints differ from the final complete run."
+  ]
+}

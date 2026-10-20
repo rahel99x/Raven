@@ -1,0 +1,51 @@
+{
+  "schema": "raven.mutation-completion-review/v1",
+  "baseline_revision": "3fd4d97c5f4d1a0e7bb5fad8322ab32912691e52",
+  "source_claims": [
+    "MUT-14",
+    "UI-2"
+  ],
+  "finding": "Both confirmed mutation completion callbacks lacked their preparation-path scope check. A successful action from the old owner could clear marks or tag a returned submission ID in a changed Store/Actions context.",
+  "baseline_reproduction": "Actual ResearchHub worker blocks old alex cancellation after dispatch. Rebind Store/Actions/user to bob and preserve a same-ID mark; release and poll. Baseline loses new mark and overwrites new message while retaining the old audit.",
+  "implementation": "Capture exact Store, Actions and action scope. Both background work closures and both completion callbacks require that ownership; stale completion returns before current command_ok/UI/mark/tag/sampler publication. Actual Actions audit and durable resubmit receipts retain old completion evidence. Job revalidation reads the captured Store.",
+  "files": [
+    "raven/controller.py",
+    "tests/test_mutation_review.py"
+  ],
+  "regression": "test_inflight_mutation_keeps_old_audit_without_publishing_into_new_owner",
+  "cases": "12 real-ResearchHub cases: cancel/resubmit \u00d7 changed scope/Store/Actions \u00d7 accepted/unknown outcomes. Replacement Store deliberately retains same scope fingerprint to exercise object ownership. Original audit, exactly one transport call, resubmit receipt, current marks/messages/tags and sampler refresh are asserted.",
+  "validation": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_mutation_review.py::test_inflight_mutation_keeps_old_audit_without_publishing_into_new_owner tests/test_mutation_review.py::test_connection_change_after_review_cannot_apply_old_target_ids tests/test_mutation_review.py::test_confirmed_scheduler_action_and_clone_preparation_run_off_the_ui_thread tests/test_mutation_review.py::test_uncertain_clone_confirmation_keeps_unknown_feedback",
+      "result": "15 passed in0.84s"
+    },
+    {
+      "command": "PYTHONPATH=/workspace/Raven .venv/bin/python /workspace/review-stale-mutation-completion-probe.py > /workspace/review-stale-mutation-completion-probe.json",
+      "result": "Baseline loses current mark/message; fix preserves both; each retains one old audit.",
+      "driver": "/workspace/review-stale-mutation-completion-probe.py",
+      "evidence": "/workspace/review-stale-mutation-completion-probe.json"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_mutation_review.py tests/test_qol_tables.py tests/test_resubmit_quality.py tests/test_cli_commands.py tests/test_ops_receipts.py tests/test_action_trial_lifecycle.py tests/test_operation_composition_architecture.py tests/test_operations_sequences.py",
+      "result": "694 passed in11.73s",
+      "evidence": "/workspace/review-mutation-completion-focused.log"
+    },
+    {
+      "command": "git diff --check -- raven/controller.py tests/test_mutation_review.py",
+      "result": "passed"
+    }
+  ],
+  "source_sha256": {
+    "raven/controller.py": "8b1428fb8cb49d5cda9d9a8bce42f551822e760ecd84228a3448a47815bed9de",
+    "tests/test_mutation_review.py": "6bad34a52b583f0a2ad0b2fa24857d89bc914259c31a27a4709a7e356294419e"
+  },
+  "review_conclusions": [
+    "No further verified fault in target exactness, pending-array fresh membership, dependency repair order, unknown resubmission persistence/reconciliation, scoped durable operation lifecycle or final canonical compatibility paths.",
+    "All pre-existing behavioral assertions retained; only new regression cases added."
+  ],
+  "limits": [
+    "No physical scheduler, remote host or performance claim from this controlled fake transport.",
+    "This changes runtime after3fd4d97; final integrated full regression, packaging/installed commands, source-bound evidence and CI must cover the later delivered revision.",
+    "Focused counts overlap full regression and are not additive."
+  ]
+}
