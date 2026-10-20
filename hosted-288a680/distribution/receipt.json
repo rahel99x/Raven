@@ -1,0 +1,174 @@
+{
+  "schema": "raven.hosted-distribution-review/v1",
+  "run_id": 39468456613,
+  "run_url": "https://github.com/rahel99x/Raven/actions/runs/39468456613",
+  "head": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+  "job": {
+    "name": "test (3.12)",
+    "databaseId": 118786534171,
+    "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613/job/118786534171",
+    "conclusion": "success",
+    "completedAt": "2026-10-20T18:01:15Z"
+  },
+  "status": "python312-artifacts-verified",
+  "whole_workflow_status": "not claimed; parent monitors every matrix job",
+  "artifact": {
+    "id": 12287870989,
+    "name": "distributions-and-demo",
+    "github_digest": "sha256:f3b2da26f7b6b1e677e25bdc87127e09f8b61728e4891ac48e893cb322b270c2",
+    "downloaded_zip": "/workspace/review-hosted-distributions-288a680.zip",
+    "downloaded_zip_sha256": "f3b2da26f7b6b1e677e25bdc87127e09f8b61728e4891ac48e893cb322b270c2",
+    "github_digest_verified": true,
+    "downloaded_zip_bytes": 7750840
+  },
+  "provenance": {
+    "qualification_checkout": "2ccc55500471314c12631596c09bfda9335efc50",
+    "head_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+    "qualification_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+    "exact_tree_match": true,
+    "prototype_package_sources_matched": 626,
+    "normal_update_input_sources_matched": 2298,
+    "release_package_sources_matched": 626,
+    "runtime_byte_proof": {
+      "reference_commit": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+      "reference_scope": "Every tracked raven/ file, without extension filtering",
+      "reference_files": 626,
+      "reference_inventory_sha256": "90e57f3991c6de7e12df0a368a40461ed023f35d198d57589e0479d6300b3164",
+      "wheel_files": 626,
+      "sdist_files": 626,
+      "wheel_exact_match": true,
+      "sdist_exact_match": true,
+      "extra_runtime_files": 0,
+      "duplicate_runtime_members": 0,
+      "proof_scope": "New hosted wheel and sdist, read without extraction or execution; compared directly with Git288 bytes"
+    }
+  },
+  "prototype": {
+    "manifest": "/workspace/review-hosted-distributions-288a680/tmp/raven-distribution-prototype/manifest.json",
+    "sha256": "33db3f01f286309386503ed511a839efe2df1c5039fe9f33941dc49224c374f0",
+    "status": "passed-experimental-extraction",
+    "build_policy": {
+      "isolation": "PEP 517 default",
+      "requirements_source": "pyproject.toml:[build-system]"
+    },
+    "build_recipe_default_isolation": true,
+    "build_projects": [
+      "full",
+      "core",
+      "lab",
+      "next-core",
+      "next-lab"
+    ],
+    "per_build_logs_uploaded": false,
+    "journeys": [
+      "core",
+      "lab",
+      "core-after-removal",
+      "lab-after-reinstall",
+      "lab-after-upgrade",
+      "lab-after-downgrade"
+    ],
+    "mismatched_extension_refused": true,
+    "experimental": true,
+    "published": false,
+    "production_rename": false,
+    "limits": [
+      "W44 human workflow evidence is unavailable",
+      "This first extraction is not the proposed few-dozen-module core",
+      "No coinstallation with the production raven wheel; private venv only"
+    ]
+  },
+  "normal_update": {
+    "result": "/workspace/review-hosted-distributions-288a680/tmp/raven-update-qualification/result.json",
+    "sha256": "c452d22b7bafd7220f702a0c243af0fd7440125ee4cca8e4ed251dd2bd152083",
+    "passed": true,
+    "checks": 33,
+    "all_log_hashes_verified": true,
+    "limits": "Actual piped managed bootstrap/clone and optional pipx local clone, virtual environments and installed update/revert commands against an owned local Git origin; no HTTP bootstrap download, public source download, live Slurm, remote cluster, GPU or other operating system qualification."
+  },
+  "flagship": {
+    "report": "/workspace/review-hosted-distributions-288a680/tmp/raven-qualification.json",
+    "sha256": "c9a26534a650034a9575711956016221599c14f253f77ca0717989db73287492",
+    "status": "qualified-for-recorded-checks",
+    "qualified_checks": [
+      "documentation",
+      "source-cli",
+      "terminal-pages",
+      "real-pty",
+      "cli-trace",
+      "cli-runtime",
+      "cli-report",
+      "installed-wheel"
+    ],
+    "untested_checks": [
+      "live-allocation-identity",
+      "physical-gpu",
+      "multi-node",
+      "terminal-emulator",
+      "production-ssh",
+      "external-user-study",
+      "scientific-outcomes"
+    ],
+    "production_qualified": false
+  },
+  "offline": {
+    "report": "/workspace/review-hosted-distributions-288a680/tmp/raven-offline-qualification.json",
+    "sha256": "6a4e4e43d14a402e69c7f721454a0dbc496705e36e6c059015be95344f289f7e",
+    "passed_checks": [
+      "explicit-desktop-plan",
+      "protocol-fragmentation",
+      "distinct-authority-load"
+    ],
+    "production_qualified": false,
+    "untested": [
+      "real Slurm allocation and placement",
+      "production controller RPC impact",
+      "site service authentication",
+      "multi-hour soak",
+      "physical GPUs",
+      "multiple nodes",
+      "production SSH",
+      "administrator-approved 200-user pilot"
+    ]
+  },
+  "release_inventory": {
+    "report": "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/release-inventory.json",
+    "sha256": "ed1ce686726e3cdb8d02acefe4313d0d93402a0b1b449857213c7e5884e42868",
+    "source_commit": "2ccc55500471314c12631596c09bfda9335efc50",
+    "source_commit_verification": "Caller-supplied; not independently verified",
+    "policy_command": [
+      "python",
+      "/workspace/Raven/scripts/release_inventory.py",
+      "policy",
+      "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/release-inventory.json",
+      "--expected-version",
+      "7.0.0",
+      "--expected-source",
+      "2ccc55500471314c12631596c09bfda9335efc50",
+      "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/raven-7.0.0-py3-none-any.whl",
+      "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/raven-7.0.0.tar.gz"
+    ],
+    "policy_result": "passed; archive integrity and wheel/sdist source equivalence verified",
+    "policy_log": "/workspace/review-hosted-distributions-288a680/release-policy-verification.log",
+    "artifacts": [
+      {
+        "filename": "raven-7.0.0-py3-none-any.whl",
+        "sha256": "758363a7c336f47d20b4dd8b5d2898c06d68beb2f127352c300d42268de92956",
+        "bytes": 2216469
+      },
+      {
+        "filename": "raven-7.0.0.tar.gz",
+        "sha256": "cbff7fd61f7b96bfc1e6e7913a99136aedb9ca5ec119463e6168659ad676e426",
+        "bytes": 5154697
+      }
+    ]
+  },
+  "capture_driver": "/workspace/capture-hosted-distribution-evidence.py",
+  "capture_driver_sha256": "9322c39ea15e3ce08e797431cbd5a9bd5f0f09ae0a9602fc6a24387f0c7411f3",
+  "limits": [
+    "Artifact checksums establish byte identity, not publisher authentication or an attestation.",
+    "Prototype backend policy is checked against the immutable execution recipe and successful manifest; per-build stderr logs were not selected for upload.",
+    "Recorded local/offline checks do not establish live GPU, production SSH, multi-node or human-study qualification.",
+    "Only this Python3.12 job and its artifacts are evaluated here; no whole-CI success is inferred."
+  ]
+}

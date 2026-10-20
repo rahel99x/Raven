@@ -1,0 +1,23 @@
+{
+  "schema": "raven.main-delivery-verification/v1",
+  "pr": {
+    "baseRefName": "main",
+    "headRefOid": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+    "mergeCommit": {
+      "oid": "2bfe5795290575de0e1c4390f2166e89897902f6"
+    },
+    "mergedAt": "2026-10-20T18:02:52Z",
+    "state": "MERGED",
+    "url": "https://github.com/rahel99x/Raven/pull/5"
+  },
+  "main_commit": "2bfe5795290575de0e1c4390f2166e89897902f6",
+  "qualified_head": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+  "qualified_pr_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+  "identical_qualified_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+  "runtime_code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+  "runtime_files_identical": 626,
+  "all_main_runtime_bytes_match_qualified_wheel_and_sdist": true,
+  "successful_ci_receipt": "/workspace/review-final-python-ci-288a680/python-ci.json",
+  "successful_ci_receipt_sha256": "1a6f407e0b2b894e30763b5682048c120508fcab6b993f4864434f20a6680467",
+  "main_push_workflow_note": "PR CI qualified this exact Git tree. The independently triggered main push workflow has its own status and is not inferred from tree equality."
+}

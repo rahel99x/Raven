@@ -1,0 +1,148 @@
+{
+  "schema": "raven.hosted-ci-capture-parser-validation/v1",
+  "historical_run_id": 39464080610,
+  "historical_workflow_conclusion": "failure",
+  "acceptance": false,
+  "parser_results": [
+    {
+      "python": "3.10",
+      "original_job_conclusion": "failure",
+      "passed": 19449,
+      "failed": 1,
+      "skipped": 59,
+      "errors": 0,
+      "warnings": 0,
+      "xfailed": 0,
+      "xpassed": 0,
+      "deselected": 0,
+      "rerun": 0,
+      "seconds": 683.71,
+      "summary": "1 failed, 19449 passed, 59 skipped in 683.71s (0:11:23)",
+      "summary_line": 622,
+      "step": "Run isolated regression suite with two workers",
+      "tested_merge": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+      "source_log_sha256": "62ca5d54cbbed537c1a4a294185c8a92f5e776f88acca53814b05643fc9d3e73",
+      "source_log_bytes": 96908,
+      "step_log_sha256": "af4fe6963790b4efacef24b2cbf1eae978117e672c9e2bf4a6a551de4d5060e5",
+      "step_source_lines": [
+        293,
+        623
+      ]
+    },
+    {
+      "python": "3.11",
+      "original_job_conclusion": "failure",
+      "passed": 19453,
+      "failed": 1,
+      "skipped": 55,
+      "errors": 0,
+      "warnings": 0,
+      "xfailed": 0,
+      "xpassed": 0,
+      "deselected": 0,
+      "rerun": 0,
+      "seconds": 583.53,
+      "summary": "1 failed, 19453 passed, 55 skipped in 583.53s (0:09:43)",
+      "summary_line": 602,
+      "step": "Run isolated regression suite with two workers",
+      "tested_merge": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+      "source_log_sha256": "11c8a96a2ccdd55e360e2e900b34768867be5ec08a4b45aa26133b05e3d7173d",
+      "source_log_bytes": 94118,
+      "step_log_sha256": "c3908b56d1f55384a08498c1e4048f6375984ee7c37239f5663c6180565ed0ec",
+      "step_source_lines": [
+        268,
+        603
+      ]
+    },
+    {
+      "python": "3.12",
+      "original_job_conclusion": "failure",
+      "passed": 19486,
+      "failed": 0,
+      "skipped": 24,
+      "errors": 0,
+      "warnings": 4,
+      "xfailed": 0,
+      "xpassed": 0,
+      "deselected": 0,
+      "rerun": 0,
+      "seconds": 536.88,
+      "summary": "19486 passed, 24 skipped, 4 warnings in 536.88s (0:08:56)",
+      "summary_line": 681,
+      "step": "Run isolated regression suite with two workers",
+      "tested_merge": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+      "source_log_sha256": "c1fb8b1f6627b7c6cf33ea612e30fbe6594de76cbc1ec350006447790704e8a6",
+      "source_log_bytes": 980004,
+      "step_log_sha256": "4aab8d85384ab3bf2946788d0743578099e502a7b09649eae10dd1cb08bfa288",
+      "step_source_lines": [
+        384,
+        681
+      ]
+    },
+    {
+      "python": "3.13",
+      "original_job_conclusion": "success",
+      "passed": 19462,
+      "failed": 0,
+      "skipped": 48,
+      "errors": 0,
+      "warnings": 4,
+      "xfailed": 0,
+      "xpassed": 0,
+      "deselected": 0,
+      "rerun": 0,
+      "seconds": 594.74,
+      "summary": "19462 passed, 48 skipped, 4 warnings in 594.74s (0:09:54)",
+      "summary_line": 569,
+      "step": "Run isolated regression suite with two workers",
+      "tested_merge": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+      "source_log_sha256": "db1f8908705bed3865d9cee4573c3fc382c081dc8ed7b3553d9b982938664c2a",
+      "source_log_bytes": 871832,
+      "step_log_sha256": "bc9f863d2059d37de12f54f6e15f06aa0ec6380338de963a846a7391ad2b77f1",
+      "step_source_lines": [
+        272,
+        569
+      ]
+    },
+    {
+      "python": "3.14",
+      "original_job_conclusion": "success",
+      "passed": 19462,
+      "failed": 0,
+      "skipped": 48,
+      "errors": 0,
+      "warnings": 4,
+      "xfailed": 0,
+      "xpassed": 0,
+      "deselected": 0,
+      "rerun": 0,
+      "seconds": 609.14,
+      "summary": "19462 passed, 48 skipped, 4 warnings in 609.14s (0:10:09)",
+      "summary_line": 568,
+      "step": "Run isolated regression suite with two workers",
+      "tested_merge": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+      "source_log_sha256": "7a66eb1280955b84d3f4b106f15f2f4102a53e517b06d369019d2aff888e3bab",
+      "source_log_bytes": 871500,
+      "step_log_sha256": "81acbfd44e674a9f7e178d1a81ebe1d8b03cb0bec924ea54447f576f6a85ea11",
+      "step_source_lines": [
+        271,
+        568
+      ]
+    }
+  ],
+  "negative_cases": [
+    "truncated",
+    "wrong_job",
+    "duplicate_summary"
+  ],
+  "script_sha256": "9133f0e90949b30edece7e1e24f3fb5aff92173ff2efc0607b199046d07ea420",
+  "limits": "Offline validation against retained complete historical logs only. Python3.12 full-suite success does not conceal its later job failure. No final live workflow captured.",
+  "offline_selfchecks": {
+    "tests": 11,
+    "result": "passed",
+    "log": "/workspace/capture-final-python-ci-selfcheck.log",
+    "log_sha256": "3405d79cadabcc75742ee5735a599bc68f1bcd9016b4f44101316d736f36e386",
+    "limits": "Simulated API/transport branches test the capture driver only, not hosted qualification."
+  },
+  "historical_excerpts": "/workspace/review-python-ci-historical-excerpts-ffda87d"
+}

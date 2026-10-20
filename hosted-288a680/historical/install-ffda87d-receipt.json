@@ -1,0 +1,70 @@
+{
+  "schema": "raven.hosted-install-review/v1",
+  "run_id": 39464080610,
+  "run_url": "https://github.com/rahel99x/Raven/actions/runs/39464080610",
+  "pull_request_head": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+  "status": "assigned-jobs-passed",
+  "jobs": [
+    {
+      "name": "legacy-bash (4.2)",
+      "databaseId": 118770779498,
+      "url": "https://github.com/rahel99x/Raven/actions/runs/39464080610/job/118770779498",
+      "conclusion": "success",
+      "completedAt": "2026-10-20T17:14:08Z"
+    },
+    {
+      "name": "private-group-umask",
+      "databaseId": 118770779599,
+      "url": "https://github.com/rahel99x/Raven/actions/runs/39464080610/job/118770779599",
+      "conclusion": "success",
+      "completedAt": "2026-10-20T17:14:57Z"
+    },
+    {
+      "name": "legacy-bash (3.2)",
+      "databaseId": 118770779826,
+      "url": "https://github.com/rahel99x/Raven/actions/runs/39464080610/job/118770779826",
+      "conclusion": "success",
+      "completedAt": "2026-10-20T17:14:12Z"
+    }
+  ],
+  "provenance": {
+    "qualification_checkout": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+    "qualification_checkout_kind": "GitHub pull-request synthetic merge",
+    "qualification_tree": "94e726b06a0d274414871cb69cc5b618108ad7da",
+    "pull_request_head_tree": "94e726b06a0d274414871cb69cc5b618108ad7da",
+    "exact_tree_match": true
+  },
+  "umask002": {
+    "passed": true,
+    "checks": 33,
+    "all_check_log_hashes_verified": true,
+    "pipx_backend": "pip",
+    "result": "/workspace/review-hosted-install-ffda87d/umask002/result.json",
+    "result_sha256": "9ded36e22971c1bf94992c3c7bc97bd6c223c9bd0dc6b7393a59395bc784be55",
+    "limits": "Actual piped managed bootstrap/clone and optional pipx local clone, virtual environments and installed update/revert commands against an owned local Git origin; no HTTP bootstrap download, public source download, live Slurm, remote cluster, GPU or other operating system qualification."
+  },
+  "bash": [
+    {
+      "version": "3.2",
+      "interpreter": "GNU bash, version 3.2.0(2)-release (x86_64-unknown-linux-gnu)",
+      "passed": true,
+      "source_tarball_sha256": "26c99025b59e30779300b68adb764f824974d267a4d7cc1b347d14a2393f9fb4",
+      "tests": "41 passed in 19.79s",
+      "result": "/workspace/review-hosted-install-ffda87d/bash32/result.json",
+      "result_sha256": "eb93ddb43b28572cc2c152b9a69ef910634a461b809598c5bdc70c602373831a",
+      "limits": "Legacy Bash on Linux/GCC; not macOS or RHEL kernel qualification."
+    },
+    {
+      "version": "4.2",
+      "interpreter": "GNU bash, version 4.2.0(2)-release (x86_64-unknown-linux-gnu)",
+      "passed": true,
+      "source_tarball_sha256": "a27a1179ec9c0830c65c6aa5d7dab60f7ce1a2a608618570f96bfa72e95ab3d8",
+      "tests": "41 passed in 19.69s",
+      "result": "/workspace/review-hosted-install-ffda87d/bash42/result.json",
+      "result_sha256": "447c3c1f06adc502c862c95c311c126e6e6794e18e19690f78fa272b228727d5",
+      "limits": "Legacy Bash on Linux/GCC; not macOS or RHEL kernel qualification."
+    }
+  ],
+  "capture_driver": "/workspace/capture-hosted-install-evidence.py",
+  "capture_driver_sha256": "29829a8d67f2d150268b0940802db53b3f90413c81a4f80c79934ad498fa7ab4"
+}

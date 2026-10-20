@@ -1,0 +1,24 @@
+{
+  "schema": "raven.helper-fixture-interference/v1",
+  "command_error": "Git command timed out; source update stopped",
+  "owned_leader": 593646,
+  "owned_helper": {
+    "pid": 593647,
+    "state": "Z",
+    "ppid": 1,
+    "pgid": 593646,
+    "sid": 593646,
+    "start": "14957316"
+  },
+  "pidfile_observed_helper": {
+    "pid": 593649,
+    "state": "S",
+    "ppid": 1,
+    "pgid": 593648,
+    "sid": 593648,
+    "start": "14957316"
+  },
+  "other_leader": 593648,
+  "two_second_survival_check": true,
+  "limits": "Two explicitly owned local fake Git process groups. No production change, scheduler/network or performance claim."
+}

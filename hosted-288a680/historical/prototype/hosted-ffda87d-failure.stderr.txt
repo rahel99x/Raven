@@ -1,0 +1,8 @@
+* Getting build dependencies for sdist...
+ERROR Unmet dependencies (checked against /opt/hostedtoolcache/Python/3.12.15/x64/bin/python):
+	setuptools==84.0.0
+		wanted: ==84.0.0
+		found: 84.2.0
+	wheel==0.48.0
+		wanted: ==0.48.0
+		found: not installed

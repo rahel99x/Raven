@@ -1,0 +1,303 @@
+{
+  "schema": "raven.hosted-final-archive/v1",
+  "pull_request_head": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+  "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+  "tested_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+  "main_commit": "2bfe5795290575de0e1c4390f2166e89897902f6",
+  "main_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+  "event": "pull_request",
+  "python_workflow": {
+    "schema": "raven.hosted-python-ci/v1",
+    "run_id": 39468456613,
+    "run_attempt": 1,
+    "conclusion": "success",
+    "status": "completed",
+    "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613",
+    "pull_request_head": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+    "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+    "head_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+    "tested_merge_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+    "event": "pull_request",
+    "base_branch": "main",
+    "captured_at": "2026-10-20T18:01:38.884263+00:00",
+    "python_jobs": [
+      {
+        "python": "3.10",
+        "id": 118786534502,
+        "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613/job/118786534502",
+        "status": "completed",
+        "conclusion": "success",
+        "full_suite_step_conclusion": "success",
+        "full_suite": {
+          "passed": 19451,
+          "failed": 0,
+          "skipped": 59,
+          "errors": 0,
+          "warnings": 0,
+          "xfailed": 0,
+          "xpassed": 0,
+          "deselected": 0,
+          "rerun": 0,
+          "seconds": 675.01,
+          "summary": "19451 passed, 59 skipped in 675.01s (0:11:15)",
+          "summary_line": 578,
+          "step": "Run isolated regression suite with two workers",
+          "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+          "source_log_sha256": "493d299d2344406891377967e56eab305370587e4881f9fe0d5cecf8394db4e3",
+          "source_log_bytes": 872340,
+          "step_log_sha256": "e6b110e5cffbd922b6947f2c2c6b1d21af6fb1099ce96ae72e6743bed03ad3ee",
+          "step_source_lines": [
+            293,
+            578
+          ]
+        },
+        "full_log": "/workspace/review-final-python-ci-288a680/python-3.10.full.log",
+        "excerpt_receipt": "/workspace/review-final-python-ci-288a680/python-3.10.excerpt.json",
+        "raw_job_receipt": "/workspace/review-final-python-ci-288a680/python-3.10.job-receipt.json",
+        "raw_job_receipt_sha256": "23f32df2f95afc3d31845747df0e844a400ac01f7eb8e38ff92a5624d0cc1005"
+      },
+      {
+        "python": "3.11",
+        "id": 118786534473,
+        "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613/job/118786534473",
+        "status": "completed",
+        "conclusion": "success",
+        "full_suite_step_conclusion": "success",
+        "full_suite": {
+          "passed": 19455,
+          "failed": 0,
+          "skipped": 55,
+          "errors": 0,
+          "warnings": 0,
+          "xfailed": 0,
+          "xpassed": 0,
+          "deselected": 0,
+          "rerun": 0,
+          "seconds": 652.76,
+          "summary": "19455 passed, 55 skipped in 652.76s (0:10:52)",
+          "summary_line": 553,
+          "step": "Run isolated regression suite with two workers",
+          "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+          "source_log_sha256": "283598bd16900e23bf6dd4f041e0a102ba59f4c790a75ccbb38a6766db2dc95e",
+          "source_log_bytes": 869258,
+          "step_log_sha256": "0efb7af0701bba68b97cda60bd72e2202490af5b6826d7686cf2383c726ff1f3",
+          "step_source_lines": [
+            268,
+            553
+          ]
+        },
+        "full_log": "/workspace/review-final-python-ci-288a680/python-3.11.full.log",
+        "excerpt_receipt": "/workspace/review-final-python-ci-288a680/python-3.11.excerpt.json",
+        "raw_job_receipt": "/workspace/review-final-python-ci-288a680/python-3.11.job-receipt.json",
+        "raw_job_receipt_sha256": "c20012b7f9f4daaf9c66ccf267d8765958727b548a0e976af717581dc35e4160"
+      },
+      {
+        "python": "3.12",
+        "id": 118786534171,
+        "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613/job/118786534171",
+        "status": "completed",
+        "conclusion": "success",
+        "full_suite_step_conclusion": "success",
+        "full_suite": {
+          "passed": 19487,
+          "failed": 0,
+          "skipped": 24,
+          "errors": 0,
+          "warnings": 4,
+          "xfailed": 0,
+          "xpassed": 0,
+          "deselected": 0,
+          "rerun": 0,
+          "seconds": 718.66,
+          "summary": "19487 passed, 24 skipped, 4 warnings in 718.66s (0:11:58)",
+          "summary_line": 681,
+          "step": "Run isolated regression suite with two workers",
+          "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+          "source_log_sha256": "dc6bcdeaed2e1b7f6cec342fe13d673d7ef4cd95767abc8ad7ae62b01aaa663c",
+          "source_log_bytes": 993441,
+          "step_log_sha256": "03d39f4cc03ef8d067a556106750f0cfcf9a5cb9eae9c95a00cf87ae767e5460",
+          "step_source_lines": [
+            384,
+            681
+          ]
+        },
+        "full_log": "/workspace/review-final-python-ci-288a680/python-3.12.full.log",
+        "excerpt_receipt": "/workspace/review-final-python-ci-288a680/python-3.12.excerpt.json",
+        "raw_job_receipt": "/workspace/review-final-python-ci-288a680/python-3.12.job-receipt.json",
+        "raw_job_receipt_sha256": "6d183f2c6c3322dbb8e53aac063166ec34b9b09cb1c2a92b560820107c903b3c"
+      },
+      {
+        "python": "3.13",
+        "id": 118786534341,
+        "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613/job/118786534341",
+        "status": "completed",
+        "conclusion": "success",
+        "full_suite_step_conclusion": "success",
+        "full_suite": {
+          "passed": 19463,
+          "failed": 0,
+          "skipped": 48,
+          "errors": 0,
+          "warnings": 4,
+          "xfailed": 0,
+          "xpassed": 0,
+          "deselected": 0,
+          "rerun": 0,
+          "seconds": 682.6,
+          "summary": "19463 passed, 48 skipped, 4 warnings in 682.60s (0:11:22)",
+          "summary_line": 569,
+          "step": "Run isolated regression suite with two workers",
+          "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+          "source_log_sha256": "af90ae23f9b103d044d81ddb5afc7c97520bca116486fc46ff4e29863fafbfe4",
+          "source_log_bytes": 872163,
+          "step_log_sha256": "e7c37743415f81cecdd51fd5918d12a6dc86637b966eb89d99d747b7bc619cac",
+          "step_source_lines": [
+            272,
+            569
+          ]
+        },
+        "full_log": "/workspace/review-final-python-ci-288a680/python-3.13.full.log",
+        "excerpt_receipt": "/workspace/review-final-python-ci-288a680/python-3.13.excerpt.json",
+        "raw_job_receipt": "/workspace/review-final-python-ci-288a680/python-3.13.job-receipt.json",
+        "raw_job_receipt_sha256": "5d1c631674c7d51662ed97624cc996f0110be6ca4befa3b9bc08a84b7ed9daeb"
+      },
+      {
+        "python": "3.14",
+        "id": 118786534278,
+        "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613/job/118786534278",
+        "status": "completed",
+        "conclusion": "success",
+        "full_suite_step_conclusion": "success",
+        "full_suite": {
+          "passed": 19463,
+          "failed": 0,
+          "skipped": 48,
+          "errors": 0,
+          "warnings": 4,
+          "xfailed": 0,
+          "xpassed": 0,
+          "deselected": 0,
+          "rerun": 0,
+          "seconds": 578.75,
+          "summary": "19463 passed, 48 skipped, 4 warnings in 578.75s (0:09:38)",
+          "summary_line": 568,
+          "step": "Run isolated regression suite with two workers",
+          "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+          "source_log_sha256": "07a2a2b44b9ae3a73b7b12eb49f7d5b4dead07e7238e9cbdf888b7756429a7dc",
+          "source_log_bytes": 871825,
+          "step_log_sha256": "23242e75cdd53035fbd63c41558b9c9416a34956df5c5ec0f66291020b053a71",
+          "step_source_lines": [
+            271,
+            568
+          ]
+        },
+        "full_log": "/workspace/review-final-python-ci-288a680/python-3.14.full.log",
+        "excerpt_receipt": "/workspace/review-final-python-ci-288a680/python-3.14.excerpt.json",
+        "raw_job_receipt": "/workspace/review-final-python-ci-288a680/python-3.14.job-receipt.json",
+        "raw_job_receipt_sha256": "b49c559f0861d1f758ed253e33153df0cc5300c49521454d7524d8d78f0b2c5b"
+      }
+    ],
+    "raw_run_receipt": "/workspace/review-final-python-ci-288a680/run-receipt.json",
+    "raw_run_receipt_sha256": "dd90e0281a019b30bdb03fd204477a69ff229ad20be358806a556c7645cdf781",
+    "pull_request_head_commit_api_receipt": "/workspace/review-final-python-ci-288a680/pull-request-head-commit-api.json",
+    "tested_merge_commit_api_receipt": "/workspace/review-final-python-ci-288a680/tested-merge-commit-api.json",
+    "limits": "Five overlapping complete source regression invocations and subsequent job checks. No live GPU, production SSH or multi-node qualification is implied. Complete logs remain local; named excerpts are subsets bound to their full-log hashes."
+  },
+  "historical_failed_ci": {
+    "head": "954213c4aa3ef40dd3716e556d53fa39e5d23644",
+    "tested_merge": "b3cc407f4a919bc29157c73778469106237096e9",
+    "tree": "36e9dbbb51c4d0a06fd1db39395ab36294b0133e",
+    "run_id": 39461693996,
+    "event": "pull_request",
+    "status": "All first954matrix outcomes complete; exact same three fixture assumptions identified. Actual per-interpreter counts/conclusions remain in preserved historical workflow/job/summary receipts.",
+    "limits": "Earlier successful installer and Slurm subsets retain their exact earlier source identity and do not erase failed Python qualification.",
+    "additional_attempts": [
+      {
+        "head": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+        "tested_merge": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+        "tree": "94e726b06a0d274414871cb69cc5b618108ad7da",
+        "tests_run_id": 39464080610,
+        "slurm_run_id": 39464080654,
+        "status": "Completed workflow failed: Python3.10 helper ownership fixture and Python3.11 remote-log wall-time fixture failed one test each. Python3.12 full regression passed before experimental packaging backend isolation failed. Python3.13 and3.14 complete jobs passed. All per-interpreter outcomes remain separate and non-additive.",
+        "runtime_changes_at_diagnosis": false,
+        "python_outcomes": [
+          {
+            "python": "3.10",
+            "job": 118770779715,
+            "conclusion": "failure",
+            "full_suite_summary": "1 failed, 19449 passed, 59 skipped in 683.71s (0:11:23)",
+            "log_sha256": "62ca5d54cbbed537c1a4a294185c8a92f5e776f88acca53814b05643fc9d3e73"
+          },
+          {
+            "python": "3.11",
+            "job": 118770779739,
+            "conclusion": "failure",
+            "full_suite_summary": "1 failed, 19453 passed, 55 skipped in 583.53s (0:09:43)",
+            "log_sha256": "11c8a96a2ccdd55e360e2e900b34768867be5ec08a4b45aa26133b05e3d7173d"
+          },
+          {
+            "python": "3.12",
+            "job": 118770779500,
+            "conclusion": "failure",
+            "full_suite_summary": "19486 passed, 24 skipped, 4 warnings in 536.88s (0:08:56)",
+            "log_sha256": "c1fb8b1f6627b7c6cf33ea612e30fbe6594de76cbc1ec350006447790704e8a6"
+          },
+          {
+            "python": "3.13",
+            "job": 118770779815,
+            "conclusion": "success",
+            "full_suite_summary": "19462 passed, 48 skipped, 4 warnings in 594.74s (0:09:54)",
+            "log_sha256": "db1f8908705bed3865d9cee4573c3fc382c081dc8ed7b3553d9b982938664c2a"
+          },
+          {
+            "python": "3.14",
+            "job": 118770779581,
+            "conclusion": "success",
+            "full_suite_summary": "19462 passed, 48 skipped, 4 warnings in 609.14s (0:10:09)",
+            "log_sha256": "7a66eb1280955b84d3f4b106f15f2f4102a53e517b06d369019d2aff888e3bab"
+          }
+        ],
+        "helper_failure_diagnosis": {
+          "historical_cause": "Unresolved: original hosted log lacks PID/group/session/birth and signal-state diagnostics.",
+          "verified_local_ambiguity": "A concurrent unrelated fake Git invocation can overwrite the global shared helper PID file; the original assertion can observe that other live group after the owned group was correctly killed.",
+          "production_update_source_changed": false,
+          "preserved_assertions": "Original0.1second command timeout,2second helper-death assertion and unrelated sentinel survival; no skip or budget relaxation.",
+          "local_validation": "Python3.10 and3.12 whole file32passed each; Python3.14 focused1passed;20actual3.10repeats FD4->4; forced readiness failure cleanup verified.",
+          "report": "historical/fixes/update-helper-fixture.json"
+        },
+        "correction_qualification_status": "Local correction reports passed; next committed-candidate hosted workflow remains pending.",
+        "remote_log_correction": {
+          "runtime_changed": false,
+          "historical_wall_seconds": 0.8175736379999989,
+          "hosted_wall_cause": "Exact CPU/storage/descheduling contributions unavailable",
+          "fixture_issue": "Original test omitted production worker_ui/UIWriter bindings, synchronously saving preferences on each v key.",
+          "validation": "21whole-file checks passed on3.11 and3.12;10actual50frame repeats and6negative blocking probes per interpreter; FD4->4 and no new live threads."
+        }
+      }
+    ]
+  },
+  "historical_attempt_identity": {
+    "head": "954213c4aa3ef40dd3716e556d53fa39e5d23644",
+    "tested_merge": "b3cc407f4a919bc29157c73778469106237096e9",
+    "tested_tree": "36e9dbbb51c4d0a06fd1db39395ab36294b0133e",
+    "status": "First matrix failed three fixture assumptions; original failure logs and actual root diagnosis are retained separately from final acceptance"
+  },
+  "hosted_slurm_checks": 32,
+  "hosted_bash_cases_each": 41,
+  "hosted_installed_update_checks": 33,
+  "qualification_limits": [
+    "Five final Python runs are distinct interpreter executions of overlapping tests. Do not add them to each other or to local/full/focused/Bash/Slurm/update counts.",
+    "32hostedSlurmchecks,41cases perlegacy Bash version and33installed lifecycle checks are separate units. Historical954213c subset successes and full-matrix failures retain their earlier identity; final replacement receipts bind the delivered tree separately.",
+    "Hosted tests use owned Linux runner/container/software fixtures. No physicalGPU, heterogeneous allocation, multinode, productionSSH/site/shared-filesystem, unfamiliar-user or scientific-efficacy qualification.",
+    "Historical failed CI remains visible, separate from later successful replacement head; final main merge requires its own exact tree/PR-state proof.",
+    "A v4 archive link belongs in PR/final response; no modification of the tested source merely to record its own archive hash.",
+    "The secondffda87d workflow also failed; its two single-test failures and Python3.12 packaging failure remain historical. Local fixture ambiguity does not prove the original hosted helper failure cause; no production cleanup fix is claimed."
+  ],
+  "counts_are_not_additive": true,
+  "earlier_v1_v2_v3_manifests_preserved": {
+    "artifact-manifest.json": "b0c832f8014bde4db93442c9125cca97d77005658bb3c6a58d2075dd7a71b17c",
+    "artifact-manifest-v2.json": "3b5d5fcdac5a6d437c54c45a8eee1057cd6fe78a583b4a95e0bc00175554e2c8",
+    "artifact-manifest-v3.json": "ed5c548067bfc594972ba9871dc5280312ac8faf7d216d229b8ae6bfbe1a3a2a"
+  },
+  "unresolved_credential_candidates": 0
+}

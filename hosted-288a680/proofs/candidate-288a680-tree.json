@@ -1,0 +1,12 @@
+{
+  "schema": "raven.pr-candidate-tree-proof/v1",
+  "head": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+  "head_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+  "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+  "tested_merge_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+  "parents": [
+    "b98742fb967f18131905696f4afd3a61f2ad03f2",
+    "288a680dd85dde9766fce3c4d8d962b42bd12203"
+  ],
+  "source": "Independently fetched GitHub refs/pull/5/merge; exact commit and tree Git objects inspected. CI execution stillpending, thisisidentityproofonly."
+}

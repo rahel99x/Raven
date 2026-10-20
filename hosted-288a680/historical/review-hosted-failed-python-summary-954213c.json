@@ -1,0 +1,48 @@
+{
+  "run_id": 39461693996,
+  "head": "954213c4aa3ef40dd3716e556d53fa39e5d23644",
+  "workflow_conclusion": "failure",
+  "outcomes": [
+    {
+      "python": "3.10",
+      "failed": 3,
+      "passed": 19447,
+      "skipped": 59,
+      "job_log": "/workspace/review-hosted-py310-954213c.log",
+      "sha256": "5369128735fbee5e0b5f27a44f3f03b7bfae4c26f1f42cf16e0985e3ef8db646"
+    },
+    {
+      "python": "3.11",
+      "failed": 3,
+      "passed": 19451,
+      "skipped": 55,
+      "job_log": "/workspace/review-hosted-py311-954213c.log",
+      "sha256": "d06d4f97c5a84b952fcac7404e3ac7e4123d1ca2fcc454e78ebacf1861eba7ad"
+    },
+    {
+      "python": "3.12",
+      "failed": 1,
+      "passed": 19485,
+      "skipped": 24,
+      "job_log": "/workspace/review-hosted-py312-954213c.log",
+      "sha256": "7ca474d28776a3ee434952e80d4df4bc6bf2d04e6b62a209d43aa51d8dbfbf13"
+    },
+    {
+      "python": "3.13",
+      "failed": 1,
+      "passed": 19461,
+      "skipped": 48,
+      "job_log": "/workspace/review-hosted-py313-954213c.log",
+      "sha256": "d3397f43bff96bd0afe4b16a2bd351af467b90ebde2cbd9da3469f9674921f72"
+    },
+    {
+      "python": "3.14",
+      "failed": 1,
+      "passed": 19461,
+      "skipped": 48,
+      "job_log": "/workspace/review-hosted-py314-954213c.log",
+      "sha256": "04a130c9e8c41cdc5959e1d3da67c8247f3b97e6c693453393aa1483cce6f26c"
+    }
+  ],
+  "diagnosis": "All failures are the two lower-version capture fixture capability choices and/or nohup readiness predicate. Production runtime unchanged by test corrections."
+}

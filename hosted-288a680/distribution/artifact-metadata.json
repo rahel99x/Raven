@@ -1,0 +1,20 @@
+{
+  "id": 12287870989,
+  "node_id": "MDg6QXJ0aWZhY3QxMjI4Nzg3MDk4OQ==",
+  "name": "distributions-and-demo",
+  "size_in_bytes": 7750840,
+  "url": "https://api.github.com/repos/rahel99x/Raven/actions/artifacts/12287870989",
+  "archive_download_url": "https://api.github.com/repos/rahel99x/Raven/actions/artifacts/12287870989/zip",
+  "expired": false,
+  "digest": "sha256:f3b2da26f7b6b1e677e25bdc87127e09f8b61728e4891ac48e893cb322b270c2",
+  "created_at": "2026-10-20T18:01:12Z",
+  "updated_at": "2026-10-20T18:01:12Z",
+  "expires_at": "2027-01-18T17:42:47Z",
+  "workflow_run": {
+    "id": 39468456613,
+    "repository_id": 1402932891,
+    "head_repository_id": 1402932891,
+    "head_branch": "codex/adversarial-review-fixes",
+    "head_sha": "288a680dd85dde9766fce3c4d8d962b42bd12203"
+  }
+}

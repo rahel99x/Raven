@@ -1,0 +1,52 @@
+{
+  "schema": "raven.hosted-python-log-excerpt/v1",
+  "python": "3.12",
+  "url": "https://github.com/rahel99x/Raven/actions/runs/39468456613/job/118786534171",
+  "job_id": 118786534171,
+  "job_conclusion": "success",
+  "is_complete_log": false,
+  "source_log": "/workspace/review-final-python-ci-288a680/python-3.12.full.log",
+  "source_log_sha256": "dc6bcdeaed2e1b7f6cec342fe13d673d7ef4cd95767abc8ad7ae62b01aaa663c",
+  "source_log_bytes": 993441,
+  "excerpt": "/workspace/review-final-python-ci-288a680/python-3.12.excerpt.log",
+  "excerpt_sha256": "85e50b9c08e08ca0793863a7eb57f0386a8c87c09e2e7dc7bd1fd41eb4078c3c",
+  "source_line_numbers": [
+    122,
+    123,
+    384,
+    385,
+    386,
+    387,
+    388,
+    389,
+    390,
+    681,
+    6686,
+    6687
+  ],
+  "full_suite": {
+    "passed": 19487,
+    "failed": 0,
+    "skipped": 24,
+    "errors": 0,
+    "warnings": 4,
+    "xfailed": 0,
+    "xpassed": 0,
+    "deselected": 0,
+    "rerun": 0,
+    "seconds": 718.66,
+    "summary": "19487 passed, 24 skipped, 4 warnings in 718.66s (0:11:58)",
+    "summary_line": 681,
+    "step": "Run isolated regression suite with two workers",
+    "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+    "source_log_sha256": "dc6bcdeaed2e1b7f6cec342fe13d673d7ef4cd95767abc8ad7ae62b01aaa663c",
+    "source_log_bytes": 993441,
+    "step_log_sha256": "03d39f4cc03ef8d067a556106750f0cfcf9a5cb9eae9c95a00cf87ae767e5460",
+    "step_source_lines": [
+      384,
+      681
+    ]
+  },
+  "full_suite_step_log": "/workspace/review-final-python-ci-288a680/python-3.12.full-suite-step.log",
+  "limits": "Excerpt preserves selected original full-log rows. The full source log and complete regression step remain local; counts describe the one full-suite invocation and are not additive across interpreters."
+}

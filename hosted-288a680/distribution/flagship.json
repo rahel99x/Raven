@@ -1,0 +1,120 @@
+{
+  "schema": "raven.qualification-report/v1",
+  "scope": "bounded local source, CLI and terminal qualification",
+  "production_qualified": false,
+  "status": "qualified-for-recorded-checks",
+  "python": "3.12.15",
+  "system": "Linux",
+  "checks": [
+    {
+      "id": "documentation",
+      "status": "qualified",
+      "evidence": {
+        "documents": 180,
+        "local_links": 1491,
+        "external_urls": "not tested"
+      },
+      "seconds": 0.039
+    },
+    {
+      "id": "source-cli",
+      "status": "qualified",
+      "evidence": {
+        "version": "Raven 7.0.0",
+        "doctor": "te for an explicit migration.\nRaven / demo environment\n\n  OK       Python: 3.12.15\n  OK       Interactive terminal: curses supports the interactive screen; text, JSON and ASCII reports also work without it\n  OK       Simulated cluster: No Slurm installation or cluster credentials required\n  OK       Output encoding: utf-8; use --ascii if block characters are unavailable.\n  OK       Terminal type: TERM=xterm-256color; interactive tests verify actual keys and glyphs.\n  OK       Color hints: Color support is an environment hint. Use :terminaltest to inspect the displayed palette.\n  OPTIONAL Mouse and keys: Use :terminaltest. Press keys and click the test grid; events never activate job actions.\n  OK       Clipboard transport: OSC52 enabled; local tools enabled; installed tools: none; SSH clipboard delivery depends on the local terminal. Exact file exports remain available.\n  OK       Configuration: /tmp/raven-qualification-ig5oy36t/config.json is accessible.\n  OK       State and exports: Persistence is disabled or its path is not supplied.\n\nPrerequisites ready.\nPrerequisites only; cluster permissions, accounting data and live job behavior require a live smoke check.\nNext: raven --fake"
+      },
+      "seconds": 0.231
+    },
+    {
+      "id": "terminal-pages",
+      "status": "qualified",
+      "evidence": {
+        "pages": 10,
+        "data": "simulated",
+        "scheduler_contacted": false
+      },
+      "seconds": 7.575
+    },
+    {
+      "id": "real-pty",
+      "status": "qualified",
+      "evidence": {
+        "terminal": "xterm-256color",
+        "rows": 42,
+        "columns": 140,
+        "output_bytes": 2261,
+        "scope": "local pseudo-terminal; no emulator presentation or SSH latency measurement"
+      },
+      "seconds": 0.357
+    },
+    {
+      "id": "cli-trace",
+      "status": "qualified",
+      "evidence": {
+        "help_available": true
+      },
+      "seconds": 0.154
+    },
+    {
+      "id": "cli-runtime",
+      "status": "qualified",
+      "evidence": {
+        "help_available": true
+      },
+      "seconds": 0.158
+    },
+    {
+      "id": "cli-report",
+      "status": "qualified",
+      "evidence": {
+        "help_available": true
+      },
+      "seconds": 0.159
+    },
+    {
+      "id": "installed-wheel",
+      "status": "qualified",
+      "evidence": {
+        "wheel_sha256": "758363a7c336f47d20b4dd8b5d2898c06d68beb2f127352c300d42268de92956",
+        "outside_checkout": true,
+        "doctor": "ut it\n  OK       Simulated cluster: No Slurm installation or cluster credentials required\n  OK       Output encoding: utf-8; use --ascii if block characters are unavailable.\n  OK       Terminal type: TERM=xterm-256color; interactive tests verify actual keys and glyphs.\n  OK       Color hints: Color support is an environment hint. Use :terminaltest to inspect the displayed palette.\n  OPTIONAL Mouse and keys: Use :terminaltest. Press keys and click the test grid; events never activate job actions.\n  OK       Clipboard transport: OSC52 enabled; local tools enabled; installed tools: none; SSH clipboard delivery depends on the local terminal. Exact file exports remain available.\n  OK       Configuration: /tmp/raven-qualification-ig5oy36t/config.json is accessible.\n  OK       State and exports: Persistence is disabled or its path is not supplied.\n\nPrerequisites ready.\nPrerequisites only; cluster permissions, accounting data and live job behavior require a live smoke check.\nNext: raven --fake"
+      },
+      "seconds": 4.879
+    },
+    {
+      "id": "live-allocation-identity",
+      "status": "untested",
+      "detail": "No explicitly selected existing allocation"
+    },
+    {
+      "id": "physical-gpu",
+      "status": "untested",
+      "detail": "Requires a separately recorded target-system or user evaluation"
+    },
+    {
+      "id": "multi-node",
+      "status": "untested",
+      "detail": "Requires a separately recorded target-system or user evaluation"
+    },
+    {
+      "id": "terminal-emulator",
+      "status": "untested",
+      "detail": "Requires a separately recorded target-system or user evaluation"
+    },
+    {
+      "id": "production-ssh",
+      "status": "untested",
+      "detail": "Requires a separately recorded target-system or user evaluation"
+    },
+    {
+      "id": "external-user-study",
+      "status": "untested",
+      "detail": "Requires a separately recorded target-system or user evaluation"
+    },
+    {
+      "id": "scientific-outcomes",
+      "status": "untested",
+      "detail": "Requires a separately recorded target-system or user evaluation"
+    }
+  ]
+}

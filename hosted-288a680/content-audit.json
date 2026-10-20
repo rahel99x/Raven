@@ -1,0 +1,88 @@
+{
+  "schema": "raven.delivery-content-audit/v1",
+  "objects_inspected": 3199,
+  "content_mapping_sha256": "7bcdd2ba26a9164bf0a2649d1c285634b031096ae8b64819d13b6052011d0b66",
+  "archives": [
+    {
+      "path": "hosted-288a680/distribution/ordinary-update-records.tar.gz",
+      "format": "tar.gz",
+      "members": 34,
+      "safe_paths_no_links_full_read": true
+    },
+    {
+      "path": "hosted-288a680/distribution/raven-7.0.0-py3-none-any.whl",
+      "format": "zip",
+      "members": 632,
+      "crc": "passed"
+    },
+    {
+      "path": "hosted-288a680/distribution/raven-7.0.0.tar.gz",
+      "format": "tar.gz",
+      "members": 2314,
+      "safe_paths_no_links_full_read": true
+    },
+    {
+      "path": "hosted-288a680/install/umask002-records.tar.gz",
+      "format": "tar.gz",
+      "members": 34,
+      "safe_paths_no_links_full_read": true
+    },
+    {
+      "path": "hosted-288a680/slurm/recorded-commands.tar.gz",
+      "format": "tar.gz",
+      "members": 108,
+      "safe_paths_no_links_full_read": true
+    }
+  ],
+  "credential_candidates": [
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_prometheus_source.py",
+      "kind": "credential-url",
+      "file_sha256": "80313034f4f7011a24adf6ff41549031faeef773827ab4a30d270ccbca582969"
+    },
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_provenance.py",
+      "kind": "credential-url",
+      "file_sha256": "11200a23ea90a5c26a02858f80e5913e5e17eaba6798c81045982727ffd17942"
+    },
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0"
+    },
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "3fa09bbe570a74fc6339435a674f4bbe9665f9161cfceb3c0cdfe4085e701857"
+    }
+  ],
+  "explicit_fixture_allowances": [
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_prometheus_source.py",
+      "kind": "credential-url",
+      "file_sha256": "80313034f4f7011a24adf6ff41549031faeef773827ab4a30d270ccbca582969",
+      "reason": "Manually reviewed committed regression source: static credential URL refusal/redaction fixture targeting example.invalid or loopback127.0.0.1:1, not a live credential. Exact file bytes match Git288; helper-fixture changes do not modify those URL fixtures. Exception is limited to this exact archive member path, SHA256 and detection kind."
+    },
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_provenance.py",
+      "kind": "credential-url",
+      "file_sha256": "11200a23ea90a5c26a02858f80e5913e5e17eaba6798c81045982727ffd17942",
+      "reason": "Manually reviewed committed regression source: static credential URL refusal/redaction fixture targeting example.invalid or loopback127.0.0.1:1, not a live credential. Exact file bytes match Git288; helper-fixture changes do not modify those URL fixtures. Exception is limited to this exact archive member path, SHA256 and detection kind."
+    },
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_review_install_trust.py",
+      "kind": "credential-url",
+      "file_sha256": "fa9d0105f691c3df6b4ee7e3c3987650bcc1328a752396f81a4b04bc6f499db0",
+      "reason": "Manually reviewed committed regression source: static credential URL refusal/redaction fixture targeting example.invalid or loopback127.0.0.1:1, not a live credential. Exact file bytes match Git288; helper-fixture changes do not modify those URL fixtures. Exception is limited to this exact archive member path, SHA256 and detection kind."
+    },
+    {
+      "name": "hosted-288a680/distribution/raven-7.0.0.tar.gz!raven-7.0.0/tests/test_update_source.py",
+      "kind": "credential-url",
+      "file_sha256": "3fa09bbe570a74fc6339435a674f4bbe9665f9161cfceb3c0cdfe4085e701857",
+      "reason": "Manually reviewed committed regression source: static credential URL refusal/redaction fixture targeting example.invalid or loopback127.0.0.1:1, not a live credential. Exact file bytes match Git288; helper-fixture changes do not modify those URL fixtures. Exception is limited to this exact archive member path, SHA256 and detection kind."
+    }
+  ],
+  "unresolved_candidates": [],
+  "limits": "High-confidence credential patterns, filename and complete bounded archive inspection; not exhaustive secret detection. No archived program was executed.",
+  "scope": "All retained payloads and generated summary/contract/README before this audit; this generated audit contains only paths, hashes, sizes and approved fixture rationales."
+}

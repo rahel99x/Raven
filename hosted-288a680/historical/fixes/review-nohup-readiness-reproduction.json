@@ -1,0 +1,8 @@
+{
+  "fixture": "Real Bash PTY background child held at an explicit before-exec FIFO barrier; this exposes the PID-publication contract without a timing sleep.",
+  "old_pid_ready_condition_satisfied": true,
+  "actual_child_sighup_ignored_before_close": false,
+  "state_before_close": "S",
+  "state_after_close": null,
+  "conclusion": "Bash $! readiness admits a live child before nohup has installed SIGHUP-ignore; this is a readiness-fixture defect, not a claim that an established nohup workload was killed."
+}

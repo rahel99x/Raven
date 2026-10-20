@@ -1,0 +1,1245 @@
+{
+  "schema": "raven.slurm-qualification/v1",
+  "source_revision": "b3cc407f4a919bc29157c73778469106237096e9",
+  "source_sha256": {
+    "raven/slurm.py": "19f6a43db2f08f2a9a99b4807b7a9018dec538126acef967d595cb79b83b258f",
+    "raven/slurm_json.py": "ce22d4d87b4eb20f198205724f078e175a4f7c8b580282bb42ec45cf743e5201",
+    "scripts/slurm/lifecycle.py": "5999de6c3dea35e64c8d88075b3868fb631e9e817d14fa550cfbf4795aa74ccd",
+    "scripts/slurm/entrypoint.sh": "54174b40f9e8bcb176a83869c0d18076f3e7ac67d4c7a16e585c9fa3a177972d"
+  },
+  "environment": "real Slurm, one disposable Linux container",
+  "commands": [
+    {
+      "label": "version",
+      "argv": [
+        "squeue",
+        "--version"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.004760706000013215,
+      "stdout": {
+        "file": "version.stdout.txt",
+        "sha256": "384fba7854138b9f68cf2ac1c73e3ed70b3ae75024015020297beeddccdd8cc4"
+      },
+      "stderr": {
+        "file": "version.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "squeue-help",
+      "argv": [
+        "squeue",
+        "--help"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.004082662000030268,
+      "stdout": {
+        "file": "squeue-help.stdout.txt",
+        "sha256": "01e53ff2d6ca31005e4b5f4fc3a30c6bcf9ba2ece1caf3a68bb05640377d6cd9"
+      },
+      "stderr": {
+        "file": "squeue-help.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "sacct-help",
+      "argv": [
+        "sacct",
+        "--help"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.004075950000014927,
+      "stdout": {
+        "file": "sacct-help.stdout.txt",
+        "sha256": "2c73ff36b70305e8f3c37d9d714a3916773ada5ba95c2b3054ff35d1a14aba1f"
+      },
+      "stderr": {
+        "file": "sacct-help.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "scontrol-help",
+      "argv": [
+        "scontrol",
+        "--help"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0039646029999858,
+      "stdout": {
+        "file": "scontrol-help.stdout.txt",
+        "sha256": "78a1a5ac2899e4e0cc6f7a21211d8623cf7e171295621c2e4aff0601480e89de"
+      },
+      "stderr": {
+        "file": "scontrol-help.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "config",
+      "argv": [
+        "scontrol",
+        "show",
+        "config"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.00560948799994776,
+      "stdout": {
+        "file": "config.stdout.txt",
+        "sha256": "622e0b0932005d3547c39e1532dba644f1d8dff906cf55076c59a2ff7e04e72f"
+      },
+      "stderr": {
+        "file": "config.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "slurm-conf",
+      "argv": [
+        "cat",
+        "/etc/slurm/slurm.conf"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0028941049999957613,
+      "stdout": {
+        "file": "slurm-conf.stdout.txt",
+        "sha256": "2bfe97cb0b1c97e1a2099a64c7b4de58512c49f5c25e91f04c9ccbec070e9556"
+      },
+      "stderr": {
+        "file": "slurm-conf.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "submit",
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--account=labx",
+        "--time=00:02:00",
+        "--mem=32M",
+        "--chdir=/home/raven/work with spaces",
+        "--output=/home/raven/work with spaces/%j.log",
+        "--hold",
+        "--job-name=Raven spaces = sample",
+        "/home/raven/work with spaces/job with spaces.sh"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005876331000024493,
+      "stdout": {
+        "file": "submit.stdout.txt",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      "stderr": {
+        "file": "submit.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "pending-squeue",
+      "argv": [
+        "squeue",
+        "-h",
+        "-u",
+        "raven",
+        "-o",
+        "%i|%j|%P|%T|%M|%l|%D|%C|%b|%N|%m|%S|%V|%r|%Q|%E|%a|%q|%e|%o|%Z|%k|RAVEN_GROUP_V1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005732113999954436,
+      "stdout": {
+        "file": "pending-squeue.stdout.txt",
+        "sha256": "532d5b4cb294495775a78d9a51b5e46ce77a244c2a30b2c0ed150eb930761159"
+      },
+      "stderr": {
+        "file": "pending-squeue.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "pending-squeue-json",
+      "argv": [
+        "squeue",
+        "--json",
+        "-u",
+        "raven"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.009618548999981158,
+      "stdout": {
+        "file": "pending-squeue-json.stdout.txt",
+        "sha256": "0827c065527e34796c2124f30af8f13ca89bd81ce72d7cf3c719758d2206d5d6"
+      },
+      "stderr": {
+        "file": "pending-squeue-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "pending-scontrol",
+      "argv": [
+        "scontrol",
+        "show",
+        "job",
+        "1",
+        "-o"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005305247999956464,
+      "stdout": {
+        "file": "pending-scontrol.stdout.txt",
+        "sha256": "7be0b79668997da3e176f72181be239f4637c29dd79a3d432c5a2752373f02cb"
+      },
+      "stderr": {
+        "file": "pending-scontrol.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "pending-scontrol-json",
+      "argv": [
+        "scontrol",
+        "--json",
+        "show",
+        "job",
+        "1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.009478316000013365,
+      "stdout": {
+        "file": "pending-scontrol-json.stdout.txt",
+        "sha256": "4bb3acf35d9e8aea209f7c8a018b0434314d3c7d8193060c3e5768cc72b03180"
+      },
+      "stderr": {
+        "file": "pending-scontrol-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "release",
+      "argv": [
+        "scontrol",
+        "release",
+        "1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0047699099999931605,
+      "stdout": {
+        "file": "release.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "release.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "running-squeue",
+      "argv": [
+        "squeue",
+        "-h",
+        "-u",
+        "raven",
+        "-o",
+        "%i|%j|%P|%T|%M|%l|%D|%C|%b|%N|%m|%S|%V|%r|%Q|%E|%a|%q|%e|%o|%Z|%k|RAVEN_GROUP_V1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005925566999962939,
+      "stdout": {
+        "file": "running-squeue.stdout.txt",
+        "sha256": "bfb1695276e9433fe187e12c8790537af1dd1a77b34e3417cd9ddc9371df57b3"
+      },
+      "stderr": {
+        "file": "running-squeue.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "running-squeue-json",
+      "argv": [
+        "squeue",
+        "--json",
+        "-u",
+        "raven"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.009941085999969346,
+      "stdout": {
+        "file": "running-squeue-json.stdout.txt",
+        "sha256": "c3db04e2f1be08d3083c5817e01bae337ec0e0cb591da7afee71b96dce2bfa0e"
+      },
+      "stderr": {
+        "file": "running-squeue-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "running-scontrol",
+      "argv": [
+        "scontrol",
+        "show",
+        "job",
+        "1",
+        "-o"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.00542848499998172,
+      "stdout": {
+        "file": "running-scontrol.stdout.txt",
+        "sha256": "9a6ad69c7ed2cc941989f029fbdb1eb3544e057c0606736e43d14df4db9f6c44"
+      },
+      "stderr": {
+        "file": "running-scontrol.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "running-scontrol-json",
+      "argv": [
+        "scontrol",
+        "--json",
+        "show",
+        "job",
+        "1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.00982473999999911,
+      "stdout": {
+        "file": "running-scontrol-json.stdout.txt",
+        "sha256": "ababcd9fb217b9486986222d735b8d1a0767ed6f51b77d70910330a4a63df552"
+      },
+      "stderr": {
+        "file": "running-scontrol-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "sprio",
+      "argv": [
+        "sprio",
+        "-j",
+        "1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.00462958800000024,
+      "stdout": {
+        "file": "sprio.stdout.txt",
+        "sha256": "89f999ba21d9fc9bf2e63cc7697c7003a4c011f38254bd542072378d91ab6eca"
+      },
+      "stderr": {
+        "file": "sprio.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "sshare",
+      "argv": [
+        "sshare",
+        "-u",
+        "raven",
+        "-P"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.004828218000000106,
+      "stdout": {
+        "file": "sshare.stdout.txt",
+        "sha256": "166238066becc66fec2e478b5f8674c56110efbae5c6771e10ced64e44a37a79"
+      },
+      "stderr": {
+        "file": "sshare.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "accounting-steps",
+      "argv": [
+        "sacct",
+        "-n",
+        "-P",
+        "--duplicates",
+        "-j",
+        "1",
+        "-S",
+        "now-1hour",
+        "-o",
+        "JobID,JobName,State,Elapsed,TotalCPU,MaxRSS,MaxRSSNode,MaxRSSTask,NTasks,ExitCode,NodeList,End,Submit,Start,User,Cluster"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.006334819000016978,
+      "stdout": {
+        "file": "accounting-steps.stdout.txt",
+        "sha256": "ea23a442430c6c53bad12d5a828c136556ae274c2e76a977fc732f490a3e160d"
+      },
+      "stderr": {
+        "file": "accounting-steps.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "completed-log",
+      "argv": [
+        "cat",
+        "/home/raven/work with spaces/1.log"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0031939169999759542,
+      "stdout": {
+        "file": "completed-log.stdout.txt",
+        "sha256": "3a34ccb6e465eeb4d712c6a84cf88c93685a72e8a21b142eba4c5ab216a2b517"
+      },
+      "stderr": {
+        "file": "completed-log.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-submit",
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--account=labx",
+        "--time=00:02:00",
+        "--mem=32M",
+        "--chdir=/home/raven/work with spaces",
+        "--output=/home/raven/work with spaces/%j.log",
+        "--array=1-2%1",
+        "--hold",
+        "/home/raven/work with spaces/job with spaces.sh"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005980883999995967,
+      "stdout": {
+        "file": "array-submit.stdout.txt",
+        "sha256": "53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
+      },
+      "stderr": {
+        "file": "array-submit.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-pending-squeue",
+      "argv": [
+        "squeue",
+        "-h",
+        "-u",
+        "raven",
+        "-o",
+        "%i|%j|%P|%T|%M|%l|%D|%C|%b|%N|%m|%S|%V|%r|%Q|%E|%a|%q|%e|%o|%Z|%k|RAVEN_GROUP_V1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0060726140000042506,
+      "stdout": {
+        "file": "array-pending-squeue.stdout.txt",
+        "sha256": "5323451b63d82404f4bc6bd8445f8a94bc158388df9e196d0c95e80d7ae4b451"
+      },
+      "stderr": {
+        "file": "array-pending-squeue.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-pending-squeue-json",
+      "argv": [
+        "squeue",
+        "--json",
+        "-u",
+        "raven"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.009874254000010296,
+      "stdout": {
+        "file": "array-pending-squeue-json.stdout.txt",
+        "sha256": "872db2085dd783b025d1f3e1b4f7878e83b59798ba9a2e3afba6dbfa95b647bd"
+      },
+      "stderr": {
+        "file": "array-pending-squeue-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-pending-scontrol",
+      "argv": [
+        "scontrol",
+        "show",
+        "job",
+        "2",
+        "-o"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.00557379399998581,
+      "stdout": {
+        "file": "array-pending-scontrol.stdout.txt",
+        "sha256": "8d05ee454bcd8f764455e821465c9901394a981f2f2960c92519e45670d4d1ca"
+      },
+      "stderr": {
+        "file": "array-pending-scontrol.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-pending-scontrol-json",
+      "argv": [
+        "scontrol",
+        "--json",
+        "show",
+        "job",
+        "2"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.009698158000048807,
+      "stdout": {
+        "file": "array-pending-scontrol-json.stdout.txt",
+        "sha256": "4a631bc6828dd47c7a513d672950d2d2892a3f17c6b202e44a4a72970e7b7fe1"
+      },
+      "stderr": {
+        "file": "array-pending-scontrol-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-release",
+      "argv": [
+        "scontrol",
+        "release",
+        "2"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.004870551000010437,
+      "stdout": {
+        "file": "array-release.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "array-release.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-running-squeue",
+      "argv": [
+        "squeue",
+        "-h",
+        "-u",
+        "raven",
+        "-o",
+        "%i|%j|%P|%T|%M|%l|%D|%C|%b|%N|%m|%S|%V|%r|%Q|%E|%a|%q|%e|%o|%Z|%k|RAVEN_GROUP_V1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.006011585999999625,
+      "stdout": {
+        "file": "array-running-squeue.stdout.txt",
+        "sha256": "e0657046e7e662dbb94d0eecf4a299d96ab7a77b758747988456c528b4446f19"
+      },
+      "stderr": {
+        "file": "array-running-squeue.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-running-squeue-json",
+      "argv": [
+        "squeue",
+        "--json",
+        "-u",
+        "raven"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.010491811999997935,
+      "stdout": {
+        "file": "array-running-squeue-json.stdout.txt",
+        "sha256": "05e1acaf7ed01e5ad8db06f35b8d96d1c02b24fecc58e7196ade5c21547a75ea"
+      },
+      "stderr": {
+        "file": "array-running-squeue-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-running-scontrol",
+      "argv": [
+        "scontrol",
+        "show",
+        "job",
+        "2",
+        "-o"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0055543799999782095,
+      "stdout": {
+        "file": "array-running-scontrol.stdout.txt",
+        "sha256": "e047055f60185f9e8fd49e7b33d45cef581bddf2002e68667e67d8836195a035"
+      },
+      "stderr": {
+        "file": "array-running-scontrol.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-running-scontrol-json",
+      "argv": [
+        "scontrol",
+        "--json",
+        "show",
+        "job",
+        "2"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.010052212999994481,
+      "stdout": {
+        "file": "array-running-scontrol-json.stdout.txt",
+        "sha256": "591bb536087bb529edbf5dddfa3134e74d1cca20a1250e43c8df600fda7429d1"
+      },
+      "stderr": {
+        "file": "array-running-scontrol-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "array-cancel",
+      "argv": [
+        "scancel",
+        "2"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0053637620000017705,
+      "stdout": {
+        "file": "array-cancel.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "array-cancel.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "requeue-submit",
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--account=labx",
+        "--time=00:02:00",
+        "--mem=32M",
+        "--chdir=/home/raven/work with spaces",
+        "--output=/home/raven/work with spaces/%j.log",
+        "/home/raven/work with spaces/requeue.sh"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005764577000036297,
+      "stdout": {
+        "file": "requeue-submit.stdout.txt",
+        "sha256": "7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
+      },
+      "stderr": {
+        "file": "requeue-submit.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "before-requeue",
+      "argv": [
+        "scontrol",
+        "show",
+        "job",
+        "4",
+        "-o"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005565677999982199,
+      "stdout": {
+        "file": "before-requeue.stdout.txt",
+        "sha256": "9f29158649d8ecfb1adaa9863066fd13c219cd2af364e0f6506e4de1442078ba"
+      },
+      "stderr": {
+        "file": "before-requeue.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "requeue",
+      "argv": [
+        "scontrol",
+        "requeue",
+        "4"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005914202999974805,
+      "stdout": {
+        "file": "requeue.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "requeue.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "after-requeue",
+      "argv": [
+        "scontrol",
+        "show",
+        "job",
+        "4",
+        "-o"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005860826000002817,
+      "stdout": {
+        "file": "after-requeue.stdout.txt",
+        "sha256": "680c42c492654aeed4af657aa5ff3662ddcfb334d3ff24817c102ed6d2f5ba51"
+      },
+      "stderr": {
+        "file": "after-requeue.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "guard-submit",
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--account=labx",
+        "--time=00:02:00",
+        "--mem=32M",
+        "--chdir=/home/raven/work with spaces",
+        "--output=/home/raven/work with spaces/%j.log",
+        "--hold",
+        "--job-name=raven-heavy-0123456789abcdef0123456789abcdef",
+        "/home/raven/work with spaces/job with spaces.sh"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005868697000039447,
+      "stdout": {
+        "file": "guard-submit.stdout.txt",
+        "sha256": "f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
+      },
+      "stderr": {
+        "file": "guard-submit.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "guard-wrong-name",
+      "argv": [
+        "scancel",
+        "--ctld",
+        "--name=raven-heavy-0123456789abcdef0123456789abcdef-wrong",
+        "--user=1100",
+        "5"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.004964511000025595,
+      "stdout": {
+        "file": "guard-wrong-name.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "guard-wrong-name.stderr.txt",
+        "sha256": "4e1ff6a31d019d0130c38f1763ff3f4fc8c2209065e1f64fa45627f019fb4cf6"
+      }
+    },
+    {
+      "label": "guard-wrong-user",
+      "argv": [
+        "scancel",
+        "--ctld",
+        "--name=raven-heavy-0123456789abcdef0123456789abcdef",
+        "--user=0",
+        "5"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005040917000030731,
+      "stdout": {
+        "file": "guard-wrong-user.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "guard-wrong-user.stderr.txt",
+        "sha256": "b6d17d982fe9805337ee2d6763ba198b92021c76491ef37a2497cca623e4bb54"
+      }
+    },
+    {
+      "label": "guard-exact-cancel",
+      "argv": [
+        "scancel",
+        "--ctld",
+        "--name=raven-heavy-0123456789abcdef0123456789abcdef",
+        "--user=1100",
+        "5"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005107135999992352,
+      "stdout": {
+        "file": "guard-exact-cancel.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "guard-exact-cancel.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "accounting",
+      "argv": [
+        "sacct",
+        "-n",
+        "-P",
+        "--duplicates",
+        "-u",
+        "raven",
+        "-S",
+        "now-1hour",
+        "-o",
+        "JobID,JobName,State,Elapsed,AllocCPUS,TotalCPU,ReqMem,MaxRSS,Start,End,Partition,NNodes,ExitCode,AllocTRES,NodeList,Submit,WorkDir,Timelimit,User,Account,Comment"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.00719075500001054,
+      "stdout": {
+        "file": "accounting.stdout.txt",
+        "sha256": "ab77f73ac2d6e478ae2087750f12faef8721f1f03d92727849dfd0698974f736"
+      },
+      "stderr": {
+        "file": "accounting.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "accounting-identity",
+      "argv": [
+        "sacct",
+        "-n",
+        "-P",
+        "--duplicates",
+        "-j",
+        "1",
+        "-S",
+        "now-1hour",
+        "-o",
+        "JobID,JobIDRaw,JobName,WorkDir,StdOut,StdErr,User,Submit,Start,Cluster"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0063947020000227894,
+      "stdout": {
+        "file": "accounting-identity.stdout.txt",
+        "sha256": "a1e754f3e2219d1631c87cc241546649f6e9bb097d61e83dd7b7280fbf5bf98c"
+      },
+      "stderr": {
+        "file": "accounting-identity.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "accounting-json",
+      "argv": [
+        "sacct",
+        "--json",
+        "--duplicates",
+        "-u",
+        "raven",
+        "-S",
+        "now-1hour"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.013561781000021256,
+      "stdout": {
+        "file": "accounting-json.stdout.txt",
+        "sha256": "b759d4f059750a6f83bf865c8178382e14bdf602ff72d34ba67ba178837e6c81"
+      },
+      "stderr": {
+        "file": "accounting-json.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "controller-restart",
+      "argv": [
+        "slurmctld"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0022728840000354467,
+      "stdout": {
+        "file": "controller-restart.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "controller-restart.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "reconnected-accounting",
+      "argv": [
+        "sacct",
+        "-n",
+        "-X",
+        "-P",
+        "-j",
+        "1",
+        "-o",
+        "JobID,State,Account,AllocCPUS,Submit,Start,End"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.006514803000015945,
+      "stdout": {
+        "file": "reconnected-accounting.stdout.txt",
+        "sha256": "36afd26734b4b436f457d47dd5a430ec8c803babba82cd6b8dc3c1b03f718a68"
+      },
+      "stderr": {
+        "file": "reconnected-accounting.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "recycle-controller-generation",
+      "argv": [
+        "slurmctld",
+        "-c"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.002166959999954088,
+      "stdout": {
+        "file": "recycle-controller-generation.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "recycle-controller-generation.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "recycled-submit",
+      "argv": [
+        "sbatch",
+        "--parsable",
+        "--account=labx",
+        "--time=00:02:00",
+        "--mem=32M",
+        "--chdir=/home/raven/work with spaces",
+        "--output=/home/raven/work with spaces/%j.log",
+        "--hold",
+        "--job-name=Raven recycled identity",
+        "/home/raven/work with spaces/job with spaces.sh"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.006180097000026308,
+      "stdout": {
+        "file": "recycled-submit.stdout.txt",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      "stderr": {
+        "file": "recycled-submit.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "recycled-details",
+      "argv": [
+        "scontrol",
+        "show",
+        "job",
+        "1",
+        "-o"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0057971840000163866,
+      "stdout": {
+        "file": "recycled-details.stdout.txt",
+        "sha256": "a522cc7588c2f2e5f5499f0765534b9ffff796559ad1736509cdb3e206f0b845"
+      },
+      "stderr": {
+        "file": "recycled-details.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "recycled-cancel",
+      "argv": [
+        "scancel",
+        "1"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.005570465999994667,
+      "stdout": {
+        "file": "recycled-cancel.stdout.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "file": "recycled-cancel.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "recycled-accounting",
+      "argv": [
+        "sacct",
+        "-n",
+        "-P",
+        "-D",
+        "-j",
+        "1",
+        "-S",
+        "now-1hour",
+        "-o",
+        "JobID,JobName,Submit,Start,End,State,Account"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.0063521570000375505,
+      "stdout": {
+        "file": "recycled-accounting.stdout.txt",
+        "sha256": "209a3630cfdfb49fb4d288332884e74e6962776f365a1df515f6b1d87835caae"
+      },
+      "stderr": {
+        "file": "recycled-accounting.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "service-processes",
+      "argv": [
+        "ps",
+        "-eo",
+        "comm,rss,time"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.003935936999994283,
+      "stdout": {
+        "file": "service-processes.stdout.txt",
+        "sha256": "49aeca39b607cf98da1fd59cf767b1fffe2c3cddcdbf8b223421247a8b07588e"
+      },
+      "stderr": {
+        "file": "service-processes.stderr.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "state 1",
+      "states": [
+        "PENDING"
+      ],
+      "passed": true,
+      "polls": 1,
+      "accounting": false
+    },
+    {
+      "name": "pending legacy rows",
+      "passed": true
+    },
+    {
+      "name": "pending account",
+      "passed": true
+    },
+    {
+      "name": "state 1",
+      "states": [
+        "RUNNING"
+      ],
+      "passed": true,
+      "polls": 5,
+      "accounting": false
+    },
+    {
+      "name": "running legacy rows",
+      "passed": true
+    },
+    {
+      "name": "running account",
+      "passed": true
+    },
+    {
+      "name": "Raven scheduler reader exact running job",
+      "passed": true
+    },
+    {
+      "name": "Raven scheduler reader path with spaces",
+      "passed": true
+    },
+    {
+      "name": "state 1",
+      "states": [
+        "COMPLETED"
+      ],
+      "passed": true,
+      "polls": 13,
+      "accounting": true
+    },
+    {
+      "name": "Raven accounting reader exact completed job",
+      "passed": true
+    },
+    {
+      "name": "Raven historical details preserve completed path",
+      "passed": true
+    },
+    {
+      "name": "Raven exact submission retains account and name",
+      "passed": true
+    },
+    {
+      "name": "Raven exact steps retain completed batch",
+      "passed": true
+    },
+    {
+      "name": "log bytes preserve spaces and equals",
+      "passed": true
+    },
+    {
+      "name": "array-pending legacy rows",
+      "passed": true
+    },
+    {
+      "name": "array-pending account",
+      "passed": true
+    },
+    {
+      "name": "state 2",
+      "states": [
+        "RUNNING"
+      ],
+      "passed": true,
+      "polls": 2,
+      "accounting": false
+    },
+    {
+      "name": "array-running legacy rows",
+      "passed": true
+    },
+    {
+      "name": "array-running account",
+      "passed": true
+    },
+    {
+      "name": "state 2",
+      "states": [
+        "CANCELLED"
+      ],
+      "passed": true,
+      "polls": 1,
+      "accounting": true
+    },
+    {
+      "name": "state 4",
+      "states": [
+        "RUNNING"
+      ],
+      "passed": true,
+      "polls": 2,
+      "accounting": false
+    },
+    {
+      "name": "state 4",
+      "states": [
+        "COMPLETED"
+      ],
+      "passed": true,
+      "polls": 39,
+      "accounting": true
+    },
+    {
+      "name": "requeue retains id and increments restart",
+      "passed": true
+    },
+    {
+      "name": "state 5",
+      "states": [
+        "PENDING"
+      ],
+      "passed": true,
+      "polls": 1,
+      "accounting": false
+    },
+    {
+      "name": "state 5",
+      "states": [
+        "PENDING"
+      ],
+      "passed": true,
+      "polls": 1,
+      "accounting": false
+    },
+    {
+      "name": "state 5",
+      "states": [
+        "CANCELLED"
+      ],
+      "passed": true,
+      "polls": 1,
+      "accounting": true
+    },
+    {
+      "name": "controller reconnect",
+      "passed": true
+    },
+    {
+      "name": "actual numeric job id reused",
+      "passed": true
+    },
+    {
+      "name": "recycled id has new submission",
+      "passed": true
+    },
+    {
+      "name": "Raven old attempt remains attributable after id reuse",
+      "passed": true
+    },
+    {
+      "name": "Raven retained submission excludes recycled job",
+      "passed": true
+    },
+    {
+      "name": "state 1",
+      "states": [
+        "CANCELLED"
+      ],
+      "passed": true,
+      "polls": 1,
+      "accounting": true
+    }
+  ],
+  "production_qualified": false,
+  "unqualified": [
+    "physical GPU",
+    "multi-node",
+    "production SSH",
+    "site policy",
+    "heterogeneous allocations"
+  ],
+  "slurm_version": "slurm 26.05.5",
+  "raven_steps": [
+    "1",
+    "1.batch"
+  ],
+  "raven_reader_status": {
+    "jobs": {
+      "format": "json",
+      "parser": "data_parser/v0.0.45",
+      "reason": "qualified recorded data-parser shape"
+    },
+    "details": {
+      "format": "json",
+      "parser": "data_parser/v0.0.45",
+      "reason": "qualified recorded data-parser shape"
+    },
+    "finished": {
+      "format": "json",
+      "parser": "data_parser/v0.0.45",
+      "reason": "qualified recorded data-parser shape"
+    },
+    "submit": {
+      "format": "json",
+      "parser": "data_parser/v0.0.45",
+      "reason": "qualified recorded data-parser shape"
+    },
+    "fin_details": {
+      "format": "json",
+      "parser": "data_parser/v0.0.45",
+      "reason": "qualified recorded data-parser shape"
+    }
+  },
+  "atomic_cancel_filters": "name and uid mismatches preserved held job; matching controller request cancelled it",
+  "status": "passed-for-recorded-checks",
+  "elapsed_seconds": 30.756180988999972
+}

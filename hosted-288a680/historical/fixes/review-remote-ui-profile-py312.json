@@ -1,0 +1,174 @@
+{
+  "schema": "raven.remote-ui-profile/v1",
+  "python": "3.12.14",
+  "fixture": "Unchanged50handle/tick/composeiterations, samependingRemote Future, source/copy/selectionassertions retained. In-memory profiling transform replaces only oldwallassert with wall/thread/processCPUmeasurements.",
+  "observational_rounds": [
+    {
+      "wall_seconds": 0.09350429201731458,
+      "thread_cpu_seconds": 0.09350284599999997,
+      "process_cpu_seconds": 0.09350338599999997,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.09437081700889394,
+      "thread_cpu_seconds": 0.09436956599999996,
+      "process_cpu_seconds": 0.09437086699999997,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.11161776701919734,
+      "thread_cpu_seconds": 0.111617609,
+      "process_cpu_seconds": 0.11161825900000005,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.15959336099331267,
+      "thread_cpu_seconds": 0.15959145600000002,
+      "process_cpu_seconds": 0.15959187600000002,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.1088591179868672,
+      "thread_cpu_seconds": 0.10881233300000004,
+      "process_cpu_seconds": 0.10881327399999996,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.0920733290258795,
+      "thread_cpu_seconds": 0.09205606199999994,
+      "process_cpu_seconds": 0.09205645200000001,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.10377261799294502,
+      "thread_cpu_seconds": 0.10377091900000002,
+      "process_cpu_seconds": 0.10377143999999994,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    }
+  ],
+  "profiled_round": {
+    "wall_seconds": 0.2918402710056398,
+    "thread_cpu_seconds": 0.2917992519999999,
+    "process_cpu_seconds": 0.291799892,
+    "remote_future_pending": true,
+    "remote_calls_during_pending": 2
+  },
+  "profile_top_cumulative": [
+    {
+      "function": "/workspace/Raven/raven/views.py:2836:compose",
+      "calls": 50,
+      "self_seconds": 0.001063282,
+      "cumulative_seconds": 0.20986855000000001
+    },
+    {
+      "function": "/workspace/Raven/raven/views.py:2856:_compose",
+      "calls": 50,
+      "self_seconds": 0.004836793000000001,
+      "cumulative_seconds": 0.205147134
+    },
+    {
+      "function": "/workspace/Raven/raven/controller.py:686:handle",
+      "calls": 100,
+      "self_seconds": 0.000178375,
+      "cumulative_seconds": 0.069761258
+    },
+    {
+      "function": "/workspace/Raven/raven/controller.py:697:_handle",
+      "calls": 100,
+      "self_seconds": 0.001647624,
+      "cumulative_seconds": 0.069582883
+    },
+    {
+      "function": "/workspace/Raven/raven/interaction.py:400:publish",
+      "calls": 50,
+      "self_seconds": 0.006325283,
+      "cumulative_seconds": 0.054260525000000004
+    },
+    {
+      "function": "/workspace/Raven/raven/history_browser.py:588:wrap_render",
+      "calls": 50,
+      "self_seconds": 0.005026703,
+      "cumulative_seconds": 0.053074192000000006
+    },
+    {
+      "function": "/workspace/Raven/raven/controller.py:138:save",
+      "calls": 50,
+      "self_seconds": 0.000683199,
+      "cumulative_seconds": 0.039470723
+    },
+    {
+      "function": "/workspace/Raven/raven/views.py:424:header",
+      "calls": 50,
+      "self_seconds": 0.002351896,
+      "cumulative_seconds": 0.037738285
+    },
+    {
+      "function": "/workspace/Raven/raven/layout.py:385:_clip_row",
+      "calls": 4950,
+      "self_seconds": 0.011059186,
+      "cumulative_seconds": 0.027947691
+    },
+    {
+      "function": "/workspace/Raven/raven/ui_persistence.py:110:save",
+      "calls": 50,
+      "self_seconds": 0.000125124,
+      "cumulative_seconds": 0.023156727000000002
+    },
+    {
+      "function": "/workspace/Raven/raven/model.py:1564:save_ui",
+      "calls": 50,
+      "self_seconds": 0.0009432010000000001,
+      "cumulative_seconds": 0.023023824000000002
+    },
+    {
+      "function": "/workspace/Raven/raven/layout.py:401:clip_row",
+      "calls": 3300,
+      "self_seconds": 0.001049059,
+      "cumulative_seconds": 0.021954772
+    },
+    {
+      "function": "/workspace/Raven/raven/ui_state.py:110:write",
+      "calls": 50,
+      "self_seconds": 0.0004042,
+      "cumulative_seconds": 0.021820117
+    },
+    {
+      "function": "~:0:<method 'extend' of 'list' objects>",
+      "calls": 1250,
+      "self_seconds": 0.0005822560000000001,
+      "cumulative_seconds": 0.020466461000000002
+    },
+    {
+      "function": "~:0:<built-in method builtins.any>",
+      "calls": 1799,
+      "self_seconds": 0.0017086480000000001,
+      "cumulative_seconds": 0.017011632000000002
+    },
+    {
+      "function": "/workspace/Raven/raven/workbench.py:501:save",
+      "calls": 50,
+      "self_seconds": 0.001483402,
+      "cumulative_seconds": 0.014958342000000001
+    },
+    {
+      "function": "/workspace/Raven/raven/workbench.py:513:handle_key",
+      "calls": 100,
+      "self_seconds": 9.5247e-05,
+      "cumulative_seconds": 0.014405924
+    },
+    {
+      "function": "/workspace/Raven/raven/layout.py:40:vlen",
+      "calls": 15750,
+      "self_seconds": 0.008631506,
+      "cumulative_seconds": 0.014157407
+    }
+  ],
+  "limits": "LocalLinuxsharedhost; observationnotwhole-releasebenchmark. Profileoverhead excluded fromunprofiledrounds. HostedwallmeasurementhasnoCPUbreakdownsoitscauseisnotdirectlyobservable."
+}

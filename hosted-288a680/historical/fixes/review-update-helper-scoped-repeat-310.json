@@ -1,0 +1,114 @@
+{
+  "python": "3.10.22",
+  "iterations": 20,
+  "results": [
+    {
+      "iteration": 1,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 2,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 3,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 4,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 5,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 6,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 7,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 8,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 9,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 10,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 11,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 12,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 13,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 14,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 15,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 16,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 17,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 18,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 19,
+      "status": "passed",
+      "fd_count": 4
+    },
+    {
+      "iteration": 20,
+      "status": "passed",
+      "fd_count": 4
+    }
+  ],
+  "fd_before": 4,
+  "fd_after": 4,
+  "seconds": 2.9478081030247267,
+  "limits": "Actual local Linux subprocess fixture; not hosted-cause proof or performance benchmark.",
+  "sources": {
+    "tests/test_update_source.py": "3fa09bbe570a74fc6339435a674f4bbe9665f9161cfceb3c0cdfe4085e701857",
+    "raven/installation/update_source.py": "00d018e1b8d89be57a9931dce0ecd0383b7e5e5a23c60c43aecbdd5c91ad8f86"
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "schema": "raven.update-helper-fixture-review/v1",
+  "status": "fixture-corrected-local-checks-passed-hosted-cause-unresolved",
+  "base_revision": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+  "runtime_changed": false,
+  "production_matches_base_revision": true,
+  "files": [
+    {
+      "path": "/workspace/Raven/tests/test_update_source.py",
+      "bytes": 27265,
+      "sha256": "3fa09bbe570a74fc6339435a674f4bbe9665f9161cfceb3c0cdfe4085e701857"
+    },
+    {
+      "path": "/workspace/Raven/raven/installation/update_source.py",
+      "bytes": 43128,
+      "sha256": "00d018e1b8d89be57a9931dce0ecd0383b7e5e5a23c60c43aecbdd5c91ad8f86"
+    }
+  ],
+  "historical_observation": {
+    "test": "tests/test_update_source.py::test_exited_git_leader_cannot_strand_helper_holding_stdout",
+    "python": "3.10 hosted runner",
+    "failure": "PID read from shared helper.pid appeared alive after the existing two-second assertion.",
+    "cause": "Unresolved: hosted failure log lacks helper PID/PGID/SID/start-time and signal-state evidence; deterministic ambiguity below does not establish the historical cause."
+  },
+  "verified_baseline": {
+    "instrumented_iterations": 30,
+    "survivors": 0,
+    "evidence": "/workspace/review-update-helper-probe-310.json",
+    "ownership": "Actual command leader stays unreaped while its original private group receives TERM/KILL; recorded helper becomes zombie; unrelated sentinel remains alive."
+  },
+  "verified_fixture_ambiguity": {
+    "evidence": "/workspace/review-update-helper-interference-310.json",
+    "mechanism": "Global PATH and shared helper PID environment redirect concurrent unrelated Git calls to the same fake, whose helper overwrites helper.pid.",
+    "owned_helper": {
+      "pid": 593647,
+      "pgid": 593646,
+      "state": "Z"
+    },
+    "pidfile_helper": {
+      "pid": 593649,
+      "pgid": 593648,
+      "state": "S"
+    },
+    "result": "The original two-second assertion can observe an unrelated live helper; production correctly leaves that other group untouched."
+  },
+  "implementation": [
+    "Inject the fake through a module-local subprocess proxy only for this exact command on the test owner thread; preserve process-wide PATH, environment and subprocess.Popen.",
+    "Verify actual leader/helper PGID, SID and birth evidence at readiness; retain the exact helper pidfd until cleanup.",
+    "Concurrently run real Git on the same checkout to assert unrelated calls remain unaffected.",
+    "Retain the timeout, helper death and unrelated sentinel assertions; clean the owned group even if readiness raises before U.git receives Popen.",
+    "Check group cleanup while the exact unreaped Popen reserves the leader PID, and signal any retained helper through the captured pidfd rather than reopening a numeric PID."
+  ],
+  "simpler_alternative": {
+    "considered": "Give each fake invocation a separate PID filename while retaining global PATH redirection.",
+    "reason_not_selected": "This still redirects unrelated background Git calls and requires identifying the exact invocation. Narrow injection directly removes that cross-test/global environment effect."
+  },
+  "preserved_assertions": {
+    "command_timeout_seconds": 0.1,
+    "helper_exit_assertion_seconds": 2,
+    "unrelated_sentinel_must_remain_alive": true,
+    "no_skip_or_timeout_relaxation": true,
+    "new_guards": [
+      "exact Popen invocation and thread",
+      "leader/helper PGID and SID match",
+      "helper birth identity",
+      "actual unrelated Git succeeds",
+      "global Popen unchanged"
+    ]
+  },
+  "checks": [
+    {
+      "command": "/workspace/raven-compat/py3.10/bin/python -m pytest -q tests/test_update_source.py > /workspace/review-update-helper-whole-310.log 2>&1",
+      "result": "32 passed in 5.93s"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_update_source.py > /workspace/review-update-helper-whole-312.log 2>&1",
+      "result": "32 passed in 5.79s"
+    },
+    {
+      "command": "/workspace/raven-compat/py3.14/bin/python -m pytest -q tests/test_update_source.py::test_exited_git_leader_cannot_strand_helper_holding_stdout > /workspace/review-update-helper-scoped-314.log 2>&1",
+      "result": "1 passed in 0.50s"
+    },
+    {
+      "command": "PYTHONPATH=/workspace/Raven /workspace/raven-compat/py3.10/bin/python /workspace/review-update-helper-scoped-repeat.py --iterations 20 --output /workspace/review-update-helper-scoped-repeat-310.json > /workspace/review-update-helper-scoped-repeat-310.log 2>&1",
+      "result": "20 actual scoped fixtures passed; FD 4 -> 4"
+    },
+    {
+      "command": "PYTHONPATH=/workspace/Raven /workspace/raven-compat/py3.10/bin/python /workspace/review-update-helper-readiness-failure.py > /workspace/review-update-helper-readiness-failure-310.log 2>&1",
+      "result": "Forced readiness failure raised before U.git receives Popen; exact owned leader/helper stopped and resources/control thread cleaned."
+    }
+  ],
+  "non_additive_counts": true,
+  "qualification_limits": [
+    "Local Linux subprocess tests; no hosted replacement run has passed yet.",
+    "No production cleanup regression was reproduced; no runtime fix is claimed.",
+    "Iteration durations are diagnostics, not controlled performance measurements.",
+    "Final integrated/hosted CI qualification remains the parent task."
+  ],
+  "evidence": [
+    {
+      "path": "/workspace/review-hosted-py310-ffda87d.log",
+      "bytes": 96908,
+      "sha256": "62ca5d54cbbed537c1a4a294185c8a92f5e776f88acca53814b05643fc9d3e73"
+    },
+    {
+      "path": "/workspace/review-update-helper-probe.py",
+      "bytes": 4849,
+      "sha256": "9ae5cd0ad30d8e8fea70f7fa47110308cdd26801c34ff7bed5327b52da89725a"
+    },
+    {
+      "path": "/workspace/review-update-helper-probe-310.json",
+      "bytes": 210252,
+      "sha256": "fec966a348660120aa0a90e302f3a38513520195b6fb08639536f0ffed0fbcab"
+    },
+    {
+      "path": "/workspace/review-update-helper-interference.py",
+      "bytes": 2888,
+      "sha256": "84753c6758af19f5fb479bd8dea59bd6db2a925dde635bf6fa55cf96b64b4b37"
+    },
+    {
+      "path": "/workspace/review-update-helper-interference-310.json",
+      "bytes": 631,
+      "sha256": "5ad52c6ef5c9710a95ed21a928cd08f12d0b88aae6cabe60a5cc6d5cac923d21"
+    },
+    {
+      "path": "/workspace/review-update-helper-scoped-repeat.py",
+      "bytes": 2083,
+      "sha256": "8babe003eb4348959597c0e92c29f124bb69accfeab529169e486178678c0f38"
+    },
+    {
+      "path": "/workspace/review-update-helper-scoped-repeat-310.json",
+      "bytes": 2100,
+      "sha256": "f5c92f15fbecfd55fafd6caa7eec0a6fa5773ecbabafe9c8f5d2e3438824f1dd"
+    },
+    {
+      "path": "/workspace/review-update-helper-scoped-repeat-310.log",
+      "bytes": 102,
+      "sha256": "fee687ee4df29d022d7a6a2b1d149c03482376007be756c72921313eb6dc4266"
+    },
+    {
+      "path": "/workspace/review-update-helper-readiness-failure.py",
+      "bytes": 3156,
+      "sha256": "d3d19545d0f333d8e98a40c03b716a915106341822f4b8ee4d37fb9c55c98985"
+    },
+    {
+      "path": "/workspace/review-update-helper-readiness-failure-310.json",
+      "bytes": 1039,
+      "sha256": "5d44713bbec90a9afed0ad97ff5ef52a63d3edc4b057127ebfae930dca0b8a4c"
+    },
+    {
+      "path": "/workspace/review-update-helper-readiness-failure-310.log",
+      "bytes": 67,
+      "sha256": "0622b6e640e807f7fb0938caa582e78e2d34587d66bd5db113e676b33f2cec5e"
+    },
+    {
+      "path": "/workspace/review-update-helper-whole-310.log",
+      "bytes": 99,
+      "sha256": "743ee6587d16a73b2572a7d1260e16ebcd51c22b15df324463b2a181f4941b35"
+    },
+    {
+      "path": "/workspace/review-update-helper-whole-312.log",
+      "bytes": 99,
+      "sha256": "37d5d50fb9817a35a79be62892e759b7dc26c3a0b68bb93572007a53a8b8b3d8"
+    },
+    {
+      "path": "/workspace/review-update-helper-scoped-314.log",
+      "bytes": 98,
+      "sha256": "7f20721722339faad833bedbd918bbce72ec5ee8917b82cf8b1a09bf4e47f2f3"
+    }
+  ]
+}

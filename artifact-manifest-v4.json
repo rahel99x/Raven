@@ -1,0 +1,901 @@
+{
+  "schema": "raven.adversarial-review-artifacts/v4",
+  "append_only_parent_commit": "3a3288c8bb057cfdf8a050489ed13835e2940708",
+  "prior_manifests": {
+    "artifact-manifest.json": "b0c832f8014bde4db93442c9125cca97d77005658bb3c6a58d2075dd7a71b17c",
+    "artifact-manifest-v2.json": "3b5d5fcdac5a6d437c54c45a8eee1057cd6fe78a583b4a95e0bc00175554e2c8",
+    "artifact-manifest-v3.json": "ed5c548067bfc594972ba9871dc5280312ac8faf7d216d229b8ae6bfbe1a3a2a"
+  },
+  "pull_request_head": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+  "tested_merge": "2ccc55500471314c12631596c09bfda9335efc50",
+  "tested_tree": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+  "main_commit": "2bfe5795290575de0e1c4390f2166e89897902f6",
+  "new_payload_count": 132,
+  "new_payload_bytes": 10771403,
+  "files": {
+    "hosted-288a680/README.md": {
+      "bytes": 1490,
+      "sha256": "b99055661632df3bd9f20fa5995da2d6fbd69a006bb1f9430ef1d63af00b05af",
+      "role": "Scope and immutable source/merge binding; earlier archive versions remain unchanged",
+      "source": "generated"
+    },
+    "hosted-288a680/content-audit.json": {
+      "bytes": 4833,
+      "sha256": "ec6b3e93caf900d42e8695529fea418d78c6d8bd54d2fbd3da0309f55b98049c",
+      "role": "Complete bounded archive/pattern inspection with exact fixture allowances; generated audit also independently scanned",
+      "source": "generated from retained completed records"
+    },
+    "hosted-288a680/distribution/SHA256SUMS": {
+      "bytes": 180,
+      "sha256": "97538d4b4d31915155ee5fa8dd5f07a86ecd5781d25a529224fa0bdd4c18fa52",
+      "role": "Exact final hosted checksums or SPDX inventory; checksum equality is not publisher authentication",
+      "source": "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/SHA256SUMS"
+    },
+    "hosted-288a680/distribution/artifact-metadata.json": {
+      "bytes": 788,
+      "sha256": "7b848d81c1a670b2abd239f125893921b2fa12eb6f23825c0e5cb8bc3e573636",
+      "role": "Unmodified final hosted distribution artifact/run metadata or independently recorded release policy verification",
+      "source": "/workspace/review-hosted-distributions-288a680/artifact-metadata.json"
+    },
+    "hosted-288a680/distribution/flagship.json": {
+      "bytes": 5201,
+      "sha256": "c9a26534a650034a9575711956016221599c14f253f77ca0717989db73287492",
+      "role": "Actual final hosted recorded qualification with explicit untested hardware/production/human-study limits",
+      "source": "/workspace/review-hosted-distributions-288a680/tmp/raven-qualification.json"
+    },
+    "hosted-288a680/distribution/offline.json": {
+      "bytes": 189509,
+      "sha256": "6a4e4e43d14a402e69c7f721454a0dbc496705e36e6c059015be95344f289f7e",
+      "role": "Actual final hosted recorded qualification with explicit untested hardware/production/human-study limits",
+      "source": "/workspace/review-hosted-distributions-288a680/tmp/raven-offline-qualification.json"
+    },
+    "hosted-288a680/distribution/ordinary-update-records.tar.gz": {
+      "bytes": 235840,
+      "sha256": "95d9a31bd383d61dc7f5e58227abb8f801bfde275d0a24bd9efa83d1827cd897",
+      "role": "Actual33 ordinary managed/pipx update/revert checks,2298 input source hashes and all33 exact logs; separate from private-umask run, overlapping workflows",
+      "source": "/workspace/review-hosted-final-preparation-288a680/ordinary-update-records.tar.gz"
+    },
+    "hosted-288a680/distribution/prototype-six-journeys.json": {
+      "bytes": 140558,
+      "sha256": "33db3f01f286309386503ed511a839efe2df1c5039fe9f33941dc49224c374f0",
+      "role": "Actual final hosted experimental prototype manifest, all six installed journeys and mismatch refusal. Per-build stderr logs were not uploaded; product split remains experimental.",
+      "source": "/workspace/review-hosted-distributions-288a680/tmp/raven-distribution-prototype/manifest.json"
+    },
+    "hosted-288a680/distribution/raven-7.0.0-py3-none-any.whl": {
+      "bytes": 2216469,
+      "sha256": "758363a7c336f47d20b4dd8b5d2898c06d68beb2f127352c300d42268de92956",
+      "role": "Actual final hosted build artifact, read without importing/executing archived programs",
+      "source": "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/raven-7.0.0-py3-none-any.whl"
+    },
+    "hosted-288a680/distribution/raven-7.0.0.tar.gz": {
+      "bytes": 5154697,
+      "sha256": "cbff7fd61f7b96bfc1e6e7913a99136aedb9ca5ec119463e6168659ad676e426",
+      "role": "Actual final hosted build artifact, read without importing/executing archived programs",
+      "source": "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/raven-7.0.0.tar.gz"
+    },
+    "hosted-288a680/distribution/raven.spdx.json": {
+      "bytes": 2299,
+      "sha256": "5fc9696d21bdd3c1065d4429b6182c7f35dacde929d56296b24d8cb602928696",
+      "role": "Exact final hosted checksums or SPDX inventory; checksum equality is not publisher authentication",
+      "source": "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/raven.spdx.json"
+    },
+    "hosted-288a680/distribution/receipt.json": {
+      "bytes": 7247,
+      "sha256": "afab3c774f0c421c6b82663e3d7b4a16da027ca2b34caa14291d3ecd3885dd19",
+      "role": "Actual final Python3.12 artifact receipt, GH ZIP digest, exact source-byte and lifecycle verification; not a separate whole-workflow qualification",
+      "source": "/workspace/review-hosted-distributions-288a680-result.json"
+    },
+    "hosted-288a680/distribution/release-inventory.json": {
+      "bytes": 576504,
+      "sha256": "ed1ce686726e3cdb8d02acefe4313d0d93402a0b1b449857213c7e5884e42868",
+      "role": "Exact final member-level release inventory; independently checked against Git and artifact members",
+      "source": "/workspace/review-hosted-distributions-288a680/home/runner/work/Raven/Raven/dist/release-inventory.json"
+    },
+    "hosted-288a680/distribution/release-policy-verification.log": {
+      "bytes": 94,
+      "sha256": "ec31229a52d0ee43577c859fd35c6bf073489707567134dea4e6dc8c47af5378",
+      "role": "Unmodified final hosted distribution artifact/run metadata or independently recorded release policy verification",
+      "source": "/workspace/review-hosted-distributions-288a680/release-policy-verification.log"
+    },
+    "hosted-288a680/distribution/run-metadata.json": {
+      "bytes": 29228,
+      "sha256": "df8d4af2f3d9f489b2f34a794caea8686fe629bbad8c75c1d352e7fa12742a15",
+      "role": "Unmodified final hosted distribution artifact/run metadata or independently recorded release policy verification",
+      "source": "/workspace/review-hosted-distributions-288a680/run-metadata.json"
+    },
+    "hosted-288a680/distribution/source-byte-verification.json": {
+      "bytes": 63880,
+      "sha256": "ded3a58fd94fa0d9e7012b5c2fffb51e51b4195031e6f0372b2fe648d64a2559",
+      "role": "Independent raw Git/hosted wheel/sdist/member-inventory/source-hash equality; no archived code executed. This establishes source identity, not hardware, site or scientific efficacy.",
+      "source": "/workspace/review-hosted-final-preparation-288a680/source-byte-verification.json"
+    },
+    "hosted-288a680/drivers/capture-final-python-ci.py": {
+      "bytes": 16750,
+      "sha256": "9133f0e90949b30edece7e1e24f3fb5aff92173ff2efc0607b199046d07ea420",
+      "role": "Completed-job capture driver; retains complete raw logs, exact full-regression step counts and explicitly labelled excerpts with source hashes",
+      "source": "/workspace/capture-final-python-ci.py"
+    },
+    "hosted-288a680/drivers/capture-hosted-distribution-evidence.py": {
+      "bytes": 13245,
+      "sha256": "9322c39ea15e3ce08e797431cbd5a9bd5f0f09ae0a9602fc6a24387f0c7411f3",
+      "role": "Actual artifact/source or main-delivery verifier driver; archived without execution",
+      "source": "/workspace/capture-hosted-distribution-evidence.py"
+    },
+    "hosted-288a680/drivers/capture-hosted-install-evidence.py": {
+      "bytes": 5055,
+      "sha256": "29829a8d67f2d150268b0940802db53b3f90413c81a4f80c79934ad498fa7ab4",
+      "role": "Hosted installer artifact capture driver; its exact SHA must be tied to receipt rather than assumed measured",
+      "source": "/workspace/capture-hosted-install-evidence.py"
+    },
+    "hosted-288a680/drivers/fill-hosted-review-ready-contract.py": {
+      "bytes": 14133,
+      "sha256": "0ba556fb53575ffdbb91698a91d4654d75327aa62802bc83987fe23906b1abe5",
+      "role": "Parent-released input/source/archive verifier and contract filler; no Git snapshot or publication performed by this driver",
+      "source": "/workspace/fill-hosted-review-ready-contract.py"
+    },
+    "hosted-288a680/drivers/prepare-delivery-review-evidence.py": {
+      "bytes": 19764,
+      "sha256": "34c7306cef962974de5bac86a483ff55e0ebb1d336b19b509ad1123692369d3c",
+      "role": "Bounded content audit support used by coordinator",
+      "source": "/workspace/prepare-delivery-review-evidence.py"
+    },
+    "hosted-288a680/drivers/prepare-hosted-historical-inputs.py": {
+      "bytes": 11965,
+      "sha256": "dec91cb355f6e3aa81ceab3e4d48d021e9446610252fcb6311977b60587cf2f4",
+      "role": "Historical-input preparation driver; creates no Git snapshot or publication and does not qualify application behavior",
+      "source": "/workspace/prepare-hosted-historical-inputs.py"
+    },
+    "hosted-288a680/drivers/prepare-hosted-review-evidence.py": {
+      "bytes": 20315,
+      "sha256": "1c2147ae61bac9ec36cffc1e12cda83d8a644b90c5328f9276516da4529b90d4",
+      "role": "Archive coordinator; not another qualification run",
+      "source": "/workspace/prepare-hosted-review-evidence.py"
+    },
+    "hosted-288a680/drivers/profile-remote-ui-final.py": {
+      "bytes": 4577,
+      "sha256": "2563c398dec2f545eed18398770b7f7acd534d277e88a9f6d23e35ed2e219c1c",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/profile-remote-ui-final.py"
+    },
+    "hosted-288a680/drivers/profile-remote-ui-loop.py": {
+      "bytes": 4485,
+      "sha256": "e2215f257857873881f47a45c9471f13b5604d2e083dd71bfb91451ea6639281",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/profile-remote-ui-loop.py"
+    },
+    "hosted-288a680/drivers/review-update-helper-interference.py": {
+      "bytes": 2888,
+      "sha256": "84753c6758af19f5fb479bd8dea59bd6db2a925dde635bf6fa55cf96b64b4b37",
+      "role": "Actual local helper-ownership diagnostic driver; not an additional hosted or controlled performance qualification",
+      "source": "/workspace/review-update-helper-interference.py"
+    },
+    "hosted-288a680/drivers/review-update-helper-probe.py": {
+      "bytes": 4849,
+      "sha256": "9ae5cd0ad30d8e8fea70f7fa47110308cdd26801c34ff7bed5327b52da89725a",
+      "role": "Actual local helper-ownership diagnostic driver; not an additional hosted or controlled performance qualification",
+      "source": "/workspace/review-update-helper-probe.py"
+    },
+    "hosted-288a680/drivers/review-update-helper-readiness-failure.py": {
+      "bytes": 3156,
+      "sha256": "d3d19545d0f333d8e98a40c03b716a915106341822f4b8ee4d37fb9c55c98985",
+      "role": "Actual local helper-ownership diagnostic driver; not an additional hosted or controlled performance qualification",
+      "source": "/workspace/review-update-helper-readiness-failure.py"
+    },
+    "hosted-288a680/drivers/review-update-helper-scoped-repeat.py": {
+      "bytes": 2083,
+      "sha256": "8babe003eb4348959597c0e92c29f124bb69accfeab529169e486178678c0f38",
+      "role": "Actual local helper-ownership diagnostic driver; not an additional hosted or controlled performance qualification",
+      "source": "/workspace/review-update-helper-scoped-repeat.py"
+    },
+    "hosted-288a680/drivers/verify-review-main-delivery.py": {
+      "bytes": 2635,
+      "sha256": "5235583e175ced68f7b871fad657901cb48956f72ce9725319807556bf4387a7",
+      "role": "Actual artifact/source or main-delivery verifier driver; archived without execution",
+      "source": "/workspace/verify-review-main-delivery.py"
+    },
+    "hosted-288a680/historical/capture-driver-parser-validation.json": {
+      "bytes": 5001,
+      "sha256": "cf81b1d9bf9b92262e3589dda96ca884d5881811532a1ba3ee33d216b9ba16d0",
+      "role": "Offline capture/parser validation; eleven cases are driver tests and not hosted application qualification",
+      "source": "/workspace/capture-final-python-ci-parser-validation.json"
+    },
+    "hosted-288a680/historical/ffda87d-complete-workflow.json": {
+      "bytes": 18611,
+      "sha256": "445be2026e436176e9c83166f29e804f26221e39443c157aaa5381e27fc0aaf6",
+      "role": "Completed failed second-candidate workflow with all actual job and step outcomes; not final acceptance",
+      "source": "/workspace/review-hosted-ffda87d-complete.json"
+    },
+    "hosted-288a680/historical/ffda87d-pr-tree-proof.json": {
+      "bytes": 397,
+      "sha256": "903021108ce383b8ec44236d46e869291931fb86b699a74f47b868235956ea8d",
+      "role": "Historical exact Git-object tree/parent proof for the failed second candidate, not the pending final replacement",
+      "source": "/workspace/review-hosted-historical-preparation/ffda87d-pr-tree-proof.json"
+    },
+    "hosted-288a680/historical/ffda87d-python-summary.json": {
+      "bytes": 2137,
+      "sha256": "de530ad0ae1290d4647ff1250ee551523147c971b213c5695648b43348f9abaa",
+      "role": "Exact second-candidate per-interpreter full regression outcomes and original complete-log hashes; Python3.12 full success precedes packaging failure",
+      "source": "/workspace/review-hosted-ffda87d-python-summary.json"
+    },
+    "hosted-288a680/historical/fixes/committed-delivery-corrections-288a680.json": {
+      "bytes": 31827,
+      "sha256": "5381bb8e97a064e7dc591b8ab9afd52e5abde7d2ed5c529ff0c15bb2fc9bacf4",
+      "role": "Compact actual committed correction summary from288a680, binding the three locally qualified fixes and preserving unresolved historical-cause limits; not final hosted acceptance",
+      "source": "/workspace/review-hosted-historical-preparation/hosted-delivery-corrections-288a680.json"
+    },
+    "hosted-288a680/historical/fixes/owner-c-capture-python-compatibility.json": {
+      "bytes": 2939,
+      "sha256": "bd1ffdb7242f6ac92ac6adf1a471e8c9f7c8642b66edd8bcad74ac2b116682c9",
+      "role": "Actual diagnosis, test-only compatibility/readiness fix and focused qualification; source fields and no-runtime-change limits retained",
+      "source": "/workspace/owner-c-capture-python-compatibility.json"
+    },
+    "hosted-288a680/historical/fixes/prototype-build-isolation.json": {
+      "bytes": 5076,
+      "sha256": "f19b4b3d53639aba6850479acb6d2b8ad80b00f333fd95614c7973c3576f3f8d",
+      "role": "Verified hosted and independent backend mismatch, isolated-build correction, source hashes and six complete installed experimental journeys; final hosted replacement still pending",
+      "source": "/workspace/review-prototype-build-isolation-final.json"
+    },
+    "hosted-288a680/historical/fixes/remote-log-fixture.json": {
+      "bytes": 32562,
+      "sha256": "3c7d8bdf6b8943b4a4368d96b6b52e2270744f4df01ef8eebaed719b601ca15c",
+      "role": "Actual shared-scheduler fixture omission, deterministic nonblocking guards and unchanged0.5second thread-CPU work bound; original hosted wall-delay attribution remains unavailable",
+      "source": "/workspace/review-remote-log-fixture-final.json"
+    },
+    "hosted-288a680/historical/fixes/review-hosted-terminal-readiness-fix.json": {
+      "bytes": 6286,
+      "sha256": "231b8d45a73629cede901f100254e727204b6d2dd476bb09c9d7630f25b2be6c",
+      "role": "Actual diagnosis, test-only compatibility/readiness fix and focused qualification; source fields and no-runtime-change limits retained",
+      "source": "/workspace/review-hosted-terminal-readiness-fix.json"
+    },
+    "hosted-288a680/historical/fixes/review-nohup-readiness-reproduction.json": {
+      "bytes": 512,
+      "sha256": "4953ac9a5bc027c971f5ddfed8df7a4aee0d8fbad9dda2ef8763fd620357c96d",
+      "role": "Actual diagnosis, test-only compatibility/readiness fix and focused qualification; source fields and no-runtime-change limits retained",
+      "source": "/workspace/review-nohup-readiness-reproduction.json"
+    },
+    "hosted-288a680/historical/fixes/review-remote-log-final-py311-profile.log": {
+      "bytes": 7872,
+      "sha256": "f07ec10a07cfc7c25ae1a5971b5435f8fd0ba1d45416c8c3bcc5363612a0c2d6",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-log-final-py311-profile.log"
+    },
+    "hosted-288a680/historical/fixes/review-remote-log-final-py311.json": {
+      "bytes": 7872,
+      "sha256": "f07ec10a07cfc7c25ae1a5971b5435f8fd0ba1d45416c8c3bcc5363612a0c2d6",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-log-final-py311.json"
+    },
+    "hosted-288a680/historical/fixes/review-remote-log-final-py312-profile.log": {
+      "bytes": 7767,
+      "sha256": "056d50e283c47bb76ccaa7abd6724da17e4d96c3853bf2672c1b71537a3fa3c7",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-log-final-py312-profile.log"
+    },
+    "hosted-288a680/historical/fixes/review-remote-log-final-py312.json": {
+      "bytes": 7767,
+      "sha256": "056d50e283c47bb76ccaa7abd6724da17e4d96c3853bf2672c1b71537a3fa3c7",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-log-final-py312.json"
+    },
+    "hosted-288a680/historical/fixes/review-remote-log-whole-py311.log": {
+      "bytes": 99,
+      "sha256": "27960904309bdee7a7330b011c129898af0e213a69ab2f2af1becb6281fb541d",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-log-whole-py311.log"
+    },
+    "hosted-288a680/historical/fixes/review-remote-log-whole-py312.log": {
+      "bytes": 99,
+      "sha256": "bcbc8187e0ef324d98968b7a1a6e5d86ed27f97ff687e2b02c1db3014c1d7881",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-log-whole-py312.log"
+    },
+    "hosted-288a680/historical/fixes/review-remote-ui-profile-py311.json": {
+      "bytes": 5677,
+      "sha256": "4c047d1bcb5fd9e8f57e7435f738dbcc2576e1ea5b844d79f13183ac7811774e",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-ui-profile-py311.json"
+    },
+    "hosted-288a680/historical/fixes/review-remote-ui-profile-py312.json": {
+      "bytes": 5641,
+      "sha256": "707e8e2464e083d5cf5a854b4f0925d2ed41b1c3e6a8febed39e55c7729e73db",
+      "role": "Actual local remote-log fixture profile/guard/cleanup evidence; descriptive shared-host observations, no controlled product speedup or exact historical hosted wall-cause claim",
+      "source": "/workspace/review-remote-ui-profile-py312.json"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-interference-310.json": {
+      "bytes": 631,
+      "sha256": "5ad52c6ef5c9710a95ed21a928cd08f12d0b88aae6cabe60a5cc6d5cac923d21",
+      "role": "Local helper-fixture diagnosis/probe evidence; exact historical hosted cause remains unresolved and production update_source.py is unchanged",
+      "source": "/workspace/review-update-helper-interference-310.json"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-probe-310.json": {
+      "bytes": 210252,
+      "sha256": "fec966a348660120aa0a90e302f3a38513520195b6fb08639536f0ffed0fbcab",
+      "role": "Local helper-fixture diagnosis/probe evidence; exact historical hosted cause remains unresolved and production update_source.py is unchanged",
+      "source": "/workspace/review-update-helper-probe-310.json"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-readiness-failure-310.json": {
+      "bytes": 1039,
+      "sha256": "5d44713bbec90a9afed0ad97ff5ef52a63d3edc4b057127ebfae930dca0b8a4c",
+      "role": "Local helper-fixture diagnosis/probe evidence; exact historical hosted cause remains unresolved and production update_source.py is unchanged",
+      "source": "/workspace/review-update-helper-readiness-failure-310.json"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-readiness-failure-310.log": {
+      "bytes": 67,
+      "sha256": "0622b6e640e807f7fb0938caa582e78e2d34587d66bd5db113e676b33f2cec5e",
+      "role": "Actual local focused/repeated/fault-injected fixture validation; counts overlap and historical hosted cause remains unresolved",
+      "source": "/workspace/review-update-helper-readiness-failure-310.log"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-scoped-314.log": {
+      "bytes": 98,
+      "sha256": "7f20721722339faad833bedbd918bbce72ec5ee8917b82cf8b1a09bf4e47f2f3",
+      "role": "Actual local focused/repeated/fault-injected fixture validation; counts overlap and historical hosted cause remains unresolved",
+      "source": "/workspace/review-update-helper-scoped-314.log"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-scoped-repeat-310.json": {
+      "bytes": 2100,
+      "sha256": "f5c92f15fbecfd55fafd6caa7eec0a6fa5773ecbabafe9c8f5d2e3438824f1dd",
+      "role": "Local helper-fixture diagnosis/probe evidence; exact historical hosted cause remains unresolved and production update_source.py is unchanged",
+      "source": "/workspace/review-update-helper-scoped-repeat-310.json"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-scoped-repeat-310.log": {
+      "bytes": 102,
+      "sha256": "fee687ee4df29d022d7a6a2b1d149c03482376007be756c72921313eb6dc4266",
+      "role": "Actual local focused/repeated/fault-injected fixture validation; counts overlap and historical hosted cause remains unresolved",
+      "source": "/workspace/review-update-helper-scoped-repeat-310.log"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-whole-310.log": {
+      "bytes": 99,
+      "sha256": "743ee6587d16a73b2572a7d1260e16ebcd51c22b15df324463b2a181f4941b35",
+      "role": "Actual local focused/repeated/fault-injected fixture validation; counts overlap and historical hosted cause remains unresolved",
+      "source": "/workspace/review-update-helper-whole-310.log"
+    },
+    "hosted-288a680/historical/fixes/review-update-helper-whole-312.log": {
+      "bytes": 99,
+      "sha256": "37d5d50fb9817a35a79be62892e759b7dc26c3a0b68bb93572007a53a8b8b3d8",
+      "role": "Actual local focused/repeated/fault-injected fixture validation; counts overlap and historical hosted cause remains unresolved",
+      "source": "/workspace/review-update-helper-whole-312.log"
+    },
+    "hosted-288a680/historical/fixes/update-helper-fixture.json": {
+      "bytes": 7929,
+      "sha256": "09830e681cc173088f47549319b0b228be698f13f4f1e7986298786d8587f095",
+      "role": "Local helper-fixture diagnosis/probe evidence; exact historical hosted cause remains unresolved and production update_source.py is unchanged",
+      "source": "/workspace/review-update-helper-fixture-final.json"
+    },
+    "hosted-288a680/historical/install-954213c-receipt.json": {
+      "bytes": 3003,
+      "sha256": "dd9904472aac3fa5cb2456252b183a6f791acabf91b04650b1f02a92bf7a2e05",
+      "role": "Completed earlier954213c Bash/private-umask job receipt; not a full workflow success claim",
+      "source": "/workspace/review-hosted-install-954213c.json"
+    },
+    "hosted-288a680/historical/install-ffda87d-receipt.json": {
+      "bytes": 3212,
+      "sha256": "4dd677632f8a92550952303c09f4d469df1e9ed74c5d721b87c5c3b3fd47dd31",
+      "role": "Frozen second-candidate installer subset success, separate from its failed complete Python workflow",
+      "source": "/workspace/review-hosted-install-ffda87d/summary.json"
+    },
+    "hosted-288a680/historical/prototype/clean-outer-baseline-failure.json": {
+      "bytes": 67004,
+      "sha256": "64726ecaa42060e97e22dcc8bd12bfae70e89882999f8319f45aba5b31afafbc",
+      "role": "Independent actual same-backend mismatch reproduction in clean outer setuptools84.2/no-wheel environment",
+      "source": "/workspace/review-prototype-clean-baseline/manifest.json"
+    },
+    "hosted-288a680/historical/prototype/clean-outer-baseline-failure.stderr.txt": {
+      "bytes": 249,
+      "sha256": "442a9f803df0448c0392fa48cd4108fb8e3eaca57e203b5e5029041559f33c2e",
+      "role": "Verbatim stderr field extracted from source manifest SHA256 64726ecaa42060e97e22dcc8bd12bfae70e89882999f8319f45aba5b31afafbc; derived view, original full manifest also retained",
+      "source": "/workspace/review-hosted-historical-preparation/clean-outer-baseline-failure.stderr.txt"
+    },
+    "hosted-288a680/historical/prototype/clean-outer-baseline.log.gz": {
+      "bytes": 165,
+      "sha256": "643debb85c1d4e80afdfdefce7d19e14b6287098b4c45390eb68cc47f4520498",
+      "role": "Exact local prototype baseline/correction validation output; not a new hosted run",
+      "source": "/workspace/review-prototype-clean-baseline.log",
+      "source_bytes": 191,
+      "source_sha256": "5b94edfb44df7947c5db99602ec0e6c51d80fdf9daaa2c58982d660a72b0e65a",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/prototype/hosted-ffda87d-failure.json": {
+      "bytes": 67004,
+      "sha256": "997fc517f8e8853ff94176989854dac617788422ff10a141f49b8bcccd24d39b",
+      "role": "Actual hosted failed prototype manifest including verbatim backend mismatch stdout/stderr and exact source manifest",
+      "source": "/workspace/review-hosted-ffda87d-distributions/tmp/raven-distribution-prototype/manifest.json"
+    },
+    "hosted-288a680/historical/prototype/hosted-ffda87d-failure.stderr.txt": {
+      "bytes": 249,
+      "sha256": "6add8df11c894cb9695eae822318c05b2ef7be0b2144731dc00d76b12ae3c0af",
+      "role": "Verbatim stderr field extracted from source manifest SHA256 997fc517f8e8853ff94176989854dac617788422ff10a141f49b8bcccd24d39b; derived view, original full manifest also retained",
+      "source": "/workspace/review-hosted-historical-preparation/hosted-ffda87d-failure.stderr.txt"
+    },
+    "hosted-288a680/historical/prototype/local-focused-tests.log.gz": {
+      "bytes": 51,
+      "sha256": "3953cfcdaa8576f6c5e542380648f116d7a12097c9107301620e0122bbfaa9b3",
+      "role": "Exact local prototype baseline/correction validation output; not a new hosted run",
+      "source": "/workspace/review-prototype-isolation-focused.log",
+      "source_bytes": 98,
+      "source_sha256": "0b3d001eb0bc421079cbcf35fc6fe4fc437ef0284f3597f9acb6ae4ae6df897b",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/prototype/local-isolated-core-build.log.gz": {
+      "bytes": 14110,
+      "sha256": "641e916d6ff30f9457033859911596216f5fc7ce38e2ab0bacd75225e9ca8036",
+      "role": "Actual isolated PEP517 build log from local six-journey experiment; no production split publication or final hosted acceptance claim",
+      "source": "/workspace/review-prototype-isolation-final/core-build.log",
+      "source_bytes": 156865,
+      "source_sha256": "5d9426d7b444c46179022a3d69b6be43a2d2f970399c6466467f2a0fd037b0e0",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/prototype/local-isolated-full-build.log.gz": {
+      "bytes": 14438,
+      "sha256": "a7feaf14d352df4f97cf9804f85fea50b780df94761315dabc16aa42df2f0d0d",
+      "role": "Actual isolated PEP517 build log from local six-journey experiment; no production split publication or final hosted acceptance claim",
+      "source": "/workspace/review-prototype-isolation-final/full-build.log",
+      "source_bytes": 152594,
+      "source_sha256": "98ee8daa60831d8e444cfecf02d96f2f65fb55eacdce9ec25f6b46c34ecc78f0",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/prototype/local-isolated-lab-build.log.gz": {
+      "bytes": 1397,
+      "sha256": "c69db284426d736075a86313ee753c579c258e9dfa3bef45870b975d9827cc93",
+      "role": "Actual isolated PEP517 build log from local six-journey experiment; no production split publication or final hosted acceptance claim",
+      "source": "/workspace/review-prototype-isolation-final/lab-build.log",
+      "source_bytes": 11871,
+      "source_sha256": "173da4d6e34e49498b402636bcc62e237e77f1a740980fca40c6d45c184caffc",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/prototype/local-isolated-next-core-build.log.gz": {
+      "bytes": 11330,
+      "sha256": "c050ba48030a9863a05ddc1e28b21c51aa73c4937b3e689b5dd9fa73be0bd8de",
+      "role": "Actual isolated PEP517 build log from local six-journey experiment; no production split publication or final hosted acceptance claim",
+      "source": "/workspace/review-prototype-isolation-final/next-core-build.log",
+      "source_bytes": 110115,
+      "source_sha256": "8917df66c08a916e1ca2fd9342e8c8d2a653cf66fdda0ad50d7d6289a0202be9",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/prototype/local-isolated-next-lab-build.log.gz": {
+      "bytes": 1106,
+      "sha256": "1d0b5ccf0ccd057fdd495e22ea34bc9f9944bc801290eb48eb58ff6aa2a73851",
+      "role": "Actual isolated PEP517 build log from local six-journey experiment; no production split publication or final hosted acceptance claim",
+      "source": "/workspace/review-prototype-isolation-final/next-lab-build.log",
+      "source_bytes": 7612,
+      "source_sha256": "cd7061d690fcb451075dec04256287a8567af5dbf4dfd982dade744bb5c5e3c9",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/prototype/local-isolated-passing-six-journeys.json": {
+      "bytes": 140554,
+      "sha256": "7b77c8eddadc15dfdfe54181fe3499e4ec1cd13d877bb2f33b8d0c563aa5a9b6",
+      "role": "Actual local five isolated builds, six installed add/remove/upgrade/downgrade journeys and mismatch refusal with626package source hashes",
+      "source": "/workspace/review-prototype-isolation-final/manifest.json"
+    },
+    "hosted-288a680/historical/prototype/local-isolated-qualification.log.gz": {
+      "bytes": 353,
+      "sha256": "634010210757ddd991a38f1917a9c848582b135de7c18a9ddf5912a0d012cd54",
+      "role": "Exact local prototype baseline/correction validation output; not a new hosted run",
+      "source": "/workspace/review-prototype-isolation-final.log",
+      "source_bytes": 603,
+      "source_sha256": "b69befb5093bb3d6bf69b6516668b7b59a4d22dc0d22e59800b1c51f70cbd89f",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py310-954213c.log.gz": {
+      "bytes": 12692,
+      "sha256": "9de77bb9ad99f9c30e19eb24fd7c573465361264e8f8ec88c887b92dea7e5b92",
+      "role": "Complete original failed954213c matrix job log; exact source, failure and interpreter context retained, not final acceptance",
+      "source": "/workspace/review-hosted-py310-954213c.log",
+      "source_bytes": 67795,
+      "source_sha256": "5369128735fbee5e0b5f27a44f3f03b7bfae4c26f1f42cf16e0985e3ef8db646",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py310-ffda87d.log.gz": {
+      "bytes": 11956,
+      "sha256": "f622143398d6059d572b1e91ce58835de498948aa413d5918b14c7e44d48b16e",
+      "role": "Complete unchanged second-candidate hosted job log, including passing and failing steps; counts overlap and do not imply workflow success",
+      "source": "/workspace/review-hosted-py310-ffda87d.log",
+      "source_bytes": 96908,
+      "source_sha256": "62ca5d54cbbed537c1a4a294185c8a92f5e776f88acca53814b05643fc9d3e73",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py311-954213c.log.gz": {
+      "bytes": 11972,
+      "sha256": "ebd878c0585f61f1ee53fab9982d4b9bc9adddb31c462a0df6cd6da246844699",
+      "role": "Complete historical failing hostedPython3.11 log. Three originally observed failures require corrected tests/readiness and replacement CI; not final acceptance.",
+      "source": "/workspace/review-hosted-py311-954213c.log",
+      "source_bytes": 65602,
+      "source_sha256": "d06d4f97c5a84b952fcac7404e3ac7e4123d1ca2fcc454e78ebacf1861eba7ad",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py311-ffda87d.log.gz": {
+      "bytes": 11356,
+      "sha256": "88c0567cdb83e32920c13e5bca868a8ddca478a76eaab9b70c64aee5318b367e",
+      "role": "Complete unchanged second-candidate hosted job log, including passing and failing steps; counts overlap and do not imply workflow success",
+      "source": "/workspace/review-hosted-py311-ffda87d.log",
+      "source_bytes": 94118,
+      "source_sha256": "11c8a96a2ccdd55e360e2e900b34768867be5ec08a4b45aa26133b05e3d7173d",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py312-954213c.log.gz": {
+      "bytes": 13435,
+      "sha256": "b02908156d39450ea4fca1a05fa700278e93cc7d8e63d1cbec6784b509ef9d33",
+      "role": "Complete original failed954213c matrix job log; exact source, failure and interpreter context retained, not final acceptance",
+      "source": "/workspace/review-hosted-py312-954213c.log",
+      "source_bytes": 74259,
+      "source_sha256": "7ca474d28776a3ee434952e80d4df4bc6bf2d04e6b62a209d43aa51d8dbfbf13",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py312-ffda87d.log.gz": {
+      "bytes": 88609,
+      "sha256": "a8b4289903c3f5c5fc9f44ac4ee656f0e2a6409f1eddb9e8abc11274f3520cf1",
+      "role": "Complete unchanged second-candidate hosted job log, including passing and failing steps; counts overlap and do not imply workflow success",
+      "source": "/workspace/review-hosted-py312-ffda87d.log",
+      "source_bytes": 980004,
+      "source_sha256": "c1fb8b1f6627b7c6cf33ea612e30fbe6594de76cbc1ec350006447790704e8a6",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py313-954213c.log.gz": {
+      "bytes": 10801,
+      "sha256": "e88308b5a03402392c1081eccc1c2a233a622da795083ad34120465c93d161aa",
+      "role": "Complete original failed954213c matrix job log; exact source, failure and interpreter context retained, not final acceptance",
+      "source": "/workspace/review-hosted-py313-954213c.log",
+      "source_bytes": 60140,
+      "source_sha256": "d3397f43bff96bd0afe4b16a2bd351af467b90ebde2cbd9da3469f9674921f72",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py313-ffda87d.log.gz": {
+      "bytes": 80006,
+      "sha256": "5809efe5719d57d8581739c805e80f208e7d8a9b8b3f78d00c3995b0c8622c54",
+      "role": "Complete unchanged second-candidate hosted job log, including passing and failing steps; counts overlap and do not imply workflow success",
+      "source": "/workspace/review-hosted-py313-ffda87d.log",
+      "source_bytes": 871832,
+      "source_sha256": "db1f8908705bed3865d9cee4573c3fc382c081dc8ed7b3553d9b982938664c2a",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py314-954213c.log.gz": {
+      "bytes": 10789,
+      "sha256": "aea3a52859ef88d0d30df388cdad86586a5aaf2736d6d168f8328aa799aac58b",
+      "role": "Complete original failed954213c matrix job log; exact source, failure and interpreter context retained, not final acceptance",
+      "source": "/workspace/review-hosted-py314-954213c.log",
+      "source_bytes": 59940,
+      "source_sha256": "04a130c9e8c41cdc5959e1d3da67c8247f3b97e6c693453393aa1483cce6f26c",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/py314-ffda87d.log.gz": {
+      "bytes": 80242,
+      "sha256": "35a205f40497ea7868425ddfbdeaa91e9d5eea18035fe43732e9a36c5d86948a",
+      "role": "Complete unchanged second-candidate hosted job log, including passing and failing steps; counts overlap and do not imply workflow success",
+      "source": "/workspace/review-hosted-py314-ffda87d.log",
+      "source_bytes": 871500,
+      "source_sha256": "7a66eb1280955b84d3f4b106f15f2f4102a53e517b06d369019d2aff888e3bab",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/historical/review-hosted-failed-jobs-954213c.json": {
+      "bytes": 34707,
+      "sha256": "e7d2828b90a703a445c308a641c91e37063d503c33881fbaf4c2c203bf3def70",
+      "role": "Original complete failed954213c workflow/job/per-interpreter receipt; retained separately from final successful replacement source",
+      "source": "/workspace/review-hosted-failed-jobs-954213c.json"
+    },
+    "hosted-288a680/historical/review-hosted-failed-python-summary-954213c.json": {
+      "bytes": 1544,
+      "sha256": "1c20c91fa69917a21fc5fc3f8812dfb0d2eadf618cb726264515be7e7276d630",
+      "role": "Original complete failed954213c workflow/job/per-interpreter receipt; retained separately from final successful replacement source",
+      "source": "/workspace/review-hosted-failed-python-summary-954213c.json"
+    },
+    "hosted-288a680/historical/review-hosted-failed-workflow-954213c.json": {
+      "bytes": 12093,
+      "sha256": "5fa55deeffed6dc5b2ad09bb0d3fdc7c9f24a5dc024ab1ad871f39b9d0b705a8",
+      "role": "Original complete failed954213c workflow/job/per-interpreter receipt; retained separately from final successful replacement source",
+      "source": "/workspace/review-hosted-failed-workflow-954213c.json"
+    },
+    "hosted-288a680/historical/slurm-954213c-manifest.json": {
+      "bytes": 34029,
+      "sha256": "dbc868ffe13850f23a9dc3cf306c68d9ec53bd4beabe27d69731ff72063d2703",
+      "role": "32actualSlurmchecks and all command/source mappings; retained separately from compact command-record tar",
+      "source": "/workspace/review-hosted-slurm-39461694191/manifest.json"
+    },
+    "hosted-288a680/historical/slurm-954213c-receipt.json": {
+      "bytes": 845,
+      "sha256": "0aa3e10aad17abf9aa9792800b310a6314f8c21c55b07b134a4ee4c7fb98030a",
+      "role": "Original hosted954213c Slurm success receipt; this path must retain its original earlier head and must not be overwritten for replacement qualification",
+      "source": "/workspace/review-hosted-real-slurm-result.json"
+    },
+    "hosted-288a680/input-contract.json": {
+      "bytes": 44213,
+      "sha256": "46b5085e7dd2916af19807b7de3812b8f35481b7104baa234208cf1d847b8383",
+      "role": "Parent release contract and original evidence/source mapping",
+      "source": "generated from retained completed records"
+    },
+    "hosted-288a680/install/bash32-result.json": {
+      "bytes": 1422,
+      "sha256": "eb93ddb43b28572cc2c152b9a69ef910634a461b809598c5bdc70c602373831a",
+      "role": "Actual pinned legacy Bash build/test report; Linux/GCC qualification only",
+      "source": "/workspace/review-hosted-install-288a680/bash32/result.json"
+    },
+    "hosted-288a680/install/bash32-tests.log": {
+      "bytes": 100,
+      "sha256": "43ee08caf4467208099c65855a3dc99a6bd491cfb55b8d8f812b49808ac51d09",
+      "role": "Authoritative downloaded hosted artifact test output; empty failed gh-run-view download excluded",
+      "source": "/workspace/review-hosted-install-288a680/bash32/tests.log"
+    },
+    "hosted-288a680/install/bash42-result.json": {
+      "bytes": 1422,
+      "sha256": "447c3c1f06adc502c862c95c311c126e6e6794e18e19690f78fa272b228727d5",
+      "role": "Actual pinned legacy Bash build/test report; Linux/GCC qualification only",
+      "source": "/workspace/review-hosted-install-288a680/bash42/result.json"
+    },
+    "hosted-288a680/install/bash42-tests.log": {
+      "bytes": 100,
+      "sha256": "024708cb3a08811aab1e177a42452ae0b46071976fa1f5dc6fc13f032e3acef0",
+      "role": "Authoritative downloaded hosted artifact test output; empty failed gh-run-view download excluded",
+      "source": "/workspace/review-hosted-install-288a680/bash42/tests.log"
+    },
+    "hosted-288a680/install/receipt.json": {
+      "bytes": 3212,
+      "sha256": "f083f70bbb2514a1b29ca565b3db41f96dd9b35da0c57d197d79d35642b70ce2",
+      "role": "Completed final hosted Bash/private-umask job/artifact identity receipt",
+      "source": "/workspace/review-hosted-install-288a680/summary.json"
+    },
+    "hosted-288a680/install/umask002-records.tar.gz": {
+      "bytes": 235822,
+      "sha256": "7e9d34b7108741dbf682176107bd0292c27f96a7e4350405a9e26a91ea9cb17c",
+      "role": "Exact actual33managed/pipx lifecycle report and all hash-bound logs, including legitimate empty successful-command logs",
+      "source": "/workspace/review-hosted-install-288a680/umask002"
+    },
+    "hosted-288a680/proofs/candidate-288a680-tree.json": {
+      "bytes": 568,
+      "sha256": "713bb74c2d50f2aae0cbc32b95eb33fcc1ee3c1226bb2850a2db93ced6217a1c",
+      "role": "Independent fetched synthetic merge parent/tree proof for candidate288a680; establishes identity, not successful CI or main publication",
+      "source": "/workspace/review-hosted-historical-preparation/candidate-288a680-tree-proof.json"
+    },
+    "hosted-288a680/proofs/main-delivery.json": {
+      "bytes": 1161,
+      "sha256": "7f89ba10162b264ac2dd8d31e450c21d0ec73503c6f65814776f65e2f9677cbe",
+      "role": "Independent final PR/main/source-artifact equality verification; main push workflow status is explicitly not inferred",
+      "source": "/workspace/review-main-delivery-proof.json"
+    },
+    "hosted-288a680/proofs/main-pr-merge-receipt.json": {
+      "bytes": 244,
+      "sha256": "06a339e58b424830b026b9574c44ec0e35896c313d8f1b817ef82d2bc0ff2c64",
+      "role": "Actual merged PR receipt binding final head and main merge commit",
+      "source": "/workspace/review-main-merged-pr.json"
+    },
+    "hosted-288a680/proofs/pull-request-head-commit-api.json": {
+      "bytes": 1180,
+      "sha256": "78bd62a0f539bbfa298dea4cfa8db0648b02ce8248a1c41801e12b7a564a0fdb",
+      "role": "Exact final head/synthetic-merge commit-tree API receipt; independently checked against local objects where available",
+      "source": "/workspace/review-final-python-ci-288a680/pull-request-head-commit-api.json"
+    },
+    "hosted-288a680/proofs/tested-merge-commit-api.json": {
+      "bytes": 2615,
+      "sha256": "40eccc6b84cfb8cc76a7b9034cdc6e826663fa22e1827d55ba1b263f2b19028b",
+      "role": "Exact final head/synthetic-merge commit-tree API receipt; independently checked against local objects where available",
+      "source": "/workspace/review-final-python-ci-288a680/tested-merge-commit-api.json"
+    },
+    "hosted-288a680/python/jobs-page-1.json": {
+      "bytes": 34707,
+      "sha256": "0990d32f2b50494fdf61799d7aa73c97cf18e1c8d5f8fae1c62de075f10a7db7",
+      "role": "Unmodified complete workflow-attempt jobs API page",
+      "source": "/workspace/review-final-python-ci-288a680/jobs-page-1.json"
+    },
+    "hosted-288a680/python/python-3.10.excerpt.json": {
+      "bytes": 1776,
+      "sha256": "5d68d24958d4ad84f52f30cac9c8af5ca78525ebb19ecbd0680a645cc3cc2d1d",
+      "role": "Explicit subset receipt bound to original complete log, exact selected source lines and job URL",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.10.excerpt.json"
+    },
+    "hosted-288a680/python/python-3.10.excerpt.log": {
+      "bytes": 1685,
+      "sha256": "e3ed0a1a0a16f531a6fc4ff24ee73d555abf57914579eb7abe421ea6bad21955",
+      "role": "Selected exact original log rows; not a complete job log",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.10.excerpt.log"
+    },
+    "hosted-288a680/python/python-3.10.full-suite-step.log.gz": {
+      "bytes": 3002,
+      "sha256": "a93c58c75b90587fa36d9b6b8f908b8ff44dc5d9c4ce6afa1c07c416b2224d73",
+      "role": "Complete exact full-regression step within the retained whole-job log; same invocation, not additional tests",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.10.full-suite-step.log",
+      "source_bytes": 47433,
+      "source_sha256": "e6b110e5cffbd922b6947f2c2c6b1d21af6fb1099ce96ae72e6743bed03ad3ee",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.10.full.log.gz": {
+      "bytes": 80925,
+      "sha256": "62428ed52b8e510a86d29d2a68edaf9fd510a593ff4828ccf08f1f78803bab5b",
+      "role": "Complete unmodified hosted job log, including every test and subsequent step; gzip is lossless",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.10.full.log",
+      "source_bytes": 872340,
+      "source_sha256": "493d299d2344406891377967e56eab305370587e4881f9fe0d5cecf8394db4e3",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.10.job-receipt.json": {
+      "bytes": 5481,
+      "sha256": "23f32df2f95afc3d31845747df0e844a400ac01f7eb8e38ff92a5624d0cc1005",
+      "role": "Unmodified complete successful interpreter job API receipt",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.10.job-receipt.json"
+    },
+    "hosted-288a680/python/python-3.11.excerpt.json": {
+      "bytes": 1776,
+      "sha256": "e648c33fc6bf489876e9a69f32bdf3ee32c2aeb80d9b6515dd38b5ceb5d415b7",
+      "role": "Explicit subset receipt bound to original complete log, exact selected source lines and job URL",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.11.excerpt.json"
+    },
+    "hosted-288a680/python/python-3.11.excerpt.log": {
+      "bytes": 1685,
+      "sha256": "f6aaf47319bc7459e641c7a5cae9ca1ec98526e2830da1fbc779b9d69776a1ae",
+      "role": "Selected exact original log rows; not a complete job log",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.11.excerpt.log"
+    },
+    "hosted-288a680/python/python-3.11.full-suite-step.log.gz": {
+      "bytes": 2965,
+      "sha256": "64916f72e81e39a19d218ae27e68ba500058546cf20f5956bc1f5b77cdd371e2",
+      "role": "Complete exact full-regression step within the retained whole-job log; same invocation, not additional tests",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.11.full-suite-step.log",
+      "source_bytes": 47433,
+      "source_sha256": "0efb7af0701bba68b97cda60bd72e2202490af5b6826d7686cf2383c726ff1f3",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.11.full.log.gz": {
+      "bytes": 80286,
+      "sha256": "1034ee6c40e94d3f2cf88014588231592ddca225215013a85356e8af34dc0243",
+      "role": "Complete unmodified hosted job log, including every test and subsequent step; gzip is lossless",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.11.full.log",
+      "source_bytes": 869258,
+      "source_sha256": "283598bd16900e23bf6dd4f041e0a102ba59f4c790a75ccbb38a6766db2dc95e",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.11.job-receipt.json": {
+      "bytes": 5481,
+      "sha256": "c20012b7f9f4daaf9c66ccf267d8765958727b548a0e976af717581dc35e4160",
+      "role": "Unmodified complete successful interpreter job API receipt",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.11.job-receipt.json"
+    },
+    "hosted-288a680/python/python-3.12.excerpt.json": {
+      "bytes": 1788,
+      "sha256": "00c1532ec3db3b6881271b29bb48f7c3c1e3c6c07b365e6866c0b07637325265",
+      "role": "Explicit subset receipt bound to original complete log, exact selected source lines and job URL",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.12.excerpt.json"
+    },
+    "hosted-288a680/python/python-3.12.excerpt.log": {
+      "bytes": 1725,
+      "sha256": "85e50b9c08e08ca0793863a7eb57f0386a8c87c09e2e7dc7bd1fd41eb4078c3c",
+      "role": "Selected exact original log rows; not a complete job log",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.12.excerpt.log"
+    },
+    "hosted-288a680/python/python-3.12.full-suite-step.log.gz": {
+      "bytes": 3436,
+      "sha256": "1eecd2642d1a8fafe5be5f6ed200519533fd1911114d31c297580f12dc9722a0",
+      "role": "Complete exact full-regression step within the retained whole-job log; same invocation, not additional tests",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.12.full-suite-step.log",
+      "source_bytes": 49424,
+      "source_sha256": "03d39f4cc03ef8d067a556106750f0cfcf9a5cb9eae9c95a00cf87ae767e5460",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.12.full.log.gz": {
+      "bytes": 91814,
+      "sha256": "d8997da1488a64e3bc5932fd0cded2ad4595c50ad087e4cb17f834e1101e6f8b",
+      "role": "Complete unmodified hosted job log, including every test and subsequent step; gzip is lossless",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.12.full.log",
+      "source_bytes": 993441,
+      "source_sha256": "dc6bcdeaed2e1b7f6cec342fe13d673d7ef4cd95767abc8ad7ae62b01aaa663c",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.12.job-receipt.json": {
+      "bytes": 5481,
+      "sha256": "6d183f2c6c3322dbb8e53aac063166ec34b9b09cb1c2a92b560820107c903b3c",
+      "role": "Unmodified complete successful interpreter job API receipt",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.12.job-receipt.json"
+    },
+    "hosted-288a680/python/python-3.13.excerpt.json": {
+      "bytes": 1787,
+      "sha256": "17f9b9b771fd7c2bc80dccb5ece334b5966e906ae03f9b3a72ba3bf507840a43",
+      "role": "Explicit subset receipt bound to original complete log, exact selected source lines and job URL",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.13.excerpt.json"
+    },
+    "hosted-288a680/python/python-3.13.excerpt.log": {
+      "bytes": 1697,
+      "sha256": "a96e661d0060bec03eda42cfc65b6a7c7be4fb1fb8006fa7a13adf2f531a01b8",
+      "role": "Selected exact original log rows; not a complete job log",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.13.excerpt.log"
+    },
+    "hosted-288a680/python/python-3.13.full-suite-step.log.gz": {
+      "bytes": 3453,
+      "sha256": "35f0198045a9b438a547e0925e07bf2210fda820a7e305557fa4c3233a9fa6e5",
+      "role": "Complete exact full-regression step within the retained whole-job log; same invocation, not additional tests",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.13.full-suite-step.log",
+      "source_bytes": 49424,
+      "source_sha256": "e7c37743415f81cecdd51fd5918d12a6dc86637b966eb89d99d747b7bc619cac",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.13.full.log.gz": {
+      "bytes": 80558,
+      "sha256": "c349a4e2d0de81dc3e759c65e947fcf20fb999d2bf3ced1007312682f1fde28c",
+      "role": "Complete unmodified hosted job log, including every test and subsequent step; gzip is lossless",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.13.full.log",
+      "source_bytes": 872163,
+      "source_sha256": "af90ae23f9b103d044d81ddb5afc7c97520bca116486fc46ff4e29863fafbfe4",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.13.job-receipt.json": {
+      "bytes": 5481,
+      "sha256": "5d1c631674c7d51662ed97624cc996f0110be6ca4befa3b9bc08a84b7ed9daeb",
+      "role": "Unmodified complete successful interpreter job API receipt",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.13.job-receipt.json"
+    },
+    "hosted-288a680/python/python-3.14.excerpt.json": {
+      "bytes": 1788,
+      "sha256": "299697b06853c12b47908f278e90d050a94d81c7ac9d6ec436dd41d2f6d1e055",
+      "role": "Explicit subset receipt bound to original complete log, exact selected source lines and job URL",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.14.excerpt.json"
+    },
+    "hosted-288a680/python/python-3.14.excerpt.log": {
+      "bytes": 1694,
+      "sha256": "75d9641b79db720537336b81f9d36dbc329f91b1b860b0763a286ccaa3868531",
+      "role": "Selected exact original log rows; not a complete job log",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.14.excerpt.log"
+    },
+    "hosted-288a680/python/python-3.14.full-suite-step.log.gz": {
+      "bytes": 3396,
+      "sha256": "1312c0a3f0efb1dde8d4d9d32799c0c9a48658745c63b470434f6ad37d21cce1",
+      "role": "Complete exact full-regression step within the retained whole-job log; same invocation, not additional tests",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.14.full-suite-step.log",
+      "source_bytes": 49417,
+      "source_sha256": "23242e75cdd53035fbd63c41558b9c9416a34956df5c5ec0f66291020b053a71",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.14.full.log.gz": {
+      "bytes": 79605,
+      "sha256": "6531e323c60020810d54f0191b2fe78da2d45ed7896f07472398e7d5cff9df2f",
+      "role": "Complete unmodified hosted job log, including every test and subsequent step; gzip is lossless",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.14.full.log",
+      "source_bytes": 871825,
+      "source_sha256": "07a2a2b44b9ae3a73b7b12eb49f7d5b4dead07e7238e9cbdf888b7756429a7dc",
+      "encoding": "gzip, empty filename, mtime0"
+    },
+    "hosted-288a680/python/python-3.14.job-receipt.json": {
+      "bytes": 5481,
+      "sha256": "b49c559f0861d1f758ed253e33153df0cc5300c49521454d7524d8d78f0b2c5b",
+      "role": "Unmodified complete successful interpreter job API receipt",
+      "source": "/workspace/review-final-python-ci-288a680/python-3.14.job-receipt.json"
+    },
+    "hosted-288a680/python/receipt.json": {
+      "bytes": 8434,
+      "sha256": "1a6f407e0b2b894e30763b5682048c120508fcab6b993f4864434f20a6680467",
+      "role": "Completed final Python workflow summary; five interpreter invocations overlap",
+      "source": "/workspace/review-final-python-ci-288a680/python-ci.json"
+    },
+    "hosted-288a680/python/run-receipt.json": {
+      "bytes": 12093,
+      "sha256": "dd90e0281a019b30bdb03fd204477a69ff229ad20be358806a556c7645cdf781",
+      "role": "Unmodified GitHub completed successful workflow API receipt",
+      "source": "/workspace/review-final-python-ci-288a680/run-receipt.json"
+    },
+    "hosted-288a680/slurm/manifest.json": {
+      "bytes": 34024,
+      "sha256": "1e403a73d79b0b02da7ce7392eebf70b0fc337fc620a48dff4378cdd43676f19",
+      "role": "Final hosted32check command/source manifest",
+      "source": "/workspace/review-hosted-slurm-39468456727/manifest.json"
+    },
+    "hosted-288a680/slurm/receipt.json": {
+      "bytes": 2176,
+      "sha256": "d5f42d9593d28ff7f3b4579d4d1c555ca671209d70e84c8d02dfe9c05c05442d",
+      "role": "Completed final hostedSlurm lifecycle identity/artifact receipt",
+      "source": "/workspace/review-hosted-real-slurm-39468456727-result.json"
+    },
+    "hosted-288a680/slurm/recorded-commands.tar.gz": {
+      "bytes": 33263,
+      "sha256": "021f7ed2eba4197ac264ae761e344d283270078bb66b6b47758b2d589d0d8401",
+      "role": "Exact hosted command stdout/stderr, source/check manifest and owned daemon metadata. Buildx cache and compiler build log excluded.",
+      "source": "/workspace/review-hosted-slurm-39468456727"
+    },
+    "hosted-288a680/summary.json": {
+      "bytes": 15825,
+      "sha256": "07efbf588cb33b18cc06ad901588249aab763e3c2faca2d63529e2f8973cb988",
+      "role": "Completed hosted job/run identity, precise units and final main merge proof",
+      "source": "generated from retained completed records"
+    }
+  },
+  "limits": [
+    "Five final Python runs are distinct interpreter executions of overlapping tests. Do not add them to each other or to local/full/focused/Bash/Slurm/update counts.",
+    "32hostedSlurmchecks,41cases perlegacy Bash version and33installed lifecycle checks are separate units. Historical954213c subset successes and full-matrix failures retain their earlier identity; final replacement receipts bind the delivered tree separately.",
+    "Hosted tests use owned Linux runner/container/software fixtures. No physicalGPU, heterogeneous allocation, multinode, productionSSH/site/shared-filesystem, unfamiliar-user or scientific-efficacy qualification.",
+    "Historical failed CI remains visible, separate from later successful replacement head; final main merge requires its own exact tree/PR-state proof.",
+    "A v4 archive link belongs in PR/final response; no modification of the tested source merely to record its own archive hash.",
+    "The secondffda87d workflow also failed; its two single-test failures and Python3.12 packaging failure remain historical. Local fixture ambiguity does not prove the original hosted helper failure cause; no production cleanup fix is claimed."
+  ]
+}

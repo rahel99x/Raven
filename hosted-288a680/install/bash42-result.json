@@ -1,0 +1,59 @@
+{
+  "schema": "raven.bash-qualification/v1",
+  "version": "4.2",
+  "passed": true,
+  "sha256": "a27a1179ec9c0830c65c6aa5d7dab60f7ce1a2a608618570f96bfa72e95ab3d8",
+  "commands": [
+    {
+      "label": "configure",
+      "command": [
+        "./configure",
+        "--without-bash-malloc",
+        "--disable-nls"
+      ],
+      "exit": 0,
+      "failure": "",
+      "timed_out": false,
+      "interrupted_signal": null,
+      "log_limit": 16777216,
+      "log_bytes": 18875,
+      "discarded_log_bytes": 0,
+      "reaped": true
+    },
+    {
+      "label": "build",
+      "command": [
+        "make",
+        "-j2"
+      ],
+      "exit": 0,
+      "failure": "",
+      "timed_out": false,
+      "interrupted_signal": null,
+      "log_limit": 16777216,
+      "log_bytes": 80544,
+      "discarded_log_bytes": 0,
+      "reaped": true
+    },
+    {
+      "label": "tests",
+      "command": [
+        "/opt/hostedtoolcache/Python/3.12.15/x64/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_install_bootstrap.py",
+        "-q"
+      ],
+      "exit": 0,
+      "failure": "",
+      "timed_out": false,
+      "interrupted_signal": null,
+      "log_limit": 16777216,
+      "log_bytes": 100,
+      "discarded_log_bytes": 0,
+      "reaped": true
+    }
+  ],
+  "limits": "Legacy Bash on Linux/GCC; not macOS or RHEL kernel qualification.",
+  "interpreter": "GNU bash, version 4.2.0(2)-release (x86_64-unknown-linux-gnu)"
+}

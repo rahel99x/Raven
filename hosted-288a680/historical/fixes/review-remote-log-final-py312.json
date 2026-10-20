@@ -1,0 +1,238 @@
+{
+  "schema": "raven.remote-ui-final-profile/v1",
+  "python": "3.12.14",
+  "test_sha256": "fb2b12b6f2be4f62376dfc1e3cf69cc6c5bc3c04aca02cbe07616d2c0ada2df1",
+  "rounds": [
+    {
+      "wall_seconds": 0.09287497200421058,
+      "ui_thread_cpu_seconds": 0.09244150399999998,
+      "process_cpu_seconds": 0.09347903299999999,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.08306591300060973,
+      "ui_thread_cpu_seconds": 0.08285630900000002,
+      "process_cpu_seconds": 0.08341506599999998,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.10035740199964494,
+      "ui_thread_cpu_seconds": 0.10005040100000001,
+      "process_cpu_seconds": 0.10075102600000002,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.09821151499636471,
+      "ui_thread_cpu_seconds": 0.09804357399999997,
+      "process_cpu_seconds": 0.09871271400000003,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.10461557400412858,
+      "ui_thread_cpu_seconds": 0.10443167100000006,
+      "process_cpu_seconds": 0.10524723800000002,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.08673122801701538,
+      "ui_thread_cpu_seconds": 0.08649460499999995,
+      "process_cpu_seconds": 0.08718645200000008,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.09133157701580785,
+      "ui_thread_cpu_seconds": 0.09107990899999996,
+      "process_cpu_seconds": 0.09168597899999997,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.08227930299472064,
+      "ui_thread_cpu_seconds": 0.08210850600000008,
+      "process_cpu_seconds": 0.08268152200000012,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.0898719139804598,
+      "ui_thread_cpu_seconds": 0.08958336600000005,
+      "process_cpu_seconds": 0.09025451400000017,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    },
+    {
+      "wall_seconds": 0.09409433699329384,
+      "ui_thread_cpu_seconds": 0.09389584100000015,
+      "process_cpu_seconds": 0.09444503599999998,
+      "remote_future_pending": true,
+      "remote_calls_during_pending": 2
+    }
+  ],
+  "profiled_round": {
+    "wall_seconds": 0.30313013700651936,
+    "ui_thread_cpu_seconds": 0.29942805500000014,
+    "process_cpu_seconds": 0.30496421399999996,
+    "remote_future_pending": true,
+    "remote_calls_during_pending": 2
+  },
+  "profile_top_cumulative": [
+    {
+      "function": "<observed-final-fixture>:37:checked",
+      "calls": 3,
+      "self_seconds": 0.000251208,
+      "cumulative_seconds": 0.30131839400000004
+    },
+    {
+      "function": "/workspace/Raven/raven/views.py:2836:compose",
+      "calls": 50,
+      "self_seconds": 0.001147741,
+      "cumulative_seconds": 0.22675325500000001
+    },
+    {
+      "function": "/workspace/Raven/raven/views.py:2856:_compose",
+      "calls": 50,
+      "self_seconds": 0.004309808,
+      "cumulative_seconds": 0.18715050900000002
+    },
+    {
+      "function": "/workspace/Raven/raven/controller.py:686:handle",
+      "calls": 102,
+      "self_seconds": 0.000481126,
+      "cumulative_seconds": 0.16250991
+    },
+    {
+      "function": "/workspace/Raven/raven/controller.py:697:_handle",
+      "calls": 102,
+      "self_seconds": 0.00196218,
+      "cumulative_seconds": 0.074932575
+    },
+    {
+      "function": "/workspace/Raven/raven/interaction.py:400:publish",
+      "calls": 50,
+      "self_seconds": 0.0054098720000000005,
+      "cumulative_seconds": 0.059968143
+    },
+    {
+      "function": "/workspace/Raven/raven/history_browser.py:588:wrap_render",
+      "calls": 50,
+      "self_seconds": 0.004684563,
+      "cumulative_seconds": 0.050171423
+    },
+    {
+      "function": "/workspace/Raven/raven/controller.py:138:save",
+      "calls": 51,
+      "self_seconds": 0.0005567720000000001,
+      "cumulative_seconds": 0.042847279
+    },
+    {
+      "function": "/workspace/Raven/raven/views.py:424:header",
+      "calls": 50,
+      "self_seconds": 0.002689963,
+      "cumulative_seconds": 0.03777587
+    },
+    {
+      "function": "/workspace/Raven/raven/layout.py:385:_clip_row",
+      "calls": 4950,
+      "self_seconds": 0.011155983000000001,
+      "cumulative_seconds": 0.028270876
+    },
+    {
+      "function": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/copy.py:118:deepcopy",
+      "calls": 16400,
+      "self_seconds": 0.012787227,
+      "cumulative_seconds": 0.027495422000000002
+    },
+    {
+      "function": "/workspace/Raven/raven/ui_persistence.py:110:save",
+      "calls": 51,
+      "self_seconds": 7.7656e-05,
+      "cumulative_seconds": 0.026210974
+    },
+    {
+      "function": "/workspace/Raven/raven/ui_persistence.py:27:publish",
+      "calls": 51,
+      "self_seconds": 0.000642263,
+      "cumulative_seconds": 0.026098682
+    },
+    {
+      "function": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/copy.py:217:_deepcopy_dict",
+      "calls": 3650,
+      "self_seconds": 0.004858965000000001,
+      "cumulative_seconds": 0.025947273000000003
+    },
+    {
+      "function": "~:0:<method 'extend' of 'list' objects>",
+      "calls": 1250,
+      "self_seconds": 0.000603778,
+      "cumulative_seconds": 0.022009349
+    },
+    {
+      "function": "/workspace/Raven/raven/layout.py:401:clip_row",
+      "calls": 3300,
+      "self_seconds": 0.000959793,
+      "cumulative_seconds": 0.021793432
+    },
+    {
+      "function": "~:0:<built-in method builtins.any>",
+      "calls": 1799,
+      "self_seconds": 0.001666004,
+      "cumulative_seconds": 0.017728634
+    },
+    {
+      "function": "/workspace/Raven/raven/workbench.py:501:save",
+      "calls": 50,
+      "self_seconds": 0.0014080330000000002,
+      "cumulative_seconds": 0.015463592000000002
+    },
+    {
+      "function": "/workspace/Raven/raven/workbench.py:513:handle_key",
+      "calls": 100,
+      "self_seconds": 0.00015381000000000002,
+      "cumulative_seconds": 0.015009968
+    },
+    {
+      "function": "/workspace/Raven/raven/workbench.py:516:<genexpr>",
+      "calls": 5200,
+      "self_seconds": 0.003898486,
+      "cumulative_seconds": 0.014263141000000002
+    }
+  ],
+  "negative_guard_probes": {
+    "pending_result": {
+      "rejected": true,
+      "message": "The UI thread must not block on result"
+    },
+    "pending_exception": {
+      "rejected": true,
+      "message": "The UI thread must not block on exception"
+    },
+    "pending_condition_wait": {
+      "rejected": true,
+      "message": "The UI thread must not block on pending future condition"
+    },
+    "ui_sleep": {
+      "rejected": true,
+      "message": "The UI thread must not block on sleep"
+    },
+    "synchronous_preferences": {
+      "rejected": true,
+      "message": "The UI thread must not block on preference I/O"
+    },
+    "ui_remote_io": {
+      "rejected": true,
+      "message": "SSH cannot run on the terminal thread"
+    }
+  },
+  "resource_ownership": {
+    "file_descriptors_before": 4,
+    "file_descriptors_after": 4,
+    "new_live_threads_after_owned_shutdown": []
+  },
+  "limits": "Observational shared-host fixture measurements; not a controlled release-performance benchmark. Ten original 50-iteration bodies and all original behavior assertions retained; cProfile excluded from unprofiled rounds. Negative mutations inject one forbidden call at the guarded UI-loop boundary, then verify rejection and owned cleanup."
+}

@@ -1,0 +1,47 @@
+{
+  "status": "passed",
+  "seconds": 3.0440530449850485,
+  "failure": "Forced empty helper PID readiness, expected AssertionError before U.git receives Popen.",
+  "children": [
+    {
+      "before": {
+        "pid": 602356,
+        "state": "R",
+        "pgid": 602356,
+        "sid": 602356,
+        "birth": "15005764"
+      },
+      "after": null,
+      "returncode": -9
+    },
+    {
+      "before": {
+        "pid": 602358,
+        "state": "R",
+        "pgid": 602358,
+        "sid": 602358,
+        "birth": "15005764"
+      },
+      "after": null,
+      "returncode": 0
+    }
+  ],
+  "helper_before": [
+    {
+      "pid": 602359,
+      "state": "R",
+      "pgid": 602358,
+      "sid": 602358,
+      "birth": "15005764"
+    }
+  ],
+  "helper_after": {
+    "pid": 602359,
+    "state": "Z",
+    "pgid": 602358,
+    "sid": 602358,
+    "birth": "15005764"
+  },
+  "test_sha256": "3fa09bbe570a74fc6339435a674f4bbe9665f9161cfceb3c0cdfe4085e701857",
+  "limits": "Failure-cleanup probe only; does not identify original hosted failure cause."
+}

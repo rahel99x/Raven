@@ -1,0 +1,10 @@
+{
+  "head": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+  "synthetic_merge": "4aa15eef651c1a6cc0d6c5d974cb68182a7cd3d5",
+  "parents": [
+    "b98742fb967f18131905696f4afd3a61f2ad03f2",
+    "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d"
+  ],
+  "identical_tree": "94e726b06a0d274414871cb69cc5b618108ad7da",
+  "verified_from": "Fetched refs/pull/5/merge Git objects; compared parent and exact Git tree"
+}

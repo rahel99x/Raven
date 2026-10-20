@@ -1,0 +1,12 @@
+test (3.14)	Run actions/checkout@v4	2026-10-20T17:44:07.8681249Z [command]/usr/bin/git log -1 --format=%H
+test (3.14)	Run actions/checkout@v4	2026-10-20T17:44:07.8700573Z 2ccc55500471314c12631596c09bfda9335efc50
+test (3.14)	Run isolated regression suite with two workers	﻿2026-10-20T17:44:22.0614238Z ##[group]Run python -m pytest -q -n 2
+test (3.14)	Run isolated regression suite with two workers	2026-10-20T17:44:22.0614682Z [36;1mpython -m pytest -q -n 2[0m
+test (3.14)	Run isolated regression suite with two workers	2026-10-20T17:44:22.0658913Z shell: /usr/bin/bash -e {0}
+test (3.14)	Run isolated regression suite with two workers	2026-10-20T17:44:22.0659309Z env:
+test (3.14)	Run isolated regression suite with two workers	2026-10-20T17:44:22.0659678Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.8/x64
+test (3.14)	Run isolated regression suite with two workers	2026-10-20T17:44:22.0660205Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.8/x64/lib/pkgconfig
+test (3.14)	Run isolated regression suite with two workers	2026-10-20T17:44:22.0660743Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.8/x64
+test (3.14)	Run isolated regression suite with two workers	2026-10-20T17:54:01.9180845Z 19463 passed, 48 skipped, 4 warnings in 578.75s (0:09:38)
+test (3.14)	Complete job	﻿2026-10-20T17:55:19.5803513Z Cleaning up orphan processes
+test (3.14)	Complete job	2026-10-20T17:55:19.6033813Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

@@ -1,0 +1,114 @@
+{
+  "schema": "raven.prototype-build-isolation-review/v1",
+  "baseline_revision": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+  "hosted_failure": {
+    "run": 39464080610,
+    "manifest": "/workspace/review-hosted-ffda87d-distributions/tmp/raven-distribution-prototype/manifest.json",
+    "actual_stderr": "Pinned setuptools==84.0.0 required, outer setuptools84.2.0 found; pinned wheel==0.48.0 absent"
+  },
+  "independent_baseline": {
+    "manifest": "/workspace/review-prototype-clean-baseline/manifest.json",
+    "log": "/workspace/review-prototype-clean-baseline.log",
+    "exit": 1,
+    "reproduced_same_unmet_dependencies": true
+  },
+  "design": "Use normal isolated PEP517 builds and copy the source build-system table into generated core/lab metadata. No matching backend packages or exact backend pins are imposed on the outer CI/developer environment. Five builds retain all source/wheel inventory checks and six installed journeys.",
+  "simpler_alternative_rejected": "Pinning only the outer hosted runner would hide the standalone qualifier dependency and still leave generated backend requirements divergent. Isolated backend provisioning uses the established build frontend rather than a custom shared mutable build venv.",
+  "validation": {
+    "focused": {
+      "command": ".venv/bin/python -m pytest -q tests/test_distribution_prototype.py tests/test_distribution_profile.py",
+      "result": "8 passed in 0.47s",
+      "log": "/workspace/review-prototype-isolation-focused.log"
+    },
+    "complete": {
+      "command": "/workspace/review-prototype-clean-outer/bin/python scripts/distribution_prototype.py --output /workspace/review-prototype-isolation-final",
+      "status": "passed-experimental-extraction",
+      "manifest": "/workspace/review-prototype-isolation-final/manifest.json",
+      "log": "/workspace/review-prototype-isolation-final.log",
+      "journeys": [
+        "core",
+        "lab",
+        "core-after-removal",
+        "lab-after-reinstall",
+        "lab-after-upgrade",
+        "lab-after-downgrade"
+      ],
+      "mismatched_extension_refused": true,
+      "wheel_sdist_inventory_and_disjoint_ownership_checks": "passed",
+      "outer_packages_unchanged": {
+        "build": "1.6.1",
+        "setuptools": "84.2.0",
+        "wheel": null
+      },
+      "captured_package_sources": 626,
+      "runtime_source_bytes_exactly_match_commit": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d"
+    },
+    "builds": [
+      {
+        "kind": "full",
+        "log": "/workspace/review-prototype-isolation-final/full-build.log",
+        "sha256": "98ee8daa60831d8e444cfecf02d96f2f65fb55eacdce9ec25f6b46c34ecc78f0",
+        "isolated": true,
+        "requirements": [
+          "setuptools==84.0.0",
+          "wheel==0.48.0"
+        ]
+      },
+      {
+        "kind": "core",
+        "log": "/workspace/review-prototype-isolation-final/core-build.log",
+        "sha256": "5d9426d7b444c46179022a3d69b6be43a2d2f970399c6466467f2a0fd037b0e0",
+        "isolated": true,
+        "requirements": [
+          "setuptools==84.0.0",
+          "wheel==0.48.0"
+        ]
+      },
+      {
+        "kind": "lab",
+        "log": "/workspace/review-prototype-isolation-final/lab-build.log",
+        "sha256": "173da4d6e34e49498b402636bcc62e237e77f1a740980fca40c6d45c184caffc",
+        "isolated": true,
+        "requirements": [
+          "setuptools==84.0.0",
+          "wheel==0.48.0"
+        ]
+      },
+      {
+        "kind": "next-core",
+        "log": "/workspace/review-prototype-isolation-final/next-core-build.log",
+        "sha256": "8917df66c08a916e1ca2fd9342e8c8d2a653cf66fdda0ad50d7d6289a0202be9",
+        "isolated": true,
+        "requirements": [
+          "setuptools==84.0.0",
+          "wheel==0.48.0"
+        ]
+      },
+      {
+        "kind": "next-lab",
+        "log": "/workspace/review-prototype-isolation-final/next-lab-build.log",
+        "sha256": "cd7061d690fcb451075dec04256287a8567af5dbf4dfd982dade744bb5c5e3c9",
+        "isolated": true,
+        "requirements": [
+          "setuptools==84.0.0",
+          "wheel==0.48.0"
+        ]
+      }
+    ],
+    "lint": "Ruff E4/E7/E9/F, default88 format and owned diff whitespace checks pass"
+  },
+  "files_sha256": {
+    "scripts/distribution_prototype.py": "40336273d05752c571bca2da09ff9bea326316bdd1af885c249ecd750a1264ec",
+    "tests/test_distribution_prototype.py": "5476bfeb7616b8ea730d5381c68fc43946526b5822068a361d663ae7061a8643",
+    "pyproject.toml": "04ca75302f930cc299e89d36e288b62ab757149c30351d3f3c3a1a98e874550e",
+    "docs/guides/distribution-experiment.md": "70d98eacb31cd439c5cf85682eccc804e0ed821748030ce183c81664f2013732"
+  },
+  "experimental": true,
+  "published": false,
+  "production_rename": false,
+  "limits": [
+    "Local real package builds and private installed workflows against fake scheduler fixtures; no live scheduler, GPU, remote or hardware qualification.",
+    "Backend provisioning needs its configured package index/cache. No offline capability is claimed.",
+    "This local working-tree script fix still requires final committed-source hosted CI."
+  ]
+}

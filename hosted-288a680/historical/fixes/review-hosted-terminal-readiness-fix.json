@@ -1,0 +1,107 @@
+{
+  "schema": "raven.hosted-fixture-correction/v1",
+  "issue": "Bash background PID publication did not establish that nohup had installed SIGHUP-ignore before terminal close.",
+  "runtime_unchanged": true,
+  "runtime_revision": "954213c4aa3ef40dd3716e556d53fa39e5d23644",
+  "runtime_diff_verified_empty": true,
+  "runtime_review": {
+    "files": [
+      "raven/terminal/broker.py",
+      "raven/terminal/service.py",
+      "raven/terminal/child.py"
+    ],
+    "ownership": "signal_owned targets the live owned launcher/shell process group and the kernel-reported foreground group. It does not enumerate or terminate the whole terminal session. Maintenance closes the PTY and reaps already-exited children; it does not kill background nohup groups.",
+    "child_signal_setup": "Terminal child launcher resets SIGHUP to default before exec, so inherited SIG_IGN in the workload establishes actual nohup behavior."
+  },
+  "old_predicate_reproduction": {
+    "command": "PYTHONPATH=. /workspace/raven-compat/py3.11/bin/python /workspace/reproduce-nohup-readiness.py",
+    "driver_sha256": "b4d8e8c4391c83014c70fed9d0df497743adefe0bcf290d367530d70bb99cda6",
+    "result": {
+      "fixture": "Real Bash PTY background child held at an explicit before-exec FIFO barrier; this exposes the PID-publication contract without a timing sleep.",
+      "old_pid_ready_condition_satisfied": true,
+      "actual_child_sighup_ignored_before_close": false,
+      "state_before_close": "S",
+      "state_after_close": null,
+      "conclusion": "Bash $! readiness admits a live child before nohup has installed SIGHUP-ignore; this is a readiness-fixture defect, not a claim that an established nohup workload was killed."
+    },
+    "limits": "Explicit FIFO barrier deterministically exposes pre-exec readiness; this is not a claim to have observed the original hosted process scheduling."
+  },
+  "fixture_change": {
+    "file": "tests/test_terminal_service.py",
+    "sha256": "fd899f2c9ceb2ed26b2d6722386622f54d127c3b73e8224fc2977cfb39b509ac",
+    "readiness": "Actual nohup launches a Python workload. The workload asserts signal.getsignal(SIGHUP)==SIG_IGN, then publishes os.getpid(). No test code installs the ignored disposition itself.",
+    "preserved_assertions": [
+      "close_session accepted",
+      "owned child still exists after the original post-close poll interval",
+      "child is not a zombie",
+      "finally kills only the fixture-owned published PID; service context performs owned cleanup"
+    ],
+    "no_arbitrary_readiness_sleep": true
+  },
+  "whole_file_qualification": [
+    {
+      "command": "/workspace/raven-compat/py3.11/bin/python -m pytest -q tests/test_terminal_service.py",
+      "passed": 80,
+      "wall_seconds": 31.92,
+      "log": "/workspace/review-nohup-py311-service.log",
+      "log_sha256": "4856e4b69bd4738d6440a4a63d33408d1ea06a3dcabbd9ea4fec8885bd6f2d22"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_terminal_service.py",
+      "passed": 80,
+      "wall_seconds": 31.68,
+      "log": "/workspace/review-nohup-py312-service.log",
+      "log_sha256": "69e0654a2a41e2ddaeef5f9c709c9a811a0dce49398cbae6616317be3477e1db"
+    }
+  ],
+  "repeated_qualification": {
+    "driver_sha256": "6dd677e28aeae7bcd6d4bea22920c1d24f2cfe388d7068c88a9d3f33c56e679e",
+    "results": [
+      {
+        "command": "PYTHONPATH=. /workspace/raven-compat/py3.11/bin/python /workspace/repeat-nohup-readiness.py /workspace/review-nohup-py311-stress.json",
+        "result": {
+          "python": "3.11.17",
+          "repetitions": 20,
+          "passed": 20,
+          "exact_test": "tests/test_terminal_service.py::test_closing_terminal_preserves_explicit_nohup_background_job",
+          "readiness": "Actual nohup workload verifies inherited SIGHUP=SIG_IGN before publishing its own PID.",
+          "assertions": "close accepted; child exists after close; child is not zombie; finally SIGKILL only the fixture-owned PID; TerminalService context closes/reaps owned service.",
+          "wall_seconds": 44.86993847001577,
+          "process_fd_before": 4,
+          "process_fd_after": 4,
+          "limits": "Software process/signal qualification on local Linux; duration is not a performance benchmark. No arbitrary readiness sleep."
+        },
+        "log": "/workspace/review-nohup-py311-stress.json",
+        "log_sha256": "31deec79428067df79cdaa068c2c26837253768f77d70cd9c52d92afc9412d81"
+      },
+      {
+        "command": "PYTHONPATH=. .venv/bin/python /workspace/repeat-nohup-readiness.py /workspace/review-nohup-py312-stress.json",
+        "result": {
+          "python": "3.12.14",
+          "repetitions": 20,
+          "passed": 20,
+          "exact_test": "tests/test_terminal_service.py::test_closing_terminal_preserves_explicit_nohup_background_job",
+          "readiness": "Actual nohup workload verifies inherited SIGHUP=SIG_IGN before publishing its own PID.",
+          "assertions": "close accepted; child exists after close; child is not zombie; finally SIGKILL only the fixture-owned PID; TerminalService context closes/reaps owned service.",
+          "wall_seconds": 44.9608164440142,
+          "process_fd_before": 4,
+          "process_fd_after": 4,
+          "limits": "Software process/signal qualification on local Linux; duration is not a performance benchmark. No arbitrary readiness sleep."
+        },
+        "log": "/workspace/review-nohup-py312-stress.json",
+        "log_sha256": "60397738353800346a11de9f57907287fe10e39b4bf63dec0e463a81013d0967"
+      }
+    ]
+  },
+  "source_sha256": {
+    "raven/terminal/service.py": "84bab89fc2e5f02105530e320207e412690fb3945f911889a547678deab81f4d",
+    "raven/terminal/broker.py": "649085f288d9d47bcfe29b312fa532a13922a8d523bd92b822b967d4741f5626",
+    "raven/terminal/child.py": "11f641e2335b94ae3887051f0d469dbd53d62145b3e2f30ecc6c569e5fa9212d",
+    "tests/test_terminal_service.py": "fd899f2c9ceb2ed26b2d6722386622f54d127c3b73e8224fc2977cfb39b509ac"
+  },
+  "qualification_limits": [
+    "Local Linux software process/signal qualification on CPython3.11.17 and3.12.14.",
+    "Whole-file and repetition durations are test evidence, not performance benchmarks.",
+    "Hosted replacement matrix remains required; no macOS, GPU, Slurm or remote qualification is inferred."
+  ]
+}

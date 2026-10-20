@@ -1,0 +1,51 @@
+{
+  "schema": "raven.hosted-candidate-results/v1",
+  "head": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+  "run_id": 39464080610,
+  "conclusion": "failure",
+  "python": [
+    {
+      "python": "3.10",
+      "job": 118770779715,
+      "conclusion": "failure",
+      "full_suite_summary": "1 failed, 19449 passed, 59 skipped in 683.71s (0:11:23)",
+      "log": "/workspace/review-hosted-py310-ffda87d.log",
+      "log_sha256": "62ca5d54cbbed537c1a4a294185c8a92f5e776f88acca53814b05643fc9d3e73"
+    },
+    {
+      "python": "3.11",
+      "job": 118770779739,
+      "conclusion": "failure",
+      "full_suite_summary": "1 failed, 19453 passed, 55 skipped in 583.53s (0:09:43)",
+      "log": "/workspace/review-hosted-py311-ffda87d.log",
+      "log_sha256": "11c8a96a2ccdd55e360e2e900b34768867be5ec08a4b45aa26133b05e3d7173d"
+    },
+    {
+      "python": "3.12",
+      "job": 118770779500,
+      "conclusion": "failure",
+      "full_suite_summary": "19486 passed, 24 skipped, 4 warnings in 536.88s (0:08:56)",
+      "log": "/workspace/review-hosted-py312-ffda87d.log",
+      "log_sha256": "c1fb8b1f6627b7c6cf33ea612e30fbe6594de76cbc1ec350006447790704e8a6"
+    },
+    {
+      "python": "3.13",
+      "job": 118770779815,
+      "conclusion": "success",
+      "full_suite_summary": "19462 passed, 48 skipped, 4 warnings in 594.74s (0:09:54)",
+      "log": "/workspace/review-hosted-py313-ffda87d.log",
+      "log_sha256": "db1f8908705bed3865d9cee4573c3fc382c081dc8ed7b3553d9b982938664c2a"
+    },
+    {
+      "python": "3.14",
+      "job": 118770779581,
+      "conclusion": "success",
+      "full_suite_summary": "19462 passed, 48 skipped, 4 warnings in 609.14s (0:10:09)",
+      "log": "/workspace/review-hosted-py314-ffda87d.log",
+      "log_sha256": "7a66eb1280955b84d3f4b106f15f2f4102a53e517b06d369019d2aff888e3bab"
+    }
+  ],
+  "runtime_source_checkpoint": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+  "runtime_files_verified_identical": 626,
+  "limits": "Per-interpreter tests overlap. Python3.12 full suite passed before experimental build failed;3.13/14 complete jobs succeeded;3.10/11 failed one test each. No whole-workflow success."
+}

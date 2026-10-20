@@ -1,0 +1,46 @@
+{
+  "schema": "raven.hosted-slurm-check/v1",
+  "run_id": 39468456727,
+  "url": "https://github.com/rahel99x/Raven/actions/runs/39468456727",
+  "conclusion": "success",
+  "pull_request_head_sha": "288a680dd85dde9766fce3c4d8d962b42bd12203",
+  "tested_actions_merge_sha": "2ccc55500471314c12631596c09bfda9335efc50",
+  "tested_tree_sha": "dbb18bcb152e97f7bc88964e3b33063a5858cc34",
+  "synthetic_merge_parent_verified": true,
+  "synthetic_merge_tree_matches_candidate": true,
+  "slurm_version": "slurm 26.05.5",
+  "checks_passed": 32,
+  "checks_total": 32,
+  "command_count": 50,
+  "recorded_stream_hashes_verified": 100,
+  "source_hashes_verified": {
+    "raven/slurm.py": "19f6a43db2f08f2a9a99b4807b7a9018dec538126acef967d595cb79b83b258f",
+    "raven/slurm_json.py": "ce22d4d87b4eb20f198205724f078e175a4f7c8b580282bb42ec45cf743e5201",
+    "scripts/slurm/lifecycle.py": "5999de6c3dea35e64c8d88075b3868fb631e9e817d14fa550cfbf4795aa74ccd",
+    "scripts/slurm/entrypoint.sh": "54174b40f9e8bcb176a83869c0d18076f3e7ac67d4c7a16e585c9fa3a177972d"
+  },
+  "artifact_id": 12286148834,
+  "artifact_bytes": 151367,
+  "artifact_zip_sha256": "8354a577d364a9a4361e97df6d268b664f273fd298f9ff9fb5f2dde31a725f86",
+  "artifact_zip_members_verified": 111,
+  "artifact_zip_path": "/workspace/review-hosted-slurm-39468456727.zip",
+  "manifest_sha256": "1e403a73d79b0b02da7ce7392eebf70b0fc337fc620a48dff4378cdd43676f19",
+  "artifact_directory": "/workspace/review-hosted-slurm-39468456727",
+  "qualification_limits": [
+    "physical GPU",
+    "multi-node",
+    "production SSH",
+    "site policy",
+    "heterogeneous allocations"
+  ],
+  "production_qualified": false,
+  "runtime_edits": false,
+  "local_docker_runs": false,
+  "prior_five_version_matrix_backend_continuity": {
+    "files_verified": 48,
+    "source_manifest_sha256": "1db07d2d38cfd6078c291e3316d8d0fc4d5606de59f64289dd21ae532a1f6c95",
+    "backend_file_map_sha256": "44898719f7170c4135cba7933e7e0b23004289081e8d2d824209c805ddda44a8",
+    "all_unchanged_from_003f3a5c": true,
+    "scope": "Supplemental unchanged-file comparison to exact earlier82-check five-version matrix; hosted lifecycle itself directly records4 source hashes."
+  }
+}

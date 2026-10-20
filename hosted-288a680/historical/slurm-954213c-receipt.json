@@ -1,0 +1,25 @@
+{
+  "schema": "raven.hosted-slurm-check/v1",
+  "run_id": 39461694191,
+  "url": "https://github.com/rahel99x/Raven/actions/runs/39461694191",
+  "conclusion": "success",
+  "pull_request_head_sha": "954213c4aa3ef40dd3716e556d53fa39e5d23644",
+  "tested_actions_merge_sha": "b3cc407f4a919bc29157c73778469106237096e9",
+  "slurm_version": "slurm 26.05.5",
+  "checks_passed": 32,
+  "checks_total": 32,
+  "artifact_id": 12282903170,
+  "artifact_bytes": 150008,
+  "manifest_sha256": "dbc868ffe13850f23a9dc3cf306c68d9ec53bd4beabe27d69731ff72063d2703",
+  "artifact_directory": "/workspace/review-hosted-slurm-39461694191",
+  "qualification_limits": [
+    "physical GPU",
+    "multi-node",
+    "production SSH",
+    "site policy",
+    "heterogeneous allocations"
+  ],
+  "production_qualified": false,
+  "runtime_edits": false,
+  "local_docker_runs": false
+}
