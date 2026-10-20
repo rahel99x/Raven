@@ -13,7 +13,8 @@ Raven checks the file and every directory leading to it before reading:
 - Mandatory site policy must belong to root and must be reached through
   administrator-owned directories. Readable site files such as mode `0644` are
   supported; public readability is different from permission to modify them.
-- A user-selected home or shared root is resolved once. Symbolic links inside
+- A user-selected home, shared root, or explicit plugin directory is resolved
+  once. Symbolic links inside
   that root, nonregular files, oversized files and files changed during a
   read are rejected. Plugin execution uses the verified source bytes, without
   reopening the path or substituting a bytecode cache.

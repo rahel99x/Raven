@@ -57,10 +57,15 @@
         }
       },
       "tradeoff": "Preserve every original raw Git blob on an explicit immutable-revision evidence branch, keep all human reports on main, and retain only exact deterministic test inputs. Deleting Git history or rewriting human reports would lose provenance; copying every capture into packages would preserve the measured installation cost.",
-      "remaining": [
+      "historical_remaining": [
         "Root must publish evidence/pre-review-2026-10-20 before relying on public archive links.",
         "Final integrated package and installed-command qualification remains with root."
-      ]
+      ],
+      "final_reconciliation": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "local release integration completed; hosted CI remains mandatory on the delivered revision",
+        "evidence": "docs/reviews/2026-10-20/integration.json"
+      }
     },
     {
       "id": "T-1",
@@ -71,10 +76,15 @@
         "CI runs all matrix regressions with pytest -n 2 and representative Python 3.12 tests under env -u USER TZ=America/Los_Angeles.",
         "SSH absence is an explicit mocked capability test that forbids connection construction. No remote or real scheduler claim follows from it."
       ],
-      "remaining": [
+      "historical_remaining": [
         "Product uid and JSON-error implementation is owned by root; this ledger accounts for its environment harness only.",
-        "Hosted Python 3.10\u20133.14 matrix configured, not claimed executed locally."
-      ]
+        "Hosted Python 3.10–3.14 matrix configured, not claimed executed locally."
+      ],
+      "final_reconciliation": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "local release integration completed; hosted CI remains mandatory on the delivered revision",
+        "evidence": "docs/reviews/2026-10-20/integration.json"
+      }
     },
     {
       "id": "T-2",
@@ -84,9 +94,14 @@
         "Private-group and explicit PI-root trust behavior is tested by installer owner in test_review_install_trust.py.",
         "Installer-owned CI jobs retain actual pinned Bash 3.2/4.2 and managed/pipx update/revert under umask 002."
       ],
-      "remaining": [
+      "historical_remaining": [
         "Trust implementation, actual installer lifecycles and Bash qualification are recorded by installation owner; no PI-owned live cluster path is claimed here."
-      ]
+      ],
+      "final_reconciliation": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "local release integration completed; hosted CI remains mandatory on the delivered revision",
+        "evidence": "docs/reviews/2026-10-20/integration.json"
+      }
     },
     {
       "id": "S-4 gates",
@@ -95,13 +110,18 @@
         "Ruff F covers every raven core file, including actual canonical implementations.",
         "Default88-column formatting covers275 actual migrated implementation files across terminal,heavy,ui,installation,jobs,job_logs,recordings,tracing,launching,entry,execution,configuration,collection and operation adapters; the original100-column transport boundary remains.",
         "Strict mypy covers11 source files, including the new typed owner-action interface.",
-        "Six import-linter contracts protect pure presentation,log paths,cadence and application-reader ports.",
+        "Seven import-linter contracts protect pure presentation,log paths,cadence and application-reader ports.",
         "Global AST --require-acyclic counts every import depth and resolved finite runtime composition:625 modules,2067function imports,zero strongly connected components,zero unresolved dynamic import expressions.",
         "81 unambiguous pure query/geometry imports were hoisted from hot UI paths in22 files with lexical binding conflict checks. Intentional owner composition and optional adapters remain explicit; no claim that all function imports were removed."
       ],
-      "remaining": [
+      "historical_remaining": [
         "Hosted CI and final delivered-commit rerun are release integration checks."
-      ]
+      ],
+      "final_reconciliation": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "status": "local release integration completed; hosted CI remains mandatory on the delivered revision",
+        "evidence": "docs/reviews/2026-10-20/integration.json"
+      }
     }
   ],
   "tests": [
@@ -130,7 +150,7 @@
     },
     {
       "command": ".venv/bin/python scripts/check_quality.py",
-      "result": "PASS: whole-core Ruff F,six import contracts,three original boundary files,275 actual migrated files formatted,strict mypy11 sources,global AST --require-acyclic625 modules/2067function imports/zeroSCC/zero unresolved dynamic expressions."
+      "result": "PASS: whole-core Ruff F,seven import contracts,three original boundary files,275 actual migrated files formatted,strict mypy11 sources,global AST --require-acyclic625 modules/2067function imports/zeroSCC/zero unresolved dynamic expressions."
     },
     {
       "command": ".venv/bin/python -m pytest -q tests/test_command_registry.py",
@@ -139,6 +159,11 @@
     {
       "command": ".venv/bin/python -m ruff check --select F raven",
       "result": "PASS as part of final integrated quality gate after owner connection-scope cleanup."
+    },
+    {
+      "command": ".venv/bin/python scripts/check_quality.py",
+      "result": "Post scoped-capture correctionPASS:wholecoreF,sevencontracts,275formattedactualfiles,11strictmypysources,625all-depthmodules withzeroSCC/zeroDynamic.",
+      "source_checkpoint": "Runtime hashes retained in ui-log-terminal-results.json architecture_completion.source_sha256."
     }
   ],
   "performance": {
@@ -197,5 +222,25 @@
     "largest_remaining_scc": 0,
     "unresolved_dynamic_expressions": 0,
     "status": "Strict global acyclicity passed in current integrated working tree; final commit and hosted CI recorded by root."
+  },
+  "final_integration_reconciliation": {
+    "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+    "full_regression": {
+      "passed": 19486,
+      "skipped": 24,
+      "failed": 0,
+      "seconds": 547.61
+    },
+    "environment": {
+      "missing_USER": true,
+      "timezone": "America/Los_Angeles",
+      "passed": 222
+    },
+    "artifacts": "Fresh pristine-source wheel/sdist,626runtime-byte proof,17installedcommands,142sdistregressions7skips and actual33managed/pipx/umask002 lifecycle checks passed.",
+    "archives_published": [
+      "b98742fb967f18131905696f4afd3a61f2ad03f2",
+      "3b104ee64d060b5fbbe7d9da2f37345cd63c91cc"
+    ],
+    "qualification_limits": "Hosted CI must qualify the subsequent evidence/documentation commit; physical/production limits in the source report remain."
   }
 }

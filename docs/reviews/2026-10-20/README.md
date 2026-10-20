@@ -84,5 +84,10 @@ site. Physical GPU, multi-node transport, production SSH/shared filesystems,
 unfamiliar-user usability, and scientific efficacy need their own qualification.
 Simulated fixtures and local recordings do not establish those results.
 
-Final integrated regression, built-artifact qualification, compatibility checks,
-and hosted CI evidence are recorded in the coverage ledger by release integration.
+At code checkpoint `f63d82e`, the complete local suite passed **19,486 tests**,
+with 24 skips, in 547.61 seconds. The [integration record](integration.json)
+binds all twelve local release gates to that exact source: pristine artifacts,
+complete runtime-byte comparisons, installed commands, compatibility, environment,
+package extraction, and update/revert checks. Overlapping checks are not added
+to the full-suite total. Hosted CI is required on the subsequent delivered
+revision before merge; local qualification does not establish that result.

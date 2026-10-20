@@ -403,6 +403,35 @@
         "Visible active-file sessions preserve their next read; old sessions on hidden pages do not disable caching."
       ],
       "performance_limit": "Native idle still waits up to1s and uses bounded publication metadata. Conservative source ownership retains correctness; test timing is not presented as a benchmark."
+    },
+    {
+      "issue": "One failed synthetic decorator poisoned the process-global capture registry and replaced selection callbacks in subsequently constructed applications.",
+      "baseline": "Full integrated preflight reproduced204 failures;129 group mouse and23 selection-copy failures cascaded after test_capture_protocol declared a temporary failing job_selection adapter. Focused files passed independently, revealing cross-test lifetime leakage.",
+      "implementation": "Removed mutable process-global capture registration. Decorators carry immutable callback metadata; workbench composes finite validated per-App maps. Direct component adapters retain callbacks only on their root App. Known composed handlers reuse the same immutable map on motion, without copying or full Store snapshots. Trace read-only paging resolves PanelActions only when an activation branch needs that action.",
+      "alternative_review": "Restoring a test-global registry or keeping only the first registration would conceal application-session lifetime leakage and preserve import-order dependence. Per-App ownership fixes live multi-session semantics while retaining direct component support.",
+      "validation": [
+        {
+          "command": ".venv/bin/python -m pytest -q tests/test_capture_protocol.py tests/test_job_group_mouse_integration.py tests/test_job_selection_copy.py tests/test_jobs_arrow_focus.py tests/test_job_group_chevrons.py tests/test_flagship_workspace.py tests/test_hover_render_budget.py tests/test_job_context_selection.py tests/test_adaptive_recents.py tests/test_job_qol_sequence.py tests/test_job_group_drag.py tests/test_attachment_readiness_ui.py tests/test_batch_surfaces.py tests/test_forecast_integration.py tests/test_job_group_labels.py tests/test_pointer_integration.py --maxfail=8",
+          "result": "663 passed in11.21s,rawsingleprocessorder withcapture_protocolfirst andallpreviouslyfailingfiles."
+        },
+        {
+          "command": ".venv/bin/python -m pytest -q tests/test_capture_protocol.py",
+          "result": "22 passed in0.74s afteraddingexplicitmap-reuse/no-full-Store-snapshot regression."
+        },
+        {
+          "command": ".venv/bin/python -m pytest -q tests/test_capture_protocol.py tests/test_pointer_integration.py tests/test_hover_render_budget.py tests/test_flagship_workspace.py tests/test_attachment_readiness_ui.py",
+          "result": "112 passed in1.62s."
+        },
+        {
+          "command": ".venv/bin/python -m pytest -q tests/test_row_copy.py tests/test_raven_ui.py",
+          "result": "65 passed in2.30s; standalone fixtures explicitly bind the real action composition, all selection/copy/allocation geometry assertions unchanged."
+        },
+        {
+          "command": ".venv/bin/python -m pytest -q tests/test_screen_input_batches.py tests/test_smooth_scrolling.py tests/test_trace_timeline_ui.py tests/test_workbench_core.py tests/test_workbench_performance.py --maxfail=6",
+          "result": "162 passed in2.51s; fixture-only production-port binding and canonical spy corrections. StableFEATURES\u2192cachedmodule\u2192legacyalias identities explicitly verified; wheelcounts,clickidentity,streamsequence and25warmdispatchiterations unchanged."
+        }
+      ],
+      "assertions": "Failure propagation,cancel markers,exact selection sets,stale owners,geometry budgets,worker callback ownership and read-only paging assertions preserved. Standalone graph fixtures bind real ports; spies target actual extracted implementations instead of legacy aliases."
     }
   ],
   "architecture_completion": {
@@ -463,12 +492,24 @@
       "raven/ui/workspace_actions.py": "7df078354278add3201e25858fc2088f3a1b517af6f800250351c6fff902eecb",
       "raven/ui/divider_registry.py": "f538692aeddeea8e10ebd2388f3fc5cf25770194cebb62d25f13786f91d24069",
       "raven/ui/scrollbar_state.py": "b3dab19c2fd00671cde5a4e41433af1f688110c075b1c13ac643451d43a70974",
-      "raven/workbench.py": "be41f4910dbf3e5ef43b6fbea1ea8629e0eea1263297c37656088cffd859a620",
+      "raven/workbench.py": "8708eb19dc1896bb90d54df4345ab7a43f370a62b7f84fcbb1078a67f00f4ba5",
       "raven/job_logs/buffer.py": "fc64329bbb2aabf9d3c44af4eae1dc7df3bc97e857bf49942615f8507abe527f",
       "raven/job_logs/tools.py": "33a76e4e7002345d6897ce36d95ef7f63fba93a6c528b66dc35c30bf0d7b58ec",
       "raven/job_logs/workbench.py": "9f468c85d0800f6ea88ef15d90147f580a80d114b264b5428919aca7b6f83711",
       "raven/jobs/selection.py": "40422ee734fb09802503ac0d934317d8bce478cb872d21319a63e1499872c4b4",
-      "scripts/benchmark_ui_dispatch.py": "fb2fc5630a8d073862711dfff73e2363758b86355a7df06927a759a07e0fc396"
+      "scripts/benchmark_ui_dispatch.py": "fb2fc5630a8d073862711dfff73e2363758b86355a7df06927a759a07e0fc396",
+      "raven/pointer_routing.py": "3700032b3d74a8ccb21f97c7a69a5c2550e25a948823cdb91af1ae4bfdbb6ebe",
+      "raven/tracing/ui.py": "dcb0d186c7f0907df63c800cf72209672ce9661adaa6579d89df59ec8e2b5c4e",
+      "tests/test_capture_protocol.py": "4586a01d8f9ca164f579138868b93c081a06da592d9a91db04f7dcf5000a5fd9",
+      "tests/test_hover_render_budget.py": "4d7e33257ebdfd8e2eacd87f53e32d3850d5a5f07c54b2809fb4aeca3ceb733a",
+      "tests/test_flagship_workspace.py": "478b00bb4939704005cccf21a6a13c3aec16bfd734601f492265b87a9196cf20",
+      "tests/test_row_copy.py": "1a640abdfa410fa2e3703b442403f85f7aac6851c6ba35cb50058e3bb52ce404",
+      "tests/test_raven_ui.py": "23ac900d84b48fb960f223958ff8dff7a49a9970ec155812bf0a993ef218f386",
+      "tests/test_screen_input_batches.py": "4d4279443af0d4186632e14004c14d5aba94b1fce1f1921ebb7a40100d5fa444",
+      "tests/test_smooth_scrolling.py": "770e97436903d0d2bfec72bea7f2e04f8842553af11d539e4996274570092083",
+      "tests/test_trace_timeline_ui.py": "33cce63a87628f7863346dcc8c732fe926c57d35a52ce5c1caca4e4cc975e90c",
+      "tests/test_workbench_core.py": "d69668a9d9b44d7f0d87e763f685346b797a23de5327e986aa7d3fada82707d2",
+      "tests/test_workbench_performance.py": "b38dfb646be6aca56688c55dd412ba9fc8555d6bdd9778fd3180b116d083ea29"
     }
   }
 }

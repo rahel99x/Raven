@@ -258,11 +258,15 @@ with guidance. Changes to recognized user configuration are preserved and do
 not block an ordinary update.
 There is no background update check or automatic replacement during a session.
 
-The default update policy requires the declared official Raven repository and
-prints the full immutable source-commit range before building. A deliberately
-configured fork requires `raven update --allow-fork`. Source is obtained through
-the configured authenticated Git transport; a local checksum detects changes
-but is not a publisher signature. Build-tool requirements are pinned.
+The default update policy requires every declared and effective fetch URL to
+identify the official Raven repository. It prints the full immutable
+source-commit range before building. Equivalent official HTTPS and SSH URLs
+are supported. Git `url.*.insteadOf` settings can redirect a declared URL;
+inspect `git remote get-url --all origin` for the effective URLs of `origin`.
+A deliberately configured fork or custom redirect requires
+`raven update --allow-fork`. Source is obtained through the configured
+authenticated Git transport; a local checksum detects changes but is not a
+publisher signature. Build-tool requirements are pinned.
 
 For a release artifact with a GitHub/Sigstore provenance attestation, require
 verification explicitly:

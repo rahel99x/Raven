@@ -1,6 +1,6 @@
 {
   "additional_package_findings": [],
-  "final_revision": null,
+  "final_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
   "findings": [
     {
       "evidence": [
@@ -17,7 +17,7 @@
         }
       ],
       "id": "UI-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -59,7 +59,7 @@
         }
       ],
       "id": "UI-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -108,7 +108,7 @@
         }
       ],
       "id": "UI-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -150,7 +150,7 @@
         }
       ],
       "id": "UI-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -192,7 +192,7 @@
         }
       ],
       "id": "UI-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -234,7 +234,7 @@
         }
       ],
       "id": "UI-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -276,7 +276,7 @@
         }
       ],
       "id": "UI-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -332,7 +332,7 @@
         }
       ],
       "id": "UI-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -385,7 +385,7 @@
         }
       ],
       "id": "UI-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -440,7 +440,7 @@
         }
       ],
       "id": "UI-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -507,7 +507,7 @@
         }
       ],
       "id": "UI-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -560,7 +560,7 @@
         }
       ],
       "id": "UI-12",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -615,7 +615,7 @@
         }
       ],
       "id": "UI-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -668,7 +668,7 @@
         }
       ],
       "id": "UI-14",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -723,7 +723,7 @@
           "ledger": "packages/independent-root.json"
         }
       ],
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -785,7 +785,7 @@
         }
       ],
       "id": "COL-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -847,7 +847,7 @@
         }
       ],
       "id": "COL-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -909,7 +909,7 @@
         }
       ],
       "id": "COL-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -977,7 +977,7 @@
           "ledger": "packages/independent-root.json"
         }
       ],
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1039,7 +1039,7 @@
         }
       ],
       "id": "COL-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1101,7 +1101,7 @@
         }
       ],
       "id": "COL-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1163,7 +1163,7 @@
         }
       ],
       "id": "COL-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1231,7 +1231,7 @@
         }
       ],
       "id": "COL-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1299,7 +1299,7 @@
         }
       ],
       "id": "COL-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1361,7 +1361,7 @@
         }
       ],
       "id": "COL-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1423,7 +1423,7 @@
         }
       ],
       "id": "COL-12",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1485,7 +1485,7 @@
         }
       ],
       "id": "COL-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1548,7 +1548,7 @@
         }
       ],
       "id": "COL-14",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1611,7 +1611,7 @@
         }
       ],
       "id": "COL-15",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1680,7 +1680,7 @@
         }
       ],
       "id": "COL-16",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1749,7 +1749,7 @@
         }
       ],
       "id": "COL-17",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1811,7 +1811,7 @@
         }
       ],
       "id": "COL-18",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1874,7 +1874,7 @@
         }
       ],
       "id": "COL-19",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -1941,7 +1941,7 @@
         }
       ],
       "id": "HV-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2011,7 +2011,7 @@
         }
       ],
       "id": "HV-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2077,7 +2077,7 @@
         }
       ],
       "id": "HV-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2143,7 +2143,7 @@
         }
       ],
       "id": "HV-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2210,7 +2210,7 @@
         }
       ],
       "id": "HV-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2277,7 +2277,7 @@
         }
       ],
       "id": "HV-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2342,7 +2342,7 @@
         }
       ],
       "id": "HV-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2406,7 +2406,7 @@
         }
       ],
       "id": "HV-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2470,7 +2470,7 @@
         }
       ],
       "id": "HV-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2532,7 +2532,7 @@
         }
       ],
       "id": "HV-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2605,7 +2605,7 @@
         }
       ],
       "id": "HV-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2679,7 +2679,7 @@
         }
       ],
       "id": "HV-12",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2742,7 +2742,7 @@
         }
       ],
       "id": "HV-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2807,7 +2807,7 @@
         }
       ],
       "id": "HV-14",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2871,7 +2871,7 @@
         }
       ],
       "id": "HV-15",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -2936,7 +2936,7 @@
         }
       ],
       "id": "HV-16",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -3014,7 +3014,7 @@
         }
       ],
       "id": "HV-17",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -3102,7 +3102,7 @@
         }
       ],
       "id": "HV-18",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -3177,7 +3177,7 @@
         }
       ],
       "id": "HV-19",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -3239,7 +3239,7 @@
         }
       ],
       "id": "HV-20",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -3299,7 +3299,7 @@
         }
       ],
       "id": "HV-21",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -3364,7 +3364,7 @@
         }
       ],
       "id": "DATA-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3410,7 +3410,7 @@
         }
       ],
       "id": "DATA-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3454,7 +3454,7 @@
         }
       ],
       "id": "DATA-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3504,7 +3504,7 @@
         }
       ],
       "id": "DATA-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3548,7 +3548,7 @@
         }
       ],
       "id": "DATA-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3592,7 +3592,7 @@
         }
       ],
       "id": "DATA-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3636,7 +3636,7 @@
         }
       ],
       "id": "DATA-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3681,7 +3681,7 @@
         }
       ],
       "id": "DATA-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3726,7 +3726,7 @@
         }
       ],
       "id": "DATA-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3771,7 +3771,7 @@
         }
       ],
       "id": "DATA-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3815,7 +3815,7 @@
         }
       ],
       "id": "DATA-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3859,7 +3859,7 @@
         }
       ],
       "id": "DATA-12",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3903,7 +3903,7 @@
         }
       ],
       "id": "DATA-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3947,7 +3947,7 @@
         }
       ],
       "id": "DATA-14",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -3991,7 +3991,7 @@
         }
       ],
       "id": "DATA-15",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -4035,7 +4035,7 @@
         }
       ],
       "id": "DATA-16",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -4079,7 +4079,7 @@
         }
       ],
       "id": "DATA-17",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -4122,7 +4122,7 @@
         }
       ],
       "id": "DATA-18",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -4166,7 +4166,7 @@
         }
       ],
       "id": "DATA-19",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -4210,7 +4210,7 @@
         }
       ],
       "id": "DATA-20",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -4265,7 +4265,7 @@
           "ledger": "packages/independent-root.json"
         }
       ],
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "data",
       "owners": [
@@ -4318,7 +4318,7 @@
         }
       ],
       "id": "INP-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4375,7 +4375,7 @@
         }
       ],
       "id": "INP-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4435,7 +4435,7 @@
         }
       ],
       "id": "INP-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4493,7 +4493,7 @@
         }
       ],
       "id": "INP-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4551,7 +4551,7 @@
         }
       ],
       "id": "INP-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4607,7 +4607,7 @@
         }
       ],
       "id": "INP-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4664,7 +4664,7 @@
         }
       ],
       "id": "INP-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4720,7 +4720,7 @@
         }
       ],
       "id": "INP-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4778,7 +4778,7 @@
         }
       ],
       "id": "INP-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4835,7 +4835,7 @@
         }
       ],
       "id": "INP-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4893,7 +4893,7 @@
         }
       ],
       "id": "INP-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -4949,7 +4949,7 @@
         }
       ],
       "id": "INP-12",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5005,7 +5005,7 @@
         }
       ],
       "id": "INP-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5061,7 +5061,7 @@
         }
       ],
       "id": "INP-14",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5117,7 +5117,7 @@
         }
       ],
       "id": "INP-15",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5178,7 +5178,7 @@
         }
       ],
       "id": "INP-16",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5235,7 +5235,7 @@
         }
       ],
       "id": "INP-17",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5291,7 +5291,7 @@
         }
       ],
       "id": "INP-18",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5347,7 +5347,7 @@
         }
       ],
       "id": "INP-19",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5403,7 +5403,7 @@
         }
       ],
       "id": "INP-20",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5460,7 +5460,7 @@
         }
       ],
       "id": "INP-21",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5516,7 +5516,7 @@
         }
       ],
       "id": "INP-22",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5578,7 +5578,7 @@
         }
       ],
       "id": "INP-23",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5634,7 +5634,7 @@
         }
       ],
       "id": "INP-24",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5690,7 +5690,7 @@
         }
       ],
       "id": "INP-25",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5748,7 +5748,7 @@
         }
       ],
       "id": "INP-26",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limits",
@@ -5799,7 +5799,7 @@
         }
       ],
       "id": "LOG-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -5841,7 +5841,7 @@
         }
       ],
       "id": "LOG-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -5883,7 +5883,7 @@
         }
       ],
       "id": "LOG-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -5925,7 +5925,7 @@
         }
       ],
       "id": "LOG-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -5967,7 +5967,7 @@
         }
       ],
       "id": "LOG-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -6009,7 +6009,7 @@
         }
       ],
       "id": "LOG-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -6051,7 +6051,7 @@
         }
       ],
       "id": "LOG-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -6093,7 +6093,13 @@
         }
       ],
       "id": "LOG-8",
-      "integrated_validation": "pending",
+      "independent_review_findings": [
+        {
+          "id": "LOG-8-review-explicit-plugin-directory-root",
+          "ledger": "packages/independent-root.json"
+        }
+      ],
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -6135,7 +6141,7 @@
         }
       ],
       "id": "LOG-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -6177,7 +6183,7 @@
         }
       ],
       "id": "LOG-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -6219,7 +6225,7 @@
         }
       ],
       "id": "LOG-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "ui",
       "owners": [
@@ -6272,7 +6278,7 @@
         }
       ],
       "id": "MUT-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6332,7 +6338,7 @@
         }
       ],
       "id": "MUT-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6390,7 +6396,7 @@
         }
       ],
       "id": "MUT-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6451,7 +6457,7 @@
         }
       ],
       "id": "MUT-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6509,7 +6515,7 @@
         }
       ],
       "id": "MUT-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6566,7 +6572,7 @@
         }
       ],
       "id": "MUT-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6624,7 +6630,7 @@
         }
       ],
       "id": "MUT-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6681,7 +6687,7 @@
         }
       ],
       "id": "MUT-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6738,7 +6744,7 @@
         }
       ],
       "id": "MUT-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6795,7 +6801,7 @@
         }
       ],
       "id": "MUT-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6855,7 +6861,7 @@
         }
       ],
       "id": "MUT-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6913,7 +6919,7 @@
         }
       ],
       "id": "MUT-12",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -6989,7 +6995,7 @@
         }
       ],
       "id": "MUT-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -7054,14 +7060,15 @@
             "acceptance": [
               "test_explicit_mutation_takes_priority_over_automatic_project_read",
               "test_confirmed_scheduler_action_and_clone_preparation_run_off_the_ui_thread",
-              "test_resubmit_lookup_and_validation_never_block_the_interactive_key"
+              "test_resubmit_lookup_and_validation_never_block_the_interactive_key",
+              "test_inflight_mutation_keeps_old_audit_without_publishing_into_new_owner"
             ],
             "baseline": "Claim verified against current source; exact refusals and relevant Slurm CLI behavior reproduced in focused regression fixtures; live qualification described separately.",
             "files": [
               "raven/controller.py"
             ],
             "id": "MUT-14",
-            "implementation": "Interactive clone lookup/details/advice/test-only validation and confirmed scheduler mutations execute on existing bounded ResearchHub worker; CLI path awaits completion synchronously; completion validates reviewed connection scope.",
+            "implementation": "Interactive clone lookup/details/advice/test-only validation and confirmed scheduler mutations execute on existing bounded ResearchHub worker; CLI path awaits completion synchronously; completion validates reviewed connection scope. Final followup captures exact Store/Actions as well as connection scope, suppressing late completion publication into another owner while retaining original audit/receipt.",
             "review": "Exact target, stale connection, ownership, retries, durable uncertainty, bounds, and partial-result semantics checked. Existing behavioral assertions preserved through async waits and marker-only command normalization.",
             "status": "implemented"
           },
@@ -7070,7 +7077,13 @@
         }
       ],
       "id": "MUT-14",
-      "integrated_validation": "pending",
+      "independent_review_findings": [
+        {
+          "id": "MUT-14-review-late-completion-ownership",
+          "ledger": "packages/independent-root.json"
+        }
+      ],
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -7109,7 +7122,8 @@
           "value": [
             "test_explicit_mutation_takes_priority_over_automatic_project_read",
             "test_confirmed_scheduler_action_and_clone_preparation_run_off_the_ui_thread",
-            "test_resubmit_lookup_and_validation_never_block_the_interactive_key"
+            "test_resubmit_lookup_and_validation_never_block_the_interactive_key",
+            "test_inflight_mutation_keeps_old_audit_without_publishing_into_new_owner"
           ]
         }
       ]
@@ -7136,7 +7150,7 @@
         }
       ],
       "id": "MUT-15",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -7195,7 +7209,7 @@
         }
       ],
       "id": "MUT-16",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -7253,7 +7267,7 @@
         }
       ],
       "id": "MUT-17",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -7311,7 +7325,7 @@
         }
       ],
       "id": "MUT-18",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "mutations",
       "owners": [
@@ -7368,7 +7382,7 @@
         }
       ],
       "id": "ANA-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7437,7 +7451,7 @@
           "ledger": "packages/independent-root.json"
         }
       ],
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7501,7 +7515,7 @@
         }
       ],
       "id": "ANA-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7564,7 +7578,7 @@
         }
       ],
       "id": "ANA-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7626,7 +7640,7 @@
         }
       ],
       "id": "ANA-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7688,7 +7702,7 @@
         }
       ],
       "id": "ANA-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7750,7 +7764,7 @@
         }
       ],
       "id": "ANA-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7826,7 +7840,7 @@
         }
       ],
       "id": "ANA-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -7895,7 +7909,7 @@
         }
       ],
       "id": "ANA-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "integration",
       "owners": [
@@ -7943,7 +7957,7 @@
         }
       ],
       "id": "ANA-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -8005,7 +8019,7 @@
         }
       ],
       "id": "ANA-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -8062,7 +8076,7 @@
         }
       ],
       "id": "ANA-12",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "integration",
       "owners": [
@@ -8106,7 +8120,7 @@
         }
       ],
       "id": "ANA-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "integration",
       "owners": [
@@ -8155,7 +8169,7 @@
         }
       ],
       "id": "ANA-14",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -8217,7 +8231,7 @@
         }
       ],
       "id": "INS-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8263,7 +8277,7 @@
         }
       ],
       "id": "INS-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8310,7 +8324,7 @@
         }
       ],
       "id": "INS-3",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8356,7 +8370,7 @@
         }
       ],
       "id": "INS-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8401,7 +8415,7 @@
         }
       ],
       "id": "INS-5",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8447,7 +8461,7 @@
         }
       ],
       "id": "INS-6",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8494,7 +8508,7 @@
         }
       ],
       "id": "INS-7",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8539,7 +8553,7 @@
         }
       ],
       "id": "INS-8",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8601,7 +8615,7 @@
         }
       ],
       "id": "INS-9",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
@@ -8674,7 +8688,7 @@
         }
       ],
       "id": "INS-10",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8718,7 +8732,7 @@
         }
       ],
       "id": "INS-11",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8748,8 +8762,8 @@
         {
           "entry_id": "INS-12",
           "item": {
-            "design": "Ordinary main commits do not necessarily have release artifacts: the existing workflow attests tags/manual release candidates. Requiring nonexistent attestations by default would break ordinary updates. Default requires the declared official repository, immutable fetched commit and printed exact range; forks require explicit authorization. --require-attestation fails closed using the existing GitHub/Sigstore signer policy. Local checksums are never described as authentication.",
-            "evidence": "Tests reject fork updates without --allow-fork, reject missing/failed required attestations before checkout mutation, and assert exact source/signer digests and workflow identity in gh arguments. Build tools pin setuptools 84.0.0 and wheel 0.48.0.",
+            "design": "Ordinary main commits do not necessarily have release artifacts: the existing workflow attests tags/manual release candidates. Requiring nonexistent attestations by default would break ordinary updates. Default requires every declared and effective fetch URL to identify the official repository, immutable fetched commit and printed exact range; forks require explicit authorization. --require-attestation fails closed using the existing GitHub/Sigstore signer policy. Local checksums are never described as authentication.",
+            "evidence": "Tests reject fork updates without --allow-fork, reject missing/failed required attestations before checkout mutation, and assert exact source/signer digests and workflow identity in gh arguments. Build tools pin setuptools 84.0.0 and wheel 0.48.0. Final independent review additionally reproduced declared/effective URL disagreement and fixed every effective fetch URL check. Official SSH rewrite, actual redirected local update refusal/fork recovery, all-URL checks and credential-free diagnostics pass in the final 105-case trust/update run and 236 coordinator checks.",
             "files": [
               "raven/installation/update_verification.py",
               "raven/installation/release_verification.py",
@@ -8759,6 +8773,7 @@
               "docs/INSTALLATION.md"
             ],
             "id": "INS-12",
+            "independent_review": "INS-12-review-effective-fetch-url-policy",
             "qualification_limit": "A successful live verifier run for the delivered commit requires its published attested artifact and GitHub verifier access. Unit verifier success is simulated and labeled as such.",
             "resolution": "implemented authorized-source default plus explicit fail-closed attestation policy",
             "status": "adjusted"
@@ -8768,7 +8783,13 @@
         }
       ],
       "id": "INS-12",
-      "integrated_validation": "pending",
+      "independent_review_findings": [
+        {
+          "id": "INS-12-review-effective-fetch-url-policy",
+          "ledger": "packages/independent-root.json"
+        }
+      ],
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "qualification_limit",
@@ -8819,7 +8840,7 @@
         }
       ],
       "id": "INS-13",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8866,7 +8887,7 @@
         }
       ],
       "id": "INS-14",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8911,7 +8932,7 @@
         }
       ],
       "id": "INS-15",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8955,7 +8976,7 @@
         }
       ],
       "id": "INS-16",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -8998,7 +9019,7 @@
         }
       ],
       "id": "INS-17",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -9042,7 +9063,7 @@
         }
       ],
       "id": "INS-18",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -9089,7 +9110,7 @@
         }
       ],
       "id": "INS-19",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -9133,7 +9154,7 @@
         }
       ],
       "id": "INS-20",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [],
       "owner": "install",
       "owners": [
@@ -9187,11 +9208,16 @@
               "CI runs all matrix regressions with pytest -n 2 and representative Python 3.12 tests under env -u USER TZ=America/Los_Angeles.",
               "SSH absence is an explicit mocked capability test that forbids connection construction. No remote or real scheduler claim follows from it."
             ],
-            "id": "T-1",
-            "remaining": [
+            "final_reconciliation": {
+              "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+              "evidence": "docs/reviews/2026-10-20/integration.json",
+              "status": "local release integration completed; hosted CI remains mandatory on the delivered revision"
+            },
+            "historical_remaining": [
               "Product uid and JSON-error implementation is owned by root; this ledger accounts for its environment harness only.",
               "Hosted Python 3.10–3.14 matrix configured, not claimed executed locally."
             ],
+            "id": "T-1",
             "status": "harness implemented; representative non-UTC/missing-USER suite passed"
           },
           "ledger": "packages/s3-ci.json",
@@ -9199,21 +9225,13 @@
         }
       ],
       "id": "T-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
           "package": "root",
           "value": [
             "Synthetic fixtures are not live site, remote-host or GPU qualification."
-          ]
-        },
-        {
-          "field": "remaining",
-          "package": "s3-ci",
-          "value": [
-            "Product uid and JSON-error implementation is owned by root; this ledger accounts for its environment harness only.",
-            "Hosted Python 3.10–3.14 matrix configured, not claimed executed locally."
           ]
         }
       ],
@@ -9247,7 +9265,7 @@
       "source_end_line": 559,
       "source_line": 559,
       "source_text": "**T-1 · Medium · VERIFIED · `raven/cli.py:236`, `raven/cli.py:685`, `raven/raven_launch.py:77`, `raven/execution_ui.py:52`, `raven/orchestrator.py:39`.** The account identity comes from `os.environ.get(\"USER\", \"\")`, not from the uid. With `USER` unset (cron, `env -i`, containers, some batch wrappers), `connection_scope()` builds an empty user and `validate_scope()` rejects it. `ravenh --site desktop run ops run environment manifest=… --json --no-state` then prints `Operations: execution connection scope is unknown; prepare a fresh review in the original connection` on stdout as plain text and exits 1. With `USER=root` set, the same command prints the JSON report and exits 0. Two defects: identity from an environment variable, and a `--json` mode that emits non-JSON errors. Fix: derive the user with `pwd.getpwuid(os.getuid()).pw_name` (keep `--user` and the config override for display only), and route every error under `--json` through one `{\"status\":\"error\",…}` writer.",
-      "status": "implemented_with_documented_limits",
+      "status": "implemented",
       "tests": [
         {
           "field": "acceptance",
@@ -9264,7 +9282,7 @@
           "entry_id": "T-2",
           "item": {
             "design": "raven trust PATH delegates configuration/code authority to the reviewed shared root owners/group without chmod or mandatory-policy bypass. Grants bind uid/device/inode and are stored atomically in private configuration under a serialized lock. Real PI-owned cluster deployment remains unqualified on this single-user host.",
-            "evidence": "Private-group identity matrix, private 0700 shielding, PI-owner predicate fixtures, bounded private registry, replaced-inode revocation, root grant removal, and no-follow-inside-root tests pass. Selected XDG roots resolve once while internal symlinks remain rejected. Mandatory site policy rejects group write even when a private-group exception would otherwise apply.",
+            "evidence": "Private-group identity matrix, private 0700 shielding, PI-owner predicate fixtures, bounded private registry, replaced-inode revocation, root grant removal, and no-follow-inside-root tests pass. Selected XDG roots resolve once while internal symlinks remain rejected. Mandatory site policy rejects group write even when a private-group exception would otherwise apply. Final plugin-root review additionally verifies an explicitly selected plugin-directory alias resolves once while internal/final symlinks and writable roots remain refused; retargeting the selected alias after discovery does not redirect execution.",
             "files": [
               "raven/config_trust.py",
               "raven/path_trust_cli.py",
@@ -9273,6 +9291,7 @@
               "docs/guides/configuration-trust.md"
             ],
             "id": "T-2",
+            "independent_review": "LOG-8-review-explicit-plugin-directory-root",
             "resolution": "implemented shared trust and explicit root grants",
             "status": "confirmed"
           },
@@ -9287,10 +9306,15 @@
               "Private-group and explicit PI-root trust behavior is tested by installer owner in test_review_install_trust.py.",
               "Installer-owned CI jobs retain actual pinned Bash 3.2/4.2 and managed/pipx update/revert under umask 002."
             ],
-            "id": "T-2",
-            "remaining": [
+            "final_reconciliation": {
+              "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+              "evidence": "docs/reviews/2026-10-20/integration.json",
+              "status": "local release integration completed; hosted CI remains mandatory on the delivered revision"
+            },
+            "historical_remaining": [
               "Trust implementation, actual installer lifecycles and Bash qualification are recorded by installation owner; no PI-owned live cluster path is claimed here."
             ],
+            "id": "T-2",
             "status": "shared-trust regression harness integrated"
           },
           "ledger": "packages/s3-ci.json",
@@ -9298,16 +9322,14 @@
         }
       ],
       "id": "T-2",
-      "integrated_validation": "pending",
-      "limits": [
+      "independent_review_findings": [
         {
-          "field": "remaining",
-          "package": "s3-ci",
-          "value": [
-            "Trust implementation, actual installer lifecycles and Bash qualification are recorded by installation owner; no PI-owned live cluster path is claimed here."
-          ]
+          "id": "LOG-8-review-explicit-plugin-directory-root",
+          "ledger": "packages/independent-root.json"
         }
       ],
+      "integrated_validation": "regression-qualified",
+      "limits": [],
       "owner": "install",
       "owners": [
         "install",
@@ -9343,30 +9365,59 @@
       "tests": []
     },
     {
+      "architecture_acceptance": {
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "command": ".venv/bin/python scripts/check_import_layers.py --require-acyclic --json /workspace/review-structural-imports.json",
+        "graph_sha256": "8d4de9d66010dd4bddf59d9fccbddd93d479afd5ba6099da255443729cb0dde5",
+        "status": "qualified-local",
+        "tests": [
+          {
+            "evidence": "/workspace/review-final-architecture-acceptance.log",
+            "passed": 82,
+            "scope": "strict-gate, compatibility, worker digest and coverage evidence contracts at003f3a5; later UI-only corrections preserve these contracts"
+          },
+          {
+            "evidence": "/workspace/review-B-cross-test-regression.log",
+            "passed": 663,
+            "scope": "ordered shared-capture and original failure regressions; exact owner ledger records command"
+          },
+          {
+            "evidence": "/workspace/review-final-quality-f63d82e.log",
+            "scope": "seven dependency contracts, all-depth graph, whole-core names, 275 formatted and11stricttyped sources"
+          }
+        ]
+      },
       "evidence": [
         {
           "entry_id": "S-1",
           "item": {
-            "acceptance": "tests/test_import_layers.py; lint-imports --no-cache; scripts/check_import_layers.py; actual graph report /workspace/review-structural-imports.json",
-            "acceptance_gap": "The source review PR17 requires no cycles including function imports.109UI SCC remains, so that acceptance condition is not met. No unavailable credentials/hardware/external product decision blocks this remaining implementation.",
-            "baseline": "353 modules;2033 function imports; SCC175/4/3/2 at initial current-tree audit, rather than stale review332/1968/SCC168.",
+            "acceptance": [
+              "python scripts/check_import_layers.py --require-acyclic --json /workspace/review-structural-imports.json",
+              "python scripts/check_quality.py",
+              "tests/test_import_layers.py",
+              "tests/test_entry_capture_execution_architecture.py",
+              "tests/test_operation_composition_architecture.py",
+              "tests/test_ui_state_leaves.py"
+            ],
+            "acceptance_gap": null,
+            "baseline": "Original review332modules/1968functionimports/SCC168; initial current-sourceaudit353modules/2033functionimports/SCC175,4,3,2. Hypotheses reconciled rather than assuming the planning snapshot was current.",
+            "design": "Hoist hot pure query/geometry imports; retain explicit deferred optional/worker composition to preserve private job-runtime startup. Every retained dependency remains statically checked. Never hide an edge with a module-name lookup.",
             "id": "S-1",
-            "next_dependency_sequence": "Extract explicit typed pointer/capture owner registry, interaction registry/application action ports, selection orchestration, render callbacks, and pure CLI entry helpers, then eliminate each remaining SCC and run --require-acyclic. Read-only heuristic suggests76feedback arcs across45files; not a minimumproof or implementationplan.",
-            "outcome": "Declared pure contracts, application readers, adapters and transport boundaries. Extracted geometry/focus, text/catalogs, explicit research input/selection callbacks, Setup recording callbacks, shared science analysis, array membership, dependency grammar, planning inputs. All-depth AST gate refuses new cyclic edges and enforces transitive application-reader→UI prohibition; import-linter6contractskept. Collaborator terminal/heavy/cadence/execution/file seams integrate through the same gate. Literal runtime imports, aliased relative compatibility shims, and all function/TYPE_CHECKING imports participate; new unresolved expression occurrences are forbidden independently of line movement.",
-            "remaining": "One109-module UI cooperation SCC and8runtime-dynamic module expressions remain. Global --require-acyclic intentionally fails; no complete global acyclicity claim. Named strict pure/domain, transport and transitive application-reader boundaries pass; further UI interfaces or composition registration are needed to eliminate residual UI cooperation debt.",
-            "status": "partially_implemented_internal_work_remaining"
+            "outcome": "Actual query/state/domain leaves, explicit typed UI action capabilities, finite UI/operation/worker registries and canonical entry/capture/execution services eliminate every cycle. Seven declared dependency contracts and transitive canonical service-to-UI prohibitions pass. All function/TYPE_CHECKING/relative/literal runtime imports participate; computed core imports are zero. The former debt baseline is empty and CI requires --require-acyclic.",
+            "remaining": null,
+            "status": "implemented"
           },
           "ledger": "packages/structure.json",
           "package": "structure"
         }
       ],
       "id": "S-1",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "remaining",
           "package": "structure",
-          "value": "One109-module UI cooperation SCC and8runtime-dynamic module expressions remain. Global --require-acyclic intentionally fails; no complete global acyclicity claim. Named strict pure/domain, transport and transitive application-reader boundaries pass; further UI interfaces or composition registration are needed to eliminate residual UI cooperation debt."
+          "value": null
         }
       ],
       "owner": "integration",
@@ -9387,16 +9438,16 @@
       "review_claim": "VERIFIED · whole package.",
       "scope_adjustment": {
         "current_graph": {
-          "cyclic_components": 1,
-          "cyclic_edges": 532,
-          "dynamic_module_expressions": 8,
-          "largest_component_nodes": 109
+          "cyclic_components": 0,
+          "cyclic_edges": 0,
+          "dynamic_module_expressions": 0,
+          "largest_component_nodes": 0
         },
-        "delivered_scope": "Enforced layer boundaries and staged extraction; PR 17 remains ongoing.",
+        "delivered_scope": "Declared layer boundaries, explicit composition and globally acyclic imports including function bodies.",
         "external_hardware_block": false,
         "graph_evidence": "packages/architecture-graph.json",
-        "original_global_no_cycle_target": "unmet",
-        "remaining_work": "Break the residual UI cooperation cycles using explicit application/domain ports or composition registration, and resolve the remaining dynamic module expressions.",
+        "original_global_no_cycle_target": "met",
+        "remaining_work": null,
         "source_plan": {
           "completion_target": {
             "source_line": 723,
@@ -9410,12 +9461,19 @@
       "source_end_line": 574,
       "source_line": 574,
       "source_text": "**S-1 · High · VERIFIED · whole package.** The import graph is acyclic only at module level. There are **1,968 function-level `import` statements in 229 files** (`controller.py` 163, `views.py` 141, `screen.py` 100, `cli.py` 75), and once those are counted, **168 of 332 modules form a single strongly connected component**. Consequences: a missing or broken import surfaces when a user clicks something, not at import time; per-call imports sit on hot paths (`views.py:2304` and `:2335` re-import `metadata_for_record` for every dependency row of every frame; `controller._handle` runs about 15 imports before it dispatches a key); and the core/lab split cannot happen — the project's own W42 record says the \"core\" prototype still has 310 modules. Fix: declare layers (terminal UI → application services → domain → adapters → transport), enforce them with the import-linter config that already exists but covers two paths, hoist imports to module level inside each layer, and break each cycle with an explicit interface or registry.",
-      "status": "adjusted_staged_architectural_milestone",
+      "status": "implemented",
       "tests": [
         {
           "field": "acceptance",
           "package": "structure",
-          "value": "tests/test_import_layers.py; lint-imports --no-cache; scripts/check_import_layers.py; actual graph report /workspace/review-structural-imports.json"
+          "value": [
+            "python scripts/check_import_layers.py --require-acyclic --json /workspace/review-structural-imports.json",
+            "python scripts/check_quality.py",
+            "tests/test_import_layers.py",
+            "tests/test_entry_capture_execution_architecture.py",
+            "tests/test_operation_composition_architecture.py",
+            "tests/test_ui_state_leaves.py"
+          ]
         }
       ]
     },
@@ -9424,23 +9482,32 @@
         {
           "entry_id": "S-2",
           "item": {
-            "acceptance": "1094 integrated mutation/focus/pointer/modal/raw-input tests;662final array/metric/series/setup tests incl all10reported focus regressions; actual curses Ctrl-C/confirmation and PTY cancellation reviewed; tests/test_focus_router.py.",
+            "acceptance": [
+              "663 ordered cross-test checks with capture_protocol before every prior failing file",
+              "22 capture protocol checks including failed handler to fresh App, immutable maps and map reuse",
+              "tests/test_focus_router.py",
+              "tests/test_workbench_composition_identity.py"
+            ],
             "id": "S-2",
-            "limits": "Main-page context shortcuts still reuse existing feature composition, input byte parser state machine remains unchanged; no undocumented claim to replace native protocol handling.",
-            "outcome": "Typed bounded FocusStack routes one foreground owner, composes only that foreground document selection/chart/poll/accessibility tools, retains global interrupt and terminal input-origin/geometry invariants. Canonical command descriptors dispatch30previously chained core commands via25focused handlers; grammar aliases explicit; feature commands directownerlookup; paste routed through owned callbacks.",
-            "status": "implemented_modal_and_command_router"
+            "limits": [
+              "No human usability or production terminal/remote qualification follows from automated local tests."
+            ],
+            "outcome": "One FocusStack owns foreground input and the command registry resolves commands. Pointer decorators carry immutable metadata; a finite validated callback map is pinned per App. Late custom handlers cannot modify existing or future sessions. Navigation, panel, selection and export actions use concrete named callable ports; stable feature keys preserve persisted preferences.",
+            "status": "implemented"
           },
           "ledger": "packages/structure.json",
           "package": "structure"
         }
       ],
       "id": "S-2",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
           "field": "limits",
           "package": "structure",
-          "value": "Main-page context shortcuts still reuse existing feature composition, input byte parser state machine remains unchanged; no undocumented claim to replace native protocol handling."
+          "value": [
+            "No human usability or production terminal/remote qualification follows from automated local tests."
+          ]
         }
       ],
       "owner": "integration",
@@ -9468,7 +9535,12 @@
         {
           "field": "acceptance",
           "package": "structure",
-          "value": "1094 integrated mutation/focus/pointer/modal/raw-input tests;662final array/metric/series/setup tests incl all10reported focus regressions; actual curses Ctrl-C/confirmation and PTY cancellation reviewed; tests/test_focus_router.py."
+          "value": [
+            "663 ordered cross-test checks with capture_protocol before every prior failing file",
+            "22 capture protocol checks including failed handler to fresh App, immutable maps and map reuse",
+            "tests/test_focus_router.py",
+            "tests/test_workbench_composition_identity.py"
+          ]
         }
       ]
     },
@@ -9493,6 +9565,7 @@
                   "tests/fixtures/review-temporal-holdout/queue/result.json"
                 ],
                 "historical_markdown_reports_preserved": 52,
+                "qualification_stage": "Archive-cleanup milestone before subsequent family extraction; final integrated artifacts are qualified separately.",
                 "removed_historical_raw_bytes": 19534267,
                 "source_distribution_bytes": 4798157,
                 "wheel_bytes": 2072357
@@ -9514,11 +9587,16 @@
                 "regression": "tests/test_install_bootstrap.py::test_downloaded_script_clones_private_default_and_delegates checks exact clone arguments and one clone."
               }
             },
-            "id": "S-3",
-            "remaining": [
+            "final_reconciliation": {
+              "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+              "evidence": "docs/reviews/2026-10-20/integration.json",
+              "status": "local release integration completed; hosted CI remains mandatory on the delivered revision"
+            },
+            "historical_remaining": [
               "Root must publish evidence/pre-review-2026-10-20 before relying on public archive links.",
               "Final integrated package and installed-command qualification remains with root."
             ],
+            "id": "S-3",
             "status": "implemented; focused source-distribution qualification passed",
             "tradeoff": "Preserve every original raw Git blob on an explicit immutable-revision evidence branch, keep all human reports on main, and retain only exact deterministic test inputs. Deleting Git history or rewriting human reports would lose provenance; copying every capture into packages would preserve the measured installation cost."
           },
@@ -9527,17 +9605,8 @@
         }
       ],
       "id": "S-3",
-      "integrated_validation": "pending",
-      "limits": [
-        {
-          "field": "remaining",
-          "package": "s3-ci",
-          "value": [
-            "Root must publish evidence/pre-review-2026-10-20 before relying on public archive links.",
-            "Final integrated package and installed-command qualification remains with root."
-          ]
-        }
-      ],
+      "integrated_validation": "regression-qualified",
+      "limits": [],
       "owner": "integration",
       "owners": [
         "s3-ci"
@@ -9559,7 +9628,7 @@
       "source_end_line": 578,
       "source_line": 578,
       "source_text": "**S-3 · Medium · VERIFIED · `MANIFEST.in`, `docs/implementation/`.** 22 MB of raw CI evidence is committed, including eight copies of a 530 KB `release-inventory.json`, and `MANIFEST.in` ships it (`recursive-include docs/implementation *.gz *.jsonl *.log …`). The sdist is **13.0 MB against a 1.9 MB wheel**, and every bootstrap install clones the full history (a 17 MiB pack) — the same clone that died in `git index-pack` on CARC. Fix: publish evidence as release assets or on a separate branch, exclude `docs/implementation` from the sdist, and clone with `--depth 1`.",
-      "status": "implemented_with_documented_limits",
+      "status": "implemented",
       "tests": []
     },
     {
@@ -9567,11 +9636,20 @@
         {
           "entry_id": "S-4",
           "item": {
-            "acceptance": "Geometry/pointer374tests; catalogs/raw-input265tests; research/autolink343tests; scientific/workflow/planning236tests; collaborator canonical/alias/bootstrap matrices referenced in their ledgers.",
+            "acceptance": [
+              "53 C-family legacy module identities and canonical consumer guards",
+              "18 Jobs legacy module identities and canonical consumer guard",
+              "13 log implementation aliases and package guard",
+              "recordings/terminal/configuration/collection package isolation and identity suites",
+              "git-archive wheel/sdist and installed-command qualification"
+            ],
             "id": "S-4",
-            "outcome": "Canonical ui contract package plus collaborator terminal/heavy packages. Flat compatibility imports preserve class/module identity and released -m entrypoints. Pure contract imports hoisted; changed canonical packages formatted and typed gates expanded by UI owner.",
-            "remaining": "Other flat module families remain; move them as their application/domain boundaries are extracted. This is a staged architecture milestone, not a claim all420modules were repackaged.",
-            "status": "partially_implemented_staged_packages"
+            "limits": [
+              "The unpublished core/lab packaging experiment is separately qualified. No production distribution rename or few-dozen-module core is claimed."
+            ],
+            "outcome": "Actual collection/configuration/entry/execution/Heavy/installation/jobs/logs/recordings/launch/tracing/terminal/operation-adapter/UI implementations live in coherent packages. All former family paths are exact module aliases or explicit public aggregates. Lower production consumers use canonical imports, remote/private runtime bundlers understand nested packages, and worker digests cover canonical dispatch. 275 migrated source files are formatted and checked; 11 boundary sources are strictly typed; all core Python names are linted.",
+            "remaining": null,
+            "status": "implemented"
           },
           "ledger": "packages/structure.json",
           "package": "structure"
@@ -9580,17 +9658,22 @@
           "entry_id": "S-4 gates",
           "item": {
             "evidence": [
-              "Ruff F covers all raven core files, including canonical implementations rather than only compatibility shims.",
-              "Default 88-column formatting covers canonical terminal/heavy/ui/installation families plus reviewed domain/application ports; original 100-column transport boundary retained.",
-              "Strict mypy covers 10 source files: existing transport/command callbacks and seven pure typed contracts.",
-              "Six import-linter contracts protect pure presentation, log paths, cadence and application-reader ports.",
-              "AST gate counts function-level and literal dynamic imports; remaining cycles remain explicit baseline debt."
+              "Ruff F covers every raven core file, including actual canonical implementations.",
+              "Default88-column formatting covers275 actual migrated implementation files across terminal,heavy,ui,installation,jobs,job_logs,recordings,tracing,launching,entry,execution,configuration,collection and operation adapters; the original100-column transport boundary remains.",
+              "Strict mypy covers11 source files, including the new typed owner-action interface.",
+              "Seven import-linter contracts protect pure presentation,log paths,cadence and application-reader ports.",
+              "Global AST --require-acyclic counts every import depth and resolved finite runtime composition:625 modules,2067function imports,zero strongly connected components,zero unresolved dynamic import expressions.",
+              "81 unambiguous pure query/geometry imports were hoisted from hot UI paths in22 files with lexical binding conflict checks. Intentional owner composition and optional adapters remain explicit; no claim that all function imports were removed."
+            ],
+            "final_reconciliation": {
+              "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+              "evidence": "docs/reviews/2026-10-20/integration.json",
+              "status": "local release integration completed; hosted CI remains mandatory on the delivered revision"
+            },
+            "historical_remaining": [
+              "Hosted CI and final delivered-commit rerun are release integration checks."
             ],
             "id": "S-4 gates",
-            "remaining": [
-              "Hosted CI and final delivered-commit rerun are release integration checks.",
-              "The graph remains explicitly cyclic: a 109-module strongly connected component and eight unresolved dynamic expressions remain baseline debt."
-            ],
             "status": "implemented; final integrated local quality gate passed"
           },
           "ledger": "packages/s3-ci.json",
@@ -9598,20 +9681,19 @@
         }
       ],
       "id": "S-4",
-      "integrated_validation": "pending",
+      "integrated_validation": "regression-qualified",
       "limits": [
         {
-          "field": "remaining",
+          "field": "limits",
           "package": "structure",
-          "value": "Other flat module families remain; move them as their application/domain boundaries are extracted. This is a staged architecture milestone, not a claim all420modules were repackaged."
+          "value": [
+            "The unpublished core/lab packaging experiment is separately qualified. No production distribution rename or few-dozen-module core is claimed."
+          ]
         },
         {
           "field": "remaining",
-          "package": "s3-ci",
-          "value": [
-            "Hosted CI and final delivered-commit rerun are release integration checks.",
-            "The graph remains explicitly cyclic: a 109-module strongly connected component and eight unresolved dynamic expressions remain baseline debt."
-          ]
+          "package": "structure",
+          "value": null
         }
       ],
       "owner": "integration",
@@ -9645,12 +9727,18 @@
       "source_end_line": 580,
       "source_line": 580,
       "source_text": "**S-4 · Medium · VERIFIED · whole package.** 330 modules still sit in one flat namespace, with families standing in for packages (`raven_*` 19, `ops_*` 18, `terminal_*` 13, `job_*` 13, `series_*` 12, `launch_*` 11, `log_*` 10, `trace_*` 9). 116 functions exceed 100 lines and 15 exceed 200. 1,250 lines exceed 160 characters, and several modules (`raven_ui.py`, `raven_limits.py`) are written in a compressed one-line style that hides control flow from review. Fix: move each family into a subpackage as the layering in S-1 lands, and extend `ruff format` beyond the 171 gated lines one subpackage at a time.",
-      "status": "implemented_with_documented_limits",
+      "status": "implemented",
       "tests": [
         {
           "field": "acceptance",
           "package": "structure",
-          "value": "Geometry/pointer374tests; catalogs/raw-input265tests; research/autolink343tests; scientific/workflow/planning236tests; collaborator canonical/alias/bootstrap matrices referenced in their ledgers."
+          "value": [
+            "53 C-family legacy module identities and canonical consumer guards",
+            "18 Jobs legacy module identities and canonical consumer guard",
+            "13 log implementation aliases and package guard",
+            "recordings/terminal/configuration/collection package isolation and identity suites",
+            "git-archive wheel/sdist and installed-command qualification"
+          ]
         }
       ]
     }
@@ -9750,38 +9838,127 @@
       "related_source_claims": [
         "DATA-21"
       ]
+    },
+    {
+      "item": {
+        "evidence": "Actual ResearchHub cancellation worker blocks after old alex dispatch. Replace Store/Actions/user with bob and mark same jobID, then release and poll. Baseline3fd4d97 clears bob mark and overwrites bob message while old audit remains. Saved baseline/current control-flow probe reproduces mark/message false→true with one preserved old audit in each.",
+        "fix": "Capture exact Store and Actions identities together with reviewed connection scope. Both confirmed work closures and completion callbacks require that ownership; stale completions cannot modify new-owner UI, marks, tags or sampler. Old Actions audit and durable resubmit receipt remain available; scheduler preflight reads captured Store.",
+        "id": "MUT-14-review-late-completion-ownership",
+        "limits": "Controlled fake scheduler transport with actual local background worker and durable receipt; no liveSlurm, CPU/GPU, remote or performance qualification. Runtime changed after3fd4d97; final integrated checks required.",
+        "owner_report": "/workspace/review-mutation-completion-final.json",
+        "probe_driver": "/workspace/review-stale-mutation-completion-probe.py",
+        "probe_result": "/workspace/review-stale-mutation-completion-probe.json",
+        "source_review_items": [
+          "MUT-14",
+          "UI-2"
+        ],
+        "status": "fixed_verified",
+        "validation": "12 actual ResearchHub cases: cancellation/resubmit × changed scope/Store/Actions × accepted/unknown result. Replacement Store retains same scope fingerprint. Assertions cover single transport, old audit and token receipt, preserved current marks/message/command_ok/tags and zero current sampler refresh.694related mutation/confirmation/CLI/lifecycle/composition tests passed11.73s;15narrowchecks passed0.84s. Existing assertions unchanged.",
+        "validation_log": "/workspace/review-mutation-completion-focused.log"
+      },
+      "ledger": "packages/independent-root.json",
+      "package": "independent-root",
+      "related_source_claims": [
+        "MUT-14"
+      ]
+    },
+    {
+      "item": {
+        "design": "Resolving each complete plugin filename would incorrectly authorize internal/final symlinks. Resolving only the selected directory reuses the shared trust walker, costs one realpath per explicit directory and adds no recursive scan.",
+        "evidence": "On baseline 3fd4d97c5f4d1a0e7bb5fad8322ab32912691e52, discover(config, [chosen_symlink_directory]) returned lexical plugin paths and load rejected NotADirectoryError, while the same canonical directory loaded successfully. Exact baseline reproduction is /workspace/review-final-trust-skeptical-repro.json.",
+        "files": [
+          "raven/plugins.py",
+          "tests/test_config_trust.py",
+          "docs/guides/configuration-trust.md"
+        ],
+        "fix": "Resolve only a user-selected extra plugin directory to its real root once during discovery. Existing verified-byte loading and no-follow traversal remain unchanged: final-file symlinks, substituted root symlinks and unsafe writable roots refuse execution; retargeting the selected alias after discovery cannot redirect the pinned path.",
+        "fix_revision": "a352f67991c821281a8163bd5b092fba926b9402",
+        "id": "LOG-8-review-explicit-plugin-directory-root",
+        "limits": "Actual local Git repositories, Git rewrite resolution, plugin discovery/execution and filesystem confinement; no public fetch, live SSH/proxy connection, live successful artifact attestation, multiuser cluster or performance claim. Final delivered full regression/packaging/CI remains required. Runtime fixes are in a352f67; the final end-to-end regression and documentation were added afterward. Source hashes pin the tested local files.",
+        "related_source_claims": [
+          "LOG-8",
+          "T-2"
+        ],
+        "reviewer": "review_install_trust",
+        "status": "fixed_verified",
+        "validation": "Four exact cases cover successful explicit alias, post-discovery alias retargeting, final-file symlink, substituted canonical-root symlink and writable-root refusal. Existing pinned-byte and unsafe-file assertions remain. 105 passed in 12.20s; 236 passed in 32.85s.",
+        "validation_logs": [
+          "/workspace/review-final-trust-boundaries.log",
+          "/workspace/review-final-trust-coordinators.log"
+        ]
+      },
+      "ledger": "packages/independent-root.json",
+      "package": "independent-root",
+      "related_source_claims": [
+        "LOG-8",
+        "T-2"
+      ]
+    },
+    {
+      "item": {
+        "design": "Inspecting effective Git configuration preserves existing SSH, proxy and credential behavior. Disabling all Git rewrite/transport configuration would break legitimate official HTTPS-to-SSH workflows. There is one additional bounded local Git process per policy check, with no added network request; no timing improvement is claimed.",
+        "evidence": "On baseline 3fd4d97c5f4d1a0e7bb5fad8322ab32912691e52, declared origin https://github.com/rahel99x/Raven.git plus local url.<different-local-origin>.insteadOf caused git remote get-url origin to report the different endpoint, yet verify labeled the channel official-repository. Exact baseline reproduction is /workspace/review-final-trust-skeptical-repro.json.",
+        "files": [
+          "raven/installation/update_verification.py",
+          "tests/test_review_install_trust.py",
+          "docs/INSTALLATION.md"
+        ],
+        "fix": "Check every declared URL and every effective fetch URL from git remote get-url --all under the same bounded Git environment as fetch. Both sets must be exclusively official; otherwise require explicit --allow-fork and classify explicit-fork. The official artifact-attestation policy refuses such a fork. Refusals show declared/effective classifications and recovery commands without exposing endpoint credentials.",
+        "fix_revision": "a352f67991c821281a8163bd5b092fba926b9402",
+        "id": "INS-12-review-effective-fetch-url-policy",
+        "limits": "Actual local Git repositories, Git rewrite resolution, plugin discovery/execution and filesystem confinement; no public fetch, live SSH/proxy connection, live successful artifact attestation, multiuser cluster or performance claim. Final delivered full regression/packaging/CI remains required. Runtime fixes are in a352f67; the final end-to-end regression and documentation were added afterward. Source hashes pin the tested local files.",
+        "related_source_claims": [
+          "INS-12"
+        ],
+        "reviewer": "review_install_trust",
+        "status": "fixed_verified",
+        "test_only_post_fix_revision": "test_rewritten_source_requires_authorization_before_checkout_mutation added after a352f67991c821281a8163bd5b092fba926b9402",
+        "validation": "Actual Git tests accept official scp-style SSH and ssh:// rewrites, refuse an official spelling redirected to a local fork, preserve the explicit fork path and fail closed for official attestation. A real redirected local fetch refuses before checkout/backup mutation, then updates with explicit authorization. Multiple URLs, trailing whitespace, official URL equivalence and credential-free diagnostics are covered. 105 passed in 12.20s; 236 passed in 32.85s.",
+        "validation_logs": [
+          "/workspace/review-final-trust-boundaries.log",
+          "/workspace/review-final-trust-coordinators.log"
+        ]
+      },
+      "ledger": "packages/independent-root.json",
+      "package": "independent-root",
+      "related_source_claims": [
+        "INS-12"
+      ]
     }
   ],
   "integration": {
-    "note": "Owner focused results and simulations are retained as recorded; they do not establish full integrated validation.",
-    "revision": null,
-    "status": "pending"
+    "note": "Local regression qualification preserves each finding's acceptance limits. Hosted CI remains required on the delivered revision and is not established by qualified-local status.",
+    "report": "integration.json",
+    "revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+    "sha256": "2340bd027601b6354081f03ab01ce18836666cbb499e99b3b9fbb6c929c8caf3",
+    "source_sha256": "b9cd6f08f284208dca7fb10f904406b8cc47b28b57570455e30a8802fd3d9101",
+    "status": "qualified-local"
   },
-  "integration_status": "pending: final integrated regression, packaging, schema, compatibility and CI evidence",
+  "integration_status": "qualified-local",
   "package_ledgers": {
     "architecture-graph": {
       "path": "packages/architecture-graph.json",
-      "sha256": "6b9c7aba3dec645fc40b423d38fd91a818ee319b8b57990a90726fb0ee6a09e6",
+      "sha256": "8d4de9d66010dd4bddf59d9fccbddd93d479afd5ba6099da255443729cb0dde5",
       "source_name": "review-structural-imports.json",
-      "source_sha256": "cc98375f5185b4c0ca440df170c95da706e6d104a939a4866fc03fd700b101b1"
+      "source_sha256": "4b447dbc40047ca1c308141d291bdfe4599bf370b4175df6cf4c2f0e745ce3bb"
     },
     "data": {
       "path": "packages/data.json",
-      "sha256": "3b22422dcdaa86771c691a75b028138a2ebbc2c24cc3eb557f3d80f938bbf2c0",
+      "sha256": "0941e31f92024df7cc3c3397ac73065340da32d16b79aa02acf9119c4b0ab3c7",
       "source_name": "review-data-results.json",
-      "source_sha256": "c174c890e863c90b5d08afbdfd82f68ac7c553c87f27443969702ff6d33c2472"
+      "source_sha256": "c2bf99ad3d4bfa7593a874a313e04b263611329b1e0d9606c5ea3b145e767d52"
     },
     "heavy": {
       "path": "packages/heavy.json",
-      "sha256": "c5687058fce73fbeb0f3e862bcd03c3e034824647639337dd3f34e0fa25be471",
+      "sha256": "d35cca1d717cc552e17ea0e01694cb34258161f5144db5352ad2bdd4666d512b",
       "source_name": "review-heavy-results.json",
-      "source_sha256": "7f9c6b7f9cb0896358271e9b9129a2cfc7e99eea9595f8ce1f832ba3750eae76"
+      "source_sha256": "8a35ef2d996eee76ab8f05cc4344304bd5fd4cc51a3cf16364210456074606e1"
     },
     "independent-root": {
       "path": "packages/independent-root.json",
-      "sha256": "5aedcfb436acb9bd51b9e6b7084e85bfd0eb4f24e1a032bdeaba217f7e4114b7",
+      "sha256": "ac9507069132d59ea970b7a38361d9d92a63eced7bdd3ce191a103d42c6347e6",
       "source_name": "review-independent-root-findings.json",
-      "source_sha256": "9df3ac49485f5681557cd148fa1f1c0838d03d70ea9a43d2c178c208fb456c58"
+      "source_sha256": "32b6198739073c5c54e678958fd542c9316e0e34749fe9c589e2b09035850a9a"
     },
     "injob": {
       "path": "packages/injob.json",
@@ -9791,15 +9968,15 @@
     },
     "install": {
       "path": "packages/install.json",
-      "sha256": "55c583d878e9ffc5ea34ff49ab46636ca81e8350e255befdfc631d0b5109dc2b",
+      "sha256": "5ad7f6159bdabab0bdc6561f9c082e7758cd1a32f82d84ad3f4045a5ce858ee5",
       "source_name": "review-install-results.json",
-      "source_sha256": "1facb8195ad5b39efe5167d61a7d501f9523e75d075c7fa4f73b6fee2d447d32"
+      "source_sha256": "5834769181a6cd352f7d7514e6c3b99a04f05e5beb850eb3a03a31d5ef72b388"
     },
     "mutations": {
       "path": "packages/mutations.json",
-      "sha256": "255c5e33118cc618d137efb3dbe8c17526cda3a21f95b778ec81709142fd4fcb",
+      "sha256": "8d14ab5e1f5080630e8bfe02982308ca44c841efd44a81dbf2da607aa9b41015",
       "source_name": "review-mutations-results.json",
-      "source_sha256": "cdce79f7ed4df8465dc75bd9bf2e207c44d0a195a12ef034ffafd78204e7f3bf"
+      "source_sha256": "2aa1c72e6f386ac616f0f306bbe0542bec0c758a225d2ae6cc34fbcde1db4612"
     },
     "root": {
       "path": "packages/root.json",
@@ -9809,21 +9986,21 @@
     },
     "s3-ci": {
       "path": "packages/s3-ci.json",
-      "sha256": "6b34ee6ed2348c0d0311c25717900e9ea34f18732b8ba11cd1fe03385c55f573",
+      "sha256": "4b784dcd83a77e7fa5f6c39518cb237623016f91415418c7760bd4152ad7b703",
       "source_name": "review-s3-ci-results.json",
-      "source_sha256": "5f78cd2260061e8c3c6e74a34be55bbd86f8debd446a4fde1380cf8cc8e7402d"
+      "source_sha256": "0766709d85b96b5eca9c2aab61cc4791e72a3c862fd2f6bb86f14de381cd4bb6"
     },
     "structure": {
       "path": "packages/structure.json",
-      "sha256": "c2411359935d77266011468dca43f9861360a3d53743f5e63d67dbc8247d3458",
+      "sha256": "ea209c5eb368afc37b289d34e1389503cb2d48219175b161a20fde23d119608a",
       "source_name": "review-structure-results.json",
-      "source_sha256": "5fcb207a032fe3b94899b555dda092e5a018ec003776e86c962e7ef518ac346c"
+      "source_sha256": "ce7085588ba3572fea96ada5bf4d49825f6f7b52e805c9ce2a5a8c066267aec4"
     },
     "ui": {
       "path": "packages/ui.json",
-      "sha256": "6d870925ee01373109a842534e8983d08e661b0d2280504b1a3661f83a8a5bb8",
+      "sha256": "750eed074370e2f53aefb5e97ed5bcf3ae8606e035cad448a603e694b5f48068",
       "source_name": "review-ui-results.json",
-      "source_sha256": "44e15e446690db7e22b773478c5651bfb5d66029be872ab1631e8a2a2b4a8489"
+      "source_sha256": "70881fd2563b0a64725c14183c51b5debd2b1de48210f33416672b8b1569e556"
     }
   },
   "reviewed_revision": "b98742f",

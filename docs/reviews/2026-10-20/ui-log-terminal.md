@@ -91,3 +91,18 @@ The combined process peaked at 41,472 KiB RSS; Python allocations were not
 measured. This does not compare whole releases or their memory use.
 See [the compact measurement record](measurements/ui-dispatch.json) and
 `scripts/benchmark_ui_dispatch.py`.
+
+## Application-scoped pointer ownership qualification
+
+The full preflight exposed process-global decorator state: a synthetic failing
+selection adapter became the default for later App sessions. The registry is
+now scoped to each application. Decorators retain immutable metadata; explicit
+finite composition supplies normal handlers, and standalone adapters cannot
+change later sessions. Existing composed gestures reuse the same binding map.
+
+A single-process run placed the capture tests first, followed by every earlier
+failing file and pointer integration: 663 cases passed in 11.21 s. The complete
+capture protocol then passed 22 cases, including an additional assertion that
+composed gestures reuse the binding map without a full Store snapshot. Existing failure propagation, cancellation, exact
+selection, geometry and callback assertions remain unchanged. Read-only trace
+process paging also keeps working without an unrelated panel-activation port.
