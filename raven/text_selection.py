@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from math import ceil
 
 from . import clipboard, layout as L
-from .interaction import Rect
+from .ui.geometry import Rect
 
 from .pointer_routing import capture_handler
 
@@ -115,6 +115,7 @@ def _slice(row, left, right):
     """Slice by terminal cells without tearing wide or combining characters."""
     result, column = [], 0
     for text, style in row:
+        text = L.display_text(text)
         if not text:
             continue
         if text.isascii():
@@ -594,7 +595,7 @@ def copy_selection(app):
     if not text:
         app.fail("The selected rendered lines are empty.")
         return True
-    message = clipboard.copy(text, getattr(app, "state_dir", None), **clipboard.options(app))
+    message = clipboard.copy_for_app(app, text, getattr(app, "state_dir", None), **clipboard.options(app))
     app.say(message)
     store = getattr(app, "store", None)
     if store is not None:

@@ -6,10 +6,10 @@ stdlib-only runtime does not require Raven in the application's environment.
 """
 from __future__ import annotations
 
+import compileall
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import shlex
 import signal
@@ -20,9 +20,11 @@ import sys
 import time
 import uuid
 import zipfile
+from pathlib import Path
 
 from . import reporting as R
 from . import research_reporting as reporting
+from .launch_contract import plan_inventory
 
 MAX_BUNDLE_BYTES = 64 << 20
 MAX_BUNDLE_FILES = 1024
@@ -70,6 +72,29 @@ def _exclusive(path, data, mode=0o400):
         os.fchmod(stream.fileno(), mode)
 
 
+def _private_directory(path):
+    R._directory(path)
+    info = path.lstat()
+    if info.st_uid != os.getuid() or info.st_mode & 0o077:
+        raise ValueError("Runtime cache directories must be private and owned")
+
+
+def _runtime_marker(target, digest):
+    try:
+        _private_directory(target)
+        descriptor = os.open(target / ".complete", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return False
+    try:
+        info = os.fstat(descriptor)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+                or info.st_mode & 0o077 or info.st_size != 64 or os.read(descriptor, 65) != digest.encode()):
+            raise ValueError("Runtime cache marker disagrees with its private content identity")
+        return True
+    finally:
+        os.close(descriptor)
+
+
 def _bundle(path):
     """Package only bounded Python sources; never copy credentials or data."""
     package = Path(__file__).parent
@@ -82,7 +107,10 @@ def _bundle(path):
         raise ValueError("portable runtime exceeds its source-file budget")
     total = 0
     with zipfile.ZipFile(path, "x", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("__main__.py", "from raven.launch_runtime import main\nraise SystemExit(main())\n")
+        entry = zipfile.ZipInfo("__main__.py", date_time=(1980, 1, 1, 0, 0, 0))
+        entry.compress_type = zipfile.ZIP_DEFLATED
+        entry.external_attr = 0o400 << 16
+        archive.writestr(entry, "from raven.launch_runtime import main\nraise SystemExit(main())\n")
         for source in paths:
             if source.is_symlink():
                 raise ValueError("portable runtime sources cannot be symlinks")
@@ -90,20 +118,63 @@ def _bundle(path):
             total += len(data)
             if total > MAX_BUNDLE_BYTES:
                 raise ValueError("portable runtime exceeds its 64 MiB source budget")
-            archive.writestr("raven/" + str(source.relative_to(package)), data)
+            info = zipfile.ZipInfo("raven/" + str(source.relative_to(package)), date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o400 << 16
+            archive.writestr(info, data)
     os.chmod(path, 0o400)
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def runtime_directory(plan):
+    """Materialize one content-addressed runtime for all job interpreters.
+
+    Source remains available to another Python minor version; matching runtimes
+    reuse bytecode instead of compiling the full zip at every process startup.
+    """
+    import tempfile
+    digest = plan["runtime_sha256"]
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValueError("Invalid runtime content digest")
+    parent = R._under(plan["project_root"], ".raven/runtime-cache/.unused", create_parent=True).parent
+    _private_directory(parent)
+    target = parent / digest
+    if _runtime_marker(target, digest):
+        return target
+    temporary = Path(tempfile.mkdtemp(prefix=".runtime-", dir=parent))
+    try:
+        archive_path = Path(plan["runtime_bundle"])
+        data = archive_path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != digest:
+            raise ValueError("Frozen runtime archive does not match its digest")
+        with zipfile.ZipFile(archive_path) as archive:
+            total = 0
+            if len(archive.infolist()) > MAX_BUNDLE_FILES + 1:
+                raise ValueError("Runtime cache exceeds its file budget")
+            for info in archive.infolist():
+                relative = Path(info.filename)
+                if relative.is_absolute() or any(part in {".", ".."} for part in relative.parts) or not info.filename.endswith(".py"):
+                    raise ValueError("Runtime archive contains an unsafe member")
+                total += info.file_size
+                if total > MAX_BUNDLE_BYTES:
+                    raise ValueError("Runtime cache exceeds its source byte budget")
+                output = temporary / relative
+                output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                _exclusive(output, archive.read(info), mode=0o400)
+        compileall.compile_dir(temporary, quiet=2, force=False, workers=1)
+        _exclusive(temporary / ".complete", digest.encode(), mode=0o400)
+        try:
+            os.rename(temporary, target)
+        except OSError:
+            if not _runtime_marker(target, digest):
+                raise
+        return target
+    finally:
+        if temporary.exists():
+            import shutil
+            shutil.rmtree(temporary)
 
 
-def plan_inventory(plan):
-    """Small run index record; exact argv/settings remain in the frozen plan."""
-    keys = ("schema", "token", "project_root", "script_relative", "script_sha256", "execution",
-            "filesystem_id", "filesystem_host", "features", "gpu", "trace")
-    return {**{key: plan[key] for key in keys if key in plan},
-            "plan_path": ".raven/wrappers/" + plan["token"] + "/plan.json",
-            "plan_sha256": hashlib.sha256(R._encoded(plan)).hexdigest()}
 
 
 def project_filesystem(root, *, create=False):
@@ -148,6 +219,16 @@ def materialize(plan, *, token=None):
     _exclusive(payload, data)
     archive = folder / "runtime.pyz"
     digest = _bundle(archive)
+    cached = R._under(root, ".raven/runtime-archives/" + digest + ".pyz", create_parent=True)
+    _private_directory(cached.parent)
+    try:
+        os.link(archive, cached)
+    except FileExistsError:
+        info = cached.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or hashlib.sha256(cached.read_bytes()).hexdigest() != digest:
+            raise ValueError("Shared runtime archive is not private and content-verified")
+        archive.unlink()
+        os.link(cached, archive)
     helper = folder / "report.py"
     _exclusive(helper, ("import sys\nsys.path.insert(0, " + repr(str(archive)) + ")\n"
                         "from raven.research_reporting import main\nraise SystemExit(main())\n").encode())
@@ -165,7 +246,9 @@ def materialize(plan, *, token=None):
     header = "#!/bin/sh\n" + "".join(line.rstrip("\r\n") + "\n" for line in plan.get("sbatch_header", []))
     command = [interpreter, "-I", str(archive), "supervise", str(folder / "plan.json")]
     _exclusive(folder / "batch.sh", (header + "exec " + shlex.join(command) + "\n").encode(), 0o500)
-    os.chmod(folder, 0o500)
+    # Private writable directories permit ordinary owner cleanup; payloads and
+    # archive members remain read-only and their digests bind the launch.
+    os.chmod(folder, 0o700)
     return plan
 
 
@@ -241,6 +324,8 @@ def execute_plan(plan, *, runner=subprocess.run, environ=None):
               "dependency": effective.get("dependency", ""), "array": bool(effective.get("array")),
               "submitted": time.time(), "workdir": plan["workdir"], "logs": logs,
               "plan": plan, "argv": ["sbatch", "--parsable", *options, wrapper, *plan.get("script_args", [])]}
+    if plan.get("scheduler_context") is not None:
+        intent["scheduler_context"] = plan["scheduler_context"]
     if settings.get("array_manifest"):
         from .array_manifest import parse
         declaration = R._read_json(R._under(root, settings["array_manifest"]))

@@ -8,18 +8,29 @@ report still distinguishes accepted, partial, uncertain and completed work.
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
+from typing import Callable
 from pathlib import Path
 import time
 
 
-def execute(feature, plan, ctx, callback):
+@dataclass(frozen=True)
+class Services:
+    validate_plan: Callable
+    atomic_json: Callable
+    canonical: Callable
+    clean: Callable
+    REPORT_SCHEMA: str
+
+
+def execute(feature, plan, ctx, callback, *, services):
     """Capture a review, claim it once, revalidate, then publish its outcome.
 
     Uses the existing worker lane of its caller; no executor or retry loop is
     created here. Cancellation after an adapter returns does not discard the
     outcome of a mutation that might already have succeeded.
     """
-    from . import operations as O
+    O = services
 
     # The UI/editor must not be able to retarget a queued action by changing a
     # dict between validation, durable admission and dispatch.

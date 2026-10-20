@@ -10,8 +10,8 @@ import heapq
 import json
 import math
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from . import trace_protocol as protocol
 from .trace_export import _pairs
@@ -61,6 +61,9 @@ def summarize(snapshot):
     spans = {}
     for index, event in enumerate(events):
         data = event['data']
+        if event['kind'] in {'gap','lost','drop','loss','dropped'}:
+            omitted += len(spans)
+            spans.clear()
         span = data.get('span_id')
         if not isinstance(span, str):
             continue
@@ -120,6 +123,39 @@ def document(sources):
                 limitations=['No event order, causality, inclusive/exclusive CPU accounting or unknown boundary inference.',
                              'Function/name labels stand in for phase only when explicitly present; not inferred segmentation.',
                              'Quantile bounds are duration-value intervals, not universal rank-error bounds.'])
+
+
+def summarize_path(path, *, managed=False):
+    """Aggregate matched intervals across all verified pages, with bounded bins."""
+    from .trace_stream import traverse
+    with traverse(path,managed=managed) as spool:
+        groups = {}
+        bins = 0
+        for first,last,category in spool.pairs():
+            data = first['data']
+            phase = data.get('phase',data.get('name',data.get('function','unknown')))
+            phase = phase if isinstance(phase,str) and 0 < len(phase) <= 256 else 'unknown'
+            rank = data.get('rank')
+            rank = rank if type(rank) is int and 0 <= rank <= 1_000_000 else 'unknown'
+            key = phase,rank
+            if key not in groups:
+                if len(groups) >= MAX_GROUPS:
+                    raise ValueError('Summary exceeds 64 phase/rank groups; raw evidence remains available')
+                groups[key] = _aggregate()
+            target = groups[key]
+            before = len(target['bins'])
+            _add(target,last['mono_ns']-first['mono_ns'])
+            bins += len(target['bins']) - before
+            if bins > MAX_BINS or target['count'] > 1_000_000:
+                raise ValueError('Summary exceeds its histogram/count budget; raw evidence remains available')
+        encoded = [dict(phase=phase,rank=rank,**{k:v for k,v in aggregate.items() if k not in {'bins','top'}},
+                        bins=[[lo,hi,n] for (lo,hi),n in sorted(aggregate['bins'].items())],top=sorted(aggregate['top'],reverse=True))
+                   for (phase,rank),aggregate in groups.items()]
+        snapshot = spool.snapshot
+        source = dict(identity=snapshot['identity'],first_seq=spool.first['seq'],last_seq=spool.last['seq'],digest=snapshot['sha256'],
+                      time_bounds=[spool.first['mono_ns'],spool.last['mono_ns']],coverage=snapshot['covered'],source_status=snapshot['status'],
+                      evicted=0,unmatched_events=spool.omitted+spool.omitted_spans,groups=encoded,warnings=snapshot['warnings'])
+        return validate(document([source]))
 
 
 def validate(value):
@@ -327,8 +363,7 @@ def main(argv=None):
         if args.action == 'create':
             from .raven_execution import router_for
             managed = router_for().managed
-            value = summarize(protocol.read_trace(args.manifest, max_events=512 if managed else protocol.MAX_EVENTS,
-                              max_bytes=256 << 10 if managed else protocol.MAX_BYTES))
+            value = summarize_path(args.manifest,managed=managed)
             result = write(args.output, value)
         elif args.action == 'merge':
             if len(args.summaries) > MAX_SOURCES:

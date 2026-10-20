@@ -10,7 +10,8 @@ import copy
 import os
 
 from .layout import box, clip_row, cut, vlen
-from .research import RESEARCH_VIEWS, clean
+from .research_text import clean
+from .ui.catalog import RESEARCH_VIEWS
 
 MAX_BACK = 32
 TAB_NAMES = {"jobs": "Jobs", "cluster": "Cluster", "history": "History", "analytics": "Analytics",

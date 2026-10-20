@@ -57,6 +57,12 @@ Follow the [installation guide](INSTALLATION.md) and
 commands without a Bash alias. The examples use the `raven` compatibility entry
 point; `./scripts/raven` accepts the same arguments from a configured checkout.
 
+Shared installations and lab projects use the same explicit
+[configuration and plugin trust policy](guides/configuration-trust.md):
+`raven trust PATH` records approval for a reviewed root, `raven trust --list`
+shows approvals, and `raven trust PATH --remove` revokes one. Trust does not
+grant filesystem permissions or relax mandatory site policy.
+
 ## Terminal visuals and accessibility
 
 The dashboard uses solid Unicode blocks for resource bars, distributions, and
@@ -435,6 +441,11 @@ flags taking precedence. Otherwise, it reconstructs an `sbatch` command from
 available controller and job records: name, partition, account, QOS, nodes,
 CPUs, memory, walltime, GRES, script, and an output pattern using `%x-%j`.
 Reconstruction is approximate; inspect missing fields and retained dependencies.
+Slurm's `SubmitLine` does not preserve argument boundaries. The review lists each
+argument separately; prefer an exact recorded launch when arguments contain spaces.
+Raven-generated wrappers belong to one recording attempt and cannot be replayed.
+For those runs, open **Run home → Run again with these settings** to review a fresh
+launch with fresh recording identifiers.
 
 The review shows the exact command, working directory, effective resources,
 scheduler test-only projection when available, and limitations such as an array
@@ -629,11 +640,12 @@ See [Editor yanking](guides/pane-navigation.md#send-text-to-vim-or-neovim) for s
 
 Ranges larger than 256 KiB or 4,096 lines run on the shared worker, as do ranges
 containing invalid UTF-8. These copies pin the selected source bytes and publish
-a private unique `state/exports/log-selected-<uuid>.log` file before attempting
+a private unique `log-selected-<uuid>.log` file in the export directory before attempting
 clipboard delivery. Invalid UTF-8 skips text clipboard transport rather than
 substituting replacement characters. Small valid UTF-8 ranges keep the immediate
-private atomic `clipboard.txt` fallback. With `--no-state`, exports use
-`./raven-exports/` instead.
+private atomic `clipboard.txt` fallback. Exports use the durable directory
+`$XDG_DATA_HOME/raven/exports` (default `~/.local/share/raven/exports`), including
+with `--no-state`. Set an absolute `RAVEN_EXPORT_DIR` to choose another location.
 An unfinished selected last line keeps its original bytes without an invented
 final newline.
 
@@ -648,10 +660,9 @@ Open an entry with Enter before copying from the file browser. The worker reads
 the exact selected file from its selected local or SSH backend in 1 MiB chunks,
 with bounded memory, independently of tail-buffer limits, filtering, cursor
 position, wrapping, or line count. It saves exact source bytes to a unique
-private file with mode `0600` at `state/exports/log-full-<uuid>.log` under the
-active scoped state directory. Raven's default state base is
-`~/.local/state/raven`, honoring `XDG_STATE_HOME`. With `--no-state`,
-the file goes under the launch directory's `raven-exports/` instead.
+private file with mode `0600` named `log-full-<uuid>.log` in the durable export
+directory described above. Export retention is independent of scheduler state
+and the current working directory.
 
 A growing log is copied through its initial byte count; later appends are
 excluded and the status reports that snapshot. The writer is not locked, so
@@ -667,10 +678,10 @@ keep their complete raw export, with the skipped transport explained. A local
 tool can accept larger text files when a usable display is available.
 
 Small valid UTF-8 selections and ordinary screen-text copies publish private, atomically replaced
-`state/clipboard.txt` (or `raven-exports/clipboard.txt` with `--no-state`) as a
-fallback. The clipboard tools are pbcopy, wl-copy, xclip, xsel, or clip.exe.
+`clipboard.txt` in that export directory as a fallback. Interactive copies run
+on the shared background worker and report completion in the notification area. The clipboard tools are pbcopy, wl-copy, xclip, xsel, or clip.exe.
 Exports of views use `text-<tab>-<stamp>.txt`, `csv-<tab>-<stamp>.csv`,
-`json-<tab>-<stamp>.json`, or `report-<stamp>.txt` under `state/exports/`.
+`json-<tab>-<stamp>.json`, or `report-<stamp>.txt` in that same export directory.
 JSON carries the job record, live statistics, GPU samples, controller details,
 and recorded series. From the command line, `raven --csv --tab history`,
 `raven --json`, and `raven --report [PATH]` print the corresponding reports.
@@ -732,7 +743,9 @@ made with `--fake --record` is a self-contained fixture: the tests replay one.
 ## Scripted mode and expressions
 
 `raven run <palette command>` runs one command without a screen: `raven run cancel 123 --yes`, `raven run export
-csv --tab history`, `raven run hold marked` (marks come from the saved state).  An action that would ask for
+csv --tab history`, `raven run hold 123 124`. Mutations in scripted mode require
+explicit job IDs or an explicit supported `all` scope. Marks belong to the
+current interactive session; `marked` with no marks always fails. An action that would ask for
 confirmation needs `--yes` (exit 3 otherwise); a failed or unknown command exits 1.
 
 `--eval EXPR` prints the value of an expression over the snapshot; `--wait-for EXPR [--timeout S] [--poll S]`

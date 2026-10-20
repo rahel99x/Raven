@@ -55,6 +55,10 @@ def scheduler_attempt(record, details):
             return False
     if not valid(submit) or not valid(start):
         return None
+    restart = getattr(record, 'restarts', None)
+    cluster = getattr(record, 'cluster', '')
+    if type(restart) is int and 0 <= restart <= 9999999999 and isinstance(cluster, str) and cluster:
+        return fingerprint({'cluster': cluster, 'job': record.id, 'submit': submit, 'start': start, 'restarts': restart})
     direct = details.get("JobId") == record.id
     array = ("_" in record.id and record.id == str(details.get("ArrayJobId", "")) + "_" + str(details.get("ArrayTaskId", "")))
     heterogeneous = ("+" in record.id and record.id == str(details.get("HetJobId", "")) + "+" + str(details.get("HetJobOffset", "")))

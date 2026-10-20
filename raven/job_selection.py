@@ -1,6 +1,7 @@
 """Mouse range selection of exact job IDs for existing marked-job actions."""
 from __future__ import annotations
 
+from .ui.geometry import Rect
 from .pointer_routing import capture_handler
 
 MAX_SELECTION = 50000
@@ -187,7 +188,6 @@ def publish(app, rows, hits, width, height, snap=None):
     app.history_jobs_rect = None
     if getattr(app, "tab", "") != "history" or height is None:
         return
-    from .interaction import Rect
     from .workspace_layout import enabled, _section_title
     headers = [y for y, kind, value in hits if kind == "sort_header"
                and isinstance(value, (tuple, list)) and value[:1] == ("history",)]

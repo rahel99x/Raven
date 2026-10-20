@@ -14,8 +14,6 @@ import math
 import os
 from pathlib import Path
 import shutil
-import socket
-import sys
 
 from .telemetry_profiles import DEFAULTS as TELEMETRY_DEFAULTS, PRESETS, validate_custom
 
@@ -46,7 +44,7 @@ DEFAULTS = {
         "step_launches_per_minute": 6, "step_launch_interval_seconds": 10, "statistics_requests_per_minute": 4,
         "action_validation_requests_per_minute": 6, "max_response_bytes": 4194304,
         "max_response_records": 10000, "live_batch_jobs": 16, "circuit_failures": 3, "circuit_seconds": 120,
-        "filesystem_metadata_per_minute": 120, "file_bytes_per_minute": 16777216, "local_processes_per_minute": 60, "service_failure": "cached-only"},
+        "filesystem_metadata_per_minute": 120, "file_bytes_per_minute": 16777216, "log_file_bytes_per_minute": 16777216, "local_processes_per_minute": 60, "service_failure": "cached-only"},
     "resources": {
         "light": {"log_window_bytes": 2097152, "prepared_cache_bytes": 33554432, "pending_result_bytes": 8388608,
                   "max_terminal_sessions": 2, "terminal_scrollback_bytes": 2097152, "memory_mib": 256,
@@ -57,7 +55,7 @@ DEFAULTS = {
         "heavy": {"max_workers": 2, "memory_mib": 4096, "scratch_mib": 8192, "max_tasks": 2,
                   "enforcement": "best-available", "cpu_seconds": 3600, "wall_seconds": 3600,
                   "input_bytes": 8388608, "output_bytes": 8388608}},
-    "storage": {"state_dir": "", "coordination_dir": "auto-host-local", "durable_results": "", "series_format": "jsonl",
+    "storage": {"state_dir": "", "allocation_receipts_dir": "", "coordination_dir": "auto-host-local", "durable_results": "", "series_format": "jsonl",
                 "retention": {"raw_seconds": 86400, "ten_second_seconds": 604800, "minute_seconds": 2592000,
                               "gap_seconds": 2., "protect_raw": True}},
     "telemetry": copy.deepcopy(TELEMETRY_DEFAULTS),
@@ -86,7 +84,7 @@ _FALSE_ONLY = {"execution.allow_login_heavy", "allocation.auto_request_on_light_
 _STRINGS = {"profile": 128, "site.cluster_id": 128, "site.policy_file": 4096, "connection.host": 256,
             "connection.user": 128, "connection.credential_reference": 512, "execution.worker_python": 4096,
             "allocation.account": 128, "allocation.partition": 128, "allocation.qos": 128,
-            "storage.state_dir": 4096, "storage.coordination_dir": 4096, "storage.durable_results": 4096, "ui.theme": 64,
+            "storage.state_dir": 4096, "storage.allocation_receipts_dir": 4096, "storage.coordination_dir": 4096, "storage.durable_results": 4096, "ui.theme": 64,
             "ui.profile_label": 128}
 
 
@@ -147,6 +145,8 @@ def _numeric(path, value, expected):
         low, high = (0, .5)
     if path.endswith("idle_interval_factor"):
         low, high = (1, 100)
+    if path == "allocation.idle_release_seconds":
+        low = 0  # Zero is the documented explicit idle-release disable option.
     if path.endswith(("max_workers", "max_tasks", "max_inflight")):
         low, high = (1, 256)
     if path.endswith("max_terminal_sessions"):
@@ -401,7 +401,7 @@ class Resolved:
         data = self.as_dict()
         origins = copy.deepcopy(self.origins)
         if not show_paths:
-            for path in ("site.policy_file", "execution.worker_python", "storage.state_dir", "storage.durable_results"):
+            for path in ("site.policy_file", "execution.worker_python", "storage.state_dir", "storage.allocation_receipts_dir", "storage.durable_results"):
                 if _get(data, path):
                     _set(data, path, "<configured path>")
             coordination = data["storage"]["coordination_dir"]
@@ -422,8 +422,9 @@ def resolve(config_path=None, *, site=None, legacy_profile=None, launcher="light
         raise ValueError("Launcher intent must be light or heavy.")
     config_root, state_root, home = _roots(env)
     data = copy.deepcopy(DEFAULTS)
-    data["storage"].update(state_dir=str(state_root / "raven"), durable_results=str(home / "raven-results"))
-    data["execution"]["worker_python"] = sys.executable
+    data["storage"].update(state_dir=str(state_root / "raven"), allocation_receipts_dir=str(state_root / "raven" / "allocations"), durable_results=str(home / "raven-results"))
+    from .install_paths import worker_python as stable_python
+    data["execution"]["worker_python"] = stable_python()
     origins = {key: "default" for key in flatten(data)}
     warnings, policies = [], []
     def apply(document, origin):
@@ -468,7 +469,7 @@ def resolve(config_path=None, *, site=None, legacy_profile=None, launcher="light
     apply(supplied, "legacy:" + legacy_source if legacy_source else "file:" + source if source else "default")
     if site == "desktop" and supplied.get("profile") != "desktop":
         apply(DESKTOP, "CLI explicit desktop profile")
-        data["execution"]["worker_python"] = sys.executable
+        data["execution"]["worker_python"] = stable_python()
     if profile_name in supplied.get("profiles", {}):
         selected = supplied["profiles"][profile_name]
         if selected.get("site", {}).get("kind") == "desktop":
@@ -497,10 +498,10 @@ def resolve(config_path=None, *, site=None, legacy_profile=None, launcher="light
         apply(cli_overrides, "CLI")
     data["execution"]["startup"] = launcher
     origins["execution.startup"] = "explicit " + ("ravenh" if launcher == "heavy" else "ravenl") + " intent"
-    for key in ("state_dir", "durable_results"):
+    for key in ("state_dir", "allocation_receipts_dir", "durable_results"):
         data["storage"][key] = os.path.abspath(os.path.expanduser(data["storage"][key]))
     if not data["execution"]["worker_python"] and data["connection"]["transport"] != "ssh":
-        data["execution"]["worker_python"] = sys.executable
+        data["execution"]["worker_python"] = stable_python()
     if data["connection"]["transport"] == "ssh" and origins.get("execution.worker_python") == "default":
         data["execution"]["worker_python"] = ""
         warnings.append("SSH Heavy requires execution.worker_python to name the installed interpreter on the remote host.")
@@ -571,6 +572,21 @@ def to_raven_config(resolved):
 def doctor(resolved):
     """Presence checks only: no scheduler calls, installations, or allocations."""
     value = resolved.data if isinstance(resolved, Resolved) else resolved
+    from .state_ownership import StateOwner
+    from .config_trust import directory_fd
+    state = StateOwner.preflight(value['storage']['state_dir']) if value['storage']['state_dir'] else {'state': 'disabled', 'path': '', 'message': 'No persistent state path is configured.'}
+    receipts = value['storage'].get('allocation_receipts_dir')
+    receipt_status = {'status': 'unknown', 'path': receipts}
+    if receipts:
+        candidate = Path(receipts)
+        while not candidate.exists() and candidate != candidate.parent:
+            candidate = candidate.parent
+        try:
+            with directory_fd(candidate):
+                pass
+            receipt_status['status'] = 'available'
+        except (OSError, ValueError) as exc:
+            receipt_status.update(status='inaccessible', reason=str(exc))
     tools = {}
     names = ["squeue", "sacct", "salloc", "srun", "ssh"]
     for name in names:
@@ -584,6 +600,7 @@ def doctor(resolved):
     return {"schema": "raven.doctor/v1", "profile": value["profile"], "site_kind": value["site"]["kind"],
         "mode": value["execution"]["startup"], "tools": tools,
         "terminal_engine": "available" if terminal else "unsupported",
+        'state': state, 'allocation_receipts': receipt_status,
         "cgroup": {"status": "unknown" if os.path.isdir("/sys/fs/cgroup") else "unsupported", "qualification": "delegation and enforcement are not inferred from directory presence"},
         "heavy": "requires explicit verified admission", "gpu": "not probed; request explicitly",
         "qualification": "bounded local presence checks; no live Slurm or site qualification", "mutations": 0}
@@ -660,6 +677,8 @@ def schema_document():
                 output[name] = {"enum": sorted(_ENUMS[path])}
             elif isinstance(value, bool):
                 output[name] = {"const": False} if path in _FALSE_ONLY else {"type": "boolean"}
+            elif path == "allocation.idle_release_seconds":
+                output[name] = {"type": "integer", "minimum": 0, "maximum": 31536000}
             elif path == "collection.step_launch_interval_seconds":
                 output[name] = {"type": "number", "minimum": .1, "maximum": 31536000}
             elif path.startswith("telemetry.custom."):

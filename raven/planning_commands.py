@@ -7,7 +7,7 @@ from itertools import islice
 from .planning import analyze, record, select_job
 from .planning_io import load_json
 from .research_commands import parser
-from .research import clean
+from .research_text import clean
 
 COMMANDS = ("predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow", "choose", "checkpoint-advice")
 
@@ -65,7 +65,8 @@ def _finished(output, opts, source):
 
 
 def result(cmd, args, *, snap=None, job=None, observations=(), choices=None, execution=None):
-    from .raven_execution import router_for, planning_inputs
+    from .execution_policy import router_for
+    from .planning_input import planning_inputs
     router = execution or router_for()
     if router.managed:
         opts = options(cmd, args)

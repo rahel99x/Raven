@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import deque
 from contextlib import contextmanager
-from concurrent.futures import Future, ThreadPoolExecutor, FIRST_COMPLETED, ALL_COMPLETED, wait
+from concurrent.futures import Future, ThreadPoolExecutor, FIRST_COMPLETED, wait
 from dataclasses import dataclass
 import threading
 import time
@@ -160,6 +160,7 @@ class WorkerScheduler:
         self._draining = set()
         self._closed = False
         self.max_queue = max_queue
+        self.notification_dropped = 0
 
     def _stack(self):
         return getattr(self._local, "stack", ())
@@ -182,6 +183,7 @@ class WorkerScheduler:
                         limit=1 if self._mode == "single" else self.multi_limit,
                         target_limit=1 if self._target == "single" else self.multi_limit,
                         running=self._running, queued=self._queued,
+                        notification_dropped=self.notification_dropped,
                         draining=len(self._draining), generation=self._generation,
                         closed=self._closed, rejected=self._rejected,
                         lanes={name: dict(running=self._active[name], queued=self._lane_queued[name], limit=limit)
@@ -213,9 +215,19 @@ class WorkerScheduler:
     def _submit(self, lane, fn, args, kwargs):
         if not callable(fn):
             raise TypeError("worker task must be callable")
+        if lane.name == "notification":
+            with self._lock:
+                queued = self._queues[lane.name]
+                oldest = queued[0] if len(queued) >= 32 else None
+            if oldest is not None and oldest.cancel():
+                with self._lock:
+                    self.notification_dropped += 1
         with self._lock:
             if self._closed or lane.closed:
                 raise RuntimeError("worker lane is closed")
+            if lane.name == "notification" and self._lane_queued[lane.name] >= 32:
+                self._rejected += 1
+                raise WorkerQueueFull("notification queue is full; scheduler collection remains available")
             stack = self._stack()
             reserve = bool(stack and self._child_queued.get(stack[-1].root, 0) < 4
                            and self._queued < self.max_queue + self.multi_limit * 4)

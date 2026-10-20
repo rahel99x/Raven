@@ -146,7 +146,7 @@ def _validate(app, *, attach=False):
                 state["message"] = "The source no longer has usable measurements. Review its current error below."
                 return
             if not declared:
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 app.research.configure(metrics_file=path)
             _close(app)

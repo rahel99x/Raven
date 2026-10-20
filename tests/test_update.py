@@ -364,6 +364,8 @@ def pipx_install(tmp_path, monkeypatch):
 
 
 def test_pipx_local_source_and_extras_remain_owned(pipx_install, monkeypatch):
+    from contextlib import nullcontext
+    monkeypatch.setattr(U, '_pipx_artifact', lambda *args: nullcontext('raven[terminal] @ file:///private/raven.whl'))
     installation = pipx_install
     assert installation.kind == "pipx" and installation.terminal
     assert (
@@ -385,7 +387,7 @@ def test_pipx_local_source_and_extras_remain_owned(pipx_install, monkeypatch):
         ),
     )
     U.install_updated(installation, installation.source, "b" * 40)
-    assert calls[0][0] == ["/tools/pipx", "reinstall", "raven"]
+    assert calls[0][0] == ["/tools/pipx", "runpip", "raven", "install", "--force-reinstall", 'raven[terminal] @ file:///private/raven.whl']
     assert calls[0][1]["env"]["PIPX_HOME"] == str(installation.prefix.parent.parent)
     assert calls[0][1]["env"]["PIPX_BIN_DIR"] == str(installation.bin_dir)
     assert U.discover().installed_commit == "b" * 40
@@ -552,6 +554,8 @@ def test_owned_installer_timeout_reaps_group_without_touching_unrelated_process(
 def test_pipx_source_change_is_not_recorded_as_a_verified_update(
     pipx_install, monkeypatch
 ):
+    from contextlib import nullcontext
+    monkeypatch.setattr(U, '_pipx_artifact', lambda *args: nullcontext('raven @ file:///private/raven.whl'))
     fingerprints = iter(("before", "changed during build"))
     monkeypatch.setitem(
         sys.modules,

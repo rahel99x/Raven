@@ -1,7 +1,9 @@
 """Readiness hints for the UI owner; producers never perform UI or broker I/O."""
+
 from __future__ import annotations
 
 import selectors
+import signal
 import socket
 import threading
 
@@ -81,23 +83,49 @@ class UIWaiter:
         self.available = False
         self._external = set()
         self._stdin_fd = None
+        self.resized = False
+        self._signal_state = None
         try:
             self.selector = selectors.DefaultSelector()
-            self._stdin_fd = self.selector.register(stdin, selectors.EVENT_READ, "stdin").fd
+            self._stdin_fd = self.selector.register(
+                stdin, selectors.EVENT_READ, "stdin"
+            ).fd
             self.selector.register(wakeup.reader, selectors.EVENT_READ, "publication")
             self.available = True
         except (OSError, ValueError, TypeError, AttributeError):
             if self.selector is not None:
                 self.selector.close()
 
+    def bind_resize(self):
+        """Wake select from SIGWINCH without acquiring a Python lock."""
+        if not self.available or self.wakeup is None or not hasattr(signal, "SIGWINCH"):
+            return False
+        try:
+            previous = signal.getsignal(signal.SIGWINCH)
+            old_fd = signal.set_wakeup_fd(
+                self.wakeup._writer.fileno(), warn_on_full_buffer=False
+            )
+
+            def resized(*_):
+                self.resized = True
+
+            signal.signal(signal.SIGWINCH, resized)
+            self._signal_state = previous, old_fd
+            return True
+        except (ValueError, OSError):
+            return False
+
     def input_closed(self):
         """Observe hangup without consuming ncurses-owned input bytes."""
         try:
             import select
+
             poller = select.poll()
             poller.register(self._stdin_fd, select.POLLIN)
-            return any(mask & (select.POLLHUP | select.POLLERR | select.POLLNVAL)
-                       for _, mask in poller.poll(0))
+            return any(
+                mask & (select.POLLHUP | select.POLLERR | select.POLLNVAL)
+                for _, mask in poller.poll(0)
+            )
         except (OSError, ValueError, TypeError, AttributeError):
             return False
 
@@ -143,6 +171,11 @@ class UIWaiter:
         return frozenset(result)
 
     def close(self):
+        if self._signal_state is not None:
+            handler, fd = self._signal_state
+            signal.signal(signal.SIGWINCH, handler)
+            signal.set_wakeup_fd(fd)
+            self._signal_state = None
         self.available = False
         if self.selector is not None:
             self.selector.close()

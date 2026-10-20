@@ -473,7 +473,7 @@ def _copy(app, *, all_report=False):
         text = "\n".join(lines[lo:hi + 1]) + "\n"
     else:
         text = json.dumps(state["result"] or {"operations": O.catalog()}, indent=2, ensure_ascii=True, allow_nan=False) + "\n"
-    app.say(clipboard.copy(text, getattr(app, "state_dir", None), **clipboard.options(app)))
+    app.say(clipboard.copy_for_app(app, text, getattr(app, "state_dir", None), **clipboard.options(app)))
 
 
 def paste(app, text):
@@ -754,7 +754,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
 
 def _field_editor_row(label, value, cursor, width, ascii_mode=False):
     """Keep the insertion point visible using display cells, including wide text."""
-    from .research import clean
+    from .research_text import clean
     width = max(1, width)
     prefix_width = min(24, width // 3) if width >= 6 else 0
     prefix = L.truncate(clean(label, ascii_mode), max(0, prefix_width - 2)) + ": " if prefix_width else ""
@@ -801,7 +801,7 @@ def overlay(views, snap, app, width, height):
     if app.mode != "operations":
         return None
     from . import modal_scrollbars as B
-    from .research import clean
+    from .research_text import clean
     state = initialize(app)
     state.update(control_hits=[], line_hits=[], render_generation=None, confirm_digest=None)
     inner = max(1, width - 8)

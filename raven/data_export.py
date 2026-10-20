@@ -13,7 +13,6 @@ import ctypes
 import datetime as dt
 import errno
 import hashlib
-import io
 import json
 import math
 import os
@@ -140,8 +139,14 @@ def _signature(info):
 
 
 def _ends(fd, size):
-    # Bounded optimistic append-only verification, never a full preview scan.
-    return hashlib.sha256(os.pread(fd, min(CHUNK, size), 0) + os.pread(fd, min(CHUNK, size), max(0, size - CHUNK))).hexdigest()
+    # Bind the complete captured prefix, including edits far from either end.
+    digest, offset = hashlib.sha256(), 0
+    while offset < size:
+        raw = os.pread(fd, min(CHUNK, size-offset), offset)
+        if not raw:
+            raise ExportError('Source shrank while hashing its captured prefix')
+        digest.update(raw); offset += len(raw)
+    return digest.hexdigest()
 
 
 def _read_metadata(path, limit=MAX_METADATA):
@@ -186,7 +191,7 @@ def _source(family, ident, path, *, schema="", coverage=None, append=False, **ex
         fd = _open(path)
         try:
             info = os.fstat(fd)
-            result.update(available=True, reason="", size=info.st_size, watermark=_signature(info), endpoint_sha256=_ends(fd, info.st_size))
+            result.update(available=True, reason="", size=info.st_size, watermark=_signature(info), endpoint_sha256=_ends(fd, info.st_size), watermark_hash='full-prefix-sha256/v1')
             if family in COLUMNS and info.st_size == 0:
                 result.update(available=False, reason="Source exists, but no retained measurement records have been written yet")
         finally:
@@ -413,7 +418,7 @@ def _discover_attempt(subject):
             result["issues"].append(_issue("invalid-index", exc, source=index_name))
             continue
         expected_index = "raven.trace-index/v1" if index_family else "raven.telemetry-index/v1"
-        if index.get("schema") != expected_index:
+        if index.get("schema") != expected_index and not (index_family is None and index.get('schema')=='raven.telemetry-index/v2'):
             result["issues"].append(_issue("invalid-index", "Unsupported retained source index schema", source=index_name, family=index_family or "gpu"))
             continue
         descriptors = index.get("sources", [])
@@ -421,7 +426,21 @@ def _discover_attempt(subject):
             raise ExportError("Source index exceeds its descriptor budget")
         if index_family:
             add("trace", "index", index_name, schema=index.get("schema", ""))
+        expanded=[]
         for number, source in enumerate(descriptors):
+            if not isinstance(source,dict):
+                raise ExportError('Source descriptor must be an object')
+            segments=source.get('segments',[])
+            if not isinstance(segments,list) or len(segments)>128:
+                raise ExportError('Telemetry segment inventory exceeds its bound')
+            for part,segment in enumerate(segments):
+                if not isinstance(segment,dict) or not isinstance(segment.get('path'),str):
+                    raise ExportError('Invalid telemetry segment descriptor')
+                expanded.append(dict(source,path=segment['path'],id=str(source.get('id',number))+':segment:'+str(part)))
+            expanded.append(source)
+        if len(expanded)>MAX_SOURCES:
+            raise ExportError('Segmented source inventory exceeds its bound')
+        for number, source in enumerate(expanded):
             if not isinstance(source, dict):
                 raise ExportError("Source descriptor must be an object")
             family = index_family or source.get("family")
@@ -437,6 +456,9 @@ def _discover_attempt(subject):
                 if not isinstance(devices, list) or len(devices) > MAX_METRICS:
                     raise ExportError("Source device descriptors exceed their metadata budget")
                 sources[-1]["devices"] = _selection([device_id(item) if isinstance(item, dict) else item for item in devices], "source device identifiers")
+                if source.get('row_defaults'):
+                    sources[-1]['row_defaults']=source['row_defaults']
+                    sources[-1]['telemetry_devices']=devices
     try:
         logs = _read_metadata(_under(run, paths.get("log_index", "logs.json")))
         if logs.get("run_id", run_id) != run_id or logs.get("job_id", identity["job_id"]) != identity["job_id"]:
@@ -676,6 +698,7 @@ class _Writer:
         self.dirty = set()
         self.records = self.bytes = 0
         self.last_progress = 0.0
+        self.csv_writers = {}
 
     def _handle(self, name):
         if name in self.open:
@@ -725,12 +748,20 @@ class _Writer:
             self.last_progress = now
 
     def csv(self, name, columns, row, family):
-        buffer = io.StringIO(newline="")
-        writer = csv.writer(buffer, lineterminator="\n")
-        if name not in self.files:
+        if name not in self.csv_writers:
+            owner = self
+            class Sink:
+                records = 0
+                def write(self, text):
+                    owner.write(name, text.encode('utf-8'), records=self.records, family=family, columns=columns)
+                    return len(text)
+            sink = Sink()
+            writer = csv.writer(sink, lineterminator='\n')
+            self.csv_writers[name] = writer, sink
             writer.writerow(columns)
+            sink.records = 1
+        writer, _ = self.csv_writers[name]
         writer.writerow([_cell(row.get(key)) for key in columns])
-        self.write(name, buffer.getvalue().encode("utf-8"), records=1, family=family, columns=columns)
 
     def json(self, name, value, **options):
         self.write(name, _json(value) + b"\n", **options)
@@ -818,8 +849,10 @@ def _source_open(source):
         raise
 
 
-def _source_finish(fd, source):
+def _source_finish(fd, source, stream_digest=None):
     info, mark = os.fstat(fd), source["watermark"]
+    if stream_digest is not None and stream_digest.hexdigest()!=source['endpoint_sha256']:
+        raise ExportError('Source changed in the captured prefix while it was streamed; no bundle was published')
     if info.st_size < mark["size"] or _ends(fd, mark["size"]) != source["endpoint_sha256"]:
         raise ExportError("Source content changed while streaming; no bundle was published")
     if not source.get("append") and _signature(info) != mark:
@@ -836,7 +869,7 @@ def _source_finish(fd, source):
         os.close(named_fd)
 
 
-def _lines(fd, cutoff, cancel, counters):
+def _lines(fd, cutoff, cancel, counters, digest=None):
     remaining = cutoff
     with os.fdopen(os.dup(fd), "rb", buffering=CHUNK) as stream:
         while remaining:
@@ -844,12 +877,14 @@ def _lines(fd, cutoff, cancel, counters):
             raw = stream.readline(min(MAX_LINE + 1, remaining))
             if not raw:
                 raise ExportError("Source was truncated while exporting")
+            if digest is not None: digest.update(raw)
             remaining -= len(raw)
             if len(raw) > MAX_LINE:
                 counters["oversized"] += 1
                 while raw and not raw.endswith(b"\n") and remaining:
                     _check_cancel(cancel)
                     raw = stream.readline(min(MAX_LINE + 1, remaining))
+                    if digest is not None: digest.update(raw)
                     remaining -= len(raw)
                 continue
             if not raw.endswith(b"\n"):
@@ -871,13 +906,17 @@ def _export_stream(writer, source, attempt, request, prefix, issues):
     metric_names = set()
     observed_devices = set()
     fd = _source_open(source)
+    stream_digest=hashlib.sha256()
     try:
-        for raw in _lines(fd, source["watermark"]["size"], writer.cancel, counters):
+        for raw in _lines(fd, source["watermark"]["size"], writer.cancel, counters,stream_digest):
             counters["records"] += 1
             try:
                 row = _decode(raw)
                 if not isinstance(row, dict):
                     raise ValueError("measurement row is not an object")
+                if source.get('row_defaults'):
+                    from .retained_telemetry_io import hydrate_row
+                    row=hydrate_row(row,dict(source,devices=source.get('telemetry_devices',[])),attempt['identity']['run_id'])
                 # Exact identity is immutable even when supplied redundantly by a producer.
                 for key in ("run_id", "job_id"):
                     if key in row and row[key] != attempt["identity"].get(key):
@@ -953,7 +992,7 @@ def _export_stream(writer, source, attempt, request, prefix, issues):
                 if isinstance(exc, ExportError) and "distinct selected metric" in str(exc):
                     raise
                 counters["malformed"] += 1
-        _source_finish(fd, source)
+        _source_finish(fd, source,stream_digest)
     finally:
         os.close(fd)
     for kind in ("malformed", "oversized", "incomplete_tail", "unknown_time"):

@@ -20,7 +20,7 @@ import re
 import stat
 from typing import Any
 
-from .remote import LocalFiles
+from .local_files import LocalFiles
 
 CONTRACT_MAX_BYTES = 256 * 1024
 MAX_OUTPUTS = 4096

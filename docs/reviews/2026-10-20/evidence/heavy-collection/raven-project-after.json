@@ -1,0 +1,14 @@
+{
+  "source": "/workspace/Raven/raven/__init__.py",
+  "reads": 25,
+  "cold_wall_ms": 838.6192659963854,
+  "cold_command_bytes": 199179,
+  "cold_processes": 8,
+  "warm_median_wall_ms": 71.41880400013179,
+  "warm_command_bytes_per_read": 8396.0,
+  "warm_processes": 25,
+  "warm_child_cpu_seconds": 1.765665,
+  "child_peak_rss_kib": 43372,
+  "driver_peak_rss_kib": 43372,
+  "qualification": "Actual isolated Python helper on local subprocess transport; no live SSH network or scheduler. Warm portable cache already exists where reported cold_processes=1."
+}

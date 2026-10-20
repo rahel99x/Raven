@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import subprocess
-import time
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from . import clock
@@ -30,6 +29,8 @@ class Actions:
                 return False, "hold applies to pending jobs"
             return (not job.held, "already held") if job.held else (True, "")
         if action == "release":
+            if job.reason == "JobHeldAdmin":
+                return False, "administrative holds cannot be released by the job owner"
             return (job.pending and job.held, "not held")
         if action == "requeue":
             return (True, "") if not job.pending else (False, "requeue applies to running jobs")
@@ -43,12 +44,17 @@ class Actions:
             return False, "nothing applicable"
         ids = [j.id for j in jobs]
         fn = {"cancel": self.slurm.cancel, "hold": self.slurm.hold, "release": self.slurm.release, "requeue": self.slurm.requeue, "top": self.slurm.top}[action]
-        ok, out = fn(ids)
+        # Slurm can apply a subset and then return a nonzero batch status.
+        # Observe each independent mutation; native top is one ordered scope.
+        outcomes = [fn(ids)] if action in {"cancel", "top"} else [fn([jid]) for jid in ids]
+        results = {job.id: outcomes[0] if len(outcomes) == 1 else outcomes[index] for index, job in enumerate(jobs)}
+        ok = all(result[0] for result in results.values())
+        out = "\n".join((jid + ": " + result[1]).rstrip() for jid, result in results.items() if result[1])
         verb, mark = VERBS[action]
-        if ok:
-            for j in jobs:
+        for j in jobs:
+            if results[j.id][0]:
                 self.marks[j.id] = (mark, clock.now())
-        evs = [self.store.event("action", f"{verb} {j.id} {j.name}: {'ok' if ok else 'failed'} {out}".rstrip(), j, action=action, ok=ok) for j in jobs]
+        evs = [self.store.event("action", f"{verb} {j.id} {j.name}: {'ok' if results[j.id][0] else 'failed'} {results[j.id][1]}".rstrip(), j, action=action, ok=results[j.id][0]) for j in jobs]
         if self.emit:
             self.emit(evs)
         if self.on_done:
@@ -57,9 +63,12 @@ class Actions:
 
     def resubmit(self, clone) -> Tuple[bool, str, Optional[str]]:
         """sbatch the clone; an audit event either way."""
-        ok, out, new_id = self.slurm.submit(clone.argv, clone.workdir)
-        text = f"resubmitted {clone.id} {clone.name} as {new_id}" if ok and new_id else f"resubmit {clone.id} {clone.name}: {'ok' if ok else 'failed'} {out}".rstrip()
-        ev = self.store.event("action", text + f"  [{clone.command()}]", job_id=clone.id, name=clone.name, action="resubmit", ok=ok, new_id=new_id or "")
+        from .resubmit_intent import submit
+        ok, out, new_id = submit(self.slurm, self.store, clone)
+        outcome = "accepted" if ok else "unknown" if out.startswith("Resubmit outcome unknown") else "rejected"
+        label = "unknown" if outcome == "unknown" else "ok" if ok else "failed"
+        text = f"resubmitted {clone.id} {clone.name} as {new_id}" if ok and new_id else f"resubmit {clone.id} {clone.name}: {label} {out}".rstrip()
+        ev = self.store.event("action", text + f"  [{clone.command()}]", job_id=clone.id, name=clone.name, action="resubmit", ok=ok, outcome=outcome, new_id=new_id or "")
         if self.emit:
             self.emit([ev])
         if self.on_done:
@@ -93,22 +102,30 @@ class Notifier:
             self.worker_scheduler.shutdown(wait=False, cancel_futures=True)
 
     def __call__(self, ev: dict):
-        kind = ev.get("kind", "")
-        if self.bell and kind in self.bell_kinds:
-            try:
-                self.bell()
-            except Exception:
-                pass
-        if not self.command or kind not in self.kinds:
-            return
-        env = dict(os.environ, RAVEN_EVENT=kind, RAVEN_JOBID=str(ev.get("job", "")), RAVEN_JOBNAME=str(ev.get("name", "")), RAVEN_TEXT=str(ev.get("text", "")))
+        return self.notify_many([ev])
 
+    def notify_many(self, events):
+        events = [dict(event) for event in events]
+        for event in events:
+            if self.bell and event.get("kind", "") in self.bell_kinds:
+                try:
+                    self.bell()
+                except Exception:
+                    pass
+        events = [event for event in events if event.get("kind", "") in self.kinds]
+        if not self.command or not events:
+            return None
+        first = events[0]
+        kinds = {event.get("kind", "") for event in events}
+        kind = first.get("kind", "") if len(kinds) == 1 else "batch"
+        env = dict(os.environ, RAVEN_EVENT=kind, RAVEN_JOBID=str(first.get("job", "")),
+                   RAVEN_JOBNAME=str(first.get("name", "")), RAVEN_TEXT=str(first.get("text", "")))
+        from .hooks import run_hook
         def go():
             try:
-                subprocess.run(self.command, shell=True, env=env, timeout=20, capture_output=True)
+                return run_hook(self.command, events, env=env)
             except (OSError, subprocess.TimeoutExpired):
-                pass
-
+                return None
         try:
             return self.pool.submit(go)
         except RuntimeError as exc:

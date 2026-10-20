@@ -51,6 +51,7 @@ def _lock(root, name="report.lock"):
                 time.sleep(.02)
         yield root
     finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
 
 
@@ -493,6 +494,18 @@ def _submit_intent(root, intent, *, runner=subprocess.run, cwd=None, environment
     token, experiment, script = intent["token"], intent["experiment"], intent["script"]
     name, params, request = intent["name"], intent["parameters"], intent["resources"]
     declaration = intent.get("array_manifest")
+    from .execution_policy import router_for
+    from .launch_scheduler_context import capture as scheduler_context, validated as valid_scheduler_context
+    router = router_for()
+    context = scheduler_context(getattr(router, "source_backend", None), router.policy)
+    if context is not None:
+        intent["scheduler_context"] = context
+    if intent.get("scheduler_context") is not None:
+        from .connection_scope import selection_digest
+        if not valid_scheduler_context(intent["scheduler_context"]):
+            raise ValueError("Launch scheduler context is invalid; preview this launch again")
+        if intent["scheduler_context"].get("selection_sha256") != selection_digest(os.environ if environment is None else environment):
+            raise ValueError("Slurm configuration selection changed after preview; preview this launch again")
     path = R._under(root, f".raven/launches/{token}.json", create_parent=True)
     R._atomic_json(path, intent)
     # File-backed capture bounds memory even if a wrapper prints excessive data.

@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import importlib.util
 import json
 import math
 import os
@@ -21,6 +22,8 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
+import tarfile
 import venv
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +32,9 @@ MARKER = ".raven-install.json"
 MARKER_LIMIT = 64 * 1024
 SOURCE_LIMIT = 256 * 1024 * 1024
 SOURCE_FILES = 20000
+_trust_spec = importlib.util.spec_from_file_location('_raven_install_trust', ROOT / 'raven/config_trust.py')
+TRUST = importlib.util.module_from_spec(_trust_spec)
+_trust_spec.loader.exec_module(TRUST)
 
 
 class InstallError(RuntimeError):
@@ -39,10 +45,10 @@ class InstallInterrupted(InstallError):
     pass
 
 
-def run(command, *, timeout=600):
+def run(command, *, timeout=600, cwd=None):
     process = None
     try:
-        process = subprocess.Popen([str(item) for item in command], cwd=ROOT, start_new_session=True)
+        process = subprocess.Popen([str(item) for item in command], cwd=ROOT if cwd is None else cwd, start_new_session=True)
         process.wait(timeout=timeout)
     except (OSError, subprocess.TimeoutExpired) as exc:
         if process is not None:
@@ -60,8 +66,21 @@ def _stop(process):
     """Stop only the command session this installer created, then reap it."""
     if process.returncode is not None:
         return
-    # Kill before reaping: the still-owned leader PID cannot be recycled into
-    # an unrelated process group. Install children must not outlive cleanup.
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if hasattr(os, 'waitid') and hasattr(os, 'WNOWAIT'):
+            try:
+                if os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT):
+                    break
+            except ChildProcessError:
+                return
+        time.sleep(0.02)
+    # Keep the exited leader unreaped until the last group signal, so its PID
+    # cannot be reused while a helper still owns a pipe or build directory.
     try:
         os.killpg(process.pid, signal.SIGKILL)
     except ProcessLookupError:
@@ -69,29 +88,20 @@ def _stop(process):
     process.wait()
 
 
-def _directory(path, *, create=False):
+def _directory(path, *, create=False, owned=True):
     """Do not place persistent launchers through redirected directories."""
-    system_owners = {0, os.stat("/").st_uid}
-    for directory in (*reversed(path.parents), path):
-        try:
-            info = directory.lstat()
-        except FileNotFoundError:
-            if not create:
-                continue
-            try:
-                directory.mkdir(mode=0o700)
-            except FileExistsError:
-                pass
-            info = directory.lstat()
-        if not stat.S_ISDIR(info.st_mode):
-            raise InstallError("Choose a real directory, not a file or symbolic link: " + str(directory))
-        if info.st_uid not in system_owners | {os.getuid()}:
-            raise InstallError("Installation directory has an untrusted owner: " + str(directory))
-        sticky_system_ancestor = directory != path and info.st_uid in system_owners and info.st_mode & stat.S_ISVTX
-        if info.st_mode & 0o022 and not sticky_system_ancestor:
-            raise InstallError("Installation directories must not be group/world writable: " + str(directory))
-    if path.exists() and path.stat().st_uid != os.getuid():
-        raise InstallError("Installation directories must belong to your user: " + str(path))
+    try:
+        if not create and not path.exists():
+            ancestor = path.parent
+            while not ancestor.exists():
+                ancestor = ancestor.parent
+            with TRUST.directory_fd(ancestor):
+                return
+        with TRUST.directory_fd(path, create=create) as descriptor:
+            if owned and os.fstat(descriptor).st_uid != os.getuid():
+                raise InstallError("Installation directories must belong to your user: " + str(path))
+    except (OSError, ValueError) as exc:
+        raise InstallError('Choose a real directory, not a symbolic link: ' + str(path) + '; ' + str(exc)) from exc
 
 
 def _unique(items):
@@ -122,7 +132,7 @@ def read_marker(release, *, prefix=None, bin_dir=None):
     with os.fdopen(fd, "rb") as stream:
         before = os.fstat(stream.fileno())
         if (not stat.S_ISREG(before.st_mode) or before.st_uid != os.getuid()
-                or before.st_mode & 0o022 or before.st_size > MARKER_LIMIT):
+                or TRUST.unsafe_write(before, shielded=not release.stat().st_mode & 0o077) or before.st_size > MARKER_LIMIT):
             raise InstallError("The previous release has no trusted Raven installer marker.")
         raw = stream.read(MARKER_LIMIT + 1)
         after = os.fstat(stream.fileno())
@@ -259,7 +269,7 @@ def _check_pin(expected_commit, metadata, protected_paths):
 
 
 def _walk_source(directory, *, package=False):
-    _directory(directory)
+    _directory(directory, owned=False)
     excluded = {".git", "__pycache__"} if package else {
         ".git", ".venv", "__pycache__", "build", "dist", ".pytest_cache", ".mypy_cache", ".ruff_cache", "htmlcov"}
     paths, directories = set(), 0
@@ -293,7 +303,7 @@ def _build_inputs():
 
 def source_snapshot(protected_paths=()):
     """Fingerprint bounded source inputs; never scan a venv or recording store."""
-    _directory(ROOT)
+    _directory(ROOT, owned=False)
     if _git("rev-parse", "--show-toplevel") == str(ROOT):
         paths = _git_paths("ls-files", "--cached", "--others", "--exclude-standard", "-z")
     else:
@@ -310,16 +320,38 @@ def source_snapshot(protected_paths=()):
     if len(paths) > SOURCE_FILES:
         raise InstallError("Source exceeds the installer file-count bound.")
     digest, total, checked = hashlib.sha256(), 0, set()
+    shared = any(ROOT == root or root in ROOT.parents for root in TRUST._trusted_roots())
+    with TRUST.directory_fd(ROOT, _details=True) as (_, source_private, _):
+        pass
+    problems = TRUST.audit_directories({(ROOT / relative).parent for relative in paths})
+    for relative in sorted(paths):
+        path = ROOT / relative
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        if not stat.S_ISREG(info.st_mode):
+            problems[path] = str(path) + ': expected a regular source file, not a link or special file.'
+        elif TRUST.unsafe_write(info, shielded=shared or source_private):
+            problems[path] = str(path) + ': source file is group/world writable.'
+        elif info.st_uid not in {0, os.getuid()} and not shared:
+            problems[path] = str(path) + ': source file has an untrusted owner.'
+    if problems:
+        raise InstallError(TRUST.permission_report(problems))
     for relative in sorted(paths):
         path = ROOT / relative
         if path.parent not in checked:
-            _directory(path.parent)
+            _directory(path.parent, owned=False)
             checked.add(path.parent)
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+        except FileNotFoundError:
+            digest.update(b'missing\0' + os.fsencode(relative) + b'\0')
+            continue
         with os.fdopen(fd, "rb") as stream:
             before = os.fstat(stream.fileno())
             if (not stat.S_ISREG(before.st_mode) or before.st_size > 64 * 1024 * 1024
-                    or before.st_uid not in {0, os.getuid()} or before.st_mode & 0o022):
+                    or before.st_uid not in {0, os.getuid()} and not shared or TRUST.unsafe_write(before, shielded=shared or source_private)):
                 raise InstallError("Source input is not a bounded regular file: " + str(relative))
             name = os.fsencode(relative)
             digest.update(len(name).to_bytes(4, "big") + name + (before.st_mode & 0o777).to_bytes(4, "big")
@@ -352,6 +384,108 @@ def _write_marker(stage, data):
         os.fsync(stream.fileno())
 
 
+def _stage_source(stage, metadata):
+    """Build in a pristine private tree, never setuptools' stale ROOT/build."""
+    destination = stage / '.source'
+    destination.mkdir(mode=0o700)
+    head = _git('rev-parse', '--verify', 'HEAD')
+    if head and not metadata.get('source_dirty'):
+        archive = stage / '.source.tar'
+        try:
+            process = subprocess.Popen(['git', '-c', 'core.hooksPath=' + os.devnull, '-C', str(ROOT),
+                'archive', '--format=tar', '--output=' + str(archive), head], env=_git_env(),
+                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, start_new_session=True)
+            try:
+                _, errors = process.communicate(timeout=600)
+            except BaseException:
+                _stop(process)
+                raise
+            if process.returncode or archive.stat().st_size > SOURCE_LIMIT + SOURCE_FILES * 2048:
+                raise InstallError('Cannot create a bounded pristine source archive.')
+            with tarfile.open(archive) as source:
+                members = source.getmembers()
+                if len(members) > SOURCE_FILES * 2:
+                    raise InstallError('Pristine source archive exceeds its member bound.')
+                for member in members:
+                    relative = Path(member.name)
+                    if relative.is_absolute() or '..' in relative.parts or not (member.isdir() or member.isfile()):
+                        raise InstallError('Pristine source archive contains an unsafe path or link.')
+                    target = destination / relative
+                    if member.isdir():
+                        target.mkdir(mode=0o700, parents=True, exist_ok=True)
+                        continue
+                    target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                    with source.extractfile(member) as incoming, target.open('xb') as outgoing:
+                        shutil.copyfileobj(incoming, outgoing)
+                    target.chmod(0o755 if member.mode & 0o111 else 0o644)
+            expected = _git_paths('ls-tree', '-r', '--name-only', '-z', head, '--', 'raven')
+            missing = [path for path in expected if (path.suffix in {'.py', '.pyi'} or path.name == 'py.typed')
+                       and not (destination / path).is_file()]
+            if missing:
+                raise InstallError('Pristine archive omits tracked package inputs: ' + ', '.join(str(path) for path in sorted(missing)[:8]))
+        finally:
+            archive.unlink(missing_ok=True)
+    else:
+        # A deliberate first install from edited source stays supported. Copy
+        # only verified inputs, never build caches or pre-existing egg-info.
+        paths = (_git_paths('ls-files', '--cached', '--others', '--exclude-standard', '-z')
+                 if _git('rev-parse', '--show-toplevel') == str(ROOT) else _walk_source(ROOT)) | _build_inputs()
+        paths = {path for path in paths if not path.parts or path.parts[0] not in {'.raven', '.venv', 'venv', '.tox', '.nox', 'build', 'dist'}}
+        consumed = 0
+        for relative in sorted(paths):
+            if not (ROOT / relative).exists():
+                continue
+            raw, info = TRUST.read(ROOT / relative, limit=64 << 20)
+            consumed += len(raw)
+            if consumed > SOURCE_LIMIT:
+                raise InstallError('Pristine build source exceeds its byte bound.')
+            target = destination / relative
+            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with target.open('xb') as stream:
+                stream.write(raw)
+            target.chmod(0o755 if info.st_mode & 0o111 else 0o644)
+    return destination
+
+
+def _prune_releases(prefix, keep):
+    """Prune only complete installer-owned releases under the held lock."""
+    # Source backups refer to exact retained releases. The update coordinator
+    # prunes those together; a standalone install must not strand a backup.
+    if (prefix / 'backups').is_dir():
+        return
+    for candidate in prefix.glob('release-*'):
+        if candidate in keep or candidate.is_symlink() or not candidate.is_dir():
+            continue
+        try:
+            read_marker(candidate, prefix=prefix)
+        except (OSError, ValueError, InstallError):
+            continue
+        shutil.rmtree(candidate)
+
+
+def _sweep_staging(prefix):
+    """Remove only identifiable, abandoned stages while the install lock is held."""
+    for candidate in list(prefix.glob('release-*'))[:256]:
+        if candidate.is_symlink() or not candidate.is_dir() or (candidate / MARKER).exists():
+            continue
+        try:
+            raw, _ = TRUST.read(candidate / '.raven-staging.json', private=True, user_only=True, limit=4096)
+            marker = json.loads(raw)
+            if marker.get('schema') != 'raven.install-stage/v1' or marker.get('path') != str(candidate):
+                continue
+            pid = marker.get('pid')
+            if type(pid) is not int or pid <= 1 or time.time() - marker.get('created', time.time()) < 3600:
+                continue
+            try:
+                os.kill(pid, 0)
+                continue
+            except ProcessLookupError:
+                pass
+            shutil.rmtree(candidate)
+        except (OSError, ValueError, TypeError):
+            continue
+
+
 def _owned_link(path, target):
     if not os.path.lexists(path):
         return False
@@ -364,6 +498,9 @@ def _owned_link(path, target):
 
 
 def inspect_destination(prefix, bin_dir):
+    problems = TRUST.audit_directories((prefix, bin_dir, ROOT))
+    if problems:
+        raise InstallError(TRUST.permission_report(problems))
     _directory(prefix)
     _directory(bin_dir)
     current = prefix / "current"
@@ -397,6 +534,7 @@ def _restore_current(prefix, previous):
 
 
 def install(prefix, bin_dir, *, terminal=True, expected_commit=None, expected_protected_paths=()):
+    _directory(ROOT, owned=False)
     prefix, bin_dir = Path(os.path.abspath(prefix)), Path(os.path.abspath(bin_dir))
     if expected_protected_paths and expected_commit is None:
         raise InstallError("--preserve-config requires --expected-commit.")
@@ -420,10 +558,14 @@ def install(prefix, bin_dir, *, terminal=True, expected_commit=None, expected_pr
         except BlockingIOError as exc:
             raise InstallError("Another Raven installation is in progress.") from exc
         previous = inspect_destination(prefix, bin_dir)
+        _sweep_staging(prefix)
         metadata = source_metadata()
         _check_pin(expected_commit, metadata, protected)
         snapshot = source_snapshot(protected)
         stage = Path(tempfile.mkdtemp(prefix="release-", dir=prefix))
+        fd = os.open(stage / '.raven-staging.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w') as stream:
+            json.dump({'schema':'raven.install-stage/v1', 'path':str(stage), 'pid':os.getpid(), 'created':time.time()}, stream)
         print("Creating isolated Raven environment: " + str(stage), flush=True)
         try:
             venv.EnvBuilder(with_pip=True, symlinks=True).create(stage)
@@ -433,9 +575,17 @@ def install(prefix, bin_dir, *, terminal=True, expected_commit=None, expected_pr
             raise InstallError("Python could not create an environment with pip. Use a Python 3.10+ installation with venv/ensurepip, "
                                "or use python3 scripts/setup.py --mode demo for the offline checkout demo. " + str(exc)) from exc
         python = stage / "bin/python"
-        package = str(ROOT) + ("[terminal]" if terminal else "")
+        build_root = _stage_source(stage, metadata)
+        package = str(build_root) + ("[terminal]" if terminal else "")
         run([python, "-m", "pip", "install", "--disable-pip-version-check", package])
-        run([python, "-c", "import curses, raven; print('Raven ' + raven.__version__)"])
+        expected_payload = sorted(str(path.relative_to(build_root)) for path in (build_root / 'raven').rglob('*')
+                                  if path.is_file() and (path.suffix in {'.py', '.pyi'} or path.name == 'py.typed'))
+        run([python, "-I", "-c", "import curses,pathlib,sys,raven; "
+             "assert pathlib.Path(raven.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve()); "
+             "from importlib.metadata import distribution; "
+             "actual={str(path) for path in distribution('raven').files if str(path).startswith('raven/') and not str(path).endswith(('.pyc','.pyo'))}; "
+             "assert actual == set(" + repr(expected_payload) + "), 'Installed RECORD differs from the pristine package source'; "
+             "print('Raven ' + raven.__version__)"], cwd=stage)
         for name in COMMANDS:
             run([stage / "bin" / name, "--version"], timeout=30)
         current_metadata = source_metadata()
@@ -446,6 +596,8 @@ def install(prefix, bin_dir, *, terminal=True, expected_commit=None, expected_pr
                                  bin_dir=str(bin_dir), terminal=bool(terminal),
                                  source_snapshot_sha256=snapshot,
                                  previous_release=str(previous) if previous else None, **metadata))
+        (stage / '.raven-staging.json').unlink()
+        shutil.rmtree(build_root)
         # Every public command points through one atomically switched release.
         # New links use exclusive creation; a concurrent external installer is
         # never overwritten, even after the initial destination check.
@@ -470,6 +622,7 @@ def install(prefix, bin_dir, *, terminal=True, expected_commit=None, expected_pr
         os.replace(temporary_link, prefix / "current")
         temporary_link = None
         published = True
+        _prune_releases(prefix, {stage, previous})
         return {"release": stage, "previous": previous, "command": bin_dir / "raven"}
     except BaseException:
         current = prefix / "current"
@@ -513,6 +666,7 @@ def parser():
 
 
 def main(argv=None):
+    os.umask(0o022)
     args = parser().parse_args(argv)
     previous_handlers = {}
     def interrupt(signum, frame):
@@ -520,14 +674,15 @@ def main(argv=None):
         # leader before group cleanup. Keep ownership until run() stops it.
         raise InstallInterrupted("Installation interrupted")
     try:
-        for signum in (signal.SIGTERM, signal.SIGINT):
+        for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT):
             previous_handlers[signum] = signal.signal(signum, interrupt)
     except ValueError:  # An embedding may call main outside its main thread.
         pass
     try:
         if sys.version_info < (3, 10) or os.name != "posix":
             raise InstallError("Use Python 3.10 or later on Linux, macOS, or WSL.")
-        prefix, bin_dir = args.prefix.expanduser().absolute(), args.bin_dir.expanduser().absolute()
+        _directory(ROOT, owned=False)
+        prefix, bin_dir = args.prefix.expanduser().resolve(), args.bin_dir.expanduser().resolve()
         if prefix == ROOT or prefix in ROOT.parents or bin_dir == prefix or prefix in bin_dir.parents:
             raise InstallError("Use dedicated release and launcher directories outside the checkout's parents.")
         previous = inspect_destination(prefix, bin_dir)
@@ -538,6 +693,7 @@ def main(argv=None):
         print("Raven releases: " + str(prefix) + "\nCommands: " + str(bin_dir))
         print("Your configuration, shell startup files, and existing releases are preserved.")
         if args.plan:
+            source_snapshot(_protected_paths(args.preserve_config))
             print("Ready to install" + ("; previous release: " + str(previous) if previous else ""))
             return 0
         result = install(prefix, bin_dir, terminal=not args.without_terminal,

@@ -63,8 +63,14 @@ def test_result_publication_retries_real_lock_without_repeating_loader(tmp_path,
             blocker.execute("BEGIN IMMEDIATE" if lock == "writer" else "BEGIN")
             before = blocker.execute("SELECT owner,reserved,value FROM cache").fetchone()
             release.set()
-            assert busy.wait(2), "the test must exercise real publication lock contention"
-            assert not future.done()
+            if lock == "writer":
+                assert busy.wait(2), "the test must exercise real publication lock contention"
+                assert not future.done()
+            else:
+                # WAL readers retain a consistent old snapshot while the
+                # publication commits without blocking or repeating work.
+                assert future.result(2)["value"] == {"records": ["measured"]}
+                assert not busy.is_set()
             assert blocker.execute("SELECT owner,reserved,value FROM cache").fetchone() == before
             assert before[0] and before[1] == q["request"]["max_bytes"] and before[2] is None
         finally:
@@ -153,6 +159,18 @@ def test_invalidation_while_publication_is_blocked_never_releases_a_result(tmp_p
 
 
 def test_busy_admission_commit_never_runs_loader_without_durable_ownership(tmp_path, monkeypatch):
+    # WAL readers intentionally no longer block COMMIT. Retain the original
+    # real-lock rollback regression under SQLite's rollback journal so the
+    # committed-owner guard remains tested rather than deleting its assertions.
+    original = sqlite3.connect
+    class RollbackConnection(sqlite3.Connection):
+        def execute(self, statement, *args, **kwargs):
+            if statement == "PRAGMA journal_mode=WAL":
+                statement = "PRAGMA journal_mode=DELETE"
+            return super().execute(statement, *args, **kwargs)
+    def rollback_connect(*args, **kwargs):
+        return original(*args, factory=RollbackConnection, **kwargs)
+    monkeypatch.setattr(sqlite3, "connect", rollback_connect)
     cache = S.SharedQueryCache(tmp_path / "cache", capacity=1)
     busy, rolled_back = observe_contention(cache, monkeypatch, "COMMIT")
     calls, q = [], query()

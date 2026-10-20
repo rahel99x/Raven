@@ -7,6 +7,7 @@ remain visible so an incomplete log write cannot hide the following text.
 from __future__ import annotations
 
 import re
+import unicodedata
 
 
 _CONTROLS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
@@ -48,4 +49,6 @@ def display_text(text: str) -> str:
         text = _ANSI.sub("", text)
         if text.isprintable():
             return text
-    return _CONTROLS.sub(_visible_control, text)
+    text = _CONTROLS.sub(_visible_control, text)
+    return "".join(f"<U+{ord(char):04X}>" if unicodedata.category(char) in ("Cf", "Cs") else char
+                   for char in text)

@@ -6,8 +6,7 @@ Filesystem operations and JSON parsing never run under the Store lock.
 """
 from __future__ import annotations
 
-from collections import OrderedDict, deque
-import json
+from collections import OrderedDict
 import math
 import os
 import stat
@@ -62,7 +61,8 @@ def read_tail(path, keep, *, max_bytes=None, max_line=None):
             oversized += 1
             return
         try:
-            value = json.loads(line)
+            from .series_blocks import _json
+            value = _json(line)
         except (ValueError, RecursionError):
             skipped += 1
             return
@@ -134,6 +134,7 @@ class SeriesArchive:
         self.limited = set()
         self.disk_ids = set()
         self.index_at = None
+        self.empty = OrderedDict()
 
     def configure(self, submit):
         with self.store.lock:
@@ -151,6 +152,18 @@ class SeriesArchive:
         self.states.move_to_end(key)
         while len(self.states) > MAX_STATUS:
             self.states.popitem(last=False)
+
+    def _remember_empty(self, jid, identity):
+        self.empty[jid] = identity
+        self.empty.move_to_end(jid)
+        maximum = self.store.raven_limits.values['max_series_jobs'] if self.store.raven_limits else MAX_STATUS
+        while len(self.empty) > maximum:
+            old, _ = self.empty.popitem(last=False)
+            if old not in self.store.series and self.store.record_context(old)[0] is None:
+                for mapping in (self.store._recording_identities, self.store._recording_observations,
+                                self.store._recording_evidence, self.store._recording_bindings,
+                                self.store._sample_recording_proofs, self.store._isolated_recording_paths):
+                    mapping.pop(old, None)
 
     def _schedule(self, key, identity):
         with self.store.lock:
@@ -185,26 +198,33 @@ class SeriesArchive:
                 status = dict(status, attribution="session-only", message=status.get("message", "") +
                     " Attempt identity is unverified; a matching submission/start identity and restart counter are required."
                     " These recordings are isolated to this session. Legacy files are preserved but not merged.")
-            mem = list(self.store.series[jid])
+            mem = list(self.store.series.get(jid, ()))
             seen = {key for sample in mem if (key := _sample_key(sample)) is not None}
             merged = [sample for sample in old if _sample_key(sample) not in seen] + mem
             merged.sort(key=_time)
             retained = merged[-self.store.series_keep:] if self.store.series_keep > 0 else []
             from .series_publication import SeriesDeque, managed_record
             source = SeriesDeque(maxlen=self.store.series_keep, lock=self.store.lock)
-            previous = self.store.series[jid]
+            previous = self.store.series.get(jid)
             external = {id(sample) for sample in mem if not managed_record(sample) or sample._revision.series is not previous}
             for sample in retained:
                 if id(sample) in external:
                     source.append(sample)
                 else:
                     source.append_owned(sample)
-            self.store.series[jid] = source
+            if retained:
+                self.store.series[jid] = source
+            else:
+                self.store.series.pop(jid, None)
             if self.store.raven_limits:
                 self.store.raven_limits.retain_series(self.store,jid)
                 if len(source)<len(retained):
                     status=dict(status,status='limited',message='Light series byte budget reached; retained history is partial.')
-            self.store._series_loaded.add(jid)
+            if retained:
+                self.store._series_loaded.add(jid)
+                self.empty.pop(jid, None)
+            else:
+                self._remember_empty(jid, identity)
             if status.get("status") == "limited":
                 self.limited.add(jid)
             else:
@@ -215,16 +235,19 @@ class SeriesArchive:
     def read(self, jid, *, background=False, publication=False):
         def published():
             from .series_publication import SeriesDeque
-            source = self.store.series[jid]
-            if self.store.raven_limits and jid not in self.store.raven_limits.series:
+            source = self.store.series.get(jid, ())
+            if source and self.store.raven_limits and jid not in self.store.raven_limits.series:
                 self.store.raven_limits.retain_series(self.store,jid)
             return source.publication() if publication and type(source) is SeriesDeque else list(source)
         with self.store.lock:
             if jid in self.store._series_loaded and (background or jid not in self.limited):
                 return published()
             path, identity = self.store._series_path(jid), self._identity(jid)
+            if self.empty.get(jid) == identity:
+                self.empty.move_to_end(jid)
+                return published()
             if path is None:
-                self.store._series_loaded.add(jid)
+                self._remember_empty(jid, identity)
                 return published()
             memory = published()
         if background:

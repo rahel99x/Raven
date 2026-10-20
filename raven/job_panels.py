@@ -6,13 +6,16 @@ is introduced by the panel.
 """
 from __future__ import annotations
 
+from .log_paths import stdout_path
+from .ui.catalog import ANALYTICS_VIEWS, RESEARCH_VIEWS
 import copy
 from types import SimpleNamespace
 
 from . import layout as L
 from .log_catalog import LogCatalog
 from .logs import LogSession
-from .research import ResearchHub, clean
+from .research_text import clean
+from .research import ResearchHub
 from . import scrollbars
 from .pane_context import PaneContext, job_identity
 from .pane_document import PaneDocument, DocumentTransform, source_window
@@ -106,10 +109,8 @@ def _view_key(state):
 
 def _choices(group):
     if group == "research":
-        from .research import RESEARCH_VIEWS
         return RESEARCH_VIEWS
     if group == "analytics":
-        from .views import ANALYTICS_VIEWS
         return [(key, label.title()) for key, label in ANALYTICS_VIEWS]
     return ()
 
@@ -222,6 +223,10 @@ def handle_key(app, key):
         _activate(app, state["mode"], view=choices[index])
         return True
     if state["focus"] == "content":
+        if state["mode"] == "trace":
+            from .trace_ui import handle_key as trace_key
+            if trace_key(app, key):
+                return True
         if state["mode"] == "logs" and key in ("left", "right"):
             entries = state["entries"]
             if entries:
@@ -462,7 +467,6 @@ def _inspector(views, snap, app, job, width, state):
                 field = next((name for name in ("StdOut", "StdErr") if text.startswith(name + " ")), None)
                 path = details.get(field) if field else None
                 if path and isinstance(path, str) and path not in ("(null)", "N/A", "none"):
-                    from .views import stdout_path
                     path = stdout_path(job, details, views.files, field, probe=False)
                     target = ("inline_log", {"job": job.id, "id": field, "path": path, "source": "Inspector " + field})
                     hits.append((len(rows) + index, "job_panel_action", (target, 0, width)))
@@ -475,7 +479,6 @@ def _inspector(views, snap, app, job, width, state):
 
 
 def _logs(views, snap, app, job, width, height, state):
-    from .views import stdout_path
     files = views.files
     if state["files"] is not files:
         if state["catalog"]:
@@ -483,7 +486,7 @@ def _logs(views, snap, app, job, width, height, state):
         state.update(files=files, catalog=LogCatalog(files, ttl=5),
                      session=LogSession(max_bytes=MAX_LOG_BYTES, files=files), file_id=None, entries=[])
     session, catalog = state["session"], state["catalog"]
-    from .refresh_rate import multiplier
+    from .cadence import multiplier
     session.polling_multiplier = catalog.polling_multiplier = multiplier(app)
     details = snap.get("details", {}).get(job.id, {})
     warnings = []

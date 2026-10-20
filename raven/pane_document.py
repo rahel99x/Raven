@@ -7,13 +7,12 @@ scrollbars together before publication, including empty first publications.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Callable, Sequence, TYPE_CHECKING
+from typing import Callable, Sequence
 
 from .layout import Row
 
-if TYPE_CHECKING:
-    from .chart_interaction import Plot
-    from .scrollbars import Pane
+from .ui.geometry import (Plot, Pane, map_plots, map_panes, take_plots,
+                          take_panes, put_plots, put_panes)
 
 
 @dataclass(frozen=True)
@@ -34,12 +33,10 @@ class DocumentTransform:
         return mapped
 
     def charts(self, records):
-        from . import chart_interaction
-        return tuple(chart_interaction.map_records(records, self.row, clip=self.clip))
+        return tuple(map_plots(records, self.row, clip=self.clip))
 
     def scrollbars(self, records):
-        from . import scrollbars
-        return tuple(scrollbars.map_records(records, row_map=self.row, clip=self.clip))
+        return tuple(map_panes(records, row_map=self.row, clip=self.clip))
 
     def hits(self, records):
         result = []
@@ -67,9 +64,8 @@ class PaneDocument:
 
     @classmethod
     def capture(cls, app, rows, hits=(), *, chart_mark, scroll_mark=None):
-        from . import chart_interaction, scrollbars
-        return cls(rows, tuple(hits), tuple(chart_interaction.take_since(app, chart_mark)),
-                   tuple(scrollbars.take_since(app, scroll_mark)) if scroll_mark is not None else ())
+        return cls(rows, tuple(hits), tuple(take_plots(app, chart_mark)),
+                   tuple(take_panes(app, scroll_mark)) if scroll_mark is not None else ())
 
     def transform(self, rows, mapping):
         return replace(self, rows=rows, hits=mapping.hits(self.hits),
@@ -83,9 +79,8 @@ class PaneDocument:
         return self.transform(rows, mapping)
 
     def publish(self, app):
-        from . import chart_interaction, scrollbars
-        chart_interaction.put_records(app, self.charts)
-        scrollbars.put_records(app, self.scrollbars)
+        put_plots(app, self.charts)
+        put_panes(app, self.scrollbars)
         return self.rows, list(self.hits)
 
 

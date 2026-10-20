@@ -35,6 +35,8 @@ class Backend:
                  and all(value[field] == selected[option] for field, option in
                          (("Partition", "partition"), ("Account", "account"), ("QOS", "qos")))]), 0
         if argv[:4] == ["scontrol", "show", "job", "-o"]:
+            if "," in argv[-1]:
+                raise ValueError("Slurm rejects comma lists in scontrol show job")
             return "\n".join(" ".join(f"{key}={value}" for key, value in self.jobs[jid].items())
                              for jid in argv[-1].split(",") if jid in self.jobs), 0
         if argv[:2] == ["scontrol", "top"]:

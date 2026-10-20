@@ -132,7 +132,7 @@ def collect_trace(params, ctx):
         remaining_bytes -= sum(len(T.encoded(event)) + 1 for event in current["events"])
     snapshot = snapshots[0]
     O.checkpoint(ctx)
-    identity = snapshot["identity"]
+    _identity = snapshot["identity"]
     if expected_job and any(item["identity"]["job_id"] != expected_job for item in snapshots):
         raise ValueError("Trace job identity does not match the selected job")
     if expected_attempt and any(item["identity"]["attempt"] != expected_attempt for item in snapshots):

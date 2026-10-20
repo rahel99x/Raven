@@ -65,6 +65,7 @@ def terminal(tmp_path, monkeypatch):
     store.jobs = [Job(id="700", name="SCREEN_VISIBLE_JOB", state="RUNNING", partition="main", cpus=4)]
     app = App(store, None, None, cfg, "tester", interactive=True)
     app.state_dir = str(tmp_path / "clipboard")
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", app.state_dir)
     painter = Views(L.Glyphs(False), cfg)
     window = PaintedWindow()
     monkeypatch.setattr(curses, "wrapper", lambda callback: callback(window))
@@ -93,7 +94,7 @@ def terminal(tmp_path, monkeypatch):
     yield SimpleNamespace(app=app, painter=painter, store=store, cfg=cfg,
                           window=window, clock=clock, run=run)
     if app.research is not None:
-        app.research.shutdown()
+        app.research.close()
     screen._INPUT_READERS.clear()
 
 
@@ -162,8 +163,9 @@ def test_welcome_expires_during_normal_frames_without_input_or_restart(terminal)
     assert "Any key continues" not in frame_text(terminal.window.frames[-1])
     assert not startup.active(terminal.app)
     assert terminal.app.startup_state["start"] == 100
-    # The last idle read consumed half of the fixed maintenance interval.
-    assert terminal.window.timeouts[-1] == 100
+    # This mutable fixture keeps the 200 ms conservative deadline. Reads advance
+    # its clock by 100 ms, so the final wait uses the remaining half interval.
+    assert terminal.window.timeouts[-1] == round(screen.FALLBACK_MAINTENANCE_SECONDS * 1000) - 100
 
 
 def test_preview_paints_below_open_dropdown_without_closing_it(terminal, monkeypatch):
@@ -207,7 +209,11 @@ def test_actual_screen_retains_footer_selection_and_pristine_copy(terminal):
     frames = terminal.window.frames
     assert "FOOTER_ONLY_NOTICE" in frames[0]["rows"][-1]
     assert any(any("▏" in row for row in frame["rows"]) for frame in frames)
-    assert any("copied 2 lines" in frame["rows"][-1] for frame in frames)
+    assert any("Copy queued" in frame["rows"][-1] or "copied 2 lines" in frame["rows"][-1] for frame in frames)
+    for future in terminal.app.clipboard_pending:
+        future.result(timeout=5)
+    from raven.clipboard import poll
+    poll(terminal.app)
     clipboard = Path(terminal.app.state_dir) / "clipboard.txt"
     content = clipboard.read_text()
     assert content.count("\n") == 2

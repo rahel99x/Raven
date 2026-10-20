@@ -1,0 +1,489 @@
+{
+  "schema": "raven.review-live-slurm-matrix/v1",
+  "base_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+  "qualification": "Actual owned single-node Docker Slurm controllers/daemons/accounting; not simulated, not production-site qualification.",
+  "source_scope": "Package snapshot672635ec; 24.05 corrected evidence driver uses same exact package files. The later MCP cancellation wake method/resource-limit fix is separately regression-qualified, not included in these container source hashes.",
+  "versions": [
+    {
+      "version": "23.02.8",
+      "status": "passed-recorded-checks",
+      "source_package_sha256": "672635ece60c12e121a83a0695032870729ef92211afb37edc61a6c8e9f0fbfc",
+      "source_manifest": "source-manifest.json inside archive",
+      "archive": "23.02.8.tar.gz",
+      "archive_sha256": "3d5e755bcc87854afbb1e2d116a0a68c53fab5e4bf169ec4bb253d3fa7c9b658",
+      "archive_bytes": 79981,
+      "actual_recorded_commands": 225,
+      "image_id": "sha256:e38482cb751abc3efc1fb31f07e00ebc49e453237780f6dc4c8140b66b84eb48",
+      "limits": [
+        "No physical GPU, remote SSH, multi-node or production-site qualification.",
+        "COL-2 JSON-warning augmentation exercised only on qualified26.05JSON; older native text departure is unmodified real output."
+      ],
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true,
+          "remaining": 29
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "version": "23.11.11",
+      "status": "passed-recorded-checks",
+      "source_package_sha256": "672635ece60c12e121a83a0695032870729ef92211afb37edc61a6c8e9f0fbfc",
+      "source_manifest": "source-manifest.json inside archive",
+      "archive": "23.11.11.tar.gz",
+      "archive_sha256": "44677f0fb3e791537f14e91c5adfb32bdfe714b64cfac29c9e274d69d05f1e84",
+      "archive_bytes": 80221,
+      "actual_recorded_commands": 231,
+      "image_id": "sha256:0931be69532018a1c4ce20f3d676d9eba940bcfd4ec7ebb25f849c139cf4a9a5",
+      "limits": [
+        "No physical GPU, remote SSH, multi-node or production-site qualification.",
+        "COL-2 JSON-warning augmentation exercised only on qualified26.05JSON; older native text departure is unmodified real output."
+      ],
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true,
+          "remaining": 29
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "version": "24.05.8",
+      "status": "passed-recorded-checks",
+      "source_package_sha256": "672635ece60c12e121a83a0695032870729ef92211afb37edc61a6c8e9f0fbfc",
+      "source_manifest": "source-manifest.json inside archive",
+      "archive": "24.05.8.tar.gz",
+      "archive_sha256": "a5d47dee0d5450e8fd2005c06c4f1c1f3849200f23d84ce2044bafae723f6803",
+      "archive_bytes": 84048,
+      "actual_recorded_commands": 290,
+      "image_id": "sha256:449fa5d209cdf896e8f48f0aaf0475a7c8792bbe11dff8b79f14ac2f5bfd7c15",
+      "limits": [
+        "No physical GPU, remote SSH, multi-node or production-site qualification.",
+        "COL-2 JSON-warning augmentation exercised only on qualified26.05JSON; older native text departure is unmodified real output."
+      ],
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true,
+          "remaining": 29
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "version": "24.11.7",
+      "status": "passed-recorded-checks",
+      "source_package_sha256": "672635ece60c12e121a83a0695032870729ef92211afb37edc61a6c8e9f0fbfc",
+      "source_manifest": "source-manifest.json inside archive",
+      "archive": "24.11.7.tar.gz",
+      "archive_sha256": "d7975a4d761728566092ddbe932e7b32742f7917eb8f1b1303fdeb62fdceedc2",
+      "archive_bytes": 83631,
+      "actual_recorded_commands": 286,
+      "image_id": "sha256:09d934cbd395b3456b6ff8a936d098f3527aa02ae3593932505ce9b02547d1e3",
+      "limits": [
+        "No physical GPU, remote SSH, multi-node or production-site qualification.",
+        "COL-2 JSON-warning augmentation exercised only on qualified26.05JSON; older native text departure is unmodified real output."
+      ],
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true,
+          "remaining": 29
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "version": "26.05.5",
+      "status": "passed-recorded-checks",
+      "source_package_sha256": "672635ece60c12e121a83a0695032870729ef92211afb37edc61a6c8e9f0fbfc",
+      "source_manifest": "source-manifest.json inside archive",
+      "archive": "26.05.5.tar.gz",
+      "archive_sha256": "2028cc99053f518ddf79f662144ec5bde9bad29ebe613061785f1cca95bd8609",
+      "archive_bytes": 97539,
+      "actual_recorded_commands": 288,
+      "image_id": "sha256:0ad6e52a09d8041b3c68a4f19e4acce50fe6033ea92cfb7e87f36556fb8b52d6",
+      "limits": [
+        "No physical GPU, remote SSH, multi-node or production-site qualification."
+      ],
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-1 actual pretty JSON exceeds old physical-line budget but semantic records pass",
+          "passed": true,
+          "records": 30,
+          "physical_lines": 11236
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true,
+          "remaining": 29
+        },
+        {
+          "name": "COL-2 warning note does not mark complete listing partial",
+          "passed": true
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "version": "orphan-26.05.5",
+      "status": "passed",
+      "source_package_sha256": "672635ece60c12e121a83a0695032870729ef92211afb37edc61a6c8e9f0fbfc",
+      "source_manifest": "source-manifest.json inside archive",
+      "archive": "orphan-26.05.5.tar.gz",
+      "archive_sha256": "c8adf413bf4218aaaa5c4f13f94be257a82f5916c8e608d6f0758ae04821db9d",
+      "archive_bytes": 26853,
+      "actual_recorded_commands": 0,
+      "image_id": "sha256:0ad6e52a09d8041b3c68a4f19e4acce50fe6033ea92cfb7e87f36556fb8b52d6",
+      "limits": [],
+      "checks": []
+    }
+  ],
+  "initial_accounting_visibility": {
+    "archive": "24.05.8-initial-accounting-visibility.tar.gz",
+    "reason": "Exact -j query showed just-finished jobs33/34 while broad native sacct output itself still contained29 original completed rows; corrected driver waits at most8 seconds for broad visibility before asserting at least30. No product parser/count change.",
+    "sha256": "2fa582e6af99a4dc6c6c4402d618465060527e888633a166d53ba326fe107084"
+  },
+  "constraints": [
+    "Two fixture CPUs,2GiB container memory; task/none and proctrack/linuxproc; actual process membership uses bounded local scontrol listpids, no cgroup enforcement claim.",
+    "No physical GPU, live SSH network, multinode or production-site resource-policy qualification.",
+    "26.05 COL-2 warning branch augments an actual native JSON response with a warning; job submission/cancellation/output are real. This is not evidence that Slurm naturally emitted that warning.",
+    "No performance claims; qualification ran alongside regression activity.",
+    "Archives include every top-level recorded command and stdout/stderr plus image/daemon metadata; transient SQLite caches/private helper working directories are excluded. Owned allocation lifecycle/receipt states are preserved in manifests."
+  ],
+  "commands": "Existing qualify_slurm.py harness copied with review-findings scenario + explicit snapshot revision only; commands and source maps retained inside each archive. No product harness source edits.",
+  "raw_artifacts": "Raw evidence is retained off the product branch at the immutable archive commit below; see archive_guide for scope and verification.",
+  "raw_full_summary_sha256": "ffd1170c57b7865f08f05a6ea429099a3321fdce12f68b592753001899b42223",
+  "qualified_source_archive": {
+    "archive": "qualified-source.tar.gz",
+    "sha256": "5ae52c63b751a3c36dc4fff61d1f04f8bfffc6879b49adf1463f7791cdc336b7",
+    "bytes": 1903622,
+    "scope": "Exact immutable package/scripts/source-manifest used in five-version runs; corrected24.05 evidence driver supplied separately."
+  },
+  "pre_fix_pid_proof_reproduction": {
+    "archive": "26.05.5-before-pid-proof.tar.gz",
+    "sha256": "873db80b55266fce08983f8a4693b1c01bea05c7a3922dd06c924483a8af4d0b",
+    "bytes": 81826,
+    "issue": "Actual task/none + proctrack/linuxproc Heavy had cgroup_proof=false and no default PID reader; exact worker failed unverified placement, then cleanly relinquished. Final built-in conditional bounded listpids fallback qualified on all5versions.",
+    "source_package_sha256": "f2ca7eeb045a108c23be748bc4ccba625e8ec160083f8f666bb69fc3167074e8"
+  },
+  "raw_artifact_manifest_sha256": "c36b9eb039b278ce540c5644afa3098bd0a4cceac8eb541fb80eb41d8c00b519",
+  "archive_ref": "evidence/adversarial-review-2026-10-20",
+  "archive_commit": "3bdf0a3d6566b3810678339484b5936a2b0beca5",
+  "archive_url": "https://github.com/rahel99x/Raven/tree/3bdf0a3d6566b3810678339484b5936a2b0beca5",
+  "artifact_manifest_url": "https://github.com/rahel99x/Raven/blob/3bdf0a3d6566b3810678339484b5936a2b0beca5/artifact-manifest.json",
+  "artifact_manifest_sha256": "b0c832f8014bde4db93442c9125cca97d77005658bb3c6a58d2075dd7a71b17c",
+  "raw_full_summary_url": "https://github.com/rahel99x/Raven/blob/3bdf0a3d6566b3810678339484b5936a2b0beca5/slurm/summary.json",
+  "archive_guide": "../../evidence-archive.md",
+  "archive_payload_files": 42,
+  "archive_payload_bytes": 5426869,
+  "publication_requirement": "Publish the evidence ref before publishing the product reports that link to this commit."
+}

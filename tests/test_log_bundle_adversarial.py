@@ -15,6 +15,11 @@ from raven import history_log_export, log_bundle
 from raven.cli import Session
 from raven.model import Finished
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "durable-exports"))
+
+
 
 @pytest.fixture
 def shared_project(tmp_path):
@@ -197,7 +202,7 @@ def test_rename_of_projects_root_cleans_held_destination_and_keeps_replacement(t
 
 
 @pytest.mark.parametrize("linked", ["state", "ancestor", "exports"])
-def test_rejected_clipboard_staging_symlink_never_creates_target_directories(tmp_path, linked):
+def test_state_symlink_cannot_redirect_durable_clipboard_export(tmp_path, linked):
     report, paths = _report(tmp_path)
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -214,7 +219,8 @@ def test_rejected_clipboard_staging_symlink_never_creates_target_directories(tmp
         (state / "exports").symlink_to(outside, target_is_directory=True)
     result = log_bundle.export_logs(report, state_dir=str(state), clipboard=True,
                                    use_osc52=False, use_tools=False)
-    assert result["status"] == "error" and not result["export_path"]
+    assert result["status"] == "ready" and result["export_path"]
+    assert Path(result["export_path"]).parent == tmp_path / "durable-exports"
     assert not list(outside.iterdir()), result
     assert all(path.exists() for path in paths)
 

@@ -99,6 +99,7 @@ class SharedQueryCache:
         self._owner = (os.getpid(), _process_start(os.getpid()))
         if self._owner[1] is None:
             raise ValueError("Shared collection requires process start identity")
+        self._connections = threading.local()
         with self._connection() as connection:
             connection.executescript("""
                 CREATE TABLE IF NOT EXISTS cache (
@@ -135,17 +136,34 @@ class SharedQueryCache:
                 raise ValueError("Shared cache files must be private regular files owned by this user")
             if info.st_size > 2 * self.max_bytes + (8 << 20):
                 raise ValueError("Shared cache storage exceeds its bound")
-        # The parent is private before SQLite creates its file. No state or
-        # cached scheduler output is exposed through a public parent directory.
-        connection = sqlite3.connect(self.path, timeout=timeout, isolation_level=None)
-        try:
-            os.chmod(self.path, 0o600)
-            connection.execute("PRAGMA busy_timeout=" + str(max(0, int(timeout * 1000))))
-            page_size = connection.execute("PRAGMA page_size").fetchone()[0]
-            connection.execute("PRAGMA max_page_count=" + str((2 * self.max_bytes + (4 << 20)) // page_size))
-            yield connection
-        finally:
+        if os.getpid() != self._owner[0]:
+            raise ValueError("Create a new shared cache client after forking")
+        connection = getattr(self._connections, "connection", None)
+        if connection is None:
+            # A connection belongs to one existing caller thread. WAL readers
+            # do not block short owner/publication transactions; NORMAL avoids
+            # redundant durability barriers for this reconstructible cache.
+            connection = sqlite3.connect(self.path, timeout=timeout, isolation_level=None)
+            try:
+                os.chmod(self.path, 0o600)
+                connection.execute("PRAGMA journal_mode=WAL")
+                connection.execute("PRAGMA synchronous=NORMAL")
+                connection.execute("PRAGMA journal_size_limit=" + str(4 << 20))
+                page_size = connection.execute("PRAGMA page_size").fetchone()[0]
+                connection.execute("PRAGMA max_page_count=" + str((2 * self.max_bytes + (4 << 20)) // page_size))
+                self._connections.connection = connection
+            except BaseException:
+                connection.close()
+                raise
+        connection.execute("PRAGMA busy_timeout=" + str(max(0, int(timeout * 1000))))
+        yield connection
+
+    def close(self):
+        """Close this thread's idle connection; other callers own theirs."""
+        connection = getattr(self._connections, "connection", None)
+        if connection is not None:
             connection.close()
+            del self._connections.connection
 
     @staticmethod
     def _dead(row):
@@ -378,3 +396,52 @@ class SharedQueryCache:
             except BaseException:
                 connection.execute("ROLLBACK")
                 raise
+
+
+class ProcessQueryCache(SharedQueryCache):
+    """Portable process-local fallback with the same bounded lease semantics.
+
+    No persistent values or cross-process claims are used when kernel boot and
+    process identities cannot be established. A lock serializes only the short
+    in-memory transactions, never an external collector.
+    """
+    def __init__(self, *, capacity=128, max_bytes=16 << 20):
+        E.integer(capacity, "process cache capacity", 1024)
+        E.integer(max_bytes, "process cache byte bound", 64 << 20)
+        if min(capacity, max_bytes) < 1:
+            raise ValueError("Process cache bounds must be positive")
+        self.capacity, self.max_bytes = capacity, max_bytes
+        self.host = "process-" + uuid.uuid4().hex
+        self.path = ":memory:" + self.host
+        self._owner = (os.getpid(), self.host)
+        self._mutex = threading.RLock()
+        self._database = sqlite3.connect(":memory:", isolation_level=None, check_same_thread=False)
+        self._database.executescript("""
+            CREATE TABLE cache (key TEXT PRIMARY KEY,scope TEXT NOT NULL,policy TEXT NOT NULL,
+                throttle TEXT NOT NULL,started REAL NOT NULL,expires REAL NOT NULL,owner TEXT,
+                pid INTEGER,process_start TEXT,reserved INTEGER NOT NULL,value TEXT,size INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE throttle (key TEXT PRIMARY KEY,started REAL NOT NULL,expires REAL NOT NULL);
+            CREATE TABLE metadata (key TEXT PRIMARY KEY,value TEXT NOT NULL);
+        """)
+        pages = self._database.execute("PRAGMA page_size").fetchone()[0]
+        self._database.execute("PRAGMA max_page_count=" + str((2 * max_bytes + (4 << 20)) // pages))
+
+    @contextmanager
+    def _connection(self, *, timeout=.1):
+        if os.getpid() != self._owner[0]:
+            raise ValueError("Create a new process cache client after forking")
+        with self._mutex:
+            if self._database is None:
+                raise ValueError("Process cache is closed")
+            yield self._database
+
+    def _dead(self, row):
+        # Only this process can create a claim in its in-memory database.
+        # Never inspect /proc or infer that inaccessible metadata means death.
+        return row[1:] != self._owner
+
+    def close(self):
+        with self._mutex:
+            if self._database is not None:
+                self._database.close()
+                self._database = None

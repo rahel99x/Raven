@@ -117,6 +117,7 @@ def python_application():
             recorder = Recorder(run, job_id=manifest.get("job_id", "local"), attempt=run.name,
                                 cluster=os.environ.get("SLURM_CLUSTER_NAME", "local"),
                                 identity_extra={"run_id": run.name},
+                                cpu_placement=plan.get("settings", {}).get("trace_cpu_placement", False),
                                 coverage={"adapter": "python-profile" if legacy else "python-sys-monitoring",
                                           "scope": "Python frames in this process; native extensions, GPU kernels, child processes and remote ranks are not traced",
                                           "limitations": "Explicit legacy profile cannot distinguish yield/return or exception unwind" if legacy else "CPython 3.12+ monitoring; pre-existing frames are unknown"})

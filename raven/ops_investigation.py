@@ -14,7 +14,7 @@ import threading
 import time
 
 from . import diagnostic_trials as trials
-from . import investigation_planner, science_contracts, science_diagnostics, science_files, scientific_lineage
+from . import science_contracts, science_files
 from . import operations as O
 
 
@@ -25,24 +25,9 @@ def _field(key, label, default="", required=False, choices=None):
     return value
 
 
-_READERS = {
-    "recommendation": ("Recommendation validity", "Inspect pinned evidence, applicability, expiry and measured scientific outcome.", science_contracts.evaluate),
-    "investigation-plan": ("Next investigation action", "Rank declared information actions within explicit time, resource and scientific-risk budgets.", investigation_planner.plan),
-    "scientific-impact": ("Scientific impact and revalidation", "Trace affected claims and propose dependency-aware checks; missing lineage remains unknown.", scientific_lineage.analyze),
-    "factorial-design": ("Plan factorial experiment", "Compile declared compatible factors into a randomized bounded diagnostic campaign.", science_diagnostics.factorial_plan),
-    "factorial-analysis": ("Analyze factorial experiment", "Compare observed controls, equivalence, main effects and interactions without causal percentages.", science_diagnostics.factorial),
-    "numerical-stability": ("Numerical stability laboratory", "Analyze measured configuration repeats, tolerance violations and missing measurements.", science_diagnostics.numerical),
-    "regression-investigation": ("Performance regression investigation", "Compare ordered versions with scientific checks, noise and multiple comparisons accounted for.", science_diagnostics.regression),
-}
+from .science_readers import READERS as _READERS
 
 SPECIFICATIONS = [
-    {"key": "investigation-workflow", "title": "Staged job investigation", "group": "Investigation", "proposal": "Consolidation",
-     "summary": "Join evidence, findings, missing information, diagnostic planning, reviewed execution and updated measurements.",
-     "fields": [_field("manifest", "Workflow manifest", required=True),
-                _field("action", "Stage", "inspect", choices=["inspect", "review-diagnostic", "status"]),
-                _field("diagnostic_id", "Diagnostic ID (review or status)"),
-                _field("destination", "Diagnostic workspace (new for review)")]},
-] + [
     {"key": key, "title": title, "group": "Investigation", "proposal": "Flagship",
      "summary": summary, "fields": [_field("manifest", "Investigation manifest", required=True)]}
     for key, (title, summary, _) in _READERS.items()
@@ -69,19 +54,7 @@ def _reap():
                 del _CHILDREN[pid]
 
 
-def _process_matches(record):
-    try:
-        pid = science_contracts.integer(record["pid"], "driver pid", 1, 2147483647)
-        if Path("/proc/sys/kernel/random/boot_id").read_text().strip() != record["boot"]:
-            return False
-        process = Path(f"/proc/{pid}")
-        if process.stat().st_uid != os.geteuid():
-            return False
-        data = (process/"stat").read_text()
-        fields = data[data.rfind(")")+2:].split()
-        return fields[19] == record["start"] and fields[0] != "Z"
-    except (OSError, ValueError, KeyError, IndexError):
-        return False
+from .diagnostic_identity import _process_matches
 
 
 def _status(feature, params, ctx):
@@ -243,10 +216,9 @@ def _rows(feature, data):
 
 def run(feature, params, ctx):
     if feature == "investigation-workflow":
-        from .investigation_workflow import run as workflow
-        return workflow(params, ctx)
+        return O.run(feature, params, ctx)
     if feature in _READERS:
-        from .investigation_workflow import analyze
+        from .science_analysis import analyze
         data = analyze(feature, _load(params, ctx), ctx)
         O.checkpoint(ctx)
         warning = data.get("state") in {"failed", "unknown", "inconclusive", "expired", "stale", "refuted", "inapplicable"} or bool(data.get("unresolved_claims"))
@@ -296,8 +268,7 @@ def run(feature, params, ctx):
 
 def apply(feature, plan, ctx):
     if feature == "investigation-workflow":
-        from .investigation_workflow import apply as workflow
-        return workflow(plan, ctx)
+        return O.apply(feature, plan, ctx)
     if feature not in {"diagnostic-campaign", "minimize-reproducer", "regression-sweep"}:
         raise ValueError("This investigation is read-only")
     O.local_only(ctx)

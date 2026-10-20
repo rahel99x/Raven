@@ -60,15 +60,19 @@ def terminal_evidence(cfg, *, state_dir="", environ=None, encoding=None):
             info = os.stat(absolute, follow_symlinks=False)
             regular = stat.S_ISDIR(info.st_mode) if writable else stat.S_ISREG(info.st_mode)
             access = os.access(absolute, os.W_OK if writable else os.R_OK)
+            if not writable:
+                from .config_trust import read
+                read(absolute)
             add(label, regular and access, absolute + (" is accessible." if regular and access else " is unavailable or has unsuitable permissions."))
-        except OSError:
+        except (OSError, ValueError) as exc:
             parent = os.path.dirname(absolute)
-            add(label, os.path.isdir(parent) and os.access(parent, os.W_OK if writable else os.R_OK),
-                absolute + " does not exist. Check its parent path and permissions.")
+            exists = os.path.lexists(absolute)
+            add(label, not exists and os.path.isdir(parent) and os.access(parent, os.W_OK if writable else os.R_OK),
+                str(exc) if exists else absolute + " does not exist. Check its parent path and permissions.")
     return checks
 
 
-def diagnose(cfg, *, fake=False, host="", ssh_user=""):
+def diagnose(cfg, *, fake=False, host="", ssh_user="", state_dir=""):
     """Return capability evidence, including missing optional tools separately."""
     host = "" if fake else (host or cfg["host"])
     mode = "demo" if fake else "remote" if host else "local"
@@ -91,7 +95,11 @@ def diagnose(cfg, *, fake=False, host="", ssh_user=""):
             add("SSH client", connected, "OpenSSH must be available locally")
             if connected and cfg.get("raven", {}).get("managed"):
                 add("Remote tools", True, "Not probed during managed startup; admitted operations verify actual remote capabilities", False)
-                checks.extend(terminal_evidence(cfg))
+                checks.extend(terminal_evidence(cfg, state_dir=state_dir))
+                if state_dir:
+                    from .state_ownership import StateOwner
+                    state = StateOwner.preflight(state_dir)
+                    add('Mutable state ownership', state['state'] == 'available', state['message'], False)
                 return dict(mode=mode, ready=True, checks=checks, next_step="ravenl --host " + host,
                             scope="Local prerequisites only; remote scheduler tools and permissions remain unverified.")
             if connected:
@@ -114,7 +122,11 @@ def diagnose(cfg, *, fake=False, host="", ssh_user=""):
             for tool, purpose in OPTIONAL.items():
                 add(tool, tool in found, purpose, False)
 
-    checks.extend(terminal_evidence(cfg))
+    checks.extend(terminal_evidence(cfg, state_dir=state_dir))
+    if state_dir:
+        from .state_ownership import StateOwner
+        state = StateOwner.preflight(state_dir)
+        add('Mutable state ownership', state['state'] == 'available', state['message'], False)
     ready = all(c["status"] != "error" for c in checks)
     return dict(mode=mode, ready=ready, checks=checks,
                 next_step=("raven --fake" if fake else "raven --host LOGIN" if host else "raven") if ready

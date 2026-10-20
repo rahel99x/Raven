@@ -13,6 +13,11 @@ from raven.log_copy import copy_full_log
 from raven.logs import LogBuffer
 from raven.remote import LocalFiles, RemoteFiles
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "state" / "exports"))
+
+
 
 def exported(result):
     assert result["status"] in ("ready", "partial"), result["message"]
@@ -126,12 +131,14 @@ def test_local_nonregular_or_missing_source_never_publishes_export(tmp_path, kin
     assert not list((tmp_path / "state").rglob("*.log"))
 
 
-def test_explicit_local_log_symlink_reads_the_regular_target(tmp_path):
+def test_explicit_local_log_symlink_is_refused_before_export(tmp_path):
     target, source = tmp_path / "target.out", tmp_path / "current.out"
     target.write_bytes(b"actual source\n")
     source.symlink_to(target)
     result = no_clipboard(source, tmp_path / "state")
-    assert exported(result).read_bytes() == b"actual source\n"
+    assert result["status"] == "error"
+    assert result["export_path"] == ""
+    assert target.read_bytes() == b"actual source\n"
 
 
 @pytest.mark.parametrize("change", ["rotate", "rewrite", "append"])
@@ -273,15 +280,17 @@ def test_cancelled_before_start_does_not_touch_source_or_destination(tmp_path):
     assert not (tmp_path / "state").exists()
 
 
-def test_export_directory_symlink_cannot_redirect_full_copy(tmp_path):
+def test_explicit_export_root_symlink_resolves_once_for_full_copy(tmp_path):
     source, state_dir, outside = tmp_path / "source.out", tmp_path / "state", tmp_path / "outside"
     source.write_bytes(b"data\n")
     state_dir.mkdir()
     outside.mkdir()
     (state_dir / "exports").symlink_to(outside)
     result = no_clipboard(source, state_dir)
-    assert result["status"] == "error"
-    assert not list(outside.iterdir())
+    assert result["status"] == "ready"
+    assert Path(result["export_path"]).parent == outside
+    assert Path(result["export_path"]).read_bytes() == b"data\n"
+    assert stat.S_IMODE(Path(result["export_path"]).stat().st_mode) == 0o600
 
 
 def test_copy_cannot_overwrite_existing_export_on_name_collision(tmp_path, monkeypatch):

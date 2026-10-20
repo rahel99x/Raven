@@ -1,15 +1,16 @@
 """Explicit columns, field filters and named table views with stable job IDs."""
 from __future__ import annotations
 
+from .ui.catalog import SORTS
 from dataclasses import replace
 import copy
 import math
 import re
 
 from . import layout as L
-from .table_sort import (TABLE_KEYS, chain, clear_sort, cycle_sort, describe_sort, header_hits,
-                         history_value, reset_sort, set_sort, sort_fingerprint, sort_rows,
-                         valid_header, validate_chain)
+from .table_sort import (TABLE_KEYS, chain, clear_sort, cycle_sort, describe_sort, header_hits as header_hits,
+                         history_value as history_value, reset_sort, set_sort, sort_fingerprint, sort_rows as sort_rows,
+                         valid_header as valid_header, validate_chain)
 
 MAX_VIEWS = 32
 COLUMN_LAYOUT_VERSION = 2
@@ -156,7 +157,6 @@ def _facets(value, tab):
 
 def _view(app, value):
     """Validate the complete restored view before changing any navigation."""
-    from .views import SORTS
     if not isinstance(value, dict) or not isinstance(value.get("tab"), str) or value["tab"] not in TABLE_KEYS:
         raise ValueError("invalid table")
     tab = value["tab"]
@@ -265,7 +265,7 @@ def matches(app, tab, record, snap):
 
 def chips(app, tab, width, ascii_=False):
     facets = facets_fingerprint(app, tab)
-    from .research import clean
+    from .research_text import clean
     from .table_tools import numeric_rules
     entries = [(key, f"[{key}={value} x]") for key, value in facets]
     rules = numeric_rules(app, tab)

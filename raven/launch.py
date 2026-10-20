@@ -76,6 +76,9 @@ def parser():
     helpers = ap.add_mutually_exclusive_group()
     helpers.add_argument("--trace-helpers", action="store_true", default=None, help="Include helper processes in the initial trace view; their recordings always remain available")
     helpers.add_argument("--no-trace-helpers", dest="trace_helpers", action="store_false", help="Hide helper processes in the initial trace view")
+    placement = ap.add_mutually_exclusive_group()
+    placement.add_argument("--trace-cpu-placement", action="store_true", default=None, help="Observe Linux CPU/socket/core at Python event times; does not measure continuous residency")
+    placement.add_argument("--no-trace-cpu-placement", dest="trace_cpu_placement", action="store_false", help="Disable event-time CPU placement observations")
     ap.add_argument("--trace-process-bytes", type=int, help="Per-process trace budget in bytes (4096–1073741824; default 67108864)")
     ap.add_argument("--trace-run-bytes", type=int, help="Run trace budget in bytes (4096–4294967296; default 268435456)")
     ap.add_argument("--trace-processes", type=int, help="Maximum attached processes (1–512; default 128)")
@@ -361,7 +364,6 @@ def _pairs(values):
 
 
 def _declared_paths(settings, root):
-    from .reporting import _under
     paths = []
     for key in ("application_metrics", "array_manifest", "checkpoint_advice"):
         if settings.get(key):
@@ -447,7 +449,7 @@ def resolve_plan(argv, *, cwd=None, environ=None, associations=(), connection=No
     if args.research is not None:
         values = [value for group in args.research for value in (group or F.DEFAULT_FEATURES)]
         explicit["features"] = F.normalize_features(values)
-    for key in ("gpu", "cpu_memory", "trace", "trace_adapter", "trace_scope", "trace_helpers", "trace_process_bytes", "trace_run_bytes", "trace_processes"):
+    for key in ("gpu", "cpu_memory", "trace", "trace_adapter", "trace_scope", "trace_helpers", "trace_cpu_placement", "trace_process_bytes", "trace_run_bytes", "trace_processes"):
         if getattr(args, key, None) is not None:
             explicit[key] = getattr(args, key)
     if args.metrics_file is not None:
@@ -613,10 +615,12 @@ def _write_receipt(path, receipt):
         os.close(parent)
 
 
-def main(argv=None, *, connection=None):
+def main(argv=None, *, connection=None, scheduler_context=None):
     try:
         args = parse(sys.argv[1:] if argv is None else argv)
         plan = resolve_plan(args, connection=connection)
+        if scheduler_context is not None and plan["execution"] == "slurm":
+            plan["scheduler_context"] = scheduler_context
         if args.check:
             print(json.dumps(plan, indent=2, ensure_ascii=True, allow_nan=False) if args.json else format_plan(plan))
             return 0
@@ -629,7 +633,8 @@ def main(argv=None, *, connection=None):
                 _write_receipt(plan["receipt_file"], receipt)
             except (OSError, ValueError) as exc:
                 print("Raven launch: workload already executed/submitted; receipt file could not be published: " + str(exc) + "; do not resubmit. Receipt: " + json.dumps(receipt, ensure_ascii=True), file=sys.stderr)
-                return int(receipt.get("exit_code", 0)) if plan["execution"] == "local" else 2
+                from .cli_output import ApplicationExit
+                return ApplicationExit(receipt.get("exit_code", 0)) if plan["execution"] == "local" else 2
             if plan["execution"] == "local":
                 print("Raven receipt: " + plan["receipt_file"], file=sys.stderr)
         if args.json and plan["execution"] != "local":
@@ -641,7 +646,8 @@ def main(argv=None, *, connection=None):
             print("Launch: " + str(receipt.get("launch_path", receipt.get("token", ""))), file=output)
             for row in plan["readiness"]:
                 print(row["label"] + ": " + row["status"] + " — " + row["reason"], file=output)
-        return int(receipt.get("exit_code", 0)) if plan["execution"] == "local" else 0
+        from .cli_output import ApplicationExit
+        return ApplicationExit(receipt.get("exit_code", 0)) if plan["execution"] == "local" else 0
     except (OSError, ValueError, RuntimeError) as exc:
         print("Raven launch: " + str(exc), file=sys.stderr)
         return 2
@@ -700,4 +706,6 @@ def dispatch(argv, *, resolved=None):
     arguments = list(argv[index + (0 if kind == "script" else 1):])
     if options.json and "--json" not in arguments[:arguments.index("--") if "--" in arguments else len(arguments)]:
         arguments.insert(0, "--json")
-    return main(arguments, connection=connection)
+    from .launch_scheduler_context import configured
+    data = resolved.data if hasattr(resolved, "data") else resolved
+    return main(arguments, connection=connection, scheduler_context=configured(data))

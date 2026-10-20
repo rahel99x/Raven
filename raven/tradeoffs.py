@@ -17,6 +17,7 @@ import math
 import re
 
 from . import clock
+from .history_records import HistoryRecord, check
 
 SCHEMA = "raven.submission-tradeoffs/v1"
 MAX_CANDIDATES = 64
@@ -201,7 +202,7 @@ def _indexed_history(candidate, records, index):
 
 
 def _measure(candidate, history, queue_history, coverage, timestamp, prediction_cache, queue_cache,
-             history_index, queue_index):
+             history_index, queue_index, cancel=None):
     work = _work(candidate)
     metrics = {"runtime_seconds": _metric("seconds", work),
                "wait_seconds": _metric("seconds", "submitted_now"),
@@ -221,7 +222,7 @@ def _measure(candidate, history, queue_history, coverage, timestamp, prediction_
         query = {key: value for key, value in candidate.items() if key in RESOURCE_FIELDS + IDENTITY_FIELDS}
         token = json.dumps(query, sort_keys=True, separators=(",", ":"), allow_nan=False)
         if token not in prediction_cache:
-            prediction_cache[token] = predict(_indexed_history(candidate, history, history_index), query, coverage=coverage)
+            prediction_cache[token] = predict(_indexed_history(candidate, history, history_index), query, coverage=coverage, **({"cancel": cancel} if cancel is not None else {}))
         prediction = prediction_cache[token]
         source = prediction.get("metrics", {}).get("runtime_seconds", {})
         if _interval(source):
@@ -253,7 +254,7 @@ def _measure(candidate, history, queue_history, coverage, timestamp, prediction_
             token = json.dumps(query, sort_keys=True, separators=(",", ":"), allow_nan=False)
             if token not in queue_cache:
                 query.update({"state": "PENDING", "submit": timestamp, "reason": "", "est_start": ""})
-                queue_cache[token] = forecast(query, _indexed_history(candidate, queue_history, queue_index), now=timestamp, coverage=coverage)
+                queue_cache[token] = forecast(query, _indexed_history(candidate, queue_history, queue_index), now=timestamp, coverage=coverage, **({"cancel": cancel} if cancel is not None else {}))
             estimate = queue_cache[token]
             lower, upper = estimate.get("lower_start"), estimate.get("upper_start")
             calibrated = estimate.get("calibration", {}).get("valid") is True
@@ -329,7 +330,7 @@ def _dominance(left, right, objectives):
     return "certain" if certain else "possible" if possible else "none"
 
 
-def compare(candidates, *, history=(), queue_history=(), coverage=.8, max_candidates=MAX_CANDIDATES):
+def compare(candidates, *, history=(), queue_history=(), coverage=.8, max_candidates=MAX_CANDIDATES, cancel=None):
     """Return bounded alternatives, interval Pareto relations, and honest gaps.
 
     Missing measurements stay unknown. Candidates with different work identities
@@ -349,13 +350,17 @@ def compare(candidates, *, history=(), queue_history=(), coverage=.8, max_candid
         raise ValueError(f"max_candidates must be an integer between 1 and {MAX_CANDIDATES}")
     if isinstance(candidates, (str, bytes, Mapping)) or not isinstance(candidates, Iterable):
         raise ValueError("candidates must be an iterable of objects")
+    check(cancel)
     raw = list(itertools.islice(candidates, max_candidates + 1))
     records, history_truncated = _bounded_records(history, "history")
     queue, queue_truncated = _bounded_records(queue_history, "queue_history")
+    records = [HistoryRecord(row) for row in records]
+    queue = [HistoryRecord(row) for row in queue]
     history_index, queue_index = _record_index(records), _record_index(queue)
     timestamp = _number(clock.now(), "comparison clock")
     rows, prediction_cache, queue_cache = [], {}, {}
     for index, item in enumerate(raw[:max_candidates]):
+        check(cancel)
         try:
             candidate = _candidate(item, index)
         except (ValueError, TypeError, OverflowError, RecursionError, UnicodeError) as exc:
@@ -365,7 +370,7 @@ def compare(candidates, *, history=(), queue_history=(), coverage=.8, max_candid
             continue
         metrics, evidence, assumptions, limitations, risks = _measure(candidate, records, queue, coverage,
                                                                        timestamp, prediction_cache, queue_cache,
-                                                                       history_index, queue_index)
+                                                                       history_index, queue_index, cancel)
         work = _work(candidate)
         if not work:
             limitations.append("A shared work name or script digest is required for comparisons; labels do not establish work identity.")
@@ -381,6 +386,7 @@ def compare(candidates, *, history=(), queue_history=(), coverage=.8, max_candid
         objectives.append("completion_seconds")
     frontier = []
     for row in rows:
+        check(cancel)
         certain, possible, compared = [], [], []
         if row["status"] != "invalid":
             for other in valid:

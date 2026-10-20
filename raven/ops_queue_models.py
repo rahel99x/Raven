@@ -5,7 +5,6 @@ import re
 
 from . import operations as O
 from .evidence import digest
-from .slurm import parse_kv
 from .slurm_simulator import simulate
 
 SPECIFICATIONS = [

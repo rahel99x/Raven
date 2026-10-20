@@ -17,10 +17,12 @@ import time
 import uuid
 import math
 import threading
+import tempfile
+import stat
 
 from . import evidence as E
-from .shared_collection import _host, _process_start
-from .slurm import CommandError
+from .shared_collection import _host, _process_start as _process_start
+from .transport_errors import CommandError
 
 
 DEFAULTS = {
@@ -32,7 +34,8 @@ DEFAULTS = {
     "accounting_requests_per_minute": 2, "statistics_requests_per_minute": 4,
     "action_validation_requests_per_minute": 6, "step_launches_per_minute": 6,
     "step_launch_interval_seconds": 10.,
-    "filesystem_metadata_per_minute": 120, "file_bytes_per_minute": 16 << 20, "local_processes_per_minute": 60,
+    "filesystem_metadata_per_minute": 120, "file_bytes_per_minute": 16 << 20,
+    "log_file_bytes_per_minute": 16 << 20, "local_processes_per_minute": 60,
     "max_response_bytes": 4 << 20, "max_response_records": 10000,
     "live_batch_jobs": 16, "circuit_failures": 3, "circuit_seconds": 120.,
     "live_statistics": "selected-on-demand", "gpu": "existing-telemetry",
@@ -98,6 +101,8 @@ def classify(argv):
                 and args[1] == "cd " + shlex.quote(words[1]) + " && " + shlex.join(words[3:])):
             return classify(words[3:])
         return None
+    if name in {"squeue", "sacct", "sstat", "sinfo", "scontrol", "sshare", "sacctmgr"} and args in (["--version"], ["--help"], ["-V"]):
+        return Descriptor("cli-capability", "local", "capabilities")
     if name == "squeue":
         source = "starts" if "--start" in args else "account" if "-A" in args else "jobs"
         return Descriptor("queue", "controller", source)
@@ -139,63 +144,40 @@ def classify(argv):
     return None
 
 
+_AUTO_CACHE_ROOTS = {}
+
+
 def cache_directory(configured=""):
     if configured:
         return str(Path(configured).expanduser().absolute())
-    # Never put SQLite coordination in a project or home directory. Cache
-    # construction separately verifies this mount and private ownership.
     runtime = os.environ.get("XDG_RUNTIME_DIR", "")
     base = Path(runtime) if runtime and Path(runtime).is_absolute() else Path("/tmp")
-    return str(base / ("raven-collection-" + str(os.getuid()) + "-" + _host()[:16]))
+    root = base / ("raven-collection-" + str(os.getuid()) + "-" + _host()[:16])
+    try:
+        root.mkdir(mode=0o700, parents=False, exist_ok=True)
+        info = root.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or root.is_symlink()
+                or info.st_uid != os.getuid() or info.st_mode & 0o077):
+            raise ValueError("Automatic cache root is unavailable")
+        return str(root)
+    except (OSError, ValueError):
+        # Never repair, enter or delete a squatter's path. All instances in
+        # this process reuse the same private unpredictable replacement.
+        key = os.getpid()
+        if key not in _AUTO_CACHE_ROOTS:
+            _AUTO_CACHE_ROOTS[key] = tempfile.mkdtemp(prefix="raven-collection-", dir="/tmp")
+        return _AUTO_CACHE_ROOTS[key]
 
 
-def expand_hostlist(value, *, maximum=4096):
-    """Bounded local Slurm host-list expansion, with no subprocess or RPC.
-
-    Unsupported or oversized syntax is rejected instead of silently treating
-    an unexpanded expression as verified membership in an allocation.
-    """
-    if not isinstance(value, str) or len(value) > 65536 or not value:
-        raise ValueError("Invalid bounded host list")
-    groups = re.split(r",(?![^\[]*\])", value)
-    result = []
-    for group in groups:
-        parts = re.split(r"(\[[^\[\]]+\])", group)
-        names = [""]
-        for part in parts:
-            if not part:
-                continue
-            if part.startswith("["):
-                suffixes = []
-                for item in part[1:-1].split(","):
-                    match = re.fullmatch(r"([0-9]+)(?:-([0-9]+))?", item)
-                    if match is None:
-                        raise ValueError("Unsupported host-list range")
-                    first, last = int(match[1]), int(match[2] or match[1])
-                    if last < first or last - first + 1 > maximum:
-                        raise ValueError("Host-list range exceeds its bound")
-                    width = len(match[1]) if match[1].startswith("0") else 0
-                    suffixes.extend(str(number).zfill(width) for number in range(first, last + 1))
-                    if len(suffixes) > maximum:
-                        raise ValueError("Host-list expansion exceeds its bound")
-            else:
-                if not re.fullmatch(r"[A-Za-z0-9_.-]+", part):
-                    raise ValueError("Unsupported host-list syntax")
-                suffixes = [part]
-            if len(names) * len(suffixes) + len(result) > maximum:
-                raise ValueError("Host-list expansion exceeds its bound")
-            names = [prefix + suffix for prefix in names for suffix in suffixes]
-        result.extend(names)
-    if len(result) > maximum or any(not name or len(name) > 253 for name in result):
-        raise ValueError("Host-list expansion exceeds its bound")
-    return result
+from .hostlist import expand_hostlist
 
 
 def make_placement_verifier(backend, *, purpose="worker"):
     """A finite worker callback using the parent's exact collection owner.
 
-    Call on a bounded background worker, never the UI thread. Only the two
-    actual controller reads are admitted; host-list expansion is local Python.
+    Call on a bounded background worker, never the UI thread. Job and step
+    reads are admitted; absent cgroup proof adds one exact local listpids read.
+    Host-list expansion is local Python.
     The worker remains responsible for checking its kernel placement proof.
     """
     if getattr(backend, "ledger", None) is None:
@@ -212,12 +194,21 @@ def make_placement_verifier(backend, *, purpose="worker"):
         job_record = backend.command(["scontrol", "show", "job", job, "-o"], 8., 65536, cancel)
         step_record = backend.command(["scontrol", "show", "step", job + "." + step, "-o"], 8., 65536, cancel)
         job_fields, step_fields = parse_kv(job_record), parse_kv(step_record)
-        return {"job_record": job_record, "step_record": step_record,
-                "job_nodes": expand_hostlist(job_fields.get("NodeList", "")),
-                # Slurm reports the host list in NodeList and the node count
-                # in Nodes. Keep the older adapter spelling only as a fallback.
-                "step_nodes": expand_hostlist(step_fields.get("NodeList", step_fields.get("Nodes", ""))),
-                "probe_id": candidate.get("probe_id", "")}
+        records = {"job_record": job_record, "step_record": step_record,
+                   "job_nodes": expand_hostlist(job_fields.get("NodeList", "")),
+                   # NodeList is the host list; Nodes is a count on modern Slurm.
+                   "step_nodes": expand_hostlist(step_fields.get("NodeList", step_fields.get("Nodes", ""))),
+                   "probe_id": candidate.get("probe_id", "")}
+        if candidate.get("cgroup_proof") is not True:
+            from .placement_pids import parse as parse_pids
+            # linuxproc sites expose membership through their local slurmd.
+            # This fresh exact read never starts a step or guesses a remote PID.
+            try:
+                text = backend.command(["scontrol", "listpids", job + "." + step], 8., 65536, cancel)
+            except (CommandError, OSError) as exc:
+                raise ValueError("Worker process placement is unverified: local Slurm PID membership unavailable: " + str(exc)) from exc
+            records["pids"] = parse_pids(text, job, step)
+        return records
     return verify
 
 
@@ -310,6 +301,8 @@ class Ledger:
             try:
                 if "cost" not in {row[1] for row in db.execute("PRAGMA table_info(raven_requests)")}:
                     db.execute("ALTER TABLE raven_requests ADD COLUMN cost INTEGER NOT NULL DEFAULT 1")
+                if "token" not in {row[1] for row in db.execute("PRAGMA table_info(raven_requests)")}:
+                    db.execute("ALTER TABLE raven_requests ADD COLUMN token TEXT")
                 if "last_launch" not in {row[1] for row in db.execute("PRAGMA table_info(raven_endpoints)")}:
                     db.execute("ALTER TABLE raven_endpoints ADD COLUMN last_launch REAL")
                 # Preserve legacy launches before the rolling request cleanup,
@@ -348,7 +341,7 @@ class Ledger:
         lane = "validation" if validation else "source"
         quota = {"controller": "controller_requests_per_minute", "accounting": "accounting_requests_per_minute",
                  "statistics": "statistics_requests_per_minute", "steps": "step_launches_per_minute", "probes": "step_launches_per_minute",
-                 "filesystem": "filesystem_metadata_per_minute", "file-bytes": "file_bytes_per_minute",
+                 "filesystem": "filesystem_metadata_per_minute", "file-bytes": "file_bytes_per_minute", "log-bytes": "log_file_bytes_per_minute",
                  "local": "local_processes_per_minute"}[endpoint]
         # Action validation is bounded independently from observational traffic;
         # it still consumes the common process quota and total concurrency.
@@ -396,7 +389,7 @@ class Ledger:
                 previous = db.execute("SELECT started,failures,until FROM raven_sources WHERE scope=? AND source=?", (self.scope, source)).fetchone()
                 if not validation and recovery and now < recovery[0]:
                     raise Deferred("Raven collection deferred: endpoint circuit is recovering")
-                floor = (0. if validation or endpoint in ("local", "filesystem", "file-bytes")
+                floor = (0. if validation or endpoint in ("local", "filesystem", "file-bytes", "log-bytes")
                          else cfg["step_launch_interval_seconds"] if endpoint == "steps"
                          else interval(cfg, descriptor.source, 0))
                 if previous and now < max(previous[0] + floor, previous[2]):
@@ -414,7 +407,8 @@ class Ledger:
                 debits = [(self.scope, bucket, now, descriptor.cost)]
                 if descriptor.subprocess:
                     debits.append((self.scope, "process", now, 1))
-                db.executemany("INSERT INTO raven_requests(scope,endpoint,started,cost) VALUES (?,?,?,?)", debits)
+                db.executemany("INSERT INTO raven_requests(scope,endpoint,started,cost,token) VALUES (?,?,?,?,?)",
+                               [(*debit, token) for debit in debits])
                 if endpoint == "steps":
                     db.execute("INSERT INTO raven_endpoints(scope,endpoint,failures,until,last_launch) VALUES (?,?,0,0,?) ON CONFLICT(scope,endpoint) DO UPDATE SET last_launch=excluded.last_launch", (self.scope, endpoint, now))
                 db.execute("INSERT INTO raven_active VALUES (?,?,?,?,?)", (token, self.scope, lane, *self.cache._owner))
@@ -431,8 +425,9 @@ class Ledger:
     def admit(self, descriptor, argv, *, validation=False):
         token, source, begin = self._admit(descriptor, argv, validation)
         failed = False
+        reservation = ByteReservation(descriptor.cost)
         try:
-            yield
+            yield reservation
         except BaseException:
             failed = True
             self.counts["failed"] += 1
@@ -441,6 +436,9 @@ class Ledger:
             with self.cache._connection() as db:
                 db.execute("BEGIN IMMEDIATE")
                 try:
+                    if reservation.used is not None and descriptor.endpoint in {"file-bytes", "log-bytes"}:
+                        db.execute("UPDATE raven_requests SET cost=? WHERE scope=? AND endpoint=? AND token=?",
+                                   (reservation.used, self.scope, descriptor.endpoint, token))
                     row = db.execute("SELECT failures FROM raven_sources WHERE scope=? AND source=?", (self.scope, source)).fetchone()
                     failures = (row[0] if row else 0) + 1 if failed else 0
                     # Sustained latency also extends the observational floor.
@@ -464,6 +462,16 @@ class Ledger:
             rates = dict(db.execute("SELECT endpoint,coalesce(sum(cost),0) FROM raven_requests WHERE scope=? AND started>? GROUP BY endpoint", (self.scope, self.now() - 60.)).fetchall())
             inflight = db.execute("SELECT count(*) FROM raven_active WHERE scope=?", (self.scope,)).fetchone()[0]
         return {"scope": "user-host-connection", "rates_last_minute": rates, "inflight": inflight, **self.counts}
+
+
+class ByteReservation:
+    def __init__(self, reserved):
+        self.reserved, self.used = reserved, None
+
+    def consumed(self, amount):
+        if type(amount) is not int or not 0 <= amount <= self.reserved:
+            raise ValueError("File adapter exceeded its reserved byte budget")
+        self.used = amount
 
 
 class GovernedFiles:
@@ -508,41 +516,52 @@ class GovernedFiles:
             return False
 
     def read(self, path, offset, length):
+        return self._read(path, offset, length, bucket="log-bytes")
+
+    def _read(self, path, offset, length, *, bucket):
         if type(length) is not int or type(offset) is not int or not 0 <= length <= 2 << 20 or offset < 0:
             raise OSError("Raven Light file read requires a nonnegative offset and at most 2 MiB")
         if not length:
             return b""
         try:
-            with self.ledger.admit(Descriptor("file-read", "file-bytes", "trace", cost=length, subprocess=self.remote), ["read", str(path)]):
+            with self.ledger.admit(Descriptor("file-read", bucket, "trace", cost=length, subprocess=self.remote), ["read", str(path)]) as debit:
                 result = self.inner.read(path, offset, length)
                 if not isinstance(result, bytes) or len(result) > length:
                     raise OSError("File adapter exceeded the admitted read length")
+                debit.consumed(len(result))
                 return result
         except Deferred as exc:
             raise OSError(str(exc)) from exc
 
     def tail(self, path, max_bytes):
         size, _ = self.stat(path)
-        return self.read(path, max(0, size - max_bytes), max_bytes), size
+        length = min(max_bytes, size)
+        return self._read(path, max(0, size - length), length, bucket="file-bytes"), size
 
     def project_command(self, argv, timeout):
         """One declared confined project-reader request; cap wire output first."""
-        from .operations import _backend_command
-        from .project_remote import _BOOTSTRAP
-        if not self.remote or list(argv[:5]) != ["python3", "-I", "-S", "-c", _BOOTSTRAP]:
+        from .bounded_command import execute as _backend_command
+        from .project_wire import classify as classify_project
+        descriptor = classify_project(argv) if self.remote else None
+        if descriptor is None:
             raise OSError("Raven project adapter received an unclassified helper")
-        limit = min(2 << 20, int(self.ledger.config["max_response_bytes"]))
-        with self.ledger.admit(Descriptor("project-reader", "file-bytes", "trace", cost=limit), ["project-reader", argv[5]]):
+        limit = min(4096 if descriptor["action"] != "read" else 2 << 20,
+                    int(self.ledger.config["max_response_bytes"]))
+        upload = descriptor["upload_bytes"]
+        with self.ledger.admit(Descriptor("project-reader", "file-bytes", "trace", cost=limit + upload),
+                               ["project-reader", descriptor["identity"]]) as debit:
             start = time.monotonic()
             raw = _backend_command(self.inner.ssh, argv, timeout, limit, None)
-            if len(raw.encode("utf-8")) > limit:
+            used = len(raw.encode("utf-8"))
+            if used > limit:
                 raise OSError("Remote project reply exceeds the Light byte budget")
+            debit.consumed(used + upload)
             return raw, time.monotonic() - start
 
     def manifest_signature(self, path):
         """Retain the catalog's no-symlink rule behind typed admission."""
         import stat
-        from .operations import _backend_command
+        from .bounded_command import execute as _backend_command
         try:
             with self.ledger.admit(Descriptor("manifest-stat", "filesystem", "trace", subprocess=self.remote), ["manifest-stat", str(path)]):
                 if not self.remote:
@@ -574,7 +593,7 @@ class GovernedFiles:
                             result.append(item.name)
                 else:
                     import base64
-                    from .operations import _backend_command
+                    from .bounded_command import execute as _backend_command
                     quoted = shlex.quote(path)
                     script = (f"test -d {quoted} && test -r {quoted} && test -x {quoted} || exit 2; "
                               f"find -- {quoted} -mindepth 1 -maxdepth 1 -printf '%f\\0' "
@@ -588,6 +607,10 @@ class GovernedFiles:
                 return result
         except Deferred as exc:
             raise OSError(str(exc)) from exc
+
+
+from .local_files import register_confined_wrapper
+register_confined_wrapper(GovernedFiles, lambda files: files.inner)
 
 
 def wrap_files(files, backend):

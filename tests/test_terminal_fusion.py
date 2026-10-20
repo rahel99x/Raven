@@ -38,6 +38,24 @@ def test_private_bridge_roundtrip(tmp_path):
     assert bridge.poll() == []
 
 
+def test_long_multibyte_bridge_parent_uses_private_short_socket_root(tmp_path):
+    parent = tmp_path / ("界" * 35)
+    parent.mkdir()
+    bridge = B.Bridge(parent)
+    directory = bridge.directory
+    try:
+        assert len(os.fsencode(bridge.path)) <= 103
+        assert directory.parent != parent and list(parent.iterdir()) == []
+        assert directory.stat().st_mode & 0o777 == 0o700
+        assert os.lstat(bridge.path).st_mode & 0o777 == 0o600
+        env = bridge.register("long-parent")
+        B.report("prompt", env=env)
+        assert bridge.poll()[0]["session"] == "long-parent"
+    finally:
+        bridge.close()
+    assert not directory.exists() and list(parent.iterdir()) == []
+
+
 @pytest.mark.parametrize('change', [
     {'token':'wrong'}, {'session':'other'}, {'event':'cancel-job'}, {'schema':'other'},
     {'command':'x'*2049}, {'cwd':'bad\x00path'}, {'status':True}, {'status':300},

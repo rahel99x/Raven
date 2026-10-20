@@ -137,9 +137,10 @@ def test_legacy_active_receipt_remains_blocked_but_exact_terminal_can_clear(tmp_
     assert not second["cleanup_uncertain"] and not backend.cancellations
 
 
-def test_missing_accounting_never_unblocks_and_backoff_budget_is_durable(tmp_path):
+def test_unavailable_controller_never_unblocks_and_backoff_budget_is_durable(tmp_path):
     plan, _ = receipt(tmp_path)
     backend = Scheduler(job_state="missing")
+    backend.error = "controller unavailable"
     now = 1792279500.
     for expected in range(1, MAX_ATTEMPTS + 1):
         result = reconcile(tmp_path, plan, backend, now=now)
@@ -271,7 +272,7 @@ def test_revoked_read_permission_preserves_uncertainty_without_mutation(tmp_path
 
 def test_crash_after_budget_reservation_cannot_replay_without_accounting_for_attempt(tmp_path, monkeypatch):
     plan, _ = receipt(tmp_path)
-    def crash(*args): raise SystemExit("crash after reservation")
+    def crash(*args, **kwargs): raise SystemExit("crash after reservation")
     with monkeypatch.context() as patch:
         patch.setattr("raven.raven_allocation_recovery._observe", crash)
         with pytest.raises(SystemExit): reconcile(tmp_path, plan, Scheduler(), now=1792279500.)

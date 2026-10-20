@@ -3,11 +3,8 @@ command costs a round trip, not a handshake), and the files the dashboard reads 
 there too, by offset, so following a log still costs one stat per frame."""
 from __future__ import annotations
 
-import base64
-import binascii
-import os
+import re
 import shlex
-import stat as _stat
 import subprocess
 import time
 from typing import Callable, List, Optional, Sequence, Tuple
@@ -17,6 +14,11 @@ from .slurm import Backend, CommandError
 
 class SshBackend(Backend):
     def __init__(self, host: str, user: str = "", opts: Sequence[str] = (), control: bool = True, runner: Optional[Callable] = None):
+        if (not isinstance(host, str) or len(host) > 253
+                or not re.fullmatch(r"(?:[A-Za-z0-9][A-Za-z0-9_.:-]*|\[[A-Fa-f0-9:.]+\])", host)):
+            raise ValueError("SSH host must be a hostname, address or configured host alias")
+        if not isinstance(user, str) or user and (user.startswith("-") or not re.fullmatch(r"[A-Za-z0-9_.@-]+", user)):
+            raise ValueError("SSH username contains unsupported characters")
         self.host, self.user, self.opts, self.control = host, user, list(opts), control
         self.runner = runner or self._run
         self.target = f"{user}@{host}" if user else host
@@ -30,7 +32,7 @@ class SshBackend(Backend):
             try:
                 prefix, control_path = prepare(target, options)
                 self.control_path, self.control_diagnostic = control_path, ""
-            except MultiplexUnavailable as exc:
+            except (MultiplexUnavailable, OSError, ValueError) as exc:
                 self.control_diagnostic = str(exc)
                 self.control_path = ""
                 prefix = ["ssh", "-o", "ControlMaster=no", "-o", "ControlPath=none", *options, "-S", "none"]
@@ -38,7 +40,7 @@ class SshBackend(Backend):
             # Explicit opt-out also overrides multiplexing in ~/.ssh/config.
             prefix = ["ssh", "-o", "ControlMaster=no", "-o", "ControlPath=none", *options, "-S", "none"]
         defaults = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=6", "-o", "ServerAliveInterval=15", "-o", "LogLevel=ERROR"]
-        return [*prefix, *defaults, target, "--", shlex.join(remote)]
+        return [*prefix, *defaults, "--", target, shlex.join(remote)]
 
     @staticmethod
     def _run(argv: List[str], timeout: float) -> Tuple[int, str, str]:
@@ -60,6 +62,15 @@ class SshBackend(Backend):
             raise CommandError(f"{cmd[0]}@{self.host} exit {rc}: {(err or out).strip()[:200]}")
         return out, dt
 
+    def inspect_command(self, argv, timeout, limit, cancel=None, *, depth=0):
+        from .bounded_command import _process
+        if self.runner is SshBackend._run:
+            return _process(self.argv(argv), timeout + 5, limit, cancel)
+        out = self.run(argv, timeout)[0]
+        if not isinstance(out, str) or len(out.encode("utf-8")) > limit:
+            raise CommandError("Command output exceeded the inspection limit.")
+        return out
+
     def call(self, cmd: Sequence[str], timeout: float = 15.0) -> Tuple[bool, str]:
         try:
             rc, out, err = self.runner(self.argv(cmd), timeout + 5)
@@ -68,112 +79,7 @@ class SshBackend(Backend):
         return rc == 0, (out + err).strip()
 
 
-class LocalFiles:
-    """How the dashboard reads a job's files: on this machine."""
-    remote = False
-    min_refresh = 0.0
-
-    def stat(self, path: str) -> Tuple[int, Tuple[int, int]]:
-        st = os.stat(path)
-        return st.st_size, (st.st_dev, st.st_ino)
-
-    def snapshot_stat(self, path: str) -> dict:
-        """Regular target identity and mutation metadata for full-file exports."""
-        st = os.stat(path)
-        if not _stat.S_ISREG(st.st_mode):
-            raise OSError("log source must be a regular file")
-        return {"size": st.st_size, "ident": (st.st_dev, st.st_ino),
-                "updated": (st.st_mtime_ns, st.st_ctime_ns)}
-
-    def read(self, path: str, offset: int, length: int) -> bytes:
-        with open(path, "rb") as f:
-            f.seek(offset)
-            return f.read(length)
-
-    def exists(self, path: str) -> bool:
-        return bool(path) and os.path.exists(path)
-
-    def tail(self, path: str, max_bytes: int) -> Tuple[bytes, int]:
-        """(the last ``max_bytes``, the file size)."""
-        size, _ = self.stat(path)
-        return self.read(path, max(0, size - max_bytes), max_bytes), size
-
-    def less_argv(self, path: str) -> List[str]:
-        return ["less", "+G", "--", path]
-
-    def listdir(self, path: str) -> List[str]:
-        return os.listdir(path)
+from .local_files import LocalFiles as LocalFiles
 
 
-class RemoteFiles(LocalFiles):
-    """The same, over an ``SshBackend``: stat and offset reads through coreutils on the login node."""
-    remote = True
-    min_refresh = 1.5
-
-    def __init__(self, ssh: SshBackend, timeout: float = 8.0):
-        self.ssh, self.timeout = ssh, timeout
-
-    def stat(self, path: str) -> Tuple[int, Tuple[int, int]]:
-        try:
-            out, _ = self.ssh.run(["stat", "-c", "%d %i %s", "--", path], self.timeout)
-        except CommandError as e:
-            raise OSError(str(e))
-        parts = out.split()
-        if len(parts) < 3:
-            raise OSError(f"stat: {out.strip()[:80]}")
-        try:
-            return int(parts[2]), (int(parts[0]), int(parts[1]))
-        except ValueError as exc:
-            raise OSError("stat: invalid numeric result") from exc
-
-    def snapshot_stat(self, path: str) -> dict:
-        """Inspect the regular target rather than a stable symlink's identity."""
-        try:
-            out, _ = self.ssh.run(["stat", "-L", "-c", "%f|%d|%i|%s|%y|%z", "--", path], self.timeout)
-            if not isinstance(out, str) or len(out) > 1024:
-                raise ValueError("oversized metadata")
-            parts = out.strip().split("|")
-            if len(parts) != 6:
-                raise ValueError("unexpected metadata")
-            mode = int(parts[0], 16)
-            dev, ino, size = (int(part) for part in parts[1:4])
-            if not _stat.S_ISREG(mode) or min(dev, ino, size) < 0:
-                raise ValueError("log source must be a regular file")
-            if any(not value or not value.isprintable() for value in parts[4:]):
-                raise ValueError("invalid timestamps")
-            return {"size": size, "ident": (dev, ino), "updated": tuple(parts[4:])}
-        except (CommandError, ValueError) as exc:
-            raise OSError(str(exc)) from exc
-
-    def read(self, path: str, offset: int, length: int) -> bytes:
-        if length <= 0:
-            return b""
-        if offset < 0:
-            raise ValueError("file offset must be nonnegative")
-        try:
-            # Base64 keeps byte offsets exact across text-mode SSH, including CRLF,
-            # invalid UTF-8, and characters split by an incremental read.
-            out, _ = self.ssh.run(["sh", "-c", f"test -f {shlex.quote(path)} && test -r {shlex.quote(path)} && dd if={shlex.quote(path)} iflag=skip_bytes,count_bytes skip={int(offset)} count={int(length)} status=none | base64"], self.timeout)
-            return base64.b64decode("".join(out.split()), validate=True)
-        except (CommandError, ValueError, binascii.Error) as e:
-            raise OSError(str(e))
-
-    def exists(self, path: str) -> bool:
-        if not path:
-            return False
-        try:
-            self.stat(path)
-            return True
-        except OSError:
-            return False
-
-    def less_argv(self, path: str) -> List[str]:
-        argv = self.ssh.argv(["less", "+G", "--", path])
-        return [argv[0], "-t", *argv[1:]]
-
-    def listdir(self, path: str) -> List[str]:
-        try:
-            out, _ = self.ssh.run(["ls", "-1", "--", path], self.timeout)
-        except CommandError as e:
-            raise OSError(str(e))
-        return out.splitlines()
+from .remote_files import RemoteFiles as RemoteFiles

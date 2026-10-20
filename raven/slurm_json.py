@@ -23,6 +23,10 @@ class UnsupportedShape(ValueError):
     pass
 
 
+class SchedulerError(ValueError):
+    """Valid scheduler error envelope, rather than a malformed observation."""
+
+
 def _bounded_document(text):
     if not isinstance(text, str) or len(text) > MAX_BYTES or len(text.encode("utf-8")) > MAX_BYTES:
         raise ValueError("Slurm JSON exceeds the 16 MiB reply bound")
@@ -42,19 +46,19 @@ def _bounded_document(text):
         # Decode validates keys once in the pairs hook. The remaining linear
         # walk preserves depth/node/string/numeric bounds without revalidating
         # every key or scanning each ASCII character in Python.
-        pending, count = [(value, 0)], 0
+        pending, count = [(value, 0, False)], 0
         while pending:
-            item, depth = pending.pop()
+            item, depth, in_job = pending.pop()
             count += 1
             if count > 1000000 or depth > 24:
                 raise ValueError("Slurm JSON nesting or node count exceeds its bound")
             kind = type(item)
             if kind is dict:
-                pending.extend((child, depth + 1) for child in item.values())
+                pending.extend((child, depth + 1, in_job or item is value and key == "jobs") for key, child in item.items())
             elif kind is list:
-                pending.extend((child, depth + 1) for child in item)
+                pending.extend((child, depth + 1, in_job) for child in item)
             elif kind is str:
-                if len(item) > 65536 or _CONTROLS.search(item):
+                if len(item) > 65536 or not in_job and _CONTROLS.search(item):
                     raise ValueError("Invalid bounded Slurm JSON string")
             elif kind in (int, float) and (abs(item) > 1e100 or not math.isfinite(item)):
                 raise ValueError("Invalid bounded Slurm JSON number")
@@ -80,7 +84,11 @@ def job_record_count(text):
 def document(text):
     value = _bounded_document(text)
     if value.get("errors"):
-        raise ValueError("Slurm JSON reports scheduler errors; inspect the source diagnostics")
+        from .log_text import display_text
+        errors = value["errors"]
+        first = errors[0] if isinstance(errors, list) else errors
+        description = first.get("description") or first.get("error") if isinstance(first, dict) else first
+        raise SchedulerError("Slurm scheduler error: " + display_text(str(description or "unspecified scheduler failure"))[:512])
     meta = value.get("meta")
     if not isinstance(meta, dict):
         raise ValueError("Slurm JSON has no data-parser identity")
@@ -89,7 +97,7 @@ def document(text):
     keys = [key for key in ("plugin", "plugins") if key in meta]
     if len(keys) != 1 or not isinstance(meta[keys[0]], dict):
         raise ValueError("Slurm JSON has missing or ambiguous data-parser identity")
-    parser = meta[keys[0]].get("data_parser")
+    parser = parser_identity(value)
     if not isinstance(parser, str):
         raise ValueError("Slurm JSON has no data-parser identity")
     if parser not in SUPPORTED_PARSERS:
@@ -97,6 +105,12 @@ def document(text):
     if len(value["jobs"]) > MAX_JOBS:
         raise ValueError("Slurm JSON exceeds the 20000-job bound")
     return value
+
+
+def parser_identity(value):
+    """Read only the metadata spelling already validated by document()."""
+    meta = value["meta"]
+    return meta["plugin" if "plugin" in meta else "plugins"].get("data_parser")
 
 
 def number(value):
@@ -167,6 +181,8 @@ def identifier(job):
 
 
 def runtime(job, observed):
+    if state(job.get("job_state")) == "PENDING":
+        return 0
     start = number(job.get("start_time"))
     if not start:
         return 0 if state(job.get("job_state")) == "PENDING" else None
@@ -189,7 +205,22 @@ def limit(value):
     return hms(result * 60) if result is not None else ""
 
 
+def _validate_record(record):
+    # The envelope walk already checks size, shape and node/depth bounds.
+    # A bad job string rejects its own identity, not unrelated observations.
+    pending = [record]
+    while pending:
+        value = pending.pop()
+        if isinstance(value, dict):
+            pending.extend(value.values())
+        elif isinstance(value, list):
+            pending.extend(value)
+        elif isinstance(value, str) and _CONTROLS.search(value):
+            raise ValueError("Invalid structured job string")
+
+
 def queue_record(job, observed):
+    _validate_record(job)
     if not isinstance(job, dict):
         raise ValueError("Slurm job is not an object")
     cpus, nodes = integer(job.get("cpus"), required=True), integer(job.get("node_count"), required=True)
@@ -212,7 +243,7 @@ def queue_record(job, observed):
                account=text(job.get("account")), qos=text(job.get("qos")), end=timestamp(job.get("end_time")),
                command=text(job.get("command")), user=text(job.get("user_name")),
                workdir=text(job.get("current_working_directory")), comment=text(job.get("comment")),
-               cluster=text(job.get("cluster")))
+               cluster=text(job.get("cluster")), restarts=integer(job.get("restart_cnt")))
 
 
 def queue(value, report, observed=None):
@@ -220,6 +251,10 @@ def queue(value, report, observed=None):
     output, seen, duplicate = [], set(), set()
     for record in value["jobs"]:
         report.rows += 1
+        try:
+            report.current_id = identifier(record)
+        except (ValueError, TypeError, KeyError, AttributeError):
+            report.current_id = ""
         try:
             job = queue_record(record, observed)
         except (ValueError, TypeError, KeyError):
@@ -262,6 +297,11 @@ def detail(value, jid, report, observed=None):
     array, task = integer(job.get("array_job_id")), integer(job.get("array_task_id"))
     if array and task is not None:
         fields.update(ArrayJobId=str(array), ArrayTaskId=str(task))
+    het, offset = integer(job.get("het_job_id")), integer(job.get("het_job_offset"))
+    if het:
+        fields["HetJobId"] = str(het)
+        if offset is not None:
+            fields["HetJobOffset"] = str(offset)
     report.accepted = 1
     return fields
 
@@ -276,6 +316,7 @@ def _tres(rows, kind, name=""):
 
 
 def accounting_record(job):
+    _validate_record(job)
     if not isinstance(job, dict):
         raise ValueError("Slurm accounting job is not an object")
     array, het = job.get("array", {}), job.get("het", {})
@@ -317,13 +358,18 @@ def accounting_record(job):
                     nodelist=text(job.get("nodes")), submit=timestamp(times.get("submission")),
                     workdir=text(job.get("working_directory")), limit=limit(times.get("limit")),
                     user=text(job.get("user")), account=text(job.get("account")),
-                    comment=text(job.get("comment", {}).get("job")), cluster=text(job.get("cluster")))
+                    comment=text(job.get("comment", {}).get("job")), cluster=text(job.get("cluster")),
+                    restarts=integer(job.get("restart_cnt")))
 
 
 def accounting(value, report):
     records, seen, duplicates = [], set(), set()
     for job in value["jobs"]:
         report.rows += 1
+        try:
+            report.current_id = str(integer(job.get("job_id"), required=True))
+        except (ValueError, TypeError, AttributeError):
+            report.current_id = ""
         try:
             record = accounting_record(job)
         except (ValueError, KeyError, TypeError, AttributeError):

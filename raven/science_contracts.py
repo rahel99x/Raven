@@ -5,7 +5,7 @@ import math
 import re
 import time
 
-from .operations import canonical, digest
+from .operation_json import canonical, digest
 
 
 def obj(value, required, optional=(), label="document"):

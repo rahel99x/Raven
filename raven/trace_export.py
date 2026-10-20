@@ -5,12 +5,9 @@ sampled CPU profiles and do not infer activity outside recorded intervals.
 """
 from __future__ import annotations
 
-import json
-import os
-from pathlib import Path
-import tempfile
-
 from . import trace_protocol as protocol
+
+__all__ = ["convert", "export", "protocol"]
 
 
 def _pairs(events):
@@ -19,6 +16,12 @@ def _pairs(events):
     frame_events = 0
     for index, event in enumerate(events):
         kind, data = event['kind'], event['data']
+        if kind in {'gap', 'lost', 'drop', 'loss', 'dropped'}:
+            # Loss can omit exits, entries or thread metadata. Do not infer a
+            # duration across any unresolved boundary in this stream.
+            stacks.clear()
+        elif kind == 'stack_checkpoint':
+            stacks.pop(event['thread'], None)
         if kind not in {'call', 'resume', 'return', 'yield', 'unwind'}:
             continue
         frame_events += 1
@@ -78,6 +81,8 @@ def convert(snapshot, format='perfetto'):
             if index in consumed:
                 continue
             data, kind = event['data'], event['kind']
+            if kind in {'gap', 'lost', 'drop', 'loss', 'dropped'}:
+                spans.clear()
             key = (event['thread'], data.get('span_id') if isinstance(data.get('span_id'), str) else None)
             if kind == 'span_start' and isinstance(data.get('span_id'), str):
                 spans[key] = event
@@ -127,23 +132,5 @@ def convert(snapshot, format='perfetto'):
 
 
 def export(path, output, *, format='perfetto', managed=False):
-    snapshot = protocol.read_trace(path, max_events=512 if managed else protocol.MAX_EVENTS,
-                                   max_bytes=256 << 10 if managed else protocol.MAX_BYTES)
-    document = convert(snapshot, format)
-    raw = json.dumps(document, ensure_ascii=True, allow_nan=False, separators=(',', ':')).encode() + b'\n'
-    if len(raw) > (2 << 20 if managed else 32 << 20):
-        raise ValueError('Export exceeds its output byte budget; choose a smaller recording prefix')
-    output = Path(output).expanduser()
-    fd, temporary = tempfile.mkstemp(prefix='.raven-trace-', dir=output.parent)
-    try:
-        with os.fdopen(fd, 'wb') as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        # Publish only a complete file, exclusively. Failed writes cannot leave
-        # an apparent successful view or remove a concurrently replaced target.
-        os.link(temporary, output)
-    finally:
-        os.unlink(temporary)
-    return {'path': str(output), 'format': format, 'read_seq': snapshot['read_seq'],
-            'source_status': snapshot['status'], 'bytes': len(raw), 'warnings': snapshot['warnings']}
+    from .trace_stream_export import export as stream_export
+    return stream_export(path, output, format=format, managed=managed)

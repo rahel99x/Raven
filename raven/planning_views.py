@@ -5,7 +5,7 @@ import math
 import time
 
 from . import charts, layout as L
-from .research import clean
+from .research_text import clean
 from .planning import PLANNING_VIEWS
 
 

@@ -18,7 +18,8 @@ import hashlib
 from contextlib import contextmanager
 
 from .artifacts import _contract, _json, _open_local, _signature, validate_contract
-from .remote import LocalFiles
+from .local_files import LocalFiles as LocalFiles
+from .project_files import _local, _root, local_supported as local_supported
 
 MAX_RUNS = 256
 MAX_DIRECTORY_ENTRIES = 4096
@@ -33,17 +34,6 @@ _FIELDS = set("schema project_id run_id experiment_id attempt name state job_id 
 _PATHS = set("metrics summary outputs logs passports stdout stderr log_index planning predict forecast blockers tradeoffs scaling workflow submit array_manifest contract".split())
 PLANNING_PATHS = ("predict", "forecast", "blockers", "tradeoffs", "scaling", "workflow")
 
-
-def local_supported(files):
-    if files is None or type(files) is LocalFiles:
-        return True
-    from .raven_collection import GovernedFiles
-    return type(files) is GovernedFiles and type(files.inner) is LocalFiles
-
-
-def _local(files):
-    if not local_supported(files):
-        raise ValueError("Project discovery requires Raven running locally on CARC; this file backend cannot prove confined directory reads")
 
 
 def _text(value, name, maximum=128, *, empty=False):
@@ -132,25 +122,6 @@ def validate_inventory(value):
             raise ValueError("resources.time_seconds must be a bounded positive duration")
     return value
 
-
-def _root(path):
-    if not isinstance(path, str) or not path or "\x00" in path:
-        raise ValueError("project root must be an explicit filesystem path")
-    root = os.path.abspath(os.path.expanduser(path))
-    # Pin every parent, including the supplied root's ancestors. A valid
-    # inventory cannot turn a replaced project directory into an external read.
-    fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-    try:
-        for component in root.split("/"):
-            if not component:
-                continue
-            next_fd = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
-            os.close(fd)
-            fd = next_fd
-        return root, fd
-    except BaseException:
-        os.close(fd)
-        raise
 
 
 def _directory(root_fd, path):
@@ -512,21 +483,30 @@ def read_bound_telemetry(binding, *, files=None, max_bytes=8 * 1024 * 1024):
     if getattr(files, "remote", False):
         from .project_remote import request
         return request(files, "read_bound_telemetry", binding, max_bytes=max_bytes)
-    from .retained_telemetry_io import MAX_INDEX_BYTES, MAX_READ_BYTES, parse_rows, validate_index
+    from .retained_telemetry_io import MAX_INDEX_BYTES, MAX_READ_BYTES, MAX_READ_ROWS, parse_rows, validate_index, source_paths
     if type(max_bytes) is not int or not 1 <= max_bytes <= MAX_READ_BYTES:
         raise ValueError("invalid retained telemetry read budget")
     with bound_run_root(binding) as (_, run_fd, current):
         data, _ = _read(run_fd, "telemetry/index.json", MAX_INDEX_BYTES)
         index = validate_index(_json(data), binding["run_id"])
         result = {"index": index, "gpu": [], "cpu-memory": [], "warnings": [], "errors": {}}
-        for source in index["sources"]:
+        expanded=[]
+        for source in index['sources']:
+            for path in reversed(source_paths(source)):
+                expanded.append(dict(source,path=path))
+        remaining={source['family']:max_bytes for source in index['sources']}
+        for source in expanded:
+            budget=remaining[source['family']]
+            if budget<=0:
+                continue
             try:
                 fd, parent, name = _open_local(run_fd, source["path"])
                 try:
                     before = os.fstat(fd)
                     if not stat.S_ISREG(before.st_mode):
                         raise ValueError("telemetry source is not a regular file")
-                    start = max(0, before.st_size - max_bytes)
+                    start = max(0, before.st_size - budget)
+                    remaining[source['family']]-=before.st_size-start
                     os.lseek(fd, start, os.SEEK_SET)
                     chunks, left = [], before.st_size - start
                     while left:
@@ -542,7 +522,7 @@ def read_bound_telemetry(binding, *, files=None, max_bytes=8 * 1024 * 1024):
                     if start:
                         raw = raw.partition(b"\n")[2]
                         result["warnings"].append(source["family"] + ": dashboard shows a bounded tail; Export data uses the retained stream")
-                    result[source["family"]] = parse_rows(raw, source, binding["run_id"])
+                    result[source["family"]] = (parse_rows(raw, source, binding["run_id"])+result[source['family']])[-MAX_READ_ROWS:]
                 finally:
                     os.close(fd)
                     os.close(parent)

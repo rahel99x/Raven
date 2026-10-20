@@ -9,7 +9,7 @@ import copy
 import math
 import statistics
 
-from . import forecast as F
+from . import forecast_model as F
 from .evidence import bounded, digest
 from .runtime_contracts import identifier, number, object_, sequence
 

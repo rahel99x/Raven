@@ -102,7 +102,7 @@ def read(document, *, cancel=None):
             after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns):
         raise ValueError("Index changed during the read; retry from the first page")
     rows = result["rows"]
-    more = len(rows) > params["limit"] or result["reason"] == "byte budget exhausted"
+    more = len(rows) > params["limit"] or result["reason"] in {"byte budget exhausted", "oversized row truncated"}
     result["rows"] = rows[:params["limit"]]
     result.update(schema=SCHEMA, tool=name, scope=selected, generation=generation,
         next_offset=offset + len(result["rows"]) if more and result["rows"] else None,

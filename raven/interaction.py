@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from itertools import islice
 from types import MappingProxyType
+from .ui.geometry import (Rect as Rect)
 from . import layout as L
 
 MAX_CONTROLS = 4096
@@ -24,29 +25,6 @@ BOUNDED_KINDS = frozenset(("node_cell", "job_panel_tab", "job_panel_file",
                            "job_panel_view", "job_panel_action"))
 
 
-@dataclass(frozen=True)
-class Rect:
-    """Display-cell rectangle with exclusive bottom and right edges."""
-
-    top: int
-    left: int
-    bottom: int
-    right: int
-
-    def contains(self, y: int, x: int) -> bool:
-        return self.top <= y < self.bottom and self.left <= x < self.right
-
-    def intersects(self, other: "Rect") -> bool:
-        return (self.top < other.bottom and other.top < self.bottom
-                and self.left < other.right and other.left < self.right)
-
-    def clip(self, width: int, height: int):
-        result = Rect(max(0, self.top), max(0, self.left), min(height, self.bottom), min(width, self.right))
-        return result if result.top < result.bottom and result.left < result.right else None
-
-    @property
-    def center(self):
-        return ((self.top + self.bottom - 1) / 2, (self.left + self.right - 1) / 2)
 
 
 @dataclass(frozen=True)

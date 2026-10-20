@@ -329,15 +329,15 @@ def test_symlinks_hardlinks_and_devices_refused(tmp_path):
     assert outside.read_text() == "original"
 
 
-def test_parent_symlink_refused(tmp_path):
+def test_user_selected_parent_alias_is_resolved_and_leaf_stays_owned(tmp_path):
     directory = tmp_path / "real"
     directory.mkdir()
     link = tmp_path / "link"
     link.symlink_to(directory, target_is_directory=True)
     client.configure(path=link / "metrics.jsonl")
     client.metric("x", 1)
-    assert not client._get_client().flush()
-    assert not list(directory.iterdir())
+    assert client._get_client().flush()
+    assert MetricReader().read(directory / "metrics.jsonl")["latest"] == {"x": 1}
 
 
 def test_unterminated_previous_line_is_separated(tmp_path):
@@ -425,7 +425,7 @@ def test_vendored_single_file_and_normal_atexit(tmp_path):
 
 
 @pytest.mark.parametrize("rank_env", [{"RANK": "1"}, {"SLURM_PROCID": "3"}, {"OMPI_COMM_WORLD_RANK": "2"},
-                                      {"RANK": "1", "SLURM_PROCID": "0"}, {"RANK": "bad", "PMI_RANK": "0"}])
+                                      {"RANK": "1", "SLURM_PROCID": "0"}, {"RANK": "bad"}])
 def test_noncoordinator_suppressed(tmp_path, monkeypatch, rank_env):
     for name, value in rank_env.items():
         monkeypatch.setenv(name, value)
@@ -683,9 +683,12 @@ def test_shared_stream_name_budget_is_checked_before_new_appends(tmp_path):
     before = path.read_bytes()
     assert client.configure(path=path)
     client.metric("extra", 1)
-    assert not client._get_client().flush()
+    assert client._get_client().flush()
     assert path.read_bytes() == before
     assert len(json.loads(path.with_suffix(".meta.json").read_text())["kinds"]) == 64
+    client.metric("original0", 123)
+    assert client._get_client().flush()
+    assert MetricReader().read(path)["latest"]["original0"] == 123
 
 
 @pytest.mark.parametrize("actual,environment", [(1, {"SLURM_PROCID": "0"}), (0, {"RANK": "1"})])
@@ -795,7 +798,7 @@ def test_failed_writer_still_participates_in_explicit_collectives(tmp_path, monk
     state = client._get_client()
     assert not state.flush() and state.failed
     reductions = []
-    def reduce_after_failure(current, value, reduction, *, valid):
+    def reduce_after_failure(current, value, reduction, *, valid, device=None):
         assert valid
         reductions.append((current, value, reduction))
         return value

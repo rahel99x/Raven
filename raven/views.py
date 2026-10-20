@@ -19,13 +19,12 @@ from .layout import Column, Glyphs, Row, bar, box, cut, gradient_bar, pad, rule,
 from . import advisor
 from .deps import DepGraph
 from .model import Finished, Job, Step, compact, hms, human, secs, short_duration, stamp, when
-from .remote import LocalFiles
+from .local_files import LocalFiles
 from .log_text import display_text
 from . import scrollbars as SB
+from .ui.catalog import TABS, ANALYTICS_VIEWS, NODES_VIEWS, SORTS as SORTS
+from .log_paths import stdout_path
 
-TABS = [("jobs", "Jobs"), ("cluster", "Cluster"), ("history", "History"), ("analytics", "Analytics"), ("nodes", "Nodes"), ("group", "Group"), ("deps", "Deps"), ("log", "Log"), ("sources", "Sources"), ("research", "Research")]
-ANALYTICS_VIEWS = [("job", "job series"), ("history", "history"), ("timeline", "timeline"), ("advisor", "advisor"), ("compare", "compare")]
-NODES_VIEWS = [("mine", "my nodes"), ("map", "cluster map")]
 LOG_ERROR = re.compile(r"\b(?:error|fatal|traceback|oom|killed|failed)\b", re.IGNORECASE)
 LOG_WARNING = re.compile(r"\b(?:warn(?:ing)?|retry(?:ing)?|timeout)\b", re.IGNORECASE)
 LOG_SUCCESS = re.compile(r"\b(?:done|complete(?:d)?|success(?:ful)?)\b", re.IGNORECASE)
@@ -523,8 +522,6 @@ JOB_COLS = [Column("progress", "PROG", 6, 6), Column("id", "JOBID", 5, 16), Colu
             Column("left", "LEFT/WAIT", 9, 11, ">"), Column("cpu%", "CPU%", 4, 4, ">"), Column("eff", "EFF", 4, 5, ">"), Column("mem%", "MEM%", 4, 4, ">"),
             Column("gpu%", "GPU%", 4, 4, ">"), Column("flags", "FLAGS", 5, 12), Column("tags", "TAGS", 4, 14), Column("info", "INFO", 34, 60, flex=True)]
 JOB_DROP = ("tags", "left", "flags", "gpu%", "mem%", "eff", "cpu%", "part", "gpu", "where", "st")
-SORTS = {"jobs": ["state", "name", "id", "time", "priority"], "history": ["end", "name", "state", "elapsed", "cpu_eff", "mem_eff"],
-         "nodes": ["name", "load"], "cluster": ["name"], "log": ["name"], "sources": ["name"], "group": ["user", "state", "name", "id", "time", "priority"], "deps": ["name"]}
 
 
 def job_sort_values(job: Job, row: dict, snap: dict, keys=None) -> dict:
@@ -579,47 +576,6 @@ def tail_lines(path: str, n: int, max_bytes: int = 131072, files=None) -> List[s
     return [display_text(line.rstrip("\r")) for line in lines[-n:]]
 
 
-def stdout_path(job, kv: dict, files=None, which: str = "StdOut", *, probe: bool = True) -> str:
-    """Resolve declared paths, optionally checking a legacy local filename guess.
-
-    Interactive callers defer existence checks to their background file reader.
-    """
-    p = kv.get(which, "") if kv else ""
-    if p and p.lower() not in ("(null)", "n/a", "unknown", "none"):
-        # Accounting can retain an unexpanded sbatch filename pattern. Array
-        # %j is the allocation's raw ID, while %A/%a identify parent and task.
-        array = re.fullmatch(r"(\d+)_(\d+)", job.id)
-        raw_id = kv.get("JobIDRaw") or (job.id if not array else "")
-        user = kv.get("User", "") or kv.get("UserId", "").split("(", 1)[0] or getattr(job, "user", "")
-        values = {"j": raw_id, "A": kv.get("ArrayJobId") or (array[1] if array else raw_id),
-                  "a": kv.get("ArrayTaskId") or (array[2] if array else "4294967294"),
-                  "x": kv.get("JobName") or job.name, "u": user, "%": "%"}
-        unresolved = False
-        def expand(match):
-            nonlocal unresolved
-            width, token = match.groups()
-            value = values.get(token, "")
-            if not value or (width and (token not in ("j", "A", "a") or len(width) > 16 or int(width) > 10)):
-                unresolved = True
-                return ""
-            return str(value).zfill(int(width or 0))
-        if kv.get("LogPathSource") == "sacct":
-            p = re.sub(r"%([0-9]*)([A-Za-z%])", expand, p)
-        if unresolved:
-            return ""
-        if not os.path.isabs(p):
-            wd = kv.get("WorkDir") or getattr(job, "workdir", "")
-            if wd and os.path.isabs(wd) and wd.lower() not in ("(null)", "n/a", "unknown", "none"):
-                p = os.path.join(wd, p)
-            elif isinstance(job, Finished) or (files is not None and files.remote):
-                return ""
-        return p
-    if isinstance(job, Finished):
-        return ""
-    if files is not None and files.remote:
-        return ""
-    guess = os.path.join("logs", f"{job.name}-{job.id}.{'err' if which == 'StdErr' else 'out'}")
-    return guess if not probe or os.path.exists(guess) else ""
 
 
 class Views:
@@ -671,7 +627,8 @@ class Views:
         if running is not None and not filled:
             controls, _ = metric_live.controls(self.g, app, plot_key, width, running=running,
                                                row=row, column=column)
-        from .metric_sampling import cadence as polling_cadence, format_interval, source as polling_source
+        from .metric_sampling_runtime import cadence as polling_cadence
+        from .cadence import format_interval, source as polling_source
         companion = filled and isinstance(plot_key, tuple) and plot_key[0] == "resource-area"
         polling = polling_cadence(app, plot_key) if running or companion and metric_live.buffered(app, plot_key) else None
         if polling is not None and polling_source(plot_key) != "trace":
@@ -1221,6 +1178,10 @@ class Views:
                            **{"cpu%": "" if shown is None else f"{100 * shown:.0f}", "eff": "" if (not lv or lv.avg is None) else f"{100 * lv.avg:.1f}",
                               "mem%": "" if (not lv or lv.rss is None or not j.mem_bytes) else f"{round(100 * lv.rss / j.mem_bytes)}",
                               "gpu%": "" if gutil is None else f"{gutil:.0f}"})
+            if getattr(j, "collection_stale", False):
+                row["flags"] = (row["flags"] + " STALE").strip()
+                row["_styles"]["flags"] = "yellow"
+                row["info"] += f" {self.g.dot} retained scheduler data; latest read incomplete"
             if mark:
                 row["info"] += f" {self.g.dot} {mark.upper()}"
                 row["_style"] = "yellow"
@@ -1383,7 +1344,7 @@ class Views:
         entry = self._preview_cache.get(key)
         remote = bool(getattr(self.files, "remote", False))
         ttl = 5.0 if remote else .5
-        from .refresh_rate import file_interval, multiplier
+        from .cadence import file_interval, multiplier
         ttl = file_interval(ttl, multiplier(app), remote=remote)
         now = time.monotonic()
         if entry and now - entry[0] < ttl:
@@ -1701,7 +1662,7 @@ class Views:
             # A shared narrow Queue layout can drop TAGS. Keep the current
             # accounting badges visible in NAME, as the History table does,
             # without changing fitted widths or reviving explicitly hidden tags.
-            from .research import clean
+            from .research_text import clean
             data = [dict(row, name="[" + clean(row["tags"], self.g.ascii) + "] " + row["name"])
                     if row.get("tags") else row for row in data]
         state_width = next((column.hi for column in fitted if column.key == "state"), 99)
@@ -1739,7 +1700,7 @@ class Views:
                     _styles={"state": style, "ce": ("red" if ce is not None and ce < self.th["cpu"] else ""), "me": ("yellow" if me is not None and me < self.th["mem"] else "")})
 
     def finished_summary(self, record, width):
-        from .research import clean
+        from .research_text import clean
         metadata = getattr(self, "cfg_tags", {}).get(record.id, {})
         tags = " ".join(metadata.get("tags", []))
         title = f"{record.id} {record.name}" + (f" / {tags}" if tags else "")
@@ -1758,7 +1719,6 @@ class Views:
         return [L.clip_row(row, width) for row in rows]
 
     def history_tab(self, snap: dict, app, width: int, height: Optional[int]) -> Tuple[List[Row], List[Tuple[int, str, str]]]:
-        from .table_ui import columns
         from .table_tools import date_label, record_page
         from .table_sort import chain, describe, header_hits
         self.cfg_tags = snap.get("tags", {})
@@ -1808,7 +1768,7 @@ class Views:
                 and not any(column.key == "tags" for column in kept)):
             # The split pane can omit optional columns. Preserve visible tag
             # badges in the name cell, unless the user explicitly hid TAGS.
-            from .research import clean
+            from .research_text import clean
             tagged = [dict(row, name="[" + clean(row["tags"], self.g.ascii) + "] " + row["name"])
                       if row.get("tags") else row for row in data]
             cells.clear()
@@ -2433,10 +2393,10 @@ class Views:
             prefix = [rule(self.g, width, f"Run {binding.get('run_id', '?')} log files")]
             return render_browser(self, snap, app, width, height, prefix, [])
         from .log_catalog import LogCatalog
-        from .research import clean
+        from .research_text import clean
         if app.logs.catalog is None:
             app.logs.catalog = LogCatalog(self.files)
-        from .refresh_rate import multiplier
+        from .cadence import multiplier
         app.logs.catalog.polling_multiplier = multiplier(app)
         messages = []
         try:
@@ -2492,7 +2452,7 @@ class Views:
         return render_browser(self, snap, app, width, height, prefix + body[top:top + visible], [(y - top + len(prefix), kind, key) for y, kind, key in hits if top <= y < top + visible])
 
     def log_tab(self, snap: dict, app, width: int, height: Optional[int]) -> Tuple[List[Row], List]:
-        jid = app.log_job or app.selected_id
+        _jid = app.log_job or app.selected_id
         j = app.log_target(snap)
         from .project_ui import selected_binding, log_entries, resolve_log_entry
         from .log_workbench import apply_citation, display_line as pan_line, status_label
@@ -2664,7 +2624,7 @@ class Views:
         now = clock.now()
         rows = []
         from .refresh_rate import cadence
-        from .metric_sampling import format_interval
+        from .cadence import format_interval
         for h in hs:
             state = "off" if not h.enabled else ("error" if h.error else ("ok" if h.last_ok else "pending"))
             every = cadence(app, h.name)
@@ -3532,7 +3492,7 @@ class Views:
     def _legacy_overlay(self, snap: dict, app, width: int, height: int):
         g = self.g
         if app.mode == "confirm" and app.confirm.get("action") == "submit":
-            from .research import clean
+            from .research_text import clean
             plan = app.confirm["plan"]
             lines = [[(" Submit this reviewed batch script?", "bold")],
                      [("   workdir: " + clean(plan["workdir"], g.ascii), "dim")]]

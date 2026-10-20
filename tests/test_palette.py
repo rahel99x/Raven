@@ -1,5 +1,6 @@
 """Colour capabilities and stable rendering must work without a real terminal."""
 import io
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -180,7 +181,7 @@ def test_once_and_watch_keep_theme_and_narrow_width(monkeypatch):
             raise KeyboardInterrupt
 
     monkeypatch.setattr(screen.sys, "stdout", stdout)
-    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback: SimpleNamespace(columns=40, lines=12))
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback: os.terminal_size((40, 12)))
     monkeypatch.setattr(screen.time, "sleep", sleep)
     screen.run_watch(app, views, None, store, None, {}, 1, True)
     assert widths[-1] == (40, None) and app.width == 40
@@ -208,7 +209,7 @@ def test_animated_watch_updates_only_changed_lines_and_restores_cursor(monkeypat
 
     monkeypatch.setattr(screen.sys, "stdout", output)
     monkeypatch.setattr(screen.time, "sleep", sleep)
-    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback: SimpleNamespace(columns=30, lines=10))
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback: os.terminal_size((30, 10)))
     screen.run_watch(app, views, None, store, None, {}, 1, False)
     assert output.getvalue().count("constant") == 1
     assert output.getvalue().startswith("\033[?25l\033[2J")
@@ -225,7 +226,7 @@ def test_watch_resizes_with_a_full_repaint_and_ctrl_c_footer(monkeypatch):
     output = Terminal()
     app = SimpleNamespace(theme="default", tick=lambda: None, bell=False)
     store = SimpleNamespace(snapshot=lambda: {"events": []})
-    sizes = iter([SimpleNamespace(columns=30, lines=10), SimpleNamespace(columns=20, lines=6)])
+    sizes = iter([os.terminal_size((30, 10)), os.terminal_size((20, 6))])
 
     def compose(snap, app, width, height, actions):
         return [[(f"row {i}", "")] for i in range(height - 1)] + [[("q quit", "")]], []
@@ -239,7 +240,7 @@ def test_watch_resizes_with_a_full_repaint_and_ctrl_c_footer(monkeypatch):
 
     monkeypatch.setattr(screen.sys, "stdout", output)
     monkeypatch.setattr(screen.time, "sleep", sleep)
-    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback: next(sizes))
+    monkeypatch.setattr(shutil, "get_terminal_size", lambda fallback: next(sizes, os.terminal_size((20, 6))))
     screen.run_watch(app, SimpleNamespace(compose=compose), None, store, None, {}, 1, False)
     assert output.getvalue().count("\033[2J") == 2
     assert output.getvalue().count("row 0") == 2

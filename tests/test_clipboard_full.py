@@ -15,6 +15,11 @@ import pytest
 
 from raven import clipboard
 
+@pytest.fixture(autouse=True)
+def private_exports(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path))
+
+
 
 class Terminal(io.StringIO):
     def isatty(self):

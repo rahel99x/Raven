@@ -1,7 +1,9 @@
 """Pure bounded retained-line search indexes for immutable log snapshots."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 
 from .log_scan import REGEX_LINE_BYTES
 
@@ -35,8 +37,14 @@ class MatchIndex:
 
 def buffer_stamp(buffer):
     """Freeze mutable-buffer revision values instead of consulting an old reference."""
-    return (buffer.size, buffer.last_refresh, buffer.reloads, buffer.skipped_bytes,
-            len(buffer.lines), len(buffer._partial_raw))
+    return (
+        buffer.size,
+        buffer.last_refresh,
+        buffer.reloads,
+        buffer.skipped_bytes,
+        len(buffer.lines),
+        len(buffer._partial_raw),
+    )
 
 
 def _flag(text, source_bytes, matcher, regex):
@@ -46,24 +54,64 @@ def _flag(text, source_bytes, matcher, regex):
     return (1, found.span()) if found else (0, None)
 
 
-def build(buffer, context, matcher, regex):
+def build(buffer, context, matcher, regex, *, cancel=None, deadline=None):
     """Worker-safe: scan published strings only, without filesystem access."""
-    flags = bytes(_flag(text, buffer._line_bytes[index], matcher, regex)[0]
-                  for index, text in enumerate(buffer.lines))
-    partial, span = _flag(buffer.partial, len(buffer._partial_raw), matcher, regex) if buffer._partial_raw else (0, None)
-    return MatchIndex(context, buffer, buffer_stamp(buffer), flags, flags.count(1), flags.count(2), partial, span)
+    flags = bytearray()
+    for index, text in enumerate(buffer.lines):
+        if index % 32 == 0 and (
+            (cancel is not None and cancel())
+            or deadline is not None
+            and time.monotonic() >= deadline
+        ):
+            raise ValueError("Retained log indexing cancelled or reached its deadline")
+        flags.append(_flag(text, buffer._line_bytes[index], matcher, regex)[0])
+    flags = bytes(flags)
+    partial, span = (
+        _flag(buffer.partial, len(buffer._partial_raw), matcher, regex)
+        if buffer._partial_raw
+        else (0, None)
+    )
+    return MatchIndex(
+        context,
+        buffer,
+        buffer_stamp(buffer),
+        flags,
+        flags.count(1),
+        flags.count(2),
+        partial,
+        span,
+    )
 
 
-def extend(index, buffer, context, matcher, *, regex, query_length, word=False):
+def extend(
+    index,
+    buffer,
+    context,
+    matcher,
+    *,
+    regex,
+    query_length,
+    word=False,
+    cancel=None,
+    deadline=None,
+):
     """Reuse a validated retained prefix. None requests a fresh worker index."""
     old = index.buffer
     if old is buffer and index.stamp != buffer_stamp(buffer):
         return None
-    if index.context != context or buffer.size < old.size or buffer.skipped_bytes < old.skipped_bytes:
+    if (
+        index.context != context
+        or buffer.size < old.size
+        or buffer.skipped_bytes < old.skipped_bytes
+    ):
         return None
     dropped_bytes = buffer.skipped_bytes - old.skipped_bytes
     consumed, drop = 0, 0
-    while consumed < dropped_bytes and drop < len(index.flags) and drop < MAX_INCREMENT_ROWS:
+    while (
+        consumed < dropped_bytes
+        and drop < len(index.flags)
+        and drop < MAX_INCREMENT_ROWS
+    ):
         consumed += old._line_bytes[drop]
         drop += 1
     if consumed != dropped_bytes:
@@ -71,17 +119,36 @@ def extend(index, buffer, context, matcher, *, regex, query_length, word=False):
     retained = len(index.flags) - drop
     if len(buffer.lines) < retained:
         return None
-    if retained and (old.lines[drop] is not buffer.lines[0] or old.lines[-1] is not buffer.lines[retained - 1]):
+    if retained and (
+        old.lines[drop] is not buffer.lines[0]
+        or old.lines[-1] is not buffer.lines[retained - 1]
+    ):
         return None
     # An equal-size replacement snapshot must not borrow match flags merely
     # because its first and last lines happen to be unchanged.
-    if buffer is not old and buffer.size == old.size and not drop and old.lines != buffer.lines:
+    if (
+        buffer is not old
+        and buffer.size == old.size
+        and not drop
+        and old.lines != buffer.lines
+    ):
         return None
     added = len(buffer.lines) - retained
-    if added > MAX_INCREMENT_ROWS or sum(buffer._line_bytes[retained:]) > MAX_INCREMENT_BYTES:
+    if (
+        added > MAX_INCREMENT_ROWS
+        or sum(buffer._line_bytes[retained:]) > MAX_INCREMENT_BYTES
+    ):
         return None
-    extra = bytes(_flag(text, buffer._line_bytes[i], matcher, regex)[0]
-                  for i, text in enumerate(buffer.lines[retained:], retained))
+    extra = bytearray()
+    for i, text in enumerate(buffer.lines[retained:], retained):
+        if i % 32 == 0 and (
+            (cancel is not None and cancel())
+            or deadline is not None
+            and time.monotonic() >= deadline
+        ):
+            raise ValueError("Retained log indexing cancelled or reached its deadline")
+        extra.append(_flag(text, buffer._line_bytes[i], matcher, regex)[0])
+    extra = bytes(extra)
     prefix = index.flags[drop:]
     removed = index.flags[:drop]
     count = index.count - removed.count(1) + extra.count(1)
@@ -93,7 +160,9 @@ def extend(index, buffer, context, matcher, *, regex, query_length, word=False):
         elif not regex and old._partial_raw and buffer.partial.startswith(old.partial):
             # A complete literal occurrence remains valid under append. A word
             # ending at the former EOF must be checked against the new suffix.
-            if index.partial_flag == 1 and (not word or index.partial_span[1] < len(old.partial)):
+            if index.partial_flag == 1 and (
+                not word or index.partial_span[1] < len(old.partial)
+            ):
                 partial, span = 1, index.partial_span
             else:
                 position = max(0, len(old.partial) - query_length - 1)
@@ -102,8 +171,19 @@ def extend(index, buffer, context, matcher, *, regex, query_length, word=False):
         elif len(buffer._partial_raw) > MAX_INCREMENT_BYTES and not regex:
             return None
         else:
-            partial, span = _flag(buffer.partial, len(buffer._partial_raw), matcher, regex)
-    return MatchIndex(context, buffer, buffer_stamp(buffer), prefix + extra, count, omitted, partial, span)
+            partial, span = _flag(
+                buffer.partial, len(buffer._partial_raw), matcher, regex
+            )
+    return MatchIndex(
+        context,
+        buffer,
+        buffer_stamp(buffer),
+        prefix + extra,
+        count,
+        omitted,
+        partial,
+        span,
+    )
 
 
 def find(index, start, backwards=False):
@@ -111,7 +191,9 @@ def find(index, start, backwards=False):
     count = index.total
     if not count or index.total_count == 0:
         return None
-    flags = index.flags + (bytes((index.partial_flag,)) if index.buffer._partial_raw else b"")
+    flags = index.flags + (
+        bytes((index.partial_flag,)) if index.buffer._partial_raw else b""
+    )
     if backwards:
         stop = count if start is None else max(0, min(count, start))
         result = flags.rfind(b"\x01", 0, stop)
@@ -127,8 +209,17 @@ def template_key(line, rank):
     """Conservative template: normalize time/rank prefix, preserve value tokens."""
     import re
     from .log_presentation import _STAMP
-    text = _STAMP.sub('<time>', line, count=1)
+
+    text = _STAMP.sub("<time>", line, count=1)
     # Only a producer-declared rank's explicit prefix is variable. Exit codes,
     # iteration numbers, counts and addresses remain evidence-bearing text.
-    return re.sub(r'^(\s*(?:<time>\s*)?)(?:\[rank[=: ]' + str(rank) +
-                  r'\]|rank[=: ]' + str(rank) + r'\b)', r'\1<rank>', text, count=1)
+    return re.sub(
+        r"^(\s*(?:<time>\s*)?)(?:\[rank[=: ]"
+        + str(rank)
+        + r"\]|rank[=: ]"
+        + str(rank)
+        + r"\b)",
+        r"\1<rank>",
+        text,
+        count=1,
+    )

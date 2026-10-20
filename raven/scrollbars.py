@@ -1,8 +1,8 @@
 """Bounded pane scrollbars over cached geometry; gestures never fetch source data."""
 from __future__ import annotations
-from collections import OrderedDict
-from dataclasses import dataclass, replace
-from .interaction import Rect
+from dataclasses import replace
+from .ui.geometry import (Pane as Pane, pane_state as initialize, pane_rect as _rect, clip_pane_rect as _clip, take_panes as take_since, put_panes as put_records, map_panes as map_records)
+from .ui.geometry import Rect
 from . import layout as L, scrolling
 
 from .pointer_routing import capture_handler
@@ -10,54 +10,12 @@ from .pointer_routing import capture_handler
 MAX_PANES = 128
 MAX_MANUAL = 128
 
-@dataclass(frozen=True)
-class Pane:
-    key: str
-    rect: Rect
-    count: int
-    page: int
-    target: int
-    painted: int
-    setter: object
-    context: object = ()
-    header: object = None
-    layer: int = 0
-    absolute: bool = False
-
-    @property
-    def limit(self):
-        return max(0, self.count - self.page)
-
-    @property
-    def signature(self):
-        return self.key, self.rect, self.page, self.context, self.layer, self.header
 
 
-def initialize(app):
-    owner = getattr(app, '_chart_owner', app)
-    state = getattr(owner, 'scrollbar_state', None)
-    if not isinstance(state, dict):
-        state = {'staged': [], 'panes': (), 'manual': OrderedDict(), 'capture': None,
-                 'token': None, 'blocked': (), 'discard_release': False}
-        owner.scrollbar_state = state
-    app.scrollbar_state = state
-    return state
 
 
-def _rect(value):
-    if isinstance(value, Rect):
-        return value
-    if isinstance(value, (tuple, list)) and len(value) == 4 and all(isinstance(v, int) for v in value):
-        return Rect(*value)
-    return None
 
 
-def _clip(rect, clip):
-    if clip is None:
-        return rect
-    result = Rect(max(rect.top, clip.top), max(rect.left, clip.left),
-                  min(rect.bottom, clip.bottom), min(rect.right, clip.right))
-    return result if result.bottom > result.top and result.right > result.left else None
 
 
 def begin_frame(app, width=None, height=None):
@@ -90,50 +48,10 @@ def mark(app):
     return len(initialize(app)['staged'])
 
 
-def take_since(app, first):
-    staged = initialize(app)['staged']
-    records = tuple(staged[max(0, int(first)):])
-    del staged[max(0, int(first)):]
-    return records
 
 
-def put_records(app, records):
-    staged = initialize(app)['staged']
-    staged.extend(item for item in records if isinstance(item, Pane))
-    del staged[MAX_PANES:]
 
 
-def map_records(records, mapping=None, *, dy=0, dx=0, row_map=None, clip=None):
-    mapping = row_map if row_map is not None else mapping
-    lookup = mapping if callable(mapping) else getattr(mapping, 'get', None)
-    clip = _rect(clip) if clip is not None else None
-    result = []
-    for pane in records:
-        if pane.absolute:
-            result.append(pane)
-            continue
-        rect, header = pane.rect, pane.header
-        if callable(lookup):
-            mapped = [lookup(y) for y in range(rect.top, rect.bottom)]
-            mapped = [y for y in mapped if isinstance(y, int)]
-            if not mapped:
-                continue
-            top, bottom = min(mapped), max(mapped) + 1
-            header_y = lookup(header[0]) if header else None
-        else:
-            top, bottom = rect.top, rect.bottom
-            header_y = header[0] if header else None
-        moved = _clip(Rect(top + dy, rect.left + dx, bottom + dy, rect.right + dx), clip)
-        if moved is None:
-            continue
-        if header and isinstance(header_y, int):
-            header = (header_y + dy, header[1] + dx, header[2] + dx)
-            if clip and not (clip.top <= header[0] < clip.bottom and header[1] >= clip.left and header[1] + 4 <= clip.right):
-                header = None
-        else:
-            header = None
-        result.append(replace(pane, rect=moved, header=header))
-    return tuple(result)
 
 
 def place_since(app, first, *, dy=0, dx=0, row_map=None, clip=None):

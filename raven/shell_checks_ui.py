@@ -4,7 +4,7 @@ from __future__ import annotations
 import threading
 
 from . import layout as L, shell_checks
-from .research import clean
+from .research_text import clean
 
 MAX_DOCUMENT_ROWS = 8192
 

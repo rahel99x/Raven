@@ -79,8 +79,11 @@ class Server:
         self.clients = {}
         self.max_clients = max_clients
         self.closed = False
+        self._snapshot_wire = {}
+        self._snapshot_wire_bytes = 0
         self.metrics = {'accepted': 0, 'rejected_peers': 0, 'queries': 0, 'slow_clients': 0}
         self._rate_tokens, self._rate_updated = 64., time.monotonic()
+        self._read_cursor = 0
         try:
             retained = {}
             try:
@@ -132,7 +135,7 @@ class Server:
                 connection.close()
                 return
             connection.setblocking(False)
-            client = {'decoder': C.decoder(request=True), 'queue': deque(), 'queued': 0, 'last': time.monotonic(), 'tokens': 4., 'rate_updated': time.monotonic(), 'uid': uid}
+            client = {'decoder': C.decoder(request=True), 'queue': deque(), 'queued': 0, 'last': time.monotonic(), 'last_write': time.monotonic(), 'tokens': 4., 'rate_updated': time.monotonic(), 'uid': uid}
             self.clients[connection] = client
             self.selector.register(connection, selectors.EVENT_READ, client)
             self.metrics['accepted'] += 1
@@ -150,8 +153,41 @@ class Server:
     def query(self, client, value):
         return self.observations.query(value)
 
+    def encode_response(self, client, result):
+        """Serialize each immutable publication once, separately from its age/cursor."""
+        snapshot = result.get("snapshot")
+        if snapshot is None:
+            return C.message(result)
+        key = (client["uid"], result.get("session"), result.get("epoch"), result.get("sequence"), id(snapshot))
+        raw_snapshot = self._snapshot_wire.get(key)
+        if raw_snapshot is None:
+            raw_snapshot = C.encoded(snapshot)
+            # Keep one publication per principal; never retain unbounded old
+            # sequences or a second private projection for the same principal.
+            for old in tuple(self._snapshot_wire):
+                if old[0] == client["uid"]:
+                    self._snapshot_wire_bytes -= len(self._snapshot_wire.pop(old))
+            while self._snapshot_wire and self._snapshot_wire_bytes + len(raw_snapshot) > MAX_TOTAL_QUEUED // 2:
+                old = next(iter(self._snapshot_wire))
+                self._snapshot_wire_bytes -= len(self._snapshot_wire.pop(old))
+            if len(raw_snapshot) <= MAX_TOTAL_QUEUED // 2:
+                self._snapshot_wire[key] = raw_snapshot
+                self._snapshot_wire_bytes += len(raw_snapshot)
+        metadata = C.encoded({key: value for key, value in result.items() if key != "snapshot"})
+        body = metadata[:-1] + b',"snapshot":' + raw_snapshot + b'}'
+        return C.frame(body, C.POLICY)
+
     def admit_read(self, client, now):
-        client['tokens'] = min(4., client['tokens'] + (now-client['rate_updated'])*4)
+        client['read_requested_at'] = now
+        # Divide sustained capacity across requesting principals, then their
+        # requesting connections. Idle sockets receive no share and cannot
+        # throttle a healthy reader merely by remaining connected.
+        active = [peer for peer in self.clients.values() if peer.get('read_requested_at', -float('inf')) >= now - 1. and self.authorized(peer['uid'])]
+        by_uid = {}
+        for peer in active:
+            by_uid[peer['uid']] = by_uid.get(peer['uid'], 0) + 1
+        rate = min(4., 32. / max(1, len(by_uid)) / max(1, by_uid.get(client['uid'], 1)))
+        client['tokens'] = min(4., client['tokens'] + (now-client['rate_updated'])*rate)
         client['rate_updated'] = now
         self._rate_tokens = min(64., self._rate_tokens + (now-self._rate_updated)*32)
         self._rate_updated = now
@@ -171,39 +207,61 @@ class Server:
 
     def _drain(self, connection, client):
         """One bounded batch; complete retained frames need no new socket bytes."""
-        for value in client['decoder'].take(8):
+        if client['queue']:
+            return
+        for value in client['decoder'].take(1):
             now = time.monotonic()
             try:
-                self.admit_read(client, now)
                 if not self.authorized(client['uid']):
                     raise ValueError('Session visibility was revoked')
+                self.admit_read(client, now)
                 result = self.query(client, value)
             except ValueError as exc:
                 result = {'schema': C.SCHEMA, 'version': C.VERSION, 'error': str(exc)}
-            raw = C.message(result)
-            if client['queued'] + len(raw) > MAX_QUEUED or sum(item['queued'] for item in self.clients.values()) + len(raw) > MAX_TOTAL_QUEUED:
+            raw = self.encode_response(client, result)
+            if len(raw) > MAX_QUEUED:
                 self.metrics['slow_clients'] += 1
                 self._drop(connection)
                 return
+            while (sum(item['queued'] for item in self.clients.values()) + len(raw) > MAX_TOTAL_QUEUED
+                   or sum(item['queued'] for item in self.clients.values() if item['uid'] == client['uid']) + len(raw) > MAX_TOTAL_QUEUED // 2):
+                uid_full = sum(item['queued'] for item in self.clients.values() if item['uid'] == client['uid']) + len(raw) > MAX_TOTAL_QUEUED // 2
+                candidates = [(peer, item) for peer, item in self.clients.items()
+                              if item['queued'] and (not uid_full or item['uid'] == client['uid'])]
+                if not candidates:
+                    self.metrics['slow_clients'] += 1
+                    self._drop(connection)
+                    return
+                peer, _ = max(candidates, key=lambda value: value[1]['queued'])
+                self.metrics['slow_clients'] += 1
+                self._drop(peer)
+                if peer is connection:
+                    return
             client['queue'].append(memoryview(raw))
             client['queued'] += len(raw)
+            client['last_write'] = time.monotonic()
             self.metrics['queries'] += 1
-        self.selector.modify(connection, selectors.EVENT_READ | (selectors.EVENT_WRITE if client['queue'] else 0), client)
+        self.selector.modify(connection, selectors.EVENT_WRITE if client['queue'] else selectors.EVENT_READ, client)
 
     def poll(self, timeout=.5):
         # Each peer gets one finite drain before waiting. Partial frames do not
         # wake the selector; a complete retained frame must make progress even
         # when the peer has sent all its bytes already.
         buffered = False
-        for connection, client in tuple(self.clients.items()):
-            if not client['decoder'].has_complete_frame:
+        peers = list(self.clients.items())
+        offset = self._read_cursor % max(1, len(peers))
+        self._read_cursor += 1
+        for connection, client in peers[offset:] + peers[:offset]:
+            if client['queue'] or not client['decoder'].has_complete_frame:
                 continue
             try:
                 self._drain(connection, client)
-                buffered |= connection in self.clients and client['decoder'].has_complete_frame
+                buffered |= connection in self.clients and not client['queue'] and client['decoder'].has_complete_frame
             except (OSError, ValueError):
                 self._drop(connection)
-        for key, mask in self.selector.select(0 if buffered else timeout):
+        ready = self.selector.select(0 if buffered else timeout)
+        offset = self._read_cursor % max(1, len(ready))
+        for key, mask in ready[offset:] + ready[:offset]:
             connection, client = key.fileobj, key.data
             try:
                 if client is None:
@@ -214,13 +272,14 @@ class Server:
                 if connection in self.clients and mask & selectors.EVENT_WRITE:
                     for written in write_pending(client['queue'], connection.send, zero_is_error=True):
                         client['queued'] -= written
-                    self.selector.modify(connection, selectors.EVENT_READ | (selectors.EVENT_WRITE if client['queue'] else 0), client)
+                        client['last_write'] = time.monotonic()
+                    self.selector.modify(connection, selectors.EVENT_WRITE if client['queue'] else selectors.EVENT_READ, client)
             except (OSError, ValueError):
                 if client is not None:
                     self._drop(connection)
         now = time.monotonic()
         for connection, client in tuple(self.clients.items()):
-            if now - client['last'] > 30:
+            if now - client['last'] > 30 or client['queue'] and now - client['last_write'] > 10:
                 self._drop(connection)
 
     def close(self):

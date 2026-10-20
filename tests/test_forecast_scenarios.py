@@ -192,7 +192,7 @@ def test_queue_model_shapes_use_existing_runtime_validation(source, model):
 
 
 def test_actual_preissued_2605_holdout_replays_with_explicit_negative_efficacy():
-    root = Path(__file__).resolve().parents[1] / "docs/implementation/review-2026-10/measurements/forecast-temporal-holdout"
+    root = Path(__file__).resolve().parents[1] / "tests/fixtures/review-temporal-holdout/forecast"
     document = json.loads((root / "model.json").read_text())
     retained = json.loads((root / "result.json").read_text())
     original = copy.deepcopy(document)

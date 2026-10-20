@@ -6,7 +6,6 @@ remains authoritative; uncertain attempts never become new candidate work.
 from __future__ import annotations
 import copy
 import math
-import statistics
 
 from . import orchestrator as X, slurm_simulator as S
 from .evidence import bounded, digest
@@ -129,7 +128,7 @@ def schedule(document, policy, *, factor=1., cancel=None, work_budget=None):
     while pending:
         _check(cancel)
         steps += 1
-        if steps > 4*len(jobs)+4:
+        if steps > 6*len(jobs)+8:
             raise ValueError("Campaign admission event budget exhausted")
         completed = {k for k, row in timeline.items() if row["end"] <= now and not row["runtime_clipped"]}
         failed = {k for k, row in timeline.items() if row["end"] <= now and (row["runtime_clipped"] or not next(j for j in jobs if j["id"] == k).get("success", True))}
@@ -166,7 +165,7 @@ def schedule(document, policy, *, factor=1., cancel=None, work_budget=None):
             continue
         future = [row["end"] for row in timeline.values() if row["end"] > now]
         future += [j["submit"] for j in pending.values() if j["submit"] > now]
-        if available and next_command > now:
+        if next_command > now and any(_fits(job, active, limits) for job in available):
             future.append(next_command)
         if policy == "fairshare":
             future += [j["submit"] + limits.get("fairshare_delay_seconds", 60) for j in available

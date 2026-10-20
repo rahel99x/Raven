@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from raven.raven_protocol import Decoder, MAX_FRAME, MAX_QUEUE, ProtocolError, build_digest, canonical, digest, encode
+from raven.raven_protocol import Decoder, MAX_FRAME, MAX_QUEUE, MAX_STRING, ProtocolError, build_digest, canonical, digest, encode
 from raven.raven_resources import child_environment, limits, placement_probe, task_limits, verify_placement
 from raven.raven_worker_client import WorkerClient
 
@@ -62,7 +62,7 @@ def test_invalid_frames_fail_closed(raw):
         decoder.take()
 
 
-@pytest.mark.parametrize("value", [{"x": float("inf")}, {"x": 10**500}, {"x": "x" * (256 * 1024 + 1)}, {"x": object()}, {"x": "\ud800"}, {"\ud800": "bad"}, {1: "bad"}])
+@pytest.mark.parametrize("value", [{"x": float("inf")}, {"x": 10**500}, {"x": "x" * (MAX_STRING + 1)}, {"x": object()}, {"x": "\ud800"}, {"\ud800": "bad"}, {1: "bad"}])
 def test_encoder_limits_before_wire_allocation(value):
     with pytest.raises(ProtocolError):
         encode(value)

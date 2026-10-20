@@ -96,6 +96,7 @@ def document(app):
     if form.get("trace"):
         rows.append(("Trace adapter: " + (form.get("trace_adapter") or "python-monitoring"), "setup:adapter"))
         rows.append(("Trace scope: " + form.get("trace_scope", "project"), "setup:scope"))
+        rows.append((("[x] " if form.get("trace_cpu_placement", False) else "[ ] ") + "CPU placement observations (Linux; no continuous residency)", "setup:toggle:trace_cpu_placement"))
         rows.append((("[x] " if form.get("trace_helpers", False) else "[ ] ") + "Show helper processes in trace view", "setup:toggle:trace_helpers"))
         rows.append(("Python processes inherit automatic tracing without script edits. Monitoring requires Python 3.12+; Python 3.10/3.11 needs explicit legacy-profile consent. Project scope includes project and script files. Helpers are recorded even when hidden. raven_exec remains an optional command override; native stacks and GPU kernels require separate instrumentation.", None))
     rows.append(("Select a Research feature to reveal its optional scientific inputs. Hiding a feature preserves its saved declarations.", None))

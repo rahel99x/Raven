@@ -171,11 +171,11 @@ def test_new_query_cannot_receive_prior_pending_worker_results():
     finally: app.research.close()
 
 
-def test_legacy_interactive_without_worker_refreshes_same_mutable_buffer(tmp_path):
+def test_explicit_headless_reads_refresh_same_mutable_buffer(tmp_path):
     from raven.logs import LogSession
     path = tmp_path / 'legacy.log'
     path.write_bytes(b'ERROR\n')
-    app = SimpleNamespace(logs=LogSession(), interactive=True, research=None, cfg={}, mode='main', tab='log')
+    app = SimpleNamespace(logs=LogSession(), interactive=False, research=None, cfg={}, mode='main', tab='log')
     app.say = app.fail = lambda value: None
     log_tools.initialize(app)
     try:
@@ -199,7 +199,7 @@ def test_same_mutable_buffer_partial_word_match_is_not_reused_after_append(tmp_p
     from raven.logs import LogSession
     path = tmp_path / 'partial.log'
     path.write_bytes(b'ERROR')
-    app = SimpleNamespace(logs=LogSession(), interactive=True, research=None, cfg={}, mode='main', tab='log')
+    app = SimpleNamespace(logs=LogSession(), interactive=False, research=None, cfg={}, mode='main', tab='log')
     app.say = app.fail = lambda value: None
     state = log_tools.initialize(app)
     state['search_mode'] = {'regex': False, 'case': True, 'word': True}
@@ -212,3 +212,44 @@ def test_same_mutable_buffer_partial_word_match_is_not_reused_after_append(tmp_p
     assert log_tools.count_retained(app, buf) == 0
     assert log_tools.find_retained(app, buf) == (True, None)
     assert app.research is None
+
+
+def test_pending_search_navigates_after_its_matching_index_is_published():
+    app = app_for()
+    buf = buffer(["plain"] * 40 + ["ERROR"] + ["plain"] * 40)
+    app.logs.path = buf.path
+    app.logs.sync_buffer(buf)
+    app.message = "Indexing retained log in the background; navigation remains available"
+    try:
+        assert log_tools.find_retained(app, buf, backwards=True) == (True, None)
+        assert app.logs.match is None and app.logs.following
+        complete(app)
+        assert app.logs.match == app.logs.cursor == 40
+        assert not app.logs.following and app.message.startswith("1 lines match")
+        assert app.log_tools_state["retained_navigation"] is None
+    finally:
+        app.research.close()
+
+
+@pytest.mark.parametrize("change", ["cursor", "query", "source", "tab"])
+def test_pending_search_cannot_override_a_later_user_choice(change):
+    app = app_for()
+    buf = buffer(["ERROR"] + ["plain"] * 80)
+    app.logs.path = buf.path
+    app.logs.sync_buffer(buf)
+    try:
+        assert log_tools.find_retained(app, buf, backwards=True) == (True, None)
+        if change == "cursor":
+            app.logs.goto(70, buf)
+        elif change == "query":
+            app.logs.search = "different"
+        elif change == "source":
+            app.logs.path = "/another-source.out"
+        else:
+            app.tab = "jobs"
+        complete(app)
+        assert app.logs.match is None
+        assert app.logs.cursor == (70 if change == "cursor" else None)
+        assert app.log_tools_state["retained_navigation"] is None
+    finally:
+        app.research.close()

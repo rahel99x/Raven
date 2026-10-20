@@ -123,6 +123,8 @@ def run_example(args, program_args):
                "--trace", "--trace-helpers", "--cpu-memory", "--research", "experiment", "--receipt-file", str(receipt)]
     if not args.slurm:
         command.append("--local")
+    if args.cpu_placement:
+        command.append("--trace-cpu-placement")
     command.extend(["--trace-adapter", "python-legacy-profile" if args.legacy_profile else "python-monitoring",
                     "--trace-scope", "project", "--gpu" if args.variant == "cuda" else "--no-gpu", "--no-export-on-finish"])
     if args.account:
@@ -280,6 +282,7 @@ def main(argv=None):
     run.add_argument("--partition", help="Slurm partition; omit for scheduler defaults")
     run.add_argument("--python", default=os.environ.get("RAVEN_EXAMPLE_PYTHON", "python3"), help="application Python executable, available on compute nodes")
     run.add_argument("--legacy-profile", action="store_true", help="consent to the legacy Python profile adapter")
+    run.add_argument("--cpu-placement", action="store_true", help="record optional Linux CPU/socket/core observations at trace events")
     run.add_argument("--quick", action="store_true", help="16x16 grid, 8 steps, no pacing, one worker")
     view = actions.add_parser("view", help="reopen the exact run named by a launch receipt")
     view.add_argument("receipt")

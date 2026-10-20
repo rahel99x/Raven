@@ -15,11 +15,9 @@ import hashlib
 import json
 import math
 import os
-from pathlib import Path
 import re
 import shlex
 import socket
-import stat
 import sys
 import time
 import textwrap
@@ -41,7 +39,8 @@ def clean(text, limit=4096):
 
 
 def redact(text, exclusions=()):
-    value = _SECRET.sub(r"\1[REDACTED]", clean(text, MAX_OUTPUT))
+    from .redaction import redact as redact_credentials
+    value = redact_credentials(clean(text, MAX_OUTPUT))
     for excluded in tuple(exclusions)[:128]:
         if isinstance(excluded, str) and excluded:
             value = value.replace(excluded, "[EXCLUDED]")
@@ -557,7 +556,7 @@ def run_command(app, args):
             text = (block["command"] + "\n" if block["command"] else "") + block["output"]
             if not text:
                 raise ValueError("That command block has no captured command text or observed output.")
-            message = clipboard.copy(text, getattr(app, "state_dir", None), **clipboard.options(app))
+            message = clipboard.copy_for_app(app, text, getattr(app, "state_dir", None), **clipboard.options(app))
             if hasattr(app, "say"):
                 app.say(message)
         elif action == "evidence-search":

@@ -17,8 +17,8 @@ SCHEMA = "raven.automation-settings/v1"
 MAX_SETTINGS = 256 << 10
 MAX_PRESETS = 64
 _ROOT_KEYS = {"schema", "launch", "recipes", "export_presets", "default_export_preset", "export_preferences", "associations"}
-_LAUNCH_KEYS = {"features", "gpu", "trace", "trace_adapter", "trace_scope", "trace_helpers", "trace_process_bytes", "trace_run_bytes", "trace_processes", "cpu_memory", "sampling_seconds", "storage_bytes", "telemetry", "sbatch_defaults", "parameters", "resources", "application_metrics", "artifacts", "research_sources", "passport", "scientific_context", "array_manifest", "auto_export", "auto_export_scope", "report_python", "environment", "checkpoint_advice"}
-TRACE_DEFAULTS = {"trace_scope": "project", "trace_helpers": False,
+_LAUNCH_KEYS = {"features", "gpu", "trace", "trace_adapter", "trace_scope", "trace_helpers", "trace_cpu_placement", "trace_process_bytes", "trace_run_bytes", "trace_processes", "cpu_memory", "sampling_seconds", "storage_bytes", "telemetry", "sbatch_defaults", "parameters", "resources", "application_metrics", "artifacts", "research_sources", "passport", "scientific_context", "array_manifest", "auto_export", "auto_export_scope", "report_python", "environment", "checkpoint_advice"}
+TRACE_DEFAULTS = {"trace_scope": "project", "trace_helpers": False, "trace_cpu_placement": False,
                   "trace_process_bytes": 64 << 20, "trace_run_bytes": 256 << 20, "trace_processes": 128}
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 
@@ -36,7 +36,7 @@ def _launch(value):
     if not isinstance(value, dict) or set(value) - _LAUNCH_KEYS:
         raise ValueError("Unknown or invalid launch setting: " + ", ".join(sorted(set(value) - _LAUNCH_KEYS)) if isinstance(value, dict) else "launch settings must be an object")
     result = deepcopy(value)
-    for key in ("gpu", "trace", "cpu_memory", "trace_helpers"):
+    for key in ("gpu", "trace", "cpu_memory", "trace_helpers", "trace_cpu_placement"):
         if key in result and not isinstance(result[key], bool):
             raise ValueError(key + " must be true or false")
     if "features" in result:

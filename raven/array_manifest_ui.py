@@ -3,11 +3,10 @@ from __future__ import annotations
 
 import json
 import os
-import shlex
 import time
 
 from . import array_manifest as M, layout as L
-from .research import clean
+from .research_text import clean
 
 
 def _owner(app):

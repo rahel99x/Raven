@@ -3,6 +3,7 @@ from collections import deque
 from types import SimpleNamespace
 
 import pytest
+import time
 
 from raven import analysis_ui as A, layout as L
 from raven.config import Config
@@ -11,6 +12,17 @@ from raven.model import Finished, Job, Live, Store
 from raven.research import ResearchHub
 from raven.research_views import render
 from raven.views import Views
+
+
+@pytest.fixture(autouse=True)
+def deterministic_timezone(monkeypatch):
+    monkeypatch.setenv("TZ", "UTC")
+    if hasattr(time, "tzset"):
+        time.tzset()
+    yield
+    monkeypatch.undo()
+    if hasattr(time, "tzset"):
+        time.tzset()
 
 
 @pytest.fixture

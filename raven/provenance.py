@@ -363,10 +363,15 @@ def _unique_pairs(pairs: list[tuple[str, Any]]) -> dict:
 
 
 def load(path: str | os.PathLike) -> dict:
-    """Load a regular file, rejecting symlinks, duplicate keys, and tampering."""
+    """Load a regular file, rejecting symlinks, duplicate keys and corruption.
+
+    Plain hashes detect accidental changes; they do not authenticate an author
+    who can replace the document and recompute its hashes. Use signed evidence
+    when authenticity is required.
+    """
     fd = _regular_fd(Path(path))
     try:
-        from .raven_execution import source_limit, source_read
+        from .source_budget import source_limit, source_read
         limit = source_limit(MAX_PASSPORT_BYTES)
         if os.fstat(fd).st_size > limit:
             raise ValidationError("passport exceeds the 1 MiB limit")

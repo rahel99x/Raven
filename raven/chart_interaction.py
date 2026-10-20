@@ -11,10 +11,14 @@ from dataclasses import dataclass, replace
 import math
 import time
 
+from .ui.geometry import (Plot as Plot, plot_state as initialize, translate_plot_rect as _translate, plot_rect as _rect, intersect_plot_rect as _intersection, take_plots, put_plots, map_plots)
 from . import charts, layout as L, selector_glyphs as G
-from .interaction import Rect
+from .ui.geometry import Rect
 
 from .pointer_routing import capture_handler
+
+# Public compatibility aliases preserve class/function identity for adapters.
+take_since, put_records, map_records = take_plots, put_plots, map_plots
 
 MAX_PLOTS = 96
 MAX_ZOOMS = 128
@@ -30,31 +34,8 @@ CAPTURE_MARGIN = 3
 CROSSHAIR_STYLE = "accent"
 
 
-@dataclass(frozen=True)
-class Plot:
-    key: tuple
-    rect: Rect
-    visible: Rect
-    x_bounds: tuple
-    y_bounds: tuple
-    scale: str = "linear"
-    layer: int = 0
-    kind: str = "metric"
-    payload: tuple = ()
-    viewport: Rect | None = None
-    axes: Rect | None = None
-    context: tuple | None = None
-    pane: str | None = None
 
 
-def initialize(app):
-    state = getattr(app, "chart_interaction_state", None)
-    if not isinstance(state, dict):
-        state = {"pending": [], "plots": (), "pointer": None, "hovered": None,
-                 "capture": None, "zoom": OrderedDict(), "last_key": None,
-                 "revision": 0, "frame_context": None, "ascii": False, "cancelled_release": False}
-        app.chart_interaction_state = state
-    return state
 
 
 @dataclass(frozen=True)
@@ -101,8 +82,6 @@ def clear_source_zoom(app, identity, canonical):
     return bool(removed)
 
 
-def _translate(rect, dy=0, dx=0):
-    return Rect(rect.top + dy, rect.left + dx, rect.bottom + dy, rect.right + dx) if rect else None
 
 
 def _finite(value):
@@ -226,18 +205,8 @@ def mark(app):
     return len(initialize(app)["pending"])
 
 
-def _rect(value):
-    if isinstance(value, Rect):
-        return value
-    if (isinstance(value, (tuple, list)) and len(value) == 4 and
-            all(isinstance(item, int) and not isinstance(item, bool) for item in value)):
-        return Rect(*value)
-    return None
 
 
-def _intersection(a, b):
-    result = Rect(max(a.top, b.top), max(a.left, b.left), min(a.bottom, b.bottom), min(a.right, b.right))
-    return result if result.top < result.bottom and result.left < result.right else None
 
 
 def _bounds(value):
@@ -329,64 +298,10 @@ def place_since(app, first, *, dy=0, dx=0, clip=None):
                                       axes=_translate(plot.axes, dy, dx)) if visible else None
 
 
-def take_since(app, first):
-    """Detach a candidate layout so discarded width probes publish no plots."""
-    state = initialize(app)
-    if not isinstance(first, int) or isinstance(first, bool) or not 0 <= first <= len(state["pending"]):
-        return ()
-    records = tuple(plot for plot in state["pending"][first:] if plot is not None)
-    del state["pending"][first:]
-    return records
 
 
-def put_records(app, records):
-    """Restore only the final candidate's already transformed geometry."""
-    state = initialize(app)
-    for plot in records:
-        if len(state["pending"]) >= MAX_PLOTS:
-            break
-        if isinstance(plot, Plot):
-            state["pending"].append(plot)
 
 
-def map_records(records, mapping, *, dx=0, dy=0, clip=None):
-    """Map native plot rows through wrapping/sticky-header layout.
-
-    The renderer maps each original row to its actual final row. A curve is
-    dropped if its visible rows become noncontiguous or change relative order.
-    Missing rows at the top/bottom merely clip the gesture's visible region.
-    """
-    if any(not isinstance(item, int) or isinstance(item, bool) for item in (dx, dy)):
-        return ()
-    lookup = mapping if callable(mapping) else getattr(mapping, "get", None)
-    if not callable(lookup):
-        return ()
-    clip = _rect(clip) if clip is not None else None
-    output = []
-    for plot in records:
-        if not isinstance(plot, Plot):
-            continue
-        pairs = []
-        for row in range(plot.visible.top, plot.visible.bottom):
-            mapped = lookup(row)
-            if isinstance(mapped, int) and not isinstance(mapped, bool):
-                pairs.append((row, mapped))
-        if not pairs or any(b[0] != a[0] + 1 or b[1] != a[1] + 1 for a, b in zip(pairs, pairs[1:])):
-            continue
-        offset = pairs[0][1] - pairs[0][0] + dy
-        rect = Rect(plot.rect.top + offset, plot.rect.left + dx, plot.rect.bottom + offset, plot.rect.right + dx)
-        visible = Rect(pairs[0][1] + dy, plot.visible.left + dx,
-                       pairs[-1][1] + dy + 1, plot.visible.right + dx)
-        viewport = _translate(plot.viewport, offset, dx)
-        visible = _intersection(visible, clip) if clip is not None else visible
-        if clip is not None:
-            viewport = _intersection(viewport, clip) if viewport else clip
-        if visible:
-            output.append(replace(plot, rect=rect, visible=visible, viewport=viewport,
-                                  axes=_translate(plot.axes, offset, dx)))
-        if len(output) >= MAX_PLOTS:
-            break
-    return tuple(output)
 
 
 def publish(app, width=None, height=None):

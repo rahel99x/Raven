@@ -1,6 +1,8 @@
 """Keyboard preflight forms and deliberately reviewed execution workspaces."""
 from __future__ import annotations
 
+from .user_identity import current_user
+
 import os
 from pathlib import Path
 import queue
@@ -10,7 +12,7 @@ import time
 
 from . import orchestrator, submission
 from .layout import box, vlen
-from .research import clean
+from .research_text import clean
 
 _FIELDS = (("script", "Batch script"), ("workdir", "Working directory"), ("cpus", "CPUs / task"),
            ("mem", "Memory"), ("time", "Wall time"), ("partition", "Partition"), ("gres", "GPU / GRES"))
@@ -67,7 +69,7 @@ def connection_scope(app):
         raise ValueError("execution backend scope exceeds its wrapper limit")
     cfg = getattr(app, "cfg", None)
     getter = getattr(cfg, "get", lambda key, default=None: default)
-    user = getattr(slurm, "user", None) or getattr(app, "user", "")
+    user = getattr(slurm, "user", None) or getattr(app, "user", "") or current_user()
     configured_host = getter("host", "")
     actual_host = getattr(backend, "host", None) or socket.gethostname()
     cluster = (getattr(slurm, "cluster_name", None) or getter("cluster_name", "")

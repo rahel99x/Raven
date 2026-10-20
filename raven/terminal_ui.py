@@ -411,7 +411,7 @@ def _copy(app):
         _say(app, 'Terminal selection exceeds the 2 MiB copy limit', True)
         return False
     from . import clipboard
-    _say(app, clipboard.copy(text, getattr(app, 'state_dir', None), **clipboard.options(app)))
+    _say(app, clipboard.copy_for_app(app, text, getattr(app, 'state_dir', None), **clipboard.options(app)))
     return True
 
 
@@ -628,7 +628,7 @@ def run_command(app, args):
         preview=state.clipboard_preview
         if preview and preview['session']==state.active:
             from . import clipboard
-            _say(app,clipboard.copy(preview['text'],getattr(app,'state_dir',None),**clipboard.options(app)))
+            _say(app,clipboard.copy_for_app(app, preview['text'],getattr(app,'state_dir',None),**clipboard.options(app)))
         state.clipboard_preview=None
         state.report=None
         state.focus_generation+=1; _bump(state)
@@ -1027,7 +1027,7 @@ def header(app, width, *, x=0, y=0):
     Never recover that space by slicing a previous title: a short Details
     document has no scroll gutter and its fourth cell is the letter ``D``.
     """
-    state = initialize(app)
+    _state = initialize(app)
     width = max(0, width)
     focused_pane = getattr(getattr(app, 'layout_state', None), 'focus', 'main') == 'details'
     gutter = 4 if width >= 6 else 0
@@ -1540,12 +1540,11 @@ def _report_document(app,width=None):
 
 
 def _report_window(app,top,page,width):
-    state=initialize(app)
+    _state=initialize(app)
     document=_report_document(app,width)
     if not document['starts'] or page<=0:
         return []
     from .workspace_layout import _wrap_row
-    from .log_text import display_text
     result=[]
     index=max(0,bisect_right(document['starts'],top)-1)
     while index<len(document['source']) and len(result)<page:

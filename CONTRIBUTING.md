@@ -26,7 +26,7 @@ before opening a pull request. CI also builds and smoke-tests the wheel.
 - Add a regression test for a bug or a meaningful new behavior. Use synthetic or sanitized Slurm output.
 - Preserve confirmation before destructive job actions, bounded command timeouts, and source backoff.
 - Keep charts readable without color; include units, empty states, and narrow-terminal behavior.
-- Keep the application terminal-only with ASCII charts and plain-text reports; sanitize terminal control characters in untrusted text.
+- Keep the primary workflow usable in the terminal, with portable reports and optional offline browser trace exports; sanitize terminal control characters in untrusted text.
 - Document flags and configuration changes in the runbook or reference.
 
 Operation descriptors are the source for the [generated field reference](docs/reference/operations.md).

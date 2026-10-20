@@ -38,6 +38,33 @@ def filesystem_kind(path):
 
 
 class StateOwner:
+    @staticmethod
+    def preflight(path):
+        """Read-only path/filesystem checks; never create or lock the store."""
+        from .config_trust import directory_fd, read
+        location = os.path.abspath(os.path.expanduser(os.fspath(path)))
+        candidate = location
+        while not os.path.exists(candidate):
+            following = os.path.dirname(candidate)
+            if following == candidate:
+                break
+            candidate = following
+        try:
+            with directory_fd(candidate):
+                pass
+            lock = os.path.join(location, '.writer.lock')
+            if os.path.lexists(lock):
+                read(lock, user_only=True, limit=65536)
+            kind = filesystem_kind(candidate)
+            if kind not in LOCAL_FILESYSTEMS:
+                return {'state': 'read-only', 'path': location, 'filesystem': kind,
+                        'message': f'Mutable state at {location} requires node-local storage; this path is {kind}. Retained evidence stays readable.'}
+            return {'state': 'available', 'path': location, 'filesystem': kind,
+                    'message': 'Path and local filesystem prerequisites pass; writer ownership is checked when a session opens.'}
+        except (OSError, ValueError) as exc:
+            return {'state': 'read-only', 'path': location, 'filesystem': filesystem_kind(candidate),
+                    'message': 'State path trust check failed: ' + str(exc)}
+
     def __init__(self, path, *, read_only=False, strict=False):
         self.fd = None
         self.status = {"state": "read-only", "message": "Retained state is readable; this session does not write mutable state."}
@@ -63,11 +90,12 @@ class StateOwner:
                                       "Choose a node-local state directory or use --no-state. Retained evidence remains readable.")
         from .config_trust import directory_fd
         lock_path = os.path.join(path, ".writer.lock")
-        with directory_fd(path, create=True) as directory:
+        with directory_fd(path, create=True, _details=True) as (directory, shielded, _):
             fd = os.open(".writer.lock", os.O_RDWR | os.O_CREAT | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=directory)
         self.fd = fd
         info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o022:
+        from .config_trust import unsafe_write
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or unsafe_write(info, shielded=shielded) or info.st_nlink != 1:
             raise StateOwnershipError(f"Unsafe state ownership file: {lock_path}; expected a user-owned regular file without group/other write access.")
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)

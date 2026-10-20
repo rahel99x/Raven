@@ -155,11 +155,12 @@ def analyze(document):
         raise ValueError("At most 160 independently identified observations are supported")
     by_id = {item["id"]: item for item in plan["schedule"]}
     names = [factor["id"] for factor in document["design"]["factors"]]
-    interaction_pairs = list(itertools.combinations(range(len(names)), 2))
-    terms = ["intercept", *names, *[names[a] + ":" + names[b] for a, b in interaction_pairs]]
+    interactions = [indices for size in range(1, len(names) + 1)
+                    for indices in itertools.combinations(range(len(names)), size)]
+    terms = ["intercept", *[":".join(names[index] for index in indices) for indices in interactions]]
     blocks = list(range(1, document["design"]["repetitions"])) if document["design"]["order"] == "blocked" else []
     terms += [f"block:{block}" for block in blocks]
-    matrix, values, checks, seen = [], [], [], set()
+    matrix, values, checks, seen, supported_cells = [], [], [], set(), set()
     reference_hashes = set()
     policy = document["design"]["equivalence"]
     tolerance = max(policy["absolute"], policy["relative"] * abs(policy["reference"]))
@@ -187,16 +188,22 @@ def analyze(document):
         if trial["control"] and semantic and not unsupported: reference_hashes.add(output)
         if semantic and not unsupported:
             coding = trial["coding"]
-            matrix.append([1., *coding, *[coding[a] * coding[b] for a, b in interaction_pairs], *[float(trial["block"] == block) for block in blocks]])
+            supported_cells.add(tuple(coding))
+            matrix.append([1., *[math.prod(coding[index] for index in indices) for indices in interactions],
+                           *[float(trial["block"] == block) for block in blocks]])
             values.append(value)
     for check in checks:
         check["bitwise_change_from_controls"] = None if not reference_hashes else check["output_sha256"] not in reference_hashes
-    fit = _fit(matrix, values, terms)
+    missing_cells = sorted({tuple(trial["coding"]) for trial in plan["schedule"]} - supported_cells)
+    fit = ({"status": "incomplete-design", "n": len(values), "effects": [],
+            "missing_cells": [list(cell) for cell in missing_cells],
+            "reason": "A planned factorial cell has no observation with supported controls and matching semantics; contrasts are not identifiable"}
+           if missing_cells else _fit(matrix, values, terms))
     return {"schema": "raven.factorial-analysis/v1", "status": "experimental", "state": fit["status"],
             "design_sha256": plan["design_sha256"], "fit": fit, "checks": checks,
             "missing_trials": [item["id"] for item in plan["schedule"] if item["id"] not in seen],
             "control_bitwise_variants": len(reference_hashes), "tolerance": tolerance, "unit": policy["unit"],
-            "limit": "Associations within declared randomized trials; no causal percentages. Unexplained residuals include omitted interactions, noise and uncontrolled factors. Unsupported controls and semantic changes are excluded from effect estimation; tolerance failures remain reported outcomes."}
+            "limit": "Full-factorial associations within declared randomized trials; no causal percentages. Every planned cell needs a supported observation. Residuals include noise and uncontrolled factors. Unsupported controls and semantic changes are excluded from effect estimation; tolerance failures remain reported outcomes."}
 
 
 def collect(document, workspaces):
@@ -256,7 +263,7 @@ def collect(document, workspaces):
                 declarations[sequence] = row
         process_path = root / "driver.process.json"
         if process_path.exists():
-            from .ops_investigation import _process_matches
+            from .diagnostic_identity import _process_matches
             process = read(process_path)
             D._object(process, {"pid", "start", "boot", "recipe_sha256"})
             if process["recipe_sha256"] != digest(recipe):

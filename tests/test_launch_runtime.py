@@ -56,7 +56,7 @@ def test_snapshot_is_exclusive_private_and_runs_captured_bytes(tmp_path):
     assert not (tmp_path / "SHOULD_NOT_EXIST").exists()
     assert read(run / "run.json")["provenance"]["script_sha256"] == value["script_sha256"]
     assert (Path(value["runtime_bundle"]).stat().st_mode & 0o777) == 0o400
-    assert (Path(value["runtime_bundle"]).parent.stat().st_mode & 0o777) == 0o500
+    assert (Path(value["runtime_bundle"]).parent.stat().st_mode & 0o777) == 0o700
     with pytest.raises(FileExistsError):
         runtime.supervise(value)
 

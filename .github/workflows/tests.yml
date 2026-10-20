@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: tests-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -25,9 +29,12 @@ jobs:
       - name: Install optional MCP and WASI adapters for runtime qualification
         if: matrix.python == '3.12'
         run: python -m pip install -e '.[mcp,wasi]'
-      - name: Run regression suite
-        run: python -m pytest -q
-      - name: Check incremental package and typing boundaries
+      - name: Run isolated regression suite with two workers
+        run: python -m pytest -q -n 2
+      - name: Verify login and timezone independence
+        if: matrix.python == '3.12'
+        run: env -u USER TZ=America/Los_Angeles python -m pytest -q -n 2 tests/test_review_environment.py tests/test_doctor.py tests/test_adversarial_ui_review.py tests/test_setup_profiles.py tests/test_raven_config.py tests/test_forecast_scenarios.py tests/test_slurm_simulator.py
+      - name: Check core names, typed boundaries and dependency contracts
         run: python scripts/check_quality.py
       - name: Check generated operation reference
         run: python scripts/generate_operation_reference.py --check
@@ -59,13 +66,17 @@ jobs:
               with tarfile.open(archive_path) as archive:
                   archive.extractall(directory, filter="data")
               source, = pathlib.Path(directory).iterdir()
+              assert not (source / "docs/implementation").exists(), "Historical raw evidence must not enter the source distribution"
+              fixtures = source / "tests/fixtures/review-temporal-holdout"
+              assert sorted(str(path.relative_to(fixtures)) for path in fixtures.rglob("*.json")) == ["forecast/model.json", "forecast/result.json", "queue/model.json", "queue/result.json"]
               subprocess.run([sys.executable, "-c",
                   "import pathlib,raven; assert pathlib.Path(raven.__file__).resolve().is_relative_to(pathlib.Path.cwd())"],
                   cwd=source, check=True)
               subprocess.run([sys.executable, "-m", "pytest", "-q",
                   "tests/test_slurm_json.py", "tests/test_slurm_qualification.py",
                   "tests/test_completed_series_identity.py", "tests/test_trace_lab_example.py",
-                  "tests/test_trace_lab_accelerators.py"], cwd=source, check=True)
+                  "tests/test_trace_lab_accelerators.py", "tests/test_forecast_scenarios.py",
+                  "tests/test_slurm_simulator.py", "tests/test_review_environment.py"], cwd=source, check=True)
           PY
       - name: Smoke-test the installed wheel outside the checkout
         shell: bash
@@ -123,3 +134,42 @@ jobs:
             /tmp/raven-instrumentation-benchmark.json
             /tmp/raven-distribution-prototype/manifest.json
             /tmp/raven-update-qualification
+  legacy-bash:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        bash: ['3.2', '4.2']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[dev]'
+      - name: Build pinned GNU Bash and execute bootstrap tests
+        run: python scripts/qualify_bash_compat.py --version '${{ matrix.bash }}' --output '/tmp/raven-bash-${{ matrix.bash }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: legacy-bash-${{ matrix.bash }}
+          path: |
+            /tmp/raven-bash-${{ matrix.bash }}/*.log
+            /tmp/raven-bash-${{ matrix.bash }}/result.json
+  private-group-umask:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[dev]' 'pipx>=1.7,<2'
+      - name: Qualify actual managed and pipx update/revert under umask 002
+        shell: bash
+        run: |
+          umask 002
+          python scripts/qualify_updates.py --pipx --pipx-backend pip --output /tmp/raven-umask002-updates
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: umask002-updates
+          path: /tmp/raven-umask002-updates

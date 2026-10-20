@@ -1,0 +1,2 @@
+# Recorded scheduler output retains its exact physical whitespace.
+tests/fixtures/slurm-native/*.txt whitespace=-blank-at-eol

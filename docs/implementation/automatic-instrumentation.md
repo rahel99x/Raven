@@ -15,7 +15,7 @@ explicit external gates, not simulated passes.
 | `Handoff the @raven metrics micro-API.md` | Optional application API, bounded writer, rank policy, semantic presentation, vendoring and qualification. |
 | Handoff snapshot | `33316a0`, Raven 7.0.0; descriptive line numbers and existing-behavior claims require revalidation. |
 | Implementation base | `b52cd93e2b7581eeff6e9f601ad13765f4618a0c`; branch `codex/automatic-tracing-and-metrics-api`. |
-| Delivered sources | Exact runtime, test, schema and harness hashes in [integration evidence](automatic-instrumentation-evidence.json); local feature branch, not published. |
+| Delivered sources | Exact runtime, test, schema and harness hashes in [integration evidence](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/automatic-instrumentation-evidence.json); local feature branch, not published. |
 
 The full attached documents were available under `/workspace/attachments` and
 read before implementation. Their program-type matrices, test checklists,
@@ -194,7 +194,7 @@ unchanged `metrics.jsonl` line format and manual `write_metric`/Bash alternative
 ## Qualification record
 
 The delivered runtime and tests are identified by SHA-256 in
-[integration evidence](automatic-instrumentation-evidence.json). The initial
+[integration evidence](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/automatic-instrumentation-evidence.json). The initial
 checkout was clean. Changes are isolated to
 `codex/automatic-tracing-and-metrics-api`; no remote publication or merge was
 performed. Git revision alone does not identify the earlier uncommitted benchmark

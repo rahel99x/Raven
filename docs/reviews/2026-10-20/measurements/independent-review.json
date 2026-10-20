@@ -1,0 +1,88 @@
+{
+  "schema": "raven.independent-root-review/v1",
+  "reviewer": "review_mutations",
+  "scope": "Skeptical review of current COL and ANA implementations, independent of root author",
+  "findings": [
+    {
+      "id": "COL-5-review-fairness",
+      "status": "author_fixed_focused_checks_reported",
+      "evidence": "Actual Server.admit_read method, nine clients each4Hz, initial globaltokens0,40ticks250ms and fixed client order: accepted [40,40,40,40,40,40,40,40,0]. Reproduces starvation without a fake scheduler.",
+      "fix": "Author reports authorized requester-only peerUID fair sharing, rotated ready polling, global/perclient caps.",
+      "validation": "Author reports139 collection/fairness+metadata tests; cases9sameUID balanced progress, manyUID global bound and64idle peers. Final integrated checks required."
+    },
+    {
+      "id": "COL-1-review-plural-metadata",
+      "status": "author_fixed_focused_checks_reported",
+      "evidence": "Recorded26.05.5 running-squeue JSON, change meta.plugin to meta.plugins only, Slurm.jobs() raised raw KeyError plugin after document accepted metadata. No claim this synthetic dialect is live-qualified.",
+      "fix": "Shared parser_identity consumes validated metadata spelling and native status uses it.",
+      "validation": "Author reports139 collection/fairness+metadata tests; final integrated checks required."
+    },
+    {
+      "id": "ANA-2-review-offset-phase",
+      "status": "author_fixed_focused_checks_reported",
+      "evidence": "Seed19 Gaussian\u03c31,3000samples levels0/100/102 produces boundaries[0,1000,2000]; add10000 to all samples and 1%-of-median normalization loses last boundary [0,1000]. Same signal differences/noise; offset changes result.",
+      "fix": "Normalization now max(robustnoise,16*ULP(center),1e-9), no1%DCfloor.",
+      "validation": "Author reports48phase tests; final integrated checks required."
+    },
+    {
+      "id": "COL-DATA-review-accounting-restarts",
+      "status": "fixed_verified",
+      "evidence": "Actual recorded26.05.5 accounting-json raw restart_cnt0 was discarded as Finished.restartsNone; scheduler_attempt(record,{}) abstained despite complete exact proof.",
+      "fix": "Accounting normalizer retains explicit restart_cnt, preserving exact attempt identity on completion without inferring missing zero.",
+      "validation": ".venv/bin/python -m pytest -q tests/test_slurm_json.py tests/test_trace_browser.py:50passed1.37s. Regression reads real recorded queue/accounting and preserves Store verified identity/sample through completion."
+    },
+    {
+      "id": "DATA-21-review-browser-export-location",
+      "status": "fixed_verified",
+      "evidence": "trace_browser.request selected state_dir/exports or cwd/raven-exports, bypassing durable export root even after table/log exports moved.",
+      "fix": "Browser background task uses shared durable export_dir, honoring RAVEN_EXPORT_DIR; UI remains free of directory I/O.",
+      "validation": "Same50test run;4cases state/no-state\u00d7default/configured root verify no cwd/state export, privatefile, background-onlydirectorycreation."
+    },
+    {
+      "id": "CLI-review-workload-output-ownership",
+      "status": "fixed_verified",
+      "evidence": "Local --json --receipt-file workload exited7 but raven_launch and cli JSON wrappers appended a Ravenerror document to applicationstdout; workloadstderr receipt was mistaken for launchfailure.",
+      "fix": "Pure int-compatible ApplicationExit marks only executed localworkloads; JSON boundaries preserve their stream/statusownership, while preexecution failures remain structured.",
+      "validation": "6actual local shell variants:0/7exit\u00d7python-m/directcli/heavy; targetedearlyerrorcoverage passes.168relatedtests13.98s; extra receiptpublicationfailure1test0.49s proves applicationstatus/streams and do-not-resubmit diagnostic."
+    },
+    {
+      "id": "DATA-21-review-atomic-export-visibility",
+      "status": "fixed_verified",
+      "evidence": "Generic export.write opened the finalname beforewrite/fsync, so readers couldobserve unfinishedpublication even though symlink/exclusivity protectionwas correct.",
+      "fix": "Private stage fullywritten/flushed before exclusivehardlink, directoryfsync and owned stagecleanup. Existingfiles/symlinks remain untouched.",
+      "validation": "Namedfile absent at filefsync, complete at directoryfsync; flush/publishfailures leave no output/temp; prior nooverwritesymlinktests preserved.21targeted and168relatedtests pass."
+    }
+  ],
+  "reviewed_without_additional_verified_fault": [
+    "platform_session native-X accounting suffix coverage / partial status and inspection policy",
+    "slurm_json record quarantine and source fallback",
+    "sampler bounded stale retention and departure semantics",
+    "scientific_lineage incidence-indexed lazy heap and prerequisites",
+    "tradeoff percomparison normalization memo, cohort identity and provenance",
+    "expression shared evaluation/storage limits and bounded representations"
+  ],
+  "limits": [
+    "No performance/GPU/production cluster claim from these small deterministic reproductions",
+    "Fix verification above cites author focused checks; final delivered integrated tests remain root release gate"
+  ],
+  "source_sha256": {
+    "raven/session_service.py": "3c34dc40f865177d2da098d95d7cd4a0f4a25d9178fcf002bf8a51c376233713",
+    "raven/slurm_json.py": "704182177643cb4229b9942b3b73b58e3aa092fc26f3373d103d5b72a0b9c2af",
+    "raven/slurm.py": "12eeffc111f882e6a3e66d1a584312f1cf276a20f4c7f335395a1190ab9ac027",
+    "raven/phase_alignment.py": "b237ad2252d7090ff3427ac308f50d39594d5307000c907e2b14a43309fb2d71",
+    "raven/trace_browser.py": "2ef4e37d4098cf407cf17a88b26a01577f559cd79a0d41e0c94b0e47863fd360",
+    "raven/cli_output.py": "70b1722b9f555bea25cd890c69f1aa33b1ea0a3d4ef1aed3856259599d4b6edc",
+    "raven/cli.py": "9d0284a364e52233ba9676ba5cf1ec5f17850760f3dde10e252ebfe783019a3e",
+    "raven/raven_launch.py": "da95214cff0a5a60c9c784cbe704eda7e7271c7f4942cb029ece32641850f898",
+    "raven/launch.py": "4ecf8342f530282afaa17d94051a5f0f28a92acc42086da1f88e4c96a1d786b2",
+    "raven/export.py": "9994a4ee4a397f9bd1f4e836fd0bcdfb146677479c72f711a907d353e5a616f2",
+    "raven/workbench.py": "8d36c203e91cb5d057224f348d48a3f29d687350597605b86a37e7acd6535ab9"
+  },
+  "validation_logs": [
+    "/workspace/review-final-fidelity-polish.log",
+    "/workspace/review-final-cli-export.log",
+    "/workspace/review-cli-export-integrated.log",
+    "/workspace/review-final-export-fidelity.log",
+    "/workspace/review-receipt-recovery.log"
+  ]
+}

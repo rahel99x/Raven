@@ -1,11 +1,12 @@
 """Confined project reads on the selected SSH host, using only its Python stdlib.
 
-The helper carries the installed reader implementation in memory. It installs
-nothing remotely, imports no project code, and exposes only explicit read
-operations. This keeps local and SSH path/identity validation identical.
+The helper caches a content-addressed reader bundle in a private remote
+temporary directory. It imports no project code and exposes only explicit
+read operations, keeping local and SSH path/identity validation identical.
 """
 from __future__ import annotations
 
+import ast
 import base64
 from functools import lru_cache
 import json
@@ -14,12 +15,14 @@ import hashlib
 import secrets
 import lzma
 
-from .remote import RemoteFiles
+from .remote_files import RemoteFiles
 
 _MODULES = ("projects", "artifacts", "remote", "slurm", "model", "clock", "history_snapshots", "ui_state",
             "series_archive", "series_publication", "series_cache_limits", "predict", "planning_io", "log_catalog", "provenance", "array_manifest",
             "artifact_pages", "log_presentation", "retained_telemetry_io",
-            "series_identity", "state_ownership", "config_trust")
+            "series_identity", "state_ownership", "config_trust", "transport_errors",
+            "log_text", "log_paths", "user_identity", "report_lock", "source_budget",
+            "local_files", "remote_files", "project_files")
 _OPERATIONS = {"discover_project", "discover_job", "select_run", "read_bound_json",
                "read_bound_passport", "read_bound_artifacts", "read_bound_tail",
                "read_bound_metric_chunk", "read_bound_telemetry", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"}
@@ -91,8 +94,24 @@ def identity(files):
 def _payload():
     root = Path(__file__).parent
     sources = {"raven": ""}
-    for name in _MODULES:
-        sources["raven." + name] = (root / (name + ".py")).read_text(encoding="utf-8")
+    pending = list(_MODULES)
+    while pending:
+        name = pending.pop()
+        if "raven." + name in sources:
+            continue
+        source = (root / (name + ".py")).read_text(encoding="utf-8")
+        sources["raven." + name] = source
+        # Keep module-level reader dependencies synchronized with extracted
+        # pure ports without shipping the UI's lazy import graph.
+        nodes = list(ast.parse(source).body)
+        while nodes:
+            node = nodes.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            if isinstance(node, ast.ImportFrom) and node.level == 1:
+                children = [node.module.split(".")[0]] if node.module else [item.name for item in node.names]
+                pending.extend(child for child in children if (root / (child + ".py")).is_file())
+            nodes.extend(ast.iter_child_nodes(node))
     data = json.dumps(sources, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
     if len(data) > 2 * 1024 * 1024:
         raise ValueError("project reader source exceeds its transfer budget")
@@ -102,7 +121,7 @@ def _payload():
     packed = base64.b64encode(lzma.compress(data, preset=6)).decode("ascii")
     if len(packed) > 512 * 1024:
         raise ValueError("project reader bundle exceeds its transfer budget")
-    return tuple(packed[i:i + 32000] for i in range(0, len(packed), 32000))
+    return tuple(packed[i:i + 24576] for i in range(0, len(packed), 24576))
 
 
 def request(files, operation, *args, **kwargs):
@@ -125,11 +144,23 @@ def request(files, operation, *args, **kwargs):
     if len(encoded) > 65536:
         raise ValueError("project reader request exceeds its metadata budget")
     payload = _payload()
-    if sum(map(len, payload)) + len(encoded) * 2 + len(_BOOTSTRAP) > 120000:
-        raise ValueError("project reader command exceeds the SSH argument budget")
+    digest = hashlib.sha256("".join(payload).encode("ascii")).hexdigest()
+    from .project_wire import command
+    cached = getattr(files, "_project_reader_bundle", None)
+    root = cached[2] if cached and cached[:2] == (request_identity, digest) else ""
     try:
         runner = getattr(files, "project_command", ssh.run)
-        output, _ = runner(["python3", "-I", "-S", "-c", _BOOTSTRAP, encoded, *payload], files.timeout)
+        output, _ = runner(command("read", digest, root, encoded, len(payload)), files.timeout)
+        # A cache miss carries no project data and executes no uploaded code.
+        # Publish bounded, idempotent chunks, then retry the original request.
+        missing = json.loads(output).get("raven_cache_missing") if isinstance(output, str) and len(output) < 8192 else None
+        if missing:
+            if not isinstance(missing, str) or len(missing) > 4096:
+                raise ValueError("invalid remote reader cache root")
+            for index, chunk in enumerate(payload):
+                runner(command("upload", digest, missing, str(index) + ":" + chunk, len(payload)), files.timeout)
+            output, _ = runner(command("read", digest, missing, encoded, len(payload)), files.timeout)
+            files._project_reader_bundle = (request_identity, digest, missing)
     except Exception as exc:
         from .raven_collection import Deferred
         if isinstance(exc, Deferred):

@@ -8,8 +8,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
-import selectors
 import socket
 import subprocess
 import sys
@@ -158,7 +156,7 @@ def collect(command, *, project, job_id, attempt=None, cluster=None,
                 if recorder is None:
                     if len(recorders) >= max_streams:
                         raise ValueError("Native stream limit reached")
-                    from .trace_recorder import _process_start
+                    from .trace_recorder import _process_start as _process_start
                     recorder = Recorder(project, job_id=job_id, attempt=attempt or "native-" + session,
                         cluster=cluster, stream_id=expected_stream, max_bytes=max_mib << 20, initial_mono_ns=event["mono_ns"], background_flush=False,
                         coverage={"adapter": "cooperative-native-socket", "scope": "Explicit SDK events in this process/thread; uninstrumented calls and device execution are unknown",

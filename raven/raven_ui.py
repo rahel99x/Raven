@@ -257,6 +257,8 @@ def _choices(app):
     choices = [('inspect', 'Inspect allocation')]
     if snap.get('cleanup_uncertain'):
         choices.append(('cleanup', 'Retry cleanup'))
+        if callable(getattr(getattr(app, 'raven_allocation_manager', None), 'forget_request', None)):
+            choices.append(('forget', 'Forget this request'))
     elif snap.get('state') == 'light':
         choices.append(('retry', 'Retry Heavy') if snap.get('startup', {}).get('retryable')
                        else ('request', 'Request compute'))
@@ -330,7 +332,7 @@ def run_command(app, args):
         _open(app)
         _say(app, 'Compute is unavailable: start Raven with an explicit site profile.', True)
         return True
-    if action in ('request', 'retry', 'cancel', 'release', 'cleanup'):
+    if action in ('request', 'retry', 'cancel', 'release', 'cleanup', 'forget'):
         _collect(app)
         snap = status(app)
         if action not in {item[0] for item in _choices(app)}:
@@ -382,6 +384,9 @@ def run_command(app, args):
                     result = manager.request(plan=review['plan'])
             elif action == 'cleanup':
                 result = manager.retry_cleanup(generation=review['snapshot'].get('generation'))
+            elif action == 'forget':
+                result = manager.forget_request(generation=review['snapshot'].get('generation'),
+                    request_id=review['snapshot'].get('request_id'), confirmed=True)
             elif action in ('cancel', 'release'):
                 startup = getattr(manager, 'background_startup', None)
                 result = (startup.cancel(generation=review['snapshot'].get('generation')) if startup is not None
@@ -428,7 +433,11 @@ def _lines(app):
             if review['action'] == 'retry' and snap.get('startup', {}).get('reuse_job'):
                 lines.append('Reverify and reuse allocation '+_text(snap['startup']['reuse_job'])+'; never request a replacement allocation.')
         else:
-            lines.append('Only this Raven request and its owned worker are targeted.')
+            if review['action'] == 'forget':
+                lines.append('Confirm only after independently checking the exact scheduler request and its original login host.')
+                lines.append('This forgets Raven bookkeeping. It does not cancel or verify release of compute; an old allocation may still be billed. Its original receipt is archived.')
+            else:
+                lines.append('Only this Raven request and its owned worker are targeted.')
     for key in ('generation', 'request_id', 'job_id', 'host', 'remaining_seconds', 'ownership', 'resources', 'qualification', 'recovery', 'error'):
         if snap.get(key) is not None:
             value = snap[key]

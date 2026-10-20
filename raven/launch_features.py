@@ -98,6 +98,9 @@ def readiness(features, settings, *, execution="slurm", gpu=False, trace=False, 
                       "Native or MPI tracing requires the existing cooperative SDK or prepared MPI adapter; "
                       "this launch does not retrofit binary instrumentation or add rank wrappers.")
         rows.append({"feature": "trace", "label": "Stack tracing", "status": status, "reason": reason})
+        if settings.get("trace_cpu_placement"):
+            rows.append({"feature": "trace-cpu-placement", "label": "CPU placement", "status": "will-verify",
+                         "reason": "Optional Linux sched_getcpu observations on the application host, grouped by known socket/core/logical CPU. Each point describes one event-time query; continuous CPU residency and unobserved cores remain unknown. Unsupported hosts keep recording without CPU placement."})
     if metric_client is not None:
         append_metrics_readiness(rows, metric_client)
     return rows

@@ -41,7 +41,7 @@ def validate(document, binding):
 
 def rows(document, width, *, ascii_=False):
     """Small retained document; no source IO or scheduler side effects."""
-    from .research import clean
+    from .research_text import clean
     plan, receipt = document["plan"], document["receipt"]
     output = []
     def add(text, style=""):

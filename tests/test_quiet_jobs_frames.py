@@ -18,6 +18,9 @@ def scene(monkeypatch):
     monkeypatch.setattr(screen.time,'monotonic',lambda:now[0])
     monkeypatch.setattr(screen.time,'time',lambda:now[0])
     monkeypatch.setattr(clock,'now',lambda:now[0])
+    # Exercise repeated housekeeping independently of the production 1 s idle
+    # interval. A separate regression below verifies that actual default.
+    monkeypatch.setattr(screen,'MAINTENANCE_SECONDS',.2)
     cfg=Config({'animations':True,'startup_animation':False,'log_lines':0,
                 'raven':{'managed':True,'collection':{'slurm_enabled':True}}})
     store=Store(persist=False,raven_limits=LightLimits({}))
@@ -41,7 +44,7 @@ def maintenance(scene,elapsed=.201):
     return scene.cache.maintain(scene.app,160,40)
 
 
-def test_four_housekeeping_passes_reuse_document_then_second_boundary_refreshes(scene,monkeypatch):
+def test_four_housekeeping_passes_reuse_document_then_second_boundary_patches_clock(scene,monkeypatch):
     s=scene
     assert s.cache.document_token is not None
     rows,hits,graph=s.cache.rows,s.cache.hits,s.app.interaction_state['graph']
@@ -55,7 +58,10 @@ def test_four_housekeeping_passes_reuse_document_then_second_boundary_refreshes(
     assert len(s.ticks)==5 and s.cache.rows is rows and s.cache.hits is hits
     assert s.app.interaction_state['graph'] is graph
     assert maintenance(s)
-    assert s.cache.due(s.app,160,40)
+    assert not s.cache.due(s.app,160,40)
+    assert s.cache.clock_changed
+    assert s.cache.rows is rows and s.cache.hits is hits
+    assert s.app.interaction_state['graph'] is graph
     assert len(s.ticks)==6
 
 
@@ -137,20 +143,69 @@ def test_message_expiry_and_manager_publication_invalidate_without_source_call(s
     assert maintenance(s) and s.cache.dirty
 
 
-@pytest.mark.parametrize('reason',['graph','completion','scrolling','startup','other-pane','other-page','terminal','unknown-store','unmanaged'])
+@pytest.mark.parametrize('reason',['graph','completion','scrolling','startup','terminal','unknown-store','unmanaged'])
 def test_unknown_or_animating_views_keep_original_document_deadline(scene,monkeypatch,reason):
     s=scene
     if reason=='graph': monkeypatch.setattr('raven.metric_live.document_interval',lambda app:.1)
     elif reason=='completion': s.app.completion=SimpleNamespace(active=True)
     elif reason=='scrolling': monkeypatch.setattr('raven.scrolling.active',lambda app:True)
     elif reason=='startup': monkeypatch.setattr('raven.startup.active',lambda app:True)
-    elif reason=='other-pane': s.app.job_panel_state['mode']='analytics'
-    elif reason=='other-page': s.app.tab='history'
     elif reason=='terminal': monkeypatch.setattr('raven.terminal_ui.showing',lambda app:True)
     elif reason=='unknown-store': s.app.store=SimpleNamespace()
     else: s.app.cfg.data.pop('raven')
     assert not maintenance(s)
     assert s.cache.due(s.app,160,40)
+
+
+@pytest.mark.parametrize('target',['other-pane','other-page'])
+def test_native_view_identity_change_invalidates_then_reuses_verified_publication(scene,target):
+    s=scene
+    if target=='other-pane': s.app.job_panel_state['mode']='analytics'
+    else: s.app.tab='history'
+    assert maintenance(s) and s.cache.dirty
+    s.cache.rebuild(s.app,s.views,s.store,None,160,40,maintained=True)
+    assert s.cache.document_token is not None
+    assert maintenance(s) and not s.cache.dirty
+
+
+def test_default_native_idle_wait_is_one_second_but_publications_invalidate_immediately(scene,monkeypatch):
+    s=scene
+    monkeypatch.setattr(screen,'MAINTENANCE_SECONDS',1.)
+    s.cache.rebuild(s.app,s.views,s.store,None,160,40)
+    before=len(s.ticks)
+    assert s.cache.next_maintenance==1001.
+    assert not maintenance(s,.2) and len(s.ticks)==before
+    s.store.apply_jobs([Job('8','new publication','cpu','RUNNING')])
+    assert s.cache.maintain(s.app,160,40)
+    assert s.cache.dirty and s.cache.due(s.app,160,40)
+    assert len(s.ticks)==before+1
+
+
+def test_native_wall_clock_deadline_patches_without_housekeeping_or_document(scene,monkeypatch):
+    s=scene
+    monkeypatch.setattr(screen,'MAINTENANCE_SECONDS',1.)
+    monkeypatch.setattr(clock,'now',lambda:s.now[0]+.4)
+    s.cache.rebuild(s.app,s.views,s.store,None,160,40)
+    before=len(s.ticks)
+    assert s.cache.next_document==pytest.approx(1000.6)
+    monkeypatch.setattr(s.store,'render_snapshot',lambda:pytest.fail('clock copied source'))
+    monkeypatch.setattr(s.views,'compose',lambda *a,**k:pytest.fail('clock rebuilt document'))
+    assert maintenance(s,.61)
+    assert s.cache.clock_changed and not s.cache.due(s.app,160,40)
+    assert len(s.ticks)==before
+
+
+@pytest.mark.parametrize('tab',['log','jobs','history'])
+def test_visible_active_file_sessions_retain_their_next_poll(scene,tab):
+    s=scene
+    s.app.tab=tab
+    if tab=='log': s.app.logs.path='/published/job.log'
+    else:
+        s.app.job_panel_state.update(mode='files',session=SimpleNamespace(path='/published/job.log'))
+    assert screen._quiet_jobs_token(s.app) is None
+    # Merely retaining an old session on another page must not disable caching.
+    s.app.tab='sources'
+    assert screen._quiet_jobs_token(s.app) is not None
 
 
 def test_direct_mutation_in_unmanaged_fixture_keeps_original_fallback(scene):

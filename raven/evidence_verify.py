@@ -18,7 +18,6 @@ import shutil
 import stat
 import struct
 import subprocess
-import sys
 
 NAMESPACE = 'raven.evidence.v1'
 SCHEMA = 'raven.signed-evidence-manifest/v1'

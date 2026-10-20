@@ -13,7 +13,6 @@ import os
 from pathlib import Path
 import re
 import shlex
-import sys
 import threading
 
 from . import raven_config as C
@@ -234,7 +233,8 @@ class ProfileSetup:
             if worker_python and not os.path.isabs(worker_python):
                 raise ValueError("Worker Python must be an absolute path on the execution host.")
             if not worker_python and kind != "ssh-slurm":
-                worker_python = sys.executable
+                from .install_paths import worker_python as stable_python
+                worker_python = stable_python()
             if heavy is None:
                 heavy = {}
             if not isinstance(heavy, dict) or set(heavy) - set(S.FIELDS):

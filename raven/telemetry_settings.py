@@ -10,8 +10,8 @@ import os
 import time
 from pathlib import Path
 
-from .telemetry_profiles import (DEFAULTS, FIELDS, PRESETS, VALUES,
-                                 validate_custom, value_fraction)
+from .telemetry_profiles import DEFAULTS, FIELDS, PRESETS, VALUES, validate_custom
+from .telemetry_profiles import value_fraction as value_fraction
 
 _SOURCES = {"jobs": "queue_seconds", "starts": "starts_seconds", "finished": "history_seconds",
             "nodes": "inventory_seconds", "partitions": "inventory_seconds", "details": "details_seconds",
@@ -81,14 +81,14 @@ def _policies(state):
 
 def _calculate(app, state, position):
     from . import raven_config as C
-    from .refresh_rate import validate_multiplier
+    from .cadence import validate_multiplier
     value = copy.deepcopy(state["baseline"])
     heavy = _heavy(app)
     value["execution"]["startup"] = "heavy" if heavy else "light"
     if heavy:
         requested = state["custom"] if state["preset"] == "custom" else VALUES[state["preset"]]
         value["collection"].update(requested)
-    from .refresh_rate import recordings_interval
+    from .cadence import recordings_interval
     recordings = recordings_interval(app)
     if recordings is not None:
         value["collection"]["trace_seconds"] = recordings
@@ -121,7 +121,7 @@ def _calculate(app, state, position):
 
 
 def _effective(app, state, position=None):
-    from .refresh_rate import multiplier, recordings_interval, validate_multiplier
+    from .cadence import multiplier, recordings_interval, validate_multiplier
     position = validate_multiplier(multiplier(app) if position is None else position)
     key = (_heavy(app), state["revision"], state["preset"], tuple(state["custom"].items()), position,
            recordings_interval(app))
@@ -138,7 +138,7 @@ def sync(app):
     state = initialize(app)
     if state is None:
         return False
-    from .refresh_rate import multiplier, recordings_interval
+    from .cadence import multiplier, recordings_interval
     signature = (_heavy(app), state["revision"], multiplier(app),
                  recordings_interval(app),
                  id(getattr(app, "sampler", None)), id(getattr(app, "research", None)),
@@ -183,7 +183,7 @@ def settings_snapshot(app):
         raise ValueError("Telemetry presets require raven, ravenl or ravenh with a managed site profile.")
     collection, limits = _effective(app, state)
     effective = {field["key"]: collection[field["key"]] for field in FIELDS}
-    from .refresh_rate import multiplier
+    from .cadence import multiplier
     position = multiplier(app)
     for source, key in _SOURCES.items():
         if key in effective:
@@ -208,16 +208,18 @@ def apply_settings(app, preset, custom=None, *, persist=False):
     draft = {**state, **preferences}
     _effective(app, draft, 1)
     before = {key: copy.deepcopy(state[key]) for key in ("preset", "custom", "revision", "signature")}
-    from . import refresh_rate
-    old_position = refresh_rate.multiplier(app)
+    from . import refresh_preferences
+    from .cadence import multiplier
+    old_position = multiplier(app)
     state.update(preferences)
     state["revision"] += 1
     try:
-        refresh_rate.set_multiplier(app, 1)  # A preset restores its stated intervals.
+        refresh_preferences.set_multiplier(app, 1)  # A preset restores its stated intervals.
         sync(app)
     except (ValueError, RuntimeError, OSError):
         state.update(before)
-        refresh_rate.set_multiplier(app, old_position)
+        refresh_preferences.set_multiplier(app, old_position)
+        sync(app)
         raise
     result = settings_snapshot(app)
     result["message"] = (preset.title() + " telemetry applied live." if result["heavy"] else
@@ -240,7 +242,7 @@ def prepare_save(app):
 def save_settings(request):
     """Merge only telemetry preferences; atomically preserve unrelated edits."""
     from . import raven_config as C
-    from .setup_config import _read_snapshot, _decode, _atomic_write
+    from .setup_config import _atomic_write, _decode, _read_snapshot
     preferences = _preference(request["preferences"])
     path = Path(request["path"]).expanduser().absolute()
     raw, token = _read_snapshot(path)

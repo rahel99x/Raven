@@ -9,8 +9,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from . import evidence, investigation_planner, operations as O, science_contracts as C
+from . import evidence, operations as O, science_contracts as C
 from .derived_results import RESULTS, ResultKey
+from .science_analysis import analyze as _analyze
 
 SCHEMA = "raven.investigation-workflow/v1"
 VERSION = "1"
@@ -21,21 +22,13 @@ UNKNOWN = {"unknown", "inconclusive", "expired", "stale", "inapplicable", "scien
 _ABSENT = object()
 
 
+
+
+
 def analyze(operation, document, ctx, *, identity=None, settings=None):
-    """The standalone form and staged workflow use the identical pure analysis."""
-    from .ops_investigation import _READERS
-    function = _READERS[operation][2]
-    O.checkpoint(ctx)
-    # Recommendation expiry is a wall-clock predicate. Never retain it under a
-    # source-only revision, even when its underlying evidence has not changed.
-    if operation == "recommendation":
-        return function(document)
-    revision = evidence.digest(document)
-    selection = [O._identity(job) for job in ctx.jobs + ctx.finished if ctx.selected and str(job.get("id")) == ctx.selected]
-    source_identity = {"source": identity or {"document_sha256": revision}, "selected_scheduler_attempts": selection}
-    key = ResultKey.create(scope=ctx.scope, identity=source_identity,
-                           revision=revision, algorithm=operation, version=VERSION, settings=settings)
-    return RESULTS.get_or_compute(key, lambda: function(document), cancel=ctx.cancel)
+    """Retain the released cache override while sharing the analysis engine."""
+    return _analyze(operation, document, ctx, identity=identity, settings=settings,
+                    cache=RESULTS, version=VERSION)
 
 
 def validate(document, ctx):

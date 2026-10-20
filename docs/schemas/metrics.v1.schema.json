@@ -8,6 +8,12 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "pid": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807,
+      "description": "Optional emitting process id, scoped to this run and host."
+    },
     "t": {
       "type": "number",
       "minimum": 0,

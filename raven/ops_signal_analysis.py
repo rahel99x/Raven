@@ -21,6 +21,9 @@ def run(feature, params, ctx):
         else:
             rows = [f"{label} phase {i}: {item['start_seconds']:g}–{item['end_seconds']:g} s; {item['samples']} samples; {item['status']}"
                     for label, key in (("Reference", "reference_segments"), ("Candidate", "candidate_segments")) for i, item in enumerate(result[key])]
+        omitted = sum(len(result[key].get("omitted_blocks", ())) for key in ("reference", "candidate"))
+        if omitted:
+            rows.insert(0, f"Partial coverage: {omitted} disconnected observation blocks omitted; exact ranges remain in the result")
         return O.report(feature, "Experimental phase comparison; original recordings are unchanged", rows=rows, data=result,
                         warnings=[result["qualification"], result["reversible"]])
     if feature != "telemetry-anomalies":

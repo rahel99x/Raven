@@ -10,7 +10,7 @@ import re
 import time
 
 from . import layout as L
-from .research import clean
+from .research_text import clean
 
 MODE = "job_group_menu"
 PANE = "modal:job-groups"

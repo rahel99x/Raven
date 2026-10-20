@@ -16,8 +16,8 @@ import sys
 import time
 
 from . import charts, chart_tools, chart_interaction, clock, layout as L, scrollbars as S
-from .model import human, secs, short_duration, stamp
-from .research import clean
+from .model import human, short_duration
+from .research_text import clean
 
 MAX_METRICS = 64
 MAX_POINTS = 10000
@@ -74,6 +74,10 @@ def context_click(app, y, x, button="left"):
     # This also makes direct handler callers preserve graph-reset precedence.
     if chart_interaction.handle_mouse(app, y, x, button="right"):
         return True
+    # The foreground modal owns this gesture even when App.click dispatches
+    # directly through the focus stack instead of the screen adapter.
+    from .job_selection import clear_lines
+    clear_lines(app)
     state = initialize(app)
     modal = state.get("modal")
     if modal in ("chart", "timeline", "chart_events"):
@@ -413,7 +417,8 @@ def _source_row(g, source, metadata, *, app=None, identity=None):
         cadence = " | observed cadence " + (format_delta(extra[0]) if _finite(extra[0]) else "unknown")
     polling = ""
     if app is not None and identity is not None:
-        from . import metric_live, metric_sampling
+        from . import metric_live
+        from . import metric_sampling_runtime as metric_sampling
         if metric_live._eligible(app, metric_live.canonical(identity)):
             seconds = metric_sampling.cadence(app, identity)
             if seconds is not None:
@@ -577,7 +582,8 @@ def _playback_resolution(app, identity, metadata, following):
 def _present_history(app, identity, *, interactive, g, width, height, times, low, high,
                      axis, cadence, acquired, last, now, source_token, following):
     """Keep an automatic history frame until its measured geometry can change."""
-    from . import metric_live, metric_playback, metric_sampling
+    from . import metric_live, metric_playback
+    from . import metric_sampling_runtime as metric_sampling
 
     presentation = ("reported-modal" if interactive else "reported-card", identity)
     if not following:
@@ -1337,7 +1343,7 @@ def handle_key(app, key):
             return True
         if (getattr(app, "mode", "main") == "main" and getattr(app, "tab", "") == "research"
                 and getattr(app, "research_view", "") == "experiment" and key in ("up", "down")):
-            from .research import select_job
+            from .ui.research_binding import select_job
             snap = app.store.snapshot()
             ids = list(dict.fromkeys(job.id for job in snap.get("jobs", []) + snap.get("finished", [])))
             if ids:
@@ -1442,7 +1448,7 @@ def handle_key(app, key):
         app.mode, state["modal"] = "main", ""
         app.open_log(state.get("job"))
     elif modal == "inspect" and key == "e":
-        from .research import select_job
+        from .ui.research_binding import select_job
         from .navigation_ui import record
         record(app, "research", force=True)
         app.mode, state["modal"] = "main", ""
@@ -1828,7 +1834,11 @@ def overlay(views, snap, app, width, height):
 
 
 def handle_mouse(app, y, x, button="left", shift=False):
-    if getattr(app, "mode", "main") != "analysis" or button != "left":
+    if getattr(app, "mode", "main") != "analysis":
+        return False
+    if button == "right":
+        return context_click(app, y, x, button=button)
+    if button != "left":
         return False
     state = initialize(app)
     for row, kind, value in state.get("control_hits", []):

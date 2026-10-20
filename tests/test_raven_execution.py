@@ -152,12 +152,12 @@ def test_worker_disconnection_never_invokes_local_handler():
         router.dispatch("statistics", {"document": comparison()})
 
 
-def test_wrong_context_receipt_is_rejected_before_ack():
+def test_wrong_context_receipt_is_rejected_and_releases_only_its_owned_slot():
     worker = ReadyWorker()
     worker.poll = lambda: worker.tasks["task1"]["result"].update(context_sha256="0"*64)
     with pytest.raises(R.AdmissionError, match="another execution"):
         R.ExecutionRouter(LIGHT, lambda: worker).dispatch("statistics", {"document": comparison()})
-    assert worker.acked == []
+    assert worker.acked == ["task1"]
 
 
 def test_managed_heavy_mutation_cannot_reuse_legacy_apply(monkeypatch):

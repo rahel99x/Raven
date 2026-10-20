@@ -209,7 +209,7 @@ def activate(app, job_id):
     elif app.tab == "log":
         app.open_log(job_id)
     elif app.tab == "research":
-        from .research import select_job
+        from .ui.research_binding import select_job
         select_job(app, job_id)
     else:
         app.selected_id = job_id

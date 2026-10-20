@@ -42,7 +42,7 @@ def compile_recipe(intent, site, *, cancel=None):
         if name in names:
             raise ValueError("Duplicate adapter ID")
         names.add(name)
-        provides = unique_names(adapter["provides"], "provided observations", 64)
+        _provides = unique_names(adapter["provides"], "provided observations", 64)
         unique_names(adapter["conflicts"], "adapter conflicts", 16)
         _cost(adapter["cost"])
         if not isinstance(adapter["permitted"], bool):

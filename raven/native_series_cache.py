@@ -102,7 +102,7 @@ class NativeSeriesCache:
     def __init__(self, *, budget=None):
         self.budget = budget
         self.bytes = 0
-        from .raven_limits import BudgetCache
+        from .cache_budget import BudgetCache
         self.entries = BudgetCache(budget, self._expired) if budget else OrderedDict()
 
     def _expired(self, entry):

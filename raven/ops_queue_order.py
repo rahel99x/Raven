@@ -78,8 +78,14 @@ def _evidence(record):
 def _read_jobs(ctx, ids):
     if not ids or len(ids) > MAX_JOBS:
         raise ValueError("Queue review is limited to 512 exact jobs")
-    raw = O.command(ctx, ["scontrol", "show", "job", "-o", ",".join(ids)], limit=1 << 20)
-    records = C.parse_records(raw, "JobId")
+    records = []
+    for jid in ids:
+        O.checkpoint(ctx)
+        raw = O.command(ctx, ["scontrol", "show", "job", "-o", jid], limit=1 << 20)
+        observed = C.parse_records(raw, "JobId")
+        if len(observed) != 1 or _key(observed[0]) != jid:
+            raise ValueError("The scheduler did not return exactly the requested job")
+        records.extend(observed)
     by_id = {}
     for record in records:
         key = _key(record)

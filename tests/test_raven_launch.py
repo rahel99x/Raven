@@ -82,20 +82,22 @@ def test_heavy_wait_keeps_ui_import_after_ready_and_reuses_manager(monkeypatch):
     from raven import cli
     events=[]
     manager=SimpleNamespace(worker=SimpleNamespace(ready=False),request=lambda **kw:events.append('request'),
-        shutdown=lambda:events.append('shutdown'))
+        shutdown=lambda:events.append('shutdown'),wait_for_activity=Mock())
     states=iter(['preparing','pending','starting','heavy'])
     def tick():
         manager.state=next(states);manager.worker.ready=manager.state=='heavy';events.append(manager.state)
     manager.tick=tick;manager.snapshot=lambda:{'state':manager.state}
     monkeypatch.setattr(L,'_allocation',lambda _:manager)
     monkeypatch.setattr(L,'configure_placement',lambda *a:None)
-    monkeypatch.setattr(L.time,'sleep',lambda _:None)
+    monkeypatch.setattr(L.time,'sleep',Mock(side_effect=AssertionError('startup uses readiness')))
     def main(args,**kwargs):
         assert manager.worker.ready and kwargs['raven_allocation'] is manager
         events.append('dashboard');return 7
     monkeypatch.setattr(cli,'main',main)
     assert L.heavy_main(['--site','desktop'])==7
     assert events==['request','preparing','pending','starting','heavy','dashboard','shutdown']
+    assert manager.wait_for_activity.call_count == 3
+    assert all(0 < call.args[0] <= 1 for call in manager.wait_for_activity.call_args_list)
 
 
 @pytest.mark.parametrize('state', [{'state':'light','error':'denied'},{'state':'reconciling','cleanup_uncertain':True}])
@@ -183,3 +185,13 @@ def test_nested_account_stays_with_its_command(monkeypatch,tail):
     assert L.light_main(['--account','science',*tail])==0
     assert dispatch.call_args.args[0]==tail
     assert dispatch.call_args.kwargs['raven'].data['allocation']['account']=='science'
+
+
+@pytest.mark.parametrize('entry', [L.light_main, L.heavy_main])
+@pytest.mark.parametrize('arguments', [['--interface', 'compute'], ['--allocation', 'invalid'], ['--site', 'missing', '--once']])
+def test_installed_launchers_report_early_failures_as_one_json_document(entry, arguments, capsys):
+    assert entry([*arguments, '--json']) == 2
+    output = capsys.readouterr()
+    value = json.loads(output.out)
+    assert value['exit_code'] == 2 and value['error']
+    assert output.out.count('\n') == 1

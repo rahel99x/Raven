@@ -626,8 +626,15 @@ def process_pending(project, *, run_ids=None, deadline_seconds=10., limit=4,
                     state["tries"] = 0
                 state["tries"] += 1
                 try:
-                    if not state.get("plan"):
+                    if not state.get("plan") or any(source.get('available') and source.get('watermark_hash')!='full-prefix-sha256/v1'
+                        for attempt in state.get('plan',{}).get('attempts',[]) for source in attempt.get('sources',[])):
                         state["plan"] = data_export.plan_export(state["request"])
+                    # A worker slice limits discovery, not the size of a run
+                    # that can ever finish. Size one bounded export allowance
+                    # from its captured bytes; external cancellation still wins.
+                    captured_bytes=sum(source.get('watermark',{}).get('size',0)
+                        for attempt in state['plan'].get('attempts',[]) for source in attempt.get('sources',[]))
+                    deadline.until=max(deadline.until,time.monotonic()+min(300.,max(5.,captured_bytes/(512*1024))))
                     state.update(status="running", started_at=time.time(), reason="Exporting retained observations")
                     _write(folders["pending"], filename, state)
                     receipt = data_export.export_data(state["plan"], cancel=deadline)
@@ -641,10 +648,8 @@ def process_pending(project, *, run_ids=None, deadline_seconds=10., limit=4,
                         results.append(_public(state))
                         continue
                     if outcome == "cancelled":
-                        exhausted = state["tries"] >= MAX_ATTEMPTS
-                        state.update(status="failed" if exhausted else "pending", reason=(
-                            "Export paused; automatic attempts are exhausted. Use Export data or explicit --reconcile --retry to continue."
-                            if exhausted else "Export paused at its time/cancellation limit; recovery is pending"))
+                        state['tries']=max(0,state['tries']-1)
+                        state.update(status="pending", reason="Export paused at its time/cancellation limit; no failure attempt was consumed")
                     else:
                         state.update(status="failed", reason="Export failed; inspect receipt details")
                 except (OSError, ValueError, RuntimeError) as exc:

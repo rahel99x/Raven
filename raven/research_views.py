@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from . import charts, layout as L, scrollbars as S
 from .model import short_duration
-from .research import RESEARCH_VIEWS, clean
+from .research_text import clean
+from .ui.catalog import RESEARCH_VIEWS as RESEARCH_VIEWS
 from . import analysis_ui
 
 STATES = {"COMPLETED": "green", "RUNNING": "cyan", "PENDING": "yellow", "FAILED": "red",

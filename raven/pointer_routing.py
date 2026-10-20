@@ -79,8 +79,10 @@ def _state(app):
 
 
 def _context(app):
+    toolbar = getattr(app, "toolbar_state", {})
     return (getattr(app, "mode", "main"), getattr(app, "tab", ""),
-            getattr(app, "width", None), getattr(app, "height", None))
+            getattr(app, "width", None), getattr(app, "height", None),
+            toolbar.get("menu"), toolbar.get("panel"))
 
 
 def _payload(app, owner):

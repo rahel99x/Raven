@@ -6,14 +6,14 @@ program execution. A writer's open/crashed tail is explicitly uncommitted.
 from __future__ import annotations
 
 import hashlib
-from collections import deque
 import json
 import math
 import os
-from pathlib import Path
 import re
 import stat
 import time
+from collections import deque
+from pathlib import Path
 
 SCHEMA = "raven.trace/v1"
 MAX_EVENT = 64 * 1024
@@ -210,6 +210,10 @@ class TraceReader:
         self.end_seen = False
         self.evicted = 0
         self.source_loss = False
+        self._codes = {}
+        self._code_sizes = {}
+        self._code_bytes = 0
+        self.frame_encoding = None
 
     def iter_pages(self, *, max_events=MAX_EVENTS, max_bytes=MAX_BYTES, cancel=None, max_seconds=None):
         """Yield bounded consecutive snapshots until caught up or interrupted.
@@ -312,6 +316,12 @@ class TraceReader:
         if self.journal_format is not None and self.journal_format != journal_format:
             raise ValueError("Trace journal format changed")
         self.journal_format = journal_format
+        frame_encoding = manifest.get("frame_encoding")
+        if frame_encoding not in {None, "code-dictionary/v1"}:
+            raise ValueError("Unsupported trace frame encoding")
+        if self.frame_encoding is not None and frame_encoding != self.frame_encoding:
+            raise ValueError("Trace frame encoding regressed or changed")
+        self.frame_encoding = frame_encoding
         if journal_format == BLOCK_FORMAT and (type(manifest.get("block_size")) is not int
                 or not 1 <= manifest["block_size"] <= MAX_BLOCK_EVENTS
                 or manifest.get("max_block_bytes") != MAX_BLOCK_BYTES):
@@ -368,6 +378,33 @@ class TraceReader:
                         # The enclosing record already has a checked byte bound.
                         # Do not JSON-encode every event again just to size it.
                         event = validate_event(record["event"], check_size=False)
+                        data = event["data"]
+                        retained_size = consumed
+                        if frame_encoding == "code-dictionary/v1" and event["kind"] == "code":
+                            code_id = data.get("id")
+                            if (type(code_id) is not int or not 1 <= code_id <= 65536
+                                    or not isinstance(data.get("function"), str)
+                                    or not isinstance(data.get("file"), str)
+                                    or not isinstance(data.get("frame"), str)
+                                    or type(data.get("line")) is not int or data["line"] < 0):
+                                raise ValueError("Invalid trace code dictionary entry")
+                            metadata = {key: data[key] for key in ("function", "file", "line", "frame")}
+                            prior = self._codes.get(code_id)
+                            if prior is not None and prior != metadata:
+                                raise ValueError("Trace code dictionary identity changed")
+                            if prior is None:
+                                self._code_bytes += len(encoded(metadata))
+                                if self._code_bytes > 16 << 20:
+                                    raise ValueError("Trace code dictionary exceeds its byte budget")
+                                self._codes[code_id] = metadata
+                                self._code_sizes[code_id] = len(encoded(metadata))
+                        elif (frame_encoding == "code-dictionary/v1" and event["kind"] in {"call", "resume", "return", "yield", "unwind"}
+                              and "code" in data and not any(key in data for key in ("function", "file", "line", "frame"))):
+                            code_id = data["code"]
+                            if type(code_id) is not int or code_id not in self._codes:
+                                raise ValueError("Trace references unknown code metadata")
+                            event = {**event, "data": {**self._codes[code_id], **data}}
+                            retained_size += self._code_sizes[code_id]
                         if event["mono_ns"] < self.mono:
                             raise ValueError("Trace monotonic clock moved backwards")
                         self.mono = event["mono_ns"]
@@ -380,8 +417,8 @@ class TraceReader:
                     self.previous = checksum
                     flat = {**identity, **event, "seq": self.sequence}
                     self.events.append(flat)
-                    self._event_sizes.append(consumed)
-                    self.retained_bytes += consumed
+                    self._event_sizes.append(retained_size)
+                    self.retained_bytes += retained_size
                     while len(self.events) > self.retain or self.retained_bytes > self.retain_bytes:
                         self.events.popleft()
                         self.retained_bytes -= self._event_sizes.popleft()
@@ -482,8 +519,18 @@ def discover_trace(project_root, job_id, attempt=None):
     root = Path(project_root).absolute()
     index = root / ".raven" / "traces" / "index.json"
     if not index.exists():
-        return []
-    doc = read_json(index)
+        # A retained run's own index is authoritative too; automatic processes
+        # need no duplicate per-stream .raven/traces registry inside that run.
+        run_index = root / "trace/index.json"
+        if not run_index.exists():
+            return []
+        manifest = read_json(root / "run.json")
+        if manifest.get("schema") != "raven.run/v1" or manifest.get("run_id") != root.name:
+            raise ValueError("Trace discovery requires a verified retained run")
+        doc = {"schema": "raven.trace-index/v1", "records": [{"schema": "raven.trace-run/v1",
+            "job_id": str(manifest.get("job_id", "local")), "attempt": root.name, "path": "trace/index.json"}]}
+    else:
+        doc = read_json(index, limit=4 << 20)
     if not isinstance(doc, dict) or doc.get("schema") != "raven.trace-index/v1" or not isinstance(doc.get("records"), list) or len(doc["records"]) > 4096:
         raise ValueError("Invalid bounded trace index")
     result = []
@@ -503,6 +550,29 @@ def discover_trace(project_root, job_id, attempt=None):
             # Registrations can outlive an explicitly archived/deleted trace.
             # Never let an absent old attempt hide another valid recording.
             # Corrupt metadata and symlink failures remain errors.
+            continue
+        if record.get("schema") == "raven.trace-run/v1":
+            if manifest.get("schema") != "raven.trace-index/v1" or not isinstance(manifest.get("sources"), list) or len(manifest["sources"]) > 512:
+                raise ValueError("Invalid registered run trace index")
+            run = path.parent.parent
+            for source in manifest["sources"]:
+                if not isinstance(source, dict) or source.get("schema") != SCHEMA:
+                    continue
+                relative_source = source.get("path")
+                if (not isinstance(relative_source, str) or not relative_source or len(relative_source) > 4096
+                        or Path(relative_source).is_absolute() or any(part in {".", ".."} for part in relative_source.split("/"))):
+                    raise ValueError("Run trace registration escapes its run")
+                source_path = run / relative_source
+                try:
+                    source_manifest = read_json(source_path)
+                except FileNotFoundError:
+                    continue
+                if source_manifest.get("schema") != SCHEMA:
+                    raise ValueError("Registered run source is not a trace manifest")
+                identity = validate_identity(source_manifest.get("identity"))
+                if identity["job_id"] != str(job_id) or identity["attempt"] != record["attempt"] or identity["stream"] != source.get("stream"):
+                    raise ValueError("Run trace identity does not match its manifest")
+                result.append(str(source_path))
             continue
         identity = validate_identity(manifest.get("identity"))
         if identity["job_id"] != str(job_id) or attempt is not None and identity["attempt"] != str(attempt):

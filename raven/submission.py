@@ -437,7 +437,7 @@ def _revalidate(plan: dict, slurm) -> dict:
         raise ValueError("submission preflight failed: " + (messages or "original plan was invalid"))
     if isinstance(plan.get("array_retry"), dict) and "manifest" in plan["array_retry"]:
         from .array_manifest import validate_retry
-        from .remote import LocalFiles
+        from .local_files import LocalFiles
         import copy
         validate_retry(plan, LocalFiles())
         fresh["array_retry"] = copy.deepcopy(plan["array_retry"])

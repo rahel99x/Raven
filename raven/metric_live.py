@@ -7,15 +7,15 @@ State is transient, bounded, and scoped to an exact job/source/attempt.
 
 from __future__ import annotations
 
-from collections import OrderedDict
-from dataclasses import dataclass
 import math
 import time
+from collections import OrderedDict
+from dataclasses import dataclass
 
-from . import clock, layout as L
-from .interaction import Rect
-
+from . import clock
+from . import layout as L
 from .pointer_routing import capture_handler
+from .ui.geometry import Rect
 
 MIN_DELTA = 1.0
 MAX_DELTA = 30.0
@@ -120,7 +120,7 @@ def format_delta(value):
 
 def rate_fraction(value):
     """Sampling positions use an independent integer scale."""
-    from .metric_sampling import validate_rate
+    from .cadence import validate_rate
 
     try:
         value = validate_rate(value)
@@ -141,11 +141,11 @@ def _sync_sampling(app):
     state = initialize(app)
     if state.get("sampling_syncing"):
         return
-    from .metric_sampling import sync
+    from .metric_sampling_runtime import sync
 
     state["sampling_syncing"] = True
     try:
-        sync(app)
+        sync(app, state=initialize(getattr(app, "_chart_owner", app)), eligible=_eligible)
     finally:
         state["sampling_syncing"] = False
 
@@ -381,7 +381,7 @@ def display_end(app, identity, now=None, *, newest=None, previous=None,
     entry["buffered"] = True
     from . import metric_playback
     if poll_interval is None:
-        from .metric_sampling import cadence
+        from .metric_sampling_runtime import cadence
         poll_interval = cadence(app, identity)
     owner = getattr(app, "_chart_owner", app)
     replay = getattr(getattr(owner, "replay", None), "clock", None)
@@ -408,7 +408,7 @@ def playback_label(app, identity, *, ascii_=False, displayed_end=None):
     result = playback_status(app, identity)
     if result is None:
         return "buffering"
-    from .metric_sampling import format_interval
+    from .cadence import format_interval
     label = {"buffering": "buffering", "held": "held"}.get(result.status, "buffered")
     lag = result.lag
     if _finite(displayed_end):
@@ -521,7 +521,7 @@ def set_delta(app, identity, value):
 
 def set_rate(app, identity, value):
     identity = canonical(identity)
-    from .metric_sampling import validate_rate
+    from .cadence import validate_rate
 
     try:
         value = validate_rate(value)
@@ -540,7 +540,8 @@ def set_rate(app, identity, value):
 
 def _row(g, entry, width, *, app=None, identity=None, poll_interval=_UNSET_INTERVAL):
     """A stable one-row layout for both independent sliders, even at 24 cells."""
-    from .metric_sampling import cadence, format_interval
+    from .cadence import format_interval
+    from .metric_sampling_runtime import cadence
 
     if poll_interval is _UNSET_INTERVAL:
         poll_interval = cadence(app, identity) if app is not None else None
@@ -552,7 +553,7 @@ def _row(g, entry, width, *, app=None, identity=None, poll_interval=_UNSET_INTER
     # interval unchanged. Report this control's setting separately so its
     # value never appears frozen while the thumb moves. Neither value claims
     # the external producer publishes new observations at this cadence.
-    from .refresh_rate import poll_interval as requested_interval
+    from .cadence import poll_interval as requested_interval
     requested = format_interval(
         requested_interval(entry.get("rate", MIN_RATE), MAX_RATE), ascii_=g.ascii
     )
@@ -1016,7 +1017,8 @@ def _move(app, control, x, kind="window"):
 
 def _focus_graph(app, token, kind):
     """Transfer focus to this already published control without activating it."""
-    from .interaction import _current as current_graph, initialize as interaction_state
+    from .interaction import _current as current_graph
+    from .interaction import initialize as interaction_state
 
     graph = current_graph(app)
     identity = kind + ":" + token
@@ -1207,7 +1209,8 @@ def run_command(app, args):
             except (ValueError, OverflowError):
                 value = None
             if set_rate(app, control.key, value):
-                from .metric_sampling import cadence, format_interval
+                from .cadence import format_interval
+                from .metric_sampling_runtime import cadence
 
                 glyphs = getattr(getattr(app, "views_ref", None), "g", None)
                 ascii_ = bool(getattr(glyphs, "ascii", False))
@@ -1269,7 +1272,7 @@ def feedback(app, g):
     tick(app, identities=(control.key for control in state["records"]))
     if _blocked(app) or state["context"] != _context(app):
         return []
-    from .metric_sampling import cadence
+    from .metric_sampling_runtime import cadence
 
     previous = state.get("feedback_rows", {})
     current = {}

@@ -6,8 +6,6 @@ reader. Raven and Raven Light share the same bounded monitoring entry point.
 from __future__ import annotations
 
 import argparse
-import hashlib
-import socket
 import json
 import os
 import re
@@ -15,7 +13,7 @@ from pathlib import Path
 import sys
 import time
 
-from .raven_config import SCHEMA, Resolved, canonical, doctor, resolve, to_raven_config, _roots
+from .raven_config import Resolved, canonical, doctor, resolve, to_raven_config, _roots
 
 
 def _parser(heavy=False):
@@ -68,13 +66,10 @@ def configure_placement(resolved, manager):
     connection = data["connection"]
     if connection["transport"] == "ssh":
         backend = SshBackend(connection["host"], user=connection["user"], opts=connection["ssh_options"])
-        host, kind, ssh_user = connection["host"], "ssh", connection["user"]
-        options = hashlib.sha256(json.dumps(connection["ssh_options"], ensure_ascii=True, separators=(",", ":")).encode()).hexdigest()
     else:
         backend = Backend()
-        host, kind, ssh_user, options = socket.gethostname(), "local", "", ""
-    scope = {"backend": kind, "host": host, "profile": data["profile"], "uid": os.getuid(),
-             "user": os.environ.get("USER", ""), "ssh_user": ssh_user, "ssh_options_sha256": options}
+    from .connection_scope import configured_collection_scope
+    scope = configured_collection_scope(data)
     governed = wrap_backend(backend, to_raven_config(resolved), scope, data["storage"]["state_dir"])
     manager.collection_backend = governed
     if data["site"]["kind"] != "desktop":
@@ -214,7 +209,7 @@ def _wait_heavy(manager, resolved, reuse=None):
             if time.monotonic() >= review_deadline:
                 manager.cancel()
                 raise ValueError("Allocation reuse review timed out; no worker was launched.")
-            time.sleep(.025)
+            manager.wait_for_activity(min(1., max(0., review_deadline - time.monotonic())))
     else:
         manager.request()
     deadline = time.monotonic() + resolved.data["allocation"]["pending_timeout_seconds"] + 60
@@ -235,18 +230,18 @@ def _wait_heavy(manager, resolved, reuse=None):
         if time.monotonic() >= deadline:
             manager.cancel()
             raise ValueError("Heavy startup exceeded the configured pending/readiness deadline; no local fallback was started.")
-        time.sleep(.025)
+        manager.wait_for_activity(min(1., max(0., deadline - time.monotonic())))
 
 
 def _help(parser):
     parser.print_help()
-    print("\nCommands: setup; update [--check|--plan|--overwrite]; revert BACKUP; config explain; doctor; migrate --plan|--apply; qualify --offline.")
+    print("\nCommands: setup; update [--check|--plan|--overwrite]; revert BACKUP; trust PATH; config explain; doctor; migrate --plan|--apply; qualify --offline.")
     print("Dashboard options remain available: --once, --watch, --fake, --tab, --interval, --host, run COMMAND.")
     print("Use ravenl for Light. ravenh explicitly requests admission; missing Slurm never selects desktop Heavy.")
     print("Interactive ravenh opens immediately in Light while Heavy starts; the compute badge opens Cancel and Retry controls.")
 
 
-def _main(argv=None, *, heavy=False):
+def _main_impl(argv=None, *, heavy=False):
     argv = list(sys.argv[1:] if argv is None else argv)
     from .launch import dispatch as dispatch_workload
     try:
@@ -257,7 +252,7 @@ def _main(argv=None, *, heavy=False):
         print("Raven: " + str(exc), file=sys.stderr)
         return 2
     parser = _parser(heavy)
-    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run", "setup", "query", "series", "mcp", "update", "revert"}
+    passthrough = {"report", "trace", "runtime", "terminal", "migrate", "run", "setup", "query", "series", "mcp", "update", "revert", "trust"}
     # Global options stop at the subcommand. A nested --help/--config belongs
     # to that command, even when a global --site precedes it. Skip option values
     # so a hostname or profile named 'terminal' is not mistaken for a command.
@@ -298,6 +293,9 @@ def _main(argv=None, *, heavy=False):
         if options.config:
             arguments += ["--config", options.config]
         return maintenance(arguments)
+    if remaining[:1] == ["trust"]:
+        from .path_trust_cli import main as trust_main
+        return trust_main(remaining[1:])
     if options.interface == "compute":
         print("Raven: allocation-first full-interface transfer is unavailable; use the persistent Light interface with an admitted worker.", file=sys.stderr)
         return 2
@@ -421,6 +419,42 @@ def _main(argv=None, *, heavy=False):
     except (OSError, ValueError, RuntimeError, ImportError) as exc:
         print("Raven: " + str(exc), file=sys.stderr)
         return 2
+
+
+
+def _main(argv=None, *, heavy=False):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if "--json" not in arguments:
+        return _main_impl(arguments, heavy=heavy)
+    # Early configuration/admission errors happen before cli.main's JSON
+    # boundary. Keep installed launchers machine-readable there as well.
+    from contextlib import redirect_stdout, redirect_stderr
+    import io
+    output, errors = io.StringIO(), io.StringIO()
+    with redirect_stdout(output), redirect_stderr(errors):
+        try:
+            code = _main_impl(arguments, heavy=heavy)
+        except SystemExit as exc:
+            code = exc.code if isinstance(exc.code, int) else 2
+    text, diagnostic = output.getvalue(), errors.getvalue()
+    if diagnostic:
+        sys.stderr.write(diagnostic)
+    from .cli_output import ApplicationExit
+    if isinstance(code, ApplicationExit):
+        sys.stdout.write(text)
+        return code
+    try:
+        value = json.loads(text)
+    except (ValueError, TypeError):
+        if code:
+            value = {"error": (diagnostic.strip() or text.strip() or "Raven launch failed")[:8192],
+                     "exit_code": code}
+        else:
+            # Explicit help/version requests preserve their text contract.
+            sys.stdout.write(text)
+            return code
+    print(json.dumps(value, ensure_ascii=True, allow_nan=False, separators=(",", ":")))
+    return code
 
 
 def light_main(argv=None):

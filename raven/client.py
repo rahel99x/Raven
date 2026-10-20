@@ -84,6 +84,11 @@ def _record(value):
         rec["step"] = step
     if "phase" in value:
         rec["phase"] = _text(value["phase"], "phase", 160)
+    if "pid" in value:
+        pid = value["pid"]
+        if type(pid) is not int or not 1 <= pid < 1 << 63:
+            raise ValueError("pid must be a positive 64-bit integer")
+        rec["pid"] = pid
     if "progress" in value:
         progress_value = value["progress"]
         if not isinstance(progress_value, dict):
@@ -122,7 +127,10 @@ def _encoded(value):
 
 def _parent(path):
     """Anchor every directory component; neither parent nor leaf symlinks follow."""
-    path = os.path.abspath(path)
+    # Resolve the user-selected root once. Leaves remain no-follow and the
+    # anchored descriptor prevents later ancestor replacement from redirecting
+    # a writer. Cluster home/scratch aliases commonly contain symlinks.
+    path = os.path.join(os.path.realpath(os.path.dirname(os.path.abspath(path))), os.path.basename(path))
     parts = path.split(os.sep)
     fd = os.open(os.sep, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
     try:
@@ -177,6 +185,14 @@ def _lock(fd):
             time.sleep(.01)
 
 
+def _unlock(fd):
+    import fcntl
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
+
+
 def _append(path, records, *, directory_fd=None):
     parent, name = _parent(path) if directory_fd is None else (os.dup(directory_fd), os.path.basename(path))
     try:
@@ -189,6 +205,7 @@ def _append(path, records, *, directory_fd=None):
             for record in records:
                 _write_all(fd, _encoded(record))
         finally:
+            _unlock(fd)
             os.close(fd)
     finally:
         os.close(parent)
@@ -230,11 +247,13 @@ def _json_update(path, update, *, directory_fd=None):
         if temporary is not None:
             os.unlink(temporary, dir_fd=parent)
         if lock_fd is not None:
+            _unlock(lock_fd)
             os.close(lock_fd)
         os.close(parent)
 
 
 _phase = ContextVar("raven_metric_phase", default="")
+_phase_scopes = ContextVar("raven_phase_scopes", default=())
 _state = None
 _state_lock = threading.RLock()
 _options = {}
@@ -246,6 +265,7 @@ _revision = 0
 def _environment_rank():
     # Launcher rank variables are more specific than an inherited outer srun
     # allocation's SLURM_PROCID (which can be zero in every mpirun child).
+    invalid = ""
     for name in ("RANK", "OMPI_COMM_WORLD_RANK", "PMI_RANK", "SLURM_PROCID"):
         value = os.environ.get(name)
         if value is not None:
@@ -255,8 +275,10 @@ def _environment_rank():
                     raise ValueError()
                 return rank, name
             except ValueError:
-                return None, "invalid " + name
-    return 0, "single process"
+                # An empty generic RANK must not hide a valid MPI/Slurm rank.
+                invalid = invalid or name
+                continue
+    return (None, "invalid " + invalid) if invalid else (0, "single process")
 
 
 def _rank(communicator=None):
@@ -313,9 +335,20 @@ class _Client:
         self.rank, self.rank_source = _rank(self.communicator)
         declared_rank, declared_source = _environment_rank()
         self.rank_warning = ""
+        invalid_rank_fields = []
+        for key in ("RANK", "OMPI_COMM_WORLD_RANK", "PMI_RANK", "SLURM_PROCID"):
+            if key in os.environ:
+                raw = os.environ[key]
+                try:
+                    if not 0 <= int(raw) <= (1 << 31) - 1:
+                        raise ValueError()
+                except ValueError:
+                    invalid_rank_fields.append(key)
+        if invalid_rank_fields:
+            self.rank_warning = "Ignored invalid rank fields: " + ", ".join(invalid_rank_fields)
         if self.rank_source in {"torch.distributed", "mpi4py.MPI"} and declared_source != "single process" and declared_rank != self.rank:
             self.rank_warning = f"Initialized {self.rank_source} rank {self.rank} overrides conflicting {declared_source}={declared_rank}"
-        self.helper = _fork_child or (_helper() and self.rank_source not in {"torch.distributed", "mpi4py.MPI"})
+        self.helper = (_fork_child or _helper()) and self.rank_source not in {"torch.distributed", "mpi4py.MPI"}
         self.all_ranks = bool(options.get("all_ranks", False))
         self.allowed = self.rank is not None and (self.all_ranks or (self.rank == 0 and not self.helper))
         if self.all_ranks:
@@ -354,11 +387,34 @@ class _Client:
         self.registered = False
         self.registered_names = set()
         self.directory_fd = None
+        self.fork_pause = threading.Event()
+        self.fork_quiet = threading.Event()
+
+    def refresh_rank(self):
+        """Distributed runtimes can initialize after the first metric call."""
+        rank, source = _rank(self.communicator)
+        helper = (_fork_child or _helper()) and source not in {"torch.distributed", "mpi4py.MPI"}
+        owner = os.environ.get("RAVEN_METRICS_OWNER_PID")
+        if source not in {"torch.distributed", "mpi4py.MPI"} and owner and owner != str(os.getpid()):
+            helper = True
+        with self.lock:
+            self.rank, self.rank_source, self.helper = rank, source, helper
+            self.allowed = rank is not None and (self.all_ranks or (rank == 0 and not helper))
 
     def start(self, *, diagnostics=False):
         if self.thread is None and (self.allowed or diagnostics):
-            self.thread = threading.Thread(target=self.work, name="raven-metrics", daemon=True)
-            self.thread.start()
+            thread = threading.Thread(target=self.work, name="raven-metrics", daemon=True)
+            try:
+                thread.start()
+            except Exception:
+                self.failed = True
+                self.counts["dropped"] += len(self.queue) + len(self.latest)
+                self.queue.clear()
+                self.latest.clear()
+                self.idle.set()
+                return False
+            self.thread = thread
+        return not self.failed
 
     def note(self, category, message):
         with self.lock:
@@ -389,6 +445,7 @@ class _Client:
             if not self.allowed or self.failed or self.stopping:
                 self.counts["suppressed"] += 1
                 return
+            record = dict(record, pid=os.getpid())
             name = next(iter(record["metrics"]), None)
             if name is not None:
                 if name not in self.kinds and len(self.kinds) >= MAX_METRICS:
@@ -451,11 +508,21 @@ class _Client:
             existing = value.setdefault("kinds", {})
             if not isinstance(existing, dict) or len(existing) > MAX_METRICS:
                 raise ValueError("invalid metadata metric inventory")
-            if len(set(existing) | set(kinds)) > MAX_METRICS:
-                raise ValueError("shared metric stream already contains 64 names; use a separate stream")
+            # A full shared inventory excludes new names, not updates to names
+            # that already exist. One other producer cannot disable this writer.
+            admitted = set(existing)
             for name, kind in kinds.items():
                 if name in existing or len(existing) < MAX_METRICS:
                     existing.setdefault(name, kind)
+                    admitted.add(name)
+            rejected = set(kinds) - admitted
+            if rejected:
+                with self.lock:
+                    for name in rejected:
+                        self.kinds.pop(name, None)
+                        self.units.pop(name, None)
+                        self.baselines.pop(name, None)
+                    self.counts["dropped"] += len(rejected)
             for key, current, previous in (("counts", counts, self.sent_counts),
                                             ("coalesced", coalesced, self.sent_coalesced)):
                 target = value.setdefault(key, {})
@@ -479,7 +546,7 @@ class _Client:
             return value
         _json_update(self.meta, merge, directory_fd=self.directory_fd)
         self.sent_counts, self.sent_coalesced = counts, coalesced
-        self.registered_names.update(kinds)
+        self.registered_names.update(self.kinds)
 
     def _index(self):
         if not self.all_ranks or self.registered:
@@ -527,6 +594,7 @@ class _Client:
                                 return value
                             _json_update(os.path.join(self.run, "run.json"), amend)
                         finally:
+                            _unlock(fd)
                             os.close(fd)
                     finally:
                         os.close(parent)
@@ -537,6 +605,12 @@ class _Client:
         while True:
             self.wake.wait(min(.05, self.interval) if self.flush_requested else self.interval)
             self.wake.clear()
+            if self.fork_pause.is_set():
+                self.fork_quiet.set()
+                while self.fork_pause.is_set():
+                    self.wake.wait(.01)
+                    self.wake.clear()
+                self.fork_quiet.clear()
             records = self._take()
             try:
                 if self.directory_fd is None and self.allowed and not self.failed:
@@ -548,12 +622,24 @@ class _Client:
                         new_names = set(self.kinds) - self.registered_names
                     if new_names:
                         self._metadata()
+                    records = [record for record in records if not record["metrics"]
+                               or all(name in self.registered_names for name in record["metrics"])]
                     self._index()
                     _append(self.path, records, directory_fd=self.directory_fd)
                     with self.lock:
                         self.counts["written"] += len(records)
                 if self.allowed and not self.failed and (records or self.diagnostics):
                     self._metadata()
+            except TimeoutError:
+                # A peer can briefly hold the file lock across fork or I/O.
+                # Keep records for a later bounded retry without disabling it.
+                with self.lock:
+                    for record in reversed(records):
+                        name = next(iter(record["metrics"]), None)
+                        self.queue.appendleft((name, record, time.monotonic()))
+                    while len(self.queue) > MAX_POINTS:
+                        name, _, _ = self.queue.popleft()
+                        self._coalesce(name)
             except Exception as exc:
                 self.failed = True
                 self.note("write", "Reporting disabled after write error: " + str(exc))
@@ -562,16 +648,18 @@ class _Client:
                 if not self.queue and not self.latest:
                     self.idle.set()
                     self.flush_requested = False
-                    if self.stopping:
-                        if self.directory_fd is not None:
-                            os.close(self.directory_fd)
-                            self.directory_fd = None
-                        return
+                    if self.stopping and self.directory_fd is not None:
+                        os.close(self.directory_fd)
+                        self.directory_fd = None
+                    # Idle clients need no permanent daemon. Restart lazily on
+                    # the next publication, reducing fork-with-threads hazards.
+                    self.thread = None
+                    return
 
     def flush(self, timeout=2):
         with self.lock:
             if self.thread is None:
-                return True
+                return not self.failed
             self.flush_requested = True
             self.wake.set()
         return self.idle.wait(timeout) and not self.failed
@@ -580,17 +668,38 @@ class _Client:
         with self.lock:
             self.stopping = True
             self.wake.set()
-        if self.thread is not None:
-            self.thread.join(timeout)
-            return not self.thread.is_alive() and not self.failed
+        thread = self.thread
+        if thread is not None and thread.ident is not None:
+            thread.join(timeout)
+            return not thread.is_alive() and not self.failed
+        if self.directory_fd is not None:
+            os.close(self.directory_fd)
+            self.directory_fd = None
         return True
 
 
+def _before_fork():
+    current = _state
+    if current is not None and current.thread is not None:
+        current.fork_pause.set()
+        current.wake.set()
+        # A storage stall must not turn an unrelated fork into an unbounded
+        # wait. Explicit unlocks and child descriptor closure cover that case.
+        current.fork_quiet.wait(.05)
+
+
+def _parent_after_fork():
+    if _state is not None:
+        _state.fork_pause.clear()
+        _state.wake.set()
+
+
 def _after_fork():
-    global _state, _state_lock, _fork_child, _phase
+    global _state, _state_lock, _fork_child, _phase, _phase_scopes
     if _state is not None and _state.directory_fd is not None:
         os.close(_state.directory_fd)
     _phase = ContextVar("raven_metric_phase", default="")
+    _phase_scopes = ContextVar("raven_phase_scopes", default=())
     _state = None
     _fork_child = True
     _state_lock = threading.RLock()
@@ -603,7 +712,7 @@ def _shutdown():
 
 
 def _get_client():
-    global _state, _registered
+    global _state
     path = _options.get("path") or os.environ.get("RAVEN_METRICS_FILE")
     if not path and os.environ.get("RAVEN_RUN_DIR"):
         path = os.path.join(os.environ["RAVEN_RUN_DIR"], "metrics.jsonl")
@@ -611,14 +720,11 @@ def _get_client():
         return None
     with _state_lock:
         if _state is None:
+            os.environ.setdefault("RAVEN_METRICS_OWNER_PID", str(os.getpid()))
             _state = _Client(path, _options)
             if _state.rank_warning:
                 _state.note("rank", _state.rank_warning)
-        if not _registered:
-            atexit.register(_shutdown)
-            if hasattr(os, "register_at_fork"):
-                os.register_at_fork(after_in_child=_after_fork)
-            _registered = True
+        _state.refresh_rank()
         return _state
 
 
@@ -651,24 +757,33 @@ def configure(*, path=None, all_ranks=False, communicator=None, flush_interval=1
                     "communicator": communicator, "flush_interval": flush_interval}
         _state = None
         _revision += 1
+        if path is not None:
+            os.environ["RAVEN_METRICS_OWNER_PID"] = str(os.getpid())
     return True
 
 
-def _reduce(client, value, reduction, *, valid=True):
+def _reduce(client, value, reduction, *, valid=True, device=None):
     if reduction is None:
         return value
-    if client.helper and not client.all_ranks:
+    if _fork_child:
+        # An inherited distributed runtime is not a runtime initialized in this
+        # process. Calling it after raw fork is unsafe even to query readiness.
         return None
     distributed = sys.modules.get("torch.distributed")
     torch = sys.modules.get("torch")
     if client.communicator is None and distributed is not None and torch is not None and distributed.is_initialized():
-        device = "cuda" if distributed.get_backend() == "nccl" else "cpu"
-        ready = torch.tensor(int(valid), dtype=torch.int32, device=device)
+        tensor_device = "cpu"
+        if distributed.get_backend() == "nccl":
+            raw = os.environ.get("LOCAL_RANK", "")
+            tensor_device = "cuda:" + str(int(raw)) if raw.isdecimal() else (device or "cuda")
+            if device is not None and raw.isdecimal() and str(device) != "cuda:" + str(int(raw)):
+                valid = False
+        ready = torch.tensor(int(valid), dtype=torch.int32, device=tensor_device)
         distributed.all_reduce(ready, op=distributed.ReduceOp.MIN)
         if not ready.item():
             client.note("collective-input", "Collective metric omitted: at least one rank supplied an invalid scalar or metric field")
             return None
-        tensor = torch.tensor(value, dtype=torch.float64, device=device)
+        tensor = torch.tensor(value, dtype=torch.float64, device=tensor_device)
         operation = getattr(distributed.ReduceOp, {"sum": "SUM", "mean": "SUM", "max": "MAX", "min": "MIN"}[reduction])
         distributed.all_reduce(tensor, op=operation)
         result = tensor.item()
@@ -698,6 +813,25 @@ def _reduce(client, value, reduction, *, valid=True):
     return value if valid else None
 
 
+class _CollectiveContext:
+    """Disk-independent participant when a peer alone configured publication."""
+    def __init__(self):
+        self.communicator = _options.get("communicator")
+        self.all_ranks = False
+        self.lock = threading.RLock()
+        self.coverage = set()
+        self.counts = {"suppressed": 0, "unsupported": 0}
+
+    def step(self, name):
+        return None
+
+    def note(self, *args):
+        pass
+
+    def accept(self, *args):
+        pass
+
+
 def _report_collective(client, name, value, *, kind, step, unit, reduction, sampled):
     """Validate all local fields, then let every explicit participant agree."""
     record = None
@@ -722,7 +856,8 @@ def _report_collective(client, name, value, *, kind, step, unit, reduction, samp
         error = exc
     # Local validation failure still enters readiness agreement. No disk state
     # participates in that decision; failed writers continue communicating.
-    reduced = _reduce(client, record["metrics"][name] if record else 0.0, reduction, valid=record is not None)
+    reduced = _reduce(client, record["metrics"][name] if record else 0.0, reduction,
+                      valid=record is not None, device=getattr(value, "device", None))
     if error is not None:
         raise error
     if reduced is None:
@@ -735,15 +870,12 @@ def _report_collective(client, name, value, *, kind, step, unit, reduction, samp
 
 def _report(name, value, *, kind="gauge", step=None, unit="", reduce=None, sampled=False):
     client = _get_client()
-    if client is None:
+    if client is None and reduce is None:
         return
+    if client is None:
+        client = _CollectiveContext()
     try:
         if reduce is not None:
-            if client.helper and not client.all_ranks:
-                with client.lock:
-                    client.counts["accepted"] += 1
-                    client.counts["suppressed"] += 1
-                return
             _report_collective(client, name, value, kind=kind, step=step, unit=unit,
                                reduction=reduce, sampled=sampled)
             return
@@ -818,7 +950,6 @@ class phase:
     """Context-local phase scope, including nested reuse of the same instance."""
     def __init__(self, name):
         self.name = name
-        self.scopes = ContextVar("raven_phase_scopes", default=())
 
     def __enter__(self):
         scope = None
@@ -828,15 +959,15 @@ class phase:
                 scope = (_phase.set(name), time.monotonic())
         except Exception:
             pass
-        self.scopes.set((*self.scopes.get(), scope))
+        _phase_scopes.set((*_phase_scopes.get(), (self, scope)))
         return self
 
     def __exit__(self, *exception):
         try:
-            scopes = self.scopes.get()
-            if scopes:
-                scope = scopes[-1]
-                self.scopes.set(scopes[:-1])
+            scopes = _phase_scopes.get()
+            if scopes and scopes[-1][0] is self:
+                scope = scopes[-1][1]
+                _phase_scopes.set(scopes[:-1])
                 if scope is not None:
                     token, started = scope
                     name = "phase." + self.name + ".seconds"
@@ -879,10 +1010,6 @@ def measure(name, *, kind="objective", step="auto", every=1, seconds=None, unit=
             try:
                 if owner_pid != os.getpid():
                     owner_pid, calls, last, lock = os.getpid(), 0, -math.inf, threading.Lock()
-                client = _get_client()
-                if client is None:
-                    return
-                automatic_step = client.step(name) if step == "auto" else None
                 with lock:
                     index = calls
                     calls += 1
@@ -890,6 +1017,10 @@ def measure(name, *, kind="objective", step="auto", every=1, seconds=None, unit=
                     if index % every or (seconds is not None and now - last < seconds):
                         return
                     last = now
+                client = _get_client()
+                if client is None and reduce is None:
+                    return
+                automatic_step = index if step == "auto" else None
                 selected_step = step
                 if step not in (None, "auto") and isinstance(step, str):
                     try:
@@ -926,7 +1057,7 @@ def measure(name, *, kind="objective", step="auto", every=1, seconds=None, unit=
                 if revision != _revision:
                     revision = _revision
                     enabled = bool(_options.get("path") or os.environ.get("RAVEN_METRICS_FILE") or os.environ.get("RAVEN_RUN_DIR"))
-                if enabled:
+                if enabled or reduce is not None:
                     reported(value, args, kwargs)
                 return value
             return asynchronous
@@ -937,7 +1068,7 @@ def measure(name, *, kind="objective", step="auto", every=1, seconds=None, unit=
             if revision != _revision:
                 revision = _revision
                 enabled = bool(_options.get("path") or os.environ.get("RAVEN_METRICS_FILE") or os.environ.get("RAVEN_RUN_DIR"))
-            if enabled:
+            if enabled or reduce is not None:
                 reported(value, args, kwargs)
             return value
         return wrapped
@@ -958,6 +1089,25 @@ class _Watch:
         self.callback = None
         self.thread_id = threading.get_ident()
         self.active = True
+        self.tool_id = None
+
+    def _returned(self, frame):
+        if not self.active or threading.get_ident() != self.thread_id:
+            return
+        index = self.calls
+        self.calls += 1
+        now = time.monotonic()
+        if index % self.every or (self.seconds is not None and now - self.last < self.seconds):
+            return
+        self.last = now
+        for name in self.names:
+            if name in frame.f_locals:
+                selected_step = index if self.step == "auto" else frame.f_locals.get(self.step) if isinstance(self.step, str) else self.step
+                try:
+                    _report(name, frame.f_locals[name], kind=self.kind, step=selected_step,
+                            sampled=self.every != 1 or self.seconds is not None)
+                except Exception:
+                    pass
 
     def install(self):
         if _get_client() is None:
@@ -973,6 +1123,27 @@ class _Watch:
             return self
         self.previous = sys.getprofile()
         code = self.function.__code__
+        monitoring = getattr(sys, "monitoring", None)
+        if monitoring is not None:
+            for candidate in (5, 4, 3, 2, 1, 0):
+                if monitoring.get_tool(candidate) is None:
+                    try:
+                        monitoring.use_tool_id(candidate, "raven-watch")
+                        self.tool_id = candidate
+                        break
+                    except ValueError:
+                        continue
+            if self.tool_id is not None:
+                def returned(current, offset, result):
+                    try:
+                        if current is code and self.active:
+                            self._returned(sys._getframe(1))
+                    except Exception:
+                        pass
+                self.callback = returned
+                monitoring.register_callback(self.tool_id, monitoring.events.PY_RETURN, returned)
+                monitoring.set_local_events(self.tool_id, code, monitoring.events.PY_RETURN)
+                return self
         def profile(frame, event, argument):
             if self.previous is not None:
                 self.previous(frame, event, argument)
@@ -982,20 +1153,7 @@ class _Watch:
                 # suspension or a failed function invocation.
                 if frame.f_lasti < 0 or dis.opname[code.co_code[frame.f_lasti]] not in {"RETURN_VALUE", "RETURN_CONST"}:
                     return
-                index = self.calls
-                self.calls += 1
-                now = time.monotonic()
-                if index % self.every or (self.seconds is not None and now - self.last < self.seconds):
-                    return
-                self.last = now
-                for name in self.names:
-                    if name in frame.f_locals:
-                        selected_step = index if self.step == "auto" else frame.f_locals.get(self.step) if isinstance(self.step, str) else self.step
-                        try:
-                            _report(name, frame.f_locals[name], kind=self.kind, step=selected_step,
-                                    sampled=self.every != 1 or self.seconds is not None)
-                        except Exception:
-                            pass
+                self._returned(frame)
         profile._raven_watch_owner = self
         self.callback = profile
         sys.setprofile(profile)
@@ -1003,6 +1161,13 @@ class _Watch:
 
     def close(self):
         self.active = False
+        if self.tool_id is not None:
+            monitoring = sys.monitoring
+            monitoring.set_local_events(self.tool_id, self.function.__code__, 0)
+            monitoring.register_callback(self.tool_id, monitoring.events.PY_RETURN, None)
+            monitoring.free_tool_id(self.tool_id)
+            self.tool_id = None
+            return
         if threading.get_ident() == self.thread_id and sys.getprofile() is self.callback:
             previous = self.previous
             owner = getattr(previous, "_raven_watch_owner", None)
@@ -1039,3 +1204,11 @@ def __getattr__(name):
     if name == "client":
         return sys.modules[__name__]
     raise AttributeError(name)
+
+
+# Register before application exit hooks installed after importing Raven. The
+# first metric call can happen much later, including inside such an exit hook.
+atexit.register(_shutdown)
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(before=_before_fork, after_in_parent=_parent_after_fork, after_in_child=_after_fork)
+_registered = True

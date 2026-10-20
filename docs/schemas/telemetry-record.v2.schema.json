@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Raven compact retained telemetry record v2",
+  "description": "Interpret using the matching v2 index source row_defaults and optional device reference. Query brackets, timestamps and values remain original; invariant metadata is stored once.",
+  "type": "object",
+  "required": [
+    "sequence",
+    "timestamp",
+    "elapsed_seconds"
+  ],
+  "maxProperties": 64,
+  "properties": {
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "number",
+      "minimum": 0
+    },
+    "elapsed_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "device": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    }
+  },
+  "additionalProperties": true
+}

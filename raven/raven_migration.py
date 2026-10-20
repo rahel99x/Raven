@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import errno
 import fcntl
 import hashlib
 import json
@@ -17,7 +18,7 @@ import sys
 import time
 import uuid
 
-from .raven_config import DEFAULTS, SCHEMA, canonical, legacy_settings, merge, read_file, resolve, validate, _roots
+from .raven_config import DEFAULTS, SCHEMA, canonical, legacy_settings, merge, read_file, validate, _roots
 
 PLAN_SCHEMA = "raven.migration-plan/v1"
 JOURNAL_SCHEMA = "raven.migration-journal/v1"
@@ -43,17 +44,14 @@ def _digest(value):
 def private_directory(path):
     """Create private owned directories; never traverse a destination symlink."""
     path = Path(os.path.abspath(os.path.expanduser(os.fspath(path))))
-    parts = list(reversed(path.parents)) + [path]
-    for entry in parts:
-        try:
-            info = entry.lstat()
-        except FileNotFoundError:
-            entry.mkdir(mode=0o700)
-            info = entry.lstat()
-        if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode):
-            raise ValueError("Migration destination must use real directories, not symlinks.")
-        if entry == path and (info.st_uid != os.getuid() or info.st_mode & 0o077):
-            raise ValueError("Migration destination directory must be private and owned by this user.")
+    from .config_trust import directory_fd
+    try:
+        with directory_fd(path, private=True, create=True):
+            pass
+    except OSError as exc:
+        if exc.errno not in (errno.ELOOP, errno.ENOTDIR):
+            raise
+        raise ValueError("Migration destinations must be directories without symlinks.") from exc
     return path
 
 

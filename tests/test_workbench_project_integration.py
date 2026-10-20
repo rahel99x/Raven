@@ -12,6 +12,11 @@ from raven.model import Job, Store
 from raven.research import ResearchHub
 from raven.views import Views
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "durable-exports"))
+
+
 
 @pytest.fixture
 def project_dashboard(tmp_path):
@@ -151,7 +156,7 @@ def test_standalone_keyboard_selection_copies_source_bytes(project_dashboard):
     render(app, views)
     for key in ("home", "down", "v", "down", "y"):
         app.handle(key)
-    content = __import__("pathlib").Path(app.state_dir) / "clipboard.txt"
+    content = __import__("pathlib").Path(__import__("os").environ["RAVEN_EXPORT_DIR"]) / "clipboard.txt"
     assert content.read_bytes() == b"second line\r\nthird line\r\n"
 
 
@@ -241,7 +246,7 @@ def test_cancel_copy_from_activity_cleans_partial_export(project_dashboard, monk
         _, task = app.activity.snapshot()
         assert task["cancel"].is_set() and task["status"] == "error"
         assert "cancel" in app.message.lower()
-        export_dir = __import__("pathlib").Path(app.state_dir) / "exports"
+        export_dir = __import__("pathlib").Path(__import__("os").environ["RAVEN_EXPORT_DIR"])
         assert not export_dir.exists() or not list(export_dir.iterdir())
     finally:
         release.set()

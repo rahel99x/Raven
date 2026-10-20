@@ -6,11 +6,9 @@ checkpoints bound durability; an incomplete tail is never described as lossless.
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
 import fcntl
 import json
 import os
-from pathlib import Path
 import runpy
 import socket
 import stat
@@ -19,12 +17,31 @@ import threading
 import time
 import uuid
 import weakref
+from collections import deque
+from contextlib import contextmanager
+from pathlib import Path
 
 from . import trace_protocol as protocol
 from .reporting import _atomic_json, _directory
 
 _RECORDERS = weakref.WeakSet()
 _CAPTURES = weakref.WeakSet()
+
+
+def _fork_before():
+    deadline = time.monotonic() + .05
+    for recorder in list(_RECORDERS):
+        recorder._fork_pause.set()
+        recorder._flush_wake.set()
+    for recorder in list(_RECORDERS):
+        if recorder._flush_thread is not None:
+            recorder._fork_quiet.wait(max(0., deadline - time.monotonic()))
+
+
+def _fork_parent():
+    for recorder in list(_RECORDERS):
+        recorder._fork_pause.clear()
+        recorder._flush_wake.set()
 
 
 def _fork_child():
@@ -37,7 +54,7 @@ def _fork_child():
 
 
 if hasattr(os, "register_at_fork"):
-    os.register_at_fork(after_in_child=_fork_child)
+    os.register_at_fork(before=_fork_before, after_in_parent=_fork_parent, after_in_child=_fork_child)
 
 
 def _process_start(pid=None):
@@ -75,9 +92,70 @@ def _trace_root(project):
     return root
 
 
+def _register(project, record):
+    trace_root = _trace_root(project)
+    lock_fd = os.open(trace_root / ".index.lock", os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        if not stat.S_ISREG(os.fstat(lock_fd).st_mode):
+            raise ValueError("Trace index lock must be a regular file")
+        deadline = time.monotonic() + .2
+        while True:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError("Trace registry is busy; optional attachment skipped") from None
+                time.sleep(min(.01, remaining))
+        index = trace_root / "index.json"
+        doc = protocol.read_json(index, limit=4 << 20) if index.exists() else {"schema": "raven.trace-index/v1", "records": []}
+        if doc.get("schema") != "raven.trace-index/v1" or not isinstance(doc.get("records"), list):
+            raise ValueError("Invalid trace registry")
+        if record in doc["records"]:
+            return
+        records = [entry for entry in doc["records"]
+                   if isinstance(entry, dict) and entry.get("path") != record["path"]
+                   and isinstance(entry.get("path"), str)
+                   and not Path(entry["path"]).is_absolute() and ".." not in Path(entry["path"]).parts
+                   and (Path(project) / entry["path"]).exists()]
+        omitted = max(0, len(records) + 1 - 4096)
+        records = records[-4095:]
+        records.append(record)
+        # Recover an older registry that already exceeded the old 1 MiB
+        # limit. A count cap alone does not bound long legacy paths/metadata.
+        costs = []
+        for entry in records:
+            pending, count, depth = [(entry, 0)], 0, 0
+            while pending:
+                value, level = pending.pop()
+                count += 1
+                depth = max(depth, level)
+                if isinstance(value, dict):
+                    pending.extend((child, level + 1) for child in value.values())
+                elif isinstance(value, list):
+                    pending.extend((child, level + 1) for child in value)
+            costs.append((len(protocol.encoded(entry)) + 1, count if depth <= 28 else 100001))
+        size, nodes = sum(item[0] for item in costs), sum(item[1] for item in costs)
+        first = 0
+        while first < len(records) - 1 and (size > (1 << 20) - 1024 or nodes > 90000):
+            size -= costs[first][0]
+            nodes -= costs[first][1]
+            first += 1
+        omitted += first
+        records = records[first:]
+        prior_omitted = doc.get("omitted_registrations", 0)
+        if type(prior_omitted) is not int or prior_omitted < 0:
+            raise ValueError("Invalid trace registration omission count")
+        _atomic_json(index, {"schema": "raven.trace-index/v1", "records": records,
+            "omitted_registrations": min(1_000_000, prior_omitted + omitted)}, replace=True)
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        os.close(lock_fd)
+
+
 def register_trace(project, manifest_path):
     project = _safe_directory(project)
-    trace_root = _trace_root(project)
     manifest_path = Path(manifest_path).absolute()
     try:
         relative = str(manifest_path.relative_to(project))
@@ -87,23 +165,14 @@ def register_trace(project, manifest_path):
     identity = protocol.validate_identity(manifest.get("identity"))
     if manifest.get("schema") != protocol.SCHEMA:
         raise ValueError("Expected trace manifest")
-    lock_fd = os.open(trace_root / ".index.lock", os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
-    try:
-        if not stat.S_ISREG(os.fstat(lock_fd).st_mode):
-            raise ValueError("Trace index lock must be a regular file")
-        fcntl.flock(lock_fd, fcntl.LOCK_EX)
-        index = trace_root / "index.json"
-        doc = protocol.read_json(index) if index.exists() else {"schema": "raven.trace-index/v1", "records": []}
-        if doc.get("schema") != "raven.trace-index/v1" or not isinstance(doc.get("records"), list):
-            raise ValueError("Invalid trace registry")
-        records = [entry for entry in doc["records"] if entry.get("stream") != identity["stream"]]
-        if len(records) >= 4096:
-            raise ValueError("Trace registry is full (4096 streams); archive old registrations explicitly")
-        records.append({**identity, "path": relative})
-        _atomic_json(index, {"schema": "raven.trace-index/v1", "records": records}, replace=True)
-    finally:
-        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        os.close(lock_fd)
+    _register(project, {**identity, "path": relative})
+
+
+def register_run(project, run, job_id, attempt):
+    """Register one run index, never one project-wide entry per interpreter."""
+    project = _safe_directory(project)
+    relative = str(Path(run).absolute().relative_to(project) / "trace/index.json")
+    _register(project, {"schema": "raven.trace-run/v1", "job_id": str(job_id), "attempt": str(attempt), "path": relative})
 
 
 class Recorder:
@@ -116,12 +185,14 @@ class Recorder:
     def __init__(self, project, *, job_id=None, attempt=None, cluster=None,
                  coverage=None, max_bytes=64 << 20, flush_events=64,
                  flush_interval=0.05, identity_extra=None, stream_id=None, initial_mono_ns=None,
-                 background_flush=True, journal_format="events", reserve_bytes=None):
+                 background_flush=True, journal_format="events", reserve_bytes=None, cpu_placement=False, register=True):
         if (type(max_bytes) is not int or not 4096 <= max_bytes <= 1 << 40
                 or type(flush_events) is not int or not 1 <= flush_events <= 65536
                 or isinstance(flush_interval, bool) or not isinstance(flush_interval, (int, float))
                 or not 0 <= flush_interval <= 60):
             raise ValueError("Invalid recorder storage or flush budget")
+        if type(cpu_placement) is not bool:
+            raise ValueError("cpu_placement must be true or false")
         if journal_format not in {"events", "blocks"}:
             raise ValueError("Unknown trace journal format")
         self.journal_format = journal_format
@@ -136,6 +207,19 @@ class Recorder:
         self._pid = os.getpid()
         self.lock = threading.RLock()
         self._fork_disabled = False
+        self._emitter = threading.local()
+        self._queue_lock = threading.Lock()
+        self._frame_queue = deque()
+        self._deferred = deque(maxlen=128)
+        self._flush_wake = threading.Event()
+        self._flush_complete = threading.Event()
+        self._force_flush = False
+        self._async_frames = False
+        self._buffer_failed = False
+        self._fork_pause = threading.Event()
+        self._fork_quiet = threading.Event()
+        self._codes = {}
+        self._code_bytes = 0
         self.stream = stream_id or uuid.uuid4().hex
         self.identity = protocol.validate_identity({
             "job_id": str(job_id or default_job_id()),
@@ -154,10 +238,16 @@ class Recorder:
         self.last_flush = time.monotonic()
         self.state = "OPEN"
         self.warnings = []
-        self.coverage = coverage or {"adapter": "cooperative", "scope": "Explicit events submitted by this process; uninstrumented code is unknown"}
+        self.coverage = dict(coverage or {"adapter": "cooperative", "scope": "Explicit events submitted by this process; uninstrumented code is unknown"})
+        self._cpu_placement = None
+        if cpu_placement:
+            from .trace_cpu import CPUPlacement
+            self._cpu_placement = CPUPlacement()
+            self.coverage["cpu_placement"] = self._cpu_placement.coverage
         try:
             self._publish()
-            register_trace(self.project, self.path)
+            if register:
+                register_trace(self.project, self.path)
         except BaseException:
             os.close(self.fd)
             self.fd = None
@@ -170,22 +260,103 @@ class Recorder:
             self._flush_thread.start()
 
     def _flush_loop(self):
-        while not self._flush_stop.wait(max(0.01, self.flush_interval)):
-            with self.lock:
-                if self.fd is None or self.state != "OPEN":
+        while True:
+            self._flush_wake.wait(max(.01, self.flush_interval))
+            self._flush_wake.clear()
+            if self._fork_pause.is_set():
+                self._fork_quiet.set()
+                while self._fork_pause.is_set():
+                    self._flush_wake.wait(.01)
+                    self._flush_wake.clear()
+                self._fork_quiet.clear()
+            self._drain_frames()
+            while self._deferred:
+                try:
+                    self._deferred.popleft()()
+                except Exception:
+                    pass
+            if self.fd is None:
+                return
+            cadence = max(1., self.flush_interval) if self._async_frames else self.flush_interval
+            if self._force_flush or self._flush_stop.is_set() or self.state != "OPEN" or time.monotonic() - self.last_flush >= cadence:
+                try:
+                    self.flush()
+                    self._force_flush = False
+                    self._flush_complete.set()
+                except OSError:
+                    self.dropped += 1
+                    self._fail("ERROR", "Background durable flush failed")
                     return
-                if self.sequence != self.committed_seq:
-                    try:
-                        self.flush()
-                    except OSError:
-                        self.dropped += 1
-                        self._fail("ERROR", "Background durable flush failed")
-                        return
+            if self._flush_stop.is_set() or self.state != "OPEN":
+                return
+
+    def enqueue(self, kind, data, *, thread):
+        """Capture callbacks enqueue immutable metadata, never encode or fsync."""
+        if self._fork_disabled or self._buffer_failed or self.state != "OPEN" or os.getpid() != self._pid:
+            return False
+        stamp = time.monotonic_ns()
+        observation = self._cpu_placement.observe() if self._cpu_placement is not None else None
+        # The writer holds this lock only while swapping a deque, never while
+        # validating, encoding or doing I/O. Normal contention must not be
+        # mistaken for lost data or stop an otherwise healthy recording.
+        self._queue_lock.acquire()
+        try:
+            if len(self._frame_queue) >= 65536:
+                self.dropped += 1
+                self._buffer_failed = True
+                self.warnings.append("Trace callback buffer reached 65,536 events; recording stopped with an incomplete prefix")
+                self._flush_wake.set()
+                return False
+            self._frame_queue.append((kind, data, thread, stamp, observation))
+            if len(self._frame_queue) >= self.flush_events:
+                self._flush_wake.set()
+        finally:
+            self._queue_lock.release()
+        return True
+
+    def defer(self, callback):
+        """Schedule optional diagnostic I/O outside an application's audit hook."""
+        if self._flush_thread is None:
+            return
+        if len(self._deferred) < self._deferred.maxlen:
+            self._deferred.append(callback)
+            self._flush_wake.set()
+
+    def _drain_frames(self):
+        with self._queue_lock:
+            pending, self._frame_queue = self._frame_queue, deque()
+        for index, (kind, data, thread, stamp, observation) in enumerate(pending):
+            if self.state != "OPEN":
+                self.dropped += len(pending) - index
+                break
+            if kind in {"call", "resume", "return", "yield", "unwind"}:
+                key = (data["frame"], data["function"], data["file"], data["line"])
+                code_id = self._codes.get(key)
+                if code_id is None:
+                    size = len(protocol.encoded(data))
+                    if len(self._codes) >= 65536 or self._code_bytes + size > 16 << 20:
+                        self.dropped += len(pending) - index
+                        self._buffer_failed = True
+                        self.warnings.append("Trace code dictionary reached its bounded capacity; recording stopped")
+                        break
+                    code_id = len(self._codes) + 1
+                    self._codes[key] = code_id
+                    self._code_bytes += size
+                    self.emit("code", {"id": code_id, **data}, thread=thread, mono_ns=stamp)
+                data = {"code": code_id}
+            if not self.emit(kind, data, thread=thread, mono_ns=stamp, _observation=observation):
+                self.dropped += len(pending) - index - 1
+                break
+        if self._buffer_failed:
+            self.state = "LIMIT"
 
     def _after_fork(self):
         # Never touch a lock held by another pre-fork thread or parent journal.
         self._fork_disabled = True
         self.lock = threading.RLock()
+        self._queue_lock = threading.Lock()
+        self._frame_queue = deque()
+        self._deferred = deque(maxlen=128)
         if self.fd is not None:
             os.close(self.fd)
             self.fd = None
@@ -196,13 +367,14 @@ class Recorder:
         process = {key: self.identity[key] for key in ("pid", "parent_pid", "role", "launcher", "rank",
                    "local_rank", "world_size", "interpreter") if key in self.identity}
         _atomic_json(self.path, {"schema": protocol.SCHEMA, "identity": self.identity, **format_fields,
+            **({"frame_encoding": "code-dictionary/v1"} if self._async_frames else {}),
             "process": process,
             "journal": "events.jsonl", "coverage": self.coverage, "state": self.state,
             "committed_seq": self.committed_seq, "committed_bytes": self.committed_bytes,
             "dropped": self.dropped, "warnings": self.warnings[-16:], "updated_ns": time.time_ns(),
             "durability": "Events through committed_seq were fsynced before this manifest was published"}, replace=True)
 
-    def emit(self, kind, data=None, *, thread=None, mono_ns=None):
+    def emit(self, kind, data=None, *, thread=None, mono_ns=None, _observation=None):
         if self._fork_disabled or os.getpid() != self._pid:
             return False
         with self.lock:
@@ -210,6 +382,20 @@ class Recorder:
                 return False
             event = protocol.validate_event({"kind": kind, "mono_ns": mono_ns if mono_ns is not None else time.monotonic_ns(),
                 "thread": str(thread or threading.get_ident()), "data": data or {}}, check_size=False)
+            if "cpu_observation" in event["data"]:
+                raise ValueError("cpu_observation is reserved for the local CPU placement observer")
+            if _observation is not None:
+                event["data"] = dict(event["data"], cpu_observation=_observation)
+            # Historical/native-emitter events must never inherit the reader's
+            # CPU. PythonCapture registers its reuse-safe identity in the
+            # emitter thread itself; another thread cannot borrow that alias.
+            if (self._cpu_placement is not None and mono_ns is None
+                    and len(event["data"]) < 64
+                    and (thread is None or str(thread) in (str(threading.get_ident()),
+                                                          getattr(self._emitter, "identity", None)))):
+                observation = self._cpu_placement.observe()
+                if observation is not None:
+                    event["data"] = dict(event["data"], cpu_observation=observation)
             if self.journal_format == "blocks":
                 return self._emit_block_event(event)
             record = {"schema": "raven.trace-event/v1", "stream": self.stream, "seq": self.sequence + 1,
@@ -242,7 +428,7 @@ class Recorder:
                 self.bytes += len(raw)
                 self.sequence += 1
                 self.previous = digest
-                if self.sequence - self.committed_seq >= self.flush_events or time.monotonic() - self.last_flush >= self.flush_interval:
+                if not self._async_frames and (self.sequence - self.committed_seq >= self.flush_events or time.monotonic() - self.last_flush >= self.flush_interval):
                     self.flush()
                 return True
             except OSError as exc:
@@ -258,7 +444,10 @@ class Recorder:
             raise ValueError("Trace event envelope exceeds 64 KiB")
         try:
             if self._pending_bytes + len(raw) > protocol.MAX_BLOCK_BYTES:
-                self.flush()
+                if self._async_frames:
+                    self._write_block()
+                else:
+                    self.flush()
                 if self.state != "OPEN":
                     self.dropped += 1
                     return False
@@ -271,8 +460,12 @@ class Recorder:
             self._pending.append(raw)
             self._pending_bytes += len(raw)
             self.sequence += 1
-            if len(self._pending) >= self.flush_events or time.monotonic() - self.last_flush >= self.flush_interval:
-                self.flush()
+            if (len(self._pending) >= self.flush_events
+                    or (not self._async_frames and time.monotonic() - self.last_flush >= self.flush_interval)):
+                if self._async_frames:
+                    self._write_block()
+                else:
+                    self.flush()
             return self.state == "OPEN"
         except OSError as exc:
             self._fail("ERROR", f"Trace storage failed: {type(exc).__name__}")
@@ -339,6 +532,14 @@ class Recorder:
     def flush(self):
         if self._fork_disabled or self.fd is None:
             return
+        if (self._async_frames and self._flush_thread is not None and self._flush_thread.is_alive()
+                and threading.current_thread() is not self._flush_thread):
+            self._flush_complete.clear()
+            self._force_flush = True
+            self._flush_wake.set()
+            self._flush_complete.wait(2.)
+            return
+        self._drain_frames()
         with self.lock:
             if self.journal_format == "blocks":
                 self._write_block()
@@ -352,10 +553,19 @@ class Recorder:
         if self._fork_disabled or self.fd is None:
             return
         self._flush_stop.set()
+        self._flush_wake.set()
         if self._flush_thread is not None and threading.current_thread() is not self._flush_thread:
             self._flush_thread.join(timeout=max(1, self.flush_interval + 0.1))
+            if self._flush_thread.is_alive():
+                self.state = "PARTIAL"
+                self.warnings.append("Trace writer did not drain before shutdown; its tail remains uncommitted")
+                return
         with self.lock:
             try:
+                # Events can arrive while the final writer fsync is stalled.
+                # Drain that accepted tail while the recorder is still OPEN;
+                # switching to CLOSED first would silently discard it.
+                self._drain_frames()
                 if self.state == "OPEN":
                     self.emit("stream_end", {"reason": "clean_close"})
                     if self.state == "OPEN":
@@ -404,10 +614,44 @@ class PythonCapture:
         self.previous_thread_profile = None
         self.threads = {}
         self.callbacks = {}
-        self.excluded = {str(Path(__file__).resolve()), str(Path(protocol.__file__).resolve())}
+        self.excluded = {str(Path(__file__).resolve()), str(Path(protocol.__file__).resolve()),
+                         str(Path(__file__).with_name("trace_cpu.py").resolve())}
+        self.raven_prefix = str(Path(__file__).resolve().parent) + os.sep
         self._stopped = False
         self._metadata = {}
         self._metadata_lock = threading.RLock()
+        import sysconfig
+        self.excluded_prefixes = tuple(dict.fromkeys(
+            os.path.abspath(path) + os.sep for path in
+            (sys.prefix, sys.base_prefix, sys.exec_prefix, *sysconfig.get_paths().values())
+            if isinstance(path, str) and path))
+        # A project may add a second conda/venv library to sys.path. Discover
+        # those environment roots once before callbacks start; never stat
+        # ancestors on an application's call/return path.
+        environment_roots = set()
+        checks = 0
+        deadline = time.monotonic() + .01
+        for entry in sys.path[:128]:
+            if not isinstance(entry, str):
+                continue
+            path = os.path.abspath(entry or os.getcwd())
+            if not any(path.startswith(root) for root in self.roots):
+                continue
+            for _ in range(16):
+                if checks >= 128 or time.monotonic() >= deadline:
+                    break
+                checks += 1
+                try:
+                    if os.path.isfile(os.path.join(path, "pyvenv.cfg")) or os.path.isdir(os.path.join(path, "conda-meta")):
+                        environment_roots.add(path + os.sep)
+                        break
+                except OSError:
+                    break
+                parent = os.path.dirname(path)
+                if parent == path or not any((parent + os.sep).startswith(root) for root in self.roots):
+                    break
+                path = parent
+        self.excluded_prefixes = (*self.excluded_prefixes, *sorted(environment_roots))
         _CAPTURES.add(self)
 
     def _after_fork(self):
@@ -419,6 +663,8 @@ class PythonCapture:
 
     def _included(self, code):
         """A bounded, weak code cache keeps legacy filtering cheap and stable."""
+        if code.co_filename in self.excluded or code.co_filename.startswith(self.raven_prefix):
+            return False
         key = id(code)
         cached = self._scope_cache.get(key)
         if cached is not None and cached[0]() is code:
@@ -429,24 +675,31 @@ class PythonCapture:
             if filename.startswith("<"):
                 allowed = filename in {"<string>", "<stdin>"}
             else:
-                path = os.path.realpath(filename)
+                path = os.path.abspath(filename)
                 raven_root = str(Path(__file__).resolve().parent) + os.sep
                 allowed = (not path.startswith(raven_root)
                            and "site-packages" not in Path(path).parts
                            and "dist-packages" not in Path(path).parts
+                           and not path.startswith(self.excluded_prefixes)
                            and any(path.startswith(root) for root in self.roots))
         owner = weakref.ref(self)
         def discard(reference):
             capture = owner()
-            if capture is not None:
-                with capture._metadata_lock:
+            if capture is not None and capture._metadata_lock.acquire(blocking=False):
+                try:
                     current = capture._scope_cache.get(key)
                     if current is not None and current[0] is reference:
                         del capture._scope_cache[key]
-        with self._metadata_lock:
+                finally:
+                    capture._metadata_lock.release()
+        if not self._metadata_lock.acquire(blocking=False):
+            return allowed
+        try:
             if len(self._scope_cache) >= 1024:
                 del self._scope_cache[next(iter(self._scope_cache))]
             self._scope_cache[key] = (weakref.ref(code, discard), allowed)
+        finally:
+            self._metadata_lock.release()
         return allowed
 
     def _code_metadata(self, code):
@@ -461,23 +714,31 @@ class PythonCapture:
         owner = weakref.ref(self)
         def discard(reference):
             capture = owner()
-            if capture is not None:
-                with capture._metadata_lock:
+            if capture is not None and capture._metadata_lock.acquire(blocking=False):
+                try:
                     current = capture._metadata.get(key)
                     if current is not None and current[0] is reference:
                         del capture._metadata[key]
-        with self._metadata_lock:
+                finally:
+                    capture._metadata_lock.release()
+        if not self._metadata_lock.acquire(blocking=False):
+            return data
+        try:
             if len(self._metadata) >= 1024:
                 del self._metadata[next(iter(self._metadata))]
             self._metadata[key] = (weakref.ref(code, discard), data)
+        finally:
+            self._metadata_lock.release()
         return data
 
     def _event(self, kind, code):
         if (getattr(self.local, "busy", False) or self._stopped or self.recorder._fork_disabled
-                or self.recorder.state != "OPEN" or os.getpid() != self.recorder._pid or not self._included(code)):
+                or self.recorder.state != "OPEN" or os.getpid() != self.recorder._pid):
             return
         self.local.busy = True
         try:
+            if not self._included(code):
+                return
             ident = threading.get_ident()
             flush_thread = getattr(self.recorder, "_flush_thread", None)
             if flush_thread is not None and ident == flush_thread.ident:
@@ -490,20 +751,26 @@ class PythonCapture:
             if thread is None:
                 thread = f"{ident}:{uuid.uuid4().hex[:12]}"
                 self.local.identity = thread
+                self.recorder._emitter.identity = thread
             if thread not in self.threads:
                 name = getattr(current, "name", f"thread-{ident}")
                 self.threads[thread] = name
-                self.recorder.emit("thread_start", {"name": name,
+                writer = self.recorder.enqueue if self.recorder._async_frames else self.recorder.emit
+                writer("thread_start", {"name": name,
                     "native_id": threading.get_native_id()}, thread=thread)
-            self.recorder.emit(kind, self._code_metadata(code), thread=thread)
+            writer = self.recorder.enqueue if self.recorder._async_frames else self.recorder.emit
+            writer(kind, self._code_metadata(code), thread=thread)
         except Exception as exc:
             # Instrumentation must not inject errors into the research program.
-            self.recorder._fail("ERROR", f"Python capture stopped: {type(exc).__name__}")
             self._stopped = True
+            message = f"Python capture stopped: {type(exc).__name__}"
+            self.recorder.defer(lambda: self.recorder._fail("ERROR", message))
         finally:
             self.local.busy = False
 
     def start(self):
+        if self.recorder._flush_thread is not None:
+            self.recorder._async_frames = True
         monitoring = getattr(sys, "monitoring", None)
         if monitoring is None and not self.legacy:
             raise ValueError("Python capture requires CPython 3.12+; --legacy-profile explicitly accepts 3.10/3.11 coverage limits")
@@ -528,12 +795,15 @@ class PythonCapture:
                     # it for permanently excluded code and local events. Never
                     # disable on a transient recursion or flush-thread guard;
                     # PY_THROW/PY_UNWIND do not permit this return value.
-                    if (self._stopped or self.recorder._fork_disabled or self.recorder.state != "OPEN"
-                            or os.getpid() != self.recorder._pid):
-                        return monitoring.DISABLE if _disable else None
-                    if _disable and not self._included(code):
-                        return monitoring.DISABLE
-                    self._event(_kind, code)
+                    try:
+                        if (self._stopped or self.recorder._fork_disabled or self.recorder.state != "OPEN"
+                                or os.getpid() != self.recorder._pid):
+                            return monitoring.DISABLE if _disable else None
+                        if _disable and not self._included(code):
+                            return monitoring.DISABLE
+                        self._event(_kind, code)
+                    except Exception:
+                        self._stopped = True
                 self.callbacks[event_id] = callback
                 monitoring.register_callback(self.tool_id, event_id, callback)
                 mask |= event_id
@@ -578,6 +848,12 @@ def main(argv=None):
     if blocked is not None:
         print(json.dumps(blocked, indent=2))
         return 3
+    if argv[:1] == ["cleanup-runtime"]:
+        from .runtime_cleanup import main as cleanup_main
+        return cleanup_main(argv[1:])
+    if argv and argv[0] == "capabilities":
+        from .trace_capabilities import main as capabilities_main
+        return capabilities_main(argv[1:])
     if argv and argv[0] == "summary":
         from .trace_summary import main as summary_main
         return summary_main(argv[1:])
@@ -587,7 +863,8 @@ def main(argv=None):
     if argv and argv[0] == "mpi":
         from .trace_mpi import main as mpi_main
         return mpi_main(argv[1:])
-    parser = argparse.ArgumentParser(prog="raven trace", description="Opt-in event recording; no debugger attach or scheduler modification")
+    parser = argparse.ArgumentParser(prog="raven trace", description="Opt-in event recording; no debugger attach or scheduler modification",
+        epilog="Use raven trace capabilities [--json] to inspect supported capture features and platform limits.")
     sub = parser.add_subparsers(dest="action", required=True)
     launch = sub.add_parser("run", help="Record Python execution in a new process-owned journal")
     launch.add_argument("--project", default=os.getcwd())
@@ -598,21 +875,22 @@ def main(argv=None):
     launch.add_argument("--slurm-start")
     launch.add_argument("--max-mib", type=int, default=64)
     launch.add_argument("--legacy-profile", action="store_true")
+    launch.add_argument("--cpu-placement", action="store_true", help="Observe the calling thread CPU at event times on Linux; does not record continuous residency")
     launch.add_argument("script", nargs=argparse.REMAINDER)
     inspect = sub.add_parser("inspect", help="Read checked events and reconstructed stacks")
     inspect.add_argument("path")
     inspect.add_argument("--json", action="store_true")
-    export = sub.add_parser("export", help="Export a bounded verified prefix as a Perfetto timeline or evented speedscope view")
+    export = sub.add_parser("export", help="Export a verified prefix as an offline HTML timeline, Perfetto, or speedscope")
     export.add_argument("path")
-    export.add_argument("--format", choices=("perfetto", "speedscope"), default="perfetto")
+    export.add_argument("--format", choices=("perfetto", "speedscope", "html"), default="perfetto")
     export.add_argument("--output", required=True, help="new private output file; existing files are never replaced")
     register = sub.add_parser("register", help="Register an existing project-contained trace manifest")
     register.add_argument("--project", required=True)
     register.add_argument("path")
     args = parser.parse_args(argv)
     if args.action == "export":
-        from .trace_export import export as export_trace
         from .raven_execution import router_for
+        from .trace_export import export as export_trace
         try:
             result = export_trace(args.path, args.output, format=args.format, managed=router_for().managed)
         except (OSError, ValueError) as exc:
@@ -622,10 +900,13 @@ def main(argv=None):
         return 0
     if args.action == "inspect":
         from .raven_execution import router_for
-        value = (protocol.read_trace(args.path, max_events=512, max_bytes=256 << 10)
-                 if router_for().managed else protocol.read_trace(args.path))
-        print(json.dumps(value, indent=2) if args.json else "\n".join(value["rows"] + value["warnings"]))
-        return 0 if value["status"] != "INVALID" else 2
+        from .trace_stream_export import inspect as inspect_trace
+        try:
+            inspect_trace(args.path,json_output=args.json,managed=router_for().managed)
+        except (OSError,ValueError) as exc:
+            print(f"Raven trace inspect: {exc}",file=sys.stderr)
+            return 2
+        return 0
     if args.action == "register":
         register_trace(args.project, args.path)
         return 0
@@ -641,7 +922,7 @@ def main(argv=None):
         "scope": "Python frames in this launched process and newly observed threads; native extensions, device execution and fork children are not covered",
         "limitations": "Legacy profile cannot distinguish yield from return or exception unwind" if args.legacy_profile else "Only declared Python frame events; pre-existing frames are unknown"}
     recorder = Recorder(args.project, job_id=args.job_id, attempt=args.attempt,
-        cluster=args.cluster, max_bytes=args.max_mib << 20, coverage=coverage,
+        cluster=args.cluster, max_bytes=args.max_mib << 20, coverage=coverage, cpu_placement=args.cpu_placement,
         identity_extra={key: value for key, value in {"slurm_submit": args.slurm_submit,
             "slurm_start": args.slurm_start, "run_id": os.environ.get("RAVEN_RUN_ID")}.items() if value})
     capture = PythonCapture(recorder, legacy=args.legacy_profile)

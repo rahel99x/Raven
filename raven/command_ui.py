@@ -6,6 +6,7 @@ retain its tested action dispatch and its explicit y/n shortcuts.
 """
 from __future__ import annotations
 
+from .ui.catalog import ANALYTICS_VIEWS, NODES_VIEWS, SORTS, TABS
 import os
 import re
 import shlex
@@ -14,8 +15,9 @@ import time
 from types import MappingProxyType
 
 from . import command_registry as registry
-from .layout import box, clip_row, cut, vlen
-from .research import RESEARCH_VIEWS, clean
+from .layout import box, cut, vlen
+from .research_text import clean
+from .ui.catalog import RESEARCH_VIEWS
 
 MAX_INPUT = 4096
 MAX_HISTORY = 50
@@ -281,7 +283,8 @@ def _path_candidates(app, prefix):
             value = app.research.settings.get(key)
             if isinstance(value, str) and value:
                 candidates.add(value)
-    from .remote import LocalFiles, RemoteFiles
+    from .local_files import LocalFiles
+    from .remote_files import RemoteFiles
     files = getattr(app, "files", None) or app.logs.files
     state = initialize(app)
     try:
@@ -420,17 +423,14 @@ def _argument_values(app, previous, prefix):
         from .table_ui import definitions
         return [(column.key, column.title) for column in definitions(app.tab if app.tab in ("jobs", "history") else "jobs")]
     if command == "tab":
-        from .views import TABS
         return [(key, label) for key, label in TABS]
     if command in ("workspace", "workspaces") or command == "view" and app.tab == "research":
         return [(key, label) for key, label in RESEARCH_VIEWS]
     if command == "view":
-        from .views import ANALYTICS_VIEWS, NODES_VIEWS
         return ANALYTICS_VIEWS if app.tab == "analytics" else NODES_VIEWS if app.tab == "nodes" else []
     if command == "theme":
         return [(value, "terminal theme") for value in registry.argument_choices(command, app)]
     if command == "sort":
-        from .views import SORTS
         return [(value, "sort key") for value in SORTS.get(app.tab, [])]
     if command == "days":
         return [(str(value), "days of accounting history") for value in app.days_options]
@@ -807,6 +807,10 @@ def _confirm_rows(app, width, ascii_):
         lines.append([(" from the " + clean(clone.source, ascii_) + ", in " + clean(clone.workdir or "the current directory", ascii_) + ":", "dim")])
         for text in _wrap_exact(clean(clone.command(), ascii_, limit=1 << 20), width - 12):
             lines.append([(" " + text, "cyan")])
+        lines.append([(" Exact submission arguments (one token per entry):", "dim")])
+        for index, token in enumerate(clone.argv):
+            for text in _wrap_exact(f"argv[{index}]: " + clean(token, ascii_, limit=8192), width - 12):
+                lines.append([(" " + text, "cyan")])
         flags = clone.flags()
         resources = "  ".join(f"{key} {flags[key]}" for key in ("partition", "cpus", "mem", "time", "gres", "nodes", "dependency") if key in flags)
         if resources:

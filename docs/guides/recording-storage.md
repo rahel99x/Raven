@@ -1,78 +1,112 @@
-# Recording storage and retention
+# Recording storage and recovery
 
-Raven keeps raw native CPU, memory and GPU recordings under the selected local state directory. Every new recording filename includes the exact job identifier and a connection/attempt identity digest. Verified submit/start/restart changes start a separate recording. Until sufficient scheduler identity is available, observations remain isolated to their current session and are labelled unverified; conversion cannot promote them to verified evidence. Project scientific metrics and external trace files remain separate authoritative inputs.
+Raven keeps scheduler observations, application measurements and job-side
+telemetry as distinct sources. A missing source does not invalidate measurements
+from another source. Sampling gaps and storage limits remain visible in coverage
+metadata; an unavailable measurement is never converted to zero.
 
-After controller purge, reopening a completed native recording requires qualified
-accounting evidence for the same submit/start/restart identity. A legacy response
-without the restart counter remains explicitly unverified; Raven preserves the
-archive and reports why it cannot attach it. A scientific run's attempt number is
-not a Slurm restart counter. It must not be substituted to force an attachment.
+## Attempt identity
 
-JSONL is the default. **Setup → Installation and diagnostics → Recording storage** offers conversion preview, format selection and retention inspection. These actions use the existing background task lane and a named local maintenance child. The child has 256 MiB address space, 15 seconds CPU, 20 seconds wall time and bounded input/output. It inherits only the exact state-lock descriptor; shutdown cancels and reaps it before state ownership is released. A remote Heavy worker is unnecessary for this local state operation. Stop other Raven writers before using the equivalent CLI mutation commands.
+Native scheduler recordings use the source scope, job ID, submission time,
+start time and an explicit restart counter. Structured Slurm queue responses
+provide these fields without an additional controller request. On sites that
+only expose the legacy text interface, Raven verifies sampled jobs through a
+bounded rotation of exact detail requests. Selecting a job is not required.
 
-## Lossless compact blocks
+A cached detail record can retain the previous graph, but cannot authorize a
+new verified append after another queue publication. Samples awaiting a fresh
+restart proof stay in a separate session-only recording. The chart's storage
+status explains this condition. Raven preserves these files rather than
+guessing which side of a same-second requeue produced an observation.
 
-Set `storage.series_format` to `"blocks-v1"` in a managed configuration, or use the storage page. The change applies to new recording streams immediately. Existing JSONL streams keep their format until an explicit conversion: JSONL is copied, decoded and verified before a new `.rvb` file is published. The original remains unchanged. Once a compact counterpart exists it stays canonical, including after selecting JSONL again; an older preserved original must not replace newer samples.
+When the first verified observation proves a zero restart count and the same
+submission, start and source identity, Raven promotes the matching initial
+session recording without clearing its graph. Ambiguous positive-counter
+promotions remain separate. A scheduler ID alone never authorizes a merge.
 
-```bash
-raven series inspect /path/to/state/series/v2-...jsonl
-raven series migrate /path/to/state/series/v2-...jsonl
-raven series migrate /path/to/state/series/v2-...jsonl --apply
-raven series export /path/to/state/series/v2-...rvb --output /new/path/raw.jsonl
-```
+## Committed native recordings
 
-Use the actual filename from your state directory. Inspection and preview are read-only; apply requires exclusive ownership of that state directory. Export requires a new destination. Legacy files require `--allow-unattributed` for conversion and remain explicitly unattributed. Conversion cannot establish a missing execution identity.
+Compact `.rvb` files contain independently checksummed, committed frames.
+Interactive source workers batch queued rows until a sample-count or time
+deadline; explicit flushes and shutdown drain pending rows. A bounded write
+delay does not delay the in-memory graph.
 
-The version-1 block header uses little-endian integers, a filename identity digest, decoded/encoded lengths, row count and SHA-256. Its payload is a zlib-compressed JSON array of object samples. A checksummed commit footer closes each append. Finite binary64 values round-trip exactly through JSON's round-trip representation, including signed zero; integers retain their exact integer representation. Epoch-second timestamps, key order, missing fields and null fields are preserved. There is no executable deserialization. Limits apply to block size, nesting, structural slots, row counts, encoded input and cumulative decoded bytes. Decompression allocates memory: this format is not zero-copy.
+Readers walk frame footers backward to return the newest verified window.
+Coverage identifies whether older bytes were left unread. If the final append
+is damaged, the writer first durably quarantines its suffix in a
+`.damaged-OFFSET-ID` file, retains the verified prefix, appends an explicit gap
+record and continues. Failed appends roll back to their initial file length.
+A small, attempt-bound recovery descriptor retains the pending gap if that
+first append fails or the process restarts; successful durable publication
+removes the descriptor.
 
-A damaged append exposes its verified prefix with a coverage error. Readers stop at the first invalid block; they never skip corruption. Further append is refused if the final commit is incomplete. Preserve the damaged file and its JSONL original. Use `raven series recover DAMAGED.rvb --output NEW.jsonl` for an explicit verified-prefix copy. Its result reports `complete=false` and the actual read error when coverage is partial. Ordinary export intentionally fails on incomplete input. Keep the damaged original and the recovery status as evidence. Never relabel a recovery file as another attempt.
+JSONL remains supported. Writers separate an existing torn final line from the
+next record and reject nonfinite JSON numbers. Migration and retention skip
+invalid records with an explicit ignored-record count; they preserve their
+source files.
 
-Compact storage is opt-in because small synchronous appends can cost more CPU and bytes than JSONL; batching and compression benefits depend on the recording workload. In the controlled 8,192-record fixture, bulk conversion reduced bytes by 71.9% but increased encoding time by 2.66 times. Individual committed blocks were larger and slower than matched JSONL appends, so JSONL remains the recommended default for new live recordings. See the [measured storage evidence](../implementation/review-2026-10/evidence/W24.md) for the fixture, costs and limits. Raw export and reopen retain the same values. Indexed chart envelopes preserve original extrema and ordering; gaps, unknown observations, duplicate timestamps and interpolated window edges continue to use the established renderer. Corrected interior values invalidate cached results. No cache signature fallback has been removed.
+Light mode enforces its storage quota by evicting the oldest inactive, unpinned
+attempt files. Active and pinned raw recordings remain protected. Quarantined
+suffixes count toward the budget and retire before valid inactive recordings.
+Operational events
+rotate independently. After exact verification, a redundant inactive JSONL
+recovery copy may leave the working quota while its compact file retains every
+raw value. Conversion itself remains a copy-and-verify operation.
 
-## Explicit retention working copies
+## Segmented job-side telemetry
 
-Retention creates a separate `.rvt` working archive. It never deletes, truncates or rewrites the original native or scientific recording. Raw protection is enabled by default. This is intentional: Raven cannot prove that an external scientific receipt or exported figure no longer references an original file.
+New recordings publish `raven.telemetry-index/v2`. Existing v1 indexes and
+expanded v1 measurement rows remain readable. The v2 index records invariant
+row fields once, alongside device descriptors and an ordered segment inventory.
+The active files remain `telemetry/cpu-memory.jsonl` and
+`telemetry/gpu.jsonl`; sealed files use names such as
+`telemetry/gpu.segment-00000001.jsonl`.
 
-The managed `storage.retention` settings are:
+A compact GPU row can look like this:
 
 ```json
-{
-  "raw_seconds": 86400,
-  "ten_second_seconds": 604800,
-  "minute_seconds": 2592000,
-  "gap_seconds": 2.0,
-  "protect_raw": true
-}
+{"sequence":12,"timestamp":1792454400.125,"elapsed_seconds":60.2,"device":0,"utilization_percent":72.0}
 ```
 
-Ages are relative to the captured `as_of` epoch time and must satisfy `raw_seconds ≤ ten_second_seconds ≤ minute_seconds`. With raw protection enabled, the working archive retains all admitted raw samples. With protection explicitly disabled, recent observations remain raw, older observations use 10-second bins, then 60-second bins; older observations expire from the working copy. The original still retains every observation. Tier boundaries are disjoint, and edge bins are clipped to their own tier interval.
+`device` indexes that source's `devices` array. `row_defaults` supplies fields
+such as the measurement schema, run ID, node, clock, scope and sampling interval.
+The reader reconstructs the expanded measurement before validation or CSV
+export. The UTC timestamp is derived from the finite epoch timestamp. The
+[compact row schema](../schemas/telemetry-record.v2.schema.json) and
+[index schema](../schemas/telemetry-index.v2.schema.json) define the format.
 
-```bash
-# Preview the proposed working copy, preserving originals.
-raven series retention /path/to/state/series/v2-...jsonl
+Each family rotates bounded segments. When its budget is reached, it retires
+the oldest sealed segment and continues collecting the newest observations.
+Coverage distinguishes lifetime `samples` from `retained_samples` and
+`evicted_samples`. The default budget scales with the declared time limit,
+device count and sampling interval, with a 32 MiB floor and 256 MiB ceiling per
+family. An explicit storage budget overrides that estimate.
 
-# Explicitly permit tiering in a new working copy.
-raven series retention /path/to/state/series/v2-...jsonl \
-  --raw-seconds 86400 --ten-second-seconds 604800 \
-  --minute-seconds 2592000 --unprotect-working-copy --apply
+Temporary `ENOSPC`, `EDQUOT` and `EIO` errors preserve a usable writer and retry
+with bounded backoff. This also applies when creating the next segment.
+Publication synchronizes data, then the new index, then its directory. CPU and
+memory observations remain usable while GPU recording is unavailable.
 
-raven series query /path/to/state/series/v2-...rvt --limit 100
-raven series pin /path/to/state/series/v2-...rvt
+## Retention and exports
 
-# Required before reducing a previously pinned working copy.
-raven series pin /path/to/state/series/v2-...rvt --unpin
-```
+The default gap threshold follows observed cadence: 2.5 times the median
+positive interval, with a 15-second minimum. Large recordings use a disk-backed
+ordering spool, one time-bin aggregate and a bounded encoder batch rather than
+materializing every sample in Python. Rollups preserve counts, extrema, units,
+source-row provenance and exact decimal sums. They do not infer interpolation,
+event order, quantiles or unobserved values.
 
-The Setup page previews and publishes the configured policy and opens the tagged tier results. CLI `--as-of`, `--start` and `--end` accept epoch seconds. Query intervals are half-open. A query crossing a rollup boundary returns the entire intersecting rollup with `boundary_partial=true`; it cannot claim an exact answer for a smaller interval.
+Automatic export budgets scale with captured source size. A deadline or user
+cancellation leaves the request pending and does not consume a failure attempt.
+Captured watermarks hash the complete source prefix, including interior bytes.
 
-Each rollup declares its sample count, time interval, first/last observed times, source rows, metric counts, missing counts, minima/maxima and their source rows, exact decimal sums and units. CPU ratios remain fractions; RSS is bytes; GPU utilization is percent and GPU memory is MiB. Unknown units remain null. Aggregates are sample-weighted, not time-weighted; explicit observation gaps exceed the configured gap threshold. No interval is filled by interpolation. The archive preserves the source path, attempt digest and canonical raw-value digest.
+Table, chart, clipboard and full-log exports default to
+`$XDG_DATA_HOME/raven/exports`, or `~/.local/share/raven/exports`. Set
+`RAVEN_EXPORT_DIR` to an absolute durable directory to choose another location.
+These exports remain separate from ephemeral scheduler state. New export files
+are private and created exclusively; a planted symlink or existing destination
+is refused. The clipboard uses its own private, atomically replaced cache.
 
-Rollups cannot reconstruct sample ordering within a bin, quantiles, covariance, causal relationships, rates from counters, or values during missing intervals. They never enter native raw graphs or raw export paths. Queries display their fidelity explicitly. Late corrections rebuild a complete bounded generation from the authoritative raw source; aggregates are not patched by guessing missing subtraction information.
-
-Compaction checks cancellation, input and output budgets, checksums, source stability and quotas. A staged file is verified before one atomic replacement publishes the complete generation. Restart before replacement retains the previous generation; restart afterward sees the complete new generation. Disk-full, unsupported identity, ambiguous fields and corruption produce visible errors. The initial working budget is 50,000 source records and 32 MiB encoded input/output, with a separate cumulative decompression bound. Narrow a larger source explicitly rather than assuming partial compaction is complete.
-
-A smaller working archive does not imply lower total disk use while protected originals remain. Raven reports original bytes and additional archive bytes separately. Raw garbage collection requires a future reference-aware policy; this implementation does not infer permission to erase evidence from missing references.
-
-## Updating and downgrading
-
-Stop existing Raven sessions, update the checkout and reinstall the package in its existing environment. No state-directory deletion is needed. Keep JSONL originals, compact recordings and retention files when changing versions. Older Raven builds do not understand compact/tier formats; export raw compact data to a new JSONL destination before using it with an older tool. Never run old and new writers concurrently on the same state directory.
+Plain passport hashes detect corruption. They do not authenticate an author
+who can rewrite a document and recompute its hashes. Use Raven's signed-evidence
+workflow when authenticity is required.

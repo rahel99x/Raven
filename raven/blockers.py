@@ -580,7 +580,7 @@ def explain(job, *, jobs=(), finished=(), details=None, partitions=(), nodes=Non
     external = sum(1 for row in result["dependencies"]["tree"] if row["external"])
     if external:
         result["limitations"].append(f"{external} dependency references lack predecessor records; the snapshot may exclude other users or older history.")
-    jid_evidence = evidence("job", "state", result["state"], "Observed job state in the supplied snapshot.")
+    _jid_evidence = evidence("job", "state", result["state"], "Observed job state in the supplied snapshot.")
     reason_evidence = evidence("job", "reason", result["reason"]["raw"], "Slurm reason is a reported scheduler condition, not a complete causal diagnosis.")
     code = result["reason"]["code"]
     pending = result["state"] in {"PENDING", "PD"}

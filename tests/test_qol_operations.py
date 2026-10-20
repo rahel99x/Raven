@@ -60,7 +60,8 @@ def controller_app_for(tmp_path):
     return app
 
 
-def test_full_log_copy_publishes_completed_tail_before_admission_and_keeps_exact_source(tmp_path):
+def test_full_log_copy_publishes_completed_tail_before_admission_and_keeps_exact_source(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "durable-exports"))
     app = controller_app_for(tmp_path)
     p = tmp_path / 'exact source.log'
     raw = b'FIRST\toriginal\r\n' + ('界 Unicode\tdata\r\n' * 2000).encode() + b'LAST\tend'
@@ -80,7 +81,7 @@ def test_full_log_copy_publishes_completed_tail_before_admission_and_keeps_exact
         assert published == ['cached tail'] and app.research.future is not previous
         assert app.command_ok and app.activity.task['source'] == str(p)
         complete(app)
-        exports = list((tmp_path / 'state' / 'exports').glob('log-full-*.log'))
+        exports = list((tmp_path / 'durable-exports').glob('log-full-*.log'))
         assert len(exports) == 1 and exports[0].read_bytes() == raw
         assert app.activity.task['status'] == 'ready'
     finally:
@@ -150,7 +151,8 @@ def test_log_copy_rejects_source_or_selection_changed_by_completed_publication(t
         app.research.close()
 
 
-def test_report_export_publishes_completed_work_before_capturing_snapshot(tmp_path):
+def test_report_export_publishes_completed_work_before_capturing_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "durable-exports"))
     from raven.views import Views
     app = controller_app_for(tmp_path)
     app.views_ref = Views(L.Glyphs(True), app.cfg, files=app.logs.files)
@@ -164,7 +166,7 @@ def test_report_export_publishes_completed_work_before_capturing_snapshot(tmp_pa
         app.export_report_background()
         assert app.command_ok and app.research.future is not previous
         complete(app)
-        exports = list((tmp_path / 'state' / 'exports').glob('report-*.txt'))
+        exports = list((tmp_path / 'durable-exports').glob('report-*.txt'))
         assert len(exports) == 1
         text = exports[0].read_text()
         assert 'captured report job' in text and 'before publication' not in text

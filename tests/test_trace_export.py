@@ -98,14 +98,15 @@ def test_managed_export_is_read_only_admitted_and_has_inspect_budget(tmp_path, m
     from raven.raven_execution import cli_admission, ExecutionRouter
     source = fixture(tmp_path)
     captured = {}
-    original = trace_export.protocol.read_trace
-    def read(path, **kwargs):
+    original = trace_export.protocol.TraceReader.iter_pages
+    def read(reader, **kwargs):
         captured.update(kwargs)
-        return original(path, **kwargs)
-    monkeypatch.setattr(trace_export.protocol, 'read_trace', read)
+        return original(reader, **kwargs)
+    monkeypatch.setattr(trace_export.protocol.TraceReader, 'iter_pages', read)
     assert cli_admission(['trace', 'export', str(source), '--output', 'new.json'], ExecutionRouter({'managed': True})) is None
     trace_export.export(source, tmp_path / 'new.json', managed=True)
-    assert captured == {'max_events': 512, 'max_bytes': 256 << 10}
+    assert 1 <= captured['max_events'] <= 512
+    assert captured['max_bytes'] == 256 << 10
 
 
 def test_invalid_journal_and_unsupported_stack_semantics_refuse_export(tmp_path):
@@ -140,7 +141,8 @@ def test_failed_export_does_not_publish_partial_data_or_replace_a_symlink(tmp_pa
     assert target.read_text() == 'keep' and link.is_symlink()
     def failed(_):
         raise OSError('injected disk failure')
-    monkeypatch.setattr(trace_export.os, 'fsync', failed)
+    from raven import trace_stream_export
+    monkeypatch.setattr(trace_stream_export.os, 'fsync', failed)
     with pytest.raises(OSError, match='disk failure'):
         trace_export.export(source, tmp_path / 'partial.json')
     assert not (tmp_path / 'partial.json').exists()

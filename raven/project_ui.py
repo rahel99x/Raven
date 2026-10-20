@@ -9,7 +9,7 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 
 from . import layout as L, projects, artifact_pages
 from .log_presentation import json_page
-from .research import clean
+from .research_text import clean
 
 MODES = {"project_runs", "project_outputs", "project_preview"}
 
@@ -461,7 +461,7 @@ def tick(app, snap=None, *, force=False):
         binding = None
         state.update(auto_generation=state["auto_generation"] + 1, auto_pending=False, auto_last=0.0)
     state["auto_backend"] = backend
-    from .refresh_rate import file_interval
+    from .cadence import file_interval
     interval = file_interval(getattr(hub, "interval", 5.0), getattr(hub, "polling_multiplier", 1), remote=bool(hub.files.remote))
     now = time.monotonic()
     if not force and state["auto_last"] and now - state["auto_last"] < interval:

@@ -1,7 +1,7 @@
 # Raven review implementation handback
 
 This handback covers the accepted **44 packages and 371 clauses** from the supplied
-implementation handoff. The [coverage ledger](coverage.json) is the exact
+implementation handoff. The [coverage ledger](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/coverage.json) is the exact
 requirement-by-requirement record; the package index below links the implementation,
 review, validation, and qualification evidence. An implemented local milestone is
 not automatically a production-qualified feature.
@@ -86,12 +86,12 @@ The same-selection comparison below measures `bab48f6`, before the final IPC and
 Python 3.10 corrections. It remains a source-bound performance result, not a
 substitute for the corrected revision's regression gates.
 
-The [regression comparison](evidence/W11-final-comparison.json) records
+The [regression comparison](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/W11-final-comparison.json) records
 **18,278 passed and 12 skipped in each mode**, with the same 18,290 JUnit case
 identities, no failures, no serial exclusions, and unchanged source fingerprint
 `10f3c29138e5eac365a27ab3bbdcc164a85ca530a11792d4f2fcb4ef8e155a30`.
-The [serial profile](evidence/raw/W11-final-serial.json) and
-[parallel profile](evidence/raw/W11-final-parallel.json) retain exact commands,
+The [serial profile](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/raw/W11-final-serial.json) and
+[parallel profile](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/raw/W11-final-parallel.json) retain exact commands,
 environment, CPU/I/O observations, and losslessly archived JUnit evidence.
 
 | Python 3.12 full regression | Serial | Four workers |
@@ -107,7 +107,7 @@ affinity CPUs. Aggregate RSS sums live processes, can count shared pages more
 than once, and is neither Python allocations nor proportional set size. Sampling
 can miss short-lived peaks. Other CI gates are outside these durations.
 
-The [final integrated qualification](evidence/final-qualification.json) records
+The [final integrated qualification](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/final-qualification.json) records
 the corrected revision separately:
 
 | Python | Passed | Skipped | Packaging and installed-command gates |
@@ -134,7 +134,7 @@ corresponding checks, including extracted-source testing; hosted execution remai
 unclaimed. The experimental full/core/lab installation qualification is retained
 separately under W42.
 
-A final [delivery packaging receipt](evidence/delivery-packaging.json) records
+A final [delivery packaging receipt](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/delivery-packaging.json) records
 25 additional passing checks on distributions built from the completed
 documentation commit `59221f7`. The five-interpreter regression binding
 above remains unchanged. This outer receipt was added after the build.
@@ -142,9 +142,9 @@ above remains unchanged. This outer receipt was added after the build.
 The original Python 3.10 API failure, Python 3.13 watch-timeout failure and
 Python 3.14 shared-directory fixture failure remain in the archived evidence.
 Their corrections preserve behavioral assertions and retain independent reviews.
-The [maintainer review](evidence/maintainer-review.json),
-[final consistency audit](evidence/final-audit.json), and
-[artifact index](evidence-index.json) provide the final cross-checks.
+The [maintainer review](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/maintainer-review.json),
+[final consistency audit](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/final-audit.json), and
+[artifact index](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence-index.json) provide the final cross-checks.
 
 ## Measured benefits and costs
 
@@ -160,13 +160,13 @@ package. They are not interchangeable with live scheduler or display latency.
 | [Retention, W25](evidence/W25.md) | Working archive reduced to 121 raw samples and 114 rollups; build 138.859 ms, query 6.048 ms. | Raw originals remain protected. The additional archive increased fixture storage from 504,958 to 521,108 bytes; this is a bounded working-set benefit, not total disk reclamation. |
 | [Shared observations, W39](evidence/W39.md) | At 200 logical clients, equivalent full-source reference reads 400 → 2 and CPU 8.05465 → 0.08632 s. Publication-time validation reduced the prior project-enabled 0.19409 s shared cost. | Injected source calls, not measured site traffic. Final CPU and 220,380-byte cache exceed the earlier narrower implementation. Real overload bursts enforce quotas; they do not serve 200 clients immediately. |
 | [Forecast holdout, W34](evidence/W34.md) | Actual Slurm capture produced 65 preissued outcomes and 25 chronological held-out predictions per model. Existing predictor MAE 0.36000 s; new residual model 0.37580 s. | The new model did not improve on the existing predictor and matched the cohort baseline. Initial abstention leaves overall coverage 25/65. Production calibration and counterfactual efficacy remain unproved. |
-| [Distribution footprint, W42](evidence/W42-controlled.json) | Complete → core: shipped Raven bytes 6,283,158 → 6,059,927 (3.6% smaller); installed logical bytes 15,202,904 → 14,670,010 (3.5% smaller). Workflow imports 202 → 183 modules. | Core still ships 310 modules. Footprint excludes Python, pip, and the standard library; the small-core goal and production migration remain open. |
-| [Distribution common workflow, W42](evidence/W42-controlled.json) | Across eight alternating fresh-process pairs, median import-through-first-frame 144.22 → 129.53 ms; whole probe 715.95 → 696.17 ms; parent CPU 352.54 → 331.94 ms; parent peak RSS 34,444 → 32,392 KiB. | First-frame differences favored core in every pair, but whole-process differences ranged from 51.61 ms faster to 18.81 ms slower. Parent CPU also regressed in individual pairs. This is an instrumented probe render with warm caches and synthetic scheduler data, not interactive readiness or human launch time. |
+| [Distribution footprint, W42](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/W42-controlled.json) | Complete → core: shipped Raven bytes 6,283,158 → 6,059,927 (3.6% smaller); installed logical bytes 15,202,904 → 14,670,010 (3.5% smaller). Workflow imports 202 → 183 modules. | Core still ships 310 modules. Footprint excludes Python, pip, and the standard library; the small-core goal and production migration remain open. |
+| [Distribution common workflow, W42](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/W42-controlled.json) | Across eight alternating fresh-process pairs, median import-through-first-frame 144.22 → 129.53 ms; whole probe 715.95 → 696.17 ms; parent CPU 352.54 → 331.94 ms; parent peak RSS 34,444 → 32,392 KiB. | First-frame differences favored core in every pair, but whole-process differences ranged from 51.61 ms faster to 18.81 ms slower. Parent CPU also regressed in individual pairs. This is an instrumented probe render with warm caches and synthetic scheduler data, not interactive readiness or human launch time. |
 
-Storage figures come from [series-final.json](evidence/series-final.json), UI
-figures from [W18-final-measurements.json](evidence/W18-final-measurements.json),
+Storage figures come from [series-final.json](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/series-final.json), UI
+figures from [W18-final-measurements.json](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/W18-final-measurements.json),
 and shared-service figures from the
-[final optimized receipt](evidence/raw/W39-W40-cost-optimized.json). Their package
+[final optimized receipt](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/raw/W39-W40-cost-optimized.json). Their package
 records distinguish later correctness edits from the measured snapshots. Python
 allocation peaks, process RSS, physical I/O, and logical I/O remain separate
 quantities; none is substituted for another to imply a gain.
@@ -189,7 +189,7 @@ inferred. These modest measurements do not close the further decomposition gate.
 services in owned disposable containers for **Slurm 23.02.8, 23.11.11, 24.05.8,
 24.11.7, and 26.05.5**. All five vertical lifecycle runs passed, including retained
 identity and numeric job-ID reuse checks. The
-[reader matrix](evidence/W14-reader-matrix.json) binds source and image identities.
+[reader matrix](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/W14-reader-matrix.json) binds source and image identities.
 Historical unsupported JSON schemas use visible legacy fallback; 26.05.5 uses the
 qualified structured reader. These runs reused exact-version compiled images
 with the current read-only entrypoint. They do not establish a clean build of the
@@ -210,8 +210,8 @@ actual kernel credentials for two UIDs in a disposable container, again with
 synthetic scheduler records. Those results establish their stated transport and
 isolation properties, not CARC/RCIC production deployment.
 
-The subsequent [60-second lifecycle receipt](evidence/raw/W38-W39-lifecycle.json)
-and [reproducible harness](evidence/raw/W38-W39-lifecycle-harness.py) exercise
+The subsequent [60-second lifecycle receipt](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/raw/W38-W39-lifecycle.json)
+and [reproducible harness](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/raw/W38-W39-lifecycle-harness.py) exercise
 actual processes and sockets on `0d138fd`, with simulated scheduler sources:
 
 - **W38:** direct managed Store/Sampler and actual daemon phases retained equal
@@ -234,8 +234,8 @@ actual processes and sockets on `0d138fd`, with simulated scheduler sources:
 These are short local lifecycle observations, not proof against long-term leaks
 or a 200-user production load. Service CPU excludes the separate driver/client;
 RSS is process memory, not Python allocations or process-tree peak memory. The
-[installed SSH requalification](evidence/raw/W38-installed-ssh-ipc-final-run.json)
-and [two-UID requalification](evidence/raw/W39-actual-peers-ipc-final-run.json)
+[installed SSH requalification](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/raw/W38-installed-ssh-ipc-final-run.json)
+and [two-UID requalification](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/raw/W39-actual-peers-ipc-final-run.json)
 passed separately after the IPC fixes. Their concurrent functional window is not
 used for timing claims. Shared-host production authorization still needs the
 administrator gate below.
@@ -248,7 +248,7 @@ corpus, or physical GPU qualification is claimed.
 
 ## Eight remaining external acceptance gates
 
-These are exact clause IDs in [coverage.json](coverage.json), not eight hidden
+These are exact clause IDs in [coverage.json](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/coverage.json), not eight hidden
 implementation omissions. Several share the same human-study dependency. Package
 records retain the full limit and unblock condition.
 
@@ -305,7 +305,7 @@ unpublished experiments, not a replacement for ordinary Raven installation.
 
 Each entry records its baseline, implementation boundary, alternatives, skeptical
 review, focused checks, measurements where relevant, and remaining qualifications.
-The [coverage ledger](coverage.json) carries the exact source traceability and all
+The [coverage ledger](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/coverage.json) carries the exact source traceability and all
 371 clause outcomes; per-package status files provide the machine-readable inputs.
 
 | Package | Scope and evidence |

@@ -6,15 +6,15 @@ LogSession bytes or the source selected by copy/yank commands.
 """
 from __future__ import annotations
 
+from .log_paths import stdout_path
 from collections import OrderedDict
 from datetime import datetime
-import json
 import math
 import time
 
 from . import layout as L, scrollbars as S
-from .research import clean
-from .remote import LocalFiles
+from .research_text import clean
+from .local_files import LocalFiles
 from . import log_presentation as presentation
 
 META_TTL = 30.0
@@ -105,7 +105,6 @@ def _entries(app):
         from .project_ui import log_entries
         entries = log_entries(app)
     if store is not None and hasattr(app, "log_target") and not binding:
-        from .views import stdout_path
         snap = store.snapshot()
         job = app.log_target(snap)
         if job is not None:
@@ -492,7 +491,7 @@ def _snapshot_tail(files, path, limit):
 def _request(app, key, fn, *, ttl=META_TTL):
     """Coalesce presentation requests into the shared existing single worker."""
     state = _state(app)
-    from .refresh_rate import file_interval, multiplier
+    from .cadence import file_interval, multiplier
     ttl = file_interval(ttl, multiplier(app), remote=bool(getattr(app.logs.files, "remote", False)))
     cached = state["cache"].get(key)
     if cached and time.monotonic() - cached[0] < ttl:

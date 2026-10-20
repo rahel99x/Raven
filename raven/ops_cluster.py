@@ -11,6 +11,7 @@ import math
 import os
 import re
 import stat
+import time
 
 
 def _field(key, label, default="", *, required=False, choices=None):
@@ -170,7 +171,7 @@ def _state(record):
 
 
 def _check_identity(ctx, payload, *, running=False, pending=False):
-    record = _job(ctx, payload["job_id"])
+    record = _job(ctx, payload.get("read_id", payload["job_id"]))
     _owned(ctx, record)
     if _identity(record, running=running) != payload["identity"]:
         raise ValueError("Job identity or attempt changed; prepare a new review")
@@ -311,21 +312,72 @@ def _edit_value(field, value):
 
 
 def _pending_edit(params, ctx):
-    job_id = _job_id(params, ctx)
+    selected = _text(params.get("job_id") or ctx.selected or "", "Job ID")
+    compressed = re.fullmatch(r"([0-9]{1,20})_\[([0-9,:%-]{1,4096})\]", selected)
+    if compressed:
+        from .arrays import parse_range
+        parse_range(compressed[2])
+        job_id = compressed[1]
+    else:
+        job_id = _job_id(params, ctx)
     field = params.get("field", "TimeLimit")
     value = _edit_value(field, params.get("value", ""))
     record = _job(ctx, job_id)
     _owned(ctx, record)
+    if compressed and record.get("ArrayJobId") != job_id:
+        raise ValueError("The selected range is not a verified array")
     if _state(record) != "PENDING":
         raise ValueError("Only a currently pending job can use this editor")
+    array_scope = _pending_array_scope(ctx, record, selected)
+    target = array_scope["target"] if array_scope else job_id
     old_key = ("BeginTime" if "BeginTime" in record else "EligibleTime") if field == "BeginTime" else field
     # BeginTime is not always exposed; in that case scheduler identity is still
     # checked but no invented old value is displayed as authoritative.
     old = record.get(old_key)
     payload = dict(job_id=job_id, identity=_identity(record), field=field, value=value,
-                   old_key=old_key, old=old, argv=["scontrol", "update", f"JobId={job_id}", f"{field}={value}"])
+                   old_key=old_key, old=old, array_scope=array_scope,
+                   argv=["scontrol", "update", f"JobId={target}", f"{field}={value}"])
     plan = _ops().prepare_plan(ctx, "pending-edit", params, payload)
-    return _ops().report("pending-edit", f"Review {field} for pending job {job_id}", status="review", rows=[f"Job: {job_id}; owner: {record['UserId']}; submitted: {record['SubmitTime']}", f"{field}: {old if old is not None else 'not exposed'} -> {value}", "Slurm policy and permissions apply. Apply rechecks the job and the original field."], data=payload, plan=plan)
+    rows = [f"Job: {job_id}; owner: {record['UserId']}; submitted: {record['SubmitTime']}", f"{field}: {old if old is not None else 'not exposed'} -> {value}"]
+    if array_scope:
+        rows.append(f"Exact pending array scope: {target}; {len(array_scope['tasks'])} tasks. Running tasks are never targeted.")
+    rows.append("Slurm policy and permissions apply. Apply rechecks the job and the original field.")
+    return _ops().report("pending-edit", f"Review {field} for pending job {job_id}", status="review", rows=rows, data=payload, plan=plan)
+
+
+def _pending_array_scope(ctx, record, selected):
+    parent = record.get("ArrayJobId")
+    if not parent or re.fullmatch(r"[0-9]+_[0-9]+", selected):
+        return None
+    # A parent update also affects running siblings. Read the controller's
+    # expanded live scope, then target only the exact reviewed task indices.
+    raw = _ops().command(ctx, ["squeue", "--noheader", "--array", "--jobs=" + parent,
+                               "--format=%i|%T"], limit=256 << 10)
+    tasks = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        values = line.strip().split("|")
+        match = re.fullmatch(re.escape(parent) + r"_([0-9]{1,10})", values[0]) if len(values) == 2 else None
+        if not match:
+            raise ValueError("Array membership is unavailable or ambiguous; select an exact pending task")
+        if values[1] != "PENDING":
+            raise ValueError("Array contains non-pending tasks; edit an exact pending task instead of its parent")
+        tasks.append(int(match[1]))
+        if len(tasks) > 4096:
+            raise ValueError("Pending edit is limited to 4096 exact array tasks; select a smaller scope")
+    if not tasks or len(tasks) != len(set(tasks)):
+        raise ValueError("Array membership is empty or ambiguous; prepare a new review")
+    tasks.sort()
+    if "_[" in selected:
+        from .arrays import parse_range
+        requested = parse_range(selected.split("_", 1)[1])
+        chosen = [task for task in tasks if any(part["start"] <= task <= part["end"] and (task - part["start"]) % part["step"] == 0 for part in requested)]
+        if not chosen:
+            raise ValueError("The selected pending range no longer contains pending tasks")
+        tasks = chosen
+    suffix = ",".join(map(str, tasks))
+    return {"parent": parent, "selected": selected, "tasks": tasks, "target": parent + "_[" + suffix + "]"}
 
 
 def _throttle_value(record):
@@ -348,21 +400,41 @@ def _array_throttle(params, ctx):
     else:
         selected = _job_id(params, ctx)
     limit = _integer(params.get("limit", "0"), "Array throttle", 0, 2 ** 31 - 1)
-    record = _job(ctx, selected)
+    read_id, record = _array_record(ctx, selected)
     _owned(ctx, record)
     parent = record.get("ArrayJobId", "")
     if not re.fullmatch(r"[0-9]{1,20}", parent):
         raise ValueError("The selected job is not a verified Slurm array")
-    if parent != selected:
-        record = _job(ctx, parent)
-        _owned(ctx, record)
     if record.get("ArrayJobId") != parent or _state(record) not in _ACTIVE:
         raise ValueError("The array is no longer active or its parent identity is unavailable")
     old = _throttle_value(record)
-    payload = dict(job_id=parent, identity=_identity(record), limit=limit, old=old,
+    payload = dict(job_id=parent, read_id=read_id, identity=_identity(record), limit=limit, old=old,
                    argv=["scontrol", "update", f"JobId={parent}", f"ArrayTaskThrottle={limit}"])
     plan = _ops().prepare_plan(ctx, "array-throttle", params, payload)
     return _ops().report("array-throttle", f"Review concurrency for array {parent}", status="review", rows=[f"Array {parent}; selected record {selected_text}", f"Current throttle: {'unlimited' if old == 0 else old if old is not None else 'not exposed'}", f"New throttle: {'unlimited (0)' if limit == 0 else limit}", "Reducing the limit does not cancel running tasks. Slurm applies the limit to new starts."], data=payload, plan=plan)
+
+
+def _array_record(ctx, selected):
+    """Read one exact child instead of a potentially huge parent response."""
+    if "_" in selected:
+        return selected, _job(ctx, selected)
+    raw = _ops().command(ctx, ["squeue", "--noheader", "--jobs=" + selected, "--format=%i"], limit=256 << 10)
+    from .arrays import parse_range
+    candidates = []
+    for line in raw.splitlines():
+        match = re.fullmatch(re.escape(selected) + r"_([0-9]{1,10}|\[[0-9,:%-]{1,4096}\])", line.strip())
+        if match:
+            candidates.append(selected + "_" + str(parse_range(match[1])[0]["start"]))
+        elif line.strip() and line.strip() != selected:
+            raise ValueError("Array query returned unrelated or malformed identities")
+    if not candidates:
+        # A plain job remains a normal validation error, never a mutation.
+        return selected, _job(ctx, selected)
+    read_id = candidates[0]
+    record = _job(ctx, read_id)
+    if record.get("ArrayJobId") != selected:
+        raise ValueError("Selected task no longer belongs to this array")
+    return read_id, record
 
 
 def _timestamp(value, zone):
@@ -891,6 +963,10 @@ def apply(feature, plan, ctx):
         return _apply_rerun(ctx, payload)
     if feature == "pending-edit":
         record = _check_identity(ctx, payload, pending=True)
+        reviewed_scope = payload.get("array_scope")
+        selected = reviewed_scope["selected"] if reviewed_scope else payload["job_id"]
+        if _pending_array_scope(ctx, record, selected) != reviewed_scope:
+            raise ValueError("Pending array membership changed after review; no update was sent")
         if record.get(payload["old_key"]) != payload["old"]:
             raise ValueError("The pending-job field changed after review; prepare again")
         # Validate again defensively even though the plan is digest-bound.
@@ -911,12 +987,13 @@ def apply(feature, plan, ctx):
         if payload.get("task"):
             _attachment_task(ctx, payload["step_id"], payload["task"])
         return _ops().report(feature, "Terminal handoff ready", rows=[" ".join(payload["argv"])], data={"terminal_argv": payload["argv"], "terminal_identity": payload, "job_id": payload["job_id"], "identity": payload["identity"]})
+    applied_at = time.time()
     output = _ops().command(ctx, payload["argv"], timeout=8)
     data = {"job_id": payload["job_id"], "output": output, "accepted": True, "confirmed": False}
     rows = [" ".join(payload["argv"]), output or "Slurm accepted the update."]
     warnings = []
     try:
-        after = _job(ctx, payload["job_id"])
+        after = _job(ctx, payload.get("read_id", payload["job_id"]))
         if _identity(after) != payload["identity"]:
             raise ValueError("The job attempt changed before confirmation")
         if feature == "array-throttle":
@@ -924,7 +1001,7 @@ def apply(feature, plan, ctx):
             confirmed = actual == payload["limit"]
         else:
             actual = after.get(payload["field"], after.get(payload["old_key"]))
-            confirmed = _same_value(payload["field"], payload["value"], actual)
+            confirmed = _same_value(payload["field"], payload["value"], actual, reference=applied_at)
         data.update(observed=actual, confirmed=confirmed, observed_state=_state(after))
         rows.append(f"Readback: {actual if actual is not None else 'not exposed'}; state={_state(after)}")
         if not confirmed:
@@ -934,7 +1011,7 @@ def apply(feature, plan, ctx):
     return _ops().report(feature, "Scheduler update confirmed" if data["confirmed"] else "Scheduler accepted update; confirmation needed", status="ok" if data["confirmed"] else "partial", rows=rows, data=data, warnings=warnings)
 
 
-def _same_value(field, expected, observed):
+def _same_value(field, expected, observed, *, reference=None):
     if observed is None:
         return False
     if field == "TimeLimit":
@@ -947,6 +1024,28 @@ def _same_value(field, expected, observed):
         return wanted is not None and actual is not None and wanted == actual
     if field == "Dependency" and expected == "0":
         return observed.lower() in _NULL or observed == "0"
+    if field == "Dependency":
+        from .deps import normalized_dependency as _normalized_dependency
+        return _normalized_dependency(expected) == _normalized_dependency(observed)
+    if field == "BeginTime":
+        if expected == observed:
+            return True
+        try:
+            return dt.datetime.fromisoformat(expected) == dt.datetime.fromisoformat(observed)
+        except ValueError:
+            match = re.fullmatch(r"now(?:\+([0-9]+)(seconds?|minutes?|hours?|days?|weeks?))?", expected, re.I)
+            if not match:
+                return False
+            try:
+                actual = dt.datetime.fromisoformat(observed).timestamp()
+            except (ValueError, OverflowError):
+                return False
+            scale = {"second": 1, "minute": 60, "hour": 3600, "day": 86400, "week": 604800}
+            seconds = int(match[1]) * scale[match[2].lower().rstrip("s")] if match[1] else 0
+            wanted = (time.time() if reference is None else reference) + seconds
+            # Slurm's minute-granularity scheduling may round a requested
+            # BeginTime. This tolerance concerns readback, never identity.
+            return abs(actual - wanted) <= 60
     return expected == observed
 
 

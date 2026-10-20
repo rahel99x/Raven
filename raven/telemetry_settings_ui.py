@@ -36,7 +36,7 @@ def command_names():
 
 
 def _seconds(value):
-    from .metric_sampling import format_interval
+    from .cadence import format_interval
     return format_interval(value, ascii_=True)
 
 

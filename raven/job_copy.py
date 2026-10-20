@@ -95,7 +95,7 @@ def copy_selection(app):
             app.fail("The selected jobs exceed the copy limit; select fewer jobs or export the source. No partial copy was sent.")
             return True
         lines.append(line)
-    message = clipboard.copy("".join(lines), getattr(app, "state_dir", None), **clipboard.options(app))
+    message = clipboard.copy_for_app(app, "".join(lines), getattr(app, "state_dir", None), **clipboard.options(app))
     app.say(message)
     store = getattr(app, "store", None)
     if store is not None:

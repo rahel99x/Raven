@@ -2,15 +2,13 @@
 from __future__ import annotations
 
 import csv
-import io
-import json
 import math
 import os
 import re
 import stat
 
-from . import projects
-from .artifacts import _contract, _open_local, _signature
+from .project_files import _local, _root
+from .artifacts import _contract, _json, _open_local, _signature
 from .log_presentation import json_page
 
 PAGE_ROWS = 128
@@ -44,11 +42,11 @@ def read_page(root, specification, *, files=None, offset=0, row=0, columns=None,
         from .project_remote import request
         return request(files, "read_artifact_page", root, specification, offset=offset, row=row,
                        columns=columns, sort=sort, collapsed=collapsed)
-    projects._local(files)
+    _local(files)
     _contract({"version": 1, "outputs": [specification]})
     if type(offset) is not int or offset < 0 or type(row) is not int or row < 0:
         raise ValueError("Artifact page position must be a nonnegative integer")
-    root, root_fd = projects._root(root)
+    root, root_fd = _root(root)
     path = specification["path"]
     fd = parent = None
     try:
@@ -109,7 +107,7 @@ def _read(stream, size, format_, offset, row, columns, sort, collapsed):
         return _csv(stream, size, offset, row, columns, sort)
     if format_ == "json" and size <= JSON_BYTES:
         raw = stream.read(JSON_BYTES + 1)
-        value = projects._json(raw)
+        value = _json(raw)
         nodes, more = json_page(value, collapsed, row, PAGE_ROWS)
         return dict(format="json", json_value=value, nodes=nodes, lines=[item["text"] for item in nodes],
                     offset=0, next_offset=size, row=row, next_row=row + len(nodes), bytes_read=len(raw), truncated=more,

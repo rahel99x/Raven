@@ -15,6 +15,11 @@ from raven import log_bundle, projects
 from raven.model import Finished
 from raven.remote import LocalFiles
 
+@pytest.fixture(autouse=True)
+def durable_exports(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "durable-exports"))
+
+
 
 def request_for(paths, *, settings=None, root=""):
     records, details = [], {}
@@ -210,10 +215,11 @@ def test_clipboard_limit_and_transport_failure_preserve_full_export(tmp_path, mo
     assert exported_bytes(result)[str(source)] == source.read_bytes()
 
 
-def test_clipboard_creates_missing_nested_private_staging_parents(tmp_path):
+def test_clipboard_creates_missing_nested_private_staging_parents(tmp_path, monkeypatch):
     source = tmp_path / "7.out"
     source.write_bytes(b"complete\n")
     state = tmp_path / "new-parent/nested/state"
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(state / "exports"))
     result = log_bundle.export_logs(discover([("7", source, source)]), state_dir=str(state),
                                    clipboard=True, use_osc52=False, use_tools=False)
     assert result["status"] == "ready"
@@ -234,6 +240,7 @@ def test_clipboard_raced_staging_creator_cannot_substitute_symlink(tmp_path, mon
             os.symlink(str(outside), name, dir_fd=dir_fd)
             raise FileExistsError("concurrent symlink")
         return mkdir(name, mode, dir_fd=dir_fd)
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "new-state"))
     monkeypatch.setattr(log_bundle.os, "mkdir", race)
     result = log_bundle.export_logs(report, state_dir=str(tmp_path / "new-state"),
                                    clipboard=True, use_osc52=False, use_tools=False)

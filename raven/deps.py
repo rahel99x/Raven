@@ -8,7 +8,17 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from .model import Job
 
+
+def normalized_dependency(value):
+    value = re.sub(r"\([^)]*\)", "", str(value or ""))
+    return "" if value in {"(null)", "None", "null"} else value
+
 KINDS = ("afterok", "afternotok", "afterany", "after", "aftercorr", "afterburstbuffer", "singleton")
+
+
+def _job_order(value):
+    match = re.fullmatch(r"([0-9]+)(?:_([0-9]+))?(?:\+([0-9]+))?", value)
+    return tuple(int(part or 0) for part in match.groups()) if match else (0, 0, 0)
 
 
 def parse_dependency(text: str) -> List[Tuple[str, str]]:
@@ -53,7 +63,8 @@ class DepGraph:
         for j in jobs:                                      # singleton: the same name and user, earlier id first
             if j.id in self.singletons:
                 for k in jobs:
-                    if k.id != j.id and k.name == j.name and k.id < j.id and k.id not in {p for _, p in self.up.get(j.id, [])}:
+                    if (k.id != j.id and k.name == j.name and k.user == j.user
+                            and _job_order(k.id) < _job_order(j.id) and k.id not in {p for _, p in self.up.get(j.id, [])}):
                         self.edges.append((k.id, "singleton", j.id))
                         self.down.setdefault(k.id, []).append(("singleton", j.id))
                         self.up.setdefault(j.id, []).append(("singleton", k.id))
@@ -71,12 +82,14 @@ class DepGraph:
         order = list(self.jobs) + [i for i in rel if i not in self.jobs]
         return [i for i in order if i in rel and not self.up.get(i)]
 
-    def downstream(self, jid: str) -> List[str]:
+    def downstream(self, jid: str, *, include_inferred=True) -> List[str]:
         """Every job that (transitively) waits for ``jid``, nearest first, without ``jid``."""
         out, seen, stack = [], {jid}, deque([jid])
         while stack:
             cur = stack.popleft()
-            for _, dep in self.down.get(cur, []):
+            for kind, dep in self.down.get(cur, []):
+                if kind == "singleton" and not include_inferred:
+                    continue
                 if dep not in seen:
                     seen.add(dep)
                     out.append(dep)

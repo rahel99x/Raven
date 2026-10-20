@@ -8,7 +8,7 @@ import re
 
 from . import clock, layout as L, table_sort
 from .model import Finished, Job, human, secs, stamp
-from .research import clean
+from .research_text import clean
 
 MAX_RULES = 16
 NUMERIC_FIELDS = ("cpus", "gpus", "memory", "rss", "cpu_eff", "mem_eff", "elapsed", "priority", "nodes")
@@ -585,7 +585,7 @@ def _open_record(app, jid, action):
                 app.sampler.select_fin(jid)
     elif action == "copy":
         from . import clipboard
-        app.say(clipboard.copy(jid, app.state_dir, **clipboard.options(app)))
+        app.say(clipboard.copy_for_app(app, jid, app.state_dir, **clipboard.options(app)))
     elif action == "compare":
         if jid not in app.compare_ids:
             app.compare_ids.append(jid)

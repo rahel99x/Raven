@@ -25,3 +25,79 @@ forbidden_modules =
     raven.slurm
     raven.remote
     raven.raven_allocation
+
+[importlinter:contract:presentation-contracts]
+name = Pure terminal contracts cannot import application or gesture owners
+type = forbidden
+source_modules =
+    raven.ui.focus
+    raven.ui.geometry
+    raven.ui.catalog
+    raven.ui.keys
+forbidden_modules =
+    raven.controller
+    raven.screen
+    raven.views
+    raven.workbench
+    raven.interaction
+    raven.chart_interaction
+    raven.scrollbars
+    raven.research
+    raven.sampler
+    raven.model
+    raven.operations
+    raven.slurm
+    raven.remote
+
+[importlinter:contract:log-path-domain]
+name = Job log path resolution is independent of terminal presentation
+type = forbidden
+source_modules =
+    raven.log_paths
+forbidden_modules =
+    raven.controller
+    raven.screen
+    raven.views
+    raven.research
+    raven.project_ui
+
+[importlinter:contract:application-reader-ports]
+name = Application readers use input and callback ports instead of UI owners
+type = forbidden
+source_modules =
+    raven.research
+    raven.science_analysis
+    raven.planning_input
+    raven.series_settings
+    raven.projects
+    raven.metrics
+    raven.log_catalog
+forbidden_modules =
+    raven.controller
+    raven.screen
+    raven.views
+    raven.workbench
+    raven.project_ui
+    raven.job_selection
+    raven.navigation_ui
+    raven.setup_ui
+    raven.metric_live
+    raven.job_panels
+
+[importlinter:contract:cadence-domain]
+name = Cadence arithmetic and preferences are independent of UI and collectors
+type = forbidden
+source_modules =
+    raven.cadence
+    raven.refresh_preferences
+forbidden_modules =
+    raven.refresh_rate
+    raven.metric_live
+    raven.metric_sampling
+    raven.metric_sampling_runtime
+    raven.telemetry_settings
+    raven.telemetry_settings_ui
+    raven.setup_ui
+    raven.sampler
+    raven.research
+    raven.slurm

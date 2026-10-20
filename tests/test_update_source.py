@@ -196,6 +196,13 @@ def test_unsafe_source_or_configuration_refused(checkout, tmp_path, kind):
         path = tmp_path / "config"; path.symlink_to(source / "settings.json"); protected = [path]
     else:
         path = tmp_path / "fifo"; os.mkfifo(path); protected = [path]
+    if kind in {'source-link', 'config-link', 'config-fifo'}:
+        # User-chosen roots resolve once; external configuration is never read
+        # or modified by a source plan, even when it is inaccessible/special.
+        planned = U.update_source(source, mode='plan', protected_paths=protected)
+        assert planned['source'] == str(source.resolve())
+        assert not planned['changed']
+        return
     with pytest.raises((OSError, ValueError)):
         U.update_source(source, protected_paths=protected)
 

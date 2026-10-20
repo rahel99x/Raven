@@ -20,7 +20,7 @@ from . import __version__
 from .model import gres_gpus
 from .gpu_collectors import parse_probe_output, probe_command
 from .remote import LocalFiles, SshBackend
-from .slurm import Backend, CommandError, JOB_FMT, NVSMI, SACCT_FIELDS, Slurm, parse_jobs, parse_nvsmi, parse_sacct
+from .slurm import Backend, CommandError, JOB_FMT, NVSMI as NVSMI, SACCT_FIELDS, Slurm, parse_jobs, parse_nvsmi as parse_nvsmi, parse_sacct
 
 MAX_JOBS = 8
 MAX_NODES = 4
@@ -364,7 +364,7 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
                 start_command = len(evidence.records)
                 samples = slurm.gpu(probe_job)
                 entry["devices"] = [asdict(sample) for sample in samples]
-                attempts = evidence.records[start_command:]
+                _attempts = evidence.records[start_command:]
                 entry["sampling_scope"] = "devices associated by exact job identity and stable GPU IDs or a complete visible device set"
                 for warning in slurm.gpu_probe_warnings.get(job.id, ()):
                     add("gpu_partial_coverage", "warning", warning, job=job.id)

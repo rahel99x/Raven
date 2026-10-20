@@ -91,6 +91,7 @@ class Detector:
         self.quiet = 0
         self.status = "warmup"
         self.episodes = 0
+        self.missing = 0
 
     def update(self, stamp, value, *, phase=""):
         if not isinstance(phase, str) or len(phase) > 128:
@@ -103,16 +104,23 @@ class Detector:
                     (self.unit == "%" and (self.metric.startswith("gpu") or self.metric == "utilization_percent") and not 0 <= value <= 100))
         if impossible:
             value = None
-        reset = self.last_t is not None and stamp - self.last_t > self.max_gap
+        recent_gaps = [b[0] - a[0] for a, b in zip(self.points, list(self.points)[1:])][-8:]
+        gap_limit = min(self.max_gap, max(15., 4 * median(recent_gaps))) if recent_gaps else self.max_gap
+        reset = self.last_t is not None and stamp - self.last_t > gap_limit
         changed_phase = self.phase is not None and phase != self.phase
         self.last_t, self.phase = stamp, phase
-        if reset or changed_phase or value is None or not M.finite(value):
+        missing = value is None or not M.finite(value)
+        self.missing = self.missing + 1 if missing else 0
+        if reset or changed_phase or impossible or self.missing >= 3:
             self.points.clear(); self.active.clear(); self.pending = dict.fromkeys(self.pending, 0)
             self.status = "declared phase changed" if changed_phase else "gap exceeds maximum" if reset else "missing observation"
             if not M.finite(value):
                 if impossible:
                     self.status = "physically invalid observation; warmup reset"
                 return None
+        if missing:
+            self.status = "missing observation; baseline retained"
+            return None
         if len(self.points) < self.warmup:
             self.points.append((stamp, value)); self.status = "warmup"
             return None
@@ -123,7 +131,8 @@ class Detector:
         floor = _floor(self.metric, self.unit, center)
         scale = max(floor, mad)
         gaps = [b[0] - a[0] for a, b in zip(previous, previous[1:])]
-        uneven = bool(gaps and max(gaps) > 4 * min(gaps))
+        typical_gap = median(gaps) if gaps else 0.
+        uneven = bool(gaps and max(gaps[-4:]) > max(self.max_gap, 4 * typical_gap))
         noisy = mad > max(abs(center) * .5, floor * 20)
         score = (value - center) / scale
         if not math.isfinite(score):

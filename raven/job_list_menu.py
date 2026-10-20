@@ -169,7 +169,7 @@ def overlay(views, snap, app, width, height):
     state.update(hits=(), paint_token=None)
     if not active(app):
         return None
-    from .research import clean
+    from .research_text import clean
     room, available = max(1, min(72, width - 8)), max(1, height - 4)
     section, context = state["section"], state["context"]
     title = {"view": "View", "order": "Order", "groups": "Groups", "manage": "Manage assignments", "remove": "Remove assignments?"}[section]

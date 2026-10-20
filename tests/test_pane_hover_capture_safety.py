@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from raven import chart_interaction as C, interaction as I, job_panels as J
-from raven import job_selection as S, layout as L, metric_live as M, metric_sampling
-from raven import screen, workspace_layout as W
+from raven import job_selection as S, layout as L, metric_live as M
+from raven import screen, workspace_layout as W, metric_sampling_runtime as metric_sampling
 from raven.config import Config
 from raven.controller import App
 from raven.model import Job, Store

@@ -10,23 +10,19 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import lru_cache
 import copy
-import hashlib
 import importlib
 import json
 import math
 import os
 from pathlib import Path
-import selectors
-import signal
 import stat
-import subprocess
 import tempfile
 import time
 import uuid
 
-from .remote import LocalFiles
+from .local_files import LocalFiles
 
-MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale", "ops_queue_order", "ops_workspace", "ops_investigation", "ops_platform", "ops_runtime", "ops_trace", "ops_evidence_queries", "ops_health", "ops_process_profile", "ops_queue_models", "ops_signal_analysis", "ops_campaign_policy")
+MODULES = ("ops_cluster", "ops_science", "ops_campaigns", "ops_services", "ops_scale", "ops_queue_order", "ops_workspace", "ops_investigation", "ops_workflow", "ops_platform", "ops_runtime", "ops_trace", "ops_evidence_queries", "ops_health", "ops_process_profile", "ops_queue_models", "ops_signal_analysis", "ops_campaign_policy")
 PLAN_SCHEMA = "raven.operation-plan/v1"
 REPORT_SCHEMA = "raven.operation/v1"
 MAX_DOCUMENT = 4 << 20
@@ -50,28 +46,10 @@ class Context:
     verified_execution: dict = field(default_factory=dict)
 
 
-def cancelled(ctx):
-    return bool(ctx.cancel is not None and ctx.cancel.is_set())
+from .operation_context import cancelled as cancelled, checkpoint, _identity
 
 
-def checkpoint(ctx):
-    if cancelled(ctx):
-        raise ValueError("Operation cancelled; prepare a new review before retrying.")
-
-
-def canonical(value):
-    try:
-        data = json.dumps(value, sort_keys=True, separators=(",", ":"),
-                          ensure_ascii=True, allow_nan=False).encode("utf-8")
-    except (ValueError, TypeError, RecursionError) as exc:
-        raise ValueError("Operation data must be finite, bounded JSON.") from exc
-    if len(data) > 16 << 20:
-        raise ValueError("Operation data exceeds the 16 MiB limit.")
-    return data
-
-
-def digest(value):
-    return hashlib.sha256(canonical(value)).hexdigest()
+from .operation_json import canonical, digest
 
 
 def clean(value, limit=4096):
@@ -86,11 +64,6 @@ def report(feature, summary, *, status="ok", rows=(), data=None, warnings=(), pl
         value["plan"] = plan
     canonical(value)
     return value
-
-
-def _identity(record):
-    keys = ("id", "submit", "start", "cluster", "account", "user")
-    return {key: record.get(key, "") for key in keys}
 
 
 def prepare_plan(ctx, feature, params, payload):
@@ -150,84 +123,7 @@ def local_only(ctx):
         raise ValueError("Run Raven on the target host for this local operation; SSH views cannot write local substitutes.")
 
 
-def _process(argv, timeout, limit, cancel=None):
-    """Bound process output while it is produced and reap the whole group."""
-    from .slurm import CommandError
-    process = None
-    buffers = {"out": bytearray(), "err": bytearray()}
-    try:
-        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE, start_new_session=True)
-        deadline = time.monotonic() + timeout
-        with selectors.DefaultSelector() as selector:
-            for stream, name in ((process.stdout, "out"), (process.stderr, "err")):
-                os.set_blocking(stream.fileno(), False)
-                selector.register(stream, selectors.EVENT_READ, name)
-            while selector.get_map():
-                if cancel is not None and cancel.is_set():
-                    raise CommandError("Operation cancelled; command outcome can require reconciliation.")
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise CommandError("Command timed out; inspect current state before retrying an action.")
-                for key, _ in selector.select(min(.05, remaining)):
-                    chunk = os.read(key.fileobj.fileno(), min(16384, limit + 1))
-                    if not chunk:
-                        selector.unregister(key.fileobj)
-                    else:
-                        if sum(map(len, buffers.values())) + len(chunk) > limit:
-                            raise CommandError("Command output exceeded the inspection limit.")
-                        buffers[key.data].extend(chunk)
-        from .diagnostic_trials import wait_for_exit
-        reason = wait_for_exit(process, deadline, cancel)
-        if reason == "cancelled":
-            raise CommandError("Operation cancelled; command outcome can require reconciliation.")
-        if reason == "timeout":
-            raise CommandError("Command timed out; inspect current state before retrying an action.")
-        out = buffers["out"].decode("utf-8", "replace")
-        if process.returncode:
-            error = buffers["err"].decode("utf-8", "replace") or out
-            raise CommandError(f"{argv[0]} exit {process.returncode}: " + clean(error, 400))
-        return out
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise CommandError(clean(exc)) from exc
-    finally:
-        if process is not None:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except OSError:
-                pass
-            process.wait(timeout=2)
-            for stream in (process.stdout, process.stderr):
-                if stream is not None:
-                    stream.close()
-
-
-def _backend_command(backend, argv, timeout, limit, cancel, depth=0):
-    from .slurm import Backend
-    from .remote import SshBackend
-    from .record import RecordingBackend
-    from .platform_session import GovernedBackend
-    if depth > 8:
-        raise ValueError("The connection wrapper depth exceeds its bound.")
-    if type(backend) is GovernedBackend:
-        # Explicit inspections and action validation require a new bounded,
-        # cancellable observation, not the sampler's cached queue snapshot.
-        return backend.command(argv, timeout, limit, cancel)
-    if type(backend) is RecordingBackend:
-        started = time.time()
-        try:
-            out = _backend_command(backend.inner, argv, timeout, limit, cancel, depth + 1)
-        except Exception as exc:
-            backend._write({"t": started, "cmd": argv, "err": clean(exc)})
-            raise
-        backend._write({"t": started, "cmd": argv, "out": out, "dt": time.time() - started})
-        return out
-    if type(backend) is Backend:
-        return _process(argv, timeout, limit, cancel)
-    if type(backend) is SshBackend and backend.runner is SshBackend._run:
-        return _process(backend.argv(argv), timeout + 5, limit, cancel)
-    # Injected/simulated backends own their transport; keep their contract.
-    return backend.run(argv, timeout)[0]
+from .bounded_command import _process as _process, execute as _backend_command
 
 
 def command(ctx, argv, timeout=8, limit=1 << 20):
@@ -254,7 +150,7 @@ def command(ctx, argv, timeout=8, limit=1 << 20):
 
 def read_bytes(ctx, path, limit=MAX_DOCUMENT):
     checkpoint(ctx)
-    from .raven_execution import source_limit, source_read
+    from .source_budget import source_limit, source_read
     limit = source_limit(limit)
     if not isinstance(path, (str, os.PathLike)) or not str(path) or any(c in str(path) for c in ("\x00", "\r", "\n")):
         raise ValueError("Choose an explicit file path without control characters.")
@@ -386,22 +282,33 @@ def parameters(feature, supplied):
     return values
 
 
+def _complete_routed(feature, result, ctx):
+    if feature == "campaign-policy" and result.get("status") != "deferred":
+        return _registry()[feature][0].controlled_report(result, ctx)
+    return result
+
+
 def run(feature, params, ctx):
     checkpoint(ctx)
     values = parameters(feature, params)
-    from .raven_execution import operation_route
+    from .execution_admission import operation_route
     routed = operation_route(feature, values, ctx)
     if routed is not None:
-        return routed
+        return _complete_routed(feature, routed, ctx)
     return _registry()[feature][0].run(feature, values, ctx)
+
+
+def action_services():
+    from .action_lifecycle import Services
+    return Services(validate_plan, atomic_json, canonical, clean, REPORT_SCHEMA)
 
 
 def apply(feature, plan, ctx):
     from .action_lifecycle import execute
-    from .raven_execution import apply_admission
+    from .execution_admission import apply_admission
     routed = apply_admission(feature, plan, ctx)
     callback = routed or getattr(_registry()[feature][0], "apply", None)
-    return execute(feature, plan, ctx, callback)
+    return execute(feature, plan, ctx, callback, services=action_services())
 
 
 def managed_run(function):
@@ -409,9 +316,9 @@ def managed_run(function):
     from functools import wraps
     @wraps(function)
     def guarded(feature, params, ctx):
-        from .raven_execution import operation_route
+        from .execution_admission import operation_route
         routed = operation_route(feature, params, ctx)
-        return routed if routed is not None else function(feature, params, ctx)
+        return _complete_routed(feature, routed, ctx) if routed is not None else function(feature, params, ctx)
     return guarded
 
 
@@ -419,10 +326,10 @@ def managed_apply(function):
     from functools import wraps
     @wraps(function)
     def guarded(feature, plan, ctx):
-        from .raven_execution import apply_admission
+        from .execution_admission import apply_admission
         routed = apply_admission(feature, plan, ctx)
         if routed is not None:
             from .action_lifecycle import execute
-            return execute(feature, plan, ctx, routed)
+            return execute(feature, plan, ctx, routed, services=action_services())
         return function(feature, plan, ctx)
     return guarded

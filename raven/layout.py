@@ -2,13 +2,15 @@
 
 Every panel is built as rows of ``(text, style)`` segments; painters (curses, ANSI, plain text) only draw them.
 Styles are '+'-joined names: bold dim rev under green yellow red cyan magenta blue white."""
+
 from __future__ import annotations
 
 import unicodedata
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from .log_text import display_text
 
 Seg = Tuple[str, str]
 Row = List[Seg]
@@ -20,7 +22,7 @@ FRACTIONS = " ▏▎▍▌▋▊▉█"
 
 @lru_cache(maxsize=4096)
 def _character_width(char: str) -> int:
-    if unicodedata.combining(char):
+    if unicodedata.category(char) in {"Cf", "Mn", "Me"}:
         return 0
     return 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
 
@@ -42,6 +44,8 @@ def vlen(s: str) -> int:
     2,048 strings of at most 512 characters. Wide and combining cells use the
     same Unicode rules regardless of whether a value is cached.
     """
+    if not s.isprintable():
+        s = display_text(s)
     if s.isascii():
         return len(s)
     if len(s) == 1:
@@ -51,7 +55,7 @@ def vlen(s: str) -> int:
 
 def cut(text, width: int, ascii_: bool = False) -> str:
     """Clip to ``width`` display columns with an ellipsis."""
-    text = str(text)
+    text = display_text(str(text))
     if width <= 0:
         return ""
     # Inspect at most the visible prefix. Wide log lines and large tables must
@@ -64,7 +68,7 @@ def cut(text, width: int, ascii_: bool = False) -> str:
 
 
 def pad(text, width: int, align: str = "<") -> str:
-    text = str(text)
+    text = display_text(str(text))
     gap = max(0, width - vlen(text))
     if align == ">":
         return " " * gap + text
@@ -86,11 +90,17 @@ class Column:
     hi: int
     align: str = "<"
     flex: bool = False
-    style: str = ""                 # style of the cells (a callable on the row may override)
+    style: str = ""  # style of the cells (a callable on the row may override)
 
 
-def fit_columns(cols: Sequence[Column], rows: Iterable[dict], width: int, gap: int = 2, droppable: Sequence[str] = (),
-                floor: int = 6) -> Tuple[Dict[str, int], List[Column]]:
+def fit_columns(
+    cols: Sequence[Column],
+    rows: Iterable[dict],
+    width: int,
+    gap: int = 2,
+    droppable: Sequence[str] = (),
+    floor: int = 6,
+) -> Tuple[Dict[str, int], List[Column]]:
     """Column widths that fit ``width``: the natural width of header and content within [lo, hi]; the widest flexible
     column shrinks first (down to its lo); then the ``droppable`` columns leave in order; as the last resort the
     flexible columns shrink to ``floor``.  Returns (widths, columns kept)."""
@@ -98,8 +108,10 @@ def fit_columns(cols: Sequence[Column], rows: Iterable[dict], width: int, gap: i
     kept = list(cols)
     natural = {}
     for column in kept:
-        natural[id(column)] = max(vlen(column.title),
-                                 max((vlen(str(row.get(column.key, ""))) for row in rows), default=0))
+        natural[id(column)] = max(
+            vlen(column.title),
+            max((vlen(str(row.get(column.key, ""))) for row in rows), default=0),
+        )
 
     def shrink(lo_of):
         w = {}
@@ -127,9 +139,20 @@ def fit_columns(cols: Sequence[Column], rows: Iterable[dict], width: int, gap: i
     return w, kept
 
 
-def table(cols: Sequence[Column], rows: Sequence[dict], width: int, ascii_: bool = False, indent: str = " ", gap: int = 2,
-          droppable: Sequence[str] = (), header_style: str = "cyan+bold", cursor: Optional[int] = None, marks: Iterable[int] = (),
-          mark_char: Optional[str] = None, header_cells: Optional[list] = None) -> Tuple[List[Row], List[Column]]:
+def table(
+    cols: Sequence[Column],
+    rows: Sequence[dict],
+    width: int,
+    ascii_: bool = False,
+    indent: str = " ",
+    gap: int = 2,
+    droppable: Sequence[str] = (),
+    header_style: str = "cyan+bold",
+    cursor: Optional[int] = None,
+    marks: Iterable[int] = (),
+    mark_char: Optional[str] = None,
+    header_cells: Optional[list] = None,
+) -> Tuple[List[Row], List[Column]]:
     """Header row plus one row per dict; ``rows[i]['_style']`` styles a row, ``rows[i]['_styles']`` a cell; the
     ``cursor`` row is reversed; marked rows carry ``mark_char`` in a leading one-character column.
     ``header_cells`` receives (key, left, right) visible, half-open display-column
@@ -138,7 +161,9 @@ def table(cols: Sequence[Column], rows: Sequence[dict], width: int, ascii_: bool
     marks = set(marks)
     if mark_char is not None:
         cols = [Column("_mark", "", 1, 1)] + cols
-    w, kept = fit_columns(cols, rows, width - vlen(indent), gap=gap, droppable=droppable)
+    w, kept = fit_columns(
+        cols, rows, width - vlen(indent), gap=gap, droppable=droppable
+    )
     if header_cells is not None:
         x = vlen(indent)
         for column in kept:
@@ -147,7 +172,17 @@ def table(cols: Sequence[Column], rows: Sequence[dict], width: int, ascii_: bool
                 header_cells.append((column.key, x, right))
             x += w[column.key] + gap
     sep = " " * gap
-    out: List[Row] = [[(indent, ""), (sep.join(pad(cut(c.title, w[c.key], ascii_), w[c.key], c.align) for c in kept), header_style)]]
+    out: List[Row] = [
+        [
+            (indent, ""),
+            (
+                sep.join(
+                    pad(cut(c.title, w[c.key], ascii_), w[c.key], c.align) for c in kept
+                ),
+                header_style,
+            ),
+        ]
+    ]
     for i, r in enumerate(rows):
         segs: Row = [(indent, "")]
         for n, c in enumerate(kept):
@@ -156,7 +191,13 @@ def table(cols: Sequence[Column], rows: Sequence[dict], width: int, ascii_: bool
             else:
                 cell = r.get(c.key, "")
             style = (r.get("_styles") or {}).get(c.key, r.get("_style", c.style))
-            segs.append((pad(cut(cell, w[c.key], ascii_), w[c.key], c.align) + (sep if n < len(kept) - 1 else ""), style))
+            segs.append(
+                (
+                    pad(cut(cell, w[c.key], ascii_), w[c.key], c.align)
+                    + (sep if n < len(kept) - 1 else ""),
+                    style,
+                )
+            )
         if cursor is not None and i == cursor:
             segs = [(t, "rev") for t, _ in segs]
         out.append(segs)
@@ -172,7 +213,9 @@ class Glyphs:
         self.cursor = ">" if ascii_ else "▸"
         self.mark = "*" if ascii_ else "●"
         self.dot = "-" if ascii_ else "·"
-        self.box = ("+", "+", "+", "+", "-", "|") if ascii_ else ("┌", "┐", "└", "┘", "─", "│")
+        self.box = (
+            ("+", "+", "+", "+", "-", "|") if ascii_ else ("┌", "┐", "└", "┘", "─", "│")
+        )
         self.arrow = "->" if ascii_ else "→"
         self.pin = "^" if ascii_ else "⚲"
 
@@ -197,7 +240,13 @@ def bar(g: Glyphs, frac: Optional[float], width: int, invert: bool = False) -> S
     return (text, "dim" if not known else level(1 - f if invert else f))
 
 
-def gradient_bar(g: Glyphs, frac: Optional[float], width: int, start: str = "#22d3ee", end: str = "#a78bfa") -> Row:
+def gradient_bar(
+    g: Glyphs,
+    frac: Optional[float],
+    width: int,
+    start: str = "#22d3ee",
+    end: str = "#a78bfa",
+) -> Row:
     """A smooth opaque meter, with a dark track and an explicit unknown marker.
 
     Colours are style metadata; characters still form a useful meter when colour is disabled.
@@ -208,11 +257,23 @@ def gradient_bar(g: Glyphs, frac: Optional[float], width: int, start: str = "#22
     if frac is None or not math.isfinite(frac):
         width = max(0, width)
         left = max(0, (width - 1) // 2)
-        return [(g.empty * left + ("?" if width else "") + g.empty * max(0, width - left - 1), "dim")]
+        return [
+            (
+                g.empty * left
+                + ("?" if width else "")
+                + g.empty * max(0, width - left - 1),
+                "dim",
+            )
+        ]
     from .palette import gradient_style
+
     rows: Row = []
     for i, ch in enumerate(text):
-        style = gradient_style(start, end, i / max(1, width - 1)) if ch != g.empty else "track"
+        style = (
+            gradient_style(start, end, i / max(1, width - 1))
+            if ch != g.empty
+            else "track"
+        )
         rows.append((ch, style))
     return rows
 
@@ -222,17 +283,26 @@ def spark(g: Glyphs, values: Sequence[Optional[float]], width: int = 12) -> str:
     if width <= 0:
         return ""
     vals = values[-width:]
-    return "".join(" " if v is None or not math.isfinite(v) else
-                   g.spark[min(7, int(max(0.0, min(1.0, v)) * 7.999))]
-                   for v in vals).rjust(width)
+    return "".join(
+        " "
+        if v is None or not math.isfinite(v)
+        else g.spark[min(7, int(max(0.0, min(1.0, v)) * 7.999))]
+        for v in vals
+    ).rjust(width)
 
 
 def rule(g: Glyphs, width: int, title: str = "", style: str = "dim") -> Row:
     if not title:
         return [(" " + g.rule * max(0, width - 1), style)] if width > 0 else []
     title = cut(f" {title} ", max(0, width - 3), g.ascii)
-    return clip_row([(" " + g.rule * 2, style), (title, "cyan+bold"),
-                     (g.rule * max(0, width - 3 - vlen(title)), style)], width)
+    return clip_row(
+        [
+            (" " + g.rule * 2, style),
+            (title, "cyan+bold"),
+            (g.rule * max(0, width - 3 - vlen(title)), style),
+        ],
+        width,
+    )
 
 
 def metrics(g: Glyphs, items: Sequence[Tuple[str, str, str]], width: int) -> Row:
@@ -253,12 +323,21 @@ def metrics(g: Glyphs, items: Sequence[Tuple[str, str, str]], width: int) -> Row
         value = cut(value, max(0, usable - vlen(label) - 1), g.ascii)
         out += [(label + " ", "dim"), (value, style + "+bold" if style else "bold")]
         if i < count - 1:
-            out += [(" " * max(1, cell - vlen(label) - vlen(value) - 3), ""),
-                    (g.box[5] + " ", "dim")]
+            out += [
+                (" " * max(1, cell - vlen(label) - vlen(value) - 3), ""),
+                (g.box[5] + " ", "dim"),
+            ]
     return clip_row(out, width)
 
 
-def box(g: Glyphs, lines: Sequence[Row], width: int, height: int, title: str, min_width: int = 40) -> List[Tuple[int, int, Row]]:
+def box(
+    g: Glyphs,
+    lines: Sequence[Row],
+    width: int,
+    height: int,
+    title: str,
+    min_width: int = 40,
+) -> List[Tuple[int, int, Row]]:
     """A bordered overlay centred on the screen: (y, x, row) triples."""
     if width <= 0 or height <= 0:
         return []
@@ -290,8 +369,9 @@ def box(g: Glyphs, lines: Sequence[Row], width: int, height: int, title: str, mi
 
 def truncate(text: str, width: int) -> str:
     """Hard cut to ``width`` display columns (no ellipsis: the screen edge)."""
+    text = display_text(text)
     if text.isascii():
-        return text[:max(0, width)]
+        return text[: max(0, width)]
     out, used = [], 0
     for ch in text:
         w = _character_width(ch)
@@ -306,6 +386,7 @@ def _clip_row(row: Row, width: int):
     """Clip once and retain its measured width for callers that fill cells."""
     out, used = [], 0
     for text, style in row:
+        text = display_text(str(text))
         if used >= width:
             break
         size = _character_width(text) if len(text) == 1 else vlen(text)
@@ -331,17 +412,28 @@ def fill_row(row: Row, width: int, style: str = "bg:surface") -> Row:
     """Fit a row and fill its entire canvas, preserving explicit cell colours."""
     width = max(0, width)
     fitted, used = _clip_row(row, width)
-    out = [(text, _filled_style(style, cell_style) if len(style) <= 512 and len(cell_style) <= 512
-            else "+".join(part for part in (style, cell_style) if part))
-           for text, cell_style in fitted]
+    out = [
+        (
+            text,
+            _filled_style(style, cell_style)
+            if len(style) <= 512 and len(cell_style) <= 512
+            else "+".join(part for part in (style, cell_style) if part),
+        )
+        for text, cell_style in fitted
+    ]
     gap = width - used
     if gap:
         out.append((" " * gap, style))
     return out
 
 
-def panel_title(g: Glyphs, title: str, width: int, focused: bool = False,
-                position: Optional[Tuple[int, int, int]] = None) -> Row:
+def panel_title(
+    g: Glyphs,
+    title: str,
+    width: int,
+    focused: bool = False,
+    position: Optional[Tuple[int, int, int]] = None,
+) -> Row:
     """A restrained panel heading with a visible focus and scrolling affordance."""
     if width <= 0:
         return []
@@ -355,34 +447,80 @@ def panel_title(g: Glyphs, title: str, width: int, focused: bool = False,
             suffix = f" {start + 1 if count else 0}-{end}/{count} "
     if vlen(suffix) >= width:
         suffix = ""
-    return fill_row([(pad(cut(title, width - vlen(suffix), g.ascii), width - vlen(suffix)), style),
-                     (suffix, "muted+bg:surface-raised" if focused else "muted+bg:surface")], width, "")
+    return fill_row(
+        [
+            (
+                pad(cut(title, width - vlen(suffix), g.ascii), width - vlen(suffix)),
+                style,
+            ),
+            (suffix, "muted+bg:surface-raised" if focused else "muted+bg:surface"),
+        ],
+        width,
+        "",
+    )
 
 
-def scroll_window(rows: Sequence[Row], hits: Sequence[Tuple[int, str, str]], width: int,
-                  height: int, top: int = 0) -> Tuple[List[Row], List[Tuple[int, str, str]], int]:
+def scroll_window(
+    rows: Sequence[Row],
+    hits: Sequence[Tuple[int, str, str]],
+    width: int,
+    height: int,
+    top: int = 0,
+) -> Tuple[List[Row], List[Tuple[int, str, str]], int]:
     """Slice a panel without changing hit identities or borrowing adjacent rows."""
     height, width = max(0, height), max(0, width)
     top = max(0, min(int(top), max(0, len(rows) - height)))
-    window = [clip_row(row, width) for row in rows[top:top + height]]
-    visible_hits = [(y - top, kind, key) for y, kind, key in hits if top <= y < top + height]
+    window = [clip_row(row, width) for row in rows[top : top + height]]
+    visible_hits = [
+        (y - top, kind, key) for y, kind, key in hits if top <= y < top + height
+    ]
     return window, visible_hits, top
 
 
-ANSI = {"bold": "1", "dim": "2", "rev": "7", "under": "4", "green": "32", "yellow": "33", "red": "31", "cyan": "36", "magenta": "35", "blue": "34", "white": "37"}
+ANSI = {
+    "bold": "1",
+    "dim": "2",
+    "rev": "7",
+    "under": "4",
+    "green": "32",
+    "yellow": "33",
+    "red": "31",
+    "cyan": "36",
+    "magenta": "35",
+    "blue": "34",
+    "white": "37",
+}
 
 
-def to_text(rows: Sequence[Row], width: int, color: bool = False, color_depth: Optional[int] = None,
-            theme: str = "default", canvas: bool = False) -> str:
+def to_text(
+    rows: Sequence[Row],
+    width: int,
+    color: bool = False,
+    color_depth: Optional[int] = None,
+    theme: str = "default",
+    canvas: bool = False,
+) -> str:
     """Rows as lines of text, with optional complete themed ANSI canvas."""
     if color:
-        from .palette import ansi_codes, cell_style, colors_disabled, canonical_theme, color_depth as detect_depth
+        from .palette import (
+            ansi_codes,
+            cell_style,
+            colors_disabled,
+            canonical_theme,
+            color_depth as detect_depth,
+        )
+
         color_depth = detect_depth() if color_depth is None else color_depth
-        canvas = bool(canvas and color_depth and not colors_disabled() and
-                      canonical_theme(theme) not in ("terminal", "mono", "reader"))
+        canvas = bool(
+            canvas
+            and color_depth
+            and not colors_disabled()
+            and canonical_theme(theme) not in ("terminal", "mono", "reader")
+        )
     out = []
     for row in rows:
         parts = []
+        row = [(display_text(str(text)), style) for text, style in row]
         fitted = fill_row(row, width, "") if color and canvas else clip_row(row, width)
         for text, style in fitted:
             if color and canvas:

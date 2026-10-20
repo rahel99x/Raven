@@ -11,6 +11,11 @@ from raven.layout import Glyphs, row_text
 from raven.model import Finished, Job, Store
 from raven.views import Views
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "state" / "exports"))
+
+
 
 @pytest.fixture
 def dashboard(tmp_path):

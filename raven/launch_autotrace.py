@@ -13,13 +13,42 @@ from pathlib import Path
 
 from . import reporting as R
 from .launch_trace import _diagnostic, _stop_capture
-from .research_reporting import _lock
+from .report_lock import lock as _lock
 
 _ACTIVE = None
 _FORK_REGISTERED = False
 _AUDIT_REGISTERED = False
 _AUDIT_SEEN = set()
+_FORK_PENDING = None
 MAX_INDEX = 512
+
+
+def budget_limits(settings, *, helper=False):
+    from .raven_limits import TRACE_PROCESSES, TRACE_RUN_BYTES
+    total = int(settings.get("trace_run_bytes", TRACE_RUN_BYTES))
+    count = int(settings.get("trace_processes", TRACE_PROCESSES))
+    if settings.get("trace_helpers", False):
+        return "trace-budget", total, count
+    helper_count = min(32, count // 4)
+    helper_bytes = min(32 << 20, total // 8)
+    return (("trace-helper-budget", helper_bytes, helper_count) if helper else
+            ("trace-budget", total - helper_bytes, count - helper_count))
+
+
+def _capture_settings(settings):
+    """Validate execution-relevant fields without importing submission/UI code."""
+    if not isinstance(settings,dict):
+        raise ValueError('Trace settings must be an object')
+    for key in ('trace_helpers','trace_cpu_placement'):
+        if key in settings and type(settings[key]) is not bool:
+            raise ValueError(key+' must be boolean')
+    for key,lower,upper in (('trace_process_bytes',4096,1<<30),('trace_run_bytes',4096,4<<30),('trace_processes',1,512)):
+        if key in settings and (type(settings[key]) is not int or not lower <= settings[key] <= upper):
+            raise ValueError('Invalid '+key)
+    if settings.get('trace_scope','project') not in {'project','all'}:
+        raise ValueError('Unsupported trace scope')
+    if settings.get('trace_adapter') not in {None,'','python-monitoring','python-legacy-profile','native-cooperative','mpi'}:
+        raise ValueError('Unsupported trace adapter')
 
 
 def _process(*, forked=False):
@@ -97,11 +126,11 @@ class _RunBudget:
     Reservations precede writes; a crash can conservatively consume capacity,
     but cannot make another process exceed the aggregate byte budget.
     """
-    def __init__(self, run, settings):
-        from .raven_limits import TRACE_PROCESSES, TRACE_RUN_BYTES
-        self.limit = int(settings.get("trace_run_bytes", TRACE_RUN_BYTES))
-        maximum = int(settings.get("trace_processes", TRACE_PROCESSES))
-        path = R._under(run, ".raven-runtime/trace-budget")
+    def __init__(self, run, settings, *, helper=False):
+        self.pid = os.getpid()
+        self._locked = False
+        name, self.limit, maximum = budget_limits(settings, helper=helper)
+        path = R._under(run, ".raven-runtime/" + name)
         self.fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK)
         info = os.fstat(self.fd)
         if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_size != 16:
@@ -122,6 +151,7 @@ class _RunBudget:
         finally:
             if locked and self.fd is not None:
                 fcntl.flock(self.fd, fcntl.LOCK_UN)
+                self._locked = False
 
     def _acquire(self):
         """A stopped peer cannot indefinitely stall the research program."""
@@ -129,6 +159,7 @@ class _RunBudget:
         while True:
             try:
                 fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                self._locked = True
                 return
             except BlockingIOError:
                 remaining = deadline - time.monotonic()
@@ -147,9 +178,13 @@ class _RunBudget:
             return True
         finally:
             fcntl.flock(self.fd, fcntl.LOCK_UN)
+            self._locked = False
 
     def close(self):
         if self.fd is not None:
+            if self._locked and os.getpid() == self.pid:
+                fcntl.flock(self.fd, fcntl.LOCK_UN)
+                self._locked = False
             os.close(self.fd)
             self.fd = None
 
@@ -164,7 +199,7 @@ class _Attachment:
         self.process = _process(forked=forked)
 
     def start(self):
-        from .trace_recorder import PythonCapture, Recorder, register_trace
+        from .trace_recorder import PythonCapture, Recorder
         self.run, manifest = verified_run(self.run, self.plan)
         settings = self.plan.get("settings", {})
         adapter = settings.get("trace_adapter") or "python-monitoring"
@@ -172,24 +207,23 @@ class _Attachment:
             raise ValueError("Selected adapter requires its native/cooperative integration; automatic attachment covers Python only")
         if sys.version_info < (3, 12) and adapter != "python-legacy-profile":
             raise ValueError("Python 3.10/3.11 requires explicit --trace-adapter python-legacy-profile consent")
-        self.budget = _RunBudget(self.run, settings)
+        self.budget = _RunBudget(self.run, settings, helper=self.process.get("role") == "helper")
         identity = {key: value for key, value in self.process.items() if key != "pid"}
         identity["run_id"] = self.run.name
         self.recorder = Recorder(self.run, job_id=manifest.get("job_id", "local"), attempt=self.run.name,
             cluster=os.environ.get("SLURM_CLUSTER_NAME", "local"), identity_extra=identity,
             max_bytes=int(settings.get("trace_process_bytes", 64 << 20)), journal_format="blocks",
-            reserve_bytes=self.budget.reserve,
+            reserve_bytes=self.budget.reserve, cpu_placement=settings.get("trace_cpu_placement", False), register=False,
             coverage={"adapter": "python-profile" if adapter == "python-legacy-profile" else "python-sys-monitoring",
                 "scope": "Observed Python frames in this process within " + settings.get("trace_scope", "project") + " scope; native execution, GPU kernels, and children bypassing startup hooks are unknown",
                 "automatic": self.automatic, "chained": self.chained, "chain_error": self.chain_error[:2048],
                 "observed_pythonpath": os.environ.get("PYTHONPATH", "")[:8192],
                 "helpers_default": settings.get("trace_helpers", False),
+                "budget_scope": "shared run" if settings.get("trace_helpers", False) else "reserved helper pool" if self.process.get("role") == "helper" else "reserved main/rank pool",
                 "limitations": "Legacy profile cannot distinguish yields/returns or exception unwind" if adapter == "python-legacy-profile" else "Frames already active before attachment are unknown"})
         self.capture = PythonCapture(self.recorder, legacy=adapter == "python-legacy-profile",
             scope=settings.get("trace_scope", "project"),
             roots=(self.plan["project_root"], str(Path(self.plan["script"]).parent)))
-        self.capture.start()
-        register_trace(self.plan["project_root"], self.recorder.path)
         with _lock(self.run):
             path, value = _index(self.run)
             if len(value["sources"]) + (1 if self.automatic else 2) > MAX_INDEX:
@@ -205,6 +239,10 @@ class _Attachment:
                     "schema": "raven.trace-event/v1", "stream": self.recorder.stream,
                     "run_id": self.run.name, "status": "recording", "reason": ""})
             R._atomic_json(path, value, replace=True)
+        self.capture.start()
+        if self.process.get("role") == "helper":
+            from multiprocessing.util import Finalize
+            Finalize(None, _finish, exitpriority=20)
 
     def close(self):
         if self.closed or self.pid != os.getpid():
@@ -236,7 +274,7 @@ def _finish():
 
 
 def _after_fork():
-    global _ACTIVE, _AUDIT_SEEN
+    global _ACTIVE, _AUDIT_SEEN, _FORK_PENDING
     previous = _ACTIVE
     _ACTIVE, _AUDIT_SEEN = None, set()
     if previous is None or previous.closed:
@@ -248,9 +286,33 @@ def _after_fork():
             previous.capture.stop()
         if previous.budget is not None:
             previous.budget.close()
-        auto_attach(chained=previous.chained, chain_error=previous.chain_error, forked=True)
-    except Exception as exc:
-        _diagnostic(previous.run, "Forked Python attachment unavailable: " + str(exc))
+        # A fork-then-exec child must perform no filesystem work, start no
+        # threads and consume no trace process slot. Attach only once actual
+        # project Python resumes in the child.
+        _FORK_PENDING = previous
+        if sys.getprofile() is None:
+            sys.setprofile(_lazy_fork_profile)
+    except Exception:
+        pass
+
+
+def _lazy_fork_profile(frame, event, argument):
+    global _FORK_PENDING
+    pending = _FORK_PENDING
+    if pending is None or event != "call":
+        return
+    filename = frame.f_code.co_filename
+    root = pending.plan.get("project_root", "") + os.sep
+    if not filename.startswith(root) or "/raven/" in filename or "/site-packages/" in filename:
+        return
+    parent = frame.f_back
+    while parent is not None:
+        if parent.f_code.co_filename.endswith("/subprocess.py"):
+            return
+        parent = parent.f_back
+    _FORK_PENDING = None
+    sys.setprofile(None)
+    auto_attach(chained=pending.chained, chain_error=pending.chain_error, forked=True)
 
 
 def _multiprocessing_ready(_owner):
@@ -263,8 +325,10 @@ def _multiprocessing_ready(_owner):
 
 
 def _audit(event, args):
+    if event not in {"subprocess.Popen", "os.exec", "os.posix_spawn"}:
+        return
     active = _ACTIVE
-    if active is None or active.closed or active.pid != os.getpid() or event not in {"subprocess.Popen", "os.exec", "os.posix_spawn"}:
+    if active is None or active.closed or active.pid != os.getpid():
         return
     try:
         executable, argv = args[:2]
@@ -295,14 +359,15 @@ def _audit(event, args):
         if signature in _AUDIT_SEEN or len(_AUDIT_SEEN) >= 128:
             return
         _AUDIT_SEEN.add(signature)
-        record_gap(active.run, reason, process={"parent_pid": os.getpid(), "role": "child", "launcher": name}, status="unverified")
+        process = {"parent_pid": os.getpid(), "role": "child", "launcher": name}
+        active.recorder.defer(lambda: record_gap(active.run, reason, process=process, status="unverified"))
     except Exception:
         pass  # An audit observer must never reject the application's operation.
 
 
 def verified_run(run, plan):
     """Prove this immutable launch owns this run before any recording write."""
-    from .launch_runtime import plan_inventory
+    from .launch_contract import plan_inventory
     if not isinstance(plan, dict) or plan.get("schema") != "raven.launch-plan/v1":
         raise ValueError("Automatic trace requires a Raven launch plan")
     root = R._directory(plan["project_root"])
@@ -337,8 +402,7 @@ def auto_attach(*, chained=False, chain_error="", forked=False):
         plan = R._read_json(os.environ["RAVEN_LAUNCH_PLAN"])
         if not isinstance(plan, dict) or plan.get("trace") is not True:
             return None
-        from .launch_settings import _launch
-        _launch(plan.get("settings", {}))
+        _capture_settings(plan.get("settings", {}))
         run, _manifest = verified_run(run, plan)
         if run.name != os.environ.get("RAVEN_RUN_ID", run.name):
             raise ValueError("Automatic trace attempt identity changed")
@@ -354,8 +418,9 @@ def auto_attach(*, chained=False, chain_error="", forked=False):
         if not _AUDIT_REGISTERED:
             sys.addaudithook(_audit)
             _AUDIT_REGISTERED = True
-        from multiprocessing.util import register_after_fork
-        register_after_fork(attachment, _multiprocessing_ready)
+        if attachment.process.get('role') == 'helper' or 'multiprocessing.util' in sys.modules:
+            from multiprocessing.util import register_after_fork
+            register_after_fork(attachment, _multiprocessing_ready)
         return attachment
     except Exception as exc:
         if attachment is not None:

@@ -5,7 +5,7 @@ from bisect import bisect_right
 
 from . import advisor
 from .model import hms, human, secs
-from .research import clean
+from .research_text import clean
 
 
 def advice_key(items):

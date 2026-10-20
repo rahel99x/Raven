@@ -18,18 +18,29 @@ def initialize(app):
         app.trace_panel_state = dict(token=0, context=None, status="idle", error="", result=None,
             reader=None, callback=None, cancel=None, next_read=0.0, path="", explicit="", sources=[],
             index=0, paused=False, verified=False, paint=None, discover_at=0.0, summary=False,
-            processes=[], show_helpers=None, process_page=0)
+            processes=[], show_helpers=None, process_page=0, view="timeline", view_choice=None)
+    app.trace_panel_state.setdefault("timeline_view", {"window": None, "thread": None, "selected": None, "query": ""})
     return app.trace_panel_state
 
 
 def restore(app, data):
     if isinstance(data, dict) and type(data.get("show_helpers")) is bool:
         initialize(app)["show_helpers"] = data["show_helpers"]
+    if isinstance(data, dict) and data.get("view") in {"timeline", "events", "summary"}:
+        initialize(app).update(view=data["view"], view_choice=data["view"], summary=data["view"] == "summary")
+    if isinstance(data, dict) and data.get("track") in {"calls", "cores"}:
+        initialize(app)["timeline_view"]["track"] = data["track"]
 
 
 def save(app):
-    choice = initialize(app)["show_helpers"]
-    return {"show_helpers": choice} if type(choice) is bool else {}
+    state = initialize(app)
+    choice = state["show_helpers"]
+    result = {"show_helpers": choice} if type(choice) is bool else {}
+    if state.get("view_choice") is not None:
+        result["view"] = state["view_choice"]
+    if state.get("timeline_view", {}).get("track") in {"calls", "cores"}:
+        result["track"] = state["timeline_view"]["track"]
+    return result
 
 
 def command_names():
@@ -72,6 +83,8 @@ def _visible(app):
 
 def cancel(app, *, clear=False):
     state = initialize(app)
+    from . import trace_browser
+    trace_browser.cancel(app)
     state["token"] += 1
     if state["cancel"] is not None:
         state["cancel"].set()
@@ -81,6 +94,8 @@ def cancel(app, *, clear=False):
     state.update(callback=None, cancel=None)
     if clear:
         state.update(context=None, result=None, reader=None, sources=[], processes=[], process_page=0, path="", explicit="", status="idle", index=0, error="", verified=False, paint=None, discover_at=0.0)
+        from .trace_timeline_ui import reset
+        reset(state)
 
 
 def run_command(app, args):
@@ -88,6 +103,11 @@ def run_command(app, args):
         return False
     state = initialize(app)
     from .job_panels import _activate
+    from .trace_timeline_ui import command as timeline_command
+    current = _context(app)
+    if (state.get("context") is not None and current is not None
+            and state["context"]["key"] == current["key"] and timeline_command(app, state, args[1:])):
+        return True
     if len(args) == 1:
         if getattr(app, "tab", "") not in ("jobs", "history"):
             app.enter_tab("jobs")
@@ -101,9 +121,16 @@ def run_command(app, args):
             cancel(app, clear=True)
             state.update(explicit=args[2], context=_context(app), next_read=0.0)
             _activate(app, "trace")
-    elif args[1:] in (["summary"], ["events"]):
-        state.update(summary=args[1] == "summary", next_read=0.0, paint=None)
-        app.say("Trace summaries use matched retained intervals; order and causality remain unanswerable" if state["summary"] else "Original retained trace events")
+    elif args[1:] in (["summary"], ["events"], ["timeline"]):
+        state.update(summary=args[1] == "summary", view=args[1], view_choice=args[1], next_read=0.0, paint=None)
+        app.save()
+        app.say("Trace summaries use matched retained intervals; order and causality remain unanswerable" if state["summary"] else "Recorded visual intervals" if args[1] == "timeline" else "Original retained trace events")
+    elif args[1:] == ["browser"]:
+        if current is None or state.get("context") is None or current["key"] != state["context"]["key"] or state["result"] is None:
+            app.say("Select a job and wait for its verified trace before opening a browser timeline.")
+        else:
+            from .trace_browser import request
+            request(app, state["result"], current)
     elif args[1:] == ["helpers"]:
         state["show_helpers"] = not bool(state["show_helpers"])
         state.update(paint=None, next_read=0.0, process_page=0)
@@ -128,10 +155,12 @@ def run_command(app, args):
                 raise ValueError()
             cancel(app)
             state.update(index=index, path="", reader=None, result=None, next_read=0.0)
+            from .trace_timeline_ui import reset
+            reset(state)
         except (TypeError, ValueError):
             app.fail("Choose a visible trace source index.")
     else:
-        app.fail("trace [attach MANIFEST|refresh|pause|follow|clear|helpers|select INDEX]")
+        app.fail("trace [timeline|events|summary|browser|find NAME|attach MANIFEST|refresh|pause|follow|clear|helpers|select INDEX]")
     return True
 
 
@@ -258,6 +287,18 @@ def _read(context, explicit, index, previous_path, reader, event, source_cache=N
     snapshot = reader.refresh(max_events=512 if context.get("light") else 4096,
                               max_bytes=256 << 10 if context.get("light") else 2 << 20,
                               max_seconds=.015, cancel=event)
+    if not event.is_set():
+        from .trace_timeline import build, index as timeline_index
+        try:
+            signature = (snapshot["read_seq"], snapshot["evicted"], snapshot["status"], snapshot["committed_seq"],
+                         snapshot["sha256"], tuple(snapshot["warnings"]), snapshot["covered"])
+            prepared = getattr(reader, "_timeline_prepared", None)
+            if prepared is None or prepared[0] != signature:
+                model = build(snapshot)
+                prepared = reader._timeline_prepared = (signature, model, timeline_index(model))
+            snapshot["timeline"], snapshot["timeline_index"] = prepared[1:]
+        except ValueError as exc:
+            snapshot["timeline_error"] = str(exc)
     verified = _matches(snapshot["identity"], context)
     if not verified and not explicit:
         raise ValueError("Trace attempt cannot be verified against the current job.")
@@ -322,6 +363,11 @@ def tick(app):
             state.update(status="error", error=clean(result, 400), result=None, discover_at=0.0)
             return
         if result is not None:
+            previous_stream = (state.get("result") or {}).get("identity", {}).get("stream")
+            current_stream = (result.get("snapshot") or {}).get("identity", {}).get("stream")
+            if previous_stream != current_stream or state.get("path") != result.get("path"):
+                from .trace_timeline_ui import reset
+                reset(state)
             state.update(sources=result["sources"], processes=result["processes"], index=result["index"], result=result["snapshot"], reader=result["reader"], path=result["path"],
                          verified=result["verified"], error="", status="ready" if result["snapshot"] else "missing")
             if state["show_helpers"] is None:
@@ -344,25 +390,40 @@ def panel(views, app, job, width):
         # A redraw can precede tick after a row change. Never paint the prior
         # attempt's frames under the new job's heading.
         state = dict(state, result=None, error="", status="waiting for job evidence", sources=[], processes=[])
+    browser = getattr(app, "trace_browser_state", {})
+    browser = browser if context is not None and browser.get("context") == context["key"] else {}
     signature = (context["key"] if context else None, job.id, width, id(state["result"]), state["status"],
-                 state["error"], state["paused"], state.get("summary", False), state["show_helpers"], state["process_page"], id(state["processes"]), state["verified"], state["index"], tuple(state["sources"][:128]), views.g.ascii)
+                 state["error"], state["paused"], state.get("summary", False), state.get("view", "timeline"),
+                 tuple(sorted(state.get("timeline_view", {}).items())),
+                 browser.get("pending", False), browser.get("message", ""), browser.get("path", ""),
+                 state["show_helpers"], state["process_page"], id(state["processes"]), state["verified"], state["index"], tuple(state["sources"][:128]), views.g.ascii)
     cached = owner_state.get("paint")
     if cached is not None and cached[0] == signature:
         return cached[1]
-    controls = [("refresh", "Refresh", ("command", "trace refresh")),
-                ("follow", "Follow" if state["paused"] else "Pause view", ("command", "trace follow" if state["paused"] else "trace pause")),
-                ("plan", "Capture plan", ("command", "ops trace-capture")),
-                ("snapshot", "Python snapshot", ("command", "ops trace-snapshot"))]
-    controls.append(("summary", "Events" if state.get("summary") else "Summaries",
-                     ("command", "trace events" if state.get("summary") else "trace summary")))
+    controls = [("timeline", "Timeline", ("command", "trace timeline")),
+                 ("events", "Stacks", ("command", "trace events")),
+                 ("summary", "Summaries", ("command", "trace summary")),
+                 ("browser", "View in browser", ("command", "trace browser")),
+                 ("follow", "Follow" if state["paused"] else "Pause view", ("command", "trace follow" if state["paused"] else "trace pause"))]
+    if state.get("view", "timeline") != "timeline":
+        controls += [("refresh", "Refresh", ("command", "trace refresh")),
+                     ("plan", "Capture plan", ("command", "ops trace-capture")),
+                     ("snapshot", "Python snapshot", ("command", "ops trace-snapshot"))]
     controls.append(("helpers", "Hide helpers" if state["show_helpers"] else "Show helpers", ("command", "trace helpers")))
-    rows, raw_hits = buttons(views.g, width, controls, group="trace", prefix="trace:")
+    rows, raw_hits = buttons(views.g, width, controls, selected=state.get("view", "timeline"), group="trace", prefix="trace:")
     hits = [(y, "job_panel_action", (("trace_command", {"job": job.id, "command": value["action"][1]}), value["left"], value["right"]))
             for y, _, value in raw_hits]
     rows.append([(f" Trace for job {job.id}  / {state['status']}", "heading")])
     if state["error"]:
         rows.append([(state["error"], "warning")])
+    if browser.get("pending"):
+        rows.append([("Preparing the private browser timeline…", "dim")])
+    elif browser.get("message"):
+        rows.append([(browser["message"], "cyan")])
+        if browser.get("path"):
+            rows.append([("Browser snapshot: " + browser["path"], "text")])
     processes = state.get("processes", [])
+    process_start = len(rows)
     if processes:
         source_indices = {path: index for index, path in enumerate(state["sources"])}
         hidden = sum(_helper(row) for row in processes) if not state["show_helpers"] else 0
@@ -396,6 +457,7 @@ def panel(views, app, job, width):
             if process.get("reason"):
                 rows.append([("Why / coverage: " + process["reason"], "warning")])
         rows.append([("Counts come from producer receipts; journal verification advances for the selected process. Undiscovered processes remain unknown.", "dim")])
+    process_end = len(rows)
     if state["result"] is None:
         rows += [[("No verified recording is attached yet.", "dim")],
                  [("Launch with raven launch SCRIPT --trace, or attach its manifest with :trace attach PATH.", "dim")],
@@ -417,12 +479,26 @@ def panel(views, app, job, width):
                 answer = group['p95']
                 interval = str(answer.get('lower', '?')) + '–' + str(answer.get('upper', '?')) + ' ns'
                 rows.append([(f"{group['phase']} / rank {group['rank']}: count {group['count']} exact; p95 {interval} ({answer['answerability']})", "text")])
-        for message in (() if state.get("summary") else snapshot.get("rows", ())[:1600]):
+        elif state.get("view", "timeline") == "timeline" and "timeline" in snapshot:
+            from .trace_timeline_ui import render
+            timeline_rows, timeline_hits = render(views, state, job.id, width)
+            hits.extend((len(rows) + y, kind, value) for y, kind, value in timeline_hits)
+            rows.extend(timeline_rows)
+        if snapshot.get("timeline_error"):
+            rows.append([(snapshot["timeline_error"], "warning")])
+        for message in (() if state.get("summary") or state.get("view", "timeline") == "timeline" and snapshot.get("timeline", {}).get("intervals") else snapshot.get("rows", ())[:1600]):
             rows.append([(str(message), "text")])
         for message in snapshot.get("warnings", ())[:32]:
             rows.append([(str(message), "warning")])
         if len(snapshot.get("rows", ())) > 1600:
             rows.append([("Display bounded to 1600 trace lines; inspect the recording for additional data.", "warning")])
+    if state.get("view", "timeline") == "timeline" and (state.get("result") or {}).get("timeline") and process_end > process_start:
+        # Keep the chart above the potentially long process catalog. Process
+        # switching remains an ordinary exact-source control below the chart.
+        count = process_end - process_start
+        rows = rows[:process_start] + rows[process_end:] + rows[process_start:process_end]
+        hits = [(y if y < process_start else len(rows) - count + y - process_start if y < process_end else y - count,
+                 kind, value) for y, kind, value in hits]
     rendered = _wrap(rows, hits, width)
     # Keep the source object alive with the cache: id reuse cannot alias a
     # later snapshot even if a worker replaces the published result.
@@ -467,7 +543,18 @@ def _wrap(rows, hits, width):
 
 
 def handle_key(app, key):
-    return False
+    panels = getattr(app, "job_panel_state", {})
+    if not _visible(app) or panels.get("focus") != "content" or initialize(app).get("view", "timeline") != "timeline":
+        return False
+    from .workspace_layout import initialize as layout_state
+    if layout_state(app).focus != "details":
+        return False
+    action = {"+": "zoom-in", "=": "zoom-in", "-": "zoom-out", "left": "pan-left", "right": "pan-right",
+              "f": "fit", "t": "thread-next", "n": "next", "N": "previous"}.get(key)
+    if action is None:
+        return False
+    run_command(app, ["trace", action])
+    return True
 
 
 def handle_mouse(app, y, x, button="left", shift=False):

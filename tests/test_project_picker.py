@@ -143,13 +143,39 @@ def test_special_inventory_is_never_opened(tmp_path):
     assert not result["runs"] and "regular file" in result["warnings"][0]
 
 
-def test_final_project_symlink_is_refused(tmp_path):
+@pytest.mark.parametrize("nested", [False, True])
+def test_selected_project_symlink_resolves_to_explicit_root(tmp_path, nested):
     real = tmp_path / "real"
     real.mkdir()
     alias = tmp_path / "alias"
     alias.symlink_to(real, target_is_directory=True)
-    with pytest.raises(OSError):
-        projects.discover_project(str(alias))
+    selected = alias / "project" if nested else alias
+    actual = real / "project" if nested else real
+    make_run(actual, "selected")
+    result = projects.discover_project(str(selected))
+    assert result["root"] == str(actual)
+    assert [row["run_id"] for row in result["runs"]] == ["selected"]
+
+
+def test_selected_project_alias_retarget_does_not_change_pinned_read(tmp_path, monkeypatch):
+    real = tmp_path / "real"
+    outside = tmp_path / "outside"
+    make_run(real, "selected")
+    make_run(outside, "wrong")
+    alias = tmp_path / "alias"
+    alias.symlink_to(real, target_is_directory=True)
+    original = projects._root
+
+    def retarget_after_pin(path):
+        root, fd = original(path)
+        alias.unlink()
+        alias.symlink_to(outside, target_is_directory=True)
+        return root, fd
+
+    monkeypatch.setattr(projects, "_root", retarget_after_pin)
+    result = projects.discover_project(str(alias))
+    assert result["root"] == str(real)
+    assert [row["run_id"] for row in result["runs"]] == ["selected"]
 
 
 def test_inventory_size_and_attempt_limits_are_visible(tmp_path, monkeypatch):

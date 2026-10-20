@@ -1,7 +1,6 @@
 """Reviewed reproducibility, placement, scientific validation and dependency repair."""
 from __future__ import annotations
 
-import hashlib
 import importlib.metadata
 import json
 import os
@@ -10,6 +9,7 @@ import platform
 import re
 import shlex
 
+from .deps import normalized_dependency as _normalized_dependency
 from . import science_files as sf
 from . import science_stats
 from .operations import command, digest, local_only, prepare_plan, read_json, report, validate_plan, checkpoint
@@ -468,9 +468,6 @@ def _dependency(value):
     return value, parse_dependency(value)
 
 
-def _normalized_dependency(value):
-    value = re.sub(r"\([^)]*\)", "", str(value or ""))
-    return "" if value in {"(null)", "None", "null"} else value
 
 
 def _cycles(graph):
@@ -522,6 +519,7 @@ def _repair(params, ctx):
             raise ValueError(f"Job {jid} already has that dependency")
         repairs.append({"job_id": jid, "attempt": _attempt(detail), "before": old, "after": dependency})
     graph, references = _repair_graph(ctx, repairs, details)
+    repairs = _repair_order(repairs, references)
     payload = {"manifest": manifest, "manifest_digest": digest(doc), "repairs": repairs,
                "references": references}
     return report("dependency-repair", f"Dependency repair review: {len(repairs)} pending jobs", rows=[f"{row['job_id']}: {row['before'] or '(none)'} → {row['after'] or '(none)'}" for row in repairs],
@@ -558,9 +556,33 @@ def _repair_graph(ctx, repairs, known=None):
             raise ValueError("Dependency graph contains an unsupported compressed job identity")
         graph[jid] = [] if terminal and jid not in proposed else edges
         references[jid] = {"attempt": _attempt(detail), "dependency": _normalized_dependency(detail.get("Dependency", ""))}
-        queue.extend(pre for pre in graph[jid] if pre not in graph)
+        old_edges = [pre for _, pre in parse_dependency(_normalized_dependency(detail.get("Dependency", ""))) if pre]
+        queue.extend(pre for pre in (*graph[jid], *old_edges) if pre not in graph)
     _cycles(graph)
     return graph, references
+
+
+def _repair_order(repairs, references):
+    """Find an order whose every intermediate scheduler graph is acyclic."""
+    from .deps import parse_dependency
+    graph = {jid: [pre for _, pre in parse_dependency(value["dependency"]) if pre]
+             for jid, value in references.items()}
+    _cycles(graph)
+    remaining, ordered = list(repairs), []
+    while remaining:
+        for row in remaining:
+            proposed = dict(graph, **{row["job_id"]: [pre for _, pre in parse_dependency(row["after"]) if pre]})
+            try:
+                _cycles(proposed)
+            except ValueError:
+                continue
+            ordered.append(row)
+            remaining.remove(row)
+            graph = proposed
+            break
+        else:
+            raise ValueError("No safe sequential dependency update order exists; split the repair without temporarily releasing constraints")
+    return ordered
 
 
 def _repair_apply(payload, ctx):
@@ -573,7 +595,7 @@ def _repair_apply(payload, ctx):
             raise ValueError(f"Dependency closure changed for {jid}; prepare a new review")
     _repair_graph(ctx, payload["repairs"], current)
     outcomes, attempted = [], set()
-    for row in payload["repairs"]:
+    for row in _repair_order(payload["repairs"], payload["references"]):
         jid = row["job_id"]
         try:
             checkpoint(ctx)
@@ -588,7 +610,9 @@ def _repair_apply(payload, ctx):
                 raise ValueError("Scheduler reply did not confirm the reviewed dependency; reconcile before retry")
             outcomes.append({"job_id": jid, "status": "confirmed", "dependency": row["after"]})
         except Exception as exc:
-            outcomes.append({"job_id": jid, "status": "uncertain" if jid in attempted else "not applied", "error": str(exc)[:500]})
+            from .slurm import CommandError
+            rejected = isinstance(exc, CommandError) and bool(re.search(r"\bexit [1-9][0-9]*:", str(exc)))
+            outcomes.append({"job_id": jid, "status": "rejected" if rejected else "uncertain" if jid in attempted else "not applied", "error": str(exc)[:500]})
             break
     completed_ids = {row["job_id"] for row in outcomes}
     outcomes.extend({"job_id": row["job_id"], "status": "not applied"} for row in payload["repairs"] if row["job_id"] not in completed_ids)

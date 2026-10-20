@@ -389,7 +389,7 @@ def handle_mouse(app, y, x, button="left", shift=False, alt=False):
     if source is None:
         state.update(pending=None, armed=None)
         return False
-    jid, scope = source["pointed"], source["scope"]
+    jid, _scope = source["pointed"], source["scope"]
     token = source["tokens"].get(jid)
     marked = jid in getattr(app, "marks", ())
     if token is not None:

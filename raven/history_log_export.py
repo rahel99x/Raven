@@ -13,7 +13,7 @@ import threading
 from itertools import islice
 
 from . import layout as L
-from .research import clean
+from .research_text import clean
 
 MAX_JOBS = 1024
 MAX_ENTRIES = 4096

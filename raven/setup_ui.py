@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import re
 
+from .recording_settings_port import SettingsCallbacks
 from . import layout as L
 from .control_rows import place_hits
 from .log_text import display_text
@@ -35,6 +36,8 @@ def initialize(app):
                      form={}, form_scope=None, dirty=set(), discovery=None, service=None, service_scope=None,
                      busy="", message="", control_hits=[], painted=None)
         app.setup_ui_state = state
+    if getattr(app, "recording_settings_port", None) is None:
+        app.recording_settings_port = SettingsCallbacks(initialize, _scope, _background, _say)
     return state
 
 
@@ -321,7 +324,7 @@ def run_command(app, args):
     action = parts[0]
     if action in ("storage-format", "storage-preview", "storage-convert", "storage-retain-preview", "storage-retain", "storage-tier-query"):
         from .series_settings import command
-        return command(app, parts)
+        return command(app, parts, ui=SettingsCallbacks(initialize, _scope, _background, _say))
     if parts == ["updates"]:
         from .telemetry_settings_ui import open_settings
         open_settings(app)

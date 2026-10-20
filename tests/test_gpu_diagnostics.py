@@ -231,7 +231,7 @@ def test_managed_remote_check_retains_typed_file_admission(tmp_path, monkeypatch
         assert result["jobs"][0]["trace"]["valid_utilization_rows"] == 1
         rates = backend.ledger.report()["rates_last_minute"]
         assert rates["filesystem"] == 2
-        assert rates["file-bytes"] == G.MAX_TRACE
+        assert rates["file-bytes"] == len(TRACE_ROW.encode())
     finally:
         backend.close()
 
@@ -688,7 +688,7 @@ def test_ssh_evidence_preserves_native_error_stream_and_connection_argv():
     backend = G.EvidenceBackend(SshBackend("desktop", user="alex", runner=runner, control=False))
     with pytest.raises(CommandError, match="Connection refused"):
         backend.run(["nvidia-smi"], 4)
-    assert attempts[0][0][-3:] == ["alex@desktop", "--", "nvidia-smi"]
+    assert attempts[0][0][-3:] == ["--", "alex@desktop", "nvidia-smi"]
     record, = backend.records
     assert record["argv"] == ["nvidia-smi"] and record["returncode"] == 255
     assert record["stderr"] == "ssh: connect to host desktop port 22: Connection refused\n"

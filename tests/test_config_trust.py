@@ -19,7 +19,7 @@ def test_loaders_reject_untrusted_paths_before_using_them(tmp_path, loader, unsa
     elif unsafe == 'parent':
         parent.chmod(0o777)
     elif unsafe == 'ancestor':
-        parent.parent.chmod(0o775)
+        parent.parent.chmod(0o777)
     elif unsafe == 'link':
         actual = path.with_suffix('.actual')
         path.rename(actual)

@@ -63,6 +63,13 @@ class Bridge:
     """Bounded nonblocking AF_UNIX datagrams; uid plus per-session capability."""
     def __init__(self, directory=None):
         self.directory = Path(tempfile.mkdtemp(prefix="raven-bridge-", dir=directory))
+        # AF_UNIX limits count encoded bytes, including the socket leaf. A
+        # long state/project path must not prevent a private bridge from
+        # starting. Create under the requested parent first so invalid or
+        # unwritable explicit directories still fail normally.
+        if len(os.fsencode(str(self.directory / "events.sock"))) > 103:
+            self.directory.rmdir()
+            self.directory = Path(tempfile.mkdtemp(prefix="rvb-", dir="/tmp"))
         self.path = str(self.directory / "events.sock")
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         self.sessions = {}

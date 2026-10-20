@@ -153,7 +153,7 @@ def test_exact_record_limit_accepts_all_nested_step_data_without_truncation(gove
 ])
 def test_malformed_json_cannot_bypass_admission_or_trigger_legacy_fallback(govern, response):
     backend, wrapper = govern(response, legacy=recorded("accounting"))
-    reader = Slurm(wrapper, "raven")
+    reader = Slurm(wrapper, "raven", json_mode="json")
     with pytest.raises(CommandError):
         reader.finished(2)
     assert len(backend.commands) == 2

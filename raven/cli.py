@@ -20,6 +20,9 @@ load), History (sacct with efficiency and totals), Analytics (charts), Nodes (th
 (the selected job's stdout, following), Sources (health of every Slurm command).  ? lists the keys inside."""
 from __future__ import annotations
 
+from .ui.catalog import RESEARCH_VIEWS, TABS
+from .user_identity import current_user
+
 import argparse
 import json
 import math
@@ -39,7 +42,7 @@ from .model import Store
 from .remote import LocalFiles, RemoteFiles, SshBackend
 from .sampler import Sampler
 from .slurm import Backend, CommandError, FakeBackend, Slurm
-from .views import TABS, Views
+from .views import Views
 
 
 class _Reconnect(Exception):
@@ -228,12 +231,12 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
         raise ValueError("gpu_provider must be auto, nvidia, amd, or intel")
     if getattr(args, "workers", None):
         cfg.ui_locked_settings = set(getattr(cfg, "ui_locked_settings", ())) | {"worker_mode"}
-    from .refresh_rate import poll_position, validate_multiplier
+    from .cadence import poll_position, validate_multiplier
     requested_rate = args.rate if args.rate is not None else cfg.get("polling_multiplier", 1)
     if args.interval and args.rate is None:
         requested_rate = poll_position(args.interval)
     cfg.set("polling_multiplier", validate_multiplier(requested_rate))
-    user = args.user or cfg["user"] or os.environ.get("USER", "")
+    user = args.user or cfg["user"] or current_user()
     if args.fake and not user:
         user = "alex"
     shared_backend = None if args.fake or args.replay else getattr(raven_allocation, "collection_backend", None)
@@ -416,12 +419,12 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
         for name, enabled in initial_metrics.items():
             s.store.health[name].enabled = enabled
     s.app.tab = "jobs"
-    s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)     # settles the selected job
+    s.views.compose(s.store.render_snapshot(), s.app, 160, None, s.actions)     # settles the selected job
     if tab == "analytics":
         # The queue's first batch can be pending. Resolve the chart's actual
         # selection before subscribing to its live measurements.
         s.app.tab = tab
-        s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)
+        s.views.compose(s.store.render_snapshot(), s.app, 160, None, s.actions)
     target = selected_job or (s.app.analytics_job if tab == "analytics" else s.app.selected_id)
     if target:
         s.sampler.want_detail = target
@@ -430,7 +433,17 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
         s.sampler.prime_collection_snapshot()
     else:
         s.sampler.last_run["details"] = s.sampler.last_run["account"] = 0.0
-    s.sampler.round(wait=True)
+    detail_source = s.sampler.sources["details"]
+    inspection = getattr(s.sampler.slurm.b, "snapshot_inspection", None) if managed else None
+    if callable(inspection):
+        def selected_inspection():
+            with inspection():
+                return detail_source()
+        s.sampler.sources["details"] = selected_inspection
+    try:
+        s.sampler.round(wait=True)
+    finally:
+        s.sampler.sources["details"] = detail_source
     if managed:
         # Honor short admission retry hints within the snapshot's wait budget.
         # Never reset source clocks, endpoint quotas or circuit state.
@@ -443,11 +456,11 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
             else:
                 break
     from .project_ui import settle as settle_project
-    settle_project(s.app, s.store.snapshot())
+    settle_project(s.app, s.store.render_snapshot())
     if tab:
         s.app.tab = tab
     if tab == "research":
-        s.app.research.request(s.app.research.context(s.store.snapshot(), s.app), wait=True)
+        s.app.research.request(s.app.research.context(s.store.render_snapshot(), s.app), wait=True)
 
 
 def scripted(args, s: Session) -> int:
@@ -470,7 +483,7 @@ def scripted(args, s: Session) -> int:
             target = target or app.selected_id
             job = s.store.job(target) if target else None
             if job is not None and not job.pending:
-                live = s.store.snapshot()["live"].get(target)
+                live = s.store.render_snapshot()["live"].get(target)
                 maximum_age = max(5., s.sampler.effective_interval("live") * 2)
                 measured = live is not None and any(
                     value is not None and math.isfinite(value) and value >= 0
@@ -497,6 +510,9 @@ def scripted(args, s: Session) -> int:
         if app.research_result is not None:
             print(json.dumps(app.research_result, indent=2, ensure_ascii=True, allow_nan=False))
             return 0 if app.command_ok else 1
+        if args.json:
+            print(json.dumps({"status": "ok" if app.command_ok else "error", "message": app.message or "ok"}, ensure_ascii=True))
+            return 0 if app.command_ok else 1
         print(app.message or "ok")
         for e in list(s.store.events)[-len(jobs) if app.message and "sent" in app.message else -1:]:
             if e.get("kind") in ("action", "export", "copy") and not e.get("old"):
@@ -505,7 +521,7 @@ def scripted(args, s: Session) -> int:
     if args.eval:
         settle(s, args.tab)
         out = app.evaluate(args.eval)
-        print(out)
+        print(json.dumps({"status": "error", "message": out}) if args.json and out.startswith("eval:") else json.dumps(out) if args.json else out)
         return 1 if out.startswith("eval:") else 0
     from .expr import Expr, ExprError, cluster_ns
     try:
@@ -518,7 +534,7 @@ def scripted(args, s: Session) -> int:
     while True:
         s.sampler.round(wait=True)
         try:
-            v = expr(cluster_ns(s.store.snapshot(), s.user))
+            v = expr(cluster_ns(s.store.render_snapshot(), s.user))
         except ExprError as e:
             print(f"wait-for: {e}", file=sys.stderr)
             return 1
@@ -570,7 +586,6 @@ def parse(argv):
     ap.add_argument("--no-plugins", action="store_true", help="do not load ~/.config/raven/plugins")
     ap.add_argument("--once", action="store_true", help="one frame of text and exit")
     ap.add_argument("--tab", choices=[t for t, _ in TABS], help="initial tab; also selects the --once / --csv / --run view")
-    from .research import RESEARCH_VIEWS
     ap.add_argument("--research-view", choices=[k for k, _ in RESEARCH_VIEWS], help="Research subview")
     ap.add_argument("--metrics-file", help="application JSONL telemetry; {job_id} selects a stream")
     ap.add_argument("--contract", help="JSON output contract (local cluster files)")
@@ -682,7 +697,7 @@ def gpu_check(args, cfg):
     diagnostic_args.record = ""
     backend = None
     try:
-        user = args.user or cfg["user"] or os.environ.get("USER", "")
+        user = args.user or cfg["user"] or current_user()
         backend, files, replay, user = make_backend(diagnostic_args, diagnostic_cfg, user)
         location = "" if args.no_state or args.fake or args.replay else scoped_state_dir(backend, cfg, user)
         if cfg.get("raven", {}).get("managed"):
@@ -714,7 +729,7 @@ def gpu_check(args, cfg):
         clock.reset()
 
 
-def main(argv=None, *, raven=None, raven_allocation=None):
+def _entry_main(argv=None, *, raven=None, raven_allocation=None):
     from .launch import dispatch as dispatch_workload
     try:
         workload = dispatch_workload(list(sys.argv[1:] if argv is None else argv), resolved=raven)
@@ -761,7 +776,7 @@ def _managed_main(argv, *, raven, raven_allocation=None):
     driver_backend = None
     try:
         arguments = list(sys.argv[1:] if argv is None else argv)
-        if needs_job_local(arguments):
+        if needs_job_local(arguments) or arguments[:2] == ["trace", "cleanup-runtime"]:
             if getattr(raven_allocation, "collection_backend", None) is None:
                 from .raven_launch import configure_placement
                 configure_placement(raven, raven_allocation)
@@ -788,6 +803,9 @@ def _managed_main(argv, *, raven, raven_allocation=None):
 
 def _dispatch_main(argv=None, *, raven=None, raven_allocation=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["trust"]:
+        from .path_trust_cli import main as trust_main
+        return trust_main(argv[1:])
     if argv[:1] in (["update"], ["revert"]):
         from .update import cli as maintenance
         return maintenance(argv)
@@ -900,7 +918,9 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
                     print("Raven / standalone desktop environment\nPrerequisites ready. Slurm is not required.\n" + result["qualification"])
                 return 0
             from .doctor import diagnose, render
-            result = diagnose(cfg, fake=args.fake, host=args.host, ssh_user=args.ssh_user)
+            from .config import state_dir as default_state_dir
+            path = '' if args.no_state else raven.data['storage']['state_dir'] if raven is not None else os.environ.get('RAVEN_STATE_DIR') or default_state_dir()
+            result = diagnose(cfg, fake=args.fake, host=args.host, ssh_user=args.ssh_user, state_dir=path)
             print(render(result, as_json=args.json))
             return 0 if result["ready"] else 1
         if args.gpu_check is not None:
@@ -978,3 +998,35 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
             profile = app.switch_profile
             continue
         return 0
+
+
+def main(argv=None, *, raven=None, raven_allocation=None):
+    """JSON commands have one document; executed local workloads own their streams."""
+    import contextlib
+    import io
+    words = list(sys.argv[1:] if argv is None else argv)
+    if "--json" not in words or "--help" in words or "-h" in words:
+        return _entry_main(words, raven=raven, raven_allocation=raven_allocation)
+    output = io.StringIO()
+    error = None
+    with contextlib.redirect_stdout(output):
+        try:
+            code = _entry_main(words, raven=raven, raven_allocation=raven_allocation)
+        except (OSError, ValueError, RuntimeError) as exc:
+            error, code = str(exc), 2
+        except SystemExit as exc:
+            code = exc.code if isinstance(exc.code, int) else 2
+            error = str(exc.code) if not isinstance(exc.code, int) else "Invalid command arguments" if code else None
+    from .cli_output import ApplicationExit
+    if isinstance(code, ApplicationExit):
+        sys.stdout.write(output.getvalue())
+        return code
+    raw = output.getvalue().strip()
+    try:
+        document = json.loads(raw) if error is None else None
+    except (ValueError, RecursionError):
+        document = None
+    if document is None:
+        document = {"status": "error" if code else "ok", "message": (error or raw or "Command failed" if code else raw or "ok")[:65536]}
+    print(json.dumps(document, ensure_ascii=True, allow_nan=False))
+    return code

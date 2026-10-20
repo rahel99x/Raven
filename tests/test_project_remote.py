@@ -158,7 +158,13 @@ def test_remote_metric_stream_is_incremental_and_partial_utf8_survives(reported_
     assert result["records"] == 2 and result["latest"]["loss"] == .1
     assert result["phase"] == "训"
     assert reader.read_confined(path, binding)["records"] == 2
-    assert len(files.ssh.commands) == 5  # one discovery plus four incremental reads
+    from raven.project_wire import classify
+    actions = [classify(command)["action"] for command in files.ssh.commands]
+    # One discovery plus four incremental reads, with at most one cache-miss
+    # probe and a single bounded bundle upload on a previously unused host.
+    assert actions.count("read") in {5, 6}
+    assert actions.count("upload") in {0, len(project_remote._payload())}
+    assert all(classify(command)["action"] == "read" for command in files.ssh.commands[-4:])
 
 
 @pytest.mark.parametrize("kind", ["job", "attempt", "parent-symlink", "report-symlink", "declaration"])
@@ -245,12 +251,13 @@ def test_cluster_identity_and_duplicate_attempts_do_not_guess(reported_project, 
 
 
 def test_remote_helper_errors_are_bounded_and_do_not_create_local_sources(tmp_path):
+    existing = set(tmp_path.iterdir())
     class Failure:
         def run(self, command, timeout):
             raise OSError("python3 missing on selected host")
     with pytest.raises(OSError, match="python3 missing"):
         projects.discover_project(str(tmp_path), files=RemoteFiles(Failure()))
-    assert not list(tmp_path.iterdir())
+    assert set(tmp_path.iterdir()) == existing
 
 
 def test_report_source_refresh_preserves_other_cached_views_and_discards_stale_reads():

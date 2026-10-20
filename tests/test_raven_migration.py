@@ -162,9 +162,14 @@ def test_fifo_symlinks_runtime_and_default_history_skipped(migration,tmp_path):
 
 
 def test_destination_symlink_and_overlapping_roots_rejected(migration,tmp_path):
+    initial=originals(migration)
     with pytest.raises(ValueError,match='separate'):M.plan(**{**migration,'destination_state':migration['source_state']/'inside'})
     migration['destination_state'].symlink_to(tmp_path)
     with pytest.raises(ValueError,match='symlinks'):M.apply(M.plan(**migration))
+    assert originals(migration)==initial
+    assert migration['destination_state'].is_symlink()
+    assert not (tmp_path/'migrations').exists()
+    assert not migration['destination_config'].parent.exists()
 
 
 def test_tampered_plan_rejected_before_filesystem_mutation(migration):

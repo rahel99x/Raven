@@ -1,7 +1,6 @@
 """Historical node-event overlap, without attributing causality."""
 from __future__ import annotations
 
-import re
 from datetime import datetime
 
 from .scale_common import document, items, text, timestamp, iso

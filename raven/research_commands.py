@@ -6,7 +6,7 @@ import json
 import os
 import shlex
 
-from .research import clean
+from .research_text import clean
 
 COMMANDS = ("metric", "metrics", "passport", "validate", "artifacts", "prepare", "submit", "investigate", "array")
 OFFLINE = {"metric", "passport", "validate", "prepare"}
@@ -226,9 +226,9 @@ def offline(line, *, host="", replay=False):
         words = shlex.split(line)
         if not words:
             return None
-        from .controller import App
-        matches = [c for c in App.COMMANDS if c.startswith(words[0])]
-        cmd = words[0] if words[0] in App.COMMANDS else matches[0] if len(matches) == 1 else words[0]
+        from .command_registry import CORE_NAMES
+        matches = [c for c in CORE_NAMES if c.startswith(words[0])]
+        cmd = words[0] if words[0] in CORE_NAMES else matches[0] if len(matches) == 1 else words[0]
         from .planning_commands import COMMANDS as planning_commands, is_offline, result, success
         if cmd in planning_commands and is_offline(cmd, words[1:]):
             if host or replay:
@@ -326,13 +326,13 @@ def execute(app, cmd, args, *, ready=None):
                 if getattr(execution, "managed", False) else offline_result(cmd, args))
             app.research_result = result
             if cmd == "prepare":
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 hub.plan = result
                 hub.configure()
                 app.research_view = "submit"
             elif cmd == "passport":
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 if "passport" in result:
                     hub.passport = result["passport"]
@@ -343,7 +343,7 @@ def execute(app, cmd, args, *, ready=None):
                 hub.configure(passport="")
                 app.research_view = "passport"
             elif cmd == "validate":
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 hub.configure(contract=args[0], workdir=args[1])
                 app.research_view = "artifacts"
@@ -355,7 +355,7 @@ def execute(app, cmd, args, *, ready=None):
         elif cmd in ("metrics", "artifacts"):
             if len(args) != (1 if cmd == "metrics" else 2):
                 raise ValueError("metrics FILE" if cmd == "metrics" else "artifacts CONTRACT ROOT")
-            from .research import detach_manual_source
+            from .ui.research_binding import detach_manual_source
             detach_manual_source(app)
             hub.configure(**({"metrics_file": args[0]} if cmd == "metrics" else {"contract": args[0], "workdir": args[1]}))
             app.research_view = "experiment" if cmd == "metrics" else "artifacts"
@@ -365,11 +365,11 @@ def execute(app, cmd, args, *, ready=None):
                 raise ValueError("investigate JOBID")
             if args[0] not in {j.id for j in app.store.jobs + app.store.finished}:
                 raise ValueError("job is not present in the current Jobs or History snapshot")
-            from .research import select_job
+            from .ui.research_binding import select_job
             select_job(app, args[0], view="evidence")
             app.say(f"investigating {args[0]}")
         elif cmd == "array":
-            from .research import detach_manual_source
+            from .ui.research_binding import detach_manual_source
             detach_manual_source(app)
             from .array_manifest_ui import capture
             hub.plan = ready if ready is not None else array_plan(args, app.store.jobs, app.store.finished,
@@ -385,7 +385,7 @@ def execute(app, cmd, args, *, ready=None):
             if getattr(app, "replay", None):
                 raise ValueError("submissions are unavailable during replay")
             if args:
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 hub.plan, opts = ready if ready is not None else prepare_args(args)
                 passport_dir = opts.passport_dir

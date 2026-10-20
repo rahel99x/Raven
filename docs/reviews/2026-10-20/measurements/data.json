@@ -1,0 +1,356 @@
+{
+  "baseline_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+  "environment": "Linux cloud container, Python3.12, local temporary filesystem; no live Slurm/GPU/network traffic; sibling tests/builds paused",
+  "rss": "ru_maxrss per isolated process; includes interpreter/fixture; Python peak separately from tracemalloc",
+  "results": [
+    {
+      "case": "store",
+      "n": 1000,
+      "pid": 286825,
+      "seconds": 0.048892272025113925,
+      "cpu_seconds": 0.04888775699999999,
+      "python_peak_bytes": 2066160,
+      "retained": 1000,
+      "process_peak_rss_bytes": 19525632,
+      "revision_kind": "before"
+    },
+    {
+      "case": "store",
+      "n": 5000,
+      "pid": 286827,
+      "seconds": 0.4844794220116455,
+      "cpu_seconds": 0.484138606,
+      "python_peak_bytes": 9744432,
+      "retained": 5000,
+      "process_peak_rss_bytes": 36417536,
+      "revision_kind": "before"
+    },
+    {
+      "case": "retention",
+      "n": 35000,
+      "pid": 286829,
+      "status": "published",
+      "records": 35000,
+      "archive_bytes": 207620,
+      "gaps": 0,
+      "seconds": 3.7506562519993167,
+      "cpu_seconds": 3.7503407620000004,
+      "python_peak_bytes": 47217604,
+      "source_bytes": 1552778,
+      "process_peak_rss_bytes": 144457728,
+      "revision_kind": "before"
+    },
+    {
+      "case": "retention",
+      "n": 60001,
+      "pid": 286862,
+      "status": "refused",
+      "error": "Retention source exceeds 50000-record working budget",
+      "seconds": 2.5413644710206427,
+      "cpu_seconds": 2.538897948,
+      "python_peak_bytes": 24544989,
+      "source_bytes": 2677823,
+      "process_peak_rss_bytes": 90005504,
+      "revision_kind": "before"
+    },
+    {
+      "case": "tail",
+      "n": 70000,
+      "pid": 286889,
+      "seconds": 5.17615649101208,
+      "cpu_seconds": 5.168091549,
+      "python_peak_bytes": 1440241,
+      "first": 61536,
+      "last": 65535,
+      "count": 4000,
+      "read_bytes": 11391830,
+      "file_bytes": 12168529,
+      "process_peak_rss_bytes": 18706432,
+      "revision_kind": "before"
+    },
+    {
+      "case": "tail",
+      "n": 70000,
+      "pid": 286898,
+      "seconds": 0.4004658290068619,
+      "cpu_seconds": 0.400397656,
+      "python_peak_bytes": 1799554,
+      "first": 66000,
+      "last": 69999,
+      "count": 4000,
+      "read_bytes": 695967,
+      "file_bytes": 12168529,
+      "process_peak_rss_bytes": 21098496,
+      "revision_kind": "after"
+    },
+    {
+      "case": "batch",
+      "n": 4096,
+      "pid": 286899,
+      "seconds": 0.5007900059863459,
+      "cpu_seconds": 0.5007793110000001,
+      "file_bytes": 750777,
+      "count": 4096,
+      "blocks": 4096,
+      "read_bytes": 750777,
+      "process_peak_rss_bytes": 20967424,
+      "revision_kind": "before"
+    },
+    {
+      "case": "batch",
+      "n": 4096,
+      "pid": 286900,
+      "seconds": 0.12063104001572356,
+      "cpu_seconds": 0.120630744,
+      "file_bytes": 13049,
+      "count": 4096,
+      "blocks": 16,
+      "read_bytes": 13049,
+      "process_peak_rss_bytes": 20312064,
+      "revision_kind": "after"
+    },
+    {
+      "case": "auto_export",
+      "source_bytes": 11219830,
+      "source_rows": 65999,
+      "seconds": 1.2291881169949193,
+      "cpu_seconds": 1.228015484,
+      "outcome": [
+        {
+          "created_at": 1792504931.31056,
+          "identity": {
+            "attempt": 1,
+            "cluster": "",
+            "job_id": null,
+            "project": "/tmp/tmpm8nmhosl",
+            "run_id": "run-one",
+            "script_sha256": "9ab8fabc8c72bfa0416414631e26bd71b01f9dfae98dcf4656b1e2d78307876a",
+            "submission_token": ""
+          },
+          "key": "05146177beb5bb6decf882f8016fca7d371a8e85763f530952db999eed8d2044",
+          "outputs": [
+            "/tmp/tmpm8nmhosl/exports/benchmark__local__attempt-1__e0ecb69004/20261020T140211.330886Z-95d7707147cc4d5f"
+          ],
+          "reason": "Published retained observations",
+          "schema": "raven.auto-export/v1",
+          "status": "complete",
+          "tries": 1,
+          "started_at": 1792504931.331226,
+          "receipt": {
+            "schema": "raven.export-receipt/v1",
+            "export_id": "20261020T140211.330886Z-95d7707147cc4d5f",
+            "status": "complete",
+            "outputs": [
+              "/tmp/tmpm8nmhosl/exports/benchmark__local__attempt-1__e0ecb69004/20261020T140211.330886Z-95d7707147cc4d5f"
+            ],
+            "issues": [],
+            "files": 4,
+            "attempts": 1,
+            "exit_code": 0
+          },
+          "updated_at": 1792504932.539764
+        }
+      ],
+      "process_peak_rss_bytes": 24121344,
+      "revision_kind": "before"
+    },
+    {
+      "case": "auto_export",
+      "source_bytes": 11219830,
+      "source_rows": 65999,
+      "seconds": 1.2389297609915957,
+      "cpu_seconds": 1.238862547,
+      "outcome": [
+        {
+          "created_at": 1792504932.6762407,
+          "identity": {
+            "attempt": 1,
+            "cluster": "",
+            "job_id": null,
+            "project": "/tmp/tmp1kvi0rtk",
+            "run_id": "run-one",
+            "script_sha256": "9ab8fabc8c72bfa0416414631e26bd71b01f9dfae98dcf4656b1e2d78307876a",
+            "submission_token": ""
+          },
+          "key": "c41949f33d61abf21054866d3f378e241c047bacd8a14bd9c88de078192bcf64",
+          "outputs": [
+            "/tmp/tmp1kvi0rtk/exports/benchmark__local__attempt-1__5af7f5eaff/20261020T140212.694445Z-360ed016597b48de"
+          ],
+          "reason": "Published retained observations",
+          "schema": "raven.auto-export/v1",
+          "status": "complete",
+          "tries": 1,
+          "started_at": 1792504932.694835,
+          "receipt": {
+            "schema": "raven.export-receipt/v1",
+            "export_id": "20261020T140212.694445Z-360ed016597b48de",
+            "status": "complete",
+            "outputs": [
+              "/tmp/tmp1kvi0rtk/exports/benchmark__local__attempt-1__5af7f5eaff/20261020T140212.694445Z-360ed016597b48de"
+            ],
+            "issues": [],
+            "files": 4,
+            "attempts": 1,
+            "exit_code": 0
+          },
+          "updated_at": 1792504933.9152188
+        }
+      ],
+      "process_peak_rss_bytes": 18612224,
+      "revision_kind": "after"
+    },
+    {
+      "case": "auto_export_dense",
+      "source_bytes": 11220187,
+      "source_rows": 22759,
+      "seconds": 5.004906097019557,
+      "cpu_seconds": 5.003707475000001,
+      "outcome": [
+        {
+          "created_at": 1792504955.3178906,
+          "identity": {
+            "attempt": 1,
+            "cluster": "",
+            "job_id": null,
+            "project": "/tmp/tmp7h0dskkw",
+            "run_id": "run-one",
+            "script_sha256": "9ab8fabc8c72bfa0416414631e26bd71b01f9dfae98dcf4656b1e2d78307876a",
+            "submission_token": ""
+          },
+          "key": "4d19c675f7d36bcd115aaed7626bd9ab3b43589602cee7b38b97f428e9e7b125",
+          "outputs": [],
+          "reason": "Export paused at its time/cancellation limit; recovery is pending",
+          "schema": "raven.auto-export/v1",
+          "status": "pending",
+          "tries": 1,
+          "started_at": 1792504955.3285344,
+          "receipt": {
+            "schema": "raven.export-receipt/v1",
+            "export_id": "20261020T140235.328199Z-d3856262bd414dde",
+            "status": "cancelled",
+            "outputs": [],
+            "issues": [
+              {
+                "code": "cancelled",
+                "message": "Export cancelled; original measurements were not changed"
+              }
+            ],
+            "files": 0,
+            "attempts": 0,
+            "exit_code": 130
+          },
+          "updated_at": 1792504960.323072,
+          "retry_after": 1792504970.323077
+        }
+      ],
+      "process_peak_rss_bytes": 18219008,
+      "revision_kind": "before"
+    },
+    {
+      "case": "auto_export_dense",
+      "source_bytes": 11220187,
+      "source_rows": 22759,
+      "seconds": 4.473550589988008,
+      "cpu_seconds": 4.470332571999999,
+      "outcome": [
+        {
+          "created_at": 1792504960.4268787,
+          "identity": {
+            "attempt": 1,
+            "cluster": "",
+            "job_id": null,
+            "project": "/tmp/tmp8ezdh__k",
+            "run_id": "run-one",
+            "script_sha256": "9ab8fabc8c72bfa0416414631e26bd71b01f9dfae98dcf4656b1e2d78307876a",
+            "submission_token": ""
+          },
+          "key": "e5657c9e3b48fe11a3632e69c7e969179f707c77e6f3466b98629308fbce823c",
+          "outputs": [
+            "/tmp/tmp8ezdh__k/exports/benchmark__local__attempt-1__2d4d14e74b/20261020T140240.446852Z-1314edff6d554c50"
+          ],
+          "reason": "Published retained observations",
+          "schema": "raven.auto-export/v1",
+          "status": "complete",
+          "tries": 1,
+          "started_at": 1792504960.4474463,
+          "receipt": {
+            "schema": "raven.export-receipt/v1",
+            "export_id": "20261020T140240.446852Z-1314edff6d554c50",
+            "status": "complete",
+            "outputs": [
+              "/tmp/tmp8ezdh__k/exports/benchmark__local__attempt-1__2d4d14e74b/20261020T140240.446852Z-1314edff6d554c50"
+            ],
+            "issues": [],
+            "files": 4,
+            "attempts": 1,
+            "exit_code": 0
+          },
+          "updated_at": 1792504964.9007657
+        }
+      ],
+      "process_peak_rss_bytes": 18612224,
+      "revision_kind": "after"
+    },
+    {
+      "case": "store",
+      "n": 1000,
+      "pid": 287379,
+      "seconds": 0.0539829199842643,
+      "cpu_seconds": 0.05397670199999999,
+      "python_peak_bytes": 2124844,
+      "retained": 1000,
+      "process_peak_rss_bytes": 20578304,
+      "revision_kind": "after"
+    },
+    {
+      "case": "store",
+      "n": 5000,
+      "pid": 287380,
+      "seconds": 0.22872460199869238,
+      "cpu_seconds": 0.22871232400000002,
+      "python_peak_bytes": 10372220,
+      "retained": 5000,
+      "process_peak_rss_bytes": 37441536,
+      "revision_kind": "after"
+    },
+    {
+      "case": "retention",
+      "n": 35000,
+      "pid": 287381,
+      "status": "published",
+      "records": 35000,
+      "archive_bytes": 207768,
+      "gaps": 0,
+      "seconds": 7.313621617999161,
+      "cpu_seconds": 7.312219037,
+      "python_peak_bytes": 1480077,
+      "source_bytes": 1552778,
+      "process_peak_rss_bytes": 22528000,
+      "revision_kind": "after"
+    },
+    {
+      "case": "retention",
+      "n": 60001,
+      "pid": 287424,
+      "status": "published",
+      "records": 60001,
+      "archive_bytes": 354538,
+      "gaps": 0,
+      "seconds": 12.976439480000408,
+      "cpu_seconds": 12.966569392,
+      "python_peak_bytes": 1489275,
+      "source_bytes": 2677823,
+      "process_peak_rss_bytes": 24268800,
+      "revision_kind": "after"
+    }
+  ],
+  "measured_file_sha256": {
+    "raven/model.py": "2820a5881c7dc527ce1ab3f96d5ce3f77c26fd859d706466d780581a03b91d21",
+    "raven/series_blocks.py": "48696b29f1e7160c9de377453c2b2ac57eb81e40f88897c52ead49fd3732abdb",
+    "raven/series_retention.py": "0f24f61a740ae8435cf7bb1e98804753840db6da39e6327a2139a819f4026e4e",
+    "raven/series_storage.py": "ded067f7934522ff6f563b47fa6eede81ae1c1d2854c7434a1e849c4f05837f1",
+    "raven/data_export.py": "a8720d3bc99e6f7c05755730e69fdb0a00b50832dc19a707639b29003bc21003",
+    "raven/auto_export.py": "7800f33c6d1523f3988358a29729e36abb4ce552dd77948290114c187002db15",
+    "raven/raven_limits.py": "e8e66a89221ea7f5b3447f6aafae9efcd746e8b2eb462a587c7903c3c8516c90"
+  }
+}
