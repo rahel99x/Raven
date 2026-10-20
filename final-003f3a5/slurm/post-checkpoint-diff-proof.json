@@ -1,0 +1,25 @@
+{
+  "schema": "raven.qualification-scope-diff/v1",
+  "tested_git_revision": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+  "comparison_head": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+  "changed_product_files": {
+    "raven/pointer_routing.py": {
+      "tested_sha256": "ce086e0d628eec61bfecc80709b18f3eca6709b37c53f035f1bcae19c0887685",
+      "current_sha256": "3700032b3d74a8ccb21f97c7a69a5c2550e25a948823cdb91af1ae4bfdbb6ebe"
+    },
+    "raven/tracing/ui.py": {
+      "tested_sha256": "cbdac121ff041b5f0a23233d68feb8aae22bf5723b0e57677c332c4de041b5a4",
+      "current_sha256": "dcb0d186c7f0907df63c800cf72209672ce9661adaa6579d89df59ec8e2b5c4e"
+    },
+    "raven/workbench.py": {
+      "tested_sha256": "be41f4910dbf3e5ef43b6fbea1ea8629e0eea1263297c37656088cffd859a620",
+      "current_sha256": "8708eb19dc1896bb90d54df4345ab7a43f370a62b7f84fcbb1078a67f00f4ba5"
+    }
+  },
+  "added_product_files": [],
+  "removed_product_files": [],
+  "unchanged_product_file_count": 623,
+  "qualified_backend_file_count": 48,
+  "qualified_backend_sha256": "44898719f7170c4135cba7933e7e0b23004289081e8d2d824209c805ddda44a8",
+  "assessment": "Only UI pointer capture, workbench composition and tracing panel lookup differ after the exact tested checkpoint. Parent approved retaining the matrix as scoped backend qualification; final integrated regression/CI qualifies these UI corrections."
+}

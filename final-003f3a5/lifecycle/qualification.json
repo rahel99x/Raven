@@ -1,0 +1,56 @@
+{
+  "schema": "raven.collection-lifecycle-regression/v1",
+  "issue": "Retained closed sessions kept SQLite handles alive through sqlite connection cycles and missing explicit cache close.",
+  "baseline": {
+    "fixture": "49 real launcher sessions held by test; worker threads joined; original FD <= initial assertion unchanged",
+    "full_suite_initial_fd": 21,
+    "full_suite_final_fd": 214,
+    "raw_log_sha256": "6781251cb287d4d9c2950ef846e4c9e095b8051d20dde4dee320adc146bd9d74",
+    "raw_log": "review-final-regression.log, retained by parent for separate evidence publication",
+    "diagnostic_probe": "201 additional descriptors were deleted queries.sqlite3/WAL/SHM; no other descriptor types."
+  },
+  "after": {
+    "same_probe_initial_fd": 11,
+    "same_probe_final_fd": 11,
+    "strict_tests": "Original49-session test now runs both normal and --record, preserving every isolation/thread/environment/FD assertion.",
+    "command": ".venv/bin/python -m pytest -q tests/test_collection_lifecycle_review.py tests/test_setup.py::test_batched_views_use_fresh_closed_real_launcher_sessions -x",
+    "result": "6 passed in20.62s",
+    "compatibility_command": ".venv/bin/python -m pytest -q tests/test_shared_collection_contention.py tests/test_read_acquisition.py tests/test_collection_review_runtime.py tests/test_flagship_platform.py tests/test_flagship_review.py tests/test_scheduler_record_budget.py tests/test_slurm_json.py tests/test_historical_replay.py tests/test_forecast_integration.py",
+    "compatibility_result": "383 passed in16.86s"
+  },
+  "design": [
+    "Per-thread non-cyclic SQLite owner closes on that same thread exit without relying on cyclic GC or cross-thread close.",
+    "Governed close releases current thread SQLite connection; durable cache and remaining live subscriber can reopen their thread handles.",
+    "Injected portable caches remain caller-owned; wrap_backend explicitly owns its unique portable cache.",
+    "RecordingBackend defaults to caller-owned inner backend; CLI-owned chains opt into exactly-once inner close."
+  ],
+  "limits": [
+    "Linux /proc file descriptor measurements. No scheduler, network or performance throughput claim.",
+    "Wall times are regression durations under concurrent work, not controlled latency measurements."
+  ],
+  "source_sha256": {
+    "raven/shared_collection.py": "9b7d1b803c6618bde3911d4687b3ff6cd701deff780dcc4a37faa937ceb361fa",
+    "raven/platform_session.py": "6b5d78abf7afb4aa0c07e6ae5e8cc8d7e903861cead5922050a410bd1d58cdd7",
+    "raven/record.py": "de91282fe51fa7f880b195ce174a71357ba58ca693ff0cc0804e84d7a86fb0ae",
+    "raven/cli.py": "1bf4b8ae0a8ae8331f4493040e290888629d757283456337c152a953db07d25a",
+    "tests/test_setup.py": "6ff567fa5ae2ad639123ff0b5ab58ce609ebadeba0da92d34199b70bd43de9eb",
+    "tests/test_collection_lifecycle_review.py": "c52f7ad7d3a8b1004162846821c52fe7d4cb6798c20f294a9c925d53a0e02a27"
+  },
+  "finalization_ordering_followup": {
+    "full_suite_B": "Recorded49-session check observed21 vs17 descriptors while exiting TLS cleanup was still in progress.",
+    "reproduced": "12-repeat external recorded-session fixture reproduced exactly+4 descriptors on repeat9; a later run reproduced on first iteration. Saved immediate target maps were identical11/11 because descriptors closed between count and map.",
+    "saved_diagnostic_sha256": "e31198bdf5644ac33be67fc050f9e97b07eddb0af56d4de6b4fa42114bc4523d",
+    "diagnostic_location": "/workspace/review-fd-exact-failure.json (raw fixture map retained separately, off main)",
+    "deterministic_proof": "A gated SQLite close after Thread._delete exposes worker.is_alive()==True while worker is absent from threading.enumerate(), with real SQLite/WAL/SHM descriptors open. Joining the concrete owned Thread waits until finalization and releases these handles.",
+    "correction": "Qualification joins concrete session-owned executor threads plus newly enumerated threads. Original2sec per-thread bound, no-live-thread assertions, environment checks and FD<=initial are unchanged. No runtime lifetime logic changes.",
+    "runtime_contract": "Session shutdown cancels pending work and lets accepted finite work drain asynchronously; thread-local SQLite handles close on their owning worker.",
+    "test": "tests/test_collection_lifecycle_review.py::test_owned_thread_join_includes_unlisted_sqlite_finalization",
+    "status": "Final setup+lifetime batch22 passed79.47s.12 repeated49-session recorded runs (588 sessions) plus4 existing bad-case harness checks all passed115.73s; strict FD/deadline/ownership assertions unchanged.",
+    "focused_command": ".venv/bin/python -m pytest -q tests/test_collection_lifecycle_review.py tests/test_setup.py --tb=short",
+    "stress_command": "PYTHONPATH=/workspace/Raven .venv/bin/python -m pytest -q /tmp/raven_fd_repeat_tests.py -k batched --tb=short -x",
+    "stress_driver_preserved": "/workspace/review-fd-repeat-fixture.py",
+    "stress_driver_sha256": "65e91f556f0f0f3725c9f0a8e43bda35d296022f3c2d30da285df60e1f5daa0a",
+    "stress_adaptation": "Copied test_setup.py changes only ROOT to current checkout and recording parameters to12 True values; -k batched also selects4 existing bad-case validation fixtures.",
+    "compatibility": "Five lifecycle cases pass3.10/3.12/3.14; actual unlisted-finalizer test asserts path-specific SQLite handles exist while gated and disappear after concrete owned join."
+  }
+}

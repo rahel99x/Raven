@@ -1,0 +1,99 @@
+{
+  "schema": "raven.operation-composition-independent-review/v1",
+  "baseline_revision": "976eeb2ca76b09699a45ca5c72e5ff32e4379112",
+  "review_scope": "Current uncommitted operation contract/canonical adapter extraction; not final release qualification. No production edits by reviewer.",
+  "verified_finding": {
+    "id": "legacy-workflow-adapter-forwarding",
+    "state": "fixed_verified_independently",
+    "evidence": "Original b98742f and checkpointB ops_investigation.run/apply accept investigation-workflow; moved canonical adapter rejected that released direct path while O.run/O.apply remains valid.",
+    "approved_fix_contract": "Typed LegacyWorkflowActions lower port; released facade binds composition O.run/O.apply callbacks then aliases canonical module; all lower production imports target canonical adapters so no reverse import. Keep forwarding inside existing managed wrappers, preserve durable fullO.apply lifecycle and latefacade import aftercanonical import.",
+    "verification": "/workspace/review-operation-legacy-probe.json"
+  },
+  "checked_without_new_verified_fault": [
+    "Plan digest/scope/job identity, expiry and cancellation revalidation before and after durableintent",
+    "Unknown/partial/interruption outcomes retain durableintent/result and do not blindretry",
+    "Managed routing returns before localadapter on worker dispatch; fakeworker acknowledgement/ownedslot release exactly once",
+    "Nested workflow apply_adapter uses same admission+actionlifecycle for captured nestedplan",
+    "Flatimport aliases preserve exactcanonical module/function/SPECIFICATIONS identity",
+    "All18canonicaladapter functions compared withB using AST after strippingimports; only intended packingpath,_opsbinding,queueorderparams and legacyworkflowbranch changed",
+    "Packedrunner source now resolves canonicalpackage parent.parent/campaign_packing.py",
+    "Worker digest includes operation_support, all18canonical adapters and canonical execution files"
+  ],
+  "rejected_hypotheses": [
+    {
+      "hypothesis": "Patching operations.command should alter lower adapter globals",
+      "decision": "Root confirms mutablefacade globalpatching is not documented DI API. Publiccommandfunction identity preserved; callers/tests inject loweroperation_support orbackendport. Do not introduce lower\u2192upper imports merely for obsolete mocks."
+    },
+    {
+      "hypothesis": "Two admission checks imply two mutations",
+      "decision": "Facade and directmanagedguard had same layered checks atB; manageddispatch returnsroutedresult beforeadapter.49routingtests and46lifecycleidentitytests pass; no duplicate dispatch found."
+    }
+  ],
+  "validation": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_ops_receipts.py tests/test_action_trial_lifecycle.py tests/test_operation_composition_architecture.py",
+      "result": "46passed0.64s",
+      "log": "/workspace/review-operation-composition-independent.log"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_raven_execution.py::test_ready_router_executes_named_worker_and_acknowledges_once tests/test_raven_execution.py::test_worker_disconnection_never_invokes_local_handler tests/test_raven_execution.py::test_wrong_context_receipt_is_rejected_and_releases_only_its_owned_slot tests/test_raven_execution.py::test_managed_heavy_mutation_cannot_reuse_legacy_apply tests/test_raven_execution.py::test_direct_managed_adapter_cannot_bypass_registry tests/test_raven_execution.py::test_every_managed_heavy_inspection_defers_before_file_or_algorithm",
+      "result": "49passed0.41s",
+      "log": "/workspace/review-operation-routing-independent.log"
+    },
+    {
+      "command": "PYTHONPATH=/workspace/Raven .venv/bin/python /workspace/review-operation-legacy-probe.py > /workspace/review-operation-legacy-probe.json",
+      "result": {
+        "canonical_before_facade": true,
+        "inspection": "raven.operation/v1",
+        "result": "completed",
+        "duplicate_refused": true,
+        "retained_status": true,
+        "outer_and_nested_receipts": 2
+      },
+      "driver": "/workspace/review-operation-legacy-probe.py"
+    }
+  ],
+  "heavy_plan_probe": {
+    "scope": "Actual five programmatic heavy_main desktop--plan calls withGCdisabled",
+    "fd_before": 4,
+    "fd_after_five": 4,
+    "fd_after_gc": 4,
+    "current_fix": "Entry now calls pure allocation_adapters.prepare, avoiding AllocationManager/UIWakeup construction. Already repaired during review by entry owner."
+  },
+  "limits": [
+    "Independent legacy facade inspect/review/apply/duplicate/retained-status probe passed; final integrated validation and dedicated expiry/uncertain-receipt regression remain with root.",
+    "Concurrent architecture work means hashes below identify reviewed file bytes only; not frozen finaltree.",
+    "No fullsuite, hardware, liveSlurm, productionSSH or performance claim from these unit/fakeworker checks."
+  ],
+  "source_sha256_at_review": {
+    "raven/operations.py": "82318288f80f482fadbfc0a68045ee3af285306160783c5b9ca7caa40ce2fc25",
+    "raven/operation_support.py": "d995141dccb5cfa9382b4eeb4c5ed36aeaa1ff81192b3d99512070adcb29e0cc",
+    "raven/investigation_workflow.py": "0b8c2030dbaeeb8a5e08fc3506cc2541df54a96ab25c2f900bd9ec5e5a6b25cc",
+    "raven/action_lifecycle.py": "b6c282d1ddf2112ef6c2cbde7206fae4c11e5b4109cc4d3d73609e098e165442",
+    "raven/heavy/protocol.py": "4ef21e2b451e199ee3bfca88f8fcd3be341d591c7e5abdabfa1eb23b91d4dddd",
+    "raven/operation_adapters/__init__.py": "e55e660bcbbbe271e7ec3ab013c87d967c0bd667f9cfe9ca000b5f2985874460",
+    "raven/operation_adapters/campaign_policy.py": "a306032127c1f298b6f2680e1b6e9819fe042f11816fe3bb4a08f7ea8d2c8849",
+    "raven/operation_adapters/campaigns.py": "e0d1e08a130e3a4336e37e704720f2c77b79df6bb0544664cb21078a09a43c90",
+    "raven/operation_adapters/cluster.py": "8b7541b3fb88d8759e73ee3f4e1d268461424f748653679606967617c55ade01",
+    "raven/operation_adapters/evidence_queries.py": "bd0bd20a493591a96a26dd997fcb7e6013bbad1f4f08cb4f7c7dcf3fae63c6db",
+    "raven/operation_adapters/health.py": "2206704509ad4f6c61805b2174605f8eab7edf2004c85a47d4994c4f561e8924",
+    "raven/operation_adapters/investigation.py": "47583df67ec65e9d2d3492d7edccad0c6e4a0616d536c35bfeaec68d0dfd1799",
+    "raven/operation_adapters/platform.py": "bb405c5d3ea4449a6c9d85df6bd74a44805c465ef921ed5ee24f2086a54d79e9",
+    "raven/operation_adapters/process_profile.py": "0d25c543f002ccd4c35b1050dcfe98ab4dc2112b8bea33ece7da5834a2318344",
+    "raven/operation_adapters/queue_models.py": "6eace9ef177e5bdd9e98ba2b81b9676e31fa4eb7bba6ae9b2b9131e3bbd4df8c",
+    "raven/operation_adapters/queue_order.py": "509b3d14b72ec9b1da802a6a48f1e1e125369a28c05e724b9bc6c1c69f3790e4",
+    "raven/operation_adapters/runtime.py": "34e96d9de96620fd0e41408d2993058f4d30be0c18aa007b1012104ecdb118f2",
+    "raven/operation_adapters/scale.py": "65c0a623e8c5be6c5cc3f64d3d782a0cef748e2b27fc0db6adaadcae8017a4b8",
+    "raven/operation_adapters/science.py": "53ecbd796efd3e6359efa31daf0fe20f93ffa19ce5cb7a8a749c5ba1bee3af3d",
+    "raven/operation_adapters/services.py": "ccebdacd152b6b6e5e48351933c775ab64d6f5ea9e4e25d31f30403c5e47d907",
+    "raven/operation_adapters/signal_analysis.py": "52c13417034c54ae9d49d79f261b1d1906297f2f32a5f0b297073a48fd8179de",
+    "raven/operation_adapters/trace.py": "9baf18d007ae61e9e46a5c27264e77fbf44964909f2de71d7c99d25490202ec8",
+    "raven/operation_adapters/workflow.py": "17585f802dff93bea16ec5c24ac048f2ded123789711cb812b0ac1a2266566f9",
+    "raven/operation_adapters/workspace.py": "f05b4b6e6910187a6f1cb519aa8e23fcf7c1cdb9628f045f15cb730b88081d2b"
+  },
+  "legacy_forwarding_source_sha256_after_fix": {
+    "raven/operation_adapters/investigation.py": "53bc1cb37c1c1a2ba5a24865720fabe589de504ac318917decd60fc801945a8e",
+    "raven/ops_investigation.py": "95d5e3e1765539543b75985d38f2ec8260471592724b3b0c850b8cb06edebf0a",
+    "raven/investigation_workflow.py": "f9fbe2873e0c4d363a3a187dda2cde3597dd6fe3c1ec308adf25db30dcb48c5f"
+  }
+}

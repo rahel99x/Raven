@@ -1,0 +1,67 @@
+{
+  "schema": "raven.evidence-content-audit/v1",
+  "regular_file_payloads_and_archive_members_scanned": 3374,
+  "archive_checks": [
+    {
+      "path": "final-003f3a5/slurm/23.02.8.tar.gz",
+      "regular_files": 459,
+      "uncompressed_bytes": 595280,
+      "safe_names_no_links": true,
+      "gzip_tar_read_complete": true
+    },
+    {
+      "path": "final-003f3a5/slurm/23.11.11.tar.gz",
+      "regular_files": 469,
+      "uncompressed_bytes": 601125,
+      "safe_names_no_links": true,
+      "gzip_tar_read_complete": true
+    },
+    {
+      "path": "final-003f3a5/slurm/24.05.8.tar.gz",
+      "regular_files": 587,
+      "uncompressed_bytes": 667092,
+      "safe_names_no_links": true,
+      "gzip_tar_read_complete": true
+    },
+    {
+      "path": "final-003f3a5/slurm/24.11.7.tar.gz",
+      "regular_files": 597,
+      "uncompressed_bytes": 663659,
+      "safe_names_no_links": true,
+      "gzip_tar_read_complete": true
+    },
+    {
+      "path": "final-003f3a5/slurm/26.05.5.tar.gz",
+      "regular_files": 593,
+      "uncompressed_bytes": 1458027,
+      "safe_names_no_links": true,
+      "gzip_tar_read_complete": true
+    },
+    {
+      "path": "final-003f3a5/slurm/orphan-26.05.5.tar.gz",
+      "regular_files": 9,
+      "uncompressed_bytes": 21549,
+      "safe_names_no_links": true,
+      "gzip_tar_read_complete": true
+    },
+    {
+      "path": "final-003f3a5/slurm/qualified-source.tar.gz",
+      "regular_files": 636,
+      "uncompressed_bytes": 7645375,
+      "safe_names_no_links": true,
+      "gzip_tar_read_complete": true
+    }
+  ],
+  "patterns_checked": [
+    "private-key-block",
+    "github-personal-token",
+    "aws-access-key",
+    "slack-token",
+    "openai-token",
+    "credential-url"
+  ],
+  "private_filename_pattern_checked": "(^|/)(?:id_rsa|id_ed25519|id_ecdsa|credentials|\\.env|munge\\.key)(?:$|\\.)",
+  "candidate_findings": [],
+  "limits": "Deterministic filename/high-confidence credential pattern inspection plus source/log role review; not a claim of exhaustive secret detection. No archive member was extracted or executed.",
+  "scanned_content_mapping_sha256": "132db97846a3cafb5d844210bdb0a7de45a967691d820ae97310b43d5f1ab76d"
+}

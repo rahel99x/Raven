@@ -1,0 +1,42 @@
+{
+  "schema": "raven.distribution-prototype-verification/v1",
+  "status": "passed-experimental-extraction",
+  "source_commit": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+  "captured_sources_match_exact_commit": 626,
+  "all_shipped_source_bytes_match_commit": true,
+  "core_lab_file_ownership_disjoint": true,
+  "canonical_core_module_counts": {
+    "terminal": 19,
+    "heavy": 14,
+    "installation": 8,
+    "ui": 39,
+    "jobs": 18,
+    "job_logs": 14,
+    "entry": 12,
+    "launching": 16,
+    "configuration": 5,
+    "execution": 9,
+    "operation_adapters": 13,
+    "tracing": 20,
+    "recordings": 14
+  },
+  "journeys": [
+    "core",
+    "lab",
+    "core-after-removal",
+    "lab-after-reinstall",
+    "lab-after-upgrade",
+    "lab-after-downgrade"
+  ],
+  "pip_check_each_journey": true,
+  "mismatched_extension_refused": true,
+  "experimental": true,
+  "published": false,
+  "production_rename": false,
+  "limits": [
+    "W44 human workflow evidence is unavailable",
+    "This first extraction is not the proposed few-dozen-module core",
+    "No coinstallation with the production raven wheel; private venv only"
+  ],
+  "manifest_sha256": "155616a22940b98bf7fdb8ba022f4e59f4433b86e89de88baf4e2950491a7230"
+}

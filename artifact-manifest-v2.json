@@ -1,0 +1,214 @@
+{
+  "schema": "raven.adversarial-review-artifacts/v2",
+  "append_only_parent_commit": "3bdf0a3d6566b3810678339484b5936a2b0beca5",
+  "unchanged_v1_manifest_sha256": "b0c832f8014bde4db93442c9125cca97d77005658bb3c6a58d2075dd7a71b17c",
+  "qualified_checkpoint": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+  "source_python_mapping_sha256": "828b8787952dac6077aa8152c25a606670891a303d928df2531cdf8386dbb81e",
+  "historical_payload_count": 42,
+  "new_payload_count": 34,
+  "new_payload_bytes": 2840700,
+  "files": {
+    "final-003f3a5/README.md": {
+      "bytes": 2481,
+      "sha256": "b82321eac50a67585bfba9ffa2811ffcdeff13b5c9f96a9712ae137740df6bb1",
+      "role": "Final append scope, measured-versus-qualified identity and explicit limitations"
+    },
+    "final-003f3a5/drivers/fd-repeat-fixture.py": {
+      "bytes": 14213,
+      "sha256": "65e91f556f0f0f3725c9f0a8e43bda35d296022f3c2d30da285df60e1f5daa0a",
+      "role": "Preserved strict twelve-repeat recorded-session fixture; original /workspace root path retained, no execution during publication",
+      "source_path": "/workspace/review-fd-repeat-fixture.py"
+    },
+    "final-003f3a5/drivers/heavy-worker.py": {
+      "bytes": 2775,
+      "sha256": "dd174da4696a51cd0405b6c043077d5b6e3ddbf90da18d4493e1b11134e82ebc",
+      "role": "Original actual local software-worker controlled benchmark driver; no scheduler/GPU/network claim",
+      "source_path": "/workspace/raven-heavy-benchmark.py"
+    },
+    "final-003f3a5/drivers/operation-legacy-probe.py": {
+      "bytes": 2055,
+      "sha256": "429095ed4d05d072e476126f4173c6f8cf9f2480797f43637b22399df93766e5",
+      "role": "Independent local real diagnostic probe with temporary workspace and exact released/canonical alias assertions",
+      "source_path": "/workspace/review-operation-legacy-probe.py"
+    },
+    "final-003f3a5/drivers/tracing-startup.py": {
+      "bytes": 6389,
+      "sha256": "b91a593bab5c5d89e53b7fe14aa9c41362628ca4d60fe9b4ce1a839364f8deae",
+      "role": "Exact driver bytes from immutable003f3a5c; capture identity does not alone attest every measurement command",
+      "source_path": "git:003f3a5c515d70b48982d6c856c57a1d6607d613:scripts/benchmark-injob.py"
+    },
+    "final-003f3a5/drivers/ui-dispatch.py": {
+      "bytes": 4280,
+      "sha256": "fb2fc5630a8d073862711dfff73e2363758b86355a7df06927a759a07e0fc396",
+      "role": "Exact driver bytes from immutable003f3a5c; capture identity does not alone attest every measurement command",
+      "source_path": "git:003f3a5c515d70b48982d6c856c57a1d6607d613:scripts/benchmark_ui_dispatch.py"
+    },
+    "final-003f3a5/lifecycle/fd-immediate-map.json": {
+      "bytes": 3343,
+      "sha256": "e31198bdf5644ac33be67fc050f9e97b07eddb0af56d4de6b4fa42114bc4523d",
+      "role": "Verbatim troubleshooting snapshot: count failure then 11/11 immediate maps; not evidence that the transient descriptor difference never existed",
+      "source_path": "/workspace/review-fd-exact-failure.json"
+    },
+    "final-003f3a5/lifecycle/qualification.json": {
+      "bytes": 5424,
+      "sha256": "f8329f83a51aa19f034ff5526f6637d2dd3be4305693dddbb2ba1de457b74f0f",
+      "role": "Compact lifecycle reproduction/correction provenance and actual commands; regression durations are not benchmark timings",
+      "source_path": "/workspace/Raven/docs/reviews/2026-10-20/evidence/collection-lifecycle.json"
+    },
+    "final-003f3a5/measurements/architecture-workers-tracing-startup.json": {
+      "bytes": 76301,
+      "sha256": "297e4c8d1d8f8ba2956452acc0fbbd9abbc5420c3e3bdb44888e17dd8cb62f2d",
+      "role": "Original controlled serial architecture comparison with per-run values and 625 measured Python source hashes; baseline976eeb2, not original review baseline",
+      "source_path": "/workspace/owner-c-performance/report.json"
+    },
+    "final-003f3a5/measurements/ui-dispatch.json": {
+      "bytes": 1460,
+      "sha256": "8be5853579e33d2b1b3d77668e93111bdd765403428ae95a21e9d403a479f397",
+      "role": "Original controlled current-callback dispatch comparison; combined process RSS is not a between-release memory comparison",
+      "source_path": "/workspace/review-final-ui-dispatch.json"
+    },
+    "final-003f3a5/prototype/final-verification.json": {
+      "bytes": 1216,
+      "sha256": "081e348fcb491dcefa332909317891caa806c148f5711f7951558e45e97ffb7f",
+      "role": "Independent byte-level source verification of prototype artifacts against003f3a5c; explicit experimental limits",
+      "source_path": "/workspace/review-distribution-prototype-003f3a5/final-verification.json"
+    },
+    "final-003f3a5/prototype/manifest.json": {
+      "bytes": 140436,
+      "sha256": "155616a22940b98bf7fdb8ba022f4e59f4433b86e89de88baf4e2950491a7230",
+      "role": "Exact-checkpoint experimental package extraction: six private-venv journeys, no production distribution rename/publication",
+      "source_path": "/workspace/review-distribution-prototype-003f3a5/manifest.json"
+    },
+    "final-003f3a5/provenance/architecture-closure-plan.md": {
+      "bytes": 14107,
+      "sha256": "93254a75b1a7aa626a6d88fd6e66c121e70157b59e7034b943e8180add05890b",
+      "role": "Historical implementation-plan traceability plus subsequent closure note; intermediate incomplete state is explicitly historical",
+      "source_path": "/workspace/review-architecture-plan-historical.md"
+    },
+    "final-003f3a5/provenance/content-audit.json": {
+      "bytes": 2176,
+      "sha256": "e620d8e8331077e1495ccc0a87f8fd2be9469b3cbea4d444a4a58baf8d77e524",
+      "role": "Bounded archive integrity/path/link inspection and high-confidence credential scan result"
+    },
+    "final-003f3a5/provenance/source-and-qualification.json": {
+      "bytes": 4055,
+      "sha256": "b5fb99c06b657a18523a15ece5c09387d7c2f79ed092347f0512d9a60bb3e447",
+      "role": "Independently recomputed exact source mappings, provenance and capture-time qualification boundaries"
+    },
+    "final-003f3a5/qualification/operation-independent-review.json": {
+      "bytes": 8019,
+      "sha256": "ebc459a04caea703bf79fb8a9cb06dba6a20a2cd76a6917d2f249de11fad1fcd",
+      "role": "Independent operation composition review with explicit capture-time source hashes and limits",
+      "source_path": "/workspace/review-operation-composition-independent.json"
+    },
+    "final-003f3a5/qualification/operation-legacy-probe.json": {
+      "bytes": 177,
+      "sha256": "97dc2a627d987109ebfbd38db4d2473216321e2f10f39ef3ed9a437f78057ce3",
+      "role": "Independent legacy forwarding probe outcome; not hardware/production qualification",
+      "source_path": "/workspace/review-operation-legacy-probe.json"
+    },
+    "final-003f3a5/qualification/terminal-navigation.json": {
+      "bytes": 7508,
+      "sha256": "5ab45fe27bee11dc55ba181345c803b73b3684baeb8e77bde720c07903cbeb84",
+      "role": "Focused architecture closure report; source hashes and overlapping regression counts retained, not final whole-tree qualification",
+      "source_path": "/workspace/review-terminal-navigation-closure-results.json"
+    },
+    "final-003f3a5/slurm/23.02.8.tar.gz": {
+      "bytes": 89052,
+      "sha256": "36467c71aa9651419e0a63c4a511e49f5fc663e0da45c80e83cd75e3aeeb4bee",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/23.02.8.tar.gz"
+    },
+    "final-003f3a5/slurm/23.11.11.tar.gz": {
+      "bytes": 89478,
+      "sha256": "0a49f12bf4a92a026eb595fc33b3bbf23214ada144fa40907550456a9f801cea",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/23.11.11.tar.gz"
+    },
+    "final-003f3a5/slurm/24.05.8.tar.gz": {
+      "bytes": 93247,
+      "sha256": "250bf01c817051382874d59af5de87b17e46bc1918ca5818bd0dd57251c34d1a",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/24.05.8.tar.gz"
+    },
+    "final-003f3a5/slurm/24.11.7.tar.gz": {
+      "bytes": 93369,
+      "sha256": "11cc8e430a149fd8329d5e0502795590605a258fa3604670955e89cbebd8955a",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/24.11.7.tar.gz"
+    },
+    "final-003f3a5/slurm/26.05.5.tar.gz": {
+      "bytes": 107032,
+      "sha256": "8599f875e3314fe3f9cd4d93a93b581b6e7de6ea26fb0c5c8217a30fd39b73f5",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/26.05.5.tar.gz"
+    },
+    "final-003f3a5/slurm/README.md": {
+      "bytes": 1786,
+      "sha256": "0f44ce860904f8bef05852ff0e17f0cef99523336ce2ba44b3161f5c2e0bbc84",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/README.md"
+    },
+    "final-003f3a5/slurm/artifact-manifest.json": {
+      "bytes": 2257,
+      "sha256": "7ef49d3e29f9479ead9505f38a1bcebf684d46ed57a5250547458a7e8b52c3e3",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/artifact-manifest.json"
+    },
+    "final-003f3a5/slurm/orphan-26.05.5.tar.gz": {
+      "bytes": 6236,
+      "sha256": "1ea11eff5a07f45ac50823f5ab5c987bf6730a36117f04b98bfb280c0255d0d4",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/orphan-26.05.5.tar.gz"
+    },
+    "final-003f3a5/slurm/package_evidence.py": {
+      "bytes": 6608,
+      "sha256": "b3a2ac5c65000cf718be421b35d2c0e13d117e3f725e3ee7083df0932ff62054",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/package_evidence.py"
+    },
+    "final-003f3a5/slurm/post-checkpoint-diff-proof.json": {
+      "bytes": 1378,
+      "sha256": "c0d6992ec9a763dc688e36e2fd259598afc90bcb0eea3bca4d55221740a3cb15",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/post-checkpoint-diff-proof.json"
+    },
+    "final-003f3a5/slurm/post-checkpoint-ui.patch": {
+      "bytes": 14135,
+      "sha256": "43d6e4e943ddccbc77b82db93821264ad3654f72974a3b7e640dd21a7b3c6ebd",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/post-checkpoint-ui.patch"
+    },
+    "final-003f3a5/slurm/prepare_snapshot.py": {
+      "bytes": 2463,
+      "sha256": "caa017b825bc8ac1a7b124317d924c26919bd1b9212d4636720e76a6d8943782",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/prepare_snapshot.py"
+    },
+    "final-003f3a5/slurm/qualified-backend-manifest.json": {
+      "bytes": 5904,
+      "sha256": "1db07d2d38cfd6078c291e3316d8d0fc4d5606de59f64289dd21ae532a1f6c95",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/qualified-backend-manifest.json"
+    },
+    "final-003f3a5/slurm/qualified-source.tar.gz": {
+      "bytes": 1991489,
+      "sha256": "d8a1686c4ff0164634adf411b7e1f0fbcd71ce3c66ef3aa6ab975da814c0d480",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/qualified-source.tar.gz"
+    },
+    "final-003f3a5/slurm/review_findings_driver.py": {
+      "bytes": 19546,
+      "sha256": "73d55447eb745d18804153f4b2a844629700bc2bfd7580c16daa0c1047900ce6",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/review_findings_driver.py"
+    },
+    "final-003f3a5/slurm/summary.json": {
+      "bytes": 20305,
+      "sha256": "eb141d508e6eb7a5155e6a5e76eb4064452b99908bf9f903e970eb5904e526b4",
+      "role": "Verbatim frozen exact-checkpoint real Slurm qualification artifact; nested manifest and stated limits retained",
+      "source_path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/summary.json"
+    }
+  },
+  "limits": "This manifest binds bytes, not a signature or independent efficacy/deployment attestation. Source/qualification limits are retained in the appended provenance record."
+}

@@ -1,0 +1,107 @@
+{
+  "schema": "raven.architecture-terminal-navigation/v1",
+  "implementation_revision_base": "976eeb2ca76b09699a45ca5c72e5ff32e4379112",
+  "working_tree_changes": true,
+  "owner": "review_install_trust (terminal/navigation architecture closure)",
+  "status": "implemented-focused-qualified",
+  "source_claims": [
+    "S-1",
+    "S-4"
+  ],
+  "implementation": {
+    "terminal_services": "Extract actual terminal session state/actions, bounded shell evidence and recording text into lower modules; terminal session services never import terminal UI.",
+    "typed_effects": "Explicit validated TerminalNavigation/TerminalPresentation and FormNavigation/ProjectBindingEffects/ResearchNavigation/ExportBackground callback fields are composed in workbench. No generic invoke or module-name dispatch.",
+    "navigation": "Peer forms use named effects; shared project identity, pending-review query, prose wrapping and export/advanced-launch runtime state are real lower implementations with compatibility exports.",
+    "terminal_family": "Nine remaining actual terminal implementations moved to coherent terminal/ family;13legacy module paths preserve exact module identity, CLI/direct-script forwarding and private monkeypatch behavior.",
+    "config_migration_family": "Actual migration moved to installation/config_migration.py; exact legacy alias, canonical production imports and python-m/direct-root-file CLI retained."
+  },
+  "validation": [
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_terminal*.py",
+      "evidence": "/workspace/review-terminal-family-final-tests.log",
+      "result": {
+        "passed": 812,
+        "skipped": 1,
+        "seconds": 87.07
+      }
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_setup_ui.py tests/test_telemetry_settings_ui.py tests/test_project_picker.py tests/test_research_autolink.py tests/test_run_home.py tests/test_launch_wizard.py tests/test_notification_ui.py tests/test_notification_header.py tests/test_guided_workflow_integration.py tests/test_data_export_ui.py tests/test_navigation_ports.py",
+      "evidence": "/workspace/review-navigation-family-final-tests.log",
+      "result": {
+        "passed": 408,
+        "seconds": 39.46
+      }
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_raven_migration.py tests/test_migration_scripts.py",
+      "result": {
+        "passed": 40,
+        "seconds": 3.73
+      },
+      "note": "Before adding independent alias-identity case; the new case passed separately1in.36s."
+    },
+    {
+      "command": ".venv/bin/python -m raven.raven_migration --help; .venv/bin/python raven/raven_migration.py --help; .venv/bin/python -m raven.installation.config_migration --help",
+      "result": "passed"
+    },
+    {
+      "command": "scripts.check_import_layers.analyze(Path(\"raven\"))",
+      "result": {
+        "modules": 624,
+        "cyclic_components": [],
+        "dynamic_module_expressions": []
+      }
+    },
+    {
+      "command": ".venv/bin/ruff check --select E4,E7,E9,F raven/terminal; .venv/bin/ruff format --check raven/terminal",
+      "result": "passed"
+    }
+  ],
+  "regressions_resolved": [
+    "Composition allocation callback retains original form-update\u2192inspect order; added explicit regression.",
+    "Standalone terminal pane fixtures explicitly compose real application effects; behavioral assertions unchanged.",
+    "Collapsed export test injects canonical selection-state query; admission/membership assertions unchanged.",
+    "Hook test parses actual helper argv and verifies canonical Bridge.__file__ plus arguments rather than matching a stale basename."
+  ],
+  "design_tradeoffs": [
+    "Shared ordinary query/text state is extracted as implementation rather than represented by effect callbacks.",
+    "Effect callbacks add explicit composition wiring while retaining current user-facing commands, return values, cancellation and stale-source checks.",
+    "Exact module aliases preserve legacy private patches; lower production consumers import canonical implementations.",
+    "Computed import fallback and reverse UI imports were rejected because they would hide dependency cycles."
+  ],
+  "limits": [
+    "Focused suites overlap; do not add counts as unique tests. Durations are regression runtime, not controlled performance measurements.",
+    "Local owned PTY/process fixtures and fake scheduler paths do not qualify production Slurm, SSH, NFS, physical GPUs or other processor hardware.",
+    "The current graph includes concurrent other-owner architecture work. Parent must run strict integrated gate, full regression, packaging, installed-command and hosted CI checks on the delivered revision.",
+    "Original source requirements retain their own efficacy/deployment limits; global acyclicity does not certify those unrelated outcomes."
+  ],
+  "source_sha256": {
+    "raven/installation/config_migration.py": "b21a77a73d5fa8673d59d9b7c9a13a1738c9ff4895cec8adfde8a70563757aa5",
+    "raven/terminal/__init__.py": "9faf9b466ccda4ad93da1a0ac1dc03b336102c213a3f2a99505430e072083953",
+    "raven/terminal/bridge.py": "61a4fade3f3cd379b2a2505a6f330afd34b125a996cc4c06af6dd8eda8cc9022",
+    "raven/terminal/broker.py": "649085f288d9d47bcfe29b312fa532a13922a8d523bd92b822b967d4741f5626",
+    "raven/terminal/child.py": "11f641e2335b94ae3887051f0d469dbd53d62145b3e2f30ecc6c569e5fa9212d",
+    "raven/terminal/diagnostics.py": "c4ff1853c67dde35ee58749c4593a5af0c9dff328f0c80aa294ad75986c4acdd",
+    "raven/terminal/emulator.py": "b2c9d97fb9c083f53cf3e263331c262c390b2374fd20b2bc3782cb476b4c4f36",
+    "raven/terminal/evidence.py": "20e4784f3047d4cc978024403fb367ad453183595701f8e6e37c189804cd4120",
+    "raven/terminal/fusion.py": "d3c6212c9eca627df05ca9efce6f70705db30aad97e7dabeffa9723ce35c29af",
+    "raven/terminal/playback.py": "766189d3a8b876ed44aed750cc68a2dde93b32448f604b8aa89e5e347504cbaa",
+    "raven/terminal/ports.py": "2fcf84cda2592a6b99ed489b5c3d5c770e8c4506b0d0a0979396a2422e6be27b",
+    "raven/terminal/raster.py": "1e9ba19304c84c53644fe470fd5f609eab1d7672ffd610b0b5c4d0afddc36a90",
+    "raven/terminal/recording.py": "01e5086856d18928bd6afcdc0c01c7941428d96501dc490d4a0045dc226da3b3",
+    "raven/terminal/service.py": "84bab89fc2e5f02105530e320207e412690fb3945f911889a547678deab81f4d",
+    "raven/terminal/session_state.py": "ddebe164711050b47b4e82fdb94ce8ecf4e60dc062aec9f4bf469a77b80cc621",
+    "raven/terminal/sessions.py": "b4262d71ac63b2fc9dd10bb93cda20e754e377a71042e4fe7beda8b687cc8815",
+    "raven/terminal/sync.py": "b39f19fa3e7cc5e3f32b41bced4040745aced9320614a0e84982cb4bc6804871",
+    "raven/terminal/text.py": "910ee995fe201352216e5bcf7ec48b2535985fb09ef649fcb9709df34f0d6ffe",
+    "raven/terminal/ui.py": "20240443378ae452b6095e23c97b321e96463b38d83bf54bd14ae7c14c2a4049",
+    "raven/terminal/workflows.py": "77e066eb17d252a7cacbc986e6ec8521a4a780ee0fd8dffa2740bd6a3a69a9d5",
+    "raven/ui/export_state.py": "d5f08ef70c614ee16ff2ecfddd23b23536cc913195bf84da5ad7c19c6e5c8471",
+    "raven/ui/form_state.py": "db0b4fd9c47f3a77625e071753b56477fd9f8f71448b458a232c3f86fb425cdb",
+    "raven/ui/navigation_ports.py": "7639b1d222f32ed4856567682f0878213dcf6cdf7bb7c18b79d3f4f7e1f2ee9c",
+    "raven/ui/project_state.py": "4e97f0f35a388b6fe43d396a8914c1739c329c3fe31c6ed0fe0c680b0eb02b11",
+    "raven/ui/prose.py": "beee2d1f38912cad22c10086845edafdb3387123bd571aa01f445bbe77bd0653",
+    "raven/ui/research_binding.py": "ddfc8579472e936c1881b66bd3dd8616b0a293151df91d3671316cd5b8db44af"
+  }
+}

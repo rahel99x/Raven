@@ -1,0 +1,66 @@
+{
+  "schema": "raven.qualification-artifact-manifest/v1",
+  "tested_git_revision": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+  "files": {
+    "23.02.8.tar.gz": {
+      "sha256": "36467c71aa9651419e0a63c4a511e49f5fc663e0da45c80e83cd75e3aeeb4bee",
+      "bytes": 89052
+    },
+    "23.11.11.tar.gz": {
+      "sha256": "0a49f12bf4a92a026eb595fc33b3bbf23214ada144fa40907550456a9f801cea",
+      "bytes": 89478
+    },
+    "24.05.8.tar.gz": {
+      "sha256": "250bf01c817051382874d59af5de87b17e46bc1918ca5818bd0dd57251c34d1a",
+      "bytes": 93247
+    },
+    "24.11.7.tar.gz": {
+      "sha256": "11cc8e430a149fd8329d5e0502795590605a258fa3604670955e89cbebd8955a",
+      "bytes": 93369
+    },
+    "26.05.5.tar.gz": {
+      "sha256": "8599f875e3314fe3f9cd4d93a93b581b6e7de6ea26fb0c5c8217a30fd39b73f5",
+      "bytes": 107032
+    },
+    "README.md": {
+      "sha256": "0f44ce860904f8bef05852ff0e17f0cef99523336ce2ba44b3161f5c2e0bbc84",
+      "bytes": 1786
+    },
+    "orphan-26.05.5.tar.gz": {
+      "sha256": "1ea11eff5a07f45ac50823f5ab5c987bf6730a36117f04b98bfb280c0255d0d4",
+      "bytes": 6236
+    },
+    "package_evidence.py": {
+      "sha256": "b3a2ac5c65000cf718be421b35d2c0e13d117e3f725e3ee7083df0932ff62054",
+      "bytes": 6608
+    },
+    "post-checkpoint-diff-proof.json": {
+      "sha256": "c0d6992ec9a763dc688e36e2fd259598afc90bcb0eea3bca4d55221740a3cb15",
+      "bytes": 1378
+    },
+    "post-checkpoint-ui.patch": {
+      "sha256": "43d6e4e943ddccbc77b82db93821264ad3654f72974a3b7e640dd21a7b3c6ebd",
+      "bytes": 14135
+    },
+    "prepare_snapshot.py": {
+      "sha256": "caa017b825bc8ac1a7b124317d924c26919bd1b9212d4636720e76a6d8943782",
+      "bytes": 2463
+    },
+    "qualified-backend-manifest.json": {
+      "sha256": "1db07d2d38cfd6078c291e3316d8d0fc4d5606de59f64289dd21ae532a1f6c95",
+      "bytes": 5904
+    },
+    "qualified-source.tar.gz": {
+      "sha256": "d8a1686c4ff0164634adf411b7e1f0fbcd71ce3c66ef3aa6ab975da814c0d480",
+      "bytes": 1991489
+    },
+    "review_findings_driver.py": {
+      "sha256": "73d55447eb745d18804153f4b2a844629700bc2bfd7580c16daa0c1047900ce6",
+      "bytes": 19546
+    },
+    "summary.json": {
+      "sha256": "eb141d508e6eb7a5155e6a5e76eb4064452b99908bf9f903e970eb5904e526b4",
+      "bytes": 20305
+    }
+  }
+}

@@ -1,0 +1,622 @@
+{
+  "schema": "raven.final-live-slurm-review/v1",
+  "tested_git_revision": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+  "source_package_sha256": "8d1df5eb1a36e57ccd85b26b89ee2d9a71c0ec9671c603fdeaad77b39766fb31",
+  "source_package_files": 626,
+  "source_python_files": 625,
+  "source_python_sha256": "828b8787952dac6077aa8152c25a606670891a303d928df2531cdf8386dbb81e",
+  "qualification_scope": "Owned disposable local single-node Slurm services; actual scheduler/accounting responses and actual Heavy processes.",
+  "production_qualified": false,
+  "versions": {
+    "23.02.8": {
+      "status": "passed-recorded-checks",
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ],
+      "check_count": 16,
+      "image_id": "sha256:e38482cb751abc3efc1fb31f07e00ebc49e453237780f6dc4c8140b66b84eb48",
+      "response_augmentation": [],
+      "reader_status": {
+        "jobs": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 23.02.8 has no qualified JSON reader; using native text"
+        },
+        "details": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 23.02.8 has no qualified JSON reader; using native text"
+        },
+        "finished": {
+          "format": "legacy fallback",
+          "reason": "command help does not advertise --json"
+        }
+      },
+      "command_count": 223
+    },
+    "23.11.11": {
+      "status": "passed-recorded-checks",
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ],
+      "check_count": 16,
+      "image_id": "sha256:0931be69532018a1c4ce20f3d676d9eba940bcfd4ec7ebb25f849c139cf4a9a5",
+      "response_augmentation": [],
+      "reader_status": {
+        "jobs": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 23.11.11 has no qualified JSON reader; using native text"
+        },
+        "details": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 23.11.11 has no qualified JSON reader; using native text"
+        },
+        "finished": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 23.11.11 has no qualified JSON reader; using native text"
+        }
+      },
+      "command_count": 228
+    },
+    "24.05.8": {
+      "status": "passed-recorded-checks",
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ],
+      "check_count": 16,
+      "image_id": "sha256:449fa5d209cdf896e8f48f0aaf0475a7c8792bbe11dff8b79f14ac2f5bfd7c15",
+      "response_augmentation": [],
+      "reader_status": {
+        "jobs": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 24.05.8 has no qualified JSON reader; using native text"
+        },
+        "details": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 24.05.8 has no qualified JSON reader; using native text"
+        },
+        "finished": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 24.05.8 has no qualified JSON reader; using native text"
+        }
+      },
+      "command_count": 287
+    },
+    "24.11.7": {
+      "status": "passed-recorded-checks",
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ],
+      "check_count": 16,
+      "image_id": "sha256:09d934cbd395b3456b6ff8a936d098f3527aa02ae3593932505ce9b02547d1e3",
+      "response_augmentation": [],
+      "reader_status": {
+        "jobs": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 24.11.7 has no qualified JSON reader; using native text"
+        },
+        "details": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 24.11.7 has no qualified JSON reader; using native text"
+        },
+        "finished": {
+          "format": "legacy fallback",
+          "reason": "Slurm slurm 24.11.7 has no qualified JSON reader; using native text"
+        }
+      },
+      "command_count": 292
+    },
+    "26.05.5": {
+      "status": "passed-recorded-checks",
+      "checks": [
+        {
+          "name": "COL-1 governed auto reader returns all thirty held jobs",
+          "passed": true,
+          "records": 30
+        },
+        {
+          "name": "COL-1 old versions avoid unqualified full JSON fetch",
+          "passed": true
+        },
+        {
+          "name": "COL-1 actual pretty JSON exceeds old physical-line budget but semantic records pass",
+          "passed": true,
+          "physical_lines": 11236,
+          "records": 30
+        },
+        {
+          "name": "COL-2 actual cancelled job departs Store under warning-compatible publication",
+          "passed": true
+        },
+        {
+          "name": "COL-2 warning note does not mark complete listing partial",
+          "passed": true
+        },
+        {
+          "name": "COL-11 real sinfo delimiter emits eight nontruncated fields",
+          "passed": true
+        },
+        {
+          "name": "COL-11 Raven decodes actual delimited node map",
+          "passed": true
+        },
+        {
+          "name": "COL-6 real heterogeneous component details preserve group identity",
+          "passed": true
+        },
+        {
+          "name": "COL-1 governed history returns at least thirty parent jobs",
+          "passed": true,
+          "records": 31
+        },
+        {
+          "name": "COL-14 actual native -X history truncates with explicit coverage",
+          "passed": true
+        },
+        {
+          "name": "Heavy actual verified worker commits scientific task",
+          "passed": true
+        },
+        {
+          "name": "HV-3/6 dedicated actual allocation releases with confirmed cleanup",
+          "passed": true
+        },
+        {
+          "name": "Owned parent reserves both fixture CPUs",
+          "passed": true
+        },
+        {
+          "name": "HV-3 dedicated Heavy is actually queued before cancel",
+          "passed": true
+        },
+        {
+          "name": "HV-3 pending cancellation revokes actual queued request",
+          "passed": true
+        },
+        {
+          "name": "HV-1/5 empty-profile actual idle parent passes exact controller-bound reuse review",
+          "passed": true
+        },
+        {
+          "name": "HV-5 reused worker proves real parent/step process membership",
+          "passed": true
+        },
+        {
+          "name": "HV-5 releasing owned step preserves running parent",
+          "passed": true
+        }
+      ],
+      "check_count": 18,
+      "image_id": "sha256:0ad6e52a09d8041b3c68a4f19e4acce50fe6033ea92cfb7e87f36556fb8b52d6",
+      "response_augmentation": [
+        {
+          "kind": "JSON warning only",
+          "command": 38
+        }
+      ],
+      "reader_status": {
+        "jobs": {
+          "format": "json",
+          "parser": "data_parser/v0.0.45",
+          "reason": "qualified recorded data-parser shape"
+        },
+        "details": {
+          "format": "json",
+          "parser": "data_parser/v0.0.45",
+          "reason": "qualified recorded data-parser shape"
+        },
+        "finished": {
+          "format": "json",
+          "parser": "data_parser/v0.0.45",
+          "reason": "qualified recorded data-parser shape"
+        }
+      },
+      "command_count": 290
+    }
+  },
+  "checks_passed": 82,
+  "limitations": [
+    "No physical GPU, remote SSH, multinode or production-site qualification.",
+    "No performance measurements: qualification overlapped the independent regression suite.",
+    "Only26.05.5 uses the qualified JSON data-parser path. Its warning case deliberately augments real scheduler JSON warning metadata without changing job rows; older-version native text rows are unmodified.",
+    "Exact tested checkpoint is003f3a5c; later pointer_routing/workbench/tracing.ui corrections are outside this snapshot. The qualified backend manifest remains byte-for-byte unchanged; final integrated CI owns followup UI validation."
+  ],
+  "commands": [
+    [
+      "env",
+      "RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613",
+      "python3",
+      "/workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py",
+      "--version",
+      "23.02.8",
+      "--skip-build",
+      "--scenario",
+      "review-findings",
+      "--output",
+      "/workspace/raven-final-slurm-003f3a5c/evidence/23.02.8"
+    ],
+    [
+      "env",
+      "RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613",
+      "python3",
+      "/workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py",
+      "--version",
+      "23.11.11",
+      "--skip-build",
+      "--scenario",
+      "review-findings",
+      "--output",
+      "/workspace/raven-final-slurm-003f3a5c/evidence/23.11.11"
+    ],
+    [
+      "env",
+      "RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613",
+      "python3",
+      "/workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py",
+      "--version",
+      "24.05.8",
+      "--skip-build",
+      "--scenario",
+      "review-findings",
+      "--output",
+      "/workspace/raven-final-slurm-003f3a5c/evidence/24.05.8"
+    ],
+    [
+      "env",
+      "RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613",
+      "python3",
+      "/workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py",
+      "--version",
+      "24.11.7",
+      "--skip-build",
+      "--scenario",
+      "review-findings",
+      "--output",
+      "/workspace/raven-final-slurm-003f3a5c/evidence/24.11.7"
+    ],
+    [
+      "env",
+      "RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613",
+      "python3",
+      "/workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py",
+      "--version",
+      "26.05.5",
+      "--skip-build",
+      "--scenario",
+      "review-findings",
+      "--output",
+      "/workspace/raven-final-slurm-003f3a5c/evidence/26.05.5"
+    ],
+    [
+      "env",
+      "RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613",
+      "python3",
+      "/workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py",
+      "--version",
+      "26.05.5",
+      "--skip-build",
+      "--scenario",
+      "allocation-recovery",
+      "--output",
+      "/workspace/raven-final-slurm-003f3a5c/evidence/orphan-26.05.5"
+    ]
+  ],
+  "archives": {
+    "23.02.8.tar.gz": {
+      "sha256": "36467c71aa9651419e0a63c4a511e49f5fc663e0da45c80e83cd75e3aeeb4bee",
+      "bytes": 89052
+    },
+    "23.11.11.tar.gz": {
+      "sha256": "0a49f12bf4a92a026eb595fc33b3bbf23214ada144fa40907550456a9f801cea",
+      "bytes": 89478
+    },
+    "24.05.8.tar.gz": {
+      "sha256": "250bf01c817051382874d59af5de87b17e46bc1918ca5818bd0dd57251c34d1a",
+      "bytes": 93247
+    },
+    "24.11.7.tar.gz": {
+      "sha256": "11cc8e430a149fd8329d5e0502795590605a258fa3604670955e89cbebd8955a",
+      "bytes": 93369
+    },
+    "26.05.5.tar.gz": {
+      "sha256": "8599f875e3314fe3f9cd4d93a93b581b6e7de6ea26fb0c5c8217a30fd39b73f5",
+      "bytes": 107032
+    },
+    "orphan-26.05.5.tar.gz": {
+      "sha256": "1ea11eff5a07f45ac50823f5ab5c987bf6730a36117f04b98bfb280c0255d0d4",
+      "bytes": 6236
+    },
+    "qualified-source.tar.gz": {
+      "sha256": "d8a1686c4ff0164634adf411b7e1f0fbcd71ce3c66ef3aa6ab975da814c0d480",
+      "bytes": 1991489
+    }
+  },
+  "orphan_recovery": {
+    "version": "26.05.5",
+    "status": "passed",
+    "unrelated_sentinel_preserved": true,
+    "actual_owner_uid": 1100,
+    "ledger_counts": {
+      "admitted": 6,
+      "deferred": 0,
+      "failed": 0
+    },
+    "first_phase": "confirming",
+    "confirmed_cleanup": true
+  },
+  "qualified_backend": {
+    "manifest": "qualified-backend-manifest.json",
+    "files": 48,
+    "sha256": "44898719f7170c4135cba7933e7e0b23004289081e8d2d824209c805ddda44a8",
+    "all_current_files_unchanged": true
+  },
+  "post_checkpoint_scope": {
+    "proof": "post-checkpoint-diff-proof.json",
+    "patch": "post-checkpoint-ui.patch",
+    "changed_ui_files": [
+      "raven/pointer_routing.py",
+      "raven/tracing/ui.py",
+      "raven/workbench.py"
+    ],
+    "unchanged_package_files": 623,
+    "interpretation": "Only UI pointer capture, workbench composition and tracing panel lookup differ after the exact tested checkpoint. Parent approved retaining the matrix as scoped backend qualification; final integrated regression/CI qualifies these UI corrections."
+  }
+}
