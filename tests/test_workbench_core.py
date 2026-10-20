@@ -148,7 +148,13 @@ def test_f6_decoder_reaches_panel_focus():
 
 
 def test_every_feature_module_is_required_and_registered():
-    assert {module.__name__.removeprefix('raven.') for module in workbench.modules()} == set(workbench.FEATURES)
+    from importlib import import_module
+    registered = workbench.module_map()
+    assert len(registered) == len(workbench.FEATURES)
+    assert set(registered) == set(workbench.FEATURES)
+    assert tuple(registered.values()) == workbench.modules()
+    for feature, module in registered.items():
+        assert import_module("raven." + feature) is module
     assert {'dashboard', 'preflight', 'orchestrate', 'project', 'savedview', 'logview', 'workspaces'} <= set(workbench.command_names())
 
 

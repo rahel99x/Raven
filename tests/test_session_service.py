@@ -158,13 +158,13 @@ def test_cli_bridge_uses_same_versioned_contract(server):
 
 
 def test_remote_installed_bootstrap_never_ships_source_or_replays(monkeypatch):
-    from raven import operations
+    from raven import operation_support
     calls = []
     response = C.Observations({}).query(C.request('hello'))
     def command(backend, argv, timeout, limit, cancel):
         calls.append(argv)
         return C.encoded(response).decode()
-    monkeypatch.setattr(operations, '_backend_command', command)
+    monkeypatch.setattr(operation_support, '_backend_command', command)
     client = S.RemoteClient('/remote path', object())
     assert client.query()['session'] == response['session']
     assert calls[0][:4] == ['python3', '-m', 'raven.session_service', 'bridge']

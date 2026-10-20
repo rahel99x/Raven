@@ -2382,17 +2382,21 @@ class App:
         # Keep the reviewed scope available for inspection after an
         # abort, without allowing a second key/callback to apply it again.
         self.confirm = dict(review, consumed=True)
-        actions, scope = self.actions, self._action_scope()
+        actions, store, scope = self.actions, self.store, self._action_scope()
+        def owns_review():
+            return self.actions is actions and self.store is store and self._action_scope() == scope
         if review.get("action_scope", scope) != scope:
             self.fail("Connection changed after review; inspect the targets and review again")
             return
         if review.get("action") == "resubmit":
             clone = review["clone"]
             def work():
-                if self._action_scope() != scope:
+                if not owns_review():
                     raise ValueError("Connection changed before resubmission; prepare a new review")
                 return actions.resubmit(clone)
             def done(result):
+                if not owns_review():
+                    return
                 if isinstance(result, Exception):
                     self.fail("Resubmit outcome unknown: " + str(result) + "; inspect scheduler receipts before retrying")
                     return
@@ -2401,7 +2405,7 @@ class App:
                 unknown = out.startswith("Resubmit outcome unknown")
                 self.say(f"resubmitted {clone.id} as {new_id}" if ok and new_id else (f"submitted: {out}" if ok else out if unknown else f"resubmit failed: {out}"))
                 if ok and new_id:
-                    self.store.tag(new_id, f"from-{clone.id.split('_')[0]}")
+                    store.tag(new_id, f"from-{clone.id.split('_')[0]}")
                 if self.sampler:
                     self.sampler.refresh_all()
             self._action_task(work, done, "Submitting the reviewed clone once in the background")
@@ -2411,12 +2415,12 @@ class App:
             self.fail("Action is no longer available; select the jobs and review a new confirmation")
             return
         def work():
-            if self._action_scope() != scope:
+            if not owns_review():
                 raise ValueError("Connection changed before the action; prepare a new review")
             live_jobs, invalid = [], []
             from .model import stamp
             for prior in expected:
-                current = self.store.job(prior.id)
+                current = store.job(prior.id)
                 if current is None:
                     invalid.append(f"{prior.id}: no longer in the active queue")
                     continue
@@ -2437,6 +2441,8 @@ class App:
                           "; select the jobs and review a new confirmation")
             return actions.run(action, live_jobs)
         def done(result):
+            if not owns_review():
+                return
             if isinstance(result, Exception):
                 self.fail(str(result))
                 return

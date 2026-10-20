@@ -262,7 +262,10 @@ def test_attestation_requirement_fails_before_any_git_mutation(tmp_path, monkeyp
     monkeypatch.setattr(S, 'git', lambda *args, **kwargs: commands.append(args) or b'https://github.com/rahel99x/Raven.git\n')
     with pytest.raises(S.SourceUpdateError, match='attested-artifact'):
         V.verify(info, require_attestation=True)
-    assert all(args[1] == 'config' for args in commands)
+    assert [args[1:] for args in commands] == [
+        ('config', '--get-all', 'remote.origin.url'),
+        ('remote', 'get-url', '--all', 'origin'),
+    ]
 
 
 def test_failed_authorization_keeps_checkout_and_creates_no_backup(checkout):
@@ -281,7 +284,8 @@ def test_failed_authorization_keeps_checkout_and_creates_no_backup(checkout):
 def test_nonzero_attestation_verifier_fails_closed(tmp_path, monkeypatch):
     info = {'source':str(tmp_path), 'tracking_remote':'origin', 'target_head':'c' * 40}
     monkeypatch.setattr(S, 'git', lambda *args: b'https://github.com/rahel99x/Raven.git\n')
-    artifact = tmp_path / 'raven.whl'; artifact.write_bytes(b'fixture')
+    artifact = tmp_path / 'raven.whl'
+    artifact.write_bytes(b'fixture')
     monkeypatch.setattr(V.subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(returncode=1))
     with pytest.raises(S.SourceUpdateError, match='verification failed'):
         V.verify(info, require_attestation=True, artifact=artifact)
@@ -293,6 +297,71 @@ def test_fork_updates_require_explicit_authorization(tmp_path, monkeypatch):
     with pytest.raises(S.SourceUpdateError, match='allow-fork'):
         V.verify(info)
     assert V.verify(info, allow_fork=True)['source_channel'] == 'explicit-fork'
+
+
+@pytest.mark.parametrize('rewrite', [
+    'git@github.com:rahel99x/Raven.git',
+    'ssh://git@github.com/rahel99x/Raven.git',
+])
+def test_official_https_to_ssh_rewrites_remain_official(checkout, rewrite):
+    _, root = checkout
+    declared = 'https://github.com/rahel99x/Raven.git'
+    source_git(root, 'remote', 'set-url', 'origin', declared)
+    source_git(root, 'config', 'url.' + rewrite + '.insteadOf', declared)
+    info = {'source':str(root), 'tracking_remote':'origin', 'target_head':'b' * 40}
+    assert source_git(root, 'remote', 'get-url', '--all', 'origin') == rewrite
+    assert V.verify(info)['source_channel'] == 'official-repository'
+
+
+def test_official_declared_url_cannot_hide_a_rewritten_fork(checkout, tmp_path):
+    _, root = checkout
+    declared = 'https://github.com/rahel99x/Raven.git'
+    rewritten = str(tmp_path / 'different-origin')
+    source_git(root, 'remote', 'set-url', 'origin', declared)
+    source_git(root, 'config', 'url.' + rewritten + '.insteadOf', declared)
+    info = {'source':str(root), 'tracking_remote':'origin', 'target_head':'b' * 40}
+    assert source_git(root, 'remote', 'get-url', '--all', 'origin') == rewritten
+    with pytest.raises(S.SourceUpdateError, match='effective fetch URLs: custom'):
+        V.verify(info)
+    assert V.verify(info, allow_fork=True)['source_channel'] == 'explicit-fork'
+    artifact = tmp_path / 'raven.whl'; artifact.write_bytes(b'fixture')
+    with pytest.raises(S.SourceUpdateError, match='attestation policy pins'):
+        V.verify(info, allow_fork=True, require_attestation=True, artifact=artifact)
+
+
+@pytest.mark.parametrize('declared,effective', [
+    ('https://github.com/rahel99x/Raven.git\n',
+     'https://github.com/rahel99x/Raven.git\nhttps://unreviewed.invalid/fork.git\n'),
+    ('https://github.com/rahel99x/Raven.git\nhttps://unreviewed.invalid/fork.git\n',
+     'https://github.com/rahel99x/Raven.git\n'),
+    ('https://github.com/rahel99x/Raven.git\n',
+     'https://github.com/rahel99x/Raven.git \n'),
+])
+def test_every_declared_and_effective_url_must_be_official(tmp_path, monkeypatch, declared, effective):
+    info = {'source':str(tmp_path), 'tracking_remote':'origin', 'target_head':'b' * 40}
+    monkeypatch.setattr(S, 'git', lambda root, command, *args: (declared if command == 'config' else effective).encode())
+    with pytest.raises(S.SourceUpdateError, match='allow-fork'):
+        V.verify(info)
+    assert V.verify(info, allow_fork=True)['source_channel'] == 'explicit-fork'
+
+
+def test_multiple_equivalent_official_fetch_urls_are_supported(tmp_path, monkeypatch):
+    info = {'source':str(tmp_path), 'tracking_remote':'origin', 'target_head':'b' * 40}
+    urls = b'https://github.com/rahel99x/Raven.git\ngit@github.com:rahel99x/Raven.git\n'
+    monkeypatch.setattr(S, 'git', lambda *args: urls)
+    assert V.verify(info)['source_channel'] == 'official-repository'
+
+
+def test_source_channel_refusal_never_discloses_endpoint_credentials(tmp_path, monkeypatch):
+    info = {'source':str(tmp_path), 'tracking_remote':'origin', 'target_head':'b' * 40}
+    secret_url = b'https://credential-user:do-not-print@example.invalid/private.git\n'
+    monkeypatch.setattr(S, 'git', lambda *args: secret_url)
+    with pytest.raises(S.SourceUpdateError) as error:
+        V.verify(info)
+    assert 'do-not-print' not in str(error.value)
+    assert 'credential-user' not in str(error.value)
+    assert 'example.invalid' not in str(error.value)
+    assert 'declared: custom; effective fetch URLs: custom' in str(error.value)
 
 
 def test_attestation_verifies_the_selected_commit_and_expected_workflow(tmp_path, monkeypatch):

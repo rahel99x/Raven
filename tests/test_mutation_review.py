@@ -259,6 +259,71 @@ def test_connection_change_after_review_cannot_apply_old_target_ids(app):
     assert not app.actions.slurm.b.calls
 
 
+@pytest.mark.parametrize("action", ["cancel", "resubmit"])
+@pytest.mark.parametrize("change", ["scope", "store", "actions"])
+@pytest.mark.parametrize("accepted", [True, False])
+def test_inflight_mutation_keeps_old_audit_without_publishing_into_new_owner(app, monkeypatch, tmp_path, action, change, accepted):
+    app.interactive = True
+    old_actions, old_store = app.actions, app.store
+    job_id = app.selected_id
+    started, release = threading.Event(), threading.Event()
+    calls, refreshes = [], []
+
+    def scheduler_action(*args):
+        calls.append(args)
+        started.set()
+        assert release.wait(5), "The in-flight action was not released"
+        if action == "resubmit":
+            return accepted, "Submitted batch job 424242" if accepted else "submission outcome unknown after timeout", "424242" if accepted else None
+        return accepted, "" if accepted else "action outcome unknown after timeout"
+
+    if action == "resubmit":
+        monkeypatch.setattr(old_actions.slurm, "submit", scheduler_action)
+        clone = build(job_id, {"submit_line": "sbatch sweep.sh"}, {})
+        app.confirm = {"action": action, "clone": clone, "action_scope": app._action_scope()}
+        app.mode = "confirm"
+    else:
+        monkeypatch.setattr(old_actions.slurm, "cancel", scheduler_action)
+        app.run_command("cancel " + job_id)
+    try:
+        app.finish_confirm(True)
+        assert started.wait(3), "The real background worker did not enter the scheduler action"
+        if change == "scope":
+            app.store._recording_scope = "another-cluster"
+        elif change == "store":
+            app.store = Store(str(tmp_path / "replacement"), persist=False)
+            # A replacement can have the same durable scope fingerprint. The
+            # completion must still belong to the exact Store it captured.
+            app.store._recording_scope = old_store._recording_scope
+        else:
+            app.actions = Actions(old_actions.slurm, old_store)
+        app.marks = {job_id}
+        app.command_ok = False
+        app.message = "Current connection is ready"
+        app.sampler = SimpleNamespace(refresh_all=lambda: refreshes.append(True))
+        release.set()
+        deadline = time.monotonic() + 5
+        while app.research.pending and time.monotonic() < deadline:
+            app.research.poll_task()
+            time.sleep(.005)
+        assert app.research.pending is None
+        assert len(calls) == 1
+        assert app.marks == {job_id}
+        assert not app.command_ok and app.message == "Current connection is ready"
+        assert refreshes == []
+        assert app.store.tags_of("424242") == []
+        assert old_store.tags_of("424242") == []
+        audits = [event for event in old_store.events if event.get("action") == action]
+        assert len(audits) == 1 and audits[0]["ok"] is accepted
+        if action == "resubmit":
+            assert audits[0]["outcome"] == ("accepted" if accepted else "unknown")
+            receipts = list((Path(old_store.state_dir) / "resubmissions").glob("token-*.json"))
+            assert len(receipts) == 1
+            assert json.loads(receipts[0].read_text())["state"] == ("accepted" if accepted else "unknown")
+    finally:
+        release.set()
+
+
 def test_pending_parent_with_running_tasks_is_refused_and_pending_scope_is_rechecked(tmp_path):
     backend = BackendFixture()
     backend.jobs["42"] = job(ArrayJobId="42", ArrayTaskId="0-2")

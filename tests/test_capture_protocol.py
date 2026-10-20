@@ -109,7 +109,7 @@ def test_proxy_uses_root_owner_and_control_validators_without_document_reads(
     send(dashboard, "direct", dashboard.point("70"), "press")
     lease = app.pointer_routing_state["lease"]
     monkeypatch.setattr(
-        app.store, "snapshot", lambda: pytest.fail("capture read Store")
+        app.store, "snapshot", lambda: pytest.fail("capture read a full Store snapshot")
     )
     assert P.active(proxy)
     assert P.route_capture(proxy, P.PointerEvent(*dashboard.point("72"), "drag"))
@@ -262,13 +262,13 @@ def test_finite_pointer_composition_rejects_missing_duplicate_and_invalid_handle
         P.binding_for(lambda *args: None)
 
 
-def test_composed_gestures_reuse_the_same_binding_map_without_document_reads(
+def test_composed_gestures_reuse_the_same_binding_map_without_full_store_snapshots(
     dashboard, monkeypatch
 ):
     app = dashboard.app
     bindings = app.pointer_bindings
     monkeypatch.setattr(
-        app.store, "snapshot", lambda: pytest.fail("capture read Store")
+        app.store, "snapshot", lambda: pytest.fail("capture read a full Store snapshot")
     )
     send(dashboard, "direct", dashboard.point("70"), "press")
     send(dashboard, "direct", dashboard.point("72"), "drag")

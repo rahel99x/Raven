@@ -27,27 +27,39 @@ def verify(
 ):
     from ..update_source import SourceUpdateError, git
 
-    declared = (
-        git(
-            Path(info["source"]),
-            "config",
-            "--get-all",
-            "remote." + info["tracking_remote"] + ".url",
-        )
-        .decode()
-        .strip()
-        .lower()
-        .rstrip("/")
+    source = Path(info["source"])
+    declared = git(
+        source,
+        "config",
+        "--get-all",
+        "remote." + info["tracking_remote"] + ".url",
     )
-    normalized = declared[:-4] if declared.endswith(".git") else declared
-    if normalized not in OFFICIAL and not allow_fork:
+    # Git applies url.*.insteadOf before fetching. Authorizing only the stored
+    # spelling could label a fetch from a completely different endpoint official.
+    # Inspect all URLs with the same Git environment used by the fetch, retaining
+    # ordinary credential, proxy and HTTPS-to-SSH configuration.
+    effective = git(source, "remote", "get-url", "--all", info["tracking_remote"])
+
+    def official_urls(output):
+        urls = output.decode("utf-8", "replace").lower().splitlines()
+        normalized = [url.rstrip("/").removesuffix(".git") for url in urls]
+        return bool(normalized) and all(url in OFFICIAL for url in normalized)
+
+    declared_official = official_urls(declared)
+    effective_official = official_urls(effective)
+    official = declared_official and effective_official
+    if not official and not allow_fork:
         raise SourceUpdateError(
-            "The tracking remote is not the official Raven repository. Review this fork and use --allow-fork explicitly to authorize it."
+            "The tracking remote does not resolve exclusively to the official Raven "
+            "repository (declared: "
+            + ("official" if declared_official else "custom")
+            + "; effective fetch URLs: "
+            + ("official" if effective_official else "custom")
+            + "). Inspect git remote get-url --all REMOTE and url.*.insteadOf settings. "
+            "Review the resolved source and use --allow-fork explicitly to authorize it."
         )
     policy = {
-        "source_channel": "official-repository"
-        if normalized in OFFICIAL
-        else "explicit-fork",
+        "source_channel": "official-repository" if official else "explicit-fork",
         "artifact_attestation": "not-requested",
         "source_commit": info["target_head"],
     }
@@ -57,7 +69,7 @@ def verify(
         raise SourceUpdateError(
             "--require-attestation needs --attested-artifact FILE from the selected commit. No release or checkout was changed."
         )
-    if normalized not in OFFICIAL:
+    if not official:
         raise SourceUpdateError(
             "The attestation policy pins rahel99x/Raven; fork artifacts need their own independently reviewed signer policy."
         )

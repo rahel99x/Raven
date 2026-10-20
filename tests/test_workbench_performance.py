@@ -1,6 +1,7 @@
 """Structural redraw budgets: pane fitting must not multiply expensive source work."""
 from collections import Counter
 import builtins
+import importlib
 import math
 import os
 from pathlib import Path
@@ -87,7 +88,7 @@ def test_warm_workbench_dispatch_reuses_imported_feature_modules(dashboard, monk
     def import_again(*args, **kwargs):
         raise AssertionError("warm input dispatch attempted another module import")
 
-    monkeypatch.setattr(workbench.importlib, "import_module", import_again)
+    monkeypatch.setattr(importlib, "import_module", import_again)
     snap = store.snapshot()
     for _ in range(25):
         assert workbench.modules() is loaded

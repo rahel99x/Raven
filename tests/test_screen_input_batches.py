@@ -148,6 +148,8 @@ def test_wheel_counts_and_mouse_click_identity_survive_batch(monkeypatch):
                           logs=SimpleNamespace(path="same.log", browser=False),
                           keymap={"up": "up"}, handle=lambda key: calls.append(("key", key)),
                           click=lambda *args, **kw: calls.append(("click", args, kw)))
+    from raven.workbench import bind_actions
+    bind_actions(app)
     wheel = (0, 20, 12, 0, curses.BUTTON4_PRESSED)
     click = (0, 10, 7, 0, curses.BUTTON1_PRESSED | curses.BUTTON_SHIFT)
     window = InputWindow([wheel, wheel, click, curses.KEY_DOWN], mouse)

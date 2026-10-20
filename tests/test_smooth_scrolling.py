@@ -190,7 +190,10 @@ def input_app(**fields):
     values = dict(mode="main", tab="jobs", quit=False, keymap={"up": "up", "down": "down"},
                   handle=lambda key: None, click=lambda *args, **kwargs: None)
     values.update(fields)
-    return SimpleNamespace(**values)
+    app = SimpleNamespace(**values)
+    from raven.workbench import bind_actions
+    bind_actions(app)
+    return app
 
 
 def test_motion_burst_coalesces_endpoint_and_preserves_release_click_and_key(monkeypatch):
@@ -332,7 +335,8 @@ def test_log_wheel_uses_only_published_buffer_and_exact_original_selection(tmp_p
 
 
 def test_dispatch_distinguishes_passive_hover_held_drag_release_and_press(monkeypatch):
-    from raven import toolbar, job_selection
+    from raven import toolbar
+    from raven.ui import selection_state
     calls = []
     app = input_app(toolbar_state={}, job_selection_state={"capture": None},
                     click=lambda *args, **kwargs: calls.append(("click", args, kwargs)))
@@ -340,7 +344,7 @@ def test_dispatch_distinguishes_passive_hover_held_drag_release_and_press(monkey
     motion = (0, 30, 12, 0, curses.REPORT_MOUSE_POSITION)
     screen._apply_input(app, ("mouse", motion), (), curses)
     assert calls == [("toolbar", 12, 30, {"button": "motion", "shift": False})]
-    monkeypatch.setattr(job_selection, "active", lambda app: True)
+    monkeypatch.setattr(selection_state, "active", lambda app: True)
     for state, button in ((curses.BUTTON1_PRESSED, "press"),
                           (curses.REPORT_MOUSE_POSITION | curses.BUTTON1_PRESSED, "drag"),
                           (curses.BUTTON1_RELEASED, "release")):

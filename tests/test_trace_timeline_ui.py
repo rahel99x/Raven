@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from raven import job_panels, layout as L, trace_timeline as T, trace_timeline_ui as U, trace_ui
+from raven import background_tasks, job_panels, layout as L, trace_timeline as T, trace_timeline_ui as U, trace_ui
 from test_job_panels import dashboard
 from test_trace_timeline import snapshot
 
@@ -226,7 +226,7 @@ def test_automatic_publication_of_another_stream_cannot_reuse_selected_sequence(
     queued = []
     hub = SimpleNamespace(lock=Lock(), closed=False, pending=None, future=None,
         start_task=lambda work, done: queued.append(done) or True, cancel_task=lambda done: None)
-    monkeypatch.setattr(job_panels, "_worker", lambda *args: hub)
+    monkeypatch.setattr(background_tasks, "research_hub", lambda *args: hub)
     trace_ui.tick(owner)
     source = ready()["result"]
     source["identity"]["stream"] = "another-stream"

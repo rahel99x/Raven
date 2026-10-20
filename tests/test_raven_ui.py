@@ -50,6 +50,8 @@ def app():
     a.fail=lambda text:a.messages.append('ERROR '+text)
     R.initialize(a)
     R.bind(a,Manager())
+    from raven.workbench import bind_actions
+    bind_actions(a)
     return a
 
 

@@ -11,7 +11,7 @@ from queue import Empty, Queue
 
 import pytest
 
-from raven import session_contract as C, shared_host_service as H
+from raven import operation_support, session_contract as C, shared_host_service as H
 
 
 def configured(uid=None):
@@ -195,7 +195,6 @@ def test_idle_peer_flood_cannot_consume_other_principals_connection_capacity(fix
         for peer in peers:
             peer.close()
 def test_recorded_structured_sources_keep_independent_failures(fixture, monkeypatch):
-    from raven import operations
     server, _ = fixture
     corpus = Path(__file__).parent/'fixtures/slurm/recorded/26.05.5'
     calls = []
@@ -203,7 +202,7 @@ def test_recorded_structured_sources_keep_independent_failures(fixture, monkeypa
         calls.append((argv, timeout, limit))
         name = 'running-squeue-json' if argv[0] == 'squeue' else 'accounting-json'
         return (corpus/(name+'.stdout.txt')).read_text()
-    monkeypatch.setattr(operations, '_backend_command', command)
+    monkeypatch.setattr(operation_support, '_backend_command', command)
     # Recorded accounting includes ambiguous requeue identities; preserve the
     # previous history and report its failure independently of a valid queue.
     old = server._source
@@ -218,13 +217,12 @@ def test_recorded_structured_sources_keep_independent_failures(fixture, monkeypa
 
 
 def test_unknown_structured_identity_cannot_publish_an_empty_success(fixture, monkeypatch):
-    from raven import operations
     server, _ = fixture
     corpus = Path(__file__).parent/'fixtures/slurm/recorded/26.05.5/running-squeue-json.stdout.txt'
     raw = json.loads(corpus.read_text())
     for row in raw['jobs']:
         row['user_name'] = ''
-    monkeypatch.setattr(operations, '_backend_command', lambda *args: json.dumps(raw))
+    monkeypatch.setattr(operation_support, '_backend_command', lambda *args: json.dumps(raw))
     before = server._source
     after = H.collect(object(), before, max_records=1000, accounting=False)
     assert after['jobs'] == before['jobs']
@@ -407,14 +405,13 @@ def test_membership_change_revokes_cached_and_queued_project_bytes(fixture):
 
 @pytest.mark.parametrize('restart', [None, {'set':False,'infinite':False,'number':0}, 1])
 def test_native_queue_project_identity_preserves_missing_restart(fixture, monkeypatch, restart):
-    from raven import operations
     server, _ = fixture
     corpus = Path(__file__).parent/'fixtures/slurm/recorded/26.05.5/running-squeue-json.stdout.txt'
     raw = json.loads(corpus.read_text())
     native = raw['jobs'][0]
     raw['jobs'] = [native]
     native['restart_cnt'] = restart
-    monkeypatch.setattr(operations, '_backend_command', lambda *args: json.dumps(raw))
+    monkeypatch.setattr(operation_support, '_backend_command', lambda *args: json.dumps(raw))
     result = H.collect(object(), server._source, max_records=1000, accounting=False)
     assert not result['source_errors']['jobs']
     if restart == 1:
@@ -424,7 +421,7 @@ def test_native_queue_project_identity_preserves_missing_restart(fixture, monkey
 
 
 def test_native_accounting_project_identity_survives_sorting(fixture, monkeypatch):
-    from raven import operations, slurm_json as J
+    from raven import slurm_json as J
     server, _ = fixture
     corpus = Path(__file__).parent/'fixtures/slurm/recorded/26.05.5/accounting-json.stdout.txt'
     raw = json.loads(corpus.read_text())
@@ -435,7 +432,7 @@ def test_native_accounting_project_identity_survives_sorting(fixture, monkeypatc
         row['array'], row['het'] = {}, {}
         row['time']['end'] = end
     raw['jobs'] = [first, second]
-    monkeypatch.setattr(operations, '_backend_command', lambda *args: json.dumps(raw))
+    monkeypatch.setattr(operation_support, '_backend_command', lambda *args: json.dumps(raw))
     result = H.collect(object(), server._source, max_records=1000, queue=False)
     assert not result['source_errors']['finished']
     assert [(row['id'], row['_attempt']['job_id'], row['_attempt']['restart_count']) for row in result['finished']] == [
@@ -444,7 +441,6 @@ def test_native_accounting_project_identity_survives_sorting(fixture, monkeypatc
 
 @pytest.mark.parametrize('state', ['PENDING', 'CONFIGURING'])
 def test_predicted_queue_start_does_not_authorize_project_attempt(fixture, monkeypatch, state):
-    from raven import operations
     server, _ = fixture
     corpus = Path(__file__).parent/'fixtures/slurm/recorded/26.05.5/running-squeue-json.stdout.txt'
     raw = json.loads(corpus.read_text())
@@ -453,7 +449,7 @@ def test_predicted_queue_start_does_not_authorize_project_attempt(fixture, monke
     native['job_state'] = [state]
     native['start_time'] = 1799999999
     native['restart_cnt'] = 0
-    monkeypatch.setattr(operations, '_backend_command', lambda *args: json.dumps(raw))
+    monkeypatch.setattr(operation_support, '_backend_command', lambda *args: json.dumps(raw))
     result = H.collect(object(), server._source, max_records=1000, accounting=False)
     assert not result['source_errors']['jobs']
     assert result['jobs'][0]['state'] == state and result['jobs'][0]['_attempt'] is None
