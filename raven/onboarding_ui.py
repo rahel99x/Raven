@@ -5,9 +5,9 @@ import shlex
 import sys
 
 from . import layout as L
-from . import onboarding as O
+from .entry import onboarding_service as O
 from .control_rows import place_hits
-from .log_text import display_text
+from .job_logs.text import display_text
 from .setup_ui import _wrap
 
 
@@ -55,7 +55,7 @@ def _service(app):
     if resolved is None:
         raise ValueError("Getting started needs a managed Raven session. Open ravenl or run raven setup.")
     if state["service"] is None or state["scope"] is not resolved:
-        from .setup_profiles import ProfileSetup
+        from .configuration.profiles import ProfileSetup
         backend = getattr(getattr(getattr(app, "actions", None), "slurm", None), "b", None)
         state.update(service=ProfileSetup(resolved, backend), scope=resolved)
     return state["service"]
@@ -108,7 +108,7 @@ def open_setup(app):
                      service=None, scope=resolved, draft=None, message="", page="welcome")
     if app.mode != "onboarding":
         state["return_mode"] = "main" if app.mode == "palette" else app.mode
-        from . import terminal_ui
+        from .terminal import ui as terminal_ui
         if terminal_ui.focused(app):
             terminal_ui.blur(app)
         from .pointer_routing import begin_gesture
@@ -177,7 +177,7 @@ def _load_profile(app, name):
     resolved = app.raven_resolved
 
     def read():
-        from .raven_config import resolve
+        from .configuration.policy import resolve
         return resolve(resolved.source or None, site=name)
 
     def done(value):

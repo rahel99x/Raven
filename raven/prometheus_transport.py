@@ -34,7 +34,7 @@ def main():
         context = ssl.create_default_context(cafile=value.get("ca_file"))
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(), urllib.request.HTTPSHandler(context=context))
         request = urllib.request.Request(endpoint, headers=headers)
-        with opener.open(request, timeout=min(2., value["timeout"])) as response:
+        with opener.open(request, timeout=value["timeout"]) as response:
             if response.status != 200:
                 return fail("HTTP-" + str(response.status))
             if response.headers.get("Content-Encoding", "identity").lower() not in ("", "identity"):

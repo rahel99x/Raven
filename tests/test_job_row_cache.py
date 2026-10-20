@@ -60,7 +60,7 @@ def test_every_native_job_field_correction_is_observed_in_place(case, field):
     if isinstance(value, list):
         value.append("node2")
     else:
-        setattr(job, field, value + 1 if isinstance(value, int) else value + " changed")
+        setattr(job, field, 1 if value is None else value + 1 if isinstance(value, int) else value + " changed")
     assert lookup(case)[1] is None
 
 
@@ -90,7 +90,7 @@ def test_telemetry_tags_and_progress_corrections_remain_current(case, change):
     assert lookup(case)[1] is None
 
 
-@pytest.mark.parametrize("change", ["facets", "numeric", "cascade", "filter", "selected", "marks", "theme", "threshold", "ascii"])
+@pytest.mark.parametrize("change", ["facets", "numeric", "cascade", "filter", "theme", "threshold", "ascii"])
 def test_table_and_display_preferences_remain_current(case, change):
     app, views = case[:2]
     if change == "facets":
@@ -330,3 +330,15 @@ def test_shared_native_rows_match_mutable_api_after_changes(case, change):
         job_groups.fold(app, group.id, False)
         assert views.job_rows(snap, app, shared=True) == views.job_rows(snap, app)
         assert len(views.job_rows(snap, app, shared=True)) == 2
+
+
+@pytest.mark.parametrize("change", ["selected", "marks"])
+def test_selection_and_marks_reuse_prepared_rows(case, change):
+    app = case[0]
+    if change == "selected":
+        app.selected_id = "another"
+    else:
+        app.marks.add("41")
+    key, cached = lookup(case)
+    assert cached == case[-1]
+    assert cached[0]["job"] is case[2]["jobs"][0]

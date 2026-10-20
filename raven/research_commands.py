@@ -1,12 +1,11 @@
 """Terminal research commands; offline work never starts a scheduler sampler."""
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import shlex
 
-from .research import clean
+from .research_text import clean
 
 COMMANDS = ("metric", "metrics", "passport", "validate", "artifacts", "prepare", "submit", "investigate", "array")
 OFFLINE = {"metric", "passport", "validate", "prepare"}
@@ -77,91 +76,26 @@ def _publish_detached(app, hub, cmd, ready, resources):
                 ("; open Research / Submit to review the prepared plan" if cmd in ("prepare", "submit", "array") else ""))
 
 
-class Parser(argparse.ArgumentParser):
-    def error(self, message):
-        raise ValueError(message)
+from .entry.command_options import Parser as Parser
 
 
-def parser(name):
-    return Parser(prog=name, add_help=False, allow_abbrev=False)
+from .entry.command_options import parser as parser
 
 
-def sbatch_value_option(token):
-    """True for supported sbatch flags whose following argv item is a literal value."""
-    from .submission import SHORT, VALUE_OPTIONS
-    return token.startswith("--") and token[2:] in VALUE_OPTIONS or len(token) == 2 and token[0] == "-" and token[1] in SHORT
+from .entry.command_options import sbatch_value_option as sbatch_value_option
 
 
-def command_value_option(command, token):
-    options = {
-        "metric": {"--value", "--step", "--phase", "--completed", "--total", "--unit"},
-        "passport": {"--workdir", "--output-dir", "--env", "--input"},
-        "prepare": {"--workdir", "--passport-dir", "--declared-input", "--declared-output", "--parameter"},
-        "submit": {"--workdir", "--passport-dir", "--declared-input", "--declared-output", "--parameter"},
-        "array": {"--workdir", "--indices", "--limit"},
-        "resubmit": {"--script"},
-        "predict": {"--file", "--coverage", "--name", "--partition", "--account", "--qos", "--cpus", "--nodes", "--gpus"},
-        "forecast": {"--file", "--coverage"},
-        "blockers": {"--file", "--coverage"},
-        "tradeoffs": {"--choose", "--script", "--workdir"},
-        "choose": {"--file", "--workdir"},
-        "scaling": {"--workdir", "--mode", "--baseline"},
-        "workflow": {"--workdir"},
-    }
-    return token in options.get(command, set()) or command in ("prepare", "submit", "array", "resubmit") and sbatch_value_option(token)
+from .entry.command_options import command_value_option as command_value_option
 
 
-def script_args(args, *, required=True):
-    """The script comes first; the remaining unknown arguments are exact sbatch argv."""
-    args = list(args)
-    script = args.pop(0) if args and not args[0].startswith("-") else None
-    p = parser("prepare SCRIPT --workdir DIR [sbatch flags]")
-    p.add_argument("--workdir")
-    p.add_argument("--passport-dir")
-    p.add_argument("--declared-input", dest="input", action="append", default=[])
-    p.add_argument("--declared-output", dest="output", action="append", default=[])
-    p.add_argument("--parameter", action="append", default=[])
-    workbench = {"--workdir", "--passport-dir", "--declared-input", "--declared-output", "--parameter"}
-    own, overrides = [], []
-    index = 0
-    while index < len(args):
-        token = args[index]
-        if token == "--":
-            overrides.extend(args[index + 1:])
-            break
-        if sbatch_value_option(token) and index + 1 < len(args):
-            overrides.extend(args[index:index + 2])
-            index += 2
-        elif token.split("=", 1)[0] in workbench:
-            own.append(token)
-            index += 1
-            if "=" not in token and index < len(args):
-                own.append(args[index])
-                index += 1
-        else:
-            overrides.append(token)
-            index += 1
-    opts = p.parse_args(own)
-    if required and not script:
-        raise ValueError("a batch script is required before resource flags")
-    parameters = {}
-    for value in opts.parameter:
-        key, sep, val = value.partition("=")
-        if not sep or not key or key in parameters:
-            raise ValueError("parameters must be unique NAME=VALUE pairs")
-        parameters[key] = val
-    return script, opts, overrides, parameters
+from .entry.submission import script_args as script_args
 
 
-def prepare_args(args):
-    from .submission import prepare
-    script, opts, overrides, parameters = script_args(args)
-    plan = prepare(script, workdir=opts.workdir, overrides=overrides, parameters=parameters, inputs=opts.input, outputs=opts.output)
-    return plan, opts
+from .entry.submission import prepare_args as prepare_args
 
 
 def offline_result(cmd, args, *, execution=None):
-    from .raven_execution import research_command_route
+    from .execution.admission import research_command_route
     routed = research_command_route(cmd, args, execution)
     if routed is not None:
         return routed
@@ -226,9 +160,9 @@ def offline(line, *, host="", replay=False):
         words = shlex.split(line)
         if not words:
             return None
-        from .controller import App
-        matches = [c for c in App.COMMANDS if c.startswith(words[0])]
-        cmd = words[0] if words[0] in App.COMMANDS else matches[0] if len(matches) == 1 else words[0]
+        from .command_registry import CORE_NAMES
+        matches = [c for c in CORE_NAMES if c.startswith(words[0])]
+        cmd = words[0] if words[0] in CORE_NAMES else matches[0] if len(matches) == 1 else words[0]
         from .planning_commands import COMMANDS as planning_commands, is_offline, result, success
         if cmd in planning_commands and is_offline(cmd, words[1:]):
             if host or replay:
@@ -326,13 +260,13 @@ def execute(app, cmd, args, *, ready=None):
                 if getattr(execution, "managed", False) else offline_result(cmd, args))
             app.research_result = result
             if cmd == "prepare":
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 hub.plan = result
                 hub.configure()
                 app.research_view = "submit"
             elif cmd == "passport":
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 if "passport" in result:
                     hub.passport = result["passport"]
@@ -343,7 +277,7 @@ def execute(app, cmd, args, *, ready=None):
                 hub.configure(passport="")
                 app.research_view = "passport"
             elif cmd == "validate":
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 hub.configure(contract=args[0], workdir=args[1])
                 app.research_view = "artifacts"
@@ -355,7 +289,7 @@ def execute(app, cmd, args, *, ready=None):
         elif cmd in ("metrics", "artifacts"):
             if len(args) != (1 if cmd == "metrics" else 2):
                 raise ValueError("metrics FILE" if cmd == "metrics" else "artifacts CONTRACT ROOT")
-            from .research import detach_manual_source
+            from .ui.research_binding import detach_manual_source
             detach_manual_source(app)
             hub.configure(**({"metrics_file": args[0]} if cmd == "metrics" else {"contract": args[0], "workdir": args[1]}))
             app.research_view = "experiment" if cmd == "metrics" else "artifacts"
@@ -365,11 +299,11 @@ def execute(app, cmd, args, *, ready=None):
                 raise ValueError("investigate JOBID")
             if args[0] not in {j.id for j in app.store.jobs + app.store.finished}:
                 raise ValueError("job is not present in the current Jobs or History snapshot")
-            from .research import select_job
+            from .ui.research_binding import select_job
             select_job(app, args[0], view="evidence")
             app.say(f"investigating {args[0]}")
         elif cmd == "array":
-            from .research import detach_manual_source
+            from .ui.research_binding import detach_manual_source
             detach_manual_source(app)
             from .array_manifest_ui import capture
             hub.plan = ready if ready is not None else array_plan(args, app.store.jobs, app.store.finished,
@@ -385,7 +319,7 @@ def execute(app, cmd, args, *, ready=None):
             if getattr(app, "replay", None):
                 raise ValueError("submissions are unavailable during replay")
             if args:
-                from .research import detach_manual_source
+                from .ui.research_binding import detach_manual_source
                 detach_manual_source(app)
                 hub.plan, opts = ready if ready is not None else prepare_args(args)
                 passport_dir = opts.passport_dir

@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import ast
 import operator
+import math
+import reprlib
+from collections.abc import ItemsView, KeysView, ValuesView
 from typing import Any, Callable, Dict, Iterable, Optional, Sequence
 
 
@@ -26,6 +29,40 @@ MAX_STEPS = 100000
 MAX_ITEMS = 100000
 MAX_STRING = 1 << 20
 MAX_INTEGER_BITS = 4096
+MAX_ALLOCATED = 8 << 20
+
+
+class EvalBudget(list):
+    """Share work and estimated intermediate storage across one rule/check."""
+    def __init__(self, steps=MAX_STEPS, allocated=MAX_ALLOCATED):
+        super().__init__([steps])
+        self.allocated = allocated
+
+
+def bounded_repr(value):
+    class Limited(reprlib.Repr):
+        remaining = 1024
+        nodes = 128
+
+        def repr1(self, obj, level):
+            if self.remaining <= 0 or self.nodes <= 0:
+                return "..."
+            self.nodes -= 1
+            available = self.remaining
+            if type(obj) not in {str, bytes, int, float, bool, type(None), list, tuple, dict, set, frozenset}:
+                result = "<" + type(obj).__name__[:80] + ">"
+            else:
+                result = super().repr1(obj, level)
+            result = result[:available]
+            # Child strings are already included in this representation;
+            # charge the completed subtree once, not once per ancestor.
+            self.remaining = max(0, available - len(result))
+            return result
+
+    formatter = Limited()
+    formatter.maxstring = formatter.maxother = 300
+    formatter.maxlist = formatter.maxtuple = formatter.maxset = formatter.maxdict = 8
+    return formatter.repr(value)[:1024]
 
 
 def _bounded(value):
@@ -51,7 +88,7 @@ def _conversion_cost(value, remaining, depth=0):
         for key, child in value.items():
             _conversion_cost(key, remaining, depth + 1)
             _conversion_cost(child, remaining, depth + 1)
-    elif isinstance(value, (list, tuple, set, frozenset)):
+    elif isinstance(value, (list, tuple, set, frozenset, ItemsView, KeysView, ValuesView)):
         for child in value:
             _conversion_cost(child, remaining, depth + 1)
     remaining[1] -= 8
@@ -113,7 +150,7 @@ def _check(node: ast.AST) -> None:
 class _Eval:
     def __init__(self, ns: Dict[str, Any], budget=None):
         self.ns = ns
-        self.budget = [MAX_STEPS] if budget is None else budget
+        self.budget = EvalBudget() if budget is None else budget
 
     def spend(self):
         self.budget[0] -= 1
@@ -125,7 +162,18 @@ class _Eval:
         m = getattr(self, "n_" + type(node).__name__, None)
         if m is None:
             raise ExprError(f"not allowed in an expression: {type(node).__name__}")
-        return _bounded(m(node))
+        result = _bounded(m(node))
+        if hasattr(self.budget, "allocated"):
+            if isinstance(result, (str, bytes)):
+                cost = len(result) * 4
+            elif isinstance(result, (dict, list, tuple, set, frozenset, ItemsView, KeysView, ValuesView)):
+                cost = len(result) * 16
+            else:
+                cost = 16
+            self.budget.allocated -= cost
+            if self.budget.allocated < 0:
+                raise ExprError("expression intermediate storage budget exceeded")
+        return result
 
     def n_Expression(self, n):
         return self.run(n.body)
@@ -274,10 +322,18 @@ class _Eval:
         if fn in (list, set, sorted, sum, min, max, any, all):
             if any(isinstance(value, (str, bytes)) and len(value) > MAX_ITEMS for value in args):
                 raise ExprError("expression collection budget exceeded")
-        if fn is str and args and isinstance(args[0], (dict, list, tuple, set, frozenset)):
+            if fn is sorted and args and hasattr(args[0], "__len__"):
+                self.budget[0] -= int(len(args[0]) * math.log2(max(2, len(args[0]))))
+                if self.budget[0] < 0:
+                    raise ExprError("expression sorting work budget exceeded")
+        if fn is sum:
+            start = args[1] if len(args) > 1 else kwargs.get("start", 0)
+            if not isinstance(start, (int, float)) or not args or any(not isinstance(item, (int, float)) for item in args[0]):
+                raise ExprError("sum requires bounded numeric observations and a numeric start")
+        if fn is str and args and isinstance(args[0], (dict, list, tuple, set, frozenset, ItemsView, KeysView, ValuesView)):
             _conversion_cost(args[0], [MAX_ITEMS, MAX_STRING])
         try:
-            return fn(*args, **kwargs)
+            return _bounded(fn(*args, **kwargs))
         except (TypeError, ValueError) as e:
             raise ExprError(f"{type(e).__name__}: {e}")
 
@@ -340,9 +396,9 @@ class Expr:
         _check(self.tree)
         self.names = sorted({n.id for n in ast.walk(self.tree) if isinstance(n, ast.Name)} - set(FUNCS) - {"None", "True", "False"})
 
-    def __call__(self, ns: Dict[str, Any]) -> Any:
+    def __call__(self, ns: Dict[str, Any], *, budget=None) -> Any:
         try:
-            return _Eval(dict(ns)).run(self.tree)
+            return _Eval(dict(ns), budget).run(self.tree)
         except ExprError:
             raise
         except (TypeError, ValueError, ArithmeticError, LookupError, AttributeError, RecursionError) as exc:

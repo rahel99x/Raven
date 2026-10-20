@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from raven import job_groups as G, manual_job_groups as M
+from raven.jobs import group_records
 from raven.model import Finished, Job
 
 
@@ -94,7 +95,7 @@ def test_long_plain_names_only_inspect_the_shrinking_prefix(monkeypatch):
         def isprintable(self):
             pytest.fail("Prefix selection must not scan a complete long name")
 
-    probe = G._NON_PRINTABLE_ASCII
+    probe = group_records._NON_PRINTABLE_ASCII
     limits = []
 
     class BoundedProbe:
@@ -102,7 +103,7 @@ def test_long_plain_names_only_inspect_the_shrinking_prefix(monkeypatch):
             limits.append(limit)
             return probe.search(name, start, limit)
 
-    monkeypatch.setattr(G, "_NON_PRINTABLE_ASCII", BoundedProbe())
+    monkeypatch.setattr(group_records, "_NON_PRINTABLE_ASCII", BoundedProbe())
     names = [LongName("study-a" + "x" * 4000), LongName("study-b" + "x" * 4000),
              LongName("study-c" + "x" * 4000)]
     assert G.shared_name_prefix(iter(names)) == "study"

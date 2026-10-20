@@ -94,8 +94,8 @@ def test_unedited_python_entrypoints_attach_and_preserve_exit(tmp_path, form):
     assert any(event.get('data', {}).get('function') == 'work' for event in snapshot['events']), snapshot
 
 
-def test_no_trace_exposes_metrics_client_without_startup_hook(tmp_path):
-    command = python(['-c', "import os,raven; raven.metric('loss',.5); assert not os.environ.get('RAVEN_TRACE_SITE')"])
+def test_no_trace_exposes_fallback_client_without_enabling_trace_capture(tmp_path):
+    command = python(['-c', "import os,raven; raven.metric('loss',.5); assert os.environ.get('RAVEN_TRACE_REQUESTED')=='0'"])
     run, result = launch(tmp_path, command, '--no-trace')
     assert result['exit_code'] == 0
     assert not (run / 'trace').exists()

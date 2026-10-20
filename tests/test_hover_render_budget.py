@@ -7,8 +7,11 @@ from raven import interaction as ui, layout as L
 
 
 def application(width=180, height=80):
-    return SimpleNamespace(mode="main", tab="jobs", width=width, height=height,
-                           selected_id="7", last_hits=[])
+    app = SimpleNamespace(mode="main", tab="jobs", width=width, height=height,
+                          selected_id="7", last_hits=[])
+    from raven.workbench import bind_actions
+    bind_actions(app)
+    return app
 
 
 def button(identity, y, left=2, right=12, action=None):
@@ -84,13 +87,14 @@ def test_decoration_only_visits_actual_feedback_rows_and_keeps_pristine_data(mon
     state = ui.initialize(app)
     state.update(active=True, focused="focus")
     visited = []
-    original = ui._decorate_row
+    from raven.ui import control_feedback
+    original = control_feedback._decorate_row
 
     def decorate(row, ranges):
         visited.append(row)
         return original(row, ranges)
 
-    monkeypatch.setattr(ui, "_decorate_row", decorate)
+    monkeypatch.setattr(control_feedback, "_decorate_row", decorate)
     painted = ui.decorate(app, rows)
     assert ui.feedback_rows(app) == frozenset((12, 780))
     assert len(visited) == 2
@@ -110,13 +114,14 @@ def test_overlay_canvas_resolves_graph_context_once(monkeypatch):
     ui.publish(app, [], [], 180, 80, overlays=overlays)
     ui.handle_mouse(app, 25, 12, "motion")
     calls = []
-    original = ui._context
+    from raven.ui import interaction_state
+    original = interaction_state._context
 
     def context(app):
         calls.append(1)
         return original(app)
 
-    monkeypatch.setattr(ui, "_context", context)
+    monkeypatch.setattr(interaction_state, "_context", context)
     painted = ui.decorate_overlays(app, overlays)
     assert len(calls) == 1
     assert painted[24][2] is overlays[24][2]

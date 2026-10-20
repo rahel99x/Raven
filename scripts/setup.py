@@ -178,7 +178,9 @@ def validate(python, mode, host, report, profile=""):
     with tempfile.TemporaryDirectory(prefix="raven-setup-") as temporary:
         scratch = Path(temporary)
         config = scratch / "config.json"
-        config.write_text("{}\n", encoding="utf-8")
+        descriptor = os.open(config, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(descriptor, 'w', encoding='utf-8') as stream:
+            stream.write("{}\n")
         command = [python, ROOT / "raven", "--config", config, "--no-state", "--no-plugins"]
         print(f"Validating simulated jobs, Unicode and ASCII terminal views, all {len(RESEARCH_SMOKE_VIEWS)} Research workspaces, and the ASCII report...", flush=True)
         snapshot = json.loads(run([*command, "--fake", "--json"], capture=True))

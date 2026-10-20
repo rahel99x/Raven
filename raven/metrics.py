@@ -18,7 +18,7 @@ import threading
 import time
 from typing import Mapping, Optional
 
-from .remote import LocalFiles
+from .local_files import LocalFiles
 
 
 MAX_METRICS = 64
@@ -71,6 +71,11 @@ def _record(value: object) -> dict:
         rec["step"] = step
     if "phase" in value:
         rec["phase"] = _text(value["phase"], "phase", 160)
+    if "pid" in value:
+        pid = value["pid"]
+        if type(pid) is not int or not 1 <= pid < 1 << 63:
+            raise ValueError("pid must be a positive 64-bit integer")
+        rec["pid"] = pid
     if "progress" in value:
         progress = value["progress"]
         if not isinstance(progress, dict):

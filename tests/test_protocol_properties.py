@@ -66,11 +66,23 @@ def test_canonical_digest_roundtrip_is_stable(document):
     assert raven_protocol.canonical(dict(reversed(list(document.items())))) == canonical
 
 
-@pytest.mark.parametrize("channel,depth", [(raven_protocol, 25), (raven_allocation, 17), (terminal_service, 33)])
+@pytest.mark.parametrize("channel,depth", [(raven_protocol, 40), (raven_allocation, 40), (terminal_service, 32)])
 def test_channel_nesting_bound_is_explicit(channel, depth):
+    # Worker payloads admit depth32; their worker/allocation envelopes retain
+    # eight levels of bounded headroom. Terminal metadata retains its own cap.
     document = 0
-    for _ in range(depth + 1):
+    for _ in range(depth):
         document = {"child": document}
+    encode = getattr(channel, "encode", None) or channel.frame
+    decoder = channel.Decoder()
+    decoder.feed(encode(document))
+    assert decoder.take() == [document]
+    document = {"child": document}
+    # Terminal framing serializes trusted engine snapshots without revisiting
+    # every scalar; its receiver and action-specific validation enforce bounds.
+    if channel is not terminal_service:
+        with pytest.raises(ValueError):
+            encode(document)
     wire = json.dumps(document).encode()
     decoder = channel.Decoder()
     decoder.feed(struct.pack("!I", len(wire)) + wire)

@@ -74,7 +74,8 @@ def test_setup_covers_every_research_workspace():
     assert len(setup.RESEARCH_SMOKE_VIEWS) == 14
 
 
-def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeypatch):
+@pytest.mark.parametrize("recording", [False, True])
+def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeypatch, recording):
     import signal
     import threading
     import time
@@ -86,7 +87,9 @@ def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeyp
     build, render = cli.build, screen.once_text
     cases = list(setup.view_cases())
     # Repeat the same real frame after all other cases to detect shared UI state.
-    monkeypatch.setattr(setup, "view_cases", lambda: iter([*cases, cases[0]]))
+    recording_flags = ["--record", str(tmp_path / "sessions.jsonl")] if recording else []
+    monkeypatch.setattr(setup, "view_cases", lambda: iter(
+        (name, [*options, *recording_flags]) for name, options in [*cases, cases[0]]))
     monkeypatch.setattr(clock, "now", lambda: 1700000000.)
     fake_init = cli.FakeBackend.__init__
     monkeypatch.setattr(cli.FakeBackend, "__init__", lambda self, user: fake_init(self, user, t0=1700000000., speed=0.))
@@ -112,6 +115,15 @@ def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeyp
     monkeypatch.setattr(screen, "once_text", tracked_render)
     initial_threads = set(threading.enumerate())
     initial_fds = len(list(Path('/proc/self/fd').iterdir())) if Path('/proc/self/fd').exists() else None
+    def fd_targets():
+        targets = {}
+        for name in Path('/proc/self/fd').iterdir():
+            try:
+                targets[name.name] = os.readlink(name)
+            except FileNotFoundError:
+                pass
+        return targets
+    initial_targets = fd_targets() if initial_fds is not None else {}
     initial_env, initial_path, initial_argv = dict(os.environ), list(sys.path), list(sys.argv)
     initial_signals = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
     initial_streams = sys.stdout, sys.stderr
@@ -130,11 +142,19 @@ def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeyp
     assert raven_execution.process_router() is initial_router
     assert clock._source is time.time
     # Shutdown cancels pending work; allow already-running finite tasks to finish.
-    for thread in set(threading.enumerate()) - initial_threads:
+    # enumerate() omits exiting threads before their SQLite TLS cleanup ends.
+    owned_threads = {thread for item in sessions
+                     for thread in item.app.worker_scheduler._executor._threads}
+    for thread in owned_threads | (set(threading.enumerate()) - initial_threads):
         thread.join(timeout=2)
         assert not thread.is_alive(), f"View validation leaked thread {thread.name}"
     if initial_fds is not None:
-        assert len(list(Path('/proc/self/fd').iterdir())) <= initial_fds
+        final_fds = len(list(Path('/proc/self/fd').iterdir()))
+        diagnostic = {'initial': initial_targets, 'final': fd_targets(),
+                      'session_cache_paths': [str(getattr(getattr(item.backend, 'cache', None), 'path', '')) for item in sessions]}
+        if final_fds > initial_fds:
+            (tmp_path / 'fd-leak.json').write_text(json.dumps(diagnostic, indent=2))
+        assert final_fds <= initial_fds, diagnostic
 
 
 @pytest.mark.parametrize("code,text,error,expected", [

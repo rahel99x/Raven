@@ -7,6 +7,7 @@ are never interpolated, relabeled as ground truth, or modified.
 from __future__ import annotations
 
 import hashlib
+import heapq
 import json
 import math
 from statistics import median
@@ -61,11 +62,21 @@ def _normalization(reference):
         if not values:
             scales.append((0., 1.)); continue
         center = median(values)
-        mad = 1.4826 * median(abs(value - center) for value in values)
-        span = max(values) - min(values)
+        differences = [right - left for left, right in zip(values, values[1:])]
+        delta_center = median(differences) if differences else 0.
+        noise = 1.4826 * median(abs(delta - delta_center) for delta in differences) / math.sqrt(2) if differences else 0.
+        # Smooth within-phase variation is correlated: adjacent differences
+        # alone understate it and invent mean shifts inside a short oscillation.
+        # A fixed local lag remains independent of unrelated global level jumps.
+        lagged = [right - left for left, right in zip(values, values[8:])]
+        if lagged:
+            lag_center = median(lagged)
+            noise = max(noise, 1.4826 * median(abs(delta - lag_center) for delta in lagged) / math.sqrt(2))
         # A constant reference stays meaningful when a candidate differs; the
         # magnitude floor is explicit and units are required to match.
-        scale = max(mad, span / 6, abs(center) * .01, 1e-9)
+        # Numeric resolution is an arithmetic floor, not an undeclared
+        # scientific minimum effect proportional to an arbitrary DC offset.
+        scale = max(noise, 16 * math.ulp(center), 1e-9)
         if not all(math.isfinite(value) for value in (center, scale)):
             raise ValueError("Feature numeric range cannot be normalized safely")
         scales.append((center, scale))
@@ -87,41 +98,63 @@ def _segments(capture, scales, *, max_gap, minimum, penalty, budget):
             start = None
         if vector is not None and start is None: start = i
     if start is not None: blocks.append((start, len(rows)))
+    capture["omitted_blocks"] = []
     if len(blocks) > MAX_SEGMENTS:
-        raise ValueError("More than 32 disconnected observation blocks; select a smaller window")
-    output = []
+        # Preserve the most informative continuous blocks and identify every
+        # omitted source range. Never bridge a missing-data boundary.
+        def significance(block):
+            left, right = block
+            count = right - left
+            score = 0.
+            for feature in range(len(scales)):
+                values = [row[feature] for row in vectors[left:right]]
+                mean = math.fsum(values) / count
+                score += math.fsum((value - mean) ** 2 for value in values)
+            budget.spend(count * len(scales))
+            return -score, -count, left
+        ranked = sorted(blocks, key=significance)
+        capture["omitted_blocks"] = [{"start": left, "end": right, "reason": "32-block display/analysis bound; lower within-block variation"}
+                                     for left, right in sorted(ranked[MAX_SEGMENTS:])]
+        blocks = sorted(ranked[:MAX_SEGMENTS])
+    leaves, candidates = {}, []
     feature_count = len(scales)
     for begin, finish in blocks:
         count = finish - begin
-        if count < minimum:
-            output.append({"start": begin, "end": finish, "status": "insufficient samples", "mean": None})
-            continue
         sums = [[0.] * feature_count]
         squares = [[0.] * feature_count]
         for row in vectors[begin:finish]:
             sums.append([a + v for a, v in zip(sums[-1], row)])
             squares.append([a + v * v for a, v in zip(squares[-1], row)])
-        def cost(left, right):
+        def cost(left, right, sums=sums, squares=squares):
             budget.spend(feature_count)
             n = right - left
             return sum(max(0., squares[right][f] - squares[left][f] - (sums[right][f] - sums[left][f]) ** 2 / n) for f in range(feature_count))
-        pending = [(0, count)]
-        while pending:
-            left, right = pending.pop()
-            parent = cost(left, right)
-            best, split = 0., None
-            for candidate in range(left + minimum, right - minimum + 1):
-                gain = parent - cost(left, candidate) - cost(candidate, right)
-                if gain > best:
-                    best, split = gain, candidate
-            threshold = penalty * feature_count * math.log(max(2, right - left))
-            if split is not None and best > threshold:
-                if len(output) + len(pending) + len(blocks) >= MAX_SEGMENTS:
-                    raise ValueError("Phase count exceeds 32; select a smaller window or increase the penalty")
-                pending.extend([(split, right), (left, split)])
-            else:
-                output.append({"start": begin + left, "end": begin + right, "status": "observed",
-                               "mean": [(sums[right][f] - sums[left][f]) / (right - left) for f in range(feature_count)]})
+        # Bind the recursive callback to this block; earlier block callbacks
+        # remain independent when the global heap revisits them.
+        def make_offer(begin, sums, cost):
+            def add(left, right):
+                key = begin + left
+                mean = [(sums[right][f] - sums[left][f]) / (right - left) for f in range(feature_count)] if right - left >= minimum else None
+                leaves[key] = {"start": key, "end": begin + right, "status": "observed" if mean is not None else "insufficient samples", "mean": mean}
+                parent, best, split = cost(left, right), 0., None
+                for candidate in range(left + minimum, right - minimum + 1):
+                    gain = parent - cost(left, candidate) - cost(candidate, right)
+                    if gain > best:
+                        best, split = gain, candidate
+                threshold = penalty * feature_count * math.log(max(2, right - left))
+                if split is not None and best > threshold:
+                    heapq.heappush(candidates, (-best / threshold, key, left, right, split, add))
+            return add
+        make_offer(begin, sums, cost)(0, count)
+    while candidates and len(leaves) < MAX_SEGMENTS:
+        _, key, left, right, split, offer = heapq.heappop(candidates)
+        del leaves[key]
+        offer(left, split)
+        offer(split, right)
+    if candidates:
+        for _, key, *_ in candidates:
+            leaves[key]["status"] = "segment budget reached"
+    output = list(leaves.values())
     output.sort(key=lambda item: item["start"])
     for item in output:
         item.update(start_seconds=rows[item["start"]]["t"], end_seconds=rows[item["end"] - 1]["t"],
@@ -172,7 +205,9 @@ def _indices(segment, total):
 
 def _dtw(left, right, li, ri, *, budget):
     n, m = len(li), len(ri)
-    width = max(4, math.ceil(max(n, m) * .15))
+    # At most 128x128 observed points: a full bounded matrix includes both
+    # endpoints even for highly unequal phase lengths.
+    width = max(n, m)
     cost, paths = {(0, 0): 0.}, {}
     for i in range(1, n + 1):
         center = i * m / n
@@ -202,10 +237,12 @@ def analyze(document, *, cancel=None):
     metrics = document.get("metrics", sorted(available[0] & available[1]))
     if not isinstance(metrics, list) or not 1 <= len(metrics) <= MAX_FEATURES or any(not isinstance(v, str) for v in metrics) or len(set(metrics)) != len(metrics) or not set(metrics) <= available[0] & available[1]:
         raise ValueError("Select 1..8 unique metrics available on both attempts")
-    maximum_gap, minimum, penalty = document.get("max_gap", 120.), document.get("minimum", 8), document.get("penalty", 4.)
+    maximum_gap, minimum, penalty = document.get("max_gap", 120.), document.get("minimum", 8), document.get("penalty", 8.)
     if not M.finite(maximum_gap) or not 0 < maximum_gap <= 3600 or type(minimum) is not int or not 4 <= minimum <= 256 or not M.finite(penalty) or not .5 <= penalty <= 100:
         raise ValueError("Phase gap, minimum and penalty exceed bounded analysis settings")
     left, right = (_capture(document[key], metrics) for key in ("reference", "candidate"))
+    if any(not any(row["available"] for row in capture["rows"]) for capture in (left, right)):
+        raise ValueError("Selected metrics have no shared observation timestamps; collectors may use different clocks or cadences. Select one metric or align observations explicitly with provenance")
     if left["units"] != right["units"] or any(unit.lower() in {"unknown", "unspecified", ""} for unit in left["units"]):
         raise ValueError("Selected metrics need the same explicit units on both attempts")
     scales = _normalization(left)
@@ -233,7 +270,7 @@ def analyze(document, *, cancel=None):
     for capture in (left, right):
         capture["missing_rows"] = sum(not row["available"] for row in capture["rows"])
         capture["sample_count"] = len(capture.pop("rows"))
-    return {"schema": "raven.phase-alignment/v1", "status": "experimental", "reference": left, "candidate": right,
+    return {"schema": "raven.phase-alignment/v1", "status": "partial-experimental" if left["omitted_blocks"] or right["omitted_blocks"] else "experimental", "reference": left, "candidate": right,
             "normalization": [{"metric": name, "unit": unit, "reference_median": center, "scale": scale} for name, unit, (center, scale) in zip(metrics, left["units"], scales)],
             "reference_segments": a, "candidate_segments": b, "correspondences": matches, "aligned_indices": pairs,
             "reversible": "Original timestamps/values remain unchanged in source documents; indices refer to the sorted union timestamp grid",

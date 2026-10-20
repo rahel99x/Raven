@@ -5,7 +5,7 @@ from bisect import bisect_right
 
 from . import advisor
 from .model import hms, human, secs
-from .research import clean
+from .research_text import clean
 
 
 def advice_key(items):
@@ -84,7 +84,7 @@ class AdvisorDocument:
         yield " Flags " + (item.flags() or "nothing to change"), "cyan"
 
     def _wrap(self, fact):
-        from .workspace_layout import _wrap_row
+        from .ui.text_rows import _wrap_row
         text, style = fact
         return _wrap_row([(clean(text, self.ascii), style)], self.width)
 

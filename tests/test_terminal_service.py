@@ -431,8 +431,9 @@ def test_session_limit_is_explicit(service):
 
 
 def test_broker_input_backpressure_is_visible_and_cancellable(service):
-    sid = service.open(["/bin/sh", "-c", "sleep 30"])
+    sid = service.open([sys.executable, "-c", "import tty,time; tty.setraw(0); print(\"READY\", flush=True); time.sleep(30)"])
     wait_for(service, lambda: service.snapshot(sid).get("status") == "running")
+    wait_for(service, lambda: "READY" in str(service.snapshot(sid)))
     for _ in range(4):
         assert service.send(sid, {"type": "text", "text": "x" * MAX_EVENT})
     wait_for(service, lambda: service.snapshot(sid).get("input_rejected", 0) > 0)
@@ -488,3 +489,30 @@ def test_optional_recording_is_private_and_can_be_stopped_without_shell_exit(ser
     assert records[0]["input_recorded"] is False
     assert any(r.get("event") == "output" for r in records)
     assert service.snapshot(sid)["status"] == "running"
+
+
+def test_closing_terminal_preserves_explicit_nohup_background_job(service, tmp_path):
+    pidfile = tmp_path / "nohup.pid"
+    import shlex
+    # Bash can publish $! before nohup has installed SIGHUP=SIG_IGN. The
+    # actual workload publishes readiness only after verifying that inherited
+    # disposition, so closing immediately afterward tests an established job.
+    program = (
+        "import os, signal, sys, time; from pathlib import Path; "
+        "assert signal.getsignal(signal.SIGHUP) == signal.SIG_IGN; "
+        "Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(30)"
+    )
+    command = "nohup " + shlex.join([sys.executable, "-c", program, str(pidfile)]) + " >/dev/null 2>&1 & wait"
+    sid = service.open(["/bin/bash", "-ic", command])
+    wait_for(service, lambda: pidfile.exists() and pidfile.read_text().strip())
+    pid = int(pidfile.read_text())
+    try:
+        assert service.close_session(sid)
+        deadline = time.monotonic() + .6
+        while time.monotonic() < deadline:
+            service.poll(); time.sleep(.01)
+        os.kill(pid, 0)
+        assert Path(f"/proc/{pid}/stat").read_text().split()[2] != "Z"
+    finally:
+        try: os.kill(pid, 9)
+        except ProcessLookupError: pass

@@ -42,7 +42,10 @@ class QueueBackend:
 def test_job_trailing_field_keeps_existing_positional_dataclass_contract():
     names = [field.name for field in fields(Job)]
     assert names[23:25] == ["user", "workdir"]
-    assert names[25:] == ["comment", "cluster"]
+    assert names[25:27] == ["comment", "cluster"]
+    assert names[27:] == ["restarts", "collection_stale"]
+    record = Job("7", "legacy", "cpu", "RUNNING")
+    assert record.restarts is None and record.collection_stale is False
     assert Job("1", "name", "main", "PENDING").workdir == ""
 
 

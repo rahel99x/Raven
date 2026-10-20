@@ -202,7 +202,7 @@ def test_trace_diagnostic_uses_existing_inspect_interface():
 
 @pytest.fixture
 def app(monkeypatch):
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     terminal = SimpleNamespace(active="s1", sessions={"s1": {"metadata": {"shell": "bash", "host": "local"}}}, focus_generation=1)
     result = SimpleNamespace(selected_id="42", mode="main", tab="jobs", opened=[], previews=[], messages=[], errors=[], terminal=terminal)
     result.say = result.messages.append
@@ -210,6 +210,8 @@ def app(monkeypatch):
     def open_session(app, **spec):
         app.opened.append(spec)
         return "opened-" + str(len(app.opened))
+    from raven.terminal import session_state
+    monkeypatch.setattr(session_state, "initialize", lambda app: terminal)
     monkeypatch.setattr(terminal_ui, "initialize", lambda app: terminal)
     monkeypatch.setattr(terminal_ui, "open_session", open_session)
     monkeypatch.setattr(terminal_ui, "prepare_input", lambda app, text, label: app.previews.append((text, label)))
@@ -417,7 +419,7 @@ def _reviewed_ui(operation_dashboard, monkeypatch, *, display="embedded"):
 
 
 def test_operations_apply_embeds_only_after_review_and_immediate_revalidation(operation_dashboard, monkeypatch):
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     launches = []
     monkeypatch.setattr(terminal_ui, "open_session", lambda app, **spec: launches.append(spec) or "sid-81")
@@ -432,7 +434,7 @@ def test_operations_apply_embeds_only_after_review_and_immediate_revalidation(op
 
 
 def test_operations_explicit_fullscreen_preserves_existing_handoff(operation_dashboard, monkeypatch):
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch, display="fullscreen")
     monkeypatch.setattr(terminal_ui, "open_session", lambda *a, **k: pytest.fail("Fullscreen cannot create an embedded session"))
     app.run_command("ops apply")
@@ -442,7 +444,7 @@ def test_operations_explicit_fullscreen_preserves_existing_handoff(operation_das
 
 
 def test_operation_never_opens_after_identity_failure(operation_dashboard, monkeypatch):
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     def stale(*args):
         raise ValueError("Job attempt changed")
@@ -455,7 +457,7 @@ def test_operation_never_opens_after_identity_failure(operation_dashboard, monke
 
 @pytest.mark.parametrize("change", ["page", "tab", "connection", "expired", "quit"])
 def test_worker_completion_cannot_open_after_context_change(operation_dashboard, monkeypatch, change):
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     completions = []
     original = ops_ui._background
@@ -484,7 +486,7 @@ def test_worker_completion_cannot_open_after_context_change(operation_dashboard,
 
 @pytest.fixture
 def broadcast(app, monkeypatch):
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     for sid in ("s1", "s2", "s3", "s4"):
         app.terminal.sessions[sid] = {"label": sid, "status": "running", "kind": "local", "metadata": {"shell": "bash", "host": "local"}}
     app.sent = []
@@ -554,7 +556,8 @@ def test_broadcast_never_accepts_multiline_or_unknown_repl(broadcast):
 
 @pytest.mark.parametrize("allowed", [True, False])
 def test_managed_allocation_terminal_requires_collection_admission_after_revalidation(operation_dashboard, monkeypatch, allowed):
-    from raven import terminal_ui, raven_collection, raven_execution
+    from raven import raven_collection, raven_execution
+    from raven.terminal import sessions as terminal_ui
     app, validations = _reviewed_ui(operation_dashboard, monkeypatch)
     app.raven_execution = raven_execution.ExecutionRouter({"managed": True})
     launches, admissions = [], []

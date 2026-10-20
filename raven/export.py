@@ -1,5 +1,4 @@
-"""Exports: a tab as text, the job or history table as CSV, the selected jobs as JSON, written under the state
-directory's exports/ folder (or ./raven-exports without a state directory)."""
+"""Private, durable exports independent of ephemeral scheduler state storage."""
 from __future__ import annotations
 
 import csv
@@ -7,31 +6,79 @@ import io
 import json
 import os
 import time
-from typing import Dict, List, Optional, Sequence
+import stat
+import secrets
+from pathlib import Path
+from typing import Dict, Optional, Sequence
 
 from .layout import row_text, to_text
-from . import clock
 from .model import to_plain
 
 JOB_FIELDS = ["id", "name", "part", "st", "where", "cpus", "gpu", "time", "left", "cpu%", "eff", "mem%", "gpu%", "flags", "info"]
 FIN_FIELDS = ["id", "name", "state", "part", "elapsed", "cpus", "gpus", "ce", "me", "rss", "start", "end", "exit", "nodes"]
 
 
-def export_dir(state_dir: Optional[str]) -> str:
-    base = os.path.join(state_dir, "exports") if state_dir else os.path.join(os.getcwd(), "raven-exports")
-    os.makedirs(base, exist_ok=True)
-    return base
+def export_dir(state_dir: Optional[str], *, directory=None) -> str:
+    """A durable user-owned export root, independent of node-local state."""
+    configured = directory or os.environ.get('RAVEN_EXPORT_DIR')
+    base = Path(configured).expanduser() if configured else Path(os.environ.get('XDG_DATA_HOME') or Path.home()/'.local'/'share')/'raven'/'exports'
+    if not base.is_absolute():
+        raise ValueError('Export directory must be absolute')
+    # Resolve an existing user-chosen prefix once. Missing components are
+    # created relative to a pinned descriptor; a raced symlink is never followed.
+    missing = []
+    prefix = base
+    while not os.path.lexists(prefix):
+        missing.append(prefix.name)
+        prefix = prefix.parent
+    prefix = prefix.resolve(strict=True)
+    parent = os.open(prefix, os.O_RDONLY | os.O_DIRECTORY | getattr(os, 'O_NOFOLLOW', 0))
+    try:
+        for component in reversed(missing):
+            try:
+                os.mkdir(component, mode=0o700, dir_fd=parent)
+            except FileExistsError:
+                pass
+            child = os.open(component, os.O_RDONLY | os.O_DIRECTORY | getattr(os, 'O_NOFOLLOW', 0), dir_fd=parent)
+            os.close(parent)
+            parent = child
+            prefix = prefix / component
+    finally:
+        os.close(parent)
+    base = prefix
+    info = base.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o022:
+        raise ValueError('Export directory must be user-owned and not writable by another user: ' + str(base))
+    return str(base)
 
 
 def write(state_dir: Optional[str], name: str, content: str) -> str:
-    path = os.path.join(export_dir(state_dir), name)
-    with open(path, "w") as f:
-        f.write(content)
-    return path
+    if not isinstance(name,str) or not name or name in ('.','..') or os.path.basename(name)!=name or '\0' in name:
+        raise ValueError('Export requires a plain new filename')
+    folder=export_dir(state_dir)
+    parent=os.open(folder,os.O_RDONLY|os.O_DIRECTORY|getattr(os,'O_NOFOLLOW',0))
+    temporary='.raven-export-'+secrets.token_hex(16)+'.tmp'
+    created=False
+    try:
+        fd=os.open(temporary,os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600,dir_fd=parent)
+        created=True
+        try:
+            with os.fdopen(fd,'w',encoding='utf-8',newline='') as stream:
+                stream.write(content);stream.flush();os.fsync(stream.fileno())
+            # Link publishes the complete, flushed inode in one exclusive
+            # operation. A pre-existing file or symlink is never replaced.
+            os.link(temporary,name,src_dir_fd=parent,dst_dir_fd=parent,follow_symlinks=False)
+            os.fsync(parent)
+        finally:
+            if created:
+                os.unlink(temporary,dir_fd=parent)
+    finally:
+        os.close(parent)
+    return os.path.join(folder,name)
 
 
 def stamp() -> str:
-    return time.strftime("%Y%m%d-%H%M%S")
+    return time.strftime("%Y%m%d-%H%M%S")+'-'+secrets.token_hex(4)
 
 
 def rows_to_csv(fields: Sequence[str], rows: Sequence[dict]) -> str:

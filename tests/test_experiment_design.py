@@ -57,11 +57,12 @@ def test_confounded_missing_cells_and_unsupported_controls_do_not_get_attributio
     data = observed(design())
     schedule = {r['id']:r for r in E.prepare(data['design'])['schedule']}
     data['observations'] = [row for row in data['observations'] if schedule[row['id']]['coding'][0] == -1]
-    assert E.analyze(data)['state'] == 'confounded'
+    assert E.analyze(data)['state'] == 'incomplete-design'
+    assert not E.analyze(data)['fit']['effects']
     data = observed(design())
     for row in data['observations']: row['controls'] = {'order':'unsupported'}
     report = E.analyze(data)
-    assert report['state'] == 'underpowered' and not report['fit']['effects']
+    assert report['state'] == 'incomplete-design' and not report['fit']['effects']
     assert all(row['unsupported_controls'] for row in report['checks'])
 
 

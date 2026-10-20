@@ -187,7 +187,7 @@ def _save(app):
         callback()
 
 
-@capture_handler("column_resize")
+@capture_handler("column_resize", cancel=cancel)
 def handle_mouse(app, y, x, button="left", shift=False):
     if type(y) is not int or type(x) is not int:
         return False

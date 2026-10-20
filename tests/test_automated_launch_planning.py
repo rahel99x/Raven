@@ -359,16 +359,36 @@ def test_scheduler_budget_fails_without_materialization(script):
     assert not (script.parent / '.raven').exists()
 
 
-def test_local_machine_receipt_preserves_application_bytes_and_status(script):
+@pytest.mark.parametrize('application_status', [0, 7])
+@pytest.mark.parametrize('entry', ['module', 'cli', 'heavy'])
+def test_local_machine_receipt_preserves_application_bytes_and_status(script, application_status, entry):
     import subprocess
-    import os
-    script.write_text('#!/bin/sh\nprintf "application output\\n"\nexit 7\n')
+    script.write_text('#!/bin/sh\nprintf "application output\\n"\nprintf "application diagnostic\\n" >&2\nexit ' + str(application_status) + '\n')
     target = script.parent / 'receipt.json'
-    result = subprocess.run([sys.executable, '-m', 'raven', 'launch', str(script), '--project', str(script.parent), '--local', '--json', '--receipt-file', str(target)], cwd=Path(__file__).parents[1], capture_output=True, text=True, timeout=20)
-    assert result.returncode == 7, result.stderr
+    command = [sys.executable, '-m', 'raven'] if entry == 'module' else [sys.executable, '-c',
+        'import sys; from raven.' + ('cli import main' if entry == 'cli' else 'raven_launch import heavy_main as main') + '; sys.exit(main(sys.argv[1:]))']
+    result = subprocess.run([*command, 'launch', str(script), '--project', str(script.parent), '--local', '--json', '--receipt-file', str(target)], cwd=Path(__file__).parents[1], capture_output=True, text=True, timeout=20)
+    assert result.returncode == application_status, result.stderr
     assert result.stdout == 'application output\n'
-    assert json.loads(target.read_text())['exit_code'] == 7
-    assert 'Raven receipt:' in result.stderr
+    assert json.loads(target.read_text())['exit_code'] == application_status
+    assert result.stderr.startswith('application diagnostic\n') and 'Raven receipt:' in result.stderr
+
+
+def test_receipt_publication_failure_after_local_execution_keeps_workload_contract(script, monkeypatch, capsys):
+    from raven import cli, launch, launch_runtime
+    def execute(plan):
+        print('application output')
+        print('application diagnostic', file=sys.stderr)
+        return {'execution': 'local', 'exit_code': 7}
+    def fail(*args):
+        raise OSError('disk unavailable')
+    monkeypatch.setattr(launch_runtime, 'execute_plan', execute)
+    monkeypatch.setattr(launch, '_write_receipt', fail)
+    code = cli.main(['launch', str(script), '--local', '--json', '--receipt-file', str(script.parent / 'receipt.json')])
+    output = capsys.readouterr()
+    assert code == 7 and output.out == 'application output\n'
+    assert output.err.startswith('application diagnostic\n')
+    assert 'workload already executed' in output.err and 'do not resubmit' in output.err
 
 
 @pytest.mark.parametrize('arguments,status', [([], 'needs-input'), (['--sbatch=--array=2,8'], 'will-verify'), (['--local'], 'unsupported')])

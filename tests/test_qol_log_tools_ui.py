@@ -12,6 +12,11 @@ from raven.logs import LogSession
 from raven.remote import LocalFiles
 from raven.research import ResearchHub
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "state" / "exports"))
+
+
 
 def app_for(tmp_path, files=None):
     files = files or LocalFiles()

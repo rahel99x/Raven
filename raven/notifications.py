@@ -14,7 +14,7 @@ import threading
 import time
 from types import MappingProxyType
 
-from .log_text import display_text
+from .job_logs.text import display_text
 
 
 SEVERITIES = ("critical", "moderate", "mild")
@@ -34,6 +34,9 @@ _HARD_FAILURE = re.compile(
     r"not permitted|permission problem|authentication required|outside the verified allocation|"
     r"verification mismatch|identity mismatch|no such file|not found|timed out|timeout|"
     r"connection refused|connection reset|could not|cannot"
+)
+_RECORD_BUDGET = re.compile(
+    r"^(?:governed collection:\s*)?scheduler read exceeded the site record budget(?=$|[\s:;.])"
 )
 
 
@@ -125,6 +128,14 @@ def diagnose(text, source=""):
              "Ownership, directory traversal permissions, or the selected remote identity may differ from the expected configuration."),
             ("Check the full message for the affected resource and confirm the connected username in Setup.",
              "Review the resource's permissions or ask its owner or cluster administrator for the required access."))
+    if _RECORD_BUDGET.match(folded.lstrip()):
+        return Diagnostic(
+            "Raven rejected a scheduler response at its per-response record limit.",
+            ("The selected user, account, jobs, or history window may return more records than the effective policy allows.",
+             "A site policy can impose a smaller record limit than Raven's collection configuration."),
+            ("Narrow the affected query's user/account scope or history window, then check Sources for a successful read.",
+             "Compare the reported command, record count, and limit with the effective site policy's limits.max_records; when no site policy is configured, inspect raven.collection.max_response_records.",
+             "A shorter refresh interval does not reduce the size of a response; review the query and policy before changing limits."))
     if (any(token in folded for token in ("collection deferred", "budget exhausted", "rate limit", "quota exceeded"))
             and not _HARD_FAILURE.search(folded)):
         return Diagnostic(

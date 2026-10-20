@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 
-from .operations import canonical, digest
+from .operation_support import canonical, digest
 from .runtime_contracts import identifier, integer, number
 from .runtime_control import RuntimeControl
 

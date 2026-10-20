@@ -1,5 +1,6 @@
 """Painters: the curses screen (interactive, with mouse and resize), the ANSI animated screen (--watch) and one
 frame of text (--once) or JSON (--json)."""
+
 from __future__ import annotations
 
 import codecs
@@ -7,6 +8,7 @@ import json
 import math
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -14,37 +16,39 @@ from collections import deque
 from typing import Optional
 
 from . import layout as L
+from . import clock
 from . import palette as P
 from .model import to_plain
-from .views import stdout_path
+from .job_logs.paths import stdout_path as stdout_path
 from .ui_trace import timed as _timed_ui
+from .ui.keys import _ESCAPE_KEYS
 
 KEYNAMES = {}
-CB_MAP = {"green": "blue", "red": "yellow", "yellow": "magenta"}       # colour-blind safe: blue / orange(yellow) / magenta instead of green / red / yellow
+CB_MAP = {
+    "green": "blue",
+    "red": "yellow",
+    "yellow": "magenta",
+}  # colour-blind safe: blue / orange(yellow) / magenta instead of green / red / yellow
 # A readable palette on modern terminals; basic terminals retain their native eight colours.
-PALETTE_256 = {"green": 114, "yellow": 221, "red": 203, "cyan": 81, "magenta": 183, "blue": 75, "white": 252}
+PALETTE_256 = {
+    "green": 114,
+    "yellow": 221,
+    "red": 203,
+    "cyan": 81,
+    "magenta": 183,
+    "blue": 75,
+    "white": 252,
+}
 INPUT_BATCH_LIMIT = 32
-INPUT_BATCH_SECONDS = .008
+INPUT_BATCH_SECONDS = 0.008
 POINTER_BATCH_LIMIT = 256
-POINTER_BATCH_SECONDS = .012
-MAINTENANCE_SECONDS = .2
+POINTER_BATCH_SECONDS = 0.012
+MAINTENANCE_SECONDS = 1.0
+FALLBACK_MAINTENANCE_SECONDS = 0.2
 QUIET_DOCUMENT_SECONDS = 1.0
 _UNREAD_PUBLICATION = object()
 _NAVIGATION_ACTIONS = frozenset(("up", "down", "page_up", "page_down", "home", "end"))
 _INPUT_READERS = {}
-_ESCAPE_KEYS = {"\x1b[1;5D": "ctrl-left", "\x1b[1;5C": "ctrl-right",
-                "\x1b[1;3D": "alt-left", "\x1b[1;3C": "alt-right",
-                "\x1bb": "alt-b", "\x1bf": "alt-f", "\x1bd": "alt-d",
-                "\x1bu": "alt-u", "\x1br": "alt-r", "\x1b\x7f": "alt-backspace",
-                "\x1b[A": "up", "\x1b[B": "down", "\x1b[C": "right", "\x1b[D": "left"}
-_ESCAPE_KEYS.update({"\x1b[H": "home", "\x1b[F": "end", "\x1b[Z": "btab",
-                     "\x1b[1~": "home", "\x1b[4~": "end", "\x1b[7~": "home", "\x1b[8~": "end",
-                     "\x1b[3~": "delete", "\x1b[5~": "pgup", "\x1b[6~": "pgdn",
-                     "\x1bOA": "up", "\x1bOB": "down", "\x1bOC": "right", "\x1bOD": "left",
-                     "\x1bOH": "home", "\x1bOF": "end", "\x1bOP": "f1", "\x1bOQ": "f2",
-                     "\x1bOR": "f3", "\x1bOS": "f4"})
-_ESCAPE_KEYS.update({f"\x1b[{number}~": f"f{index}" for index, number in
-                     enumerate((15, 17, 18, 19, 20, 21, 23, 24), 5)})
 _PASTE_START, _PASTE_END = "\x1b[200~", "\x1b[201~"
 _SGR_MOUSE = re.compile(r"\x1b\[<(\d{1,5});(\d{1,5});(\d{1,5})([Mm])\Z", re.ASCII)
 _URXVT_MOUSE = re.compile(r"\x1b\[(\d{1,5});(\d{1,5});(\d{1,5})M\Z", re.ASCII)
@@ -53,19 +57,14 @@ _CSI_PREFIX = re.compile(r"\x1b\[[0-?]*[ -/]*\Z", re.ASCII)
 _CSI_COMPLETE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]\Z", re.ASCII)
 _SS3_PREFIX = re.compile(r"\x1bO[0-?]*[ -/]*\Z", re.ASCII)
 _SS3_COMPLETE = re.compile(r"\x1bO[0-?]*[ -/]*[@-~]\Z", re.ASCII)
-_ESCAPE_KEYS.update({"\x1b" + chr(code): "alt-" + chr(code) for code in range(ord("a"), ord("z") + 1)})
-for _modifier, _number in (("alt", 3), ("ctrl", 5)):
-    for _suffix, _key in (("A", "up"), ("B", "down"), ("C", "right"), ("D", "left"), ("H", "home"), ("F", "end")):
-        _ESCAPE_KEYS[f"\x1b[1;{_number}{_suffix}"] = f"{_modifier}-{_key}"
-    for _code, _key in ((3, "delete"), (5, "pgup"), (6, "pgdn")):
-        _ESCAPE_KEYS[f"\x1b[{_code};{_number}~"] = f"{_modifier}-{_key}"
-_ESCAPE_KEYS["\x1b[127;5u"] = "ctrl-backspace"
-del _modifier, _number, _suffix, _key, _code
-_ESCAPE_PREFIXES = frozenset(sequence[:end] for sequence in (*_ESCAPE_KEYS, _PASTE_START)
-                             for end in range(1, len(sequence)))
-_ESCAPE_SECONDS = .03
-_POINTER_ESCAPE_SECONDS = .2
-_RECENT_POINTER_SECONDS = .5
+_ESCAPE_PREFIXES = frozenset(
+    sequence[:end]
+    for sequence in (*_ESCAPE_KEYS, _PASTE_START)
+    for end in range(1, len(sequence))
+)
+_ESCAPE_SECONDS = 0.03
+_POINTER_ESCAPE_SECONDS = 0.2
+_RECENT_POINTER_SECONDS = 0.5
 _TERMINAL_PASTE_LIMIT = 1024 * 1024
 _CONTROL_STRING_LIMIT = 16384
 
@@ -88,14 +87,33 @@ class InputEvent(tuple):
 def _terminal_keys(curses):
     """Read keyboard capabilities without handing mouse framing to ncurses."""
     keys = dict(_ESCAPE_KEYS)
-    capabilities = {"kcuu1": "up", "kcud1": "down", "kcub1": "left", "kcuf1": "right",
-                    "khome": "home", "kend": "end", "kpp": "pgup", "knp": "pgdn",
-                    "kdch1": "delete", "kich1": "insert", "kcbt": "btab", "kent": "enter",
-                    "kbs": "backspace"}
+    capabilities = {
+        "kcuu1": "up",
+        "kcud1": "down",
+        "kcub1": "left",
+        "kcuf1": "right",
+        "khome": "home",
+        "kend": "end",
+        "kpp": "pgup",
+        "knp": "pgdn",
+        "kdch1": "delete",
+        "kich1": "insert",
+        "kcbt": "btab",
+        "kent": "enter",
+        "kbs": "backspace",
+    }
     capabilities.update({f"kf{number}": f"f{number}" for number in range(1, 25)})
-    for capability, name in (("kUP", "up"), ("kDN", "down"), ("kLFT", "left"),
-                             ("kRIT", "right"), ("kHOM", "home"), ("kEND", "end"),
-                             ("kPRV", "pgup"), ("kNXT", "pgdn"), ("kDC", "delete")):
+    for capability, name in (
+        ("kUP", "up"),
+        ("kDN", "down"),
+        ("kLFT", "left"),
+        ("kRIT", "right"),
+        ("kHOM", "home"),
+        ("kEND", "end"),
+        ("kPRV", "pgup"),
+        ("kNXT", "pgdn"),
+        ("kDC", "delete"),
+    ):
         for number, modifier in ((3, "alt"), (5, "ctrl")):
             capabilities[capability + str(number)] = modifier + "-" + name
     for capability, name in capabilities.items():
@@ -123,6 +141,7 @@ class _InputReader:
     a page shortcut. Raw getch with keypad disabled prevents that split owner;
     UTF-8 decoding here is incremental and never waits inside get_wch.
     """
+
     def __init__(self, window):
         self.window = window
         self.raw = callable(getattr(window, "getch", None))
@@ -164,8 +183,11 @@ class _InputReader:
             return self.window.get_wch()
         if not self.configured:
             self.escape_keys = _terminal_keys(curses)
-            self.escape_prefixes = frozenset(sequence[:end] for sequence in (*self.escape_keys, _PASTE_START)
-                                             for end in range(1, len(sequence)))
+            self.escape_prefixes = frozenset(
+                sequence[:end]
+                for sequence in (*self.escape_keys, _PASTE_START)
+                for end in range(1, len(sequence))
+            )
             self.configured = True
         deadline = time.monotonic() + INPUT_BATCH_SECONDS
         for _ in range(256):
@@ -173,8 +195,12 @@ class _InputReader:
                 char = self.raw_values.popleft()
                 # Surrogateescape keeps malformed UTF-8 bytes intact. Legacy
                 # X10 coordinates may legitimately be arbitrary 8-bit values.
-                if isinstance(char, str) and 0xdc80 <= ord(char) <= 0xdcff and self.escape.startswith("\x1b[M"):
-                    return chr(ord(char) - 0xdc00)
+                if (
+                    isinstance(char, str)
+                    and 0xDC80 <= ord(char) <= 0xDCFF
+                    and self.escape.startswith("\x1b[M")
+                ):
+                    return chr(ord(char) - 0xDC00)
                 return char
             value = self.window.getch()
             if value == -1:
@@ -195,7 +221,11 @@ class _InputReader:
             pending_utf8 = self.utf8.getstate()[0]
             if value < 128 and not pending_utf8:
                 return chr(value)
-            if value == 0x9b and not pending_utf8 and not self.escape.startswith("\x1b[M"):
+            if (
+                value == 0x9B
+                and not pending_utf8
+                and not self.escape.startswith("\x1b[M")
+            ):
                 return "\x9b"
             self.raw_values.extend(self.utf8.decode(bytes((value,))))
             if self.utf8.getstate()[0]:
@@ -208,7 +238,13 @@ class _InputReader:
 
     @property
     def pending(self):
-        return bool(self.escape or self.pasting or self.control_string or self.control_discard or self.utf8.getstate()[0])
+        return bool(
+            self.escape
+            or self.pasting
+            or self.control_string
+            or self.control_discard
+            or self.utf8.getstate()[0]
+        )
 
     def deadline(self):
         """Only ambiguous standalone Escape has a timer; fragments await bytes."""
@@ -224,12 +260,18 @@ class _InputReader:
 
     def read(self, curses):
         if not self.frame_active:
-            self.frame_origin = self.input_owner() if callable(self.input_owner) else None
-            self.frame_geometry = self.geometry_owner() if callable(self.geometry_owner) else None
+            self.frame_origin = (
+                self.input_owner() if callable(self.input_owner) else None
+            )
+            self.frame_geometry = (
+                self.geometry_owner() if callable(self.geometry_owner) else None
+            )
             self.frame_active = True
         result = self._read(curses)
         if result is not None:
-            framed = InputEvent(result, origin=self.frame_origin, geometry=self.frame_geometry)
+            framed = InputEvent(
+                result, origin=self.frame_origin, geometry=self.frame_geometry
+            )
             # Quarantined/partial controls return an inert tuple. Keep their
             # original owner until the complete sequence has been consumed.
             if not self.pending and not self.queue:
@@ -242,7 +284,11 @@ class _InputReader:
     def _read(self, curses):
         if self.queue:
             return self.queue.popleft()
-        deadline = time.monotonic() + INPUT_BATCH_SECONDS if self.pending or self.discard_mouse or self.discard_csi else None
+        deadline = (
+            time.monotonic() + INPUT_BATCH_SECONDS
+            if self.pending or self.discard_mouse or self.discard_csi
+            else None
+        )
         for _ in range(4096 if self.pasting else 256):
             try:
                 value = self._value(curses)
@@ -258,8 +304,11 @@ class _InputReader:
                         # here loses pointer updates and makes hover lag.
                         self.timed_out_mouse = True
                         return None, None
-                    if (pending.startswith(("\x1b[", "\x1bO")) or
-                            len(pending) > 1 and pending in self.escape_prefixes):
+                    if (
+                        pending.startswith(("\x1b[", "\x1bO"))
+                        or len(pending) > 1
+                        and pending in self.escape_prefixes
+                    ):
                         # Retain bounded report and terminfo key prefixes.
                         # Replaying an SS3 prefix would turn its 'O' into the
                         # log-files shortcut before a delayed arrow arrives.
@@ -268,7 +317,9 @@ class _InputReader:
                     self.after_escape = pending == "\x1b"
                     self.recovered_escape = False
                     self.timed_out_mouse = False
-                    self.queue.extend((key_name(ch, curses), None) for ch in pending[1:])
+                    self.queue.extend(
+                        (key_name(ch, curses), None) for ch in pending[1:]
+                    )
                     return "esc", None
                 return None
             if value == "\x03" and not self.pasting:
@@ -278,7 +329,11 @@ class _InputReader:
                 self.after_escape = self.recovered_escape = False
                 self.discard_mouse = self.discard_csi = False
                 self.timed_out_mouse = False
-                self.control_string, self.control_discard, self.control_escape = "", False, False
+                self.control_string, self.control_discard, self.control_escape = (
+                    "",
+                    False,
+                    False,
+                )
                 self.utf8.reset()
                 self.raw_values.clear()
                 self.queue.clear()
@@ -291,7 +346,12 @@ class _InputReader:
                 # OSC/DCS/APC/PM are one opaque frame, including printable
                 # payloads. No payload character may become a Raven shortcut.
                 char = value if isinstance(value, str) else ""
-                complete = char == "\x07" and self.control_string.startswith("\x1b]") or self.control_escape and char == "\\"
+                complete = (
+                    char == "\x07"
+                    and self.control_string.startswith("\x1b]")
+                    or self.control_escape
+                    and char == "\\"
+                )
                 if not self.control_discard:
                     self.control_string += char
                     if len(self.control_string) > _CONTROL_STRING_LIMIT:
@@ -299,8 +359,16 @@ class _InputReader:
                 self.control_escape = char == "\x1b"
                 if complete:
                     sequence, discarded = self.control_string, self.control_discard
-                    self.control_string, self.control_discard, self.control_escape = "", False, False
-                    return ("terminal-raw", sequence) if self.frame_origin is not None and not discarded else (None, None)
+                    self.control_string, self.control_discard, self.control_escape = (
+                        "",
+                        False,
+                        False,
+                    )
+                    return (
+                        ("terminal-raw", sequence)
+                        if self.frame_origin is not None and not discarded
+                        else (None, None)
+                    )
                 if deadline is not None and time.monotonic() >= deadline:
                     return None
                 continue
@@ -320,7 +388,11 @@ class _InputReader:
                         except curses.error:
                             return None, None
                     return name, None
-            if value == "\x9b" and not self.pasting and not self.escape.startswith("\x1b[M"):
+            if (
+                value == "\x9b"
+                and not self.pasting
+                and not self.escape.startswith("\x1b[M")
+            ):
                 # UTF-8 terminals may deliver the C1 CSI introducer as one
                 # character rather than the equivalent two bytes Escape '['.
                 self.escape, self.escape_time = "\x1b[", time.monotonic()
@@ -383,14 +455,21 @@ class _InputReader:
             elif self.escape:
                 char = value if isinstance(value, str) else ""
                 candidate = self.escape + char
-                if candidate.startswith("\x1b[") and len(candidate) > 2 and candidate[2].isdigit():
+                if (
+                    candidate.startswith("\x1b[")
+                    and len(candidate) > 2
+                    and candidate[2].isdigit()
+                ):
                     self.recovered_escape = False
                 if char == "\x1b":
                     self.escape, self.escape_time = char, time.monotonic()
                     self.recovered_escape = False
                     self.timed_out_mouse = False
-                elif (candidate in ("\x1b]", "\x1bP", "\x1b_", "\x1b^", "\x1bX")
-                      and candidate not in self.escape_prefixes and candidate not in self.escape_keys):
+                elif (
+                    candidate in ("\x1b]", "\x1bP", "\x1b_", "\x1b^", "\x1bX")
+                    and candidate not in self.escape_prefixes
+                    and candidate not in self.escape_keys
+                ):
                     self.escape, self.control_string = "", candidate
                     self.control_escape, self.control_discard = False, False
                 elif candidate.startswith("\x1b[M"):
@@ -415,7 +494,11 @@ class _InputReader:
                         self.escape = candidate
                     else:
                         self.escape = ""
-                        if self.timed_out_mouse and char and char not in "0123456789;Mm":
+                        if (
+                            self.timed_out_mouse
+                            and char
+                            and char not in "0123456789;Mm"
+                        ):
                             # A nonreport key after an abandoned, timed-out
                             # numeric prefix is still usable (especially Quit).
                             self.timed_out_mouse = False
@@ -440,12 +523,16 @@ class _InputReader:
                     self.recovered_escape = False
                     match = _URXVT_MOUSE.fullmatch(candidate)
                     code, x, y = (int(match.group(index)) for index in (1, 2, 3))
-                    return self._mouse_result(_mouse_report(code - 32, x, y, "M", curses))
+                    return self._mouse_result(
+                        _mouse_report(code - 32, x, y, "M", curses)
+                    )
                 elif _CSI_COMPLETE.fullmatch(candidate):
                     # Unknown terminal control sequences are indivisible;
                     # replaying their bytes can activate unrelated shortcuts.
                     self.escape = ""
-                    if callable(self.control_response) and self.control_response(candidate):
+                    if callable(self.control_response) and self.control_response(
+                        candidate
+                    ):
                         self.recovered_escape = False
                         return None, None
                     if self.frame_origin is not None:
@@ -455,13 +542,21 @@ class _InputReader:
                         # Escape followed by literal '[' and an ordinary key
                         # has no mouse framing. Preserve both user inputs.
                         self.recovered_escape = False
-                        self.queue.extend((key_name(ch, curses), None) for ch in candidate[2:])
+                        self.queue.extend(
+                            (key_name(ch, curses), None) for ch in candidate[2:]
+                        )
                         return "[", None
                     return None, None
                 elif _SS3_COMPLETE.fullmatch(candidate):
                     self.escape = ""
-                    return ("terminal-raw", candidate) if self.frame_origin is not None else (None, None)
-                elif len(candidate) <= 64 and (_CSI_PREFIX.fullmatch(candidate) or _SS3_PREFIX.fullmatch(candidate)):
+                    return (
+                        ("terminal-raw", candidate)
+                        if self.frame_origin is not None
+                        else (None, None)
+                    )
+                elif len(candidate) <= 64 and (
+                    _CSI_PREFIX.fullmatch(candidate) or _SS3_PREFIX.fullmatch(candidate)
+                ):
                     self.escape = candidate
                     if char.isdigit():
                         # A numeric CSI may be a urxvt mouse report; its bytes
@@ -480,16 +575,25 @@ class _InputReader:
                     self.escape = ""
                     if self.frame_origin is not None:
                         return "terminal-raw", candidate
-                    self.queue.extend((key_name(ch, curses), None) for ch in candidate[1:])
+                    self.queue.extend(
+                        (key_name(ch, curses), None) for ch in candidate[1:]
+                    )
                     return "esc", None
             else:
                 name = key_name(value, curses)
                 if name == "esc":
                     self.escape, self.escape_time = "\x1b", time.monotonic()
                     self.timed_out_mouse = False
-                    pointer_recent = self.mouse_time is not None and self.escape_time - self.mouse_time <= _RECENT_POINTER_SECONDS
-                    self.escape_grace = (_POINTER_ESCAPE_SECONDS if self.protect_escape or pointer_recent
-                                         else _ESCAPE_SECONDS)
+                    pointer_recent = (
+                        self.mouse_time is not None
+                        and self.escape_time - self.mouse_time
+                        <= _RECENT_POINTER_SECONDS
+                    )
+                    self.escape_grace = (
+                        _POINTER_ESCAPE_SECONDS
+                        if self.protect_escape or pointer_recent
+                        else _ESCAPE_SECONDS
+                    )
                     deadline = self.escape_time + INPUT_BATCH_SECONDS
                     self.window.timeout(0)
                 elif name == "mouse":
@@ -498,7 +602,11 @@ class _InputReader:
                     except curses.error:
                         return None, None
                 else:
-                    if name is None and self.frame_origin is not None and isinstance(value, str):
+                    if (
+                        name is None
+                        and self.frame_origin is not None
+                        and isinstance(value, str)
+                    ):
                         if value == "\x00":
                             return "ctrl-space", None
                         return "terminal-raw", value
@@ -537,10 +645,17 @@ def _mouse_report(code, x, y, ending, curses):
     if code < 0 or code > 127 or x < 1 or y < 1:
         return None
     button = code & 3
-    modifiers = sum(getattr(curses, flag, 0) for bit, flag in
-                    ((4, "BUTTON_SHIFT"), (8, "BUTTON_ALT"), (16, "BUTTON_CTRL")) if code & bit)
+    modifiers = sum(
+        getattr(curses, flag, 0)
+        for bit, flag in ((4, "BUTTON_SHIFT"), (8, "BUTTON_ALT"), (16, "BUTTON_CTRL"))
+        if code & bit
+    )
     if code & 64:
-        state = getattr(curses, "BUTTON4_PRESSED" if button == 0 else "BUTTON5_PRESSED", 0) if button < 2 else 0
+        state = (
+            getattr(curses, "BUTTON4_PRESSED" if button == 0 else "BUTTON5_PRESSED", 0)
+            if button < 2
+            else 0
+        )
     elif ending == "m" or button == 3 and not code & 32:
         state = getattr(curses, f"BUTTON{button + 1 if button < 3 else 1}_RELEASED", 0)
     else:
@@ -590,7 +705,11 @@ class CursesPalette:
             return
         try:
             curses.start_color()
-            self.count = (1 << 24) if curses.COLORS >= (1 << 24) else (256 if curses.COLORS >= 256 else min(8, curses.COLORS))
+            self.count = (
+                (1 << 24)
+                if curses.COLORS >= (1 << 24)
+                else (256 if curses.COLORS >= 256 else min(8, curses.COLORS))
+            )
             self.limit = max(0, min(curses.COLOR_PAIRS - 1, 1024))
             try:
                 curses.use_default_colors()
@@ -600,18 +719,39 @@ class CursesPalette:
                 self.enabled = False
                 return
             # Reserve essential text and selection tones before gradient charts.
-            for style in ("white", "sel", "cursor", "cyan", "green", "yellow", "red", "magenta", "blue"):
+            for style in (
+                "white",
+                "sel",
+                "cursor",
+                "cyan",
+                "green",
+                "yellow",
+                "red",
+                "magenta",
+                "blue",
+            ):
                 parsed = P.resolve(P.cell_style(style, self.theme), self.theme)
-                self._pair(self._index(parsed.foreground), self._index(parsed.background, background=True))
+                self._pair(
+                    self._index(parsed.foreground),
+                    self._index(parsed.background, background=True),
+                )
             if self.limit >= 15:
                 # Preserve opaque menus, info bars and slider surfaces before
                 # charts can saturate a small terminal's remaining pair table.
-                for style in ("text+bg:surface", "text+bg:surface-raised",
-                              "accent+bg:surface-raised", "muted+bg:surface",
-                              "border+bg:surface", "accent+bg:surface-sunken",
-                              "track+bg:surface-sunken"):
+                for style in (
+                    "text+bg:surface",
+                    "text+bg:surface-raised",
+                    "accent+bg:surface-raised",
+                    "muted+bg:surface",
+                    "border+bg:surface",
+                    "accent+bg:surface-sunken",
+                    "track+bg:surface-sunken",
+                ):
                     parsed = P.resolve(P.cell_style(style, self.theme), self.theme)
-                    self._pair(self._index(parsed.foreground), self._index(parsed.background, background=True))
+                    self._pair(
+                        self._index(parsed.foreground),
+                        self._index(parsed.background, background=True),
+                    )
             if not self.pairs:
                 self.enabled = False
         except curses.error:
@@ -657,7 +797,9 @@ class CursesPalette:
             fg, bg = existing
             a, b = self._rgb(foreground, "white"), self._rgb(fg, "white")
             x, y = self._rgb(background, "black"), self._rgb(bg, "black")
-            return sum((v - w) ** 2 for v, w in zip(a, b)) + 2 * sum((v - w) ** 2 for v, w in zip(x, y))
+            return sum((v - w) ** 2 for v, w in zip(a, b)) + 2 * sum(
+                (v - w) ** 2 for v, w in zip(x, y)
+            )
 
         result = self.pairs[min(self.pairs, key=distance)]
         if len(self.approximations) >= 4096:
@@ -672,16 +814,29 @@ class CursesPalette:
         c = self.curses
         parsed = P.resolve(style, theme if self.enabled else "mono")
         result = 0
-        flags = {"bold": c.A_BOLD, "dim": c.A_DIM, "rev": c.A_REVERSE, "under": c.A_UNDERLINE}
+        flags = {
+            "bold": c.A_BOLD,
+            "dim": c.A_DIM,
+            "rev": c.A_REVERSE,
+            "under": c.A_UNDERLINE,
+        }
         for flag in parsed.flags:
             result |= flags[flag]
-        if self.enabled and (parsed.foreground is not None or parsed.background is not None):
-            result |= self._pair(self._index(parsed.foreground), self._index(parsed.background, background=True))
+        if self.enabled and (
+            parsed.foreground is not None or parsed.background is not None
+        ):
+            result |= self._pair(
+                self._index(parsed.foreground),
+                self._index(parsed.background, background=True),
+            )
             if "sel" in style.split("+"):
                 canvas = P.resolve(P.cell_style("", theme), theme)
-                indistinct = (parsed.background is not None and canvas.background is not None and
-                               self._index(parsed.background, background=True) ==
-                               self._index(canvas.background, background=True))
+                indistinct = (
+                    parsed.background is not None
+                    and canvas.background is not None
+                    and self._index(parsed.background, background=True)
+                    == self._index(canvas.background, background=True)
+                )
                 if self.limit < 2 or indistinct:
                     result |= c.A_REVERSE
         # Keep plugin-generated styles from growing memory indefinitely.
@@ -705,16 +860,43 @@ def key_name(ch, curses) -> Optional[str]:
         return "resize"
     if ch == curses.KEY_MOUSE:
         return "mouse"
-    table = {curses.KEY_UP: "up", curses.KEY_DOWN: "down", curses.KEY_LEFT: "left", curses.KEY_RIGHT: "right", curses.KEY_NPAGE: "pgdn", curses.KEY_PPAGE: "pgup",
-             curses.KEY_HOME: "home", curses.KEY_END: "end", curses.KEY_BTAB: "btab", curses.KEY_ENTER: "enter", curses.KEY_BACKSPACE: "backspace",
-             9: "tab", 10: "enter", 13: "enter", 27: "esc", 32: "space", 127: "backspace", 8: "backspace"}
+    table = {
+        curses.KEY_UP: "up",
+        curses.KEY_DOWN: "down",
+        curses.KEY_LEFT: "left",
+        curses.KEY_RIGHT: "right",
+        curses.KEY_NPAGE: "pgdn",
+        curses.KEY_PPAGE: "pgup",
+        curses.KEY_HOME: "home",
+        curses.KEY_END: "end",
+        curses.KEY_BTAB: "btab",
+        curses.KEY_ENTER: "enter",
+        curses.KEY_BACKSPACE: "backspace",
+        9: "tab",
+        10: "enter",
+        13: "enter",
+        27: "esc",
+        32: "space",
+        127: "backspace",
+        8: "backspace",
+    }
     if ch in table:
         return table[ch]
     if ch in (28, 29, 30, 31):
         return {28: "ctrl-\\", 29: "ctrl-]", 30: "ctrl-^", 31: "ctrl-_"}[ch]
     if ch in (1, 2, 5, 7, 11, 16, 21, 23, 25, 26):
-        return {1: "ctrl-a", 2: "ctrl-b", 5: "ctrl-e", 7: "ctrl-g", 11: "ctrl-k",
-                16: "ctrl-p", 21: "ctrl-u", 23: "ctrl-w", 25: "ctrl-y", 26: "ctrl-z"}[ch]
+        return {
+            1: "ctrl-a",
+            2: "ctrl-b",
+            5: "ctrl-e",
+            7: "ctrl-g",
+            11: "ctrl-k",
+            16: "ctrl-p",
+            21: "ctrl-u",
+            23: "ctrl-w",
+            25: "ctrl-y",
+            26: "ctrl-z",
+        }[ch]
     if 1 <= ch <= 26:
         return "ctrl-" + chr(ord("a") + ch - 1)
     if getattr(curses, "KEY_F0", 100000) < ch <= getattr(curses, "KEY_F0", 100000) + 24:
@@ -725,11 +907,23 @@ def key_name(ch, curses) -> Optional[str]:
         return chr(ch)
     if ch > 127:
         try:
-            name = {b"kLFT3": "alt-left", b"kRIT3": "alt-right", b"kLFT5": "ctrl-left", b"kRIT5": "ctrl-right"}.get(curses.keyname(ch))
+            name = {
+                b"kLFT3": "alt-left",
+                b"kRIT3": "alt-right",
+                b"kLFT5": "ctrl-left",
+                b"kRIT5": "ctrl-right",
+            }.get(curses.keyname(ch))
             if name is None:
                 encoded = curses.keyname(ch).decode("ascii", "replace")
-                for prefix, key in (("kUP", "up"), ("kDN", "down"), ("kHOM", "home"), ("kEND", "end"),
-                                    ("kPRV", "pgup"), ("kNXT", "pgdn"), ("kDC", "delete")):
+                for prefix, key in (
+                    ("kUP", "up"),
+                    ("kDN", "down"),
+                    ("kHOM", "home"),
+                    ("kEND", "end"),
+                    ("kPRV", "pgup"),
+                    ("kNXT", "pgdn"),
+                    ("kDC", "delete"),
+                ):
                     if encoded in (prefix + "3", prefix + "5"):
                         name = ("alt-" if encoded.endswith("3") else "ctrl-") + key
                         break
@@ -754,7 +948,8 @@ def _bind_input(stdscr, app):
     reader = _INPUT_READERS.get(id(stdscr))
     if reader is None or reader.window is not stdscr:
         reader = _INPUT_READERS[id(stdscr)] = _InputReader(stdscr)
-    from .terminal_ui import input_identity
+    from .terminal.ui import input_identity
+
     reader.input_owner = lambda: input_identity(app)
     reader.geometry_owner = lambda: _terminal_geometry(app)
     return reader
@@ -772,15 +967,20 @@ def _terminal_pointer(app, event):
     if event[0] != "mouse" or event[1] is None:
         return False
     from .pointer_routing import active
-    if active(app) and not getattr(getattr(app, "terminal_state", None), "capture", None):
+
+    if active(app) and not getattr(
+        getattr(app, "terminal_state", None), "capture", None
+    ):
         return False
-    from .terminal_ui import owns_mouse
+    from .terminal.ui import owns_mouse
+
     return owns_mouse(app, event[1][2], event[1][1])
 
 
 def _protect_pointer_escape(app):
     """Allow a short report-prefix grace while a pointer gesture owns input."""
     from .pointer_routing import active
+
     return active(app)
 
 
@@ -792,35 +992,80 @@ def _navigation_context(app):
     page = getattr(app, "log_tools_state", {}).get("page") or {}
     toolbar = getattr(app, "toolbar_state", {}) or {}
     panels = getattr(app, "job_panel_state", {}) or {}
-    from .terminal_ui import input_identity
-    from .interaction import _guided_context
-    return (app.mode, app.tab, analysis.get("modal"), analysis.get("chart_job"), analysis.get("metric"),
-            table.get("modal"), table.get("tab"), table.get("node"), table.get("action_job"),
-            page.get("path"), page.get("start"), page.get("end"), page.get("snapshot", {}).get("ident"),
-            getattr(app, "research_job_id", None),
-            getattr(app, "research_view", None), getattr(app, "analytics_job", None),
-            getattr(app, "log_job", None), getattr(logs, "path", None),
-            getattr(logs, "browser", None),
-            toolbar.get("menu"), toolbar.get("focus"), toolbar.get("cursor"), toolbar.get("panel"),
-            panels.get("mode"), panels.get("focus"), input_identity(app),
-            tuple(getattr(app, "setup_ui_state", {}).get(key) for key in ("page", "generation", "revision", "editing"))
-            if app.mode == "setup" else None,
-            tuple(getattr(app, "onboarding_ui_state", {}).get(key) for key in ("generation", "revision", "page", "editing"))
-            if app.mode == "onboarding" else None,
-            tuple(getattr(app, "launch_wizard_state", {}).get(key) for key in ("generation", "revision", "stage", "editing"))
-            if app.mode == "launch_job" else None,
-            _guided_context(app),
-            tuple(getattr(app, "data_export_state", {}).get(key) for key in ("generation", "revision", "stage", "editing"))
-            if app.mode in ("data_export", "launch_setup") else None)
+    from .terminal.ui import input_identity
+    from .ui.interaction_state import _guided_context
+
+    return (
+        app.mode,
+        app.tab,
+        analysis.get("modal"),
+        analysis.get("chart_job"),
+        analysis.get("metric"),
+        table.get("modal"),
+        table.get("tab"),
+        table.get("node"),
+        table.get("action_job"),
+        page.get("path"),
+        page.get("start"),
+        page.get("end"),
+        page.get("snapshot", {}).get("ident"),
+        getattr(app, "research_job_id", None),
+        getattr(app, "research_view", None),
+        getattr(app, "analytics_job", None),
+        getattr(app, "log_job", None),
+        getattr(logs, "path", None),
+        getattr(logs, "browser", None),
+        toolbar.get("menu"),
+        toolbar.get("focus"),
+        toolbar.get("cursor"),
+        toolbar.get("panel"),
+        panels.get("mode"),
+        panels.get("focus"),
+        input_identity(app),
+        tuple(
+            getattr(app, "setup_ui_state", {}).get(key)
+            for key in ("page", "generation", "revision", "editing")
+        )
+        if app.mode == "setup"
+        else None,
+        tuple(
+            getattr(app, "onboarding_ui_state", {}).get(key)
+            for key in ("generation", "revision", "page", "editing")
+        )
+        if app.mode == "onboarding"
+        else None,
+        tuple(
+            getattr(app, "launch_wizard_state", {}).get(key)
+            for key in ("generation", "revision", "stage", "editing")
+        )
+        if app.mode == "launch_job"
+        else None,
+        _guided_context(app),
+        tuple(
+            getattr(app, "data_export_state", {}).get(key)
+            for key in ("generation", "revision", "stage", "editing")
+        )
+        if app.mode in ("data_export", "launch_setup")
+        else None,
+    )
 
 
 def _motion_report(buttons, curses):
     """Held-left reports are positions; completed clicks remain actions."""
     actions = 0
-    for flag in ("BUTTON1_CLICKED", "BUTTON1_DOUBLE_CLICKED", "BUTTON1_RELEASED",
-                 "BUTTON3_CLICKED", "BUTTON3_PRESSED", "BUTTON4_PRESSED", "BUTTON5_PRESSED"):
+    for flag in (
+        "BUTTON1_CLICKED",
+        "BUTTON1_DOUBLE_CLICKED",
+        "BUTTON1_RELEASED",
+        "BUTTON3_CLICKED",
+        "BUTTON3_PRESSED",
+        "BUTTON4_PRESSED",
+        "BUTTON5_PRESSED",
+    ):
         actions |= getattr(curses, flag, 0)
-    return bool(buttons & getattr(curses, "REPORT_MOUSE_POSITION", 0) and not buttons & actions)
+    return bool(
+        buttons & getattr(curses, "REPORT_MOUSE_POSITION", 0) and not buttons & actions
+    )
 
 
 def _finish_unheld_pointer(app, mouse, curses):
@@ -829,9 +1074,12 @@ def _finish_unheld_pointer(app, mouse, curses):
     Bare native curses position tuples are deliberately inconclusive: some
     drivers omit held bits during a valid drag. Preserve their capture path.
     """
-    if getattr(mouse, "held", None) is not False or not _motion_report(mouse[4], curses):
+    if getattr(mouse, "held", None) is not False or not _motion_report(
+        mouse[4], curses
+    ):
         return
     from .pointer_routing import cancel_capture
+
     cancel_capture(app, reason="unheld")
 
 
@@ -848,10 +1096,25 @@ def _batchable_input(app, event, curses):
     if name == "mouse" and mouse is not None and _motion_report(mouse[4], curses):
         return True
     mode = app.mode
-    traversal = (mode in ("session_inbox", "log_tools_page", "log_tools_results", "log_tools_marks",
-                          "jump_picker", "locations_picker", "value_peek", "field_explanation")
-                 or mode == "analysis" and getattr(app, "analysis_state", {}).get("modal") in ("chart", "chart_events", "timeline", "diff", "inspect")
-                 or mode == "table_tools" and getattr(app, "table_tools_state", {}).get("modal") in ("headers", "marks", "node", "actions"))
+    traversal = (
+        mode
+        in (
+            "session_inbox",
+            "log_tools_page",
+            "log_tools_results",
+            "log_tools_marks",
+            "jump_picker",
+            "locations_picker",
+            "value_peek",
+            "field_explanation",
+        )
+        or mode == "analysis"
+        and getattr(app, "analysis_state", {}).get("modal")
+        in ("chart", "chart_events", "timeline", "diff", "inspect")
+        or mode == "table_tools"
+        and getattr(app, "table_tools_state", {}).get("modal")
+        in ("headers", "marks", "node", "actions")
+    )
     if mode != "main" and not traversal:
         return False
     if name is None:
@@ -859,15 +1122,24 @@ def _batchable_input(app, event, curses):
     if name != "mouse":
         if traversal:
             arrows = ("up", "down", "home", "end", "pgup", "pgdn")
-            horizontal = mode == "log_tools_page" or mode == "analysis" and getattr(app, "analysis_state", {}).get("modal") == "chart"
+            horizontal = (
+                mode == "log_tools_page"
+                or mode == "analysis"
+                and getattr(app, "analysis_state", {}).get("modal") == "chart"
+            )
             return name in arrows or horizontal and name in ("left", "right")
         return app.keymap.get(name) in _NAVIGATION_ACTIONS
     if mouse is None:
         return True
     buttons = mouse[4]
     click_mask = 0
-    for button in ("BUTTON1_CLICKED", "BUTTON1_PRESSED", "BUTTON1_DOUBLE_CLICKED",
-                   "BUTTON3_CLICKED", "BUTTON3_PRESSED"):
+    for button in (
+        "BUTTON1_CLICKED",
+        "BUTTON1_PRESSED",
+        "BUTTON1_DOUBLE_CLICKED",
+        "BUTTON3_CLICKED",
+        "BUTTON3_PRESSED",
+    ):
         click_mask |= getattr(curses, button, 0)
     # Captured motion is never a click. Initial presses and releases must use
     # the current frame; a release cannot disappear into a hover burst.
@@ -891,12 +1163,19 @@ def _apply_input(app, event, hits, curses):
     if name is None or name == "resize":
         return
     demand = getattr(getattr(app, "sampler", None), "set_collection_demand", None)
-    if demand is not None and (name != "mouse" or mouse is not None and not _motion_report(mouse[4], curses)):
+    if demand is not None and (
+        name != "mouse" or mouse is not None and not _motion_report(mouse[4], curses)
+    ):
         panel = getattr(app, "job_panel_state", {})
         inline = app.tab in ("jobs", "history") and panel.get("mode") == "analytics"
-        demand(app.tab, getattr(app, "selected_id", None), active=True,
-               sources=("live", "trace") if inline else ())
-    from . import terminal_ui
+        demand(
+            app.tab,
+            getattr(app, "selected_id", None),
+            active=True,
+            sources=("live", "trace") if inline else (),
+        )
+    from .terminal import ui as terminal_ui
+
     identity = terminal_ui.input_identity(app)
     if name != "mouse":
         origin = event.origin if isinstance(event, InputEvent) else identity
@@ -906,7 +1185,9 @@ def _apply_input(app, event, hits, curses):
             if identity != origin:
                 return
             if name == "terminal-overflow":
-                app.fail(f"Paste exceeds {_TERMINAL_PASTE_LIMIT // 1024} KiB; no paste bytes were sent.")
+                app.fail(
+                    f"Paste exceeds {_TERMINAL_PASTE_LIMIT // 1024} KiB; no paste bytes were sent."
+                )
             elif name == "terminal-raw":
                 terminal_ui.handle_event(app, {"type": "raw", "data": mouse})
             elif name == "paste":
@@ -920,41 +1201,21 @@ def _apply_input(app, event, hits, curses):
             return
     if name == "paste":
         from .scrolling import note_input
+
         note_input(app, "paste")
         from .startup import dismiss
+
         dismiss(app)
         if app.mode == "terminal_probe":
             app.handle(f"paste ({len(mouse)} characters)")
         else:
-            from .history_log_export import active as export_active, paste as export_paste
-            if export_active(app):
-                export_paste(app, mouse)
-                return
-            if app.mode in ("data_export", "launch_setup"):
-                from .data_export_ui import paste as data_paste
-                data_paste(app, mouse)
-                return
-            if app.mode == "onboarding":
-                from .onboarding_ui import paste as onboarding_paste
-                onboarding_paste(app, mouse)
-                return
-            if app.mode == "launch_job":
-                from .launch_wizard_ui import paste as launch_paste
-                launch_paste(app, mouse)
-                return
-            if app.mode == "connect_data":
-                from .connect_data_ui import paste as connect_data_paste
-                connect_data_paste(app, mouse)
-                return
-            if app.mode == "operations":
-                from .ops_ui import paste as operation_paste
-                operation_paste(app, mouse)
-                return
-            from .command_ui import paste
+            from .workbench import paste
+
             paste(app, mouse)
         return
     if name != "mouse":
         from .scrolling import note_input
+
         note_input(app, "key")
         app.handle(name)
         return
@@ -965,7 +1226,11 @@ def _apply_input(app, event, hits, curses):
         # a session switch. Conversely, a queued Raven report cannot leak into
         # a newly focused full-screen child application.
         return
-    if isinstance(event, InputEvent) and event.geometry is not None and event.geometry != _terminal_geometry(app):
+    if (
+        isinstance(event, InputEvent)
+        and event.geometry is not None
+        and event.geometry != _terminal_geometry(app)
+    ):
         # Resize or divider movement changes coordinate meaning, not keyboard
         # destination. Drop only obsolete pointer frames; retain shell keys.
         return
@@ -975,67 +1240,108 @@ def _apply_input(app, event, hits, curses):
     _finish_unheld_pointer(app, mouse, curses)
     shift = bool(bstate & getattr(curses, "BUTTON_SHIFT", 0))
     alt = bool(bstate & getattr(curses, "BUTTON_ALT", 0))
+
     def click(*args, **kwargs):
         # Preserve the legacy adapter API when no modifier was reported.
         if alt:
             kwargs["alt"] = True
         return app.click(*args, **kwargs)
+
     from .toolbar import handle_mouse as toolbar_mouse
-    button = ("wheel-up" if bstate & getattr(curses, "BUTTON4_PRESSED", 0) else
-              "wheel-down" if bstate & getattr(curses, "BUTTON5_PRESSED", 0) else
-              "release" if bstate & getattr(curses, "BUTTON1_RELEASED", 0) else
-              "right" if bstate & (getattr(curses, "BUTTON3_CLICKED", 0) | getattr(curses, "BUTTON3_PRESSED", 0)) else
-              "left" if bstate & (curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED) else
-              "drag" if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0) and bstate & getattr(curses, "BUTTON1_PRESSED", 0) else
-              "motion" if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0) else
-              "press" if bstate & curses.BUTTON1_PRESSED else "motion")
+
+    button = (
+        "wheel-up"
+        if bstate & getattr(curses, "BUTTON4_PRESSED", 0)
+        else "wheel-down"
+        if bstate & getattr(curses, "BUTTON5_PRESSED", 0)
+        else "release"
+        if bstate & getattr(curses, "BUTTON1_RELEASED", 0)
+        else "right"
+        if bstate
+        & (
+            getattr(curses, "BUTTON3_CLICKED", 0)
+            | getattr(curses, "BUTTON3_PRESSED", 0)
+        )
+        else "left"
+        if bstate & (curses.BUTTON1_CLICKED | curses.BUTTON1_DOUBLE_CLICKED)
+        else "drag"
+        if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0)
+        and bstate & getattr(curses, "BUTTON1_PRESSED", 0)
+        else "motion"
+        if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0)
+        else "press"
+        if bstate & curses.BUTTON1_PRESSED
+        else "motion"
+    )
     terminal_button = button
     if bstate & getattr(curses, "BUTTON2_RELEASED", 0):
         terminal_button = "middle-release"
     elif bstate & getattr(curses, "BUTTON3_RELEASED", 0):
         terminal_button = "right-release"
-    elif bstate & (getattr(curses, "BUTTON2_PRESSED", 0) | getattr(curses, "BUTTON2_CLICKED", 0)):
-        terminal_button = "drag-middle" if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0) else "middle"
-    elif bstate & getattr(curses, "BUTTON3_PRESSED", 0) and bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0):
+    elif bstate & (
+        getattr(curses, "BUTTON2_PRESSED", 0) | getattr(curses, "BUTTON2_CLICKED", 0)
+    ):
+        terminal_button = (
+            "drag-middle"
+            if bstate & getattr(curses, "REPORT_MOUSE_POSITION", 0)
+            else "middle"
+        )
+    elif bstate & getattr(curses, "BUTTON3_PRESSED", 0) and bstate & getattr(
+        curses, "REPORT_MOUSE_POSITION", 0
+    ):
         terminal_button = "drag-right"
     terminal_modifiers = {"shift": shift, "alt": alt}
     if bstate & getattr(curses, "BUTTON_CTRL", 0):
         terminal_modifiers["ctrl"] = True
-    if terminal_ui.handle_mouse(app, my, mx, button=terminal_button, **terminal_modifiers):
+    if terminal_ui.handle_mouse(
+        app, my, mx, button=terminal_button, **terminal_modifiers
+    ):
         return
     from .scrolling import note_input, handle_wheel
+
     note_input(app, "wheel" if button.startswith("wheel-") else button)
     if button in ("press", "left"):
         from .pointer_routing import begin_gesture
-        if (type(mx) is int and type(my) is int and
-                0 <= mx < getattr(app, "width", 100000) and
-                0 <= my < getattr(app, "height", 100000)):
+
+        if (
+            type(mx) is int
+            and type(my) is int
+            and 0 <= mx < getattr(app, "width", 100000)
+            and 0 <= my < getattr(app, "height", 100000)
+        ):
             begin_gesture(app)
         from .scrollbars import commit_selection_gesture
+
         commit_selection_gesture(app)
     from .startup import handle_mouse as startup_mouse
+
     startup_mouse(app, my, mx, button=button, shift=shift)
     from .workbench import INSPECTION_MODES
+
     if app.mode in INSPECTION_MODES:
         # Inspection dialogs own motion, release and wheel events as well as
         # clicks. Do not run underlying pane/browser pre-dispatch handlers.
         click(my, mx, hits, button=button, shift=shift)
         return
-    from .history_log_export import active as export_active, handle_mouse as export_mouse
+    from .job_logs.history_export import active as export_active, handle_mouse as export_mouse
     from .scrollbars import handle_mouse as scrollbar_mouse
     from .column_resize import active as column_active, handle_mouse as column_mouse
     from .group_queue_drag import active as queue_active
-    from .job_group_drag import pending as group_drag_pending
+    from raven.jobs.group_drag import pending as group_drag_pending
     from .pointer_routing import PointerEvent, route_capture
+
     if route_capture(app, PointerEvent(my, mx, button, shift, alt)):
         return
-    from .job_group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
+    from raven.jobs.group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
+
     if group_menu_active(app):
         if scrollbar_mouse(app, my, mx, button=button, shift=shift):
             return
         group_menu_mouse(app, my, mx, button=button, shift=shift)
         return
-    if not button.startswith("wheel-") and scrollbar_mouse(app, my, mx, button=button, shift=shift):
+    if not button.startswith("wheel-") and scrollbar_mouse(
+        app, my, mx, button=button, shift=shift
+    ):
         return
     if export_active(app):
         export_mouse(app, my, mx, button=button, shift=shift)
@@ -1043,6 +1349,7 @@ def _apply_input(app, event, hits, curses):
     if button == "right":
         from .toolbar import handle_interval_reset as toolbar_reset
         from .metric_live import handle_mouse as live_mouse
+
         if toolbar_reset(app, my, mx):
             return
         if live_mouse(app, my, mx, button=button, shift=shift):
@@ -1051,9 +1358,11 @@ def _apply_input(app, event, hits, curses):
             return
         if group_menu_mouse(app, my, mx, button=button, shift=shift):
             return
-    from .job_selection import context_click
+    from raven.jobs.selection import context_click
+
     if button == "right":
-        from .text_selection import clear as clear_text
+        from .ui.text_selection_state import clear as clear_text
+
         clear_text(app)
     if context_click(app, my, mx, button=button, shift=shift):
         return
@@ -1071,23 +1380,30 @@ def _apply_input(app, event, hits, curses):
             app.interaction_state["pointer"] = (my, mx)
         else:
             from .interaction import handle_mouse as interaction_mouse
+
             interaction_mouse(app, my, mx, button="motion", shift=shift)
     from .chart_interaction import hover as chart_hover, cancel as cancel_chart
+
     charts = getattr(app, "chart_interaction_state", None)
     if wheel and isinstance(charts, dict):
         charts["pointer"] = (my, mx)
     else:
         chart_hover(app, my, mx)
-    if isinstance(getattr(app, "toolbar_state", None), dict) and toolbar_mouse(app, my, mx, button=button, shift=shift):
+    if isinstance(getattr(app, "toolbar_state", None), dict) and toolbar_mouse(
+        app, my, mx, button=button, shift=shift
+    ):
         cancel_chart(app)
         from .metric_live import cancel as cancel_live
+
         cancel_live(app)
         return
     if button in ("wheel-up", "wheel-down"):
         from .pane_drag import blur
+
         blur(app)
         cancel_chart(app)
         from .metric_live import cancel as cancel_live
+
         cancel_live(app)
         # A wheel gesture belongs to content, even after clicking a button.
         # Keyboard focus must not turn its direction into button traversal.
@@ -1097,12 +1413,19 @@ def _apply_input(app, event, hits, curses):
         if scrollbar_mouse(app, my, mx, button=button, shift=shift, rail_only=True):
             return
     if button in ("motion", "drag", "release"):
-        from .job_selection import active as selection_active
-        if (selection_active(app) or group_drag_pending(app) or column_active(app) or queue_active(app) or getattr(app, "pane_drag_state", {}).get("capture") or
-                getattr(app, "history_browser_state", {}).get("drag") or
-                getattr(app, "chart_interaction_state", {}).get("capture") or
-                getattr(app, "text_selection_state", {}).get("capture") or
-                getattr(app, "metric_live_state", {}).get("capture")):
+        from .ui.selection_state import active as selection_active
+
+        if (
+            selection_active(app)
+            or group_drag_pending(app)
+            or column_active(app)
+            or queue_active(app)
+            or getattr(app, "pane_drag_state", {}).get("capture")
+            or getattr(app, "history_browser_state", {}).get("drag")
+            or getattr(app, "chart_interaction_state", {}).get("capture")
+            or getattr(app, "text_selection_state", {}).get("capture")
+            or getattr(app, "metric_live_state", {}).get("capture")
+        ):
             click(my, mx, hits, button=button, shift=shift)
         elif app.mode == "terminal_probe":
             click(my, mx, hits, button=button, shift=shift)
@@ -1110,15 +1433,22 @@ def _apply_input(app, event, hits, curses):
     if button in ("wheel-up", "wheel-down"):
         from .history_browser import handle_mouse as history_mouse
         from .recent_history import handle_mouse as recent_mouse
-        if history_mouse(app, my, mx, button=button, shift=shift) or recent_mouse(app, my, mx, button=button, shift=shift):
+
+        if history_mouse(app, my, mx, button=button, shift=shift) or recent_mouse(
+            app, my, mx, button=button, shift=shift
+        ):
             return
         from .analytics_document import handle_mouse as series_mouse
+
         if series_mouse(app, my, mx, button=button, shift=shift):
             return
-        if app.tab == "deps" and getattr(app, "history_browser_state", {}).get("views", {}).get("deps", {}).get("explicit"):
+        if app.tab == "deps" and getattr(app, "history_browser_state", {}).get(
+            "views", {}
+        ).get("deps", {}).get("explicit"):
             app.move("up" if button == "wheel-up" else "down")
             return
-        from .job_panels import contains as in_job_panel, handle_mouse as panel_mouse
+        from raven.jobs.panels import contains as in_job_panel, handle_mouse as panel_mouse
+
         if in_job_panel(app, my, mx):
             if app.mode == "main":
                 # Toolbar, browser, chart capture and pane ownership were
@@ -1132,46 +1462,81 @@ def _apply_input(app, event, hits, curses):
     if app.mode == "terminal_probe":
         click(my, mx, hits, button=button, shift=shift)
         return
-    if button.startswith("wheel-") and scrollbar_mouse(app, my, mx, button=button, shift=shift):
+    if button.startswith("wheel-") and scrollbar_mouse(
+        app, my, mx, button=button, shift=shift
+    ):
         return
-    if button.startswith("wheel-") and handle_wheel(app, my, mx, -1 if button == "wheel-up" else 1):
+    if button.startswith("wheel-") and handle_wheel(
+        app, my, mx, -1 if button == "wheel-up" else 1
+    ):
         return
-    if bstate & (getattr(curses, "BUTTON3_CLICKED", 0) | getattr(curses, "BUTTON3_PRESSED", 0)):
+    if bstate & (
+        getattr(curses, "BUTTON3_CLICKED", 0) | getattr(curses, "BUTTON3_PRESSED", 0)
+    ):
         click(my, mx, hits, button="right")
-    elif bstate & (curses.BUTTON1_CLICKED | curses.BUTTON1_PRESSED | curses.BUTTON1_DOUBLE_CLICKED):
+    elif bstate & (
+        curses.BUTTON1_CLICKED | curses.BUTTON1_PRESSED | curses.BUTTON1_DOUBLE_CLICKED
+    ):
         origin = app.tab
-        from .job_panels import contains as in_job_panel
+        from raven.jobs.panels import contains as in_job_panel
+
         double_target = None
-        if (bstate & curses.BUTTON1_DOUBLE_CLICKED and not shift and not alt and app.mode == "main"
-                and type(mx) is int and type(my) is int
-                and 0 <= mx < getattr(app, "width", 100000)
-                and 0 <= my < getattr(app, "height", 100000)
-                and not in_job_panel(app, my, mx)):
-            double_target = next(((kind, key) for y, kind, key in hits
-                                  if y == my and ((origin == "jobs" and kind in ("job", "recent"))
-                                  or (origin == "history" and kind == "fin")
-                                  or (origin == "log" and app.logs.browser and kind == "log_file"))), None)
+        if (
+            bstate & curses.BUTTON1_DOUBLE_CLICKED
+            and not shift
+            and not alt
+            and app.mode == "main"
+            and type(mx) is int
+            and type(my) is int
+            and 0 <= mx < getattr(app, "width", 100000)
+            and 0 <= my < getattr(app, "height", 100000)
+            and not in_job_panel(app, my, mx)
+        ):
+            double_target = next(
+                (
+                    (kind, key)
+                    for y, kind, key in hits
+                    if y == my
+                    and (
+                        (origin == "jobs" and kind in ("job", "recent"))
+                        or (origin == "history" and kind == "fin")
+                        or (origin == "log" and app.logs.browser and kind == "log_file")
+                    )
+                ),
+                None,
+            )
             pointer = getattr(app, "interaction_state", {}) or {}
             if double_target is not None and pointer.get("graph") is not None:
-                from .interaction import _current, hit_token
+                from .ui.interaction_state import _current, hit_token
+
                 graph = _current(app)
                 kind, key = double_target
                 control = graph.get(f"{kind}:{key}") if graph is not None else None
                 pointed = graph.at(my, mx) if graph is not None else None
                 # Leading row-marker padding still belongs to the row, while
                 # another published button or empty space past its end does not.
-                if (control is None or control.rect.top != my or mx >= control.rect.right
-                        or (pointed is not None and pointed.id != control.id)
-                        or pointer.get("published_hit_token") is None
-                        or hit_token(hits) != pointer.get("published_hit_token")):
+                if (
+                    control is None
+                    or control.rect.top != my
+                    or mx >= control.rect.right
+                    or (pointed is not None and pointed.id != control.id)
+                    or pointer.get("published_hit_token") is None
+                    or hit_token(hits) != pointer.get("published_hit_token")
+                ):
                     double_target = None
         # Actual applications distinguish a held press from a completed click.
         # Small compatibility controllers without drag state retain left-click.
         pressed = button == "press" and hasattr(app, "job_selection_state")
         click(my, mx, hits, button="press" if pressed else "left", shift=shift)
-        selected_target = (double_target is not None and
-                           (origin == "log" or getattr(app, "selected_id", None) == double_target[1]))
-        if bstate & curses.BUTTON1_DOUBLE_CLICKED and selected_target and app.tab == origin and app.mode == "main":
+        selected_target = double_target is not None and (
+            origin == "log" or getattr(app, "selected_id", None) == double_target[1]
+        )
+        if (
+            bstate & curses.BUTTON1_DOUBLE_CLICKED
+            and selected_target
+            and app.tab == origin
+            and app.mode == "main"
+        ):
             app.handle("enter")
     elif bstate & getattr(curses, "BUTTON4_PRESSED", 0):
         for _ in range(3 if app.tab == "log" else 1):
@@ -1192,10 +1557,12 @@ def _consume_input_batch(app, stdscr, curses, hits, first, *, effects=None):
     context = _navigation_context(app)
     pointer = first[0] == "mouse"
     limit = POINTER_BATCH_LIMIT if pointer else INPUT_BATCH_LIMIT
-    deadline = time.monotonic() + (POINTER_BATCH_SECONDS if pointer else INPUT_BATCH_SECONDS)
+    deadline = time.monotonic() + (
+        POINTER_BATCH_SECONDS if pointer else INPUT_BATCH_SECONDS
+    )
     count = 0
     motion = None
-    from .interaction import needs_frame
+    from .ui.interaction_state import needs_frame
 
     def apply(value):
         if effects is not None:
@@ -1215,9 +1582,14 @@ def _consume_input_batch(app, stdscr, curses, hits, first, *, effects=None):
         if batchable and is_motion(event):
             # Keep the latest position only. Drag selection and slider position
             # are functions of the endpoint, not of the number of reports.
-            if (motion is not None and getattr(event[1], "held", None) is False
-                    and (getattr(motion[1], "held", None) is True
-                         or motion[1][4] & getattr(curses, "BUTTON1_PRESSED", 0))):
+            if (
+                motion is not None
+                and getattr(event[1], "held", None) is False
+                and (
+                    getattr(motion[1], "held", None) is True
+                    or motion[1][4] & getattr(curses, "BUTTON1_PRESSED", 0)
+                )
+            ):
                 # Apply the final held endpoint before a report proving the
                 # gesture ended; cancellation must retain its selected range.
                 apply(motion)
@@ -1232,8 +1604,14 @@ def _consume_input_batch(app, stdscr, curses, hits, first, *, effects=None):
                     return event
             apply(event)
         count += 1
-        if (not batchable or app.quit or _navigation_context(app) != context or needs_frame(app) or
-                count >= limit or time.monotonic() >= deadline):
+        if (
+            not batchable
+            or app.quit
+            or _navigation_context(app) != context
+            or needs_frame(app)
+            or count >= limit
+            or time.monotonic() >= deadline
+        ):
             if motion is not None:
                 apply(motion)
             return None
@@ -1258,7 +1636,11 @@ class _InputEffects:
         name, mouse = event
         if name is None or name == "mouse" and mouse is None:
             return
-        if (isinstance(event, InputEvent) and event.origin is not None and name != "mouse") or _terminal_pointer(app, event):
+        if (
+            isinstance(event, InputEvent)
+            and event.origin is not None
+            and name != "mouse"
+        ) or _terminal_pointer(app, event):
             # PTY readiness paints only the published terminal rectangle.
             # Keystrokes and child mouse traffic do not recompute job graphs.
             return
@@ -1266,9 +1648,13 @@ class _InputEffects:
         hover = name == "mouse" and _motion_report(state, curses)
         chart = getattr(app, "chart_interaction_state", {}) or {}
         live = getattr(app, "metric_live_state", {}) or {}
-        if ((chart.get("capture") or live.get("capture") or getattr(app, "text_selection_state", {}).get("capture")
-             or getattr(app, "job_group_drag_state", {}).get("capture")
-             or getattr(app, "group_queue_drag_state", {}).get("capture")) and hover):
+        if (
+            chart.get("capture")
+            or live.get("capture")
+            or getattr(app, "text_selection_state", {}).get("capture")
+            or getattr(app, "job_group_drag_state", {}).get("capture")
+            or getattr(app, "group_queue_drag_state", {}).get("capture")
+        ) and hover:
             # Pointer feedback uses the published raster. Live slider motion
             # redraws its control immediately; its curve keeps a 10 Hz limit.
             return
@@ -1276,11 +1662,14 @@ class _InputEffects:
         selection = getattr(app, "job_selection_state", {}) or {}
         # Some terminal drivers omit the held-button bit on position reports.
         # A captured gesture must still rebuild its slider or selected rows.
-        capture = (toolbar.get("dragging") or selection.get("capture") or
-                   getattr(app, "column_resize_state", {}).get("capture") or
-                   getattr(app, "scrollbar_state", {}).get("capture") or
-                   getattr(app, "pane_drag_state", {}).get("capture") or
-                   getattr(app, "history_browser_state", {}).get("drag"))
+        capture = (
+            toolbar.get("dragging")
+            or selection.get("capture")
+            or getattr(app, "column_resize_state", {}).get("capture")
+            or getattr(app, "scrollbar_state", {}).get("capture")
+            or getattr(app, "pane_drag_state", {}).get("capture")
+            or getattr(app, "history_browser_state", {}).get("drag")
+        )
         if not hover or capture or app.mode == "terminal_probe":
             self.document = True
 
@@ -1302,7 +1691,11 @@ class _DifferentialPainter:
 
     @staticmethod
     def _raster(layer, width, *, base=None):
-        cells = list(base) if base is not None else [(" ", "text+bg:canvas", 1)] * max(0, width)
+        cells = (
+            list(base)
+            if base is not None
+            else [(" ", "text+bg:canvas", 1)] * max(0, width)
+        )
 
         def clear(x):
             head = x
@@ -1315,7 +1708,7 @@ class _DifferentialPainter:
         for left, row in layer:
             x = left
             for text, style in row:
-                for char in text:
+                for char in L.display_text(str(text)):
                     size = L.vlen(char)
                     if not size:
                         if 0 < x <= width:
@@ -1379,7 +1772,10 @@ class _DifferentialPainter:
             left = right
 
     def draw(self, rows, overlays, width, height, *, bar=None):
-        layers = [[(0, tuple(rows[y]) if y < len(rows) else ())] for y in range(max(0, height))]
+        layers = [
+            [(0, tuple(rows[y]) if y < len(rows) else ())]
+            for y in range(max(0, height))
+        ]
         for y, x, row in overlays:
             if 0 <= y < height and x < width:
                 layers[y].append((x, tuple(row)))
@@ -1399,10 +1795,15 @@ class _DifferentialPainter:
                 continue
             # Pointer overlays usually move over an unchanged report. Reuse
             # its base raster instead of re-reading every chart glyph.
-            base = (self.base_pixels[y] if not reset and layer[0] == self.previous[y][0]
-                    else self._raster(layer[:1], width))
+            base = (
+                self.base_pixels[y]
+                if not reset and layer[0] == self.previous[y][0]
+                else self._raster(layer[:1], width)
+            )
             base_pixels.append(base)
-            raster = self._raster(layer[1:], width, base=base) if len(layer) > 1 else base
+            raster = (
+                self._raster(layer[1:], width, base=base) if len(layer) > 1 else base
+            )
             pixels.append(raster)
             runs = list(self._changed_runs(None if reset else self.pixels[y], raster))
             if runs:
@@ -1418,16 +1819,25 @@ class _DifferentialPainter:
 def _toolbar_feedback_token(app):
     state = getattr(app, "toolbar_state", {}) or {}
     from .worker_ui import token as worker_token
-    from .raven_ui import token as allocation_token
-    return tuple(state.get(key) for key in ("menu", "cursor", "top", "panel", "panel_scroll", "focus")) + (
-        getattr(app, 'cfg', {}).get('clipboard', {}).get('destination', 'copy'),
-        worker_token(app), allocation_token(app))
+    from .ui.allocation import token as allocation_token
+
+    return tuple(
+        state.get(key)
+        for key in ("menu", "cursor", "top", "panel", "panel_scroll", "focus")
+    ) + (
+        getattr(app, "cfg", {}).get("clipboard", {}).get("destination", "copy"),
+        worker_token(app),
+        allocation_token(app),
+    )
 
 
 def _group_menu_feedback_token(app):
     state = getattr(app, "job_group_menu_state", {}) or {}
-    return ((state.get("token"), state.get("cursor"), state.get("top"), state.get("hover"))
-            if getattr(app, "mode", "main") == "job_group_menu" else None)
+    return (
+        (state.get("token"), state.get("cursor"), state.get("top"), state.get("hover"))
+        if getattr(app, "mode", "main") == "job_group_menu"
+        else None
+    )
 
 
 def _drain_prepaint_motion(app, stdscr, curses, hits, pending_input=None):
@@ -1444,7 +1854,13 @@ def _drain_prepaint_motion(app, stdscr, curses, hits, pending_input=None):
         return pending_input
     deliberate = 0
     for button in range(1, 6):
-        for action in ("CLICKED", "PRESSED", "RELEASED", "DOUBLE_CLICKED", "TRIPLE_CLICKED"):
+        for action in (
+            "CLICKED",
+            "PRESSED",
+            "RELEASED",
+            "DOUBLE_CLICKED",
+            "TRIPLE_CLICKED",
+        ):
             deliberate |= getattr(curses, f"BUTTON{button}_{action}", 0)
     stdscr.timeout(0)
     deadline = time.monotonic() + POINTER_BATCH_SECONDS
@@ -1456,8 +1872,13 @@ def _drain_prepaint_motion(app, stdscr, curses, hits, pending_input=None):
         if event is None:
             break
         mouse = event[1] if event[0] == "mouse" else None
-        if (mouse is None or _terminal_pointer(app, event) or not _motion_report(mouse[4], curses)
-                or mouse[4] & deliberate or getattr(mouse, "held", None) is True):
+        if (
+            mouse is None
+            or _terminal_pointer(app, event)
+            or not _motion_report(mouse[4], curses)
+            or mouse[4] & deliberate
+            or getattr(mouse, "held", None) is True
+        ):
             pending_input = event
             break
         motion = event
@@ -1470,56 +1891,124 @@ def _drain_prepaint_motion(app, stdscr, curses, hits, pending_input=None):
 
 
 def _quiet_jobs_token(app, *, publication=_UNREAD_PUBLICATION):
-    """Permit slower composition only for a known, quiescent managed Jobs view.
+    """Reuse native published documents across all standard workspace pages.
 
-    Housekeeping and feedback keep their original cadence. Unknown producers,
-    pending readers, active animations/gestures, and other pages fall back to
-    the ordinary document deadline rather than guessing at their publications.
+    Housekeeping, wall clocks and feedback keep independent deadlines. Unknown
+    producers, pending readers and gestures retain conservative composition.
     """
-    config=getattr(app,'cfg',{}).get('raven')
-    if (not isinstance(config,dict) or not config.get('managed') or
-            getattr(app,'tab',None)!='jobs' or getattr(app,'mode',None)!='main' or
-            getattr(app,'plugins',None) is not None or getattr(app,'replay',None) is not None or
-            getattr(app,'job_panel_state',{}).get('mode') not in ('inspector','off')):
+    if (
+        getattr(app, "mode", None) != "main"
+        or getattr(app, "plugins", None) is not None
+        or getattr(app, "replay", None) is not None
+        or getattr(app, "tab", None)
+        not in {
+            "jobs",
+            "history",
+            "group",
+            "deps",
+            "cluster",
+            "nodes",
+            "sources",
+            "log",
+            "analytics",
+            "research",
+        }
+    ):
         return None
     from .model import Store
-    store=getattr(app,'store',None)
-    if type(store) is not Store or store.raven_limits is None:
+
+    store = getattr(app, "store", None)
+    settings = getattr(app, "cfg", {}).get("raven", {})
+    if (
+        type(store) is not Store
+        or not isinstance(settings, dict)
+        or not settings.get("managed")
+    ):
         return None
-    from . import startup,scrolling,metric_live,pointer_routing,terminal_ui,raven_ui
-    if (startup.active(app) or getattr(getattr(app,'completion',None),'active',False) or
-            scrolling.active(app) or pointer_routing.active(app) or terminal_ui.showing(app) or
-            metric_live.document_interval(app) is not None or
-            getattr(app,'toolbar_state',{}).get('panel') or
-            getattr(app,'ops_state',{}).get('running')):
+    from .terminal import ui as terminal_ui
+    from . import startup
+    from . import scrolling
+    from . import metric_live
+    from . import pointer_routing
+    from .ui import allocation as raven_ui
+
+    if (
+        startup.active(app)
+        or getattr(getattr(app, "completion", None), "active", False)
+        or scrolling.active(app)
+        or pointer_routing.active(app)
+        or terminal_ui.showing(app)
+        or metric_live.document_interval(app) is not None
+        or getattr(app, "toolbar_state", {}).get("panel")
+        or getattr(app, "ops_state", {}).get("running")
+    ):
         return None
-    views=getattr(app,'views_ref',None)
-    if getattr(views,'_preview_pending',None) or store._series_archive.worker:
+    views = getattr(app, "views_ref", None)
+    if getattr(views, "_preview_pending", None) or store._series_archive.worker:
         return None
-    hub=getattr(app,'research',None)
-    research=None
+    panel = getattr(app, "job_panel_state", {})
+    session = panel.get("session")
+    if (
+        getattr(app, "tab", None) == "log"
+        and getattr(getattr(app, "logs", None), "path", "")
+        or getattr(app, "tab", None) in {"jobs", "history"}
+        and panel.get("mode") == "files"
+        and getattr(session, "path", "")
+    ):
+        # These sessions schedule their next bounded file read while rendering.
+        # A completed read must not make the following poll disappear.
+        return None
+    hub = getattr(app, "research", None)
+    research = None
     if hub is not None:
         from .research import ResearchHub
+
         if type(hub) is not ResearchHub:
             return None
         with hub.lock:
-            if hub.pending is not None or hub.future is not None and not hub.future.done():
+            if (
+                hub.pending is not None
+                or hub.future is not None
+                and not hub.future.done()
+            ):
                 return None
-            research=(hub.generation,id(hub.future),hub.closed)
-    activity=getattr(app,'activity',None)
+            research = (hub.generation, id(hub.future), hub.closed)
+    activity = getattr(app, "activity", None)
     if activity is not None:
         with activity.lock:
-            if activity.task and activity.task.get('status')=='running':
+            if activity.task and activity.task.get("status") == "running":
                 return None
-    published=store.ui_publication_token() if publication is _UNREAD_PUBLICATION else publication
+    published = (
+        store.ui_publication_token()
+        if publication is _UNREAD_PUBLICATION
+        else publication
+    )
     if published is None:
         return None
-    notifications = getattr(app, 'notifications', None)
-    notification_revision = notifications.snapshot().revision if notifications is not None else 0
-    return (published,getattr(app,'ui_publication_revision',0),research,
-            getattr(app,'message',''),getattr(app,'message_t',0),getattr(app,'selected_id',None),
-            getattr(app,'inbox_unread',0),getattr(app,'freeze_label',''),raven_ui.token(app),
-            notification_revision)
+    notifications = getattr(app, "notifications", None)
+    notification_revision = (
+        notifications.snapshot().revision if notifications is not None else 0
+    )
+    return (
+        published,
+        getattr(app, "ui_publication_revision", 0),
+        research,
+        getattr(app, "message", ""),
+        getattr(app, "message_t", 0),
+        getattr(app, "selected_id", None),
+        (
+            getattr(app, "tab", None),
+            getattr(app, "analytics_job", None),
+            getattr(app, "research_job_id", None),
+            getattr(app, "research_view", None),
+            getattr(app, "analytics_view", None),
+            getattr(app, "job_panel_state", {}).get("mode"),
+        ),
+        getattr(app, "inbox_unread", 0),
+        getattr(app, "freeze_label", ""),
+        raven_ui.token(app),
+        notification_revision,
+    )
 
 
 class _FrameCache:
@@ -1537,7 +2026,7 @@ class _FrameCache:
         self.bar = []
         self.geometry = None
         self.next_maintenance = self.next_animation = 0.0
-        self.next_document = float('inf')
+        self.next_document = float("inf")
         self.document_token = None
         self.next_live = float("inf")
         self.next_selector = float("inf")
@@ -1547,51 +2036,144 @@ class _FrameCache:
         self.next_preview = float("inf")
         self.toolbar_token = None
         self.group_menu_token = None
+        self.clock_changed = False
+        self.clock_slot = None
+        self.wait_slots = ()
+        self.source_clock_slots = ()
+        self.fresh_until = float("inf")
 
     def due(self, app, width, height, now=None):
         now = time.monotonic() if now is None else now
-        from .interaction import needs_frame
+        from .ui.interaction_state import needs_frame
         from . import metric_live
+
         revision_changed = metric_live.document_revision(app) != self.live_revision
         preview = revision_changed and metric_live.active(app)
         self.next_preview = self.preview_ready if preview else float("inf")
         live_changed = revision_changed and (not preview or now >= self.preview_ready)
-        return (self.dirty or live_changed or needs_frame(app) or getattr(app, "text_selection_state", {}).get("frame_required") or self.geometry != (width, height) or
-                now >= self.next_maintenance or now >= self.next_animation or now >= self.next_live or now >= self.next_document)
+        return (
+            self.dirty
+            or live_changed
+            or needs_frame(app)
+            or getattr(app, "text_selection_state", {}).get("frame_required")
+            or self.geometry != (width, height)
+            or now >= self.next_maintenance
+            or now >= self.next_animation
+            or now >= self.next_live
+            or now >= self.next_document
+        )
 
     def maintain(self, app, width, height, now=None):
-        """Run the usual housekeeping without rebuilding unchanged Jobs rows."""
-        now=time.monotonic() if now is None else now
-        if (self.dirty or self.geometry!=(width,height) or now<self.next_maintenance or
-                self.document_token is None or _quiet_jobs_token(app) is None):
+        """Refresh published workspace clocks and due housekeeping independently."""
+        now = time.monotonic() if now is None else now
+        if (
+            self.dirty
+            or self.geometry != (width, height)
+            or self.document_token is None
+        ):
             return False
-        _timed_ui(app,'maintenance',app.tick)
-        self.next_maintenance=(math.floor(now/MAINTENANCE_SECONDS)+1)*MAINTENANCE_SECONDS
-        current=_quiet_jobs_token(app)
-        if current is None or current!=self.document_token:
-            self.dirty=True
+        current = _quiet_jobs_token(app)
+        if current is None:
+            # Losing the verified publication contract (for example, a newly
+            # pending callback) resumes normal composition immediately.
+            self.dirty = True
+            return False
+        if now < self.next_maintenance and current == self.document_token:
+            if now >= self.next_document:
+                self._patch_clock(app)
+                return True
+            return False
+        _timed_ui(app, "maintenance", app.tick)
+        self.next_maintenance = (
+            math.floor(now / MAINTENANCE_SECONDS) + 1
+        ) * MAINTENANCE_SECONDS
+        current = _quiet_jobs_token(app)
+        if current is None or current != self.document_token:
+            self.dirty = True
+        elif now >= self.next_document:
+            self._patch_clock(app)
         return True
+
+    def _patch_clock(self, app):
+        """Refresh visible clock cells without sorting or preparing source rows."""
+        from . import clock
+
+        wall = clock.now()
+        if wall >= self.fresh_until:
+            self.dirty = True
+            self.fresh_until = float("inf")
+            return
+        if self.clock_slot is not None:
+            y, index, left = self.clock_slot
+            row = list(self.rows[y])
+            text, style = row[index]
+            text = (
+                text[:left]
+                + time.strftime("%H:%M:%S", time.localtime(wall))
+                + text[left + 8 :]
+            )
+            row[index] = text, style
+            self.rows[y] = row
+            self.clock_changed = True
+        from .model import compact
+
+        for y, index, submitted, width in self.wait_slots:
+            row = list(self.rows[y])
+            text, style = row[index]
+            row[index] = (
+                L.pad(L.cut("waited " + compact(wall - submitted), width), width, ">"),
+                style,
+            )
+            self.rows[y] = row
+            self.clock_changed = True
+        from .model import short_duration
+
+        for y, index, observed, width in self.source_clock_slots:
+            row = list(self.rows[y])
+            _, style = row[index]
+            label = short_duration(wall - observed) + " ago"
+            row[index] = L.pad(L.cut(label, width), width, ">"), style
+            self.rows[y] = row
+            self.clock_changed = True
+        self.next_document = time.monotonic() + max(0.001, 1 - wall % 1)
 
     def rebuild(self, app, views, store, actions, width, height, *, maintained=False):
         from . import startup, toolbar
         from .scrolling import begin_frame, finish_frame, timeout_ms
         from . import scrollbars
         from .interaction import publish
+
         if not maintained:
             _timed_ui(app, "maintenance", app.tick)
-        snap = _timed_ui(app, "snapshot", getattr(store, "render_snapshot", store.snapshot))
+        snap = _timed_ui(
+            app, "snapshot", getattr(store, "render_snapshot", store.snapshot)
+        )
         app.width = width
         begin_frame(app)
-        options = {"feedback": False} if getattr(views, "feedback_options", False) else {}
-        rows, hits = _timed_ui(app, "compose", views.compose, snap, app, width, height, actions, **options)
+        options = (
+            {"feedback": False} if getattr(views, "feedback_options", False) else {}
+        )
+        rows, hits = _timed_ui(
+            app, "compose", views.compose, snap, app, width, height, actions, **options
+        )
         welcome = startup.overlay(views, snap, app, width, height) or []
-        overlays = _timed_ui(app, "overlay", views.overlay, snap, app, width, height, **options) or []
+        overlays = (
+            _timed_ui(
+                app, "overlay", views.overlay, snap, app, width, height, **options
+            )
+            or []
+        )
         finish_frame(app)
         self.rows = getattr(app, "frame_rows", rows)
         self.hits, self.welcome = hits, welcome
-        from .job_progress import publish_animation
-        publish_animation(app, self.rows, hits,
-                          ascii_=bool(getattr(getattr(views, "g", None), "ascii", False)))
+        from raven.jobs.progress import publish_animation
+
+        publish_animation(
+            app,
+            self.rows,
+            hits,
+            ascii_=bool(getattr(getattr(views, "g", None), "ascii", False)),
+        )
         if options:
             self.content = getattr(app, "content_overlay_rows", []) or []
             self.toolbar = getattr(app, "toolbar_overlay_rows", []) or []
@@ -1601,108 +2183,258 @@ class _FrameCache:
         app.last_hits = hits
         from .chart_interaction import publish as publish_charts
         from . import metric_live
+
         publish_charts(app, width, height)
         scrollbars.publish(app, width, height, overlays=welcome + overlays)
         from .text_selection import publish as publish_text
+
         publish_text(app, self.rows, width, height, overlays=welcome + overlays)
         from .column_resize import descriptors as column_descriptors
-        _timed_ui(app, "publish_controls", publish, app, self.rows, hits, width, height, overlays=welcome + overlays,
-                  extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app) + tuple(column_descriptors(app)))
+
+        _timed_ui(
+            app,
+            "publish_controls",
+            publish,
+            app,
+            self.rows,
+            hits,
+            width,
+            height,
+            overlays=welcome + overlays,
+            extra_controls=metric_live.descriptors(app)
+            + scrollbars.descriptors(app)
+            + tuple(column_descriptors(app)),
+        )
         self.snapshot, self.geometry = snap, (width, height)
+        self.clock_slot = None
+        label = time.strftime("%H:%M:%S", time.localtime(clock.now()))
+        if len(self.rows) > 1:
+            for index, (text, _) in enumerate(self.rows[1]):
+                if text.startswith(" Raven ") and (left := text.rfind(label)) >= 0:
+                    self.clock_slot = 1, index, left
+                    break
+        from .model import stamp
+
+        pending = {
+            job.id: stamp(job.submit)
+            for job in snap.get("jobs", ())
+            if job.pending and job.submit
+        }
+        slots = []
+        for y, kind, key in hits:
+            if (
+                kind != "job"
+                or key not in pending
+                or pending[key] is None
+                or not 0 <= y < len(self.rows)
+            ):
+                continue
+            for index, (text, _) in enumerate(self.rows[y]):
+                if text.strip().startswith("waited "):
+                    slots.append((y, index, pending[key], L.vlen(text)))
+        self.wait_slots = tuple(slots)
+        from .model import short_duration
+
+        source_slots = []
+        for y, kind, key in hits:
+            health = (
+                snap.get("health", {}).get(key)
+                if kind == "source" and isinstance(key, str)
+                else None
+            )
+            if health is None or not health.last_ok or not 0 <= y < len(self.rows):
+                continue
+            label = short_duration(clock.now() - health.last_ok) + " ago"
+            for index, (text, _) in enumerate(self.rows[y]):
+                if text.strip() == label:
+                    source_slots.append((y, index, health.last_ok, L.vlen(text)))
+                    break
+        self.source_clock_slots = tuple(source_slots)
+        from .refresh_rate import cadence
+
+        observed = snap.get("t_jobs")
+        threshold = (
+            observed + 3 * cadence(app, "jobs") + 2 if observed else float("inf")
+        )
+        self.fresh_until = threshold if threshold > clock.now() else float("inf")
+        self._patch_clock(app)
         self.toolbar_token = _toolbar_feedback_token(app)
         self.group_menu_token = _group_menu_feedback_token(app)
         now = time.monotonic()
-        self.next_maintenance = now + MAINTENANCE_SECONDS
-        self.document_token=_quiet_jobs_token(app,publication=snap.get('_ui_publication_token'))
+        self.document_token = _quiet_jobs_token(
+            app, publication=snap.get("_ui_publication_token")
+        )
         if self.document_token is not None:
-            self.next_maintenance = (math.floor(now / MAINTENANCE_SECONDS) + 1) * MAINTENANCE_SECONDS
+            self.next_maintenance = (
+                math.floor(now / MAINTENANCE_SECONDS) + 1
+            ) * MAINTENANCE_SECONDS
+        else:
+            # Mutable/foreign fixtures, active readers and unknown producers
+            # retain the historical responsive housekeeping contract.
+            self.next_maintenance = now + FALLBACK_MAINTENANCE_SECONDS
         # Visible elapsed/clock labels use whole seconds. Keep their refresh
         # boundary even when no source or asynchronous callback publishes.
-        from . import clock
-        self.next_document=(now+max(.001,min(QUIET_DOCUMENT_SECONDS,1.0-clock.now()%1.0))
-                            if self.document_token is not None else float('inf'))
+        self.next_document = (
+            now + max(0.001, min(QUIET_DOCUMENT_SECONDS, 1.0 - clock.now() % 1.0))
+            if self.document_token is not None
+            else float("inf")
+        )
         idle = 100 if app.animations_enabled and app.completion.active else 200
         if startup.active(app):
             idle = min(idle, int(startup.FRAME_INTERVAL * 1000))
         interval = timeout_ms(app, idle)
         self.next_animation = now + interval / 1000 if interval < 200 else float("inf")
         live_interval = metric_live.document_interval(app)
-        self.next_live = now + live_interval if live_interval is not None else float("inf")
+        self.next_live = (
+            now + live_interval if live_interval is not None else float("inf")
+        )
         self.live_revision = metric_live.document_revision(app)
         # Slider feedback follows every input, while expensive graph previews
         # use the latest accepted value at most twenty times per second.
         # Release commits immediately through the ordinary revision path.
-        self.preview_ready = now + .05
+        self.preview_ready = now + 0.05
         self.next_preview = float("inf")
         self.dirty = False
 
     def feedback(self, app, views):
         from .interaction import publish, decorate, decorate_overlays
         from . import toolbar
+
         width, height = self.geometry
-        from . import job_group_menu
+        from raven.jobs import group_menu as job_group_menu
+
         group_menu_token = _group_menu_feedback_token(app)
         if job_group_menu.active(app) and group_menu_token != self.group_menu_token:
             # Menu hover changes only a bounded cached action list, never the
             # underlying job tables, source snapshot, or graph rasters.
-            self.content = job_group_menu.overlay(views, self.snapshot, app, width, height) or []
+            self.content = (
+                job_group_menu.overlay(views, self.snapshot, app, width, height) or []
+            )
             from . import scrollbars, metric_live
-            scrollbars.publish(app, width, height, overlays=self.welcome + self.content + self.toolbar)
+
+            scrollbars.publish(
+                app, width, height, overlays=self.welcome + self.content + self.toolbar
+            )
             from .column_resize import descriptors as column_descriptors
-            publish(app, self.rows, self.hits, width, height,
-                    overlays=self.welcome + self.content + self.toolbar,
-                    extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app) + tuple(column_descriptors(app)))
+
+            publish(
+                app,
+                self.rows,
+                self.hits,
+                width,
+                height,
+                overlays=self.welcome + self.content + self.toolbar,
+                extra_controls=metric_live.descriptors(app)
+                + scrollbars.descriptors(app)
+                + tuple(column_descriptors(app)),
+            )
             self.group_menu_token = _group_menu_feedback_token(app)
         token = _toolbar_feedback_token(app)
         if token != self.toolbar_token:
             # A menu cursor, switch, or pointer dismissal only changes this
             # overlay. The underlying chart/report remains the same document.
-            self.toolbar = toolbar.overlay(views, self.snapshot, app, width, height) or []
+            self.toolbar = (
+                toolbar.overlay(views, self.snapshot, app, width, height) or []
+            )
             self.bar = toolbar.render_bar(views, app, width) if height > 0 else []
             from .chart_interaction import publish as publish_charts
             from . import metric_live
             from . import scrollbars
+
             publish_charts(app, width, height)
-            scrollbars.publish(app, width, height, overlays=self.welcome + self.content + self.toolbar)
+            scrollbars.publish(
+                app, width, height, overlays=self.welcome + self.content + self.toolbar
+            )
             from .text_selection import publish as publish_text
-            publish_text(app, self.rows, width, height, overlays=self.welcome + self.content + self.toolbar)
+
+            publish_text(
+                app,
+                self.rows,
+                width,
+                height,
+                overlays=self.welcome + self.content + self.toolbar,
+            )
             from .column_resize import descriptors as column_descriptors
-            publish(app, self.rows, self.hits, width, height,
-                    overlays=self.welcome + self.content + self.toolbar,
-                    extra_controls=metric_live.descriptors(app) + scrollbars.descriptors(app) + tuple(column_descriptors(app)))
+
+            publish(
+                app,
+                self.rows,
+                self.hits,
+                width,
+                height,
+                overlays=self.welcome + self.content + self.toolbar,
+                extra_controls=metric_live.descriptors(app)
+                + scrollbars.descriptors(app)
+                + tuple(column_descriptors(app)),
+            )
             self.toolbar_token = _toolbar_feedback_token(app)
         rows = decorate(app, self.rows)
-        from .job_progress import animate_rows
+        from raven.jobs.progress import animate_rows
+
         rows = animate_rows(app, rows)
-        from .job_progress import next_animation_deadline
+        from raven.jobs.progress import next_animation_deadline
+
         self.next_feedback = next_animation_deadline(app)
-        from .terminal_ui import feedback as terminal_feedback
+        from .terminal.ui import feedback as terminal_feedback
+
         rows = terminal_feedback(app, rows)
-        from .job_group_drag import feedback as group_drag_feedback
+        from raven.jobs.group_drag import feedback as group_drag_feedback
+
         rows = group_drag_feedback(app, rows)
         from .group_queue_drag import feedback as queue_drag_feedback
+
         rows = queue_drag_feedback(app, rows)
         overlays = self.welcome + decorate_overlays(app, self.content + self.toolbar)
         from .chart_interaction import feedback as chart_feedback
-        overlays += chart_feedback(app, ascii_=bool(getattr(getattr(views, "g", None), "ascii", False)),
-                                   rows=rows, overlays=overlays, compact=True)
+
+        overlays += chart_feedback(
+            app,
+            ascii_=bool(getattr(getattr(views, "g", None), "ascii", False)),
+            rows=rows,
+            overlays=overlays,
+            compact=True,
+        )
         from .chart_interaction import next_deadline
+
         self.next_selector = next_deadline(app)
         from .metric_live import feedback as live_feedback
-        glyphs = getattr(views, "g", None) or L.Glyphs(bool(getattr(app, "ascii", False)))
+
+        glyphs = getattr(views, "g", None) or L.Glyphs(
+            bool(getattr(app, "ascii", False))
+        )
         overlays += live_feedback(app, glyphs)
         from .scrollbars import feedback as scrollbar_feedback
+
         overlays += scrollbar_feedback(app, ascii_=glyphs.ascii)
         from .text_selection import feedback as text_feedback
+
         overlays += text_feedback(app, ascii_=glyphs.ascii)
         bar = decorate(app, [self.bar])[0] if height > 0 else None
         return rows, overlays, bar
 
     def wait_ms(self, now=None):
         now = time.monotonic() if now is None else now
-        return max(1, min(200, round(1000 * (min(self.next_maintenance, self.next_animation,
-                                              self.next_live, self.next_selector, self.next_feedback,
-                                              self.next_preview, self.next_document) - now))))
+        return max(
+            1,
+            min(
+                1000,
+                round(
+                    1000
+                    * (
+                        min(
+                            self.next_maintenance,
+                            self.next_animation,
+                            self.next_live,
+                            self.next_selector,
+                            self.next_feedback,
+                            self.next_preview,
+                            self.next_document,
+                        )
+                        - now
+                    )
+                ),
+            ),
+        )
 
 
 def _mouse_reporting(enabled):
@@ -1716,8 +2448,14 @@ def _mouse_reporting(enabled):
     if not sys.stdout.isatty():
         return
     formats_off = "\033[?1005l\033[?1015l\033[?1016l"
-    sys.stdout.write(formats_off + ("\033[?1002h\033[?1003h\033[?1006h" if enabled else
-                                  "\033[?1003l\033[?1002l\033[?1000l\033[?1006l"))
+    sys.stdout.write(
+        formats_off
+        + (
+            "\033[?1002h\033[?1003h\033[?1006h"
+            if enabled
+            else "\033[?1003l\033[?1002l\033[?1000l\033[?1006l"
+        )
+    )
     sys.stdout.flush()
 
 
@@ -1730,9 +2468,10 @@ def _wait_for_input(app, stdscr, curses, cache, waiter):
         seconds = cache.wait_ms() / 1000
         if reader is not None:
             seconds = min(seconds, max(0, reader.deadline() - time.monotonic()))
-        from .terminal_ui import showing
+        from .terminal.ui import showing
+
         if showing(app):
-            seconds = min(seconds, .016)
+            seconds = min(seconds, 0.016)
         stdscr.timeout(max(1, round(seconds * 1000)))
         return _read_input(stdscr, curses)
     stdscr.timeout(0)
@@ -1764,23 +2503,27 @@ def _wait_for_input(app, stdscr, curses, cache, waiter):
 def run_curses(app, views, sampler, store, actions, cfg):
     import curses
     import locale
+
     scheduler = getattr(sampler, "worker_scheduler", None)
     if scheduler is not None:
         scheduler.ui_trace = getattr(app, "ui_trace", None)
     locale.setlocale(locale.LC_ALL, "")
-    from .terminal_sync import TerminalSync
+    from .terminal.sync import TerminalSync
+
     synchronized = TerminalSync(sys.stdout, cfg.get("synchronized_output", "auto"))
     if app is not None:
         app.terminal_sync = synchronized
     raster = None
     if cfg.get("terminal_raster", "off") != "off":
-        from .terminal_raster import TerminalRaster
+        from .terminal.raster import TerminalRaster
+
         raster = TerminalRaster(sys.stdout, cfg.get("terminal_raster"))
         if not raster.enabled and hasattr(app, "say"):
             app.say("Raster plots: " + raster.status + "; using text")
     if app is not None:
         app.terminal_raster = raster
     from .ui_wakeup import UIWakeup, UIWaiter
+
     try:
         wakeup = UIWakeup()
     except OSError:
@@ -1814,7 +2557,11 @@ def run_curses(app, views, sampler, store, actions, cfg):
             curses.set_escdelay(25)
         mouse_enabled = cfg.get("mouse", True) or app.mode == "terminal_probe"
         try:
-            curses.mousemask((curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION) if mouse_enabled else 0)
+            curses.mousemask(
+                (curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+                if mouse_enabled
+                else 0
+            )
             curses.mouseinterval(0)
         except curses.error:
             pass
@@ -1824,13 +2571,23 @@ def run_curses(app, views, sampler, store, actions, cfg):
         painted_theme = app.theme
 
         def paint(y, x0, segs, width, height):
+            from .job_logs.text import display_text
+
             x = x0
             for text, style in segs:
                 if x >= width or y >= height:
                     break
-                text = L.cut(text, width - x, True) if L.vlen(text) > width - x else text
+                text = display_text(str(text))
+                text = (
+                    L.cut(text, width - x, True) if L.vlen(text) > width - x else text
+                )
                 try:
-                    stdscr.addstr(y, x, text, palette.attr(P.cell_style(style, app.theme), app.theme))
+                    stdscr.addstr(
+                        y,
+                        x,
+                        text,
+                        palette.attr(P.cell_style(style, app.theme), app.theme),
+                    )
                 except curses.error:
                     pass
                 x += L.vlen(text)
@@ -1843,13 +2600,27 @@ def run_curses(app, views, sampler, store, actions, cfg):
         painter = _DifferentialPainter(stdscr, paint)
         app.views_ref = views
         from . import startup
-        from .ops_ui import defer_quit as defer_operation_quit
+        from .ui.operations import defer_quit as defer_operation_quit
+
         startup.begin(app)
-        from . import terminal_ui, raven_ui, raven_diagnostics
+        from .terminal import ui as terminal_ui
+        from raven.collection import diagnostics as raven_diagnostics
+        from .ui import allocation as raven_ui
+
         _bind_input(stdscr, app)
         _INPUT_READERS[id(stdscr)].control_response = synchronized.receive
+        waiter.bind_resize()
         synchronized.start()
         while not app.quit or defer_operation_quit(app):
+            if waiter.resized:
+                waiter.resized = False
+                try:
+                    size = os.get_terminal_size(sys.stdin.fileno())
+                    curses.resizeterm(size.lines, size.columns)
+                except (OSError, ValueError, AttributeError, curses.error):
+                    pass
+                cache.dirty = True
+                painter.invalidate()
             terminal_changed = terminal_ui.tick(app)
             diagnostics_changed = raven_diagnostics.tick(app)
             if (raven_ui.tick(app) or diagnostics_changed) and app.mode == "raven":
@@ -1870,18 +2641,41 @@ def run_curses(app, views, sampler, store, actions, cfg):
             current_mouse = cfg.get("mouse", True) or app.mode == "terminal_probe"
             if current_mouse != mouse_enabled:
                 try:
-                    curses.mousemask((curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION) if current_mouse else 0)
+                    curses.mousemask(
+                        (curses.ALL_MOUSE_EVENTS | curses.REPORT_MOUSE_POSITION)
+                        if current_mouse
+                        else 0
+                    )
                 except curses.error:
                     pass
                 mouse_enabled = current_mouse
                 _mouse_reporting(mouse_enabled)
             height, width = stdscr.getmaxyx()
-            maintained=cache.maintain(app,width,height)
+            maintained = cache.maintain(app, width, height)
             document_due = cache.due(app, width, height)
             if document_due:
-                _timed_ui(app, "document", cache.rebuild, app, views, store, actions, width, height,maintained=maintained)
-                pending_input = _timed_ui(app, "prepaint_input", _drain_prepaint_motion,
-                                         app, stdscr, curses, cache.hits, pending_input)
+                _timed_ui(
+                    app,
+                    "document",
+                    cache.rebuild,
+                    app,
+                    views,
+                    store,
+                    actions,
+                    width,
+                    height,
+                    maintained=maintained,
+                )
+                pending_input = _timed_ui(
+                    app,
+                    "prepaint_input",
+                    _drain_prepaint_motion,
+                    app,
+                    stdscr,
+                    curses,
+                    cache.hits,
+                    pending_input,
+                )
             if _operation_terminal(app, stdscr, curses, mouse_enabled):
                 pending_input = None
                 painter.invalidate()
@@ -1892,27 +2686,51 @@ def run_curses(app, views, sampler, store, actions, cfg):
             if reader:
                 reader.protect_escape = _protect_pointer_escape(app)
             if not waiter.available:
-                stdscr.timeout(min(cache.wait_ms(), 16) if terminal_ui.showing(app) else cache.wait_ms())
+                stdscr.timeout(
+                    min(cache.wait_ms(), 16)
+                    if terminal_ui.showing(app)
+                    else cache.wait_ms()
+                )
             # Quiet maintenance still runs on time. When its publication token
             # is unchanged, no feedback, geometry or terminal bytes need work
             # until the next visible animation boundary or actual input.
-            repaint = (paint_requested or document_due or terminal_changed or cache.document_token is None
-                       or getattr(app, "_readiness_repaint", False)
-                       or time.monotonic() >= min(cache.next_feedback, cache.next_selector))
+            repaint = (
+                paint_requested
+                or document_due
+                or terminal_changed
+                or cache.clock_changed
+                or cache.document_token is None
+                or getattr(app, "_readiness_repaint", False)
+                or time.monotonic() >= min(cache.next_feedback, cache.next_selector)
+            )
             app._readiness_repaint = False
+            cache.clock_changed = False
             if repaint:
-                rows, overlays, bar = _timed_ui(app, "feedback", cache.feedback, app, views)
+                rows, overlays, bar = _timed_ui(
+                    app, "feedback", cache.feedback, app, views
+                )
                 text_rows = rows
                 if raster is not None:
                     rows = raster.prepare(app, rows, overlays, width, height)
-                changed_rows = _timed_ui(app, "paint", painter.draw, rows, overlays, width, height, bar=bar)
+                changed_rows = _timed_ui(
+                    app, "paint", painter.draw, rows, overlays, width, height, bar=bar
+                )
                 paint_requested = False
-            started = sum(1 for e in snap["events"] if e.get("kind") == "started" and not e.get("old"))
+            started = snap.get(
+                "started_seq",
+                sum(
+                    1
+                    for e in snap["events"]
+                    if e.get("kind") == "started" and not e.get("old")
+                ),
+            )
             if app.bell and started > rung:
                 curses.beep()
             rung = started
             if repaint:
-                with synchronized.frame(changed=bool(changed_rows) or bool(raster and raster.changed)):
+                with synchronized.frame(
+                    changed=bool(changed_rows) or bool(raster and raster.changed)
+                ):
                     if raster is not None:
                         raster.before_flush()
                     stdscr.noutrefresh()
@@ -1923,8 +2741,20 @@ def run_curses(app, views, sampler, store, actions, cfg):
                         stdscr.noutrefresh()
                         _timed_ui(app, "terminal_flush", curses.doupdate)
             try:
-                event = pending_input if pending_input is not None else _timed_ui(
-                    app, "input_wait", _wait_for_input, app, stdscr, curses, cache, waiter)
+                event = (
+                    pending_input
+                    if pending_input is not None
+                    else _timed_ui(
+                        app,
+                        "input_wait",
+                        _wait_for_input,
+                        app,
+                        stdscr,
+                        curses,
+                        cache,
+                        waiter,
+                    )
+                )
             except KeyboardInterrupt:
                 if terminal_ui.focused(app):
                     terminal_ui.handle_key(app, "ctrl-c")
@@ -1935,29 +2765,34 @@ def run_curses(app, views, sampler, store, actions, cfg):
                 continue
             effects = _InputEffects()
             before = (app.mode, app.tab, getattr(app, "selected_id", None))
-            pending_input = _timed_ui(app, "input_batch", _consume_input_batch,
-                                      app, stdscr, curses, hits, event, effects=effects)
+            pending_input = _timed_ui(
+                app,
+                "input_batch",
+                _consume_input_batch,
+                app,
+                stdscr,
+                curses,
+                hits,
+                event,
+                effects=effects,
+            )
             paint_requested = True
-            cache.dirty = (effects.document or pending_input is not None
-                           or before != (app.mode, app.tab, getattr(app, "selected_id", None))
-                           or not getattr(views, "feedback_options", False))
+            cache.dirty = (
+                effects.document
+                or pending_input is not None
+                or before != (app.mode, app.tab, getattr(app, "selected_id", None))
+                or not getattr(views, "feedback_options", False)
+            )
             if getattr(app, "want_less", False):
                 app.want_less = False
                 files = views.files
-                path = views.pager_path(store.snapshot(), app)
+                path = views.pager_path(store.render_snapshot(), app)
                 if path and files.exists(path):
-                    if raster is not None:
-                        raster.close()
-                    curses.endwin()
-                    _mouse_reporting(False)
-                    try:
-                        subprocess.call(files.less_argv(path))
-                    finally:
-                        _mouse_reporting(mouse_enabled)
-                        stdscr.touchwin()
-                        stdscr.refresh()
-                        painter.invalidate()
-                        cache.dirty = True
+                    _terminal_handoff(
+                        app, stdscr, curses, mouse_enabled, files.less_argv(path)
+                    )
+                    painter.invalidate()
+                    cache.dirty = True
                 else:
                     app.say("no stdout file yet for this job")
 
@@ -1988,12 +2823,8 @@ def run_curses(app, views, sampler, store, actions, cfg):
             sys.stdout.flush()
 
 
-def _operation_terminal(app, stdscr, curses, mouse_enabled):
-    """Hand an explicitly reviewed allocation to the terminal, then restore it."""
-    from . import ops_ui
-    argv = ops_ui.take_terminal(app)
-    if argv is None:
-        return False
+def _terminal_handoff(app, stdscr, curses, mouse_enabled, argv):
+    """Return the terminal to a child without losing Raven's input ownership."""
     raster = getattr(app, "terminal_raster", None)
     if raster is not None:
         raster.close()
@@ -2003,30 +2834,67 @@ def _operation_terminal(app, stdscr, curses, mouse_enabled):
     if bracketed:
         sys.stdout.write("\033[?2004l")
         sys.stdout.flush()
+    handlers = {}
     try:
-        result = subprocess.call(argv)
-        app.say("Allocation terminal closed" + (f" (exit {result})." if result else "."))
-    except (OSError, KeyboardInterrupt) as exc:
-        app.fail("Allocation terminal: " + str(exc))
+        # A Python callable handler resets to SIG_DFL across exec, while
+        # SIG_IGN would be inherited by less/the allocation shell.
+        for signum in (signal.SIGINT, signal.SIGQUIT):
+            handlers[signum] = signal.signal(signum, lambda *_: None)
+        return subprocess.call(argv)
+    except KeyboardInterrupt:
+        return 130
     finally:
         # Shell input must never become Raven shortcuts after returning.
+        for signum, handler in handlers.items():
+            signal.signal(signum, handler)
         _INPUT_READERS.pop(id(stdscr), None)
         try:
             curses.flushinp()
         except curses.error:
             pass
+        reader = _bind_input(stdscr, app)
+        synchronizer = getattr(app, "terminal_sync", None)
+        if synchronizer is not None:
+            reader.control_response = synchronizer.receive
         _mouse_reporting(mouse_enabled)
         if bracketed:
             sys.stdout.write("\033[?2004h")
             sys.stdout.flush()
         stdscr.touchwin()
         stdscr.refresh()
+
+
+def _operation_terminal(app, stdscr, curses, mouse_enabled):
+    """Hand an explicitly reviewed allocation to the terminal, then restore it."""
+    from .ui import operations as ops_ui
+
+    argv = ops_ui.take_terminal(app)
+    if argv is None:
+        return False
+    try:
+        result = _terminal_handoff(app, stdscr, curses, mouse_enabled, argv)
+        app.say(
+            "Allocation terminal closed" + (f" (exit {result})." if result else ".")
+        )
+    except OSError as exc:
+        app.fail("Allocation terminal: " + str(exc))
     return True
 
 
-def run_watch(app, views, sampler, store, actions, cfg, interval: float, color: bool, width_hint: int = 120):
+def run_watch(
+    app,
+    views,
+    sampler,
+    store,
+    actions,
+    cfg,
+    interval: float,
+    color: bool,
+    width_hint: int = 120,
+):
     """The non-interactive animated screen (Ctrl-C exits)."""
     import shutil
+
     interactive = sys.stdout.isatty() and os.environ.get("TERM", "").lower() != "dumb"
     if interactive:
         sys.stdout.write("\033[?25l\033[2J")
@@ -2039,14 +2907,30 @@ def run_watch(app, views, sampler, store, actions, cfg, interval: float, color: 
             width, height = max(1, size.columns), max(1, size.lines)
             app.width = width
             app.tick()
-            snap = store.snapshot()
-            rows, _ = views.compose(snap, app, width, height if interactive else None, actions)
+            snap = getattr(store, "render_snapshot", store.snapshot)()
+            rows, _ = views.compose(
+                snap, app, width, height if interactive else None, actions
+            )
             if interactive and len(rows) == height:
-                rows[-1] = L.clip_row([(" Ctrl-C exit", "bold"), (f"  |  watch every {interval:g}s", "dim")], width)
-            started = sum(1 for e in snap["events"] if e.get("kind") == "started" and not e.get("old"))
+                rows[-1] = L.clip_row(
+                    [
+                        (" Ctrl-C exit", "bold"),
+                        (f"  |  watch every {interval:g}s", "dim"),
+                    ],
+                    width,
+                )
+            started = snap.get("started_seq")
+            if started is None:
+                started = sum(
+                    1
+                    for e in snap["events"]
+                    if e.get("kind") == "started" and not e.get("old")
+                )
             bell = "\a" if app.bell and started > rung else ""
             rung = started
-            frame = L.to_text(rows, width, color, theme=app.theme, canvas=True).split("\n")
+            frame = L.to_text(rows, width, color, theme=app.theme, canvas=True).split(
+                "\n"
+            )
             if interactive:
                 if previous_size is not None and previous_size != (width, height):
                     sys.stdout.write("\033[2J")
@@ -2071,18 +2955,27 @@ def run_watch(app, views, sampler, store, actions, cfg, interval: float, color: 
         sys.stdout.flush()
 
 
-def once_text(app, views, store, actions, width: int, color: bool, tab: Optional[str] = None) -> str:
+def once_text(
+    app, views, store, actions, width: int, color: bool, tab: Optional[str] = None
+) -> str:
     if tab:
         app.tab = tab
     app.width = width
     app.tick()
-    snap = store.snapshot()
+    snap = getattr(store, "render_snapshot", store.snapshot)()
     rows, _ = views.compose(snap, app, width, None, actions)
     from .notification_ui import text_rows as notification_rows
-    rows = rows + notification_rows(app, width, getattr(getattr(views, 'g', None), 'ascii', False))
+
+    rows = rows + notification_rows(
+        app, width, getattr(getattr(views, "g", None), "ascii", False)
+    )
     return L.to_text(rows, width, color, theme=app.theme, canvas=True)
 
 
 def once_json(store) -> str:
     snap = store.snapshot()
-    return json.dumps(to_plain({k: v for k, v in snap.items() if k not in ("hist_cpu", "hist_gpu")}), indent=1, default=str)
+    return json.dumps(
+        to_plain({k: v for k, v in snap.items() if k not in ("hist_cpu", "hist_gpu")}),
+        indent=1,
+        default=str,
+    )

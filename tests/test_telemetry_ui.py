@@ -1,5 +1,6 @@
 """Telemetry inspection cannot freeze, misattribute jobs, or click through."""
 from dataclasses import replace
+from concurrent.futures import Future
 from types import SimpleNamespace
 import threading
 import time
@@ -58,6 +59,17 @@ def app(tmp_path):
     cfg = Config({"animations": False, "log_lines": 0})
     value = App(store, None, Actions(Slurm(backend, "tester"), store), cfg, "tester", interactive=True)
     value.research = Hub()
+    # Selection assertions consume the same immutable-copy port as production;
+    # complete its test lane immediately instead of depending on thread timing.
+    def submit_copy(function, *args, **kwargs):
+        future = Future()
+        try:
+            future.set_result(function(*args, **kwargs))
+        except Exception as exc:
+            future.set_exception(exc)
+        return future
+    lane = SimpleNamespace(closed=False, submit=submit_copy)
+    value.background_worker_scheduler = lambda: SimpleNamespace(lane=lambda name: lane)
     value.selected_id = "17"
     value.visible_ids = ["17", "18"]
     value.state_dir = str(tmp_path)
@@ -298,7 +310,7 @@ def test_arrow_and_page_navigation_remain_bounded(app):
     for _ in range(100):
         U.handle_key(app, "down")
     assert state["cursor"] == len(state["lines"]) - 1
-    rows = render(app, width=45, height=12)
+    render(app, width=45, height=12)
     assert state["top"] > 0
     U.handle_key(app, "home")
     render(app, width=45, height=12)
@@ -310,7 +322,7 @@ def test_arrow_and_page_navigation_remain_bounded(app):
 
 
 def test_tab_arrows_enter_activate_only_chosen_button(app):
-    state = complete(app)
+    complete(app)
     U.handle_key(app, "tab")
     U.handle_key(app, "right")
     U.handle_key(app, "right")
@@ -339,7 +351,7 @@ def test_clicking_evidence_restores_content_keys_after_button_traversal(app, mon
 
 @pytest.mark.parametrize("button", ["left", "press", "motion", "drag", "release", "right", "double", "wheel-up", "wheel-down"])
 def test_controller_modal_owns_pointer_and_prevents_tab_job_graph_clickthrough(app, button):
-    state = complete(app)
+    complete(app)
     rows = render(app)
     app.tab_hits = [(2, 0, 100, "research")]
     app.marks = {"17"}

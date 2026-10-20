@@ -10,7 +10,7 @@ import threading
 import time
 
 from . import layout as L
-from .research import clean
+from .research_text import clean
 
 
 class Activity:
@@ -149,7 +149,7 @@ def _selected_export(app, entries):
 
 def _preview_export(app, item):
     from .research import ResearchHub
-    from .log_text import display_text
+    from .job_logs.text import display_text
     activity = app.activity
     if app.research is None:
         app.research = ResearchHub(app.cfg, app.logs.files)
@@ -275,7 +275,7 @@ def run_command(app, args):
 
 def _copy_path(app, value):
     from . import clipboard
-    app.say(clipboard.copy(value, app.state_dir, **clipboard.options(app)))
+    app.say(clipboard.copy_for_app(app, value, app.state_dir, **clipboard.options(app)))
 
 
 def handle_key(app, key):
@@ -358,7 +358,7 @@ def handle_key(app, key):
         if notices:
             from . import clipboard
             notice = notices[min(app.activity.cursor, len(notices) - 1)]
-            app.say(clipboard.copy(notice["path"] or notice["text"], app.state_dir,
+            app.say(clipboard.copy_for_app(app, notice["path"] or notice["text"], app.state_dir,
                                    **clipboard.options(app)))
     return True
 

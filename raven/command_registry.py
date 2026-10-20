@@ -7,6 +7,7 @@ palette/help consumers through this boundary.
 """
 from __future__ import annotations
 
+from .ui.catalog import SORTS, TABS
 from dataclasses import dataclass, replace
 from types import MappingProxyType
 
@@ -25,6 +26,7 @@ class Command:
     review: str = "handler"
     core: bool = False
     handler: str = ""
+    routes: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -47,42 +49,42 @@ class Task:
 
 
 COMMANDS = (
-    Command('cancel', 'Cancel the selected, marked, or explicit jobs (review required)', usage='cancel [ids | marked | all]', job_ids=True, review='required', core=True),
-    Command('hold', 'Hold pending jobs after reviewing targets', usage='hold [ids | marked]', job_ids=True, review='required', core=True),
-    Command('release', 'Release held jobs after review', usage='release [ids | marked]', job_ids=True, review='required', core=True),
-    Command('requeue', 'Requeue jobs after reviewing targets', usage='requeue [ids | marked]', job_ids=True, review='required', core=True),
-    Command('top', 'Prioritize your pending jobs', usage='top [ids | marked]', job_ids=True, review='required', core=True),
-    Command('filter', 'Filter the current table or log file browser', usage='filter <text>', example='filter training', raw_tail=True, core=True),
-    Command('sort', "Choose a table's sort key", usage='sort COLUMN', core=True),
-    Command('days', 'Set the accounting and analytics window', usage='days DAYS', example='days 7', core=True),
-    Command('tab', 'Open a main page', usage='tab PAGE', example='tab history', core=True),
-    Command('view', "Choose the current page's workspace", usage='view <job|history|timeline|advisor|compare>', core=True),
+    Command('cancel', 'Cancel the selected, marked, or explicit jobs (review required)', usage='cancel [ids | marked | all]', job_ids=True, review='required', core=True, handler='app._command_cancel'),
+    Command('hold', 'Hold pending jobs after reviewing targets', usage='hold [ids | marked]', job_ids=True, review='required', core=True, handler='app._command_cancel'),
+    Command('release', 'Release held jobs after review', usage='release [ids | marked]', job_ids=True, review='required', core=True, handler='app._command_cancel'),
+    Command('requeue', 'Requeue jobs after reviewing targets', usage='requeue [ids | marked]', job_ids=True, review='required', core=True, handler='app._command_cancel'),
+    Command('top', 'Prioritize your pending jobs', usage='top [ids | marked]', job_ids=True, review='required', core=True, handler='app._command_cancel'),
+    Command('filter', 'Filter the current table or log file browser', usage='filter <text>', example='filter training', raw_tail=True, core=True, handler='app._command_filter'),
+    Command('sort', "Choose a table's sort key", usage='sort COLUMN', core=True, handler='app._command_sort'),
+    Command('days', 'Set the accounting and analytics window', usage='days DAYS', example='days 7', core=True, handler='app._command_days'),
+    Command('tab', 'Open a main page', usage='tab PAGE', example='tab history', core=True, handler='app._command_tab'),
+    Command('view', "Choose the current page's workspace", usage='view <job|history|timeline|advisor|compare>', core=True, handler='app._command_view'),
     Command('export', 'Export a table or report', usage='export <text|csv|json|report>', paths=True, core=True, handler='export'),
-    Command('copy', 'Copy selected raw log lines or the entire file', usage='copy [all|a b] (log lines or screen rows, 1-based)', example='copy all', core=True),
-    Command('gpu', 'Enable or disable GPU sampling', usage='gpu <on|off>', core=True),
-    Command('bell', 'Enable or disable notification sounds', usage='bell <on|off>', core=True),
-    Command('source', 'Enable or disable a named scheduler source', usage='source <name> <on|off>', core=True),
-    Command('theme', 'Choose terminal colors and contrast', usage='theme THEME', example='theme reader', core=True),
-    Command('refresh', 'Refresh scheduler and project sources', usage='refresh', core=True),
-    Command('mark', 'Mark explicit jobs or all visible jobs', usage='mark <ids | all>', core=True),
-    Command('unmark', 'Clear explicit or all job marks', usage='unmark [ids]', core=True),
-    Command('log', "Open a job's logs", usage='log <id>', example='log JOBID', job_ids=True, core=True),
-    Command('find', 'Search log content with a regular expression', usage='find <text>  (regular expression; N / P next / previous match)', example='find ERROR', raw_tail=True, core=True),
-    Command('profile', 'Switch a cluster configuration profile', usage='profile NAME', core=True),
+    Command('copy', 'Copy selected raw log lines or the entire file', usage='copy [all|a b] (log lines or screen rows, 1-based)', example='copy all', core=True, handler='app._command_copy'),
+    Command('gpu', 'Enable or disable GPU sampling', usage='gpu <on|off>', core=True, handler='app._command_gpu'),
+    Command('bell', 'Enable or disable notification sounds', usage='bell <on|off>', core=True, handler='app._command_bell'),
+    Command('source', 'Enable or disable a named scheduler source', usage='source <name> <on|off>', core=True, handler='app._command_source'),
+    Command('theme', 'Choose terminal colors and contrast', usage='theme THEME', example='theme reader', core=True, handler='app._command_theme'),
+    Command('refresh', 'Refresh scheduler and project sources', usage='refresh', core=True, handler='app._command_refresh'),
+    Command('mark', 'Mark explicit jobs or all visible jobs', usage='mark <ids | all>', core=True, handler='app._command_mark'),
+    Command('unmark', 'Clear explicit or all job marks', usage='unmark [ids]', core=True, handler='app._command_unmark'),
+    Command('log', "Open a job's logs", usage='log <id>', example='log JOBID', job_ids=True, core=True, handler='app._command_log'),
+    Command('find', 'Search log content with a regular expression', usage='find <text>  (regular expression; N / P next / previous match)', example='find ERROR', raw_tail=True, core=True, handler='app._command_find'),
+    Command('profile', 'Switch a cluster configuration profile', usage='profile NAME', core=True, handler='app._command_profile'),
     Command('eval', 'Evaluate a local expression against cached jobs', usage='eval <expression>  e.g. [j.id for j in running if j.cpu < 0.3]', raw_tail=True, core=True, handler='evaluate'),
     Command('advise', 'Inspect evidence-based resource advice', usage='advise [id | name]  (what the job should ask for: --mem --cpus-per-task --time)', core=True, handler='advise'),
-    Command('compare', 'Compare selected jobs', usage='compare [ids | marked | clear]  (the Analytics compare view)', job_ids=True, core=True),
-    Command('tag', 'Tag selected jobs', usage='tag [ids] <tags...>  (on the marked or selected jobs; filter #tag finds them)', job_ids=True, core=True),
-    Command('untag', 'Remove a job tag', usage='untag [ids] <tags...>', job_ids=True, core=True),
-    Command('pin', 'Prioritize selected jobs within batch order', usage='pin [ids]  (toggle: first within batches and between equally ranked batches)', job_ids=True, core=True),
-    Command('note', 'Annotate a job', usage='note [id] <text>  (a note shown with the job; empty clears)', job_ids=True, raw_tail=True, core=True),
-    Command('chain', 'Review an action on a job and its downstream dependencies', usage='chain <cancel|hold|release> [id]  (the job and everything downstream)', review='required', core=True),
-    Command('resubmit', 'Clone and review a job submission', usage='resubmit [id] [--mem 12G] [--time 03:00:00] [-c 4] [--gres gpu:a100:2] [-p gpu] [--dependency=] [--script PATH] [--advised]  (clone the job; sbatch --test-only previews it)', job_ids=True, review='required', core=True),
+    Command('compare', 'Compare selected jobs', usage='compare [ids | marked | clear]  (the Analytics compare view)', job_ids=True, core=True, handler='app._command_compare'),
+    Command('tag', 'Tag selected jobs', usage='tag [ids] <tags...>  (on the marked or selected jobs; filter #tag finds them)', job_ids=True, core=True, handler='app._command_tag'),
+    Command('untag', 'Remove a job tag', usage='untag [ids] <tags...>', job_ids=True, core=True, handler='app._command_tag'),
+    Command('pin', 'Prioritize selected jobs within batch order', usage='pin [ids]  (toggle: first within batches and between equally ranked batches)', job_ids=True, core=True, handler='app._command_pin'),
+    Command('note', 'Annotate a job', usage='note [id] <text>  (a note shown with the job; empty clears)', job_ids=True, raw_tail=True, core=True, handler='app._command_note'),
+    Command('chain', 'Review an action on a job and its downstream dependencies', usage='chain <cancel|hold|release> [id]  (the job and everything downstream)', review='required', core=True, handler='app._command_chain'),
+    Command('resubmit', 'Clone and review a job submission', usage='resubmit [id] [--mem 12G] [--time 03:00:00] [-c 4] [--gres gpu:a100:2] [-p gpu] [--dependency=] [--script PATH] [--advised]  (clone the job; sbatch --test-only previews it)', job_ids=True, review='required', core=True, handler='app._command_resubmit'),
     Command('replay', 'Navigate a recorded session', usage='replay <pause|play|back|fwd|slower|faster|speed N|seek HH:MM|+60|50%>', core=True, handler='replay'),
     Command('wrap', 'Toggle wrapped log lines', usage='wrap  (Log tab: wrap or cut long lines)', core=True, handler='wrap'),
     Command('bookmark', 'Bookmark a log line', usage="bookmark  (Log tab: mark the current line; ' jumps)", core=True, handler='bookmark'),
-    Command('help', 'Search keyboard and page help', usage='help', owner='command_ui', core=True),
-    Command('quit', 'Exit Raven', usage='quit', core=True),
+    Command('help', 'Search keyboard and page help', usage='help', owner='command_ui', core=True, handler='app._command_help'),
+    Command('quit', 'Exit Raven', usage='quit', core=True, handler='app._command_quit'),
     Command('metric', 'Record a metric sample', usage='metric FILE --value NAME=NUMBER [--step N] [--completed N --total N]', paths=True, core=True),
     Command('metrics', 'Attach an experiment metric stream', usage='metrics FILE (attach a JSONL experiment stream)', paths=True, core=True),
     Command('passport', 'Capture, inspect, or compare reproducibility records', usage='passport capture SCRIPT --workdir DIR | show FILE | compare LEFT RIGHT', paths=True, core=True),
@@ -182,7 +184,7 @@ COMMANDS = (
     Command('metric-window', 'Set a live metric time window', owner='metric_live'),
     Command('metricdisplay', "Set a metric's display label, declared unit and precision", example="metricdisplay METRIC label 'Friendly label' | unit DECLARED_UNIT | precision 3 | reset", owner='analysis_ui'),
     Command('node', 'Inspect a cluster node', owner='table_tools'),
-    Command('notifications', 'Inspect full alerts, possible causes, and proposed fixes', usage='notifications [critical|moderate|mild|all]', arguments=('critical', 'moderate', 'mild', 'all'), owner='notification_ui'),
+    Command('notifications', 'Inspect full alerts, possible causes, and proposed fixes', usage='notifications [critical|moderate|mild|all]', arguments=('critical', 'moderate', 'mild', 'all'), owner='notification_ui', routes=tuple((option, 'activity_ui') for option in ('filter', 'level', 'job', 'task', 'persistent', 'clear', 'show'))),
     Command('ops', 'Inspect research operations and review their actions', arguments=('catalog', 'workspace', 'find', 'open', 'run', 'field', 'inspect', 'review', 'apply', 'form', 'copy', 'cancel', 'close', 'pin', 'unpin'), example='ops open investigation-workflow', owner='ops_ui'),
     Command('orchestrate', 'Review and execute a workflow or scaling plan', arguments=('workflow', 'scaling'), owner='execution_ui', paths=True),
     Command('outputs', 'Browse declared output artifacts', owner='project_ui'),
@@ -241,6 +243,7 @@ COMMANDS = (
 
 BY_NAME = MappingProxyType({item.name: item for item in COMMANDS})
 CORE_NAMES = tuple(item.name for item in COMMANDS if item.core)
+FEATURE_NAMES = tuple(sorted(item.name for item in COMMANDS if item.owner != "controller"))
 PATH_FLAGS = frozenset(['--contract', '--file', '--output', '--passport-dir', '--root', '--script', '--workdir'])
 
 TASKS = (
@@ -398,17 +401,24 @@ def command(name, app=None):
         descriptor = Command(name, "Raven command")
     plugins = getattr(getattr(app, "plugins", None), "commands", {})
     if name in plugins:
-        from . import workbench
-        if name not in workbench.command_names():
+        if name not in FEATURE_NAMES:
             hint = str(plugins[name][1])
             return Command(name, hint, usage=hint, owner="plugin")
     return descriptor
 
 
+
+def command_owner(name, args=()):
+    """Resolve an explicitly registered grammar alias without probing owners."""
+    descriptor = BY_NAME.get(name)
+    if descriptor is None:
+        return ""
+    return dict(descriptor.routes).get(args[0], descriptor.owner) if args else descriptor.owner
+
+
 def command_names(app=None, *, core=CORE_NAMES):
-    from . import workbench
     plugins = getattr(getattr(app, "plugins", None), "commands", {})
-    return list(dict.fromkeys(tuple(core) + tuple(workbench.command_names()) + tuple(sorted(plugins))))
+    return list(dict.fromkeys(tuple(core) + FEATURE_NAMES + tuple(sorted(plugins))))
 
 
 def execute_core(app, name, args, line):
@@ -416,8 +426,11 @@ def execute_core(app, name, args, line):
     descriptor = BY_NAME.get(name)
     if descriptor is None or not descriptor.handler:
         return False
-    from . import command_handlers
-    getattr(command_handlers, descriptor.handler)(app, args, line)
+    if descriptor.handler.startswith("app."):
+        getattr(app, descriptor.handler[4:])(args, line, name)
+    else:
+        from . import command_handlers
+        getattr(command_handlers, descriptor.handler)(app, args, line)
     return True
 
 
@@ -429,10 +442,8 @@ def argument_choices(name, app=None):
     if name == "workbench":
         return tuple(item.key for item in TASKS) + ("pinned", "all")
     if name == "tab":
-        from .views import TABS
         return tuple(key for key, _ in TABS)
     if name == "sort" and app is not None:
-        from .views import SORTS
         return tuple(SORTS.get(app.tab, ("name",)))
     if name == "days" and app is not None:
         return tuple(f"{value:g}" for value in app.days_options)

@@ -45,7 +45,7 @@ def cancel(app):
 
 
 def _current(app):
-    from .job_group_drag import _current as source_frame
+    from raven.jobs.group_drag import _current as source_frame
     frame = initialize(app)["frame"]
     source = source_frame(app)
     return frame if (frame and source and app.tab == "jobs"
@@ -54,7 +54,7 @@ def _current(app):
 
 def publish(app, rows, hits, width, height, *, ascii_=False):
     """Add a handle in the spacer beside each painted Main group header."""
-    from .job_group_drag import _current as source_frame
+    from raven.jobs.group_drag import _current as source_frame
     from .pane_drag import _replace
     state = initialize(app)
     source = source_frame(app)
@@ -138,7 +138,7 @@ def _geometry(frame):
                  for row in spans if row["scope"] == "jobs")
 
 
-@capture_handler("group_queue_drag")
+@capture_handler("group_queue_drag", cancel=cancel)
 def handle_mouse(app, y, x, button="left", shift=False, alt=False):
     state = initialize(app)
     capture = state["capture"]
@@ -196,9 +196,9 @@ def feedback(app, rows):
     capture, frame = state["capture"], _current(app)
     if not capture or not capture["moved"] or not frame or not rows:
         return rows
-    from .interaction import _decorate_row
+    from .ui.control_graph import _decorate_row
     from .pane_drag import _replace
-    from .log_text import display_text
+    from .job_logs.text import display_text
     result = list(rows)
     for y, rect in frame["members"].get(capture["group"], ()):
         if 0 <= y < len(result) - 1:

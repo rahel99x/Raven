@@ -29,6 +29,8 @@ class RecordedBackend:
         if command[:3] == ["scontrol", "show", "hostnames"]:
             assert command[3] == "raven-ci"
             return "raven-ci\n", 0
+        if command[0] == "scontrol" and self.purged:
+            raise CommandError("Invalid job id specified: completed job purged")
         assert "--json" in command
         if command[0] == "scontrol":
             if self.purged:
@@ -104,11 +106,14 @@ def test_invalid_accounting_restart_metadata_never_verifies_retained_data(tmp_pa
     _, sample, path = persisted_live_attempt(tmp_path)
     store = Store(str(tmp_path))
     backend = RecordedBackend(purged=True, restart=restart)
-    sampler = Sampler(Slurm(backend, "raven"), store, {}, [], workers=1)
+    sampler = Sampler(Slurm(backend, "raven", json_mode="json"), store, {}, [], workers=1)
     try:
-        sampler.src_finished()
-        sampler.select("1")
+        # Invalid counters may be rejected by the shared accounting parser
+        # before the selected-detail lookup. Neither acquisition may authorize
+        # retained data from the earlier valid attempt.
         with pytest.raises(CommandError, match="parse coverage"):
+            sampler.src_finished()
+            sampler.select("1")
             sampler.src_details()
         assert not store.capture_series_identity("1").verified
         assert store.series_of("1") == []

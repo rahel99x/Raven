@@ -5,6 +5,8 @@ Slurm, or execute pasted commands while drawing or searching.
 """
 from __future__ import annotations
 
+from .ui.catalog import SORTS, TABS
+from .ui.keys import _ESCAPE_KEYS
 import copy
 import json
 import math
@@ -13,7 +15,8 @@ import time
 from itertools import chain, islice
 
 from . import clock, layout as L, navigation_ui
-from .research import RESEARCH_VIEWS, clean
+from .research_text import clean
+from .ui.catalog import RESEARCH_VIEWS
 from .palette import THEME_NAMES
 
 MODES = {"jump_picker", "settings_editor", "bindings_editor", "field_explanation", "value_peek", "locations_picker"}
@@ -82,7 +85,7 @@ def _portable_location(app):
             saved.pop("analysis_context", None)
     saved["mode"] = "analysis" if saved.get("mode") == "analysis" and saved.get("analysis_context") else "main"
     saved["profile"] = getattr(app, "profile_name", "")
-    from .log_tools import _target
+    from .job_logs.tools import _target
     saved["source_target"] = _target(app.logs.files)
     saved["logs"].pop("_buffer_token", None)
     if "project_context" in saved:
@@ -110,7 +113,6 @@ def _portable_location(app):
 
 
 def _valid_location(value):
-    from .views import TABS
     if not isinstance(value, dict) or value.get("tab") not in dict(TABS):
         raise ValueError("invalid location page")
     result = _json_value(value)
@@ -155,7 +157,6 @@ def _valid_location(value):
             else:
                 raise ValueError("invalid original research setting")
     from .table_sort import TABLE_KEYS, validate_chain
-    from .views import SORTS
     for table, key in result.get("sort", {}).items():
         if table not in SORTS or key not in SORTS[table]:
             raise ValueError("invalid table sort")
@@ -333,7 +334,7 @@ def _open_location(app, name):
         app.fail("This location belongs to a different cluster profile")
         return
     if saved["tab"] == "log" or saved.get("log_page_descriptor"):
-        from .log_tools import _target
+        from .job_logs.tools import _target
         if saved.get("source_target", "local") != _target(app.logs.files):
             app.fail("This log location belongs to a different source connection")
             return
@@ -341,7 +342,7 @@ def _open_location(app, name):
     navigation_ui._restore_location(app, copy.deepcopy(saved))
     app.logs._buffer_token = None
     if saved.get("log_page_descriptor"):
-        from .log_tools import restore_location
+        from .job_logs.tools import restore_location
         if not restore_location(app, saved["log_page_descriptor"]):
             return
     app.say("Opened location " + name)
@@ -400,7 +401,7 @@ def _managed_settings(app):
 
 
 def _setting_keys(app):
-    from .refresh_rate import NATIVE_SOURCES
+    from .cadence import NATIVE_SOURCES
     if _managed_settings(app):
         return [key for key in SETTING_LABELS if key not in ("gpu_sampling", "intervals.jobs")] + [TELEMETRY_SETTING]
     return list(SETTING_LABELS) + ["intervals." + name for name in app.cfg["intervals"]
@@ -478,7 +479,7 @@ def _apply_settings(app, values, *, polling=True):
 
 def _open_settings(app):
     state = initialize(app)
-    from .refresh_rate import multiplier
+    from .cadence import multiplier
     state["polling_preview_backup"] = None if _managed_settings(app) else multiplier(app)
     state["preview_backup"] = {key: _read_setting(app, key) for key in _setting_keys(app)}
     state["draft"] = dict(state["preview_backup"])
@@ -486,7 +487,7 @@ def _open_settings(app):
 
 
 def _settings_default(app):
-    from .config import Config, DEFAULTS
+    from .configuration.dashboard import Config, DEFAULTS
     defaults = Config(DEFAULTS)
     values = {key: defaults.get(key, True) for key in _setting_keys(app)}
     if _managed_settings(app):
@@ -560,7 +561,6 @@ def _valid_key(key):
     if not _plain(key, 32):
         return False
     named = ("up", "down", "left", "right", "enter", "esc", "space", "tab", "btab", "home", "end", "pgup", "pgdn", "delete", "backspace")
-    from .screen import _ESCAPE_KEYS
     modifier = key in _ESCAPE_KEYS.values() or key.startswith("ctrl-") and len(key) == 6 and key[-1] in "abcdefgklnopqrstuvwxyz"
     function = key.startswith("f") and key[1:].isdigit() and 1 <= int(key[1:]) <= 24 and key == "f" + str(int(key[1:]))
     return len(key) == 1 and key != " " or key in named or modifier or function
@@ -628,7 +628,7 @@ def _bindings_key(app, key):
     elif key == "t":
         state["test"] = True
     elif key == "D":
-        from .config import DEFAULTS
+        from .configuration.dashboard import DEFAULTS
         state["binding_draft"] = copy.deepcopy(DEFAULTS["keys"])
         state["cursor"] = min(state["cursor"], len(state["binding_draft"]) - 1)
     elif key == "a":
@@ -894,7 +894,7 @@ def _field_open(app, table, key, peek=False):
         resource = RESOURCE_INFO.get(table, {}).get(key)
         info = (resource[0], resource[1], "Unknown when this source has no usable observation.") if resource else FIELD_INFO["gpus"] if key == "gpu" and table in ("jobs", "group") else FIELD_INFO.get(key, (key.upper(), "Reported source field; no derived formula is applied.", "Unknown when its source has no usable value."))
         from .refresh_rate import cadence, NATIVE_SOURCES
-        from .metric_sampling import format_interval
+        from .cadence import format_interval
         intervals = app.cfg["intervals"]
         source = "nodes" if table == "nodes" else "partitions" if table == "cluster" else "finished" if table in ("history", "recent") else "gpu" if key in ("gpu%", "gpu_util") else "live" if key in ("cpu", "cpu%", "ce", "eff", "mem", "mem%", "rss", "me") else "jobs"
         if table == "sources":
@@ -986,7 +986,7 @@ def handle_key(app, key):
             app.mode = state["return_mode"]
         elif key == "y" and app.mode == "value_peek":
             from . import clipboard
-            result = clipboard.copy(state["raw_value"], app.state_dir, **clipboard.options(app))
+            result = clipboard.copy_for_app(app, state["raw_value"], app.state_dir, **clipboard.options(app))
             app.say(result)
         elif key in ("up", "down", "pgup", "pgdn", "home", "end"):
             total, page = state.get("line_total", 1), state["page"]

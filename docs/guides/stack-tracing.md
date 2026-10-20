@@ -102,6 +102,60 @@ uncommitted observations. The manifest distinguishes observed and committed
 coverage. A low overhead target is workload-dependent; filtering and batching
 do not establish a universal slowdown bound.
 
+Automatic callbacks enqueue bounded tuples; a background writer validates and
+encodes them. Code metadata is stored once and verified readers expand its
+references. Durable checkpoints and manifest publication occur at most once
+per second during capture, plus explicit shutdown. The callback buffer holds
+at most 65,536 events. Exhaustion stops recording with a visible incomplete
+prefix; Raven does not silently sample or drop old frames to appear faster.
+An application callback does not wait for the writer's storage operations.
+
+By default, helper workers have a separate pool of up to 32 process slots and
+32 MiB, bounded by one quarter of the process limit and one eighth of the run
+byte limit. Main processes and ranks retain the remaining capacity. With
+`--trace-helpers`, all observed processes deliberately share the configured run
+budget. A fork-then-exec child consumes no recording slot until project Python
+actually resumes. Active tracing uses a writer thread; ordinary metrics writers
+exit while idle. Fork handlers pause I/O with a short bounded wait and close
+inherited descriptors in children; a stalled filesystem does not impose an
+unbounded pre-fork wait. Active multithreaded capture can still trigger Python's
+general fork-with-threads warning. Prefer `spawn` or `forkserver` for applications
+whose libraries require that stronger process boundary.
+
+The live terminal/browser view retains a bounded window. CLI `trace export`,
+`trace inspect`, and `trace summary create` traverse the entire verified
+committed prefix in bounded pages, including intervals crossing page boundaries.
+They use a private disk-backed spool capped at 256 MiB and a 60-second traversal
+budget; explicit export/inspection artifacts are capped at 32 MiB. A limit or
+late integrity failure produces an error rather than a successful truncated
+artifact. The source journal remains unchanged.
+
+### Reuse and clean up launch runtimes
+
+Launches reuse content-addressed runtime archives and extracted bytecode caches.
+These caches are private project metadata, not application dependencies. Payload
+files remain read-only while their owning wrapper directory permits cleanup.
+
+```bash
+# Preview completed launch wrappers older than 30 days.
+raven trace cleanup-runtime --project "$PWD"
+# Apply the reviewed cleanup; recordings/results in runs/ remain available.
+raven trace cleanup-runtime --project "$PWD" --apply
+```
+
+`--older-than-days 7` changes retention. Active, queued and unverified wrappers
+are preserved. Slurm wrappers additionally require a successful check that the
+exact job is absent from the queue on its retained original connection, user,
+Slurm configuration selectors and actual cluster. Select that same local Slurm
+profile when cleaning up. Confirmation uses the shared collection ledger, one
+batched queue read for at most 128 exact job IDs; an unknown configured cluster
+requires one additional bounded `scontrol show config` read. Deferred budgets,
+unknown/mismatched cluster identities and legacy launches without retained
+connection evidence preserve their wrappers. Terminal run metadata alone does
+not authorize deleting a queued or requeued wrapper.
+Shared archive/extracted caches remain available for detached descendants and
+future launches. Cleanup never deletes scientific results, logs or recordings.
+
 Use Raven to record a prepared Python program, receive cooperative native
 events, reconstruct recorded stacks, inspect explicit causal links, and audit
 supported collective signatures. A running local Python process can provide a
@@ -170,6 +224,100 @@ Explicit attachment displays identity verification status. **Pause** pauses the
 view, not recording. Closing Raven does not stop a separately running recorder.
 Do not change the sampling sliders to control this recorder: its input is
 event-driven. Display refresh and event capture are separate.
+
+### Explore the visual timeline
+
+Select a job in Jobs or History, open **Trace**, and choose **Timeline**. Time
+runs left to right; nested Python calls occupy successive depth rows. Each bar
+has a matched recorded entry and exit. Cooperative spans use separate lanes;
+their overlap does not establish a parent/child relationship.
+
+Choose a process from the existing process list, then a thread. Use **Zoom +**,
+**Zoom -**, **Pan**, and **Fit window** to explore its retained window. Click a
+call to see its full name, wall duration, source definition and event sequences.
+**Focus** zooms around that interval. With Trace content focused, `+`/`-`
+zoom, Left/Right pan, `f` fits, `n`/`N` move between calls, and `t` changes thread.
+The command palette provides the same actions:
+
+```text
+:trace timeline
+:trace find solve
+:trace next
+:trace focus
+:trace fit
+:trace events
+```
+
+Use `:trace find` without a name to clear the search. **Events** preserves the
+original retained event view; **Summaries** provides aggregate duration queries.
+Pausing, selecting a different process, and viewing a completed job all use the
+same exact-attempt recording checks.
+
+Choose **View in browser** for an interactive flame timeline with zooming,
+panning, search, thread selection and call details. Raven writes a private,
+self-contained HTML snapshot of the current retained window, then requests a
+local browser. It does not upload the recording, require a website, or start a
+web server. The browser snapshot is static; use the terminal view for live
+updates, or export again for a newer snapshot.
+
+For a headless cluster session, export an HTML file explicitly, transfer it to
+your workstation using your normal file-transfer method, and open it locally:
+
+```bash
+raven trace export /path/to/manifest.json --format html \
+  --output "$HOME/raven-trace-$(date +%s).html"
+```
+
+Replace `/path/to/manifest.json` with the manifest printed by the recorder or
+shown in the Trace view. Output files are created exclusively; existing files
+are never overwritten. CLI export reads a bounded verified prefix, while the
+Trace button exports the current retained window. The file identifies its
+process, attempt, sequence coverage, evicted events and unknown boundaries.
+
+This interaction follows the time-versus-stack approach used by
+[Magic Trace](https://blog.janestreet.com/magic-trace/). Raven visualizes its
+existing recordings: it does not collect Intel Processor Trace, native library
+internals, or CUDA kernels through this viewer. Recorded durations are inclusive
+wall time, not CPU utilization. Empty regions, unfinished calls and loss markers
+remain unknown; Raven does not invent closing events or align independent MPI
+process clocks. Use the existing Perfetto export when another compatible trace
+viewer is preferred.
+
+### Inspect sockets and physical cores
+
+For a future Python job, request CPU-placement observations explicitly:
+
+```bash
+raven launch job.sh --project "$PWD" --trace --trace-cpu-placement
+```
+
+The equivalent standalone recorder option is `raven trace run --cpu-placement`.
+The launch setup page also offers a CPU-placement checkbox when tracing is
+selected. It is disabled by default because querying placement adds work and
+metadata to every eligible event.
+
+Select **CPU cores** in Trace, or choose **CPU placement observations** in the
+browser. Lanes identify the selected process's observed **socket → physical core
+→ logical CPU**. Linux IDs are shown as recorded, starting at zero where the
+system uses zero. Logical CPUs can be simultaneous hardware threads on the same
+physical core; a process thread is a separate identity. The thread selector
+filters observations without relabeling threads as cores.
+
+Each point shows where the emitting thread was observed during a bounded
+`sched_getcpu` query. Details preserve the query's start/end timestamps and
+original event sequence. The query bracket measures observation uncertainty,
+not time spent running on that core. Raven does not assign a whole function to
+its entry core, connect sparse points into continuous residency, or draw missing
+cores as idle. Calls and CPU observations remain complementary views.
+
+This software adapter uses Linux APIs rather than vendor-specific instructions,
+so its prerequisite is the available OS/runtime interface on AMD, Intel, Arm,
+or another processor. Missing physical topology is shown as `?`. Unsupported
+platforms and old recordings retain the call timeline and explain why CPU
+placement is unavailable. No Intel PT, scheduler-switch recording, device tracing
+or elevated permission is added by this option. Read the
+[capture capabilities guide](trace-capabilities.md) before qualifying a new
+execution platform.
 
 Python monitoring needs an unused `sys.monitoring` tool ID. The legacy profile
 adapter refuses to replace an existing profiler. Recording excludes its own

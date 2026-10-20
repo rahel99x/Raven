@@ -39,6 +39,8 @@ def app():
     )
     value.say = value.messages.append
     value.run_command = lambda command: M.run_command(value, command.split())
+    from raven.workbench import bind_actions
+    bind_actions(value)
     C.begin_frame(value, 120, 40)
     return value
 

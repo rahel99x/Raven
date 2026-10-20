@@ -219,6 +219,7 @@ def main():
     parser.add_argument(
         "--pipx", action="store_true", help="Also exercise the real pipx owning manager"
     )
+    parser.add_argument('--pipx-backend', choices=('pip', 'uv'), help='Select a current pipx backend explicitly; default uses pipx discovery')
     args = parser.parse_args()
     output = args.output.absolute()
     output.mkdir(parents=True, exist_ok=False)
@@ -298,6 +299,9 @@ def main():
     )
     run("origin-init", ["git", "init", "--initial-branch=main"], cwd=seed, env=git_env)
     (seed / "update-fixture-config.json").write_text('{"account":"fixture-default"}\n')
+    (seed / 'raven/_qualification_deleted_probe.py').write_text('VALUE = "old module"\n')
+    (seed / 'raven/_qualification_swapped_probe').mkdir()
+    (seed / 'raven/_qualification_swapped_probe/__init__.py').write_text('VALUE = "old package"\n')
     run("origin-add", ["git", "add", "--force", "--all"], cwd=seed, env=git_env)
     run(
         "origin-commit",
@@ -343,6 +347,8 @@ def main():
             GIT_CONFIG_NOSYSTEM="1",
             GIT_CONFIG_GLOBAL=os.devnull,
         )
+        if args.pipx_backend:
+            env['PIPX_DEFAULT_BACKEND'] = args.pipx_backend
         if mode == "managed":
             # Exercise stdin bootstrap discovery and its real Git clone, while
             # resolving the documented official URL to this owned fixture.
@@ -365,6 +371,7 @@ def main():
                     "bash",
                     "-s",
                     "--",
+                    "--clone",
                     "--source-dir",
                     source,
                     "--python",
@@ -395,6 +402,9 @@ def main():
             mode + "-baseline-version", [bin_dir / "raven", "--version"], env=env
         )
         assert baseline_version in version
+        if mode == 'pipx':
+            metadata = json.loads((base / 'pipx/venvs/raven/pipx_metadata.json').read_text())
+            report['pipx_backend'] = metadata.get('backend', 'pip')
         environments[mode] = (base, source, bin_dir, env, persistent)
     (seed / "raven/__init__.py").write_text(
         (seed / "raven/__init__.py")
@@ -411,6 +421,9 @@ def main():
     (seed / "update-fixture-config.json").write_text(
         '{"account":"remote-new-default"}\n'
     )
+    (seed / 'raven/_qualification_deleted_probe.py').unlink()
+    shutil.rmtree(seed / 'raven/_qualification_swapped_probe')
+    (seed / 'raven/_qualification_swapped_probe.py').write_text('VALUE = "new module"\n')
     run("origin-add-next", ["git", "add", "--all"], cwd=seed, env=git_env)
     run(
         "origin-commit-next",
@@ -422,6 +435,10 @@ def main():
         ["git", "rev-parse", "HEAD"], cwd=seed, text=True, env=git_env
     ).strip()
     for mode, (base, source, bin_dir, env, persistent) in environments.items():
+        stale = source / 'build/lib/raven'
+        (stale / '_qualification_swapped_probe').mkdir(parents=True, exist_ok=True)
+        (stale / '_qualification_deleted_probe.py').write_text('VALUE = "stale build module"\n')
+        (stale / '_qualification_swapped_probe/__init__.py').write_text('VALUE = "stale build package"\n')
         code = source / "raven/__init__.py"
         code.write_text(
             code.read_text() + "\n# local source edit preserved by recovery\n"
@@ -431,10 +448,10 @@ def main():
         note.write_text("untracked local source\n")
         config = source / "update-fixture-config.json"
         config.write_text('{"account":"my-lab"}\n')
-        plan = run(mode + "-plan", [bin_dir / "raven", "update", "--plan"], env=env)
+        plan = run(mode + "-plan", [bin_dir / "raven", "update", "--allow-fork", "--plan"], env=env)
         assert "no network access" in plan
         checked = run(
-            mode + "-check", [bin_dir / "ravenh", "update", "--check"], env=env
+            mode + "-check", [bin_dir / "ravenh", "update", "--allow-fork", "--check"], env=env
         )
         assert second[:12] in checked
         assert (
@@ -443,10 +460,10 @@ def main():
             ).strip()
             == first
         )
-        run(mode + "-refuse-edits", [bin_dir / "raven", "update"], env=env, expected=2)
+        run(mode + "-refuse-edits", [bin_dir / "raven", "update", "--allow-fork"], env=env, expected=2)
         assert code.read_bytes() == edited and note.exists()
         updated = run(
-            mode + "-overwrite", [bin_dir / "raven", "update", "--overwrite"], env=env
+            mode + "-overwrite", [bin_dir / "raven", "update", "--allow-fork", "--overwrite"], env=env
         )
         backup = Path(
             next(
@@ -459,6 +476,10 @@ def main():
         assert updated_version in run(
             mode + "-updated-version", [bin_dir / "ravenh", "--version"], env=env
         )
+        python = (base / 'releases/current/bin/python' if mode == 'managed' else base / 'pipx/venvs/raven/bin/python')
+        run(mode + '-pristine-upstream-deletion', [python, '-I', '-c',
+            'import importlib.util; assert importlib.util.find_spec("raven._qualification_deleted_probe") is None; '
+            'from raven import _qualification_swapped_probe as probe; assert probe.VALUE == "new module"'], env=env)
         assert not note.exists() and b"local source edit" not in code.read_bytes()
         assert config.read_text() == '{"account":"my-lab"}\n'
         config.write_text('{"account":"my-current-lab"}\n')

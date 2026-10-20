@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from raven import cli, clock, ui_persistence
+from raven import cli, clock, connection_scope, ui_persistence
 from raven.config import Config
 from raven.forecast import ForecastTracker
 from raven.model import Job, Store
@@ -35,10 +35,10 @@ def collect_outcome(tracker):
 def dashboard_builder(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "state_dir", lambda: str(tmp_path / "state"))
     monkeypatch.setattr(socket, "gethostname", lambda: "login.carc.example")
-    # Scope identity is a CLI input; never replace os.getuid process-wide,
-    # which would also falsify filesystem ownership in config_trust.
-    monkeypatch.setattr(cli, "os", SimpleNamespace(**vars(cli.os)))
-    monkeypatch.setattr(cli.os, "getuid", lambda: 1234)
+    # Scope identity belongs to the canonical connection-scope service.
+    # Clone its OS namespace so filesystem ownership checks elsewhere remain real.
+    monkeypatch.setattr(connection_scope, "os", SimpleNamespace(**vars(connection_scope.os)))
+    monkeypatch.setattr(connection_scope.os, "getuid", lambda: 1234)
     monkeypatch.setattr(clock, "now", lambda: 100000.)
     sessions = []
 
@@ -128,7 +128,7 @@ def test_other_saved_connection_scope_never_restores(dashboard_builder, changed)
 
 
 def test_boolean_uid_is_not_integer_scope_match(dashboard_builder, monkeypatch):
-    monkeypatch.setattr(cli.os, "getuid", lambda: 0)
+    monkeypatch.setattr(connection_scope.os, "getuid", lambda: 0)
     initial = dashboard_builder()
     collect_outcome(initial.app.research.forecasts)
     publish_ui(initial)

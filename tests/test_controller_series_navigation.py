@@ -99,6 +99,13 @@ def test_explicit_advice_keeps_full_saved_evidence_and_ignores_corrupt_counters(
     monkeypatch.setattr(store, "series_view", lambda *_: pytest.fail("explicit advice discarded full saved evidence"))
     jobs_before = len(backend.spec)
     app.run_command(command)
+    if command.startswith("resubmit") and interactive:
+        import time
+        deadline = time.monotonic() + 5
+        while app.research.pending and time.monotonic() < deadline:
+            app.research.poll_task()
+            time.sleep(.005)
+        assert app.research.pending is None
     assert app.command_ok and measured == [peak]
     assert path.read_bytes() == original_bytes
     assert len(backend.spec) == jobs_before

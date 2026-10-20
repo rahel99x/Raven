@@ -1,0 +1,45 @@
+{
+  "schema": "raven.focus-latency/v1",
+  "baseline_revision": "b98742fb967f18131905696f4afd3a61f2ad03f2",
+  "fixture": {
+    "mode": "notifications",
+    "key": "noop",
+    "rounds": 7,
+    "keys_per_round": 5000,
+    "feature_contracts": "identical current owners"
+  },
+  "results": {
+    "reviewed_control_flow_current_feature_contracts": {
+      "median_us_per_key": 23.909651598660275,
+      "round_us_per_key": [
+        23.66664939909242,
+        25.083695800276473,
+        23.559227597434074,
+        24.264167400542647,
+        24.218198203016073,
+        23.909651598660275,
+        23.47498660092242
+      ],
+      "measured_rounds_cpu_seconds": 0.8408390139999999
+    },
+    "foreground_focus_stack": {
+      "median_us_per_key": 10.554708197014406,
+      "round_us_per_key": [
+        11.660256201867014,
+        11.265061603626236,
+        10.264112002914771,
+        10.317870997823775,
+        10.704108001664281,
+        10.547002998646349,
+        10.554708197014406
+      ],
+      "measured_rounds_cpu_seconds": 0.3765811969999999
+    }
+  },
+  "process_high_water_rss_kib": 41472,
+  "python_allocations": "not measured; process RSS is reported separately",
+  "limits": "Reviewed controller method compiled against current feature callbacks; isolates dispatch overhead, not original whole-release performance. Combined-process RSS cannot compare release memory. Shared cloud Linux/Python host; no live scheduler/GPU/remote qualification.",
+  "command": "PYTHONPATH=. .venv/bin/python scripts/benchmark_ui_dispatch.py --rounds 7 --keys 5000 --output /workspace/review-final-ui-dispatch.json",
+  "coordination": "Root reserved exclusive benchmark window; all other owners paused tests,builds,benchmarks and Slurm during this run.",
+  "qualification_revision": "Integrated working tree; root final committed-source manifest identifies delivered revision."
+}

@@ -58,7 +58,7 @@ def load_json(path, *, max_bytes=1048576, max_depth=32):
         raise ValueError("JSON read limit must be between 1 byte and 16 MiB")
     if isinstance(max_depth, bool) or not isinstance(max_depth, int) or not 1 <= max_depth <= 64:
         raise ValueError("JSON depth limit must be between 1 and 64")
-    from .raven_execution import source_limit, source_read
+    from .source_budget import source_limit, source_read
     max_bytes = source_limit(max_bytes)
     path = os.path.expanduser(os.fspath(path))
     fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))

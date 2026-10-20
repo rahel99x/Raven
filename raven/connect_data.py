@@ -99,7 +99,7 @@ def _family(family, result):
 def _trace(binding, files):
     """Read one registered stream only; SSH validates metadata, never local files."""
     from .projects import read_bound_json, relative_path
-    from .trace_protocol import validate_identity, TraceReader
+    from .tracing.protocol import validate_identity, TraceReader
     root = binding["run_root"]
     index = read_bound_json(binding, os.path.join(root, "trace/index.json"), files=files, max_bytes=1 << 20)
     if (not isinstance(index, dict) or index.get("schema") != "raven.trace-index/v1"

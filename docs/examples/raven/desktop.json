@@ -85,7 +85,8 @@
     "local_processes_per_minute": 60,
     "service_failure": "cached-only",
     "research_seconds": 5,
-    "trace_seconds": 1
+    "trace_seconds": 1,
+    "log_file_bytes_per_minute": 16777216
   },
   "resources": {
     "light": {
@@ -132,7 +133,8 @@
       "minute_seconds": 2592000,
       "gap_seconds": 2.0,
       "protect_raw": true
-    }
+    },
+    "allocation_receipts_dir": ""
   },
   "ui": {
     "theme": "terminal",

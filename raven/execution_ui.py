@@ -1,16 +1,15 @@
 """Keyboard preflight forms and deliberately reviewed execution workspaces."""
 from __future__ import annotations
 
-import os
+
 from pathlib import Path
 import queue
-import socket
 import threading
 import time
 
 from . import orchestrator, submission
 from .layout import box, vlen
-from .research import clean
+from .research_text import clean
 
 _FIELDS = (("script", "Batch script"), ("workdir", "Working directory"), ("cpus", "CPUs / task"),
            ("mem", "Memory"), ("time", "Wall time"), ("partition", "Partition"), ("gres", "GPU / GRES"))
@@ -49,38 +48,7 @@ def close(app):
     initialize(app)["cancel"].set()
 
 
-def connection_scope(app):
-    """Capture a bounded connection identity using only already-known values."""
-    slurm = getattr(getattr(app, "actions", None), "slurm", None)
-    backend = getattr(slurm, "b", None)
-    if backend is None:
-        raise ValueError("execution connection scope is unknown; prepare a fresh review in the original connection")
-    seen = set()
-    for _ in range(8):
-        if not hasattr(backend, "inner"):
-            break
-        if id(backend) in seen:
-            raise ValueError("execution backend scope is unknown")
-        seen.add(id(backend))
-        backend = backend.inner
-    else:
-        raise ValueError("execution backend scope exceeds its wrapper limit")
-    cfg = getattr(app, "cfg", None)
-    getter = getattr(cfg, "get", lambda key, default=None: default)
-    user = getattr(slurm, "user", None) or getattr(app, "user", "")
-    configured_host = getter("host", "")
-    actual_host = getattr(backend, "host", None) or socket.gethostname()
-    cluster = (getattr(slurm, "cluster_name", None) or getter("cluster_name", "")
-               or getter("site.cluster_id", "") or os.environ.get("SLURM_CLUSTER_NAME", ""))
-    try:
-        uid = os.getuid()
-    except (AttributeError, OSError) as exc:
-        raise ValueError("execution owner scope is unknown") from exc
-    return orchestrator.validate_scope({"schema": "raven.execution-scope/v1",
-                                       "backend": type(backend).__module__ + "." + type(backend).__qualname__,
-                                       "connection_host": actual_host, "configured_host": configured_host,
-                                       "profile": getattr(app, "profile_name", getattr(cfg, "profile_name", "")),
-                                       "user": user, "uid": uid, "cluster": cluster})
+from .connection_scope import execution_scope as connection_scope
 
 
 def _require_connection(app, review):
@@ -241,7 +209,7 @@ def run_command(app, args):
             if getattr(app, "replay", None) or getattr(getattr(app, "files", None), "remote", False):
                 raise ValueError("preflight inspects local files; run Raven on the cluster")
             if words:
-                from .research_commands import prepare_args
+                from .entry.submission import prepare_args
                 _background(app, lambda: prepare_args(words)[0], lambda value: _open_form(app, value), "Inspecting the batch script locally")
             else:
                 plan = getattr(getattr(app, "research", None), "plan", None)
@@ -249,7 +217,7 @@ def run_command(app, args):
                     raise ValueError("preflight SCRIPT [--workdir DIR] [resource flags]")
                 _open_form(app, plan)
         elif command == "orchestrate":
-            from .research_commands import parser
+            from .entry.command_options import parser
             from .planning_io import load_json
             if getattr(app, "replay", None) or getattr(getattr(app, "files", None), "remote", False):
                 raise ValueError("orchestration reviews require local files on the cluster")
@@ -394,8 +362,8 @@ def handle_key(app, key):
         elif key == "d":
             state["detail"], state["detail_scroll"] = True, 0
         elif key == "h":
-            from .shell_checks_ui import open_for_plan
-            open_for_plan(app, state["plan"])
+            from .ui.execution_ports import navigation
+            navigation(app).open_shell_checks(app, state["plan"])
         elif key == "s":
             plan = state["plan"]
             if not plan or not plan.get("valid"):
@@ -440,21 +408,7 @@ def handle_key(app, key):
     return True
 
 
-def _wrap(text, width, *, ascii_=False):
-    """Bounded, display-safe command wrapping with no terminal escape output."""
-    value = clean(text, ascii_=ascii_, limit=128 << 10)
-    width = max(1, width)
-    rows, current, used = [], [], 0
-    for character in value:
-        amount = vlen(character)
-        if current and used + amount > width:
-            rows.append("".join(current))
-            current, used = [], 0
-        current.append(character)
-        used += amount
-    if current:
-        rows.append("".join(current))
-    return rows or [""]
+from .ui.script_text import _wrap as _wrap
 
 
 def overlay(views, snap, app, width, height):

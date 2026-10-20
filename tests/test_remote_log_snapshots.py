@@ -311,12 +311,13 @@ def test_cache_replacement_cannot_reuse_selection_snapshot_token():
 
 
 def test_real_controller_frames_and_keyboard_never_wait_for_remote_io(tmp_path, monkeypatch):
-    from raven import clipboard
+    from raven import clipboard, ui_persistence, worker_ui
     from raven.config import Config
     from raven.controller import App
     from raven.layout import Glyphs, row_text
     from raven.model import Finished, Store
     from raven.views import Views
+    from raven.worker_scheduler import WorkerScheduler
     files = Remote()
     files.block = True
     cfg = Config({"log_lines": 0, "clipboard": {"osc52": False, "tools": False}})
@@ -325,7 +326,13 @@ def test_real_controller_frames_and_keyboard_never_wait_for_remote_io(tmp_path, 
     store.details["77"] = {"StdOut": "/remote/project/77.out", "WorkDir": "/remote/project"}
     app = App(store, None, None, cfg, "test", ascii_=False)
     app.files, app.logs.files = files, files
-    app.research = ResearchHub(cfg, files)
+    # Match cli.session: preferences and reads share one scheduler, with
+    # independent source/research lanes. An unbound writer makes each "v"
+    # synchronously fsync preferences, which is not the interactive path.
+    scheduler = WorkerScheduler(lanes=("source", "research"))
+    worker_ui.bind(app, scheduler)
+    assert ui_persistence.bind(app, scheduler) is not None
+    app.research = ResearchHub(cfg, files, worker_scheduler=scheduler)
     views = Views(Glyphs(False), cfg, files=files)
     app.views_ref = views
     copied = []
@@ -336,14 +343,52 @@ def test_real_controller_frames_and_keyboard_never_wait_for_remote_io(tmp_path, 
         assert "background" in "\n".join(row_text(row) for row in rows).lower()
         assert files.entered.wait(1)
         future = app.research.future
-        before = time.perf_counter()
-        for _ in range(50):
-            app.handle("down")
-            app.handle("v")
-            app.tick()
-            views.compose(store.snapshot(), app, 100, 24)
-        assert time.perf_counter() - before < .5
+        assert not future.done()
+        ui_thread = current_thread()
+        blocking_calls = []
+
+        def nonblocking(method, name, *, pending_only=False):
+            def checked(*args, **kwargs):
+                if current_thread() is ui_thread and (
+                    not pending_only or not future.done()
+                ):
+                    blocking_calls.append(name)
+                    raise AssertionError("The UI thread must not block on " + name)
+                return method(*args, **kwargs)
+            return checked
+
+        # A CPU budget alone could hide waiting. Reject pending-future waits,
+        # sleeps and synchronous preference I/O independently of host load.
+        # Remote._call separately rejects every UI-thread remote operation.
+        with monkeypatch.context() as guards:
+            for name in ("result", "exception"):
+                guards.setattr(
+                    future, name,
+                    nonblocking(getattr(future, name), name, pending_only=True),
+                )
+            guards.setattr(
+                future._condition, "wait",
+                nonblocking(
+                    future._condition.wait, "pending future condition", pending_only=True,
+                ),
+            )
+            guards.setattr(time, "sleep", nonblocking(time.sleep, "sleep"))
+            guards.setattr(store, "save_ui", nonblocking(store.save_ui, "preference I/O"))
+            before = time.perf_counter()
+            before_cpu = time.thread_time()
+            for _ in range(50):
+                app.handle("down")
+                app.handle("v")
+                app.tick()
+                views.compose(store.snapshot(), app, 100, 24)
+            cpu_elapsed = time.thread_time() - before_cpu
+            wall_elapsed = time.perf_counter() - before
+        assert not blocking_calls
+        assert cpu_elapsed < .5, (
+            f"50 frames: UI CPU={cpu_elapsed:.3f}s; wall={wall_elapsed:.3f}s"
+        )
         assert app.research.future is future
+        assert not future.done()
         assert not app.logs.selection_active
         files.release.set()
         finish(app.research)
@@ -353,12 +398,20 @@ def test_real_controller_frames_and_keyboard_never_wait_for_remote_io(tmp_path, 
         app.handle("v")
         app.handle("down")
         app.handle("y")
+        # Copy is accepted asynchronously. Collect it only after the blocked
+        # remote section, retaining the exact selected bytes assertion below.
+        for accepted in app.clipboard_pending:
+            accepted.result(timeout=5)
+        clipboard.poll(app)
         assert copied == [b"first\tcolumn\r\nsecond\n"]
         assert all(name.startswith("raven-research") for _, name in files.calls)
         assert len(files.calls) == 3
     finally:
         files.release.set()
+        ui_persistence.close(app)
         app.research.close()
+        scheduler.shutdown(wait=True)
+        store.close()
 
 
 def test_unexpected_worker_exception_remains_readable_in_published_buffer():

@@ -19,6 +19,7 @@ from raven.views import Views
 
 class ReviewDashboard:
     def __init__(self, root, monkeypatch):
+        monkeypatch.setenv("RAVEN_EXPORT_DIR", str(root / "state" / "exports"))
         self.path = root / "failed-77.log"
         self.path.write_bytes(b"line 0\nline 1\nline 2\nline 3\n")
         self.copies = []

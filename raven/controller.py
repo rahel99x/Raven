@@ -6,21 +6,18 @@ import time
 import shlex
 import math
 import os
-import re
 from typing import Dict, List, Optional, Sequence
 
 from . import clipboard, export, workbench, command_registry
-from .logs import LogSession
+from .job_logs.buffer import LogSession
 from .actions import Actions
 from .model import Job, Store, secs
 from .sampler import Sampler
-from .views import ANALYTICS_VIEWS, NODES_VIEWS, SORTS, TABS
-from .research import RESEARCH_VIEWS
+from .ui.catalog import ANALYTICS_VIEWS, NODES_VIEWS, SORTS, TABS
+from .ui.catalog import RESEARCH_VIEWS
 from .transitions import CompletionFeedback
+from .ui.keys import KEY_LABELS, KEY_LABELS_ASCII
 
-KEY_LABELS = {"up": "↑", "down": "↓", "pgup": "PgUp", "pgdn": "PgDn", "home": "Home", "end": "End", "tab": "Tab", "btab": "S-Tab", "enter": "Enter",
-              "esc": "Esc", "space": "Space"}
-KEY_LABELS_ASCII = dict(KEY_LABELS, up="Up", down="Down")
 from .palette import THEME_NAMES, canonical_theme
 THEMES = list(THEME_NAMES)
 
@@ -33,6 +30,10 @@ class App:
         self._ascii_cfg = ascii_
         self.config_path = getattr(cfg, "path", "")
         self.interactive = interactive
+        persistence_scheduler = getattr(sampler, "worker_scheduler", None)
+        if interactive and persistence_scheduler is not None:
+            self.persistence_lane = persistence_scheduler.lane("source")
+            store.configure_persistence_writer(self.persistence_lane.submit)
         self.tab = "jobs"
         self.cursor: Dict[str, int] = {t: 0 for t, _ in TABS}
         self.top: Dict[str, int] = {t: 0 for t, _ in TABS}
@@ -95,7 +96,7 @@ class App:
         self.views_ref = None                              # set by the screen: the Views instance (exports render through it)
         self.width = 120
         self.last_hits: list = []
-        self.completion = CompletionFeedback(store.snapshot())
+        self.completion = CompletionFeedback(store.render_snapshot())
         self.last_jobs_ids = None
         self.last_history_ids = None
         self.last_history_options = None
@@ -228,8 +229,25 @@ class App:
         self.command_ok = False
         self.say(text, level="error")
 
+    def background_worker_scheduler(self):
+        """Supply the existing application service owner to background clients."""
+        scheduler = getattr(self, "worker_scheduler", None) or getattr(self.sampler, "worker_scheduler", None)
+        if scheduler is not None:
+            return scheduler
+        if self.research is None:
+            from .research import ResearchHub
+            self.research = ResearchHub(self.cfg, self.files or self.logs.files)
+        return self.research.worker_scheduler
+
     def tick(self):
         """Housekeeping before each frame: expire the message, tell the sampler which job is selected."""
+        clipboard.poll(self)
+        scheduler = getattr(self.sampler, "worker_scheduler", None)
+        if scheduler is not None:
+            dropped = scheduler.status().get("notification_dropped", 0)
+            if dropped > getattr(self, "notification_dropped_seen", 0):
+                self.notification_dropped_seen = dropped
+                self.say(f"{dropped} stale notification hooks skipped while their bounded queue was full; scheduler collection remains available", level="warning")
         if self.message and time.time() - self.message_t > 6:
             self.message = ""
         if self.research:
@@ -296,8 +314,8 @@ class App:
     def finished_jobs(self, snap=None, *, recent=False):
         """The same sorted/filtered accounting records drive rendering and every row action."""
         from .table_tools import snapshot, filter_text, history_matches, recent_matches, recent_limit
-        snap = snapshot(self, self.store.snapshot()) if snap is None else snap
-        from .table_ui import matches
+        snap = snapshot(self, self.store.render_snapshot()) if snap is None else snap
+        from .table_query import matches
         if recent:
             limit = recent_limit(self)
             if type(limit) is int and limit > 0:
@@ -328,7 +346,7 @@ class App:
             active = {j.id for j in snap["jobs"]}
             fin = [f for f in fin if f.id not in active]
         else:
-            from .table_ui import chain, history_value, sort_rows
+            from .table_sort import chain, history_value, sort_rows
             cascade = chain(self, "history")
             key = self.sort.get("history", "end")
             keyfn = {"end": lambda f: f.end, "name": lambda f: (f.name, f.end),
@@ -347,16 +365,34 @@ class App:
         if recent:
             return fin[:recent_limit(self)]
         self.history_all_records = fin
-        from .job_groups import project_records
+        from raven.jobs.group_domain import project_records
         return project_records(self, snap, fin, tab="history")
 
     def history_jobs(self, snap=None):
-        return self.finished_jobs(snap)
+        from .table_query import fingerprint
+        from raven.jobs.group_domain import registry
+        if snap is None:
+            from .table_tools import snapshot
+            snap = snapshot(self, self.store.render_snapshot())
+        publication = snap.get("_ui_publication_token")
+        if publication is None:
+            return self.finished_jobs(snap)
+        groups = registry(self)
+        key = (publication, self.filter, self.sort.get("history", "end"),
+               self.reverse.get("history", False), fingerprint(self, "history"),
+               tuple(sorted(groups.collapsed)), groups._source_revision,
+               self.selected_id if groups.collapsed else None)
+        cached = getattr(self, "history_records_cache", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        records = self.finished_jobs(snap)
+        self.history_records_cache = key, records
+        return records
 
     def sync_history_selection(self, snap=None):
         fin = self.history_jobs(snap)
         ids = [f.id for f in fin]
-        from .table_ui import fingerprint
+        from .table_query import fingerprint
         options = self.filter, self.sort.get("history", "end"), self.reverse.get("history", False), fingerprint(self, "history")
         previous = self.last_history_ids
         if (previous is not None and ids != previous and options == self.last_history_options
@@ -364,14 +400,15 @@ class App:
                 and self.cursor["history"] == previous.index(self.selected_id)):
             self.cursor["history"] = ids.index(self.selected_id)
         self.last_history_ids, self.last_history_options = ids, options
-        from .job_selection import selected
+        from .ui.selection_state import selected
         self.selected_id = selected(self, "history", ids[self.clamp_cursor("history", len(ids))] if ids else None)
         return fin
 
     def recent_jobs(self, snap=None):
         from .table_tools import snapshot
-        snap = snapshot(self, self.store.snapshot()) if snap is None else snap
-        from . import recent_history, job_groups
+        snap = snapshot(self, self.store.render_snapshot()) if snap is None else snap
+        from . import recent_history
+        from raven.jobs import group_domain as job_groups
         state = recent_history.initialize(self)
         state.projector = lambda observation, raw: job_groups.project_records(self, observation, raw, tab="recent")
         recent = state.projector(snap, recent_history.records(self, snap))
@@ -383,7 +420,7 @@ class App:
         active = "jobs" if table == "recent" else table
         if active == self.tab and self.views_ref is not None:
             from .table_tools import snapshot
-            snap, selected = snapshot(self, self.store.snapshot()), self.selected_id
+            snap, selected = snapshot(self, self.store.render_snapshot()), self.selected_id
             if active == "jobs":
                 self.visible_ids = [row["id"] for row in self.views_ref.job_rows(snap, self, self.actions)]
                 self.recent_ids = [record.id for record in self.recent_jobs(snap)]
@@ -394,7 +431,7 @@ class App:
                     ids = self.visible_ids + self.recent_ids
                 if selected in ids:
                     self.cursor["jobs"] = ids.index(selected)
-                from .job_selection import selected as selection_value
+                from .ui.selection_state import selected as selection_value
                 self.selected_id = selection_value(self, "jobs", ids[self.clamp_cursor("jobs", len(ids))] if ids else None)
                 self.last_jobs_ids, self.jobs_selection_options = ids, self.jobs_options()
             elif active == "history":
@@ -430,7 +467,7 @@ class App:
         """A changed group representative must not retarget a queued action."""
         if not selected or selected in displayed or not self.table_state.get("groups"):
             return False
-        from .job_groups import registry, fold
+        from raven.jobs.group_domain import registry, fold
         groups = registry(self)
         group = groups.ensure(snap).for_job(selected)
         if group is None or not groups.is_collapsed(group):
@@ -473,8 +510,8 @@ class App:
         return self.read_log_buffer(path)
 
     def read_log_buffer(self, path):
-        from .log_workbench import sync_source, observe_buffer
-        from .log_tools import observe_buffer as observe_position
+        from .job_logs.workbench import sync_source, observe_buffer
+        from .job_logs.tools import observe_buffer as observe_position
         if (self.mode not in ("main", "filter", "palette")
                 or self.logs.search and getattr(self, "log_tools_state", {}).get("retained_pending")):
             # The modal owns an exact immutable source snapshot. Refreshing its
@@ -490,12 +527,12 @@ class App:
         return buf
 
     def find_log_match(self, buf, backwards=False):
-        from .log_tools import find_retained
+        from .job_logs.tools import find_retained
         result = find_retained(self, buf, backwards=backwards)
         return result[1] if result is not None else self.logs.find_next(buf, backwards=backwards)
 
     def count_log_matches(self, buf):
-        from .log_tools import count_retained
+        from .job_logs.tools import count_retained
         return count_retained(self, buf) if buf is not None and self.logs.search else 0
 
     def log_search_message(self, buf):
@@ -510,7 +547,7 @@ class App:
         return f"{count} lines match '{self.logs.search}'"
 
     def jobs_options(self):
-        from .table_ui import fingerprint
+        from .table_query import fingerprint
         return (self.filter, self.sort.get("jobs", "state"), self.reverse.get("jobs", False),
                 fingerprint(self, "jobs"), fingerprint(self, "recent"))
 
@@ -525,7 +562,7 @@ class App:
             self.fail("no job selected for logs")
             return
         if selects_job:
-            from .job_selection import resume
+            from .ui.selection_effects import resume
             resume(self, "log")
         from .navigation_ui import record as remember
         remember(self, "log", force=self.tab == "log" and jid != self.log_job)
@@ -534,7 +571,7 @@ class App:
         if binding and binding.get("job_id") != jid:
             clear_binding(self)
         if jid != self.log_job:
-            from .log_tools import before_source_change
+            from .job_logs.tools import before_source_change
             before_source_change(self)
             self.logs.clear_selection(reset_cursor=True)
             self.log_selection_expected = False
@@ -545,14 +582,14 @@ class App:
             self.logs.browser_cursor, self.logs.browser_top, self.logs.file_filter = 0, 0, ""
         self.log_job, self.log_record, self.logs.top = jid, record, None
         self.enter_tab("log")
-        from .job_selection import selected
+        from .ui.selection_state import selected
         self.selected_id = selected(self, "log", jid)
         if self.sampler:
             self.sampler.select(jid)
 
     def log_entries(self):
         flt = self.logs.file_filter.casefold()
-        from .log_workbench import visible_entries
+        from .job_logs.workbench import visible_entries
         entries = [entry for entry in self.logs.entries if not flt or
                    any(flt in str(entry.get(key, "")).casefold() for key in ("label", "group", "path", "description"))]
         return visible_entries(self, entries)
@@ -562,14 +599,14 @@ class App:
         if not entries:
             self.say("no log file selected")
             return False
-        from .job_selection import resume_lines
+        from .ui.selection_effects import resume_lines
         resume_lines(self)
         from .navigation_ui import record
         record(self, "log", force=True)
         self.logs.browser_cursor = max(0, min(self.logs.browser_cursor, len(entries) - 1))
         entry = entries[self.logs.browser_cursor]
         if not self.logs.entry or self.logs.entry["path"] != entry["path"]:
-            from .log_tools import before_source_change
+            from .job_logs.tools import before_source_change
             before_source_change(self)
             self.logs.clear_selection(reset_cursor=True)
             self.log_selection_expected = False
@@ -591,11 +628,11 @@ class App:
         """Marked ids, else the selected one (on the History tab the row under the cursor)."""
         if self.marks:
             return sorted(self.marks)
-        from .job_selection import cleared
+        from .ui.selection_state import cleared
         if cleared(self):
             return []
         if self.tab == "history":
-            from .job_selection import selected
+            from .ui.selection_state import selected
             if selected(self, "history", True) is None:
                 return []
             ids = [f.id for f in self.history_jobs()]
@@ -613,7 +650,7 @@ class App:
     def chain_ids(self, jid: str) -> List[str]:
         """The job and everything that waits for it, nearest first."""
         from .deps import DepGraph
-        return [jid] + DepGraph(self.store.jobs).downstream(jid)
+        return [jid] + DepGraph(self.store.jobs).downstream(jid, include_inferred=False)
 
     # ---- key handling ------------------------------------------------------------------------------
     def sync_selection(self):
@@ -621,17 +658,17 @@ class App:
         if self.tab == "jobs":
             if self.views_ref is not None and self.jobs_selection_options != self.jobs_options():
                 from .table_tools import snapshot
-                snap = snapshot(self, self.store.snapshot())
+                snap = snapshot(self, self.store.render_snapshot())
                 self.visible_ids = [r["id"] for r in self.views_ref.job_rows(snap, self, self.actions)]
                 self.recent_ids = [f.id for f in self.recent_jobs(snap)]
                 self.jobs_selection_options = self.jobs_options()
             ids = self.visible_ids + self.recent_ids
-            from .job_selection import selected
+            from .ui.selection_state import selected
             self.selected_id = selected(self, "jobs", ids[self.clamp_cursor("jobs", len(ids))] if ids else None)
         elif self.tab == "history":
             self.sync_history_selection()
         elif self.tab in ("log", "analytics", "research"):
-            from .job_selection import selected
+            from .ui.selection_state import selected
             field = {"log": "log_job", "analytics": "analytics_job", "research": "research_job_id"}[self.tab]
             self.selected_id = selected(self, self.tab, getattr(self, field, None))
         elif self.tab == "deps":
@@ -641,7 +678,7 @@ class App:
             if scoped and self.selected_id == scoped:
                 return
             cur = self.clamp_cursor("deps", len(self.dep_ids))
-            from .job_selection import selected
+            from .ui.selection_state import selected
             self.selected_id = selected(self, "deps", self.dep_ids[cur] if self.dep_ids else None)
         elif self.tab == "group":
             self.selected_id = self.group_selected()
@@ -659,33 +696,7 @@ class App:
 
     def _handle(self, key: str) -> None:
         """``key`` is a name: a-z A-Z 0-9 punctuation, or up down pgup pgdn home end tab btab enter esc space backspace."""
-        from .historical_ui import handle_key as historical_key
-        if historical_key(self, key):
-            return
-        from .terminal_ui import handle_key as terminal_key
-        if terminal_key(self, key):
-            return
-        from .column_resize import handle_key as column_resize_key
-        from .group_queue_drag import handle_key as queue_drag_key
-        if column_resize_key(self, key) or queue_drag_key(self, key):
-            return
-        from .job_group_drag import handle_key as group_drag_key
-        if group_drag_key(self, key):
-            return
-        from .scrollbars import handle_key as scrollbar_key
-        if scrollbar_key(self, key):
-            return
-        from .job_group_menu import active as group_menu_active, handle_key as group_menu_key
-        if group_menu_active(self):
-            group_menu_key(self, key)
-            return
-        from .history_log_export import active as export_active, handle_key as export_key
-        if export_active(self):
-            export_key(self, key)
-            return
-        from .data_export_ui import active as data_export_active, handle_key as data_export_key
-        if data_export_active(self):
-            data_export_key(self, key)
+        if workbench.route_modal_key(self, key):
             return
         binding_test = self.mode == "bindings_editor" and self.navigation_tools_state.get("test")
         if key == "ctrl-c" and self.mode != "terminal_probe" and not binding_test and key not in self.keymap:
@@ -712,7 +723,7 @@ class App:
         if text_key(self, key):
             return
         from .manual_group_ui import handle_key as manual_group_key
-        from .job_selection import context as job_list_context
+        from .ui.selection_state import context as job_list_context
         grouping_key_blocked = key == "u" and job_list_context(self) is None
         if manual_group_key(self, key):
             return
@@ -721,7 +732,7 @@ class App:
                 and not (self.mode == "main" and self.tab == "analytics" and self.analytics_view != "job")):
             from .scrollbars import resume as resume_scroll
             resume_scroll(self)
-        if workbench.handle_key(self, key):
+        if workbench.handle_key(self, key, modal=False):
             return
         if key == ":" and self.mode not in ("main", "filter", "palette", "confirm"):
             from .command_ui import open_palette
@@ -748,7 +759,8 @@ class App:
                     self.logs.search, self.mode = self.filter_edit, "main"
                     self.logs.match = None
                     buf = self.read_log_buffer(self.logs.path) if self.logs.path else None
-                    i = self.find_log_match(buf, backwards=True) if self.logs.search else None
+                    if self.logs.search:
+                        self.find_log_match(buf, backwards=True)
                     self.say(self.log_search_message(buf))
                     return
                 self.filter, self.mode = self.filter_edit, "main"
@@ -855,14 +867,14 @@ class App:
             self.set_days(self.days_index + (1 if action == "days_more" else -1))
         elif action == "visual":
             if self.tab == "log" and not self.logs.browser:
-                from .job_selection import resume_lines
+                from .ui.selection_effects import resume_lines
                 resume_lines(self)
                 self.log_selection_expected = self.logs.begin_selection(self.prepare_log())
             else:
                 self.start_selection(self.cursor_row())
         elif action == "visual_all":
             if self.tab == "log" and not self.logs.browser:
-                from .job_selection import resume_lines
+                from .ui.selection_effects import resume_lines
                 resume_lines(self)
                 self.log_selection_expected = self.logs.select_all(self.prepare_log())
             else:
@@ -902,7 +914,7 @@ class App:
         elif action == "mark_all":
             if self.tab == "jobs":
                 self.marks.update(self.visible_ids)
-                from .job_selection import _bind_marks
+                from .ui.selection_state import _bind_marks
                 _bind_marks(self, self.visible_ids)
                 self.say(f"{len(self.marks)} marked")
         elif action == "unmark_all":
@@ -916,7 +928,7 @@ class App:
             if self.tab == "log" and self.logs.browser:
                 self.select_log_file()
             elif self.tab == "research" and self.research_view == "arrays":
-                from .job_selection import cleared
+                from .ui.selection_state import cleared
                 if cleared(self, "research"):
                     self.say("Select an array cohort before opening its tasks")
                     return
@@ -973,7 +985,7 @@ class App:
                 self.logs.clear_selection(reset_cursor=True)
                 self.log_selection_expected = False
                 self.logs.entry, self.logs.browser = None, False
-                from .log_tools import before_source_change
+                from .job_logs.tools import before_source_change
                 before_source_change(self)
                 self.logs.which = "err" if self.logs.which == "out" else "out"
                 self.logs.file_index, self.logs.top, self.logs.match = 0, None, None
@@ -987,7 +999,7 @@ class App:
                     return
                 jid = self.log_job or self.selected_id
                 if self.views_ref:
-                    snap = self.store.snapshot()
+                    snap = self.store.render_snapshot()
                     job = self.log_target(snap)
                     if job:
                         self.views_ref.log_candidates(self, job, snap["details"].get(jid, {}))
@@ -1026,7 +1038,7 @@ class App:
         elif action.startswith("replay_"):
             self.replay_control(action[7:])
         elif action == "sort":
-            from .table_ui import reset_sort
+            from .table_sort import reset_sort
             reset_sort(self, self.tab)
             opts = SORTS.get(self.tab, ["name"])
             cur = self.sort.get(self.tab, opts[0])
@@ -1034,7 +1046,7 @@ class App:
             self.table_sort_changed(self.tab, persist=False)
             self.say(f"sorted by {self.sort[self.tab]}")
         elif action == "reverse":
-            from .table_ui import reset_sort
+            from .table_sort import reset_sort
             reset_sort(self, self.tab)
             self.reverse[self.tab] = not self.reverse.get(self.tab, False)
             self.table_sort_changed(self.tab, persist=False)
@@ -1066,7 +1078,7 @@ class App:
 
     def open_details(self):
         """The details overlay of the selected job: scontrol and the steps of a running job, sacct -j of a finished one."""
-        from .job_selection import cleared
+        from .ui.selection_state import cleared
         if cleared(self):
             self.say("Select a job before opening its inspector")
             return
@@ -1088,7 +1100,7 @@ class App:
 
     def group_selected(self) -> Optional[str]:
         ids = getattr(self, "group_ids", [])
-        from .job_selection import selected
+        from .ui.selection_state import selected
         return selected(self, "group", ids[self.clamp_cursor("group", len(ids))] if ids else None)
 
     def handle_action(self, action: str):
@@ -1105,7 +1117,7 @@ class App:
         from .scrollbars import resume as resume_scroll
         if not (self.tab == "analytics" and self.analytics_view != "job"):
             resume_scroll(self)
-        from .job_selection import resume
+        from .ui.selection_effects import resume
         self.click_row = None
         scoped = getattr(self, "history_browser_state", {}).get("views", {}).get("deps", {})
         if self.tab == "deps" and scoped.get("explicit"):
@@ -1118,7 +1130,7 @@ class App:
             return
         if self.tab == "research":
             if action in ("page_up", "page_down", "home", "end"):
-                from .job_selection import cleared
+                from .ui.selection_state import cleared
                 if (self.research_view == "arrays" and self.research_array_open
                         and not cleared(self, "research") and action in ("page_up", "page_down")):
                     self.research_task_offset = max(0, self.research_task_offset + (-24 if action == "page_up" else 24))
@@ -1134,7 +1146,7 @@ class App:
                     ids = list(dict.fromkeys(j.id for j in self.store.jobs + self.store.finished))
                 cur = ids.index(self.research_job_id) if self.research_job_id in ids else 0
                 if ids:
-                    from .research import select_job
+                    from .ui.research_binding import select_job
                     select_job(self, ids[max(0, min(len(ids) - 1, cur + delta))])
                 self.research_scroll = 0
             elif self.research_view == "arrays":
@@ -1165,7 +1177,7 @@ class App:
                     self.analytics_job = ids[max(0, min(len(ids) - 1, cur + step))]
             return
         if self.tab == "log":
-            from .job_selection import resume_lines
+            from .ui.selection_effects import resume_lines
             resume_lines(self)
             if self.logs.browser:
                 n = len(self.log_entries())
@@ -1180,7 +1192,7 @@ class App:
         if tab in ("jobs", "history", "group", "deps"):
             resume(self)
         elif tab == "sources":
-            from .job_selection import resume_lines
+            from .ui.selection_effects import resume_lines
             resume_lines(self)
         n = len(self.history_jobs()) if tab == "history" else {"jobs": len(self.visible_ids) + len(self.recent_ids),
              "sources": len(self.ordered_source_ids()), "group": len(getattr(self, "group_ids", [])), "deps": len(self.dep_ids)}.get(tab, 0)
@@ -1196,7 +1208,7 @@ class App:
 
     def enter_tab(self, name: str):
         """Switch tabs; entering Analytics from Jobs or History carries the job under the cursor along."""
-        from .text_selection import clear as clear_text
+        from .ui.text_selection_state import clear as clear_text
         clear_text(self)
         from .navigation_ui import record
         record(self, name)
@@ -1253,7 +1265,7 @@ class App:
         n = len(self.last_rows)
         if n == 0:
             return
-        from .job_selection import resume_lines
+        from .ui.selection_effects import resume_lines
         resume_lines(self)
         self.sel_anchor = self.sel_end = max(0, min(n - 1, row))
 
@@ -1271,7 +1283,7 @@ class App:
         from .text_selection import copy_selection
         if copy_selection(self):
             return
-        from .job_copy import copy_selection as copy_jobs
+        from raven.jobs.copy import copy_selection as copy_jobs
         if copy_jobs(self):
             return
         from .row_copy import copy_selection as copy_row
@@ -1308,8 +1320,7 @@ class App:
         if not text:
             self.fail("Select a row or text lines before copying; Y copies the focused pane")
             return
-        cb = self.cfg["clipboard"]
-        msg = clipboard.copy(text, self.state_dir, **clipboard.options(self))
+        msg = clipboard.copy_for_app(self, text, self.state_dir, **clipboard.options(self))
         self.store.event("copy", msg)
         self.say(msg)
         self.sel_anchor = None
@@ -1328,7 +1339,7 @@ class App:
         if not path:
             self.fail("Open a log with Enter before copying its contents" if self.logs.browser else "no log file selected")
             return
-        from .log_copy import copy_full_log
+        from .job_logs.copy import copy_full_log
         files = self.logs.files
         cb = dict(self.cfg["clipboard"])
         self.start_log_copy(lambda service: copy_full_log(path, self.state_dir, files=files,
@@ -1349,7 +1360,7 @@ class App:
                 yield b"\n"
             if partial is not None:
                 yield partial
-        from .log_copy import copy_log_selection
+        from .job_logs.copy import copy_log_selection
         cb = dict(self.cfg["clipboard"])
         self.start_log_copy(lambda service: copy_log_selection(chunks(), self.state_dir, source_path=path,
             use_osc52=bool(cb.get("osc52", True)), use_tools=bool(cb.get("tools", True)),
@@ -1422,7 +1433,7 @@ class App:
         if kind == "report" and self.interactive:
             self.export_report_background()
             return
-        snap = self.store.snapshot()
+        snap = self.store.render_snapshot()
         name = f"{kind}-{self.tab}-{export.stamp()}"
         try:
             if kind == "report":
@@ -1446,7 +1457,7 @@ class App:
                     self.fail("no job selected or marked")
                     return
                 path = export.write(self.state_dir, name + ".json", export.jobs_json(snap, ids, series_of=self.store.series_of))
-        except OSError as e:
+        except (OSError, ValueError) as e:
             self.fail(f"export failed: {e}")
             return
         self.store.event("export", f"exported {kind} to {path}")
@@ -1508,15 +1519,22 @@ class App:
         return matches[0] + " " if len(matches) == 1 else text
 
     def _ids_arg(self, args: List[str]) -> List[Job]:
-        if not args or args == ["marked"]:
+        if args == ["marked"]:
+            if not self.marks:
+                return []
             return self.target_jobs()
+        if not args:
+            return self.target_jobs() if self.interactive else []
         if args == ["all"]:
             return [self.store.job(i) for i in self.visible_ids if self.store.job(i)]
+        if len(args) != len(set(args)):
+            return []
         out = []
         for a in args:
             j = self.store.job(a)
-            if j:
-                out.append(j)
+            if not j:
+                return []
+            out.append(j)
         return out
 
     def run_command(self, line: str):
@@ -1561,226 +1579,251 @@ class App:
             return
         if command_registry.execute_core(self, cmd, args, line):
             return
-        if cmd in ("cancel", "hold", "release", "requeue", "top"):
-            jobs = self._ids_arg(args)
-            if not jobs or not self.actions:
-                self.fail("no such job" if args else "no job selected or marked")
-                return
-            ok = [j for j in jobs if self.actions.applicable(cmd, j)[0]]
-            if not ok:
-                self.fail(self.actions.applicable(cmd, jobs[0])[1])
-                return
-            self.confirm, self.mode = dict(action=cmd, jobs=ok), "confirm"
-        elif cmd == "filter":
-            value = " ".join(args)
-            if self.tab == "log":
-                if self.logs.browser:
-                    self.logs.file_filter = value
-                    self.logs.browser_cursor, self.logs.browser_top = 0, 0
-                else:
-                    self.logs.search, self.logs.match = value, None
-            else:
-                self.filter = value
-                self.cursor[self.tab] = 0
-            self.say(f"filter '{value}'" if value else "filter cleared")
-        elif cmd == "sort":
-            opts = SORTS.get(self.tab, ["name"])
-            if args and args[0] in opts:
-                from .table_ui import reset_sort
-                reset_sort(self, self.tab)
-                self.sort[self.tab] = args[0]
-                self.table_sort_changed(self.tab)
-                self.say(f"sorted by {args[0]}")
-            else:
-                self.fail("sort keys here: " + " ".join(opts))
-        elif cmd == "days":
-            try:
-                d = float(args[0])
-                if not math.isfinite(d) or d <= 0:
-                    raise ValueError("days must be positive and finite")
-            except (IndexError, ValueError):
-                self.fail("days <" + "|".join(f"{x:g}" for x in self.days_options) + ">")
-                return
-            if d not in self.days_options:
-                self.days_options.append(d)
-                self.days_options.sort()
-            self.set_days(self.days_options.index(d))
-        elif cmd == "tab":
-            if args and args[0] in dict(TABS):
-                self.enter_tab(args[0])
-            else:
-                self.fail("tab <" + "|".join(t for t, _ in TABS) + ">")
-        elif cmd == "view":
-            if len(args) == 1 and args[0] in dict(NODES_VIEWS):
-                self.nodes_view = args[0]
-                self.enter_tab("nodes")
-                return
-            if args and args[0] in dict(RESEARCH_VIEWS):
-                self.research_view = args[0]
-                self.research_scroll = 0
-                self.enter_tab("research")
-                return
-            if args and args[0] in dict(ANALYTICS_VIEWS):
-                self.analytics_view = args[0]
-                self.enter_tab("analytics")
-            else:
-                self.fail("view <job|history|timeline>")
-        elif cmd == "copy":
-            if args == ["all"]:
-                if self.tab == "log":
-                    self.copy_all_log()
-                else:
-                    self.copy_visible_pane()
-            elif len(args) == 2 and all(a.isdigit() and int(a) > 0 for a in args):
-                if self.tab == "log" and not self.logs.browser:
-                    buf = self.prepare_log()
-                    if buf is None or max(map(int, args)) > buf.total:
-                        self.fail("copy line range is outside the loaded log")
-                        return
-                    from .job_selection import resume_lines
-                    resume_lines(self)
-                    self.log_selection_expected = self.logs.begin_selection(buf, int(args[0]) - 1)
-                    self.logs.selection_end = self.logs.cursor = int(args[1]) - 1
-                else:
-                    from .text_selection import clear as clear_text
-                    clear_text(self)
-                    self.sel_anchor, self.sel_end = int(args[0]) - 1, int(args[1]) - 1
-                self.yank()
-            elif not args:
-                self.yank()
-            else:
-                self.fail("copy [all|first last] (positive 1-based lines)")
-        elif cmd == "gpu":
-            if args and args not in (["on"], ["off"]):
-                self.fail("gpu <on|off>")
-                return
-            self.gpu = (args[0] == "on") if args else (not self.gpu)
-            self.say(f"GPU sampling {'on' if self.gpu else 'off'}")
-        elif cmd == "bell":
-            if args and args not in (["on"], ["off"]):
-                self.fail("bell <on|off>")
-                return
-            self.bell = (args[0] == "on") if args else (not self.bell)
-            self.say(f"bell {'on' if self.bell else 'off'}")
-        elif cmd == "source":
-            if len(args) == 2 and args[0] in self.store.health and args[1] in ("on", "off"):
-                h = self.store.health[args[0]]
-                h.enabled = args[1] == "on"
-                h.error = ""
-                self.say(f"{h.name} {'enabled' if h.enabled else 'disabled'}")
-            else:
-                self.fail("source <" + "|".join(sorted(self.store.health)) + "> <on|off>")
-        elif cmd == "theme":
-            if args and canonical_theme(" ".join(args)) in THEMES:
-                self.set_theme(" ".join(args))
-            else:
-                self.fail("theme <" + "|".join(THEMES) + ">")
-        elif cmd == "profile":
-            if args and args[0] in self.cfg.profiles():
-                if args[0] == self.profile_name:
-                    self.say(f"already on profile {args[0]}")
-                else:
-                    self.switch_profile, self.quit = args[0], True
-            else:
-                self.fail("profile <" + "|".join(self.cfg.profiles()) + ">" if self.cfg.profiles() else "no profiles configured ([profiles.<name>] in the config)")
-        elif cmd == "compare":
-            if args == ["clear"]:
-                self.compare_ids = []
-                self.say("comparison cleared")
-                return
-            elif args and args != ["marked"]:
-                self.compare_ids = list(args)
-            else:
-                self.compare_ids = sorted(self.marks)
-            if not self.compare_ids:
-                self.fail("compare <ids> or mark jobs first")
-                return
-            self.analytics_view = "compare"
-            self.enter_tab("analytics")
-        elif cmd in ("tag", "untag"):
-            ids = [a for a in args if self.store.job(a) or any(f.id == a for f in self.store.finished)]
-            tags = [a for a in args if a not in ids]
-            ids = ids or self.target_ids()
-            if not ids or not tags:
-                self.fail(f"{cmd} [ids] <tags...>")
-                return
-            for i in ids:
-                self.store.tag(i, *tags, remove=(cmd == "untag"))
-            self.store.event("tag", f"{cmd} {' '.join(ids)}: {' '.join(tags)}")
-            self.say(f"{cmd}ged {', '.join(ids[:4])}{' ...' if len(ids) > 4 else ''}: {' '.join('#' + t.lstrip('#') for t in tags)}")
-        elif cmd == "pin":
-            self.pin_toggle(args or self.target_ids())
-        elif cmd == "note":
-            ids = [a for a in args[:1] if self.store.job(a) or any(f.id == a for f in self.store.finished)]
-            text = " ".join(args[1:] if ids else args)
-            ids = ids or self.target_ids()[:1]
-            if not ids:
-                self.fail("note [id] <text>")
-                return
-            self.store.note(ids[0], text)
-            self.say(f"note on {ids[0]}: {text}" if text else f"note on {ids[0]} cleared")
-        elif cmd == "resubmit":
-            self.start_resubmit(args)
-        elif cmd == "chain":
-            verb = args[0] if args else ""
-            if verb not in ("cancel", "hold", "release"):
-                self.fail("chain <cancel|hold|release> [id]")
-                return
-            root = args[1] if len(args) > 1 else self.selected_id
-            if not root or not self.store.job(root):
-                self.fail("chain: no such job")
-                return
-            jobs = [j for j in (self.store.job(i) for i in self.chain_ids(root)) if j and self.actions and self.actions.applicable(verb, j)[0]]
-            if not jobs:
-                self.fail(f"nothing in the chain of {root} to {verb}")
-                return
-            self.confirm, self.mode = dict(action=verb, jobs=jobs), "confirm"
-        elif cmd == "refresh":
-            if self.sampler:
-                self.sampler.refresh_all()
-            if self.research:
-                self.research.configure()
-            self.say("sampling every source now")
-        elif cmd == "mark":
-            if args == ["all"]:
-                identifiers = self.visible_ids
-            else:
-                identifiers = [a for a in args if self.store.job(a)]
-            self.marks.update(identifiers)
-            from .job_selection import _bind_marks
-            _bind_marks(self, identifiers)
-            self.say(f"{len(self.marks)} marked")
-        elif cmd == "unmark":
-            if args:
-                self.marks.difference_update(args)
-            else:
-                self.marks.clear()
-            from .job_selection import _bind_marks
-            _bind_marks(self, ())
-            self.say(f"{len(self.marks)} marked")
-        elif cmd == "log":
-            if len(args) == 1 and self.job_record(args[0]):
-                self.open_log(args[0])
-            else:
-                self.fail("log <id>")
-        elif cmd == "find":
-            if self.tab != "log":
-                self.open_log()
-                if self.tab != "log":
-                    return
+        self.fail(f"unknown command '{cmd}'")
+
+    def _command_cancel(self, args: list[str], line: str, cmd: str) -> None:
+        jobs = self._ids_arg(args)
+        if not jobs or not self.actions:
+            self.fail("no such job" if args else "no job selected or marked")
+            return
+        ok = [j for j in jobs if self.actions.applicable(cmd, j)[0]]
+        if not ok:
+            self.fail(self.actions.applicable(cmd, jobs[0])[1])
+            return
+        self.confirm, self.mode = dict(action=cmd, jobs=ok, action_scope=self._action_scope()), "confirm"
+
+    def _command_filter(self, args: list[str], line: str, cmd: str) -> None:
+        value = " ".join(args)
+        if self.tab == "log":
             if self.logs.browser:
-                self.fail("Open a log with Enter before searching its contents")
-                return
-            self.logs.search, self.logs.match = " ".join(args), None
-            buf = self.read_log_buffer(self.logs.path) if self.logs.path else None
-            i = self.find_log_match(buf, backwards=True) if self.logs.search else None
-            self.say(self.log_search_message(buf))
-        elif cmd == "help":
-            self.mode, self.scroll = "help", 0
-        elif cmd == "quit":
-            self.quit = True
+                self.logs.file_filter = value
+                self.logs.browser_cursor, self.logs.browser_top = 0, 0
+            else:
+                self.logs.search, self.logs.match = value, None
         else:
-            self.fail(f"unknown command '{cmd}'")
+            self.filter = value
+            self.cursor[self.tab] = 0
+        self.say(f"filter '{value}'" if value else "filter cleared")
+
+    def _command_sort(self, args: list[str], line: str, cmd: str) -> None:
+        opts = SORTS.get(self.tab, ["name"])
+        if args and args[0] in opts:
+            from .table_sort import reset_sort
+            reset_sort(self, self.tab)
+            self.sort[self.tab] = args[0]
+            self.table_sort_changed(self.tab)
+            self.say(f"sorted by {args[0]}")
+        else:
+            self.fail("sort keys here: " + " ".join(opts))
+
+    def _command_days(self, args: list[str], line: str, cmd: str) -> None:
+        try:
+            d = float(args[0])
+            if not math.isfinite(d) or d <= 0:
+                raise ValueError("days must be positive and finite")
+        except (IndexError, ValueError):
+            self.fail("days <" + "|".join(f"{x:g}" for x in self.days_options) + ">")
+            return
+        if d not in self.days_options:
+            self.days_options.append(d)
+            self.days_options.sort()
+        self.set_days(self.days_options.index(d))
+
+    def _command_tab(self, args: list[str], line: str, cmd: str) -> None:
+        if args and args[0] in dict(TABS):
+            self.enter_tab(args[0])
+        else:
+            self.fail("tab <" + "|".join(t for t, _ in TABS) + ">")
+
+    def _command_view(self, args: list[str], line: str, cmd: str) -> None:
+        if len(args) == 1 and args[0] in dict(NODES_VIEWS):
+            self.nodes_view = args[0]
+            self.enter_tab("nodes")
+            return
+        if args and args[0] in dict(RESEARCH_VIEWS):
+            self.research_view = args[0]
+            self.research_scroll = 0
+            self.enter_tab("research")
+            return
+        if args and args[0] in dict(ANALYTICS_VIEWS):
+            self.analytics_view = args[0]
+            self.enter_tab("analytics")
+        else:
+            self.fail("view <job|history|timeline>")
+
+    def _command_copy(self, args: list[str], line: str, cmd: str) -> None:
+        if args == ["all"]:
+            if self.tab == "log":
+                self.copy_all_log()
+            else:
+                self.copy_visible_pane()
+        elif len(args) == 2 and all(a.isdigit() and int(a) > 0 for a in args):
+            if self.tab == "log" and not self.logs.browser:
+                buf = self.prepare_log()
+                if buf is None or max(map(int, args)) > buf.total:
+                    self.fail("copy line range is outside the loaded log")
+                    return
+                from .ui.selection_effects import resume_lines
+                resume_lines(self)
+                self.log_selection_expected = self.logs.begin_selection(buf, int(args[0]) - 1)
+                self.logs.selection_end = self.logs.cursor = int(args[1]) - 1
+            else:
+                from .ui.text_selection_state import clear as clear_text
+                clear_text(self)
+                self.sel_anchor, self.sel_end = int(args[0]) - 1, int(args[1]) - 1
+            self.yank()
+        elif not args:
+            self.yank()
+        else:
+            self.fail("copy [all|first last] (positive 1-based lines)")
+
+    def _command_gpu(self, args: list[str], line: str, cmd: str) -> None:
+        if args and args not in (["on"], ["off"]):
+            self.fail("gpu <on|off>")
+            return
+        self.gpu = (args[0] == "on") if args else (not self.gpu)
+        self.say(f"GPU sampling {'on' if self.gpu else 'off'}")
+
+    def _command_bell(self, args: list[str], line: str, cmd: str) -> None:
+        if args and args not in (["on"], ["off"]):
+            self.fail("bell <on|off>")
+            return
+        self.bell = (args[0] == "on") if args else (not self.bell)
+        self.say(f"bell {'on' if self.bell else 'off'}")
+
+    def _command_source(self, args: list[str], line: str, cmd: str) -> None:
+        if len(args) == 2 and args[0] in self.store.health and args[1] in ("on", "off"):
+            h = self.store.health[args[0]]
+            h.enabled = args[1] == "on"
+            h.error = ""
+            self.say(f"{h.name} {'enabled' if h.enabled else 'disabled'}")
+        else:
+            self.fail("source <" + "|".join(sorted(self.store.health)) + "> <on|off>")
+
+    def _command_theme(self, args: list[str], line: str, cmd: str) -> None:
+        if args and canonical_theme(" ".join(args)) in THEMES:
+            self.set_theme(" ".join(args))
+        else:
+            self.fail("theme <" + "|".join(THEMES) + ">")
+
+    def _command_profile(self, args: list[str], line: str, cmd: str) -> None:
+        if args and args[0] in self.cfg.profiles():
+            if args[0] == self.profile_name:
+                self.say(f"already on profile {args[0]}")
+            else:
+                self.switch_profile, self.quit = args[0], True
+        else:
+            self.fail("profile <" + "|".join(self.cfg.profiles()) + ">" if self.cfg.profiles() else "no profiles configured ([profiles.<name>] in the config)")
+
+    def _command_compare(self, args: list[str], line: str, cmd: str) -> None:
+        if args == ["clear"]:
+            self.compare_ids = []
+            self.say("comparison cleared")
+            return
+        elif args and args != ["marked"]:
+            self.compare_ids = list(args)
+        else:
+            self.compare_ids = sorted(self.marks)
+        if not self.compare_ids:
+            self.fail("compare <ids> or mark jobs first")
+            return
+        self.analytics_view = "compare"
+        self.enter_tab("analytics")
+
+    def _command_tag(self, args: list[str], line: str, cmd: str) -> None:
+        ids = [a for a in args if self.store.job(a) or any(f.id == a for f in self.store.finished)]
+        tags = [a for a in args if a not in ids]
+        ids = ids or self.target_ids()
+        if not ids or not tags:
+            self.fail(f"{cmd} [ids] <tags...>")
+            return
+        for i in ids:
+            self.store.tag(i, *tags, remove=(cmd == "untag"))
+        self.store.event("tag", f"{cmd} {' '.join(ids)}: {' '.join(tags)}")
+        self.say(f"{cmd}ged {', '.join(ids[:4])}{' ...' if len(ids) > 4 else ''}: {' '.join('#' + t.lstrip('#') for t in tags)}")
+
+    def _command_pin(self, args: list[str], line: str, cmd: str) -> None:
+        self.pin_toggle(args or self.target_ids())
+
+    def _command_note(self, args: list[str], line: str, cmd: str) -> None:
+        ids = [a for a in args[:1] if self.store.job(a) or any(f.id == a for f in self.store.finished)]
+        text = " ".join(args[1:] if ids else args)
+        ids = ids or self.target_ids()[:1]
+        if not ids:
+            self.fail("note [id] <text>")
+            return
+        self.store.note(ids[0], text)
+        self.say(f"note on {ids[0]}: {text}" if text else f"note on {ids[0]} cleared")
+
+    def _command_resubmit(self, args: list[str], line: str, cmd: str) -> None:
+        self.start_resubmit(args)
+
+    def _command_chain(self, args: list[str], line: str, cmd: str) -> None:
+        verb = args[0] if args else ""
+        if verb not in ("cancel", "hold", "release"):
+            self.fail("chain <cancel|hold|release> [id]")
+            return
+        root = args[1] if len(args) == 2 else self.selected_id if self.interactive and len(args) == 1 else None
+        if not root or not self.store.job(root):
+            self.fail("chain: no such job")
+            return
+        jobs = [j for j in (self.store.job(i) for i in self.chain_ids(root)) if j and self.actions and self.actions.applicable(verb, j)[0]]
+        if not jobs:
+            self.fail(f"nothing in the chain of {root} to {verb}")
+            return
+        self.confirm, self.mode = dict(action=verb, jobs=jobs, action_scope=self._action_scope()), "confirm"
+
+    def _command_refresh(self, args: list[str], line: str, cmd: str) -> None:
+        if self.sampler:
+            self.sampler.refresh_all()
+        if self.research:
+            self.research.configure()
+        self.say("sampling every source now")
+
+    def _command_mark(self, args: list[str], line: str, cmd: str) -> None:
+        if args == ["all"]:
+            identifiers = self.visible_ids
+        else:
+            identifiers = [a for a in args if self.store.job(a)]
+        self.marks.update(identifiers)
+        from .ui.selection_state import _bind_marks
+        _bind_marks(self, identifiers)
+        self.say(f"{len(self.marks)} marked")
+
+    def _command_unmark(self, args: list[str], line: str, cmd: str) -> None:
+        if args:
+            self.marks.difference_update(args)
+        else:
+            self.marks.clear()
+        from .ui.selection_state import _bind_marks
+        _bind_marks(self, ())
+        self.say(f"{len(self.marks)} marked")
+
+    def _command_log(self, args: list[str], line: str, cmd: str) -> None:
+        if len(args) == 1 and self.job_record(args[0]):
+            self.open_log(args[0])
+        else:
+            self.fail("log <id>")
+
+    def _command_find(self, args: list[str], line: str, cmd: str) -> None:
+        if self.tab != "log":
+            self.open_log()
+            if self.tab != "log":
+                return
+        if self.logs.browser:
+            self.fail("Open a log with Enter before searching its contents")
+            return
+        self.logs.search, self.logs.match = " ".join(args), None
+        buf = self.read_log_buffer(self.logs.path) if self.logs.path else None
+        if self.logs.search:
+            self.find_log_match(buf, backwards=True)
+        self.say(self.log_search_message(buf))
+
+    def _command_help(self, args: list[str], line: str, cmd: str) -> None:
+        self.mode, self.scroll = "help", 0
+
+    def _command_quit(self, args: list[str], line: str, cmd: str) -> None:
+        self.quit = True
 
     def replay_control(self, what: str, arg: str = "") -> None:
         rp = getattr(self, "replay", None)
@@ -1831,22 +1874,41 @@ class App:
             self.sampler.refresh_all()
 
     def evaluate(self, text: str) -> str:
-        """An expression over the snapshot (see expr.py), as one line of text."""
-        from .expr import Expr, ExprError, cluster_ns
-        try:
-            v = Expr(text)(cluster_ns(self.store.snapshot(), self.user, self.marks))
-        except ExprError as e:
+        """Evaluate cached data on the shared worker in an interactive session."""
+        snapshot, user, marks = self.store.render_snapshot(), self.user, tuple(self.marks)
+
+        def evaluate_snapshot():
+            from .expr import Expr, ExprError, cluster_ns, bounded_repr
+            try:
+                value = Expr(text)(cluster_ns(snapshot, user, marks))
+                if isinstance(value, (list, tuple, set)):
+                    value = [item.get("id", item) if isinstance(item, dict) else item for item in value]
+                output = value if isinstance(value, str) else bounded_repr(value)
+                return True, output if len(output) < 300 else output[:297] + "..."
+            except ExprError as exc:
+                return False, "eval: " + str(exc)
+
+        if self.interactive and self.research is not None:
+            # Capture references before admission; the worker never reaches
+            # back into mutable selection/marks or publishes directly to UI.
+            self.research.poll_task()
+            def completed(result):
+                if isinstance(result, Exception):
+                    self.fail("eval: " + str(result)[:512])
+                else:
+                    self.command_ok, output = result
+                    self.say(output, level="info" if self.command_ok else "error")
+            if self.research.start_task(evaluate_snapshot, completed):
+                return "Evaluating the cached snapshot..."
             self.command_ok = False
-            return f"eval: {e}"
-        if isinstance(v, (list, tuple, set)):
-            v = [x.get("id", x) if isinstance(x, dict) else x for x in v]
-        text = repr(v) if not isinstance(v, str) else v
-        return text if len(text) < 300 else text[:297] + "..."
+            return "eval: background lane is busy; try again when the current task completes"
+        self.command_ok, output = evaluate_snapshot()
+        return output
 
     def advise(self, what: Optional[str]) -> str:
         """The advisor's suggestion for a job id, a job name, or the selected job."""
         from . import advisor
-        snap = self.store.snapshot()
+        snap = self.store.render_snapshot()
         if what is None:
             ids = self.target_ids()
             what = ids[0] if ids else None
@@ -1855,7 +1917,7 @@ class App:
             return "advise <id | name>"
         j = self.store.job(what)
         if j and not j.pending:
-            from .views import _native_series
+            from raven.recordings.presentation import _native_series
             a = advisor.advise_running(j, snap["live"].get(j.id), _native_series(self.store.series_of(j.id)), snap["finished"])
             return f"{j.id} {j.name} so far: " + (a.summary(self.views_ref.g.dot if self.views_ref else "|") or "nothing to change yet")
         f = next((f for f in snap["finished"] if f.id == what), None)
@@ -1875,9 +1937,6 @@ class App:
 
         Shift-click extends text selection; other right-clicks clear selections.
         """
-        from .historical_ui import handle_mouse as historical_mouse
-        if historical_mouse(self, y, x, button=button, shift=shift):
-            return
         # A pointer report must never replace the frame's published hit map.
         # In particular, a late event can retain rows from a previous tab or
         # an inline Research view after the selected job has changed.
@@ -1885,10 +1944,18 @@ class App:
         pointer_event = PointerEvent(y, x, button, shift, alt)
         if not pointer_event.valid:
             return
-        from .terminal_ui import handle_mouse as terminal_mouse
+        # Reconcile a retained gesture before a newly opened modal can claim
+        # its release. A changed mode, toolbar, tab or geometry cancels the
+        # original owner and consumes the stale continuation.
+        if route_capture(self, pointer_event):
+            return
+        from .historical_ui import handle_mouse as historical_mouse
+        if historical_mouse(self, y, x, button=button, shift=shift):
+            return
+        from .terminal.ui import handle_mouse as terminal_mouse
         if terminal_mouse(self, y, x, button=button, shift=shift, alt=alt):
             return
-        from .interaction import initialize as pointer_state, _current as current_graph, _scope as pointer_scope
+        from .ui.interaction_state import initialize as pointer_state, _current as current_graph, _scope as pointer_scope
         pointer = pointer_state(self)
         published_graph = pointer.get("graph")
         fresh_activation = button in ("press", "left")
@@ -1911,7 +1978,7 @@ class App:
             if self.mode == "main" and tab_frame_current:
                 tab_target = next((key for ty, left, right, key in self.tab_hits
                                    if y == ty and left <= x < right), None)
-            from .interaction import hit_token
+            from .ui.interaction_state import hit_token
             published_hit_token = pointer.get("published_hit_token")
             content_current = (current_graph(self) is not None and
                                published_hit_token is not None and
@@ -1928,32 +1995,15 @@ class App:
         if button in ("press", "left"):
             from .scrollbars import commit_selection_gesture
             commit_selection_gesture(self)
-        # These inspection dialogs own the whole pointer stream. A click or
-        # drag must never reach a graph, selection, or tab underneath them.
-        modal_modules = workbench.INSPECTION_MODES
-        if self.mode in modal_modules:
-            from .interaction import handle_mouse as pointer_mouse
-            pointer_mouse(self, y, x, button="motion", shift=shift)
-            from .scrollbars import handle_mouse as modal_scrollbar
-            if modal_scrollbar(self, y, x, button=button, shift=shift):
-                return
-            from .toolbar import handle_mouse as modal_toolbar
-            if modal_toolbar(self, y, x, button=button, shift=shift):
-                return
-            if fresh_activation and published_graph is not None and not content_current:
-                return
-            from importlib import import_module
-            modal = import_module("raven." + modal_modules[self.mode])
-            modal.handle_mouse(self, y, x, button=button, shift=shift)
+        if workbench.route_modal_mouse(self, y, x, button=button, shift=shift,
+                                       current=content_current):
             return
-        from .history_log_export import active as export_active, handle_mouse as export_mouse
+        from .job_logs.history_export import active as export_active, handle_mouse as export_mouse
         from .scrollbars import handle_mouse as scrollbar_mouse
-        from .column_resize import active as column_active, handle_mouse as column_mouse
+        from .column_resize import handle_mouse as column_mouse
         from .group_queue_drag import handle_mouse as queue_mouse
-        from .job_group_drag import pending as group_drag_pending, handle_mouse as group_drag_mouse
-        if route_capture(self, pointer_event):
-            return
-        from .job_group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
+        from raven.jobs.group_drag import handle_mouse as group_drag_mouse
+        from raven.jobs.group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
         if group_menu_active(self):
             if scrollbar_mouse(self, y, x, button=button, shift=shift):
                 return
@@ -1977,9 +2027,9 @@ class App:
                 return
             if group_menu_mouse(self, y, x, button=button, shift=shift):
                 return
-        from .job_selection import context_click
+        from raven.jobs.selection import context_click
         if button == "right":
-            from .text_selection import clear as clear_text
+            from .ui.text_selection_state import clear as clear_text
             clear_text(self)
         if context_click(self, y, x, button=button, shift=shift):
             return
@@ -2010,7 +2060,7 @@ class App:
             return
         if queue_mouse(self, y, x, button=button, shift=shift, alt=alt):
             return
-        from .job_selection import pointer_focus as job_pointer_focus
+        from raven.jobs.selection import pointer_focus as job_pointer_focus
         if fresh_activation:
             job_pointer_focus(self, y, x)
             if group_drag_mouse(self, y, x, button=button, shift=shift, alt=alt):
@@ -2018,7 +2068,8 @@ class App:
         from .text_selection import handle_mouse as text_mouse
         if getattr(self, "text_selection_state", {}).get("explicit") and text_mouse(self, y, x, button=button, shift=shift):
             return
-        from .job_selection import active as job_capture, advisor_pointer, handle_mouse as select_mouse
+        from .ui.selection_state import active as job_capture, advisor_pointer
+        from raven.jobs.selection import handle_mouse as select_mouse
         if (job_capture(self) or advisor_pointer(self, y, x)) and select_mouse(self, y, x, button=button, shift=shift):
             return
         from .pane_drag import handle_mouse as pane_mouse
@@ -2033,14 +2084,14 @@ class App:
         from .chart_interaction import handle_mouse as chart_mouse
         if chart_mouse(self, y, x, button=button, shift=shift):
             if button in ("press", "left") and not getattr(self, "text_selection_state", {}).get("explicit"):
-                from .text_selection import clear as clear_text
+                from .ui.text_selection_state import clear as clear_text
                 clear_text(self)
             return
         if text_mouse(self, y, x, button=button, shift=shift):
             return
         if button == "press" and not shift and pointer_mouse(self, y, x, button="left"):
             return
-        from .job_selection import handle_mouse as select_mouse
+        from raven.jobs.selection import handle_mouse as select_mouse
         if button in ("press", "left") and any(row == y and kind in
                 ("job", "recent", "fin", "group", "source", "dep", "log_file")
                 for row, kind, _ in hits):
@@ -2063,7 +2114,7 @@ class App:
         if handle_click_hit(self, y, x, hits, button=button, shift=shift):
             return
         if button == "left" and not shift:
-            from .table_ui import cycle_sort, valid_header
+            from .table_sort import cycle_sort, valid_header
             for row, kind, payload in hits:
                 if row != y or kind != "sort_header" or not valid_header(payload):
                     continue
@@ -2081,7 +2132,7 @@ class App:
                     self.log_selection_expected = True
                     self.fail("Log changed since that row was drawn; select a line in the current display")
                     return
-                from .job_selection import resume_lines
+                from .ui.selection_effects import resume_lines
                 resume_lines(self)
                 if shift:
                     if not self.logs.selection_active:
@@ -2107,28 +2158,28 @@ class App:
             if hy == y:
                 if kind == "job":
                     if key in self.visible_ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "jobs")
                         self.cursor["jobs"] = self.visible_ids.index(key)
                 elif kind == "recent":
                     if key in self.recent_ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "jobs")
                         self.cursor["jobs"] = len(self.visible_ids) + self.recent_ids.index(key)
                 elif kind == "log_file":
                     ids = [entry["id"] for entry in self.log_entries()]
                     if key in ids:
-                        from .job_selection import resume_lines
+                        from .ui.selection_effects import resume_lines
                         resume_lines(self)
                         self.logs.browser_cursor = ids.index(key)
                 elif kind == "log_group":
-                    from .log_workbench import run_command
+                    from .job_logs.workbench import run_command
                     self.log_workbench_state["current_group"] = key
                     run_command(self, ["loggroup", key])
                 elif kind == "research_evidence":
                     ids = self.analysis_state.get("evidence_ids", [])
                     if key in ids:
-                        from .job_selection import resume_lines
+                        from .ui.selection_effects import resume_lines
                         resume_lines(self)
                         self.analysis_state["evidence_cursor"] = ids.index(key)
                         from .analysis_ui import handle_key
@@ -2139,24 +2190,24 @@ class App:
                 elif kind == "fin":
                     ids = [f.id for f in self.history_jobs()]
                     if key in ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "history")
                         self.cursor["history"] = ids.index(key)
                 elif kind == "source":
                     names = self.ordered_source_ids()
                     if key in names:
-                        from .job_selection import resume_lines
+                        from .ui.selection_effects import resume_lines
                         resume_lines(self)
                         self.cursor["sources"] = names.index(key)
                 elif kind == "group":
                     ids = getattr(self, "group_ids", [])
                     if key in ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "group")
                         self.cursor["group"] = ids.index(key)
                 elif kind == "dep":
                     if key in self.dep_ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "deps")
                         self.cursor["deps"] = self.dep_ids.index(key)
                 elif kind == "research_array":
@@ -2185,35 +2236,80 @@ class App:
             why = self.actions.applicable(action, jobs[0])[1] if jobs else "no job selected"
             self.fail(why)
             return
-        self.confirm = dict(action=action, jobs=ok)
+        self.confirm = dict(action=action, jobs=ok, action_scope=self._action_scope())
         self.mode = "confirm"
 
+    def _action_scope(self):
+        backend = getattr(getattr(self.actions, "slurm", None), "b", None)
+        return (id(self.actions), str(getattr(self.store, "_recording_scope", "")),
+                str(getattr(backend, "host", "local")), self.user)
+
+    def _action_task(self, work, done, message):
+        """Run explicit scheduler work once; only completion publishes UI state."""
+        if not self.interactive:
+            try:
+                result = work()
+            except Exception as exc:
+                result = exc
+            done(result)
+            return True
+        from raven.jobs.panels import _worker
+        hub = _worker(self, getattr(self, "files", None))
+        hub.poll_task()
+        from .project_ui import cancel_automatic
+        cancel_automatic(self)
+        if not hub.start_task(work, done):
+            self.fail("A background operation is still running; review the action again after it completes")
+            return False
+        self.say(message)
+        return True
+
     def start_resubmit(self, args: List[str]):
-        """Build the clone (sacct's submit line, else the record), apply the overrides, preview with sbatch --test-only, ask."""
-        from . import advisor, resubmit
+        """Prepare and validate a clone on the worker; preserve exact argv for review."""
+        from . import resubmit
         self.mode, self.confirm = "main", {}
         try:
             over, words, switches = resubmit.parse_override_args(args)
             if len(words) > 1:
                 raise ValueError("provide one job id; use --script PATH to replace its script")
+            if words == ["marked"]:
+                ids = sorted(self.marks)
+                if len(ids) != 1:
+                    raise ValueError("marked requires exactly one explicitly marked job")
+                words = ids
+            if not words and not self.interactive:
+                raise ValueError("non-interactive resubmit requires an explicit job id")
+            jid = words[0] if words else (self.target_ids() or [None])[0]
+            if not jid or not self.actions:
+                raise ValueError("resubmit needs an exact job id and an active scheduler connection")
         except ValueError as exc:
             self.fail(f"resubmit: {exc}")
             return
-        jid = words[0] if words else (self.target_ids() or [None])[0]
-        if not jid:
-            self.fail("resubmit [id] [--mem ..] [--time ..] [-c ..] [--advised]")
-            return
-        if not self.actions:
-            self.fail("no actions in this mode")
-            return
-        snap = self.store.snapshot()
+        actions, scope = self.actions, self._action_scope()
+        token = getattr(self, "resubmit_request", 0) + 1
+        self.resubmit_request = token
+        def work():
+            result = self._prepare_resubmit(jid, over, switches, actions)
+            result["action_scope"] = scope
+            return result
+        def done(result):
+            if self._action_scope() != scope or self.resubmit_request != token:
+                return
+            if isinstance(result, Exception):
+                self.fail("resubmit: " + str(result))
+            else:
+                self.confirm, self.mode = result, "confirm"
+        self._action_task(work, done, "Preparing this resubmission in the background")
+
+    def _prepare_resubmit(self, jid, over, switches, actions):
+        from . import advisor, resubmit
+        snap = self.store.render_snapshot()
         job = self.store.job(jid)
         fin = next((f for f in snap["finished"] if f.id == jid), None)
         if job is None and fin is None:
-            self.fail(f"resubmit: no job {jid} in the queue or the history")
-            return
+            raise ValueError(f"no job {jid} in the queue or the history")
         if "advised" in switches:
-            from .views import _native_series
+            from raven.recordings.presentation import _native_series
             adv = advisor.advise_running(job, snap["live"].get(jid), _native_series(self.store.series_of(jid)), snap["finished"]) if job and not job.pending else \
                 (advisor.advise_finished(fin, snap["finished"]) if fin else None)
             if adv:
@@ -2224,31 +2320,28 @@ class App:
                 if adv.time_suggest:
                     over.setdefault("time", adv.time_suggest)
         try:
-            lookup = getattr(self.actions.slurm, "record_submit_info", None)
-            info = lookup(job or fin) if lookup else self.actions.slurm.submit_info(jid)
+            lookup = getattr(actions.slurm, "record_submit_info", None)
+            info = lookup(job or fin) if lookup else actions.slurm.submit_info(jid)
         except Exception as e:                            # sacct without SubmitLine (older Slurm), or unreachable: the record will do
             info = {}
             self.store.event("resubmit", f"sacct submit line unavailable for {jid}: {e}", job_id=jid)
         details = snap["details"].get(jid, {})
-        details_lookup = getattr(self.actions.slurm, "record_details", None)
+        details_lookup = getattr(actions.slurm, "record_details", None)
         if job and (details_lookup or not details):
             try:
-                details = details_lookup(job) if details_lookup else self.actions.slurm.details(jid)
+                details = details_lookup(job) if details_lookup else actions.slurm.details(jid)
             except Exception:
                 details = {}
         try:
             clone = resubmit.build(jid, info, details, job=job, fin=fin, overrides=over)
             has_submission = resubmit.has_submission(clone.argv)
         except ValueError as exc:
-            self.fail(f"resubmit: {exc}")
-            return
+            raise ValueError(str(exc)) from exc
         if not has_submission:
-            self.fail("resubmit: " + (clone.notes[0] if clone.notes else "nothing to submit") + " (--script PATH)")
-            return
-        ok, output = self.actions.slurm.preview_submit(clone.argv, clone.workdir)
+            raise ValueError((clone.notes[0] if clone.notes else "nothing to submit") + " (--script PATH)")
+        ok, output = actions.slurm.preview_submit(clone.argv, clone.workdir)
         if not ok:
-            self.fail(f"resubmit preview failed: {output or 'sbatch --test-only did not succeed'}")
-            return
+            raise ValueError(f"preview failed: {output or 'sbatch --test-only did not succeed'}")
         from .slurm import parse_test_only
         est, nodes = parse_test_only(output)
         if est:
@@ -2256,8 +2349,8 @@ class App:
             clone.probe = f"sbatch --test-only: would start {when(est)}" + (f" on {nodes}" if nodes else "")
         else:
             clone.probe = "sbatch --test-only: " + (output.strip() or "validated; no start-time projection")
-        self.confirm = dict(action="resubmit", jobs=[job] if job else [], clone=clone)
-        self.mode = "confirm"
+        return dict(action="resubmit", jobs=[job] if job else [], clone=clone)
+
 
     def finish_confirm(self, yes: bool):
         from .historical_ui import active as historical_active
@@ -2282,55 +2375,87 @@ class App:
             else:
                 submission_done(self, fn())
             return
-        if self.confirm.get("action") == "resubmit":
-            clone = self.confirm["clone"]
-            ok, out, new_id = self.actions.resubmit(clone)
-            self.command_ok = ok
-            self.say(f"resubmitted {clone.id} as {new_id}" if ok and new_id else (f"submitted: {out}" if ok else f"resubmit failed: {out}"))
-            if ok and new_id:
-                self.store.tag(new_id, f"from-{clone.id.split('_')[0]}")
-            if self.sampler:
-                self.sampler.refresh_all()
+        review = self.confirm
+        if review.get("consumed"):
+            self.fail("This confirmation was already consumed; select the targets and prepare a new review")
             return
-        # A sampler refresh can change job state while the confirmation is
-        # open. Validate the complete, exact original scope against live
-        # records. A frozen view never supplies action applicability.
-        action, expected = self.confirm.get("action"), self.confirm.get("jobs", [])
-        if not self.actions or not expected:
+        # Keep the reviewed scope available for inspection after an
+        # abort, without allowing a second key/callback to apply it again.
+        self.confirm = dict(review, consumed=True)
+        actions, store, scope = self.actions, self.store, self._action_scope()
+        def owns_review():
+            return self.actions is actions and self.store is store and self._action_scope() == scope
+        if review.get("action_scope", scope) != scope:
+            self.fail("Connection changed after review; inspect the targets and review again")
+            return
+        if review.get("action") == "resubmit":
+            clone = review["clone"]
+            def work():
+                if not owns_review():
+                    raise ValueError("Connection changed before resubmission; prepare a new review")
+                return actions.resubmit(clone)
+            def done(result):
+                if not owns_review():
+                    return
+                if isinstance(result, Exception):
+                    self.fail("Resubmit outcome unknown: " + str(result) + "; inspect scheduler receipts before retrying")
+                    return
+                ok, out, new_id = result
+                self.command_ok = ok
+                unknown = out.startswith("Resubmit outcome unknown")
+                self.say(f"resubmitted {clone.id} as {new_id}" if ok and new_id else (f"submitted: {out}" if ok else out if unknown else f"resubmit failed: {out}"))
+                if ok and new_id:
+                    store.tag(new_id, f"from-{clone.id.split('_')[0]}")
+                if self.sampler:
+                    self.sampler.refresh_all()
+            self._action_task(work, done, "Submitting the reviewed clone once in the background")
+            return
+        action, expected = review.get("action"), review.get("jobs", [])
+        if not actions or not expected:
             self.fail("Action is no longer available; select the jobs and review a new confirmation")
             return
-        live_jobs, invalid = [], []
-        from .model import stamp
-        for prior in expected:
-            current = self.store.job(prior.id)
-            if current is None:
-                invalid.append(f"{prior.id}: no longer in the active queue")
-                continue
-            if stamp(prior.start) is not None and prior.start != current.start:
-                invalid.append(f"{prior.id}: start time changed")
-                continue
-            if stamp(prior.submit) is not None and prior.submit != current.submit:
-                invalid.append(f"{prior.id}: submission identity changed")
-                continue
-            applicable, reason = self.actions.applicable(action, current)
-            if not applicable:
-                invalid.append(f"{prior.id}: {reason}")
-            else:
-                live_jobs.append(current)
-        if invalid:
-            self.fail("Action aborted: " + "; ".join(invalid[:4]) +
-                      (f"; {len(invalid) - 4} more changed targets" if len(invalid) > 4 else "") +
-                      "; select the jobs and review a new confirmation")
-            return
-        ok, out = self.actions.run(action, live_jobs)
-        self.command_ok = ok
-        ids = ", ".join(j.id for j in self.confirm["jobs"][:4]) + (" ..." if len(self.confirm["jobs"]) > 4 else "")
-        pending = ""
-        if ok:
-            from .actions import VERBS
-            pending = " / " + VERBS[self.confirm["action"]][1].upper() + "; awaiting scheduler"
-        self.say(f"{self.confirm['action']} {ids}: " + ("sent" + pending if ok else f"failed: {out}"))
-        if ok:
-            self.marks.difference_update(j.id for j in self.confirm["jobs"])
-        if self.sampler:
-            self.sampler.refresh_all()
+        def work():
+            if not owns_review():
+                raise ValueError("Connection changed before the action; prepare a new review")
+            live_jobs, invalid = [], []
+            from .model import stamp
+            for prior in expected:
+                current = store.job(prior.id)
+                if current is None:
+                    invalid.append(f"{prior.id}: no longer in the active queue")
+                    continue
+                if not prior.pending and stamp(prior.start) is not None and prior.start != current.start:
+                    invalid.append(f"{prior.id}: start time changed")
+                    continue
+                if stamp(prior.submit) is not None and prior.submit != current.submit:
+                    invalid.append(f"{prior.id}: submission identity changed")
+                    continue
+                applicable, reason = actions.applicable(action, current)
+                if not applicable:
+                    invalid.append(f"{prior.id}: {reason}")
+                else:
+                    live_jobs.append(current)
+            if invalid:
+                raise ValueError("Action aborted: " + "; ".join(invalid[:4]) +
+                          (f"; {len(invalid) - 4} more changed targets" if len(invalid) > 4 else "") +
+                          "; select the jobs and review a new confirmation")
+            return actions.run(action, live_jobs)
+        def done(result):
+            if not owns_review():
+                return
+            if isinstance(result, Exception):
+                self.fail(str(result))
+                return
+            ok, out = result
+            self.command_ok = ok
+            ids = ", ".join(j.id for j in expected[:4]) + (" ..." if len(expected) > 4 else "")
+            pending = ""
+            if ok:
+                from .actions import VERBS
+                pending = " / " + VERBS[action][1].upper() + "; awaiting scheduler"
+            self.say(f"{action} {ids}: " + ("sent" + pending if ok else f"failed: {out}"))
+            if ok:
+                self.marks.difference_update(j.id for j in expected)
+            if self.sampler:
+                self.sampler.refresh_all()
+        self._action_task(work, done, f"Applying reviewed {action} in the background")

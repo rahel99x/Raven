@@ -1,0 +1,392 @@
+{
+  "environment": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "os": "Linux",
+    "machine": "x86_64",
+    "notes": "Serial fresh processes in final exclusive window: peer builds, tests and live Slurm qualification paused. Linux ru_maxrss is process KiB; tracemalloc below is separate Python allocation evidence. Block I/O counters are not scheduler RPC counts."
+  },
+  "tracing": {
+    "before": {
+      "calls": {
+        "runs": [
+          {
+            "application_s": 0.7646177769929636,
+            "complete_s": 0.7663927980174776,
+            "cpu_s": 0.394931755,
+            "journal_bytes": 6656379,
+            "events": 20003,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 322,
+            "rss_peak_kib": 14464,
+            "block_output_ops": 18200
+          },
+          {
+            "application_s": 0.7802101300039794,
+            "complete_s": 0.7817026560078375,
+            "cpu_s": 0.37655061700000003,
+            "journal_bytes": 6657183,
+            "events": 20003,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 325,
+            "rss_peak_kib": 14464,
+            "block_output_ops": 18232
+          },
+          {
+            "application_s": 0.7033040139940567,
+            "complete_s": 0.7047278879908845,
+            "cpu_s": 0.377378296,
+            "journal_bytes": 6657450,
+            "events": 20003,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 326,
+            "rss_peak_kib": 14464,
+            "block_output_ops": 18264
+          }
+        ],
+        "median": {
+          "application_s": 0.7646177769929636,
+          "complete_s": 0.7663927980174776,
+          "cpu_s": 0.377378296,
+          "journal_bytes": 6657183,
+          "events": 20003,
+          "dropped": 0,
+          "manifest_publications": 325,
+          "rss_peak_kib": 14464,
+          "block_output_ops": 18232
+        }
+      },
+      "fib": {
+        "runs": [
+          {
+            "application_s": 0.6123757309978828,
+            "complete_s": 0.6140165319957305,
+            "cpu_s": 0.326837013,
+            "journal_bytes": 5629111,
+            "events": 16725,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 264,
+            "rss_peak_kib": 14464,
+            "block_output_ops": 15264
+          },
+          {
+            "application_s": 0.5482899899943732,
+            "complete_s": 0.5497351359808818,
+            "cpu_s": 0.301773615,
+            "journal_bytes": 5631247,
+            "events": 16725,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 272,
+            "rss_peak_kib": 14464,
+            "block_output_ops": 15384
+          },
+          {
+            "application_s": 0.5131900999986101,
+            "complete_s": 0.5146799220237881,
+            "cpu_s": 0.278602803,
+            "journal_bytes": 5628843,
+            "events": 16725,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 263,
+            "rss_peak_kib": 14464,
+            "block_output_ops": 15240
+          }
+        ],
+        "median": {
+          "application_s": 0.5482899899943732,
+          "complete_s": 0.5497351359808818,
+          "cpu_s": 0.301773615,
+          "journal_bytes": 5629111,
+          "events": 16725,
+          "dropped": 0,
+          "manifest_publications": 264,
+          "rss_peak_kib": 14464,
+          "block_output_ops": 15264
+        }
+      }
+    },
+    "after": {
+      "calls": {
+        "runs": [
+          {
+            "application_s": 0.0716991139925085,
+            "complete_s": 0.2461233059875667,
+            "cpu_s": 0.241525661,
+            "journal_bytes": 4054841,
+            "events": 20004,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 3,
+            "rss_peak_kib": 16640,
+            "block_output_ops": 8000
+          },
+          {
+            "application_s": 0.07810680699185468,
+            "complete_s": 0.2379568239848595,
+            "cpu_s": 0.23362746699999998,
+            "journal_bytes": 4054841,
+            "events": 20004,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 3,
+            "rss_peak_kib": 16640,
+            "block_output_ops": 7992
+          },
+          {
+            "application_s": 0.09524357900954783,
+            "complete_s": 0.24596023999038152,
+            "cpu_s": 0.242839588,
+            "journal_bytes": 4054841,
+            "events": 20004,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 3,
+            "rss_peak_kib": 16640,
+            "block_output_ops": 8000
+          }
+        ],
+        "median": {
+          "application_s": 0.07810680699185468,
+          "complete_s": 0.24596023999038152,
+          "cpu_s": 0.241525661,
+          "journal_bytes": 4054841,
+          "events": 20004,
+          "dropped": 0,
+          "manifest_publications": 3,
+          "rss_peak_kib": 16640,
+          "block_output_ops": 8000
+        }
+      },
+      "fib": {
+        "runs": [
+          {
+            "application_s": 0.0541301769844722,
+            "complete_s": 0.18737864299328066,
+            "cpu_s": 0.18411178499999997,
+            "journal_bytes": 3388702,
+            "events": 16726,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 3,
+            "rss_peak_kib": 16256,
+            "block_output_ops": 6704
+          },
+          {
+            "application_s": 0.05802030101767741,
+            "complete_s": 0.17466501900344156,
+            "cpu_s": 0.171890818,
+            "journal_bytes": 3388702,
+            "events": 16726,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 3,
+            "rss_peak_kib": 16256,
+            "block_output_ops": 6696
+          },
+          {
+            "application_s": 0.05693908399553038,
+            "complete_s": 0.19424997898750007,
+            "cpu_s": 0.190023226,
+            "journal_bytes": 3388702,
+            "events": 16726,
+            "state": "CLOSED",
+            "dropped": 0,
+            "manifest_publications": 3,
+            "rss_peak_kib": 16256,
+            "block_output_ops": 6704
+          }
+        ],
+        "median": {
+          "application_s": 0.05693908399553038,
+          "complete_s": 0.18737864299328066,
+          "cpu_s": 0.18411178499999997,
+          "journal_bytes": 3388702,
+          "events": 16726,
+          "dropped": 0,
+          "manifest_publications": 3,
+          "rss_peak_kib": 16256,
+          "block_output_ops": 6704
+        }
+      }
+    }
+  },
+  "startup": {
+    "before": {
+      "untraced": {
+        "median_s": 0.023044232002575882,
+        "samples_s": [
+          0.023075764998793602,
+          0.02301269900635816,
+          0.02138057298725471,
+          0.025106836983468384,
+          0.02273588301613927,
+          0.024170657998183742,
+          0.022035594010958448,
+          0.026154753984883428,
+          0.02207263998570852,
+          0.02347342699067667
+        ]
+      },
+      "traced": {
+        "median_s": 0.3113166905095568,
+        "samples_s": [
+          0.31424127900390886,
+          0.26392916901386343,
+          0.2638149979757145,
+          0.2760816679801792,
+          0.3350419690250419,
+          0.3083921020152047,
+          0.32662805201835,
+          0.2671559650043491,
+          0.34308965600212105,
+          0.3178177770168986
+        ]
+      }
+    },
+    "after": {
+      "untraced": {
+        "median_s": 0.021979909492074512,
+        "samples_s": [
+          0.020893421984510496,
+          0.025183399993693456,
+          0.022245987987844273,
+          0.022368717996869236,
+          0.0201997330004815,
+          0.02337555302074179,
+          0.02049019100377336,
+          0.023890959011623636,
+          0.02171383099630475,
+          0.01951958899735473
+        ]
+      },
+      "traced": {
+        "median_s": 0.05451945899403654,
+        "samples_s": [
+          0.05409587000031024,
+          0.054639153997413814,
+          0.06014734899508767,
+          0.064972772001056,
+          0.061021709989290684,
+          0.05375141798867844,
+          0.05275838798843324,
+          0.05772552397684194,
+          0.05435573699651286,
+          0.05439976399065927
+        ]
+      }
+    }
+  },
+  "client": {
+    "before": {
+      "phase": {
+        "iterations": 1000000,
+        "wall_s": 7.879898537998088,
+        "rss_before_kib": 12288,
+        "rss_peak_kib": 123264,
+        "context_entries_before": 0,
+        "context_entries_after": 1000000
+      },
+      "allocations": {
+        "iterations": 100000,
+        "python_traced_current_bytes": 11995040,
+        "python_traced_peak_bytes": 11996456
+      },
+      "sampling": {
+        "calls": 100000,
+        "seconds": 0.1415892570221331,
+        "microseconds_per_call": 1.415892570221331
+      }
+    },
+    "after": {
+      "phase": {
+        "iterations": 1000000,
+        "wall_s": 1.9030878710036632,
+        "rss_before_kib": 12288,
+        "rss_peak_kib": 12288,
+        "context_entries_before": 0,
+        "context_entries_after": 1
+      },
+      "allocations": {
+        "iterations": 100000,
+        "python_traced_current_bytes": 216,
+        "python_traced_peak_bytes": 1435
+      },
+      "sampling": {
+        "calls": 100000,
+        "seconds": 0.059519722999539226,
+        "microseconds_per_call": 0.5951972299953923
+      }
+    }
+  },
+  "qualification": {
+    "live_gloo": {
+      "status": "passed",
+      "backend": "gloo",
+      "world_size": 2,
+      "torch": "2.9.1+cpu",
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+      "metrics": "/workspace/raven-gloo-qualification-ds6oqutb/metrics.jsonl",
+      "cases": [
+        "rank0 early plain metric before process-group init",
+        "rank1 without configured client",
+        "Raven reduction then application all_reduce",
+        "invalid-scalar readiness then application all_reduce"
+      ]
+    },
+    "live_mpi": "2-rank MPICH/mpi4py subprocess: Raven sum then application collective both correct; tracked optional integration test passed on this host",
+    "unqualified": [
+      "CUDA/NCCL hardware",
+      "multi-node Slurm/MPI",
+      "ARM/macOS hardware",
+      "network filesystem latency/failure behavior"
+    ],
+    "limits": "Microbenchmarks on this Linux x86_64 host, not universal slowdown bounds. No scheduler RPCs or GPU kernels were executed by these fixtures. Automatic tracing remains opt-in and has finite queue/storage budgets."
+  },
+  "source": {
+    "baseline_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+    "measurement": "Final frozen uncommitted adversarial-review sources; tracing/cold-start remeasured after final lifecycle/context fixes. Exact runtime source SHA256 below.",
+    "measurement_runtime_sha256": "0db372f9e384a8b130377dbe513e50ff70d24223172566d9f281e59e151ee60c",
+    "measured_source_sha256": {
+      "raven/client.py": "b3e0acf8808f8fcbf42774cc71c430dcd16daa88bbb82947c8fc54f22d4c4d3f",
+      "raven/launch_autotrace.py": "e906a2d686842c082e3716ea19ddf538259994fdbee55b34769b45c752c768e0",
+      "raven/launch_bootstrap.py": "52698ef96efb16fbfb589b2cea95d466bba1200c043c9b177a7c98e45bc19a68",
+      "raven/launch_runtime.py": "d6f675fecbdd6b524e98f27003d7b7bb8bb0832975309564e9600dfc54b343a3",
+      "raven/trace_recorder.py": "ed77963d8511de83fd603c197e2aa06b5f03d6d7231122c95ad61bd0392f94fd",
+      "raven/trace_protocol.py": "abb3cb88bbe42be550ef48387e446b6bec682f3e596b25d0ca8ddd6b77ebf4a4",
+      "raven/trace_stream.py": "cbe06126dc3f43ae3b952553a0e4662a45d94ccd5c69282d6f0c9c7c297bcfea",
+      "raven/trace_stream_export.py": "63c7cf5b054ac170f3e425da42e4ed6256b274edabeb52000e2c9efe86ab105f",
+      "raven/connection_scope.py": "3d80dee37d0d70baeef143a076bd1fe6b1092161ce02f143c5b556f019a76eb4",
+      "raven/launch_scheduler_context.py": "c94c13bbb07d7c984abd5dae9b6fc365f4beb334c5029e09099a9cce115d0c12",
+      "raven/runtime_cleanup.py": "28ffccb1ec594b3d7af3257777709f2ab837df3b6b911610738fff1898f30e4e"
+    },
+    "delivered_source_sha256": {
+      "raven/client.py": "b3e0acf8808f8fcbf42774cc71c430dcd16daa88bbb82947c8fc54f22d4c4d3f",
+      "raven/launch_autotrace.py": "e906a2d686842c082e3716ea19ddf538259994fdbee55b34769b45c752c768e0",
+      "raven/launch_bootstrap.py": "52698ef96efb16fbfb589b2cea95d466bba1200c043c9b177a7c98e45bc19a68",
+      "raven/launch_runtime.py": "d6f675fecbdd6b524e98f27003d7b7bb8bb0832975309564e9600dfc54b343a3",
+      "raven/trace_recorder.py": "ed77963d8511de83fd603c197e2aa06b5f03d6d7231122c95ad61bd0392f94fd",
+      "raven/trace_protocol.py": "abb3cb88bbe42be550ef48387e446b6bec682f3e596b25d0ca8ddd6b77ebf4a4",
+      "raven/trace_stream.py": "cbe06126dc3f43ae3b952553a0e4662a45d94ccd5c69282d6f0c9c7c297bcfea",
+      "raven/trace_stream_export.py": "63c7cf5b054ac170f3e425da42e4ed6256b274edabeb52000e2c9efe86ab105f",
+      "raven/connection_scope.py": "3d80dee37d0d70baeef143a076bd1fe6b1092161ce02f143c5b556f019a76eb4",
+      "raven/launch_scheduler_context.py": "c94c13bbb07d7c984abd5dae9b6fc365f4beb334c5029e09099a9cce115d0c12",
+      "raven/runtime_cleanup.py": "21a0a9012d0a45d186274825cf3ecfa2a5292e8f4c7c5c1dd46ec5f8941c702b"
+    },
+    "subsequent_changes": "Cleanup-only directory enumeration now caps entries before materializing them; focused cleanup regression passed. No tracing, client, automatic bootstrap or cold-start path changes after final measurement.",
+    "client_measurement": {
+      "source_sha256": "72ba96af6feb48809da26ee60e153cc36cb7ade031298e1008924b9af82ecf8c",
+      "notes": "Phase/sampling figures retained from earlier exclusive fixture. Later client lock-retry FIFO fix and formatting do not change phase or sampled-call gating algorithms. Not remeasured as exact final-revision wall timing."
+    }
+  },
+  "reproduction": {
+    "command": "python scripts/benchmark-injob.py --before /tmp/raven-before --output results.json",
+    "baseline": "git archive 6faeea2aeb00eaaf367cd36095558d5a1cc4ff16 raven | tar -x -C /tmp/raven-before",
+    "runtime": "Linux CPython3.12 fixture; run with peer builds/tests paused; measured original harness was semantically identical, fixed workspace paths; tracked harness allows user-selected paths.",
+    "script_sha256": "b91a593bab5c5d89e53b7fe14aa9c41362628ca4d60fe9b4ce1a839364f8deae"
+  }
+}

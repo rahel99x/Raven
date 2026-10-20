@@ -1,9 +1,0 @@
-{
-  "phase": "focused 80 tests passed; final integrated revision pending",
-  "files": {
-    "raven/session_contract.py": "ffcc5adf4a18b84332e6f1aa8175cd6d6f287cde7cff4b0fa913fcdb138169f4",
-    "raven/session_service.py": "365f7593962e0bb056b0e2c6ef6956de6b39231d18dbb53c6d91ab86edc6bef5",
-    "tests/test_session_service.py": "5b8ffd8a3adcde7df057edc0cba80bdfe282bae33fa725e779c76a497230e6f7",
-    "scripts/qualify_session_service.py": "3937bc0b619d7aa5d2ef76d46670269e6973d519b83d3d110aed0a1f4baaea64"
-  }
-}

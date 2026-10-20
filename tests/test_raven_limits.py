@@ -115,13 +115,14 @@ def test_persistence_inflight_bytes_remain_charged(tmp_path):
     assert not worker.is_alive() and limits.pending_bytes==0
 
 
-def test_owned_storage_quota_refuses_new_data_without_deleting_evidence(tmp_path):
+def test_owned_storage_quota_protects_active_evidence(tmp_path):
     limits=LightLimits({'storage_bytes':100,'storage_files':1},str(tmp_path))
     store=Store(str(tmp_path),raven_limits=limits)
+    store.apply_jobs([job(1), job(2)])
     store.record('1',{'value':'x'*40})
     existing=Path(store._series_path('1')).read_bytes()
     store.record('2',{'value':'y'*40})
-    assert not (tmp_path/'series'/'2.jsonl').exists()
+    assert not Path(store._series_path('2')).exists()
     store.record('1',{'value':'z'*90})
     assert Path(store._series_path('1')).read_bytes()==existing
     assert limits.coverage['storage']['limited'] and limits.pending_bytes==0

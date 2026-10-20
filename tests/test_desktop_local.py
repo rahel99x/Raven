@@ -19,6 +19,7 @@ from raven.model import Store
 from raven.record import RecordingBackend
 from raven.remote import LocalFiles, SshBackend
 from raven.slurm import Backend
+from raven.user_identity import current_user
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -107,7 +108,7 @@ def test_explicit_interval_selects_bounded_polling_and_rate_takes_precedence(nat
 CPU_ROW = ('7|desktop-cpu|localcpu|RUNNING|00:00:12|01:00:00|1|2|N/A|fedora-box|1G|'
            '2026-10-07T00:00:00|2026-10-07T00:00:00|None|1|(null)||normal|N/A|/tmp/cpu.sbatch\n')
 NATIVE_COMMAND = r'''
-import json, os, pathlib, sys
+import json, os, pathlib, pwd, sys
 name = pathlib.Path(sys.argv[0]).name
 with open(os.environ['RAVEN_DESKTOP_CALLS'], 'a') as output:
     output.write(json.dumps([name, *sys.argv[1:]]) + '\n')
@@ -118,7 +119,7 @@ if name == 'squeue':
     print('' if '--start' in sys.argv else scenario.get('jobs', ''), end='')
     sys.exit(0)
 if name == 'sinfo':
-    print(scenario.get('node_output', 'fedora-box localcpu (null) (null) idle 0/8/0/8 32768 0\n') if '-N' in sys.argv
+    print(scenario.get('node_output', 'fedora-box|localcpu|(null)|(null)|idle|0/8/0/8|32768|0\n') if '-N' in sys.argv
           else scenario.get('partition_output', 'localcpu*|up|infinite|1|0/1/0/1|0/8/0/8\n'), end='')
     sys.exit(0)
 if name == 'scontrol':
@@ -129,7 +130,7 @@ if name == 'scontrol':
               'FreeMem=25000 Gres=(null) GresUsed=(null) Partitions=localcpu'); sys.exit(0)
     if 'job' in sys.argv:
         print('JobId=7 JobName=desktop-cpu JobState=RUNNING SubmitTime=2026-10-07T00:00:00 '
-              'StartTime=2026-10-07T00:00:00 Restarts=0 UserId=' + os.environ['USER'] + '(1000) WorkDir=' + os.environ['RAVEN_DESKTOP_ROOT']
+              'StartTime=2026-10-07T00:00:00 Restarts=0 UserId=' + pwd.getpwuid(os.getuid()).pw_name + '(' + str(os.getuid()) + ') WorkDir=' + os.environ['RAVEN_DESKTOP_ROOT']
               + ' StdOut=' + os.environ['RAVEN_DESKTOP_STDOUT']
               + ' StdErr=' + os.environ['RAVEN_DESKTOP_STDERR']); sys.exit(0)
 if name == 'sstat' and scenario.get('live', True):
@@ -217,7 +218,7 @@ def test_native_desktop_cpu_and_empty_queue_work_without_optional_services(nativ
     assert {call[0] for call in calls} <= {'squeue', 'scontrol', 'sinfo', 'sacct', 'sstat', 'sshare'}
     assert all('-A' not in call for call in calls)
     users = [call[call.index('-u') + 1] for call in calls if call[0] == 'squeue' and '-u' in call]
-    assert users and set(users) == {'desktop-user'}
+    assert users and set(users) == {current_user()}
 
 
 def test_native_desktop_reads_exact_real_local_job_log(native_desktop):

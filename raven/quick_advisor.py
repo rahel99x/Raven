@@ -19,7 +19,7 @@ from itertools import islice
 
 from . import advisor, clock
 from .model import Finished, hms, human, nbytes, secs, stamp, terminal_state
-from .research import clean
+from .research_text import clean
 
 MAX_SERIES = 10_000
 MAX_SERIES_BYTES = 8 * 1024 * 1024
@@ -123,7 +123,7 @@ def _start(app):
     state = initialize(app)
     if state["status"] != "queued" or not _visible(app, state):
         return
-    from .job_panels import _worker
+    from .background_tasks import research_hub as _worker
     hub = _worker(app, getattr(getattr(app, "views_ref", None), "files", None))
     # Do not add analysis behind a running file read. One pending request in UI
     # state is sufficient, and cancellation can never accumulate worker tasks.
@@ -221,10 +221,11 @@ def _recorded_series(store, jid, event, *, max_series=MAX_SERIES, max_bytes=MAX_
     if source_count > retained:
         warnings.append(f"Analysis uses the latest {retained:,} of {source_count:,} in-memory observations.")
     if path:
-        from .series_storage import uses_blocks, compact_path
-        if uses_blocks(path):
-            from .series_blocks import read
-            rows, status = read(compact_path(path), max_series, max_bytes=max_bytes,
+        from raven.recordings.storage import read_path
+        path = read_path(path)
+        if str(path).endswith(".rvb"):
+            from raven.recordings.blocks import read
+            rows, status = read(path, max_series, max_bytes=max_bytes,
                                 max_decoded_bytes=max_bytes, cancel=event)
             points.extend(sample for row in rows if (sample := _sample(row)) is not None)
             if status["status"] not in {"ready", "missing"}:

@@ -1,0 +1,123 @@
+{
+  "schema": "raven.review-measurements/v1",
+  "baseline_revision": "b98742f",
+  "benchmarks": {
+    "terminal_before": {
+      "fixture": "8 MiB yes CRLF, 24x80, 2000 retained lines",
+      "bytes": 8388605,
+      "wall_seconds": 40.26177504999214,
+      "cpu_seconds": 40.241183328000005,
+      "retained_lines": 2000,
+      "last_lines": [
+        [
+          [
+            "yes                                                                             ",
+            "terminal"
+          ]
+        ],
+        [
+          [
+            "                                                                                ",
+            "terminal"
+          ]
+        ]
+      ],
+      "history_start": 1675698,
+      "mib_per_second": 0.19869956376845369,
+      "kind": "terminal",
+      "revision": "baseline",
+      "baseline_revision": "b98742f",
+      "process_max_rss_kib": 23532,
+      "python": "3.12.14",
+      "pid": 224254
+    },
+    "terminal_after": {
+      "fixture": "8 MiB yes CRLF, 24x80, 2000 retained lines",
+      "bytes": 8388605,
+      "wall_seconds": 4.3881871739868075,
+      "cpu_seconds": 4.383897671000001,
+      "retained_lines": 2000,
+      "last_lines": [
+        [
+          [
+            "yes                                                                             ",
+            "terminal"
+          ]
+        ],
+        [
+          [
+            "                                                                                ",
+            "terminal"
+          ]
+        ]
+      ],
+      "history_start": 1675698,
+      "mib_per_second": 1.8230756396174412,
+      "kind": "terminal",
+      "revision": "current",
+      "baseline_revision": "b98742f",
+      "process_max_rss_kib": 24896,
+      "python": "3.12.14",
+      "pid": 274379
+    },
+    "rows_before": {
+      "fixture": "10000 queued jobs, 30 cursor/mark changes, exact shared native rows",
+      "iterations": 30,
+      "wall_seconds": 6.836799365002662,
+      "cpu_seconds": 6.824553409,
+      "rows": 10000,
+      "milliseconds_per_input": 227.8933121667554,
+      "kind": "rows",
+      "revision": "baseline",
+      "baseline_revision": "b98742f",
+      "process_max_rss_kib": 94360,
+      "python": "3.12.14",
+      "pid": 227884
+    },
+    "rows_after": {
+      "fixture": "10000 queued jobs, 30 cursor/mark changes, exact shared native rows",
+      "iterations": 30,
+      "wall_seconds": 1.5830338520172518,
+      "cpu_seconds": 1.582929804,
+      "rows": 10000,
+      "milliseconds_per_input": 52.76779506724173,
+      "kind": "rows",
+      "revision": "current",
+      "baseline_revision": "b98742f",
+      "process_max_rss_kib": 68444,
+      "python": "3.12.14",
+      "pid": 274553
+    },
+    "real_pty": {
+      "fixture": "Real local PTY, producer8MiB LF becomes10MiB CRLF, 24x80, default history",
+      "wall_seconds": 1.96869343900471,
+      "ui_cpu_seconds": 0.068883105,
+      "broker_parse_seconds": 1.628684111230541,
+      "output_bytes": 10485760,
+      "status": "exited",
+      "mib_per_second": 5.079511010640431,
+      "kind": "pty",
+      "revision": "current",
+      "baseline_revision": "b98742f",
+      "process_max_rss_kib": 13568,
+      "python": "3.12.14",
+      "pid": 274667
+    }
+  },
+  "qualification_limits": [
+    "No live Slurm/GPU/remote-machine qualification claimed; shell and PTY fixtures are actual local processes.",
+    "SIGWINCH tested on Linux/POSIX; other hosts retain curses fallback.",
+    "Measured RSS is whole-process ru_maxrss in KiB, not Python allocations; no tracemalloc claim.",
+    "Redaction masks common forms and does not prove arbitrary evidence secret-free.",
+    "Regex searches deliberately report excluded overlong/fragmented lines; bounded scans do not claim whole-file coverage.",
+    "Final repository-wide suite, packaging, compatibility matrix and CI are coordinated by root on the delivered integrated revision.",
+    "Benchmarks are isolated-process observational fixtures on a shared Linux cloud host; no CPU affinity or repeated statistical confidence interval. Wall timings may include contention; CPU and whole-process maxRSS are reported separately."
+  ],
+  "commands": [
+    "PYTHONPATH=. .venv/bin/python scripts/benchmark_ui_review.py terminal baseline",
+    "PYTHONPATH=. .venv/bin/python scripts/benchmark_ui_review.py terminal current",
+    "PYTHONPATH=. .venv/bin/python scripts/benchmark_ui_review.py rows baseline",
+    "PYTHONPATH=. .venv/bin/python scripts/benchmark_ui_review.py rows current",
+    "PYTHONPATH=. .venv/bin/python scripts/benchmark_ui_review.py pty current"
+  ]
+}

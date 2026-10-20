@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import shlex
 
-from . import operations as O, projects
+from . import operation_support as O, projects
 
 
 def inspect_sample(root, run_id, ctx):

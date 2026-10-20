@@ -20,7 +20,8 @@ load), History (sacct with efficiency and totals), Analytics (charts), Nodes (th
 (the selected job's stdout, following), Sources (health of every Slurm command).  ? lists the keys inside."""
 from __future__ import annotations
 
-import argparse
+from .user_identity import current_user
+
 import json
 import math
 import os
@@ -30,16 +31,16 @@ import shutil
 import sys
 import time
 
-from . import __version__, clock, plugins, screen
+from . import clock, plugins, screen
 from .actions import Actions, Notifier
-from .config import Config, default_path, state_dir
+from .configuration.dashboard import Config, default_path, state_dir
 from .controller import App
 from .layout import Glyphs
 from .model import Store
 from .remote import LocalFiles, RemoteFiles, SshBackend
 from .sampler import Sampler
 from .slurm import Backend, CommandError, FakeBackend, Slurm
-from .views import TABS, Views
+from .views import Views
 
 
 class _Reconnect(Exception):
@@ -55,7 +56,7 @@ class _OpenDemo(Exception):
 
 
 def _reconnect_config(current, request):
-    from .raven_config import resolve
+    from .configuration.policy import resolve
     # Keep an explicit extra policy across reconnects. A profile's own policy
     # is resolved from the newly selected profile, as at ordinary startup.
     return resolve(request.path or current.source or None, site=request.profile,
@@ -79,23 +80,23 @@ class Session:
     def _close_services(self):
         from .historical_ui import shutdown as shutdown_history
         shutdown_history(self.app)
-        from .raven_diagnostics import close as close_diagnostics
+        from raven.collection.diagnostics import close as close_diagnostics
         close_diagnostics(self.app)
-        from .terminal_ui import shutdown as shutdown_terminal
+        from .terminal.ui import shutdown as shutdown_terminal
         shutdown_terminal(self.app)
-        from .trace_ui import cancel as cancel_trace
+        from .tracing.ui import cancel as cancel_trace
         cancel_trace(self.app, clear=True)
-        from .history_log_export import cancel as cancel_log_export
+        from .job_logs.history_export import cancel as cancel_log_export
         cancel_log_export(self.app, close=True)
         from .data_export_ui import cancel as cancel_data_export
         cancel_data_export(self.app, close=True)
-        from .launch_wizard_ui import cancel as cancel_launch
+        from .launching.wizard_ui import cancel as cancel_launch
         cancel_launch(self.app, close=True)
         from .execution_ui import close
         close(self.app)
         from .shell_checks_ui import close as close_shell_checks
         close_shell_checks(self.app)
-        from .ops_ui import shutdown as shutdown_operations
+        from .ui.operations import shutdown as shutdown_operations
         shutdown_operations(self.app)
         self.app.save()
         from .ui_persistence import close as close_preferences
@@ -105,7 +106,7 @@ class Session:
         if self.app.logs.catalog:
             self.app.logs.catalog.close()
         self.sampler.shutdown()
-        from .raven_ui import shutdown as shutdown_allocation
+        from .ui.allocation import shutdown as shutdown_allocation
         shutdown_allocation(self.app)
         for consumer in (getattr(self.sampler, "on_event", None), getattr(self.store, "alerts", None)):
             close = getattr(consumer, "close", None)
@@ -144,7 +145,7 @@ def make_backend(args, cfg: Config, user: str):
     record = args.record or cfg["record"]
     if record and not args.replay:
         from .record import RecordingBackend
-        backend = RecordingBackend(backend, os.path.expanduser(record), meta=dict(user=user, host=args.host or cfg["host"], profile=cfg.profile_name))
+        backend = RecordingBackend(backend, os.path.expanduser(record), meta=dict(user=user, host=args.host or cfg["host"], profile=cfg.profile_name), owns_inner=True)
     return backend, files, replay, user
 
 
@@ -162,35 +163,7 @@ def ascii_mode(args, cfg: Config) -> bool:
     return bool(cfg["ascii"] or os.environ.get("TERM", "dumb") == "dumb")
 
 
-def forecast_scope(backend, cfg: Config, user: str):
-    """Separate queue evidence by the actual connection, profile, and owner."""
-    import hashlib
-    import socket
-    from .record import RecordingBackend, ReplayBackend
-    from .platform_session import GovernedBackend
-    while isinstance(backend, (RecordingBackend, GovernedBackend)):
-        backend = backend.inner
-    try:
-        uid = os.getuid()
-    except (AttributeError, OSError):
-        return None
-    if isinstance(backend, SshBackend):
-        host, kind, ssh_user = backend.host, "ssh", backend.user
-        options = hashlib.sha256(json.dumps(backend.opts, ensure_ascii=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-    else:
-        host, kind, ssh_user, options = socket.gethostname(), "local", "", ""
-    if not host:
-        return None
-    scope = dict(backend=kind, host=host, profile=cfg.profile_name, uid=uid,
-                 user=user, ssh_user=ssh_user, ssh_options_sha256=options)
-    if cfg.get("raven", {}).get("managed") and isinstance(backend, (FakeBackend, ReplayBackend)):
-        # Simulations must never publish into the real connection's cache.
-        # Each independent fixture/replay owns its clock and mutable answers.
-        if not hasattr(backend, "_raven_fixture_identity"):
-            backend._raven_fixture_identity = f"{os.getpid()}:{id(backend)}:{time.monotonic_ns()}"
-        scope.update(backend="demo" if isinstance(backend, FakeBackend) else "replay",
-                     fixture=backend._raven_fixture_identity)
-    return scope
+from .connection_scope import forecast_scope as forecast_scope
 
 
 def state_namespace(cfg: Config) -> str:
@@ -228,12 +201,12 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
         raise ValueError("gpu_provider must be auto, nvidia, amd, or intel")
     if getattr(args, "workers", None):
         cfg.ui_locked_settings = set(getattr(cfg, "ui_locked_settings", ())) | {"worker_mode"}
-    from .refresh_rate import poll_position, validate_multiplier
+    from .cadence import poll_position, validate_multiplier
     requested_rate = args.rate if args.rate is not None else cfg.get("polling_multiplier", 1)
     if args.interval and args.rate is None:
         requested_rate = poll_position(args.interval)
     cfg.set("polling_multiplier", validate_multiplier(requested_rate))
-    user = args.user or cfg["user"] or os.environ.get("USER", "")
+    user = args.user or cfg["user"] or current_user()
     if args.fake and not user:
         user = "alex"
     shared_backend = None if args.fake or args.replay else getattr(raven_allocation, "collection_backend", None)
@@ -249,7 +222,7 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
             # Record at the transport, below the existing owner. This retains
             # exact admission and does not create a second connection/cache.
             shared_backend.inner = RecordingBackend(shared_backend.inner, os.path.expanduser(record),
-                                                    meta=dict(user=user, host=cfg["host"], profile=cfg.profile_name))
+                                                    meta=dict(user=user, host=cfg["host"], profile=cfg.profile_name), owns_inner=True)
     else:
         backend, files, replay, user = make_backend(args, cfg, user)
     sdir = None if (args.no_state or args.fake or args.replay) else scoped_state_dir(backend, cfg, user)
@@ -257,7 +230,7 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
         from .platform_session import wrap_backend
         backend = wrap_backend(backend, cfg, forecast_scope(backend, cfg, user), sdir)
     if managed:
-        from .raven_collection import wrap_files, make_placement_verifier
+        from raven.collection.ledger import wrap_files, make_placement_verifier
         files = wrap_files(files, backend)
         if raven_allocation is None:
             from .raven_allocation import AllocationManager
@@ -272,7 +245,7 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
     state_options = dict(read_only=False, strict_owner=not state_read_only, source_scope=forecast_scope(backend, cfg, user),
                          series_storage=cfg.get("raven", {}).get("storage", {}).get("series_format", cfg.get("series_storage", "jsonl")))
     if managed:
-        from .raven_limits import LightLimits
+        from raven.collection.retention import LightLimits
         light_limits = LightLimits(raven["resources"]["light"], sdir)
         store = Store(state_dir=sdir, persist=sdir is not None, series_keep=int(cfg["series_keep"]), raven_limits=light_limits, **state_options)
     else:
@@ -307,7 +280,7 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
         rules.append(dict(name=f"alert {i + 1}", when=expr, actions=["bell", "event"], every=600))
     store.alerts = AlertEngine(rules, store, user=user, notify=notifier, bell=bell_fn, worker_scheduler=governor)
     if managed and sdir is not None and not any(os.path.lexists(os.path.join(sdir, name)) for name in ("ui.json", "ui.json.bak")):
-        from .raven_migration import import_ui
+        from .installation.config_migration import import_ui
         store.raven_ui_import = import_ui(raven["storage"]["state_dir"], forecast_scope(backend, cfg, user))
     ascii_ = ascii_mode(args, cfg)
     views = Views(Glyphs(ascii_), cfg, files=files, plugins=api)
@@ -330,14 +303,14 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
     app.research = ResearchHub(cfg, files, demo=args.fake, slurm=slurm, worker_scheduler=governor,
                               settings={k: getattr(args, k) for k in ("metrics_file", "contract", "workdir", "passport", "planning_file")})
     if managed:
-        from .raven_ui import bind as bind_allocation
-        from .raven_execution import bind as bind_execution
+        from .ui.allocation import bind as bind_allocation
+        from .execution.policy import bind as bind_execution
         bind_allocation(app, raven_allocation)
         bind_execution(app, raven_allocation)
-        from .raven_limits import bind as bind_limits
+        from raven.collection.retention import bind as bind_limits
         app.raven_limits = light_limits
         bind_limits(app, store=store, views=views, logs=app.logs)
-        from .raven_diagnostics import bind as bind_diagnostics
+        from raven.collection.diagnostics import bind as bind_diagnostics
         bind_diagnostics(app)
         from .telemetry_settings import sync as sync_telemetry
         sync_telemetry(app)
@@ -416,12 +389,12 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
         for name, enabled in initial_metrics.items():
             s.store.health[name].enabled = enabled
     s.app.tab = "jobs"
-    s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)     # settles the selected job
+    s.views.compose(s.store.render_snapshot(), s.app, 160, None, s.actions)     # settles the selected job
     if tab == "analytics":
         # The queue's first batch can be pending. Resolve the chart's actual
         # selection before subscribing to its live measurements.
         s.app.tab = tab
-        s.views.compose(s.store.snapshot(), s.app, 160, None, s.actions)
+        s.views.compose(s.store.render_snapshot(), s.app, 160, None, s.actions)
     target = selected_job or (s.app.analytics_job if tab == "analytics" else s.app.selected_id)
     if target:
         s.sampler.want_detail = target
@@ -430,7 +403,17 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
         s.sampler.prime_collection_snapshot()
     else:
         s.sampler.last_run["details"] = s.sampler.last_run["account"] = 0.0
-    s.sampler.round(wait=True)
+    detail_source = s.sampler.sources["details"]
+    inspection = getattr(s.sampler.slurm.b, "snapshot_inspection", None) if managed else None
+    if callable(inspection):
+        def selected_inspection():
+            with inspection():
+                return detail_source()
+        s.sampler.sources["details"] = selected_inspection
+    try:
+        s.sampler.round(wait=True)
+    finally:
+        s.sampler.sources["details"] = detail_source
     if managed:
         # Honor short admission retry hints within the snapshot's wait budget.
         # Never reset source clocks, endpoint quotas or circuit state.
@@ -443,11 +426,11 @@ def settle(s: Session, tab: str = None, *, full: bool = False, sources=(), selec
             else:
                 break
     from .project_ui import settle as settle_project
-    settle_project(s.app, s.store.snapshot())
+    settle_project(s.app, s.store.render_snapshot())
     if tab:
         s.app.tab = tab
     if tab == "research":
-        s.app.research.request(s.app.research.context(s.store.snapshot(), s.app), wait=True)
+        s.app.research.request(s.app.research.context(s.store.render_snapshot(), s.app), wait=True)
 
 
 def scripted(args, s: Session) -> int:
@@ -470,7 +453,7 @@ def scripted(args, s: Session) -> int:
             target = target or app.selected_id
             job = s.store.job(target) if target else None
             if job is not None and not job.pending:
-                live = s.store.snapshot()["live"].get(target)
+                live = s.store.render_snapshot()["live"].get(target)
                 maximum_age = max(5., s.sampler.effective_interval("live") * 2)
                 measured = live is not None and any(
                     value is not None and math.isfinite(value) and value >= 0
@@ -497,6 +480,9 @@ def scripted(args, s: Session) -> int:
         if app.research_result is not None:
             print(json.dumps(app.research_result, indent=2, ensure_ascii=True, allow_nan=False))
             return 0 if app.command_ok else 1
+        if args.json:
+            print(json.dumps({"status": "ok" if app.command_ok else "error", "message": app.message or "ok"}, ensure_ascii=True))
+            return 0 if app.command_ok else 1
         print(app.message or "ok")
         for e in list(s.store.events)[-len(jobs) if app.message and "sent" in app.message else -1:]:
             if e.get("kind") in ("action", "export", "copy") and not e.get("old"):
@@ -505,7 +491,7 @@ def scripted(args, s: Session) -> int:
     if args.eval:
         settle(s, args.tab)
         out = app.evaluate(args.eval)
-        print(out)
+        print(json.dumps({"status": "error", "message": out}) if args.json and out.startswith("eval:") else json.dumps(out) if args.json else out)
         return 1 if out.startswith("eval:") else 0
     from .expr import Expr, ExprError, cluster_ns
     try:
@@ -518,7 +504,7 @@ def scripted(args, s: Session) -> int:
     while True:
         s.sampler.round(wait=True)
         try:
-            v = expr(cluster_ns(s.store.snapshot(), s.user))
+            v = expr(cluster_ns(s.store.render_snapshot(), s.user))
         except ExprError as e:
             print(f"wait-for: {e}", file=sys.stderr)
             return 1
@@ -531,142 +517,7 @@ def scripted(args, s: Session) -> int:
         time.sleep(poll)
 
 
-def parse(argv):
-    ap = argparse.ArgumentParser(prog="raven", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, allow_abbrev=False)
-    ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    ap.add_argument("--config", help="configuration file (TOML or JSON); default ~/.config/raven/config.toml")
-    ap.add_argument("--write-config", action="store_true", help="write the commented defaults to the default path and exit")
-    ap.add_argument("--doctor", action="store_true", help="check local, --host, or --fake prerequisites without sampling or changing jobs; combine with --json")
-    def gpu_job(value):
-        from .gpu_diagnostics import valid_job_id
-        try:
-            return valid_job_id(value)
-        except ValueError as exc:
-            raise argparse.ArgumentTypeError(str(exc))
-    ap.add_argument("--gpu-check", nargs="?", const="all", default=None, type=gpu_job, metavar="JOBID",
-                    help="diagnose GPU allocation, NVIDIA sampling, traces, and retained samples; omit JOBID to check current jobs")
-    ap.add_argument("--gpu-check-output", default="", metavar="DIRECTORY",
-                    help="with --gpu-check: create a private new directory with report.json, report.txt, and command evidence")
-    ap.add_argument("--ui-trace", default="", metavar="FILE",
-                    help="save bounded UI phase timings and page transitions to a new JSON file when the interactive session exits")
-    ap.add_argument("--workers", choices=("single", "multi"), default=None,
-                    help="background worker mode; the interactive UI stays on its own thread")
-    ap.add_argument("--profile", default="", help="a [profiles.NAME] section of the config to merge over it (a cluster)")
-    ap.add_argument("--host", default="", help="remote mode: run every Slurm command on this login node over ssh")
-    ap.add_argument("--ssh-user", default="", help="the login on --host (default: as here)")
-    ap.add_argument("--user", default="")
-    ap.add_argument("--account", default="", help="account whose overall load the header shows (default: the first of sshare -U)")
-    ap.add_argument("--interval", type=float, default=0.0,
-                    help="requested polling seconds, rounded to the 5s..500ms slider; --rate takes precedence")
-    ap.add_argument("--rate", type=int, choices=range(1, 51), metavar="1..50", default=None,
-                    help="polling slider position: 1 is 5s, 50 is 500ms; overrides saved preference, with backoff retained")
-    ap.add_argument("--days", type=float, default=0.0, help="history window in days (config: history_days)")
-    ap.add_argument("--no-gpu", action="store_true", help="no nvidia-smi sampling")
-    ap.add_argument("--bell", action="store_true", help="ring when one of your jobs starts")
-    # Last preference wins, so --ascii can override a shell alias's --unicode.
-    ap.add_argument("--ascii", action="store_const", const=True, default=None, help="plain characters for bars, rules and sparklines")
-    ap.add_argument("--unicode", dest="ascii", action="store_const", const=False, help="solid block and high-resolution terminal graphics (encoding permitting)")
-    ap.add_argument("--no-color", action="store_true")
-    ap.add_argument("--no-plugins", action="store_true", help="do not load ~/.config/raven/plugins")
-    ap.add_argument("--once", action="store_true", help="one frame of text and exit")
-    ap.add_argument("--tab", choices=[t for t, _ in TABS], help="initial tab; also selects the --once / --csv / --run view")
-    from .research import RESEARCH_VIEWS
-    ap.add_argument("--research-view", choices=[k for k, _ in RESEARCH_VIEWS], help="Research subview")
-    ap.add_argument("--metrics-file", help="application JSONL telemetry; {job_id} selects a stream")
-    ap.add_argument("--contract", help="JSON output contract (local cluster files)")
-    ap.add_argument("--workdir", help="root for attached metrics and declared outputs")
-    ap.add_argument("--passport", help="immutable run passport to inspect")
-    ap.add_argument("--planning-file", help="local planning observations or scaling/workflow recipe")
-    ap.add_argument("--json", action="store_true", help="the snapshot as JSON and exit")
-    ap.add_argument("--report", nargs="?", const="-", default="", help="the whole dashboard as an ASCII text report (to PATH, or stdout) and exit")
-    ap.add_argument("--csv", action="store_true", help="the tab's table (jobs by default, or --tab history / nodes / sources) as CSV and exit")
-    ap.add_argument("--watch", action="store_true", help="the animated non-interactive screen")
-    ap.add_argument("--fake", action="store_true", help="a simulated cluster (no Slurm needed)")
-    ap.add_argument("--getting-started", action="store_true", help="open guided workstation or cluster setup")
-    ap.add_argument("--record", default="", help="record every command and its answer to this file (.jsonl or .jsonl.gz)")
-    ap.add_argument("--replay", default="", help="play a recording back instead of talking to Slurm")
-    ap.add_argument("--speed", type=float, default=1.0, help="with --replay: how many recorded seconds pass per second")
-    ap.add_argument("--paused", action="store_true", help="with --replay: start paused")
-    ap.add_argument("--run", default="", help="run one palette command (e.g. 'cancel 123', 'export csv', 'hold marked') and exit")
-    ap.add_argument("--yes", action="store_true", help="with --run: confirm actions without asking")
-    ap.add_argument("--eval", default="", help="print the value of an expression over the snapshot and exit (see README)")
-    ap.add_argument("--wait-for", default="", help="poll until the expression is true (exit 0), or --timeout passes (exit 2)")
-    ap.add_argument("--timeout", type=float, default=0.0, help="with --wait-for: seconds to wait (0: forever)")
-    ap.add_argument("--poll", type=float, default=0.0, help="with --wait-for: seconds between polls (default: intervals.jobs)")
-    ap.add_argument("--alert", action="append", default=[], help="an alert rule for this run (an expression over each job; bell and event), repeatable")
-    ap.add_argument("--no-state", action="store_true", help="do not read or write ~/.local/state/raven")
-    ap.add_argument("--width", type=int, default=0, help="with --once / --report: the width (default: the terminal's)")
-    ap.add_argument("words", nargs="*", help="'run <palette command ...>': the same as --run (e.g. raven run cancel 123 --yes); the command's own flags pass through")
-    argv = list(sys.argv[1:] if argv is None else argv)
-    # Option values may themselves be named "run". Only a positional token
-    # starts the palette command; consume global values before looking for it.
-    run_index, scan = None, 0
-    value_flags = {name for action in ap._actions if action.nargs != 0 for name in action.option_strings}
-    while scan < len(argv):
-        token = argv[scan]
-        if token == "run":
-            run_index = scan
-            break
-        if token == "--":
-            break
-        if token in value_flags and scan + 1 < len(argv):
-            scan += 2
-        else:
-            scan += 1
-    if run_index is not None:                              # raven [raven flags] run <command and its flags> [raven flags]
-        i = run_index
-        pre, post, cmd = argv[:i], argv[i + 1:], []
-        switches = {"--yes", "--fake", "--no-state", "--no-plugins", "--ascii", "--unicode", "--no-color", "--no-gpu", "--bell", "--paused", "--json"}
-        valued = {"--tab", "--config", "--profile", "--host", "--ssh-user", "--user", "--account", "--width", "--replay", "--record", "--speed", "--days", "--interval", "--rate", "--ui-trace", "--workers"}
-        batch_command = bool(post and post[0] and any(c.startswith(post[0]) for c in ("resubmit", "prepare", "submit", "array")))
-        from .research_commands import COMMANDS, command_value_option
-        from .planning_commands import COMMANDS as planning_commands
-        all_commands = (*COMMANDS, *planning_commands, "resubmit")
-        candidates = [c for c in all_commands if post and c.startswith(post[0])]
-        research_command = post[0] if post and post[0] in all_commands else candidates[0] if len(candidates) == 1 else ""
-        if batch_command:
-            # After `run resubmit`, --account belongs to sbatch. Raven's account
-            # can still be selected explicitly before `run`.
-            valued.discard("--account")
-        k = 0
-        while k < len(post):
-            a = post[k]
-            if a == "--":
-                cmd += post[k:]
-                break
-            if command_value_option(research_command, a) and k + 1 < len(post):
-                cmd += post[k:k + 2]
-                k += 1
-            elif a in switches:
-                pre.append(a)
-            elif a in valued and k + 1 < len(post):
-                pre += [a, post[k + 1]]
-                k += 1
-            elif a.split("=", 1)[0] in valued:
-                pre.append(a)
-            else:
-                cmd.append(a)
-            k += 1
-        # Shell argv already preserves boundaries; retain them through the palette parser.
-        if not cmd:
-            ap.error("run requires a palette command")
-        free_text = cmd[0] in ("eval", "find", "filter", "note")
-        argv = pre + ["--run", " ".join(cmd) if free_text else shlex.join(cmd)]
-    args = ap.parse_intermixed_args(argv)
-    if args.ui_trace and (args.doctor or args.gpu_check is not None or args.run or args.eval or args.wait_for
-                          or args.watch or args.report or args.csv or args.json or args.once or args.write_config):
-        ap.error("--ui-trace requires an interactive session")
-    if args.gpu_check_output and args.gpu_check is None:
-        ap.error("--gpu-check-output requires --gpu-check")
-    if args.gpu_check is not None and (args.doctor or args.run or args.eval or args.wait_for or args.watch or args.report or args.csv or args.write_config or args.record):
-        ap.error("--gpu-check cannot be combined with another command or report mode")
-    if args.words:
-        ap.error(f"unexpected argument '{args.words[0]}' (did you mean: raven run {' '.join(args.words)} ?)")
-    for name in ("interval", "days", "timeout", "poll", "speed", "width"):
-        value = getattr(args, name)
-        if not math.isfinite(value) or value < 0 or (name == "speed" and value == 0):
-            ap.error(f"--{name} must be {'positive' if name == 'speed' else 'non-negative'} and finite")
-    return args
+from .entry.grammar import parse as parse
 
 
 def gpu_check(args, cfg):
@@ -682,12 +533,12 @@ def gpu_check(args, cfg):
     diagnostic_args.record = ""
     backend = None
     try:
-        user = args.user or cfg["user"] or os.environ.get("USER", "")
+        user = args.user or cfg["user"] or current_user()
         backend, files, replay, user = make_backend(diagnostic_args, diagnostic_cfg, user)
         location = "" if args.no_state or args.fake or args.replay else scoped_state_dir(backend, cfg, user)
         if cfg.get("raven", {}).get("managed"):
             from .platform_session import wrap_backend
-            from .raven_collection import wrap_files
+            from raven.collection.ledger import wrap_files
             backend = wrap_backend(backend, cfg, forecast_scope(backend, cfg, user), location)
             files = wrap_files(files, backend)
         result = diagnose(cfg, backend, files, user=user, job_id=args.gpu_check,
@@ -714,8 +565,8 @@ def gpu_check(args, cfg):
         clock.reset()
 
 
-def main(argv=None, *, raven=None, raven_allocation=None):
-    from .launch import dispatch as dispatch_workload
+def _entry_main(argv=None, *, raven=None, raven_allocation=None):
+    from .entry.workload import dispatch as dispatch_workload
     try:
         workload = dispatch_workload(list(sys.argv[1:] if argv is None else argv), resolved=raven)
         if workload is not None:
@@ -750,9 +601,10 @@ def main(argv=None, *, raven=None, raven_allocation=None):
 
 
 def _managed_main(argv, *, raven, raven_allocation=None):
-    from .raven_execution import configure_process, process_router, reset_process, cli_admission, needs_job_local
+    from .execution.policy import configure_process, process_router, reset_process
+    from .execution.admission import cli_admission, needs_job_local
     previous = process_router()
-    from .raven_config import to_raven_config
+    from .configuration.policy import to_raven_config
     owned_manager = raven_allocation is None
     if owned_manager:
         from .raven_allocation import AllocationManager
@@ -761,9 +613,9 @@ def _managed_main(argv, *, raven, raven_allocation=None):
     driver_backend = None
     try:
         arguments = list(sys.argv[1:] if argv is None else argv)
-        if needs_job_local(arguments):
+        if needs_job_local(arguments) or arguments[:2] == ["trace", "cleanup-runtime"]:
             if getattr(raven_allocation, "collection_backend", None) is None:
-                from .raven_launch import configure_placement
+                from .entry.placement import configure_placement
                 configure_placement(raven, raven_allocation)
                 driver_backend = raven_allocation.collection_backend
             router.source_backend = raven_allocation.collection_backend
@@ -788,27 +640,30 @@ def _managed_main(argv, *, raven, raven_allocation=None):
 
 def _dispatch_main(argv=None, *, raven=None, raven_allocation=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == ["trust"]:
+        from .path_trust_cli import main as trust_main
+        return trust_main(argv[1:])
     if argv[:1] in (["update"], ["revert"]):
         from .update import cli as maintenance
         return maintenance(argv)
-    from .launch import dispatch as dispatch_workload
+    from .entry.workload import dispatch as dispatch_workload
     workload = dispatch_workload(argv, resolved=raven)
     if workload is not None:
         return workload
     if argv and argv[0] == "terminal":
         if argv[1:2] == ["selftest"]:
-            from .terminal_diagnostics import cli as terminal_selftest
+            from .terminal.diagnostics import cli as terminal_selftest
             return terminal_selftest(argv[2:])
-        from .terminal_fusion import cli as terminal_main
+        from .terminal.fusion import cli as terminal_main
         return terminal_main(argv[1:])
     if argv and argv[0] == "trace":
-        from .trace_recorder import main as trace_main
+        from .tracing.cli import main as trace_main
         return trace_main(argv[1:])
     if argv and argv[0] == "runtime":
         from .runtime_control import main as runtime_main
         return runtime_main(argv[1:])
     if argv and argv[0] == "series":
-        from .series_cli import main as series_main
+        from raven.recordings.cli import main as series_main
         return series_main(argv[1:])
     if argv and argv[0] == "query":
         from .query_cli import main as query_main
@@ -847,7 +702,7 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
         if raven is None:
             cfg0 = Config.load(args.config)
         else:
-            from .raven_config import to_raven_config, merge as merge_raven_preferences
+            from .configuration.policy import to_raven_config, merge as merge_raven_preferences
             legacy = {}
             if raven.legacy_source:
                 original = Config.load(raven.legacy_source)
@@ -892,7 +747,7 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
             cfg.ui_locked_settings = set(getattr(cfg, "ui_locked_settings", ())) | {"color"}
         if args.doctor:
             if raven is not None and raven.data["site"]["kind"] == "desktop" and not args.fake:
-                from .raven_config import doctor as raven_doctor
+                from .configuration.policy import doctor as raven_doctor
                 result = raven_doctor(raven)
                 if args.json:
                     print(json.dumps(result, indent=2, allow_nan=False))
@@ -900,7 +755,9 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
                     print("Raven / standalone desktop environment\nPrerequisites ready. Slurm is not required.\n" + result["qualification"])
                 return 0
             from .doctor import diagnose, render
-            result = diagnose(cfg, fake=args.fake, host=args.host, ssh_user=args.ssh_user)
+            from .configuration.dashboard import state_dir as default_state_dir
+            path = '' if args.no_state else raven.data['storage']['state_dir'] if raven is not None else os.environ.get('RAVEN_STATE_DIR') or default_state_dir()
+            result = diagnose(cfg, fake=args.fake, host=args.host, ssh_user=args.ssh_user, state_dir=path)
             print(render(result, as_json=args.json))
             return 0 if result["ready"] else 1
         if args.gpu_check is not None:
@@ -978,3 +835,35 @@ def _main(args, ui_trace=None, *, raven=None, raven_allocation=None):
             profile = app.switch_profile
             continue
         return 0
+
+
+def main(argv=None, *, raven=None, raven_allocation=None):
+    """JSON commands have one document; executed local workloads own their streams."""
+    import contextlib
+    import io
+    words = list(sys.argv[1:] if argv is None else argv)
+    if "--json" not in words or "--help" in words or "-h" in words:
+        return _entry_main(words, raven=raven, raven_allocation=raven_allocation)
+    output = io.StringIO()
+    error = None
+    with contextlib.redirect_stdout(output):
+        try:
+            code = _entry_main(words, raven=raven, raven_allocation=raven_allocation)
+        except (OSError, ValueError, RuntimeError) as exc:
+            error, code = str(exc), 2
+        except SystemExit as exc:
+            code = exc.code if isinstance(exc.code, int) else 2
+            error = str(exc.code) if not isinstance(exc.code, int) else "Invalid command arguments" if code else None
+    from .cli_output import ApplicationExit
+    if isinstance(code, ApplicationExit):
+        sys.stdout.write(output.getvalue())
+        return code
+    raw = output.getvalue().strip()
+    try:
+        document = json.loads(raw) if error is None else None
+    except (ValueError, RecursionError):
+        document = None
+    if document is None:
+        document = {"status": "error" if code else "ok", "message": (error or raw or "Command failed" if code else raw or "ok")[:65536]}
+    print(json.dumps(document, ensure_ascii=True, allow_nan=False))
+    return code

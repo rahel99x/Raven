@@ -54,7 +54,7 @@ class PluginAPI:
 def plugin_dir(config_path: str) -> str:
     base = os.path.dirname(config_path) if config_path else ""
     if not base:
-        from .config import default_path
+        from .configuration.dashboard import default_path
         base = os.path.dirname(default_path())
     return os.path.join(base, "plugins")
 
@@ -67,6 +67,9 @@ def discover(config_path: str, extra: List[str]) -> List[str]:
     for p in extra or []:
         p = os.path.expanduser(p)
         if os.path.isdir(p):
+            # The user selected this directory as a root. Pin its real spelling
+            # once; config_trust still refuses symlinks inside it and in files.
+            p = os.path.realpath(p)
             paths += sorted(os.path.join(p, f) for f in os.listdir(p) if f.endswith(".py") and not f.startswith("_"))
         elif os.path.exists(p):
             paths.append(p)

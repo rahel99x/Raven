@@ -116,7 +116,8 @@ def test_protocol_rejects_size_depth_and_nonfinite():
     with pytest.raises(ValueError):
         decoder.take()
     deep = {}
-    for _ in range(20):
+    from raven.raven_protocol import MAX_DEPTH
+    for _ in range(MAX_DEPTH + 1):
         deep = {"nested": deep}
     with pytest.raises(ValueError):
         encode(deep)
@@ -193,7 +194,8 @@ def test_ssh_launch_preserves_governed_connection_routing_and_safe_options():
     value = prepare(cfg)
     argv = build_launch(value, [sys.executable, "-m", "raven.raven_worker"])
     assert argv[-2] == "researcher@approved-alias"
-    assert argv[6:-3] == cfg["connection"]["ssh_options"]
+    assert argv[10:-3] == cfg["connection"]["ssh_options"]
+    assert argv[6:10] == ["-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4"]
     for options in (["-tt"], ["another-host"], ["-o", "ProxyCommand=command"], ["-o", "StrictHostKeyChecking=no"], ["-o", "RemoteCommand=command"]):
         cfg["connection"]["ssh_options"] = options
         with pytest.raises(ValueError):
@@ -379,6 +381,9 @@ def test_real_slurm_step_fields_admit_only_the_allocated_worker(tmp_path, fake_s
             if argv == ["scontrol", "show", "job", probe["job_id"], "-o"]:
                 return (f"JobId={probe['job_id']} JobState=RUNNING UserId=test({os.getuid()}) "
                         f"NumCPUs=2 MinMemoryNode=512 NodeList={probe['host']} TimeLimit=01:00:00 RunTime=00:00:01"), .001
+            if argv == ["scontrol", "listpids", probe["job_id"] + "." + probe["step_id"]]:
+                return ("PID JOBID STEPID LOCALID GLOBALID\n"
+                        f"{probe['pid']} {probe['job_id']} {probe['step_id']} 0 0\n"), .001
             assert argv == ["scontrol", "show", "step", probe["job_id"] + "." + probe["step_id"], "-o"]
             node = "outside-allocation.invalid" if outside_step else probe["host"]
             return (f"StepId={probe['job_id']}.{probe['step_id']} State=RUNNING "
@@ -392,10 +397,7 @@ def test_real_slurm_step_fields_admit_only_the_allocated_worker(tmp_path, fake_s
 
     def verify(candidate, cancel=None):
         raw.candidate = candidate
-        records = read_placement(candidate, cancel=cancel)
-        # The fake scheduler supplies exact task membership in place of a cgroup.
-        records["pids"] = [candidate["pid"]]
-        return records
+        return read_placement(candidate, cancel=cancel)
 
     with AllocationManager(cluster(), state_dir=tmp_path / "state", placement_verifier=verify) as manager:
         manager.request()
@@ -410,8 +412,9 @@ def test_real_slurm_step_fields_admit_only_the_allocated_worker(tmp_path, fake_s
         drained(manager)
         assert manager.snapshot()["state"] == "light"
 
-    assert len(raw.commands) == 2
-    assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
+    assert len(raw.commands) == 3
+    assert raw.commands[-1] == ("scontrol", "listpids", "7654.0")
+    assert governed.ledger.report()["rates_last_minute"]["validation"] == 3
 
 
 @pytest.mark.parametrize("mode", ["pending", "deny", "disconnect"])

@@ -1,0 +1,402 @@
+{
+  "schema": "raven.injob-adversarial-review/v1",
+  "base_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+  "source_review": "Raven adversarial review bugs and performance.md, INP-1..INP-26",
+  "items": [
+    {
+      "id": "INP-1",
+      "status": "implemented",
+      "change": "Collective participation depends on the explicit call and initialized runtime, including peers with no client or a failed client. Cached helper state is not consulted. Raw-fork inherited communicators remain intentionally unusable.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_collectives.py; test_review_injob_client.py",
+      "evidence": "Live MPICH/mpi4py and torch2.9.1+cpu/gloo, two ranks: early metric, unconfigured peer, Raven reduction then application collective. Invalid scalar readiness preserves subsequent gloo application collective.",
+      "qualification_limits": "Multi-node Slurm and CUDA/NCCL hardware remain unqualified."
+    },
+    {
+      "id": "INP-2",
+      "status": "implemented",
+      "change": "Automatic Python callbacks enqueue bounded cached metadata tuples. One code dictionary entry is serialized per code identity; verified readers expand references. Validation/JSON/I/O/fsync run on writer; queue lock protects only deque swap/append. Publication cadence is >=1 second. Overflow stops with truthful incomplete prefix. Accepted shutdown tail is drained before CLOSED.",
+      "files": [
+        "trace_recorder.py",
+        "trace_protocol.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_application_callback_does_not_wait_for_stalled_fsync_and_metadata_is_once",
+      "evidence": "Injected writer fsync stall does not block 100 application calls and all 100 survive shutdown. Equivalent no-drop call/fib fixtures improve wall/CPU/I/O with bounded RSS increase.",
+      "qualification_limits": "Active capture has finite capacity; this is not an arbitrarily low-overhead or lossless tracing claim. Cooperative synchronous emit remains an explicit synchronous API."
+    },
+    {
+      "id": "INP-3",
+      "status": "implemented",
+      "change": "Content-addressed extracted runtime reuses bytecode. Minimal contract/report lock avoids research/UI dependency imports. Unsupported old interpreters do not spawn reporting subprocesses. Spent pools short-circuit trace imports and retain one exhaustion marker for supervisor diagnostics.",
+      "files": [
+        "launch_runtime.py",
+        "launch_bootstrap.py",
+        "launch_autotrace.py",
+        "launch_contract.py",
+        "report_lock.py"
+      ],
+      "tests": "test_launch_runtime.py; test_launch_trace_auto.py; test_review_injob_trace.py",
+      "evidence": "Final-source controlled traced interpreter median311.32ms ->54.52ms; untraced23.04ms ->21.98ms. Runtime/source SHA-256 retained in performance evidence.",
+      "qualification_limits": "A cold setup still materializes/compiles one runtime per content version. Marker discovery has a10ms/128-check startup bound. These Linux x86_64 fixture medians are not universal startup guarantees."
+    },
+    {
+      "id": "INP-4",
+      "status": "implemented",
+      "change": "Project registry uses nonblocking flock with 200ms deadline. Supervisor registers one run; automatic interpreter/atfork paths do not register project streams.",
+      "files": [
+        "trace_recorder.py",
+        "launch_bootstrap.py",
+        "launch_autotrace.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_busy_project_registry_has_a_short_deadline",
+      "evidence": "Held registry lock returns optional attachment error in <1s; no blocking flock is retained.",
+      "qualification_limits": "Filesystem syscalls themselves may stall on an unavailable mount; lock wait is bounded."
+    },
+    {
+      "id": "INP-5",
+      "status": "implemented",
+      "change": "Explicit LOCK_UN precedes every close of application stream/metadata/report locks and research_reporting report locks. Writer lock timeout preserves records for a bounded later retry. Fork child closes inherited anchors and resets locks.",
+      "files": [
+        "client.py",
+        "research_reporting.py",
+        "report_lock.py"
+      ],
+      "tests": "test_client.py::test_fork_child_cannot_reflush_parent_queue; test_launch_trace_review.py",
+      "evidence": "Client94+ tests and held-cache/fork regression pass; active capture I/O quiesces before fork with a finite wait.",
+      "qualification_limits": "Other application/library locks remain the application responsibility."
+    },
+    {
+      "id": "INP-6",
+      "status": "implemented",
+      "change": "Every client lookup refreshes rank/helper from initialized distributed runtimes; cached pre-init helper classification no longer suppresses DDP reporting.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_client_reclassifies_a_spawn_helper_when_runtime_initializes; test_review_injob_collectives.py",
+      "evidence": "Live gloo mp.spawn rank0 uses plain metric before init, then records reduced metric after init.",
+      "qualification_limits": "Frameworks are never imported or initialized by discovery."
+    },
+    {
+      "id": "INP-7",
+      "status": "implemented",
+      "change": "Runtime fallback is appended from the site hook after installed packages. No bundled top-level raven precedes site-packages. Documentation provides vendor-client --path raven_metrics.py for coexistence with Sentry.",
+      "files": [
+        "launch_bootstrap.py",
+        "docs/guides/python-metrics.md"
+      ],
+      "tests": "test_review_injob_trace.py::test_installed_application_raven_package_keeps_precedence",
+      "evidence": "Traced and untraced launches preserve an application package raven.Client. Existing startup-chain precedence tests updated without removing assertions.",
+      "qualification_limits": "An intentionally user-vendored raven.py still follows normal Python import precedence."
+    },
+    {
+      "id": "INP-8",
+      "status": "implemented",
+      "change": "One module ContextVar stack replaces one permanent variable per phase. Scope tokens restore nested phase values and completed scopes release their references.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_repeated_disabled_phases_leave_constant_context_size",
+      "evidence": "1million disabled phases: context entries1million ->1; process peakRSS123264 ->12288KiB. Separate100k tracemalloc retained11995040 ->216bytes.",
+      "qualification_limits": "RSS and Python allocations are reported separately; platform memory measurements apply to this Linux host."
+    },
+    {
+      "id": "INP-9",
+      "status": "implemented",
+      "change": "Project registry contains run registrations; per-run source index has independent512 bound. Missing legacy entries are pruned, registry is capped4096 and1MiB/90000nodes; a4MiB read cap plus linear byte/node compaction repairs old oversized inventories. Run-local discovery uses authoritative trace/index.json without duplicate stream registry.",
+      "files": [
+        "trace_recorder.py",
+        "trace_protocol.py",
+        "launch_bootstrap.py"
+      ],
+      "tests": "test_launch_trace_auto.py; test_review_injob_trace.py::test_fork_exec_children_do_not_attach_or_spend_process_slots; test_review_injob_trace.py::test_legacy_registry_above_old_byte_limit_is_compacted_not_disabled",
+      "evidence": "2200-entry legacy registry greater than1MiB compacts and accepts a new registration.20 fork-exec children leave one project run registration and one actual process stream.",
+      "qualification_limits": "Old valid registrations remain discoverable; exceeding explicit bounded inventory limits yields diagnostics."
+    },
+    {
+      "id": "INP-10",
+      "status": "implemented",
+      "change": "Atfork closes inherited descriptors/stops capture and installs only a lazy event hook. No recorder/thread/filesystem/index work occurs until actual project Python resumes. Subprocess preexec ancestry is excluded.",
+      "files": [
+        "launch_autotrace.py",
+        "trace_recorder.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_fork_exec_children_do_not_attach_or_spend_process_slots; test_trace_auto_recording.py::test_fork_releases_inherited_capture_cache_locks_before_child_attachment",
+      "evidence": "20 real fork/exec /bin/true children consume zero helper process slots and create no phantom streams. Held metadata lock fork does not block.",
+      "qualification_limits": "Explicit fork-child Python capture depends on executing in-scope Python; exec children are not inferred to have a timeline."
+    },
+    {
+      "id": "INP-11",
+      "status": "implemented",
+      "change": "First coordinator exports owner PID to subsequent ordinary subprocesses; they count/suppress inherited coordinator records. Explicit configure(path=...) elects an intended new destination. Every client-produced record includes optional validated pid.",
+      "files": [
+        "client.py",
+        "metrics.py",
+        "docs/schemas/metrics.v1.schema.json"
+      ],
+      "tests": "test_review_injob_client.py::test_plain_subprocess_does_not_become_a_second_coordinator; test_client.py",
+      "evidence": "Evaluation subprocess cannot merge restarted auto steps into parent training stream. Legacy records without pid remain readable.",
+      "qualification_limits": "Independent interpreters started before any coordinator call must use distinct explicit run destinations; pid is attribution metadata, not a security credential."
+    },
+    {
+      "id": "INP-12",
+      "status": "implemented",
+      "change": "Thread.start failure is contained, writer marks failed and drops/counts pending data; joins require an actual started thread. Progress/decorator/configure preserve application outcomes.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_thread_limit_never_escapes_measure_progress_or_reconfigure",
+      "evidence": "Injected Thread.start RuntimeError produces no application exception.",
+      "qualification_limits": "No OS cgroup pids.max was changed; resource exhaustion was injected at the exact start boundary."
+    },
+    {
+      "id": "INP-13",
+      "status": "implemented",
+      "change": "CPython3.12+ watch reserves a free monitoring tool and enables local PY_RETURN events only on the watched code. It frees the tool on close and retains current-thread semantics.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_watch_uses_local_monitoring_without_thread_profile; test_client.py",
+      "evidence": "Watch does not call sys.setprofile on available monitoring path; completed return, coroutine/yield and prior profiler compatibility tests retained.",
+      "qualification_limits": "Older Python or all monitoring slots occupied uses documented chained profile fallback."
+    },
+    {
+      "id": "INP-14",
+      "status": "implemented",
+      "change": "Decorator every/seconds sampling gates client lookup and automatic step bookkeeping; skipped calls do not call the client. Revision changes retain late configure semantics.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_measure_sampling_skips_client_and_step_work",
+      "evidence": "999/1000 skipped calls avoid lookup; controlled every1000 fixture1.416 ->0.595us/call.",
+      "qualification_limits": "Finite scalar conversion remains on sampled calls; GPU tensor.item can synchronize the device as documented."
+    },
+    {
+      "id": "INP-15",
+      "status": "implemented",
+      "change": "Project filtering excludes sysconfig paths and active interpreter prefixes. A one-time bounded scan finds pyvenv.cfg/conda-meta ancestors of project sys.path entries before callbacks. Filtering caches use nonblocking acquisition and never perform filesystem reads in callbacks.",
+      "files": [
+        "trace_recorder.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_project_scope_excludes_an_environment_inside_project; test_review_injob_trace.py::test_project_scope_excludes_environment_markers_before_callbacks",
+      "evidence": "Active embedded-environment and alternate venv/conda marker fixtures excluded, project application code retained.",
+      "qualification_limits": "Discovery is bounded to128 metadata checks/10ms and16 ancestors on project import paths; arbitrary inactive environment trees are not recursively scanned."
+    },
+    {
+      "id": "INP-16",
+      "status": "implemented",
+      "change": "Export/summary/inspect drive iter_pages through the complete committed prefix. Private SQLite spool preserves cross-page matches with256-event/256KiB pages,256MiB scratch and60s traversal bounds; artifact cap32MiB. Publication is atomic and refuses late invalid/truncated output.",
+      "files": [
+        "trace_stream.py",
+        "trace_stream_export.py",
+        "trace_export.py",
+        "trace_summary.py",
+        "trace_recorder.py",
+        "trace_browser.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_full_prefix_exports_inspection_and_summary_cross_page_boundaries; test_trace_export.py; test_trace_summary.py; test_trace_browser.py",
+      "evidence": "21004-event fixture exceeds old20000 retention limit: Perfetto/HTML10501 intervals, speedscope21002 boundaries, inspect all events, summary10501 intervals with exact finalseq.",
+      "qualification_limits": "Explicit commands may use disk-backed traversal; live UI remains a bounded retained window. Oversized outputs fail rather than silently truncate."
+    },
+    {
+      "id": "INP-17",
+      "status": "implemented",
+      "change": "Without trace_helpers, helpers use separate capacity capped32 processes/32MiB and quarter-process/eighth-byte shares; main/rank pool is reserved. Explicit trace_helpers opts into shared run limits.",
+      "files": [
+        "launch_autotrace.py",
+        "launch_bootstrap.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_helper_pool_cannot_spend_main_capacity",
+      "evidence": "Exhausted helper slots cannot spend main capacity; main byte reservation still succeeds.",
+      "qualification_limits": "Process role is startup-observed; later framework initialization cannot retroactively prove an earlier helper timeline was a distributed rank."
+    },
+    {
+      "id": "INP-18",
+      "status": "implemented",
+      "change": "Shutdown and atfork hooks register when client module imports, before later application exit handlers. Import still performs no filesystem IO and starts no thread.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_late_registered_exit_hook_can_emit_its_final_metric; test_client.py",
+      "evidence": "A late application exit handler emits its final_accuracy metric.",
+      "qualification_limits": "A hook registered before importing Raven still follows Python atexit ordering; applications can explicitly flush before exit."
+    },
+    {
+      "id": "INP-19",
+      "status": "implemented",
+      "change": "Rank discovery skips invalid/empty variables, considers valid later launchers, and retains one diagnostic instead of silently choosing invalid rank.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_blank_rank_does_not_mask_an_initialized_launcher_rank; test_client.py",
+      "evidence": "Empty RANK plus valid PMI rank chooses PMI; invalid-only remains suppressed with explanation.",
+      "qualification_limits": "Conflicting initialized runtime wins over environment, preserving declared coverage warning."
+    },
+    {
+      "id": "INP-20",
+      "status": "implemented",
+      "change": "The entire monitoring inclusion/callback path is guarded. Nonblocking bounded code caches prevent callback/fork lock deadlocks. Instrumentation faults stop capture and defer diagnostics without replacing application exceptions.",
+      "files": [
+        "trace_recorder.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_near_recursion_limit_application_does_not_receive_capture_error; test_trace_recorder.py",
+      "evidence": "Application recursion985 at limit1000 succeeds both before and during capture. User exception/finalization tests retained.",
+      "qualification_limits": "No claim that tracing can extend the interpreter recursion limit or capture events after instrumentation must stop."
+    },
+    {
+      "id": "INP-21",
+      "status": "implemented",
+      "change": "Audit hook filters event name before pid lookup; relevant unsupported launch gaps queue optional diagnostic work on writer, never write/report-lock in the audit hook.",
+      "files": [
+        "launch_autotrace.py",
+        "trace_recorder.py"
+      ],
+      "tests": "test_launch_trace_auto.py; test_launch_trace_review.py",
+      "evidence": "Existing unsupported/isolated launch gap tests retained; callback noninterference regression exercises background-only I/O.",
+      "qualification_limits": "Optional diagnostic queue is bounded128; cannot infer arbitrary unseen children launched by an untraced shell."
+    },
+    {
+      "id": "INP-22",
+      "status": "implemented",
+      "change": "Shared-name inventory overflow rejects/counts only new names, preserving updates to existing names. Writer remains available and flush succeeds.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_client.py::test_shared_stream_name_budget_is_checked_before_new_appends",
+      "evidence": "Existing64-name stream retains bytes on rejected new name and later updates established name to123.",
+      "qualification_limits": "64-name stream bound remains explicit."
+    },
+    {
+      "id": "INP-23",
+      "status": "implemented",
+      "change": "Deterministic archives are content-addressed and hardlinked per launch; extracted bytecode reused per version. Owner wrapper directory0700 permits cleanup while payload files remain read-only. Dry-run-first cleanup verifies exact frozen plans, terminal stale attempts and submission receipts. Slurm deletion requires retained original user/connection/config-selector identity and actual cluster, one shared-ledger128-ID queue batch plus at most one default-ClusterName read. Unknown origins, active arrays, deferrals and mismatches preserve wrappers.",
+      "files": [
+        "launch_runtime.py",
+        "runtime_cleanup.py",
+        "launch_scheduler_context.py",
+        "connection_scope.py",
+        "launch.py",
+        "research_reporting.py",
+        "trace_recorder.py"
+      ],
+      "tests": "test_review_injob_trace.py::test_runtime_content_is_reused_and_cleanup_preserves_run_data; test_runtime_cleanup_governance.py; test_launch_runtime.py",
+      "evidence": "Equal frozen archive fixtures share inode; completed local wrapper eligible then removed; unstarted wrapper preserved; run.json/summary remain.16 governed-context cases verify128-ID cap, real shared-ledger debit, default-cluster read, absent/malformed/changed identity and Deferred recovery.",
+      "qualification_limits": "Shared version caches intentionally remain for detached descendants. Legacy launches without retained original scheduler context remain preserved. New Slurm context lifecycle uses deterministic transport/ledger integration; actual cleanup against live cluster remains unqualified."
+    },
+    {
+      "id": "INP-24",
+      "status": "implemented",
+      "change": "Resolve the caller-selected parent root once, then anchor descriptors and retain nofollow leaf access. Symlinked user home/scratch aliases work without permitting later alias replacement to redirect active writes.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_client.py parent-symlink and anchored-directory regressions",
+      "evidence": "Explicit symlink root records successfully; existing path replacement/leaf-symlink protection tests retained.",
+      "qualification_limits": "A user-selected alias selects its resolved target; untrusted symlink leaves remain refused."
+    },
+    {
+      "id": "INP-25",
+      "status": "implemented-hardware-unqualified",
+      "change": "NCCL metadata/value tensors use LOCAL_RANK device or reported device fallback; conflicting tensor device participates in readiness omission rather than unilateral skipping. Application current CUDA device is unchanged.",
+      "files": [
+        "client.py"
+      ],
+      "tests": "test_review_injob_client.py::test_nccl_uses_local_rank_device_without_changing_application_cuda_state",
+      "evidence": "Mocks verify both collective tensors oncuda:1 while reported tensorcuda:1; conflictingcuda:0 sends readiness0 oncuda:1 and no value collective.",
+      "qualification_limits": "This host has no CUDA GPU/NCCL; multi-GPU hardware qualification remains explicitly required."
+    },
+    {
+      "id": "INP-26",
+      "status": "implemented-with-documented-limit",
+      "change": "Metrics writer exits once drained and restarts lazily. Before-fork hooks quiesce active writer I/O with a bounded50ms wait; parent resumes, child closes inherited descriptors/resets locks and lazily attaches. Metadata caches never wait on inherited locks.",
+      "files": [
+        "client.py",
+        "trace_recorder.py",
+        "launch_autotrace.py"
+      ],
+      "tests": "test_client.py::test_fork_child_cannot_reflush_parent_queue; test_trace_auto_recording.py::test_fork_releases_inherited_capture_cache_locks_before_child_attachment; test_review_injob_trace.py::test_fork_exec_children_do_not_attach_or_spend_process_slots",
+      "evidence": "All focused fork regressions pass, including held cache lock. Idle metrics has no persistent daemon.",
+      "qualification_limits": "Active trace capture necessarily uses a writer thread and can still trigger Python fork-with-threads DeprecationWarning. It is documented, not suppressed; spawn/forkserver recommended when application libraries require it. An unbounded pre-fork join was rejected because storage stalls must not hang unrelated application forks."
+    }
+  ],
+  "validation": {
+    "focused_adversarial": "Final trace/client/context41-case run:40passed; one new ledger assertion corrected to validation bucket and final cleanup/context plus lock-retry and real local cleanup18passed. All runtime sources frozen after final bounded-inventory check.",
+    "optional_live_runtime": "Final frozen-source2 passed in3.49s using /workspace/raven-instrumentation-optional/bin/python tests/test_review_injob_collectives.py",
+    "broad_regression": "Earlier broad trace/client369passed, exhausted-pool gap regression fixed and affected testpassed. Final broader focused suite interrupted deliberately at130passed/no failures after121s to release integration; parent full regression covers remainder.",
+    "refresh_seam": "543 passed in2.61s including domain architecture, refresh, sampling backend/readers, telemetry settings/UI, toolbar",
+    "ui_regressions": "10 combined-tree modal/focus/restarted-attempt failures coordinated to UI/mutations owner; owner fixed them with assertions preserved and reported662passed.",
+    "performance": "docs/reviews/injob-performance.json; final controlled exclusive rerun after instrumentation/runtime fixes; subsequent cleanup-only enumeration bound recorded separately; runtime SHA2560db372f9e384a8b130377dbe513e50ff70d24223172566d9f281e59e151ee60c and exact source hashes. Client phase allocation evidence is separately labelled earlier-source; algorithms unchanged.",
+    "lint": "New modules and regressions pass ruff-boundary checks; legacy modules retain unrelated existing broad-lint debt"
+  },
+  "tradeoffs": [
+    "A bounded producer queue plus code dictionary moves serialization/storage away from application callbacks at a measured2176KiB peak RSS increase in the 10k-call fixture; no samples were dropped in before/after comparison.",
+    "One project registration per run and bounded per-run source indexes avoid a global process registry rewrite on every interpreter.",
+    "Complete-prefix CLI conversion uses bounded disk scratch instead of retaining all Python events; limits fail atomically and never claim an exported complete recording after truncation.",
+    "Version-shared caches are retained conservatively for detached descendants; cleanup removes stale completed wrappers rather than guessing that cached code is unused.",
+    "Bounded pre-fork quiescing prevents a stalled NFS writer turning a fork into an unbounded wait; active capture remains multithreaded and the warning remains visible."
+  ],
+  "source_sha256": {
+    "raven/client.py": "b3e0acf8808f8fcbf42774cc71c430dcd16daa88bbb82947c8fc54f22d4c4d3f",
+    "raven/trace_recorder.py": "ed77963d8511de83fd603c197e2aa06b5f03d6d7231122c95ad61bd0392f94fd",
+    "raven/trace_protocol.py": "abb3cb88bbe42be550ef48387e446b6bec682f3e596b25d0ca8ddd6b77ebf4a4",
+    "raven/launch_autotrace.py": "e906a2d686842c082e3716ea19ddf538259994fdbee55b34769b45c752c768e0",
+    "raven/launch_runtime.py": "d6f675fecbdd6b524e98f27003d7b7bb8bb0832975309564e9600dfc54b343a3",
+    "raven/launch_bootstrap.py": "52698ef96efb16fbfb589b2cea95d466bba1200c043c9b177a7c98e45bc19a68",
+    "raven/trace_stream.py": "cbe06126dc3f43ae3b952553a0e4662a45d94ccd5c69282d6f0c9c7c297bcfea",
+    "raven/trace_stream_export.py": "63c7cf5b054ac170f3e425da42e4ed6256b274edabeb52000e2c9efe86ab105f",
+    "raven/runtime_cleanup.py": "21a0a9012d0a45d186274825cf3ecfa2a5292e8f4c7c5c1dd46ec5f8941c702b",
+    "raven/connection_scope.py": "3d80dee37d0d70baeef143a076bd1fe6b1092161ce02f143c5b556f019a76eb4",
+    "raven/launch_scheduler_context.py": "c94c13bbb07d7c984abd5dae9b6fc365f4beb334c5029e09099a9cce115d0c12",
+    "raven/cadence.py": "a672bbfad8ebbb4ca7833afdb25a27d8054393913d3ffb86ac9a38761708bceb",
+    "raven/refresh_preferences.py": "aca898787576e850ee65bcfea1d1d1323268cbab5bb5baf6c042d21b18164cd9",
+    "raven/metric_sampling_runtime.py": "a1bd8982851f50e1e4ec9a67deca093b19632da77bc04232f608f8901e1b39a3"
+  },
+  "integration_followup": {
+    "schema": "raven.integration-followup/v1",
+    "scope": [
+      "tests/test_raven.py::test_cli_once_json_and_watch_from_the_simulated_cluster",
+      "tests/test_raven.py::test_command_palette_and_analytics_views",
+      "tests/test_raven.py::test_log_tab_pages_scroll_and_search_through_the_controller",
+      "tests/test_raven.py::test_ssh_backend_and_remote_files_through_a_local_shell",
+      "tests/test_raven.py::test_profiles_merge_and_switch",
+      "tests/test_raven.py::test_plugins_add_commands_flags_tabs_hooks_and_sources"
+    ],
+    "baseline": "All six fail independently together on current integrated working tree;6failed in1.96s. No test order dependency.",
+    "production_fix": "Retained-log search preserves one deferred navigation intent while its index builds on the existing worker. Exact source/query/context/position must still match at publication; intervening cursor, query, source or tab choice cancels the intent. Stale/error completions discard owned intents. Existing index scans, worker admission, memory bounds and no-frame-IO behavior remain.",
+    "test_corrections": [
+      "Explicit --user alex sets requested monitoring identity; USER remains untrusted for the real uid and permission scope. Title/output assertions unchanged.",
+      "SSH transport option terminator is before destination: assert --,exact-user@host,remote-command ordering while preserving multiplex reuse, quoting, errors, file reads and terminal behavior.",
+      "Deterministic telemetry fixture spans past timestamps instead of future timestamps so freshness filtering remains correct; GPU/CPU/memory plot assertions unchanged.",
+      "Existing complete_action(app) waits for actual asynchronous plugin action/log-index completions; audit/hook/navigation assertions unchanged."
+    ],
+    "checks": [
+      {
+        "command": ".venv/bin/python -m pytest -q six assigned core cases tests/test_qol_log_match_index.py",
+        "result": "20passed in28.06s"
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q tests/test_raven.py tests/test_qol_log_tools_ui.py tests/test_qol_log_tools_scan.py tests/test_qol_log_match_index.py",
+        "result": "144passed in27.56s"
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q tests/test_qol_log_match_index.py tests/test_raven.py::test_log_tab_pages_scroll_and_search_through_the_controller",
+        "result": "Final stale-query intent-clear strengthening:15passed in0.90s"
+      },
+      {
+        "command": ".venv/bin/python -m ruff check --select E4,E9,F,I,UP raven/log_tools.py",
+        "result": "passed; unrelated preexisting E731 lambda assignments remain outside this selected gate"
+      },
+      {
+        "command": "git diff --check",
+        "result": "passed"
+      }
+    ],
+    "source_sha256": {
+      "raven/log_tools.py": "e862c6cd47e7c6e5e9fdc5380c1cbb6921ed14db09c84c23642999a77e811d22",
+      "tests/test_raven.py": "b30ea44d93e07b019dad9dae09f378b3a44ec39978621010054af400c7db1ae1",
+      "tests/test_qol_log_match_index.py": "3bd406e73f478c93980f3d3d61559a4d002d5754bc79becd90b8f3e0ccf7ad62"
+    },
+    "review": "No behavioral assertions removed or relaxed; five added deferred-navigation/cancellation regressions. One pending tuple, one existing worker, no additional filesystem/scheduler requests. Broader checks passed; final narrow strengthening revalidated15 cases."
+  }
+}

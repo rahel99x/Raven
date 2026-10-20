@@ -1,0 +1,6 @@
+{
+  "schema": "raven.import-layers/v1",
+  "status": "Closed architecture debt: strict all-depth acyclicity and finite runtime targets required",
+  "cyclic_edges": [],
+  "dynamic_module_expressions": []
+}

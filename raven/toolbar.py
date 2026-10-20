@@ -6,6 +6,7 @@ performs a local presentation action. Hit rectangles come from the last paint.
 """
 from __future__ import annotations
 
+from .ui.catalog import ANALYTICS_VIEWS, RESEARCH_VIEWS, TABS
 from . import layout as L
 from .command_registry import Control as Item, toolbar_controls
 
@@ -40,8 +41,6 @@ def initialize(app):
 
 
 def _destinations():
-    from .views import TABS, ANALYTICS_VIEWS
-    from .research import RESEARCH_VIEWS
     return {**{"tab:" + key: (title, ("tab " + key,)) for key, title in TABS},
             **{"research:" + key: ("Research: " + title, ("workspace " + key,)) for key, title in RESEARCH_VIEWS},
             **{"analytics:" + key: ("Analytics: " + title.title(), ("tab analytics", "view " + key)) for key, title in ANALYTICS_VIEWS}}
@@ -64,7 +63,6 @@ def save(app):
 
 def visible_tabs(app):
     """A small default set, favorites, and the current destination, in O(n)."""
-    from .views import TABS
     favorites = initialize(app)["favorites"]
     selected = set(PRIMARY_TABS)
     selected.update(value.split(":", 1)[1] for value in favorites if value.startswith("tab:"))
@@ -78,7 +76,6 @@ def visible_tabs(app):
 
 
 def visible_research_views(app):
-    from .research import RESEARCH_VIEWS
     selected = {"experiment", "arrays", "evidence", "artifacts", getattr(app, "research_view", "experiment")}
     selected.update(value.split(":", 1)[1] for value in initialize(app)["favorites"] if value.startswith("research:"))
     return [(key, title) for key, title in RESEARCH_VIEWS if key in selected]
@@ -117,7 +114,7 @@ def _toggle_favorite(app):
 
 def _polling_label(app, value=None, *, ascii_=None):
     from . import refresh_rate
-    from .metric_sampling import format_interval
+    from .cadence import format_interval
     if ascii_ is None:
         cfg = getattr(app, "cfg", None)
         ascii_ = initialize(app).get("ascii", cfg.get("ascii", False) if cfg else False)
@@ -178,7 +175,6 @@ def menu_items(app, menu):
             "array-map": {"command": "arraymap inspect" if array_attached else "arraymap"},
         })
     if menu == "View":
-        from .views import TABS
         return ([Item("tab-" + key, title, "tab " + key) for key, title in TABS if key in PRIMARY_TABS] +
                 [Item("run-home", "Run home", "runhome"),
                  Item("research-views", "Research workspaces", local="submenu:research"),
@@ -197,13 +193,10 @@ def submenu_items(app, name):
     if name in ("connections", "recordings", "performance", "installation"):
         return toolbar_controls(name)
     if name == "infrastructure":
-        from .views import TABS
         return [Item("tab-" + key, title, "tab " + key) for key, title in TABS if key not in PRIMARY_TABS]
     if name == "research":
-        from .research import RESEARCH_VIEWS
         return [Item("research-" + key, title, "workspace " + key) for key, title in RESEARCH_VIEWS]
     if name == "analytics":
-        from .views import ANALYTICS_VIEWS
         return [Item("analytics-" + key, title.title(), local="destination:analytics:" + key) for key, title in ANALYTICS_VIEWS]
     if name == "favorites":
         known = _destinations()
@@ -335,7 +328,7 @@ def _activate(app, item):
     elif action == "rate":
         _open_refresh(app)
     elif action == "clear-selection":
-        from .text_selection import clear
+        from .ui.text_selection_state import clear
         clear(app)
         app.sel_anchor = None
         app.logs.clear_selection()
@@ -382,7 +375,7 @@ def _refresh_summary(app, ascii_=False):
 
 def render_bar(views, app, width, y=0):
     """One 80-column-first row: menus, launch, compute status, refresh summary."""
-    from . import raven_ui
+    from .ui import allocation as raven_ui
     state = initialize(app)
     width = max(0, int(width))
     if state["width"] != width or state["bar_y"] != y:
@@ -574,7 +567,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             open_export(app)
         elif kind == "launch-job":
             _close(app)
-            from .launch_wizard_ui import open_launch
+            from .launching.wizard_ui import open_launch
             open_launch(app)
         elif kind == "copy-mode":
             from .editor_yank import toggle
@@ -584,7 +577,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             run_command(app, ["workers", "toggle"])
         elif kind == 'raven':
             _close(app)
-            from .raven_ui import run_command
+            from .ui.allocation import run_command
             run_command(app, ['raven', 'status'])
         return True
     if state["menu"] is not None:
@@ -622,7 +615,7 @@ def control_descriptors(app):
     labels = {"quit": "Quit", "launch-job": "Launch job",
               "refresh-settings": "Refresh settings: " + _refresh_summary(app)}
     if any(hit[3] == 'raven' for hit in state['hits']):
-        from .raven_ui import summary
+        from .ui.allocation import summary
         labels['raven'] = summary(app)
     for y, left, right, kind, key in state["hits"]:
         label = MENUS[key] if kind == "menu" else labels.get(kind, kind)

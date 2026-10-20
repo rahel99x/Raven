@@ -200,7 +200,6 @@ def test_project_context_without_scheduler_id_never_borrows_unrelated_job(monkey
 
 
 def test_bound_project_uses_confined_cached_entries_without_reopening_manifest(monkeypatch, tmp_path):
-    from raven import project_ui
     from raven import log_catalog
     out = tmp_path / "77.out"
     out.write_bytes(b"progress\n")
@@ -209,11 +208,11 @@ def test_bound_project_uses_confined_cached_entries_without_reopening_manifest(m
     external = tmp_path / "external.log"
     external.write_bytes(b"disk quota exceeded\n")
     entries = [{"id": "worker", "path": str(allowed), "label": "Worker", "group": "Application"}]
-    monkeypatch.setattr(project_ui, "log_entries", lambda app: entries)
     monkeypatch.setattr(log_catalog, "build_catalog", lambda *a, **kw: pytest.fail("Bound project must retain validated cached inventory"))
     hub = ResearchHub({})
     app = SimpleNamespace(selected_id="77", research_job_id="77", research_view="evidence", cfg={},
                           project_state={"binding": {"run_id": "run-a", "run_root": str(tmp_path), "job_id": "77", "stdout": str(out), "log_manifest": str(external)},
+                                         "logs": entries,
                                          "run_warnings": ["External log declaration was blocked"]})
     try:
         job = Finished(id="77", state="FAILED")

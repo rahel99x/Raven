@@ -7,6 +7,7 @@ retained streams, whereas dashboards read a bounded tail.
 from __future__ import annotations
 
 import collections
+import errno
 import datetime as dt
 import json
 import math
@@ -20,8 +21,9 @@ import tempfile
 import threading
 import time
 import uuid
+import re
 
-INDEX_SCHEMA = "raven.telemetry-index/v1"
+INDEX_SCHEMA = "raven.telemetry-index/v2"
 GPU_SCHEMA = "raven.gpu-sample/v1"
 CPU_SCHEMA = "raven.cpu-memory-sample/v1"
 MAX_INDEX_BYTES = 256 * 1024
@@ -40,6 +42,31 @@ def _utc(timestamp):
     return dt.datetime.fromtimestamp(timestamp, dt.timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+def _storage_budget(plan,environ,settings,defaults,interval):
+    explicit=settings.get('max_bytes_per_stream',defaults.get('storage_bytes'))
+    if explicit is not None:
+        return int(_number(explicit,32<<20,4096,256<<20))
+    options=plan.get('effective_options',{})
+    value=str(options.get('time') or environ.get('SLURM_TIMELIMIT') or '')
+    duration=0
+    try:
+        days,clock=value.split('-',1) if '-' in value else ('0',value)
+        parts=[int(part) for part in clock.split(':')]
+        if len(parts)==1:duration=int(days)*86400+parts[0]*60
+        elif len(parts)==2:duration=int(days)*86400+parts[0]*60+parts[1]
+        elif len(parts)==3:duration=int(days)*86400+parts[0]*3600+parts[1]*60+parts[2]
+    except (ValueError,TypeError):
+        duration=0
+    count=1
+    gpu=str(options.get('gpus') or options.get('gpus-per-node') or environ.get('SLURM_GPUS_ON_NODE') or environ.get('SLURM_GPUS') or '')
+    if re.fullmatch(r'(?:[A-Za-z0-9_-]+:)*[0-9]{1,3}',gpu):
+        count=max(1,min(256,int(gpu.rsplit(':',1)[-1])))
+    elif environ.get('CUDA_VISIBLE_DEVICES'):
+        count=max(1,min(256,len(environ['CUDA_VISIBLE_DEVICES'].split(','))))
+    estimated=max(0,min(duration,31536000))/interval*count*256*1.25
+    return int(min(256<<20,max(32<<20,estimated)))
+
+
 def _error(exc):
     return "".join(c if c.isprintable() else " " for c in str(exc))[:1000]
 
@@ -54,7 +81,9 @@ def _atomic_json(directory_fd, name, value):
         with os.fdopen(fd, "wb") as stream:
             stream.write(raw)
             stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+        os.fsync(directory_fd)
     finally:
         try:
             os.unlink(temporary, dir_fd=directory_fd)
@@ -175,7 +204,9 @@ class Recording:
         settings = settings if isinstance(settings, dict) else {}
         self.interval = float(_number(settings.get("interval_seconds", defaults.get("sampling_seconds")), 5., 1., 300.))
         self.timeout = float(_number(settings.get("timeout_seconds"), 2., .2, 10.))
-        self.budget = int(_number(settings.get("max_bytes_per_stream", defaults.get("storage_bytes")), 32 * 1024 * 1024, 4096, 256 * 1024 * 1024))
+        self.budget = _storage_budget(plan,self.environ,settings,defaults,self.interval)
+        self.segment_bytes=min(4<<20,max(1024,self.budget//4))
+        self._segments={}
         from .gpu_collectors import provider_name
         self.provider = provider_name(settings.get("gpu_provider", "auto"))
         self.pid = plan.get("runtime_pid")
@@ -222,11 +253,24 @@ class Recording:
         source = {"family": family, "path": "telemetry/" + family + ".jsonl", "schema": schema,
                   "status": "unavailable" if reason else "recording", "reason": reason, "coverage": coverage,
                   "metrics": ["utilization_percent", "memory_used_mib", "memory_total_mib"] if family == "gpu" else ["cpu_seconds", "rss_bytes", "process_count"], "devices": []}
+        source['segments']=[]
+        source['storage_format']='raven.telemetry-compact/v1'
+        source['row_defaults']={"schema":schema,"run_id":self.run.name,"node":self.node,"scope":scope,
+            "status":"recorded","reason":"","quality":"sampled","interval_seconds":self.interval,
+            "clock":"collector-system-realtime UTC at observation completion; source clock unavailable; cross-node skew unknown",
+            "source_time":None,"source":"linux-procfs" if family=='cpu-memory' else 'vendor-utility'}
+        coverage.update(retained_samples=0,evicted_samples=0,written_bytes=0,retention='bounded newest segments; evictions explicitly counted')
+        self._segments[family]={'number':0,'bytes':0,'samples':0,'first_timestamp':None,'last_timestamp':None}
         self.sources.append(source)
         if not reason:
             self.streams[family] = os.open(family + ".jsonl", os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600, dir_fd=self.fd)
 
     def _publish(self):
+        # A durable index never advertises sample bytes still only in cache.
+        for fd in self.streams.values():
+            if fd is None:
+                continue
+            os.fdatasync(fd) if hasattr(os, 'fdatasync') else os.fsync(fd)
         _atomic_json(self.fd, "index.json", {"schema": INDEX_SCHEMA, "run_id": self.run.name, "node": self.node,
                      "created_at": self.started, "updated_at": time.time(), "sources": self.sources})
 
@@ -239,18 +283,60 @@ class Recording:
 
     def _append(self, source, row):
         coverage, family = source["coverage"], source["family"]
-        raw = (json.dumps(row, ensure_ascii=False, allow_nan=False, separators=(",", ":")) + "\n").encode()
-        if coverage["bytes"] + len(raw) > self.budget:
-            source.update(status="partial", reason="Storage budget exhausted; retained prefix is preserved and recording stopped.")
-            os.close(self.streams.pop(family))
+        if self.streams[family] is None:
+            # A prior rotation retained its sealed segment but could not create
+            # the next file. Keep the family scheduled and retry after recovery.
+            self.streams[family]=os.open(family+'.jsonl',os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600,dir_fd=self.fd)
+        # Invariant metadata lives in the checksummed export's captured index,
+        # rather than repeating hundreds of bytes on every observation.
+        stored={key:value for key,value in row.items() if source['row_defaults'].get(key,object())!=value}
+        stored.pop('timestamp_utc',None)  # lossless UTC derives from epoch timestamp
+        if family=='gpu':
+            for index,device in enumerate(source['devices']):
+                if all(row.get(key)==value for key,value in device.items()):
+                    stored['device']=index
+                    for key in device:
+                        stored.pop(key,None)
+                    break
+        raw = (json.dumps(stored, ensure_ascii=False, allow_nan=False, separators=(",", ":")) + "\n").encode()
+        if len(raw)>self.budget:
+            coverage['missed_samples']+=1
+            source.update(status='partial',reason='One telemetry row exceeds its storage budget; later observations will retry.')
             return False
-        view = memoryview(raw)
-        while view:
-            written = os.write(self.streams[family], view)
-            if written <= 0:
-                raise OSError("telemetry stream write made no progress")
-            view = view[written:]
+        segment=self._segments[family]
+        if segment['bytes'] and segment['bytes']+len(raw)>self.segment_bytes:
+            os.fsync(self.streams[family])
+            number=segment['number']+1
+            name=f"{family}.segment-{number:08d}.jsonl"
+            os.rename(family+'.jsonl',name,src_dir_fd=self.fd,dst_dir_fd=self.fd)
+            os.close(self.streams[family]);self.streams[family]=None
+            source['segments'].append(dict(path='telemetry/'+name,bytes=segment['bytes'],samples=segment['samples'],
+                first_timestamp=segment['first_timestamp'],last_timestamp=segment['last_timestamp']))
+            segment.update(number=number,bytes=0,samples=0,first_timestamp=None,last_timestamp=None)
+            self.streams[family]=os.open(family+'.jsonl',os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0),0o600,dir_fd=self.fd)
+        while source['segments'] and (coverage['bytes']+len(raw)>self.budget or len(source['segments'])>=128):
+            expired=source['segments'].pop(0)
+            os.unlink(expired['path'].split('/')[-1],dir_fd=self.fd)
+            coverage['bytes']-=expired['bytes'];coverage['retained_samples']-=expired['samples']
+            coverage['evicted_samples']+=expired['samples']
+            source.update(status='partial',reason='Storage budget: oldest telemetry segments evicted; newest observations continue.')
+        descriptor=self.streams[family]
+        initial=os.lseek(descriptor,0,os.SEEK_END)
+        try:
+            view = memoryview(raw)
+            while view:
+                written = os.write(descriptor, view)
+                if written <= 0:
+                    raise OSError("telemetry stream write made no progress")
+                view = view[written:]
+        except OSError:
+            os.ftruncate(descriptor,initial);os.lseek(descriptor,initial,os.SEEK_SET)
+            raise
+        segment['bytes']+=len(raw);segment['samples']+=1
+        segment['first_timestamp']=row['timestamp'] if segment['first_timestamp'] is None else segment['first_timestamp']
+        segment['last_timestamp']=row['timestamp']
         coverage["bytes"] += len(raw)
+        coverage['written_bytes']+=len(raw);coverage['retained_samples']+=1
         coverage["samples"] += 1
         if row["node"] not in coverage["observed_nodes"]:
             coverage["observed_nodes"].append(row["node"])
@@ -264,6 +350,9 @@ class Recording:
         if source["family"] == "cpu-memory":
             values, self.expected_start = process_observation(self.pid, self.expected_start)
             if values is not None:
+                for key in ('cpu_scope','memory_scope'):
+                    if isinstance(values.get(key),str):
+                        source['row_defaults'][key]=values[key]
                 self._append(source, dict(self._common(source, time.time()), **values))
             return
         samples, self.cache, warnings = gpu_observation(self.environ, self.provider, self.timeout, self.cache, self.stop)
@@ -307,12 +396,20 @@ class Recording:
                         source["coverage"]["missed_samples"] += 1
                         source["coverage"]["errors"] = (source["coverage"]["errors"] + [_error(exc)])[-16:]
                         source["reason"] = _error(exc)
-                        if isinstance(exc, OSError) and not isinstance(exc, (TimeoutError, PermissionError)):
+                        if isinstance(exc, OSError) and not isinstance(exc, (TimeoutError, PermissionError)) and exc.errno not in {errno.ENOSPC,errno.EDQUOT,errno.EIO,errno.EAGAIN,errno.EINTR}:
                             source["status"] = "partial" if source["coverage"]["samples"] else "failed"
-                            os.close(self.streams.pop(family))
+                            descriptor=self.streams.pop(family)
+                            if descriptor is not None: os.close(descriptor)
                     due[family] = time.monotonic() + min(60., self.interval * 2 ** min(failures.get(family, 0), 4))
                 if changed:
-                    self._publish()
+                    try:
+                        self._publish()
+                    except OSError as exc:
+                        if exc.errno not in {errno.ENOSPC, errno.EDQUOT, errno.EIO, errno.EAGAIN, errno.EINTR}:
+                            raise
+                        for source in self.sources:
+                            source['coverage']['errors'] = (source['coverage']['errors'] + [_error(exc)])[-16:]
+                            source['reason'] = 'Durable publication awaits storage recovery: ' + _error(exc)
                 next_due = min((due.get(family, time.monotonic() + .25) for family in self.streams), default=time.monotonic() + .25)
                 self.stop.wait(max(.01, next_due - time.monotonic()))
         except Exception as exc:
@@ -343,7 +440,7 @@ class Recording:
 
     def _release(self):
         for fd in self.streams.values():
-            os.close(fd)
+            if fd is not None: os.close(fd)
         self.streams.clear()
         if self.fd is not None:
             os.close(self.fd)
@@ -378,7 +475,7 @@ def start_recording(run, plan, environ=None):
         return UnavailableRecording(_error(exc))
 
 
-from .retained_telemetry_io import parse_rows, validate_index
+from .retained_telemetry_io import parse_rows as parse_rows, validate_index as validate_index
 
 
 def display_gpu_rows(rows):

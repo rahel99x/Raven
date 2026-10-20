@@ -7,7 +7,6 @@ a short advisory lock serializes metadata publications, not job execution.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import hashlib
 import json
 import os
@@ -20,7 +19,6 @@ import sys
 import tempfile
 import time
 import uuid
-from contextlib import contextmanager
 from importlib import resources
 from pathlib import Path
 
@@ -31,27 +29,7 @@ _JOB = re.compile(r"[1-9][0-9]{0,18}(?:_[0-9]{1,19})?\Z")
 _CLUSTER = re.compile(r"[A-Za-z0-9_.-]{0,128}\Z")
 
 
-@contextmanager
-def _lock(root, name="report.lock"):
-    """Never wait indefinitely for another reporting coordinator."""
-    root = R._directory(root)
-    folder = R._under(root, ".raven/.unused", create_parent=True).parent
-    fd = os.open(folder / name, os.O_CREAT | os.O_RDWR | os.O_NONBLOCK | os.O_NOFOLLOW, 0o600)
-    try:
-        if not stat.S_ISREG(os.fstat(fd).st_mode):
-            raise ValueError("report lock must be a regular file")
-        until = time.monotonic() + 5
-        while True:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() >= until:
-                    raise ValueError("another reporter is busy; retry the report command")
-                time.sleep(.02)
-        yield root
-    finally:
-        os.close(fd)
+from .launching.io import _lock as _lock
 
 
 def initialize(root, name=None):
@@ -493,6 +471,18 @@ def _submit_intent(root, intent, *, runner=subprocess.run, cwd=None, environment
     token, experiment, script = intent["token"], intent["experiment"], intent["script"]
     name, params, request = intent["name"], intent["parameters"], intent["resources"]
     declaration = intent.get("array_manifest")
+    from .execution.policy import router_for
+    from .launching.scheduler_context import capture as scheduler_context, validated as valid_scheduler_context
+    router = router_for()
+    context = scheduler_context(getattr(router, "source_backend", None), router.policy)
+    if context is not None:
+        intent["scheduler_context"] = context
+    if intent.get("scheduler_context") is not None:
+        from .connection_scope import selection_digest
+        if not valid_scheduler_context(intent["scheduler_context"]):
+            raise ValueError("Launch scheduler context is invalid; preview this launch again")
+        if intent["scheduler_context"].get("selection_sha256") != selection_digest(os.environ if environment is None else environment):
+            raise ValueError("Slurm configuration selection changed after preview; preview this launch again")
     path = R._under(root, f".raven/launches/{token}.json", create_parent=True)
     R._atomic_json(path, intent)
     # File-backed capture bounds memory even if a wrapper prints excessive data.
@@ -504,7 +494,7 @@ def _submit_intent(root, intent, *, runner=subprocess.run, cwd=None, environment
                        RAVEN_RESOURCES=json.dumps(request, separators=(",", ":")), RAVEN_SUBMISSION_TOKEN=token)
             if environment is not None:
                 env = dict(environment)
-            from .raven_execution import reporting_submission
+            from .execution.admission import reporting_submission
             with reporting_submission(intent["argv"]):
                 result = runner(intent["argv"], cwd=cwd or root, env=env, stdout=stdout, stderr=stderr, timeout=30, check=False)
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -571,7 +561,7 @@ def _submit_intent(root, intent, *, runner=subprocess.run, cwd=None, environment
                 manifest.pop("start", None)
                 if intent.get("plan"):
                     plan = intent["plan"]
-                    from .launch_runtime import plan_inventory
+                    from .launching.contract import plan_inventory
                     manifest["metadata"]["automation"] = {"schema": "raven.automation/v1", "plan": plan_inventory(plan),
                         "project_root": str(root), "filesystem_host": plan.get("filesystem_host", ""), "filesystem_id": plan.get("filesystem_id", ""),
                         "application_outcome": "not started", "scheduler_outcome": "pending or unknown", "warnings": []}
@@ -637,7 +627,8 @@ def _pairs(values):
 
 
 def _managed_driver_admission(command):
-    from .raven_execution import cli_admission, AdmissionError
+    from .execution.admission import cli_admission
+    from .execution.policy import AdmissionError
     blocked = cli_admission(["report", command])
     if blocked is not None:
         raise AdmissionError(blocked["summary"])

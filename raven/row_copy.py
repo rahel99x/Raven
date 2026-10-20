@@ -53,7 +53,7 @@ def copy_selection(app):
     if (getattr(app, "history_browser_state", {}).get("focused")
             or getattr(getattr(app, "layout_state", None), "focus", "main") == "details"):
         return False
-    from .job_selection import cleared, lines_cleared
+    from .ui.selection_state import cleared, lines_cleared
     array_cursor = getattr(app, "tab", "") == "research" and getattr(app, "research_view", "") == "arrays"
     if cleared(app) or (lines_cleared(app) and not array_cursor):
         return False
@@ -112,7 +112,7 @@ def copy_selection(app):
     if len(text.encode("utf-8")) > text_selection.MAX_BYTES:
         app.fail("The selected row is too large to copy. Export its source instead.")
         return True
-    message = clipboard.copy(text, getattr(app, "state_dir", None), **clipboard.options(app))
+    message = clipboard.copy_for_app(app, text, getattr(app, "state_dir", None), **clipboard.options(app))
     app.say(message)
     store = getattr(app, "store", None)
     if store is not None:

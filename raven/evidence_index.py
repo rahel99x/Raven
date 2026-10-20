@@ -27,7 +27,7 @@ import time
 from . import data_export as D
 from .state_ownership import StateOwner
 
-SCHEMA = "raven.evidence-index/v1"
+SCHEMA = "raven.evidence-index/v2"
 DATABASE = "evidence.sqlite3"
 MAX_SOURCE = 8 << 20
 MAX_TOTAL = 64 << 20
@@ -57,6 +57,7 @@ CREATE TABLE measurements (source_id INTEGER NOT NULL REFERENCES sources(id), so
   PRIMARY KEY(source_id,source_row,metric));
 CREATE INDEX measurement_window ON measurements(attempt_key,metric,timestamp);
 CREATE INDEX measurement_family ON measurements(family,metric,timestamp);
+CREATE INDEX measurement_order ON measurements(family,attempt_key,metric,timestamp,source_row);
 CREATE INDEX log_attempt ON log_lines(attempt_key,source_id,line);
 CREATE INDEX transition_attempt ON transitions(attempt_key,source_id,source_row);
 """
@@ -93,7 +94,7 @@ def _identity(item):
 
 
 def _read(path, limit):
-    from .raven_execution import source_limit, source_read
+    from .source_budget import source_limit, source_read
     limit = source_limit(limit)
     fd = D._open(str(Path(path).absolute()))
     try:
@@ -147,6 +148,9 @@ def inspect_bundle(bundle, project):
         if family not in {*D.COLUMNS, "summary", "logs"}:
             continue
         path, size, sha = entry.get("path"), entry.get("bytes"), entry.get("sha256")
+        if (not isinstance(path, str) or not path or type(size) is not int or not 0 <= size <= MAX_SOURCE
+                or not isinstance(sha, str) or len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha)):
+            raise ValueError("Expected bounded evidence paths, sizes and SHA-256 provenance")
         full = D._under(bundle, path)
         if ((family in D.COLUMNS and not path.endswith(".csv")) or path in seen or type(size) is not int or not 0 <= size <= MAX_SOURCE
                 or not isinstance(sha, str) or len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha)):
@@ -243,7 +247,8 @@ def _limits(connection):
                               ("EXPR_DEPTH", 32), ("COMPOUND_SELECT", 16), ("VARIABLE_NUMBER", 64),
                               ("ATTACHED", 0), ("VDBE_OP", 10000)):
             connection.setlimit(getattr(sqlite3, "SQLITE_LIMIT_" + name), maximum)
-    connection.enable_load_extension(False)
+    if hasattr(connection, "enable_load_extension"):
+        connection.enable_load_extension(False)
     connection.execute("PRAGMA trusted_schema=OFF")
 
 
@@ -251,11 +256,11 @@ def _catalog(connection):
     return connection.execute("SELECT type,name,tbl_name,CASE WHEN length(sql)<=8192 THEN sql ELSE NULL END FROM sqlite_master ORDER BY type,name LIMIT 65").fetchall()
 
 
-@lru_cache(maxsize=1)
-def _expected_catalog():
+@lru_cache(maxsize=2)
+def _expected_catalog(legacy=False):
     connection = sqlite3.connect(":memory:")
     try:
-        connection.executescript(DDL)
+        connection.executescript(DDL.replace('CREATE INDEX measurement_order ON measurements(family,attempt_key,metric,timestamp,source_row);','') if legacy else DDL)
         return _catalog(connection)
     finally:
         connection.close()
@@ -328,7 +333,7 @@ def _writer(index):
             size = path.stat().st_size
             if size > MAX_INDEX:
                 raise ValueError("Index exceeds the 64 MiB update budget")
-            from .raven_execution import source_read
+            from .source_budget import source_read
             source_read(size)
         connection = sqlite3.connect(path, timeout=1)
         _limits(connection)
@@ -357,6 +362,12 @@ def ingest(index, bundle, project, *, cancel=None, expected_digest=None):
             connection.executescript("BEGIN IMMEDIATE;" + DDL)
             with connection:
                 connection.executemany("INSERT INTO metadata VALUES (?,?)", [("schema", SCHEMA), ("project", project)])
+        elif _catalog(connection)==_expected_catalog(legacy=True):
+            old=dict(connection.execute('SELECT key,value FROM metadata'))
+            if old=={'schema':'raven.evidence-index/v1','project':project}:
+                with connection:
+                    connection.execute('CREATE INDEX measurement_order ON measurements(family,attempt_key,metric,timestamp,source_row)')
+                    connection.execute("UPDATE metadata SET value=? WHERE key='schema'",(SCHEMA,))
         _verify_writer(connection)
         metadata = dict(connection.execute("SELECT key,value FROM metadata WHERE length(key)<=64 AND length(value)<=8192 LIMIT 3"))
         if metadata != {"schema": SCHEMA, "project": project}:
@@ -421,7 +432,7 @@ def reader(index, *, expected_project=None):
         size = os.fstat(fd).st_size
         if size > MAX_INDEX:
             raise ValueError("Index exceeds the 64 MiB query budget")
-        from .raven_execution import source_read
+        from .source_budget import source_read
         source_read(size)
     finally:
         os.close(fd)
@@ -438,7 +449,7 @@ def reader(index, *, expected_project=None):
         if schema != [("table", "CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)")]:
             raise ValueError("Unsupported evidence metadata table; rebuild from retained exports")
         metadata = dict(connection.execute("SELECT key,value FROM metadata WHERE length(key)<=64 AND length(value)<=8192 LIMIT 3"))
-        if set(metadata) != {"schema", "project"} or metadata["schema"] != SCHEMA:
+        if set(metadata) != {"schema", "project"} or metadata["schema"] not in {SCHEMA,'raven.evidence-index/v1'}:
             raise ValueError("Unsupported evidence index schema; rebuild from retained exports")
         if expected_project is not None and metadata["project"] != expected_project:
             raise ValueError("Evidence index belongs to a different authorized project")
@@ -450,10 +461,8 @@ def reader(index, *, expected_project=None):
 
 
 def query(index, sql=None, **options):
-    """Python 3.10 lacks sqlite3.setlimit; isolate its SQL in a bounded child."""
-    if not hasattr(sqlite3.Connection, "setlimit"):
-        return _process_query(index, sql, options)
-    return _query(index, sql, **options)
+    """Every untrusted query has private temporary storage and OS limits."""
+    return _process_query(index, sql, options)
 
 
 def _process_query(index, sql, options):
@@ -465,10 +474,16 @@ def _process_query(index, sql, options):
         raise ValueError("Query process request exceeds 16 KiB")
     # Account for the source on the admitted parent; the child inherits no
     # execution authority and only opens this index read-only.
-    from .raven_execution import source_read
+    from .source_budget import source_read
     source_read(_database(index).stat().st_size)
-    process = subprocess.Popen([sys.executable, "-m", "raven.evidence_index"], stdin=subprocess.PIPE,
-                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    temporary=tempfile.TemporaryDirectory(prefix='raven-sql-')
+    environment=dict(os.environ,SQLITE_TMPDIR=temporary.name)
+    try:
+        process = subprocess.Popen([sys.executable, "-m", "raven.evidence_index"], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,env=environment,start_new_session=True)
+    except BaseException:
+        temporary.cleanup()
+        raise
     deadline = time.monotonic() + 6
     try:
         while True:
@@ -491,6 +506,7 @@ def _process_query(index, sql, options):
         if process.poll() is None:
             process.kill()
         process.wait()
+        temporary.cleanup()
 
 
 def _query(index, sql=None, *, view="sources", parameters=(), max_rows=1000, max_bytes=1 << 20,
@@ -510,11 +526,11 @@ def _query(index, sql=None, *, view="sources", parameters=(), max_rows=1000, max
         return int(bool(reason))
     def progress():
         nonlocal ticks, reason
-        ticks += 1000
+        ticks += 100
         return check_budget()
     columns, used = [], 0
     with reader(index, expected_project=expected_project) as connection:
-        connection.set_progress_handler(progress, 1000)
+        connection.set_progress_handler(progress, 100)
         try:
             if check_budget():
                 return {"schema": "raven.query-result/v1", "status": "partial", "reason": reason, "columns": [], "rows": [], "bytes": 0}
@@ -532,15 +548,36 @@ def _query(index, sql=None, *, view="sources", parameters=(), max_rows=1000, max
                     reason = "row budget exhausted"; break
                 if any(isinstance(value, bytes) or isinstance(value, float) and not math.isfinite(value) for value in row):
                     raise ValueError("Query produced unsupported binary or nonfinite values")
-                size = len(_canonical(list(row)).encode())
+                values=list(row)
+                encoded=json.dumps(values,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode()
+                size=len(encoded)
                 if used + size > max_bytes:
+                    if not rows and max_bytes-used>=256:
+                        full_sha=hashlib.sha256(encoded).hexdigest()
+                        remaining=max_bytes-used-192
+                        clipped=[]
+                        for value in values:
+                            raw=json.dumps(value,ensure_ascii=False,allow_nan=False).encode()
+                            allowance=max(0,remaining//max(1,len(values)-len(clipped)))
+                            if len(raw)>allowance:
+                                text=value if isinstance(value,str) else json.dumps(value,ensure_ascii=False,allow_nan=False)
+                                value=text.encode()[:max(0,allowance-8)].decode('utf-8','ignore')+'…'
+                            clipped.append(value)
+                            remaining-=len(json.dumps(value,ensure_ascii=False,allow_nan=False).encode())
+                        clipped_size=len(json.dumps(clipped,ensure_ascii=False,allow_nan=False,separators=(',',':')).encode())
+                        if used+clipped_size<=max_bytes:
+                            rows.append(clipped);used+=clipped_size
+                            reason='oversized row truncated'
+                            oversized={'row':0,'original_bytes':size,'sha256':full_sha}
+                            break
                     reason = "byte budget exhausted"; break
                 rows.append(list(row)); used += size
         except (sqlite3.Error, sqlite3.Warning, MemoryError) as exc:
             if not reason:
                 raise ValueError("Read-only evidence query rejected: " + str(exc)) from exc
     return {"schema": "raven.query-result/v1", "status": "partial" if reason else "complete", "reason": reason,
-            "columns": columns, "rows": rows, "bytes": used, "vm_steps_upper_bound": ticks + 1000,
+            "columns": columns, "rows": rows, "bytes": used, "vm_steps_upper_bound": ticks + 100,
+            "oversized_rows":[oversized] if 'oversized' in locals() else [],
             "seconds": time.monotonic() - started, "provenance": "source_id/source_row join to immutable capture and source digests"}
 
 
@@ -616,24 +653,39 @@ def transform(selected, *, operation, max_gap, window_seconds=None):
     if operation == "window":
         if window_seconds is None or not math.isfinite(window_seconds) or not 0 < window_seconds <= 86400:
             raise ValueError("Window needs an explicit positive duration of at most one day")
-        pending, total, previous = deque(), 0., None
+        pending, total, correction, previous = deque(), 0., 0., None
+        updates = 0
+        def add(value):
+            nonlocal total, correction, updates
+            combined = total + value
+            correction += ((total - combined) + value) if abs(total) >= abs(value) else ((value - combined) + total)
+            total = combined
+            updates += 1
         for index, (stamp, value) in enumerate(raw):
             stamp, value = _number(stamp, "timestamp"), _number(value, "value")
             reason = ""
             if stamp is None or value is None:
-                pending.clear(); total = 0.; previous = None
+                pending.clear(); total = correction = 0.; previous = None
                 reason = "missing observation"
             else:
                 if previous is not None and (stamp <= previous or stamp - previous > max_gap):
-                    pending.clear(); total = 0.
+                    pending.clear(); total = correction = 0.
                     reason = "non-increasing timestamp" if stamp <= previous else "gap exceeds maximum"
                 while pending and pending[0][0] <= stamp - window_seconds:
-                    total -= pending.popleft()[1]
-                pending.append((stamp, value)); total += value; previous = stamp
-            average = total / len(pending) if pending and not reason else None
+                    add(-pending.popleft()[1])
+                pending.append((stamp, value)); add(value); previous = stamp
+            try:
+                # Compensated additions/removals preserve small observations
+                # after a large spike leaves. Periodic bounded rebasing limits
+                # accumulated roundoff while retaining linear rolling work.
+                if pending and (updates >= 256 or not math.isfinite(total + correction)):
+                    total = math.fsum(item[1] for item in pending); correction = 0.; updates = 0
+                average = (total + correction) / len(pending) if pending and not reason else None
+            except OverflowError:
+                average,reason=None,'window exceeds finite numeric range'
             if average is not None and not math.isfinite(average):
                 average, reason = None, "window exceeds finite numeric range"
-                pending.clear(); total = 0.; previous = None
+                pending.clear(); total = correction = 0.; previous = None
             output[index] = {"timestamp": stamp, "value": average, "unit": unit, "reason": reason,
                              "count": len(pending), "window_seconds": window_seconds}
     for row, sample in zip(output, samples):
@@ -662,13 +714,29 @@ def export_snapshot(index, destination, *, cancel=None):
                                    "source_index": str(_database(index)), "fidelity": "Exact transactional SQLite backup; original evidence references retained"})
 
 
-def _child():
+def _apply_query_limits():
     import resource
+
     # Own process limits are the 3.10 compatibility boundary. No global SQLite
-    # heap limit is changed in the dashboard or another connection.
-    resource.setrlimit(resource.RLIMIT_AS, (256 << 20, 256 << 20))
-    resource.setrlimit(resource.RLIMIT_CPU, (5, 6))
+    # heap limit is changed in the dashboard or another connection. The SQL
+    # subprocess also inherits its admitted task's limits, which it cannot
+    # raise (the MCP task, for example, already has a five-second hard CPU cap).
+    for kind, requested in (
+        (resource.RLIMIT_AS, (256 << 20, 256 << 20)),
+        (resource.RLIMIT_CPU, (5, 6)),
+        (resource.RLIMIT_FSIZE, (16 << 20, 16 << 20)),
+    ):
+        inherited = resource.getrlimit(kind)
+        soft, hard = (
+            wanted if ceiling == resource.RLIM_INFINITY else min(wanted, ceiling)
+            for wanted, ceiling in zip(requested, inherited)
+        )
+        resource.setrlimit(kind, (min(soft, hard), hard))
+
+
+def _child():
     try:
+        _apply_query_limits()
         raw = sys.stdin.buffer.read(16385)
         if len(raw) > 16384:
             raise ValueError("Query process input exceeds its bound")
@@ -676,7 +744,7 @@ def _child():
         result = _query(request["index"], request["sql"], **request["options"])
     except (OSError, ValueError, TypeError, KeyError, MemoryError, sqlite3.DatabaseError) as exc:
         result = {"error": str(exc) or "Query process exhausted its memory budget"}
-    print(_canonical(result))
+    print(json.dumps(result,ensure_ascii=False,allow_nan=False,separators=(',',':')))
 
 
 if __name__ == "__main__":

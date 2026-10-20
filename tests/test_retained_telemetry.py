@@ -99,7 +99,7 @@ def test_provider_fixture_meaning_survives_retention(run, monkeypatch, vendor):
     index = json.loads((run / "telemetry/index.json").read_text())
     gpu = next(item for item in index["sources"] if item["family"] == "gpu")
     assert gpu["status"] == "partial" and "supervisor node" in gpu["reason"]
-    saved = [json.loads(line) for line in (run / "telemetry/gpu.jsonl").read_text().splitlines()]
+    saved = T.parse_rows((run / 'telemetry/gpu.jsonl').read_bytes(),gpu,run.name)
     assert saved[0]["provider"] == vendor
     assert saved[0]["memory_used_mib"] == rows[0].used
     assert saved[0]["device_uuid"] == rows[0].uuid
@@ -108,7 +108,7 @@ def test_provider_fixture_meaning_survives_retention(run, monkeypatch, vendor):
     assert gpu["coverage"]["expected_nodes"] == 2
 
 
-def test_storage_cap_preserves_prefix_without_stopping_workload(run, monkeypatch):
+def test_storage_cap_retains_newest_segments_without_stopping_workload(run, monkeypatch):
     rows = [G.parse_nvidia(f"{i}, 50, 10, 100, GPU, GPU-{i}", "n")[0] for i in range(30)]
     monkeypatch.setattr(T, "gpu_observation", lambda *a: (rows, {}, []))
     recording = T.start_recording(run, {"gpu": True, "settings": {"telemetry": {"max_bytes_per_stream": 4096}}}, environ={})
@@ -116,8 +116,11 @@ def test_storage_cap_preserves_prefix_without_stopping_workload(run, monkeypatch
     recording.close()
     data = (run / "telemetry/gpu.jsonl").read_bytes()
     assert 0 < len(data) <= 4096 and data.endswith(b"\n")
-    saved = [json.loads(line) for line in data.splitlines()]
-    assert saved[0]["device_index"] == 0 and len(saved) < len(rows)
+    descriptor=source(recording,'gpu')
+    saved = T.parse_rows(data,descriptor,run.name)
+    assert saved[-1]['device_index']==len(rows)-1 and len(saved)<len(rows)
+    assert descriptor['coverage']['evicted_samples']>0
+    assert descriptor['coverage']['samples']==len(rows)
     assert "Storage budget" in source(recording, "gpu")["reason"]
 
 
@@ -325,8 +328,11 @@ def test_storage_write_failure_is_visible_and_cpu_stream_survives(run, monkeypat
         return original(fd, data)
     monkeypatch.setattr(T.os, 'write', full)
     monkeypatch.setattr(T, 'gpu_observation', lambda *a: (G.parse_nvidia('0, 25, 1, 2, GPU, GPU-id', 'n'), {}, []))
-    recording = T.start_recording(run, {'gpu': True, 'runtime_pid': os.getpid()}, environ={})
-    wait_for(lambda: source(recording, 'gpu')['status'] == 'failed')
+    recording = T.start_recording(run, {'gpu': True, 'runtime_pid': os.getpid(), 'settings': {'sampling_seconds': 1}}, environ={})
+    wait_for(lambda: source(recording, 'gpu')['coverage']['missed_samples']>=1)
+    assert 'gpu' in recording.streams
+    monkeypatch.setattr(T.os,'write',original)
+    wait_for(lambda: source(recording,'gpu')['coverage']['samples']>=1)
     recording.close()
     assert 'No space' in source(recording, 'gpu')['reason']
     assert source(recording, 'cpu-memory')['coverage']['samples'] >= 1
@@ -369,12 +375,15 @@ def test_actual_retained_contracts_validate_against_published_schemas(run, monke
     publish(run, monkeypatch)
     schemas = Path(__file__).resolve().parents[1] / 'docs/schemas'
     index = json.loads((run / 'telemetry/index.json').read_text())
-    jsonschema.Draft202012Validator(json.loads((schemas / 'telemetry-index.v1.schema.json').read_text())).validate(index)
+    jsonschema.Draft202012Validator(json.loads((schemas / 'telemetry-index.v2.schema.json').read_text())).validate(index)
+    compact=jsonschema.Draft202012Validator(json.loads((schemas/'telemetry-record.v2.schema.json').read_text()))
     for item in index['sources']:
         schema = json.loads((schemas / (item['family'] + '-sample.v1.schema.json')).read_text())
         validator = jsonschema.Draft202012Validator(schema)
         for line in (run / item['path']).read_text().splitlines():
-            validator.validate(json.loads(line))
+            compact.validate(json.loads(line))
+        for row in T.parse_rows((run/item['path']).read_bytes(),item,run.name):
+            validator.validate(row)
 
 
 def test_fresh_dashboard_reopens_completed_attempt_and_renders_retained_cpu_gpu(run, monkeypatch):

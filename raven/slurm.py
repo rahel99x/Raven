@@ -37,6 +37,13 @@ _JOB_ID = re.compile(r"[0-9]+(?:_(?:[0-9]+|\[[0-9,:%-]+\]))?(?:\+[0-9]+)?(?:\.[A
 _JOB_STATE = re.compile(r"[A-Z][A-Z_+]*\Z")
 
 
+def _action_id(value):
+    """Use Slurm's actionable array range, without squeue's display throttle."""
+    if not isinstance(value, str) or not _JOB_ID.fullmatch(value):
+        raise ValueError("Action requires an exact supported job identity")
+    return re.sub(r"%[0-9]+(?=\])", "", value)
+
+
 @dataclass
 class ParseDiagnostics:
     """Bounded coverage metadata; never retains potentially private raw rows."""
@@ -47,10 +54,14 @@ class ParseDiagnostics:
     rejected: int = 0
     ambiguous: int = 0
     reasons: dict = field(default_factory=dict)
+    rejected_ids: set = field(default_factory=set)
+    current_id: str = ""
 
     def issue(self, reason, *, rejected=True):
         if rejected:
             self.rejected += 1
+            if self.current_id and len(self.rejected_ids) < 20000:
+                self.rejected_ids.add(self.current_id)
         else:
             self.ambiguous += 1
         if reason in self.reasons or len(self.reasons) < 8:
@@ -73,6 +84,8 @@ def _parser_lines(text, report):
         if not line.strip():
             continue
         report.rows += 1
+        candidate = line.split("|", 1)[0].strip()
+        report.current_id = candidate if _JOB_ID.fullmatch(candidate) else ""
         if len(line) > MAX_PARSER_ROW_BYTES or (not line.isascii() and len(line.encode("utf-8")) > MAX_PARSER_ROW_BYTES):
             report.issue("oversized row")
             continue
@@ -144,12 +157,11 @@ def _queue_core(fields, report, *, group=False):
         report.issue("invalid identity, state or numeric column")
         return False
     return True
-SINFO_NODE_FMT = "NodeList:24,Partition:20,Gres:60,GresUsed:60,StateCompact:14,CPUsState:16,Memory:12,AllocMem:12"
+SINFO_NODE_FMT = "NodeList:0|,Partition:0|,Gres:0|,GresUsed:0|,StateCompact:0|,CPUsState:0|,Memory:0|,AllocMem:0"
 NVSMI = ["nvidia-smi", "--query-gpu=index,utilization.gpu,memory.used,memory.total,name", "--format=csv,noheader,nounits"]
 
 
-class CommandError(RuntimeError):
-    pass
+from .transport_errors import CommandError
 
 
 # ------------------------------------------------------------------------------------------------ backends
@@ -157,6 +169,7 @@ class Backend:
     """Runs a command; returns (stdout, latency seconds).  Raises CommandError on failure or timeout."""
 
     probe_json = True
+    probe_slurm_version = True
 
     def run(self, cmd: Sequence[str], timeout: float = 8.0) -> Tuple[str, float]:
         t0 = time.perf_counter()
@@ -173,12 +186,37 @@ class Backend:
             raise CommandError(f"{cmd[0]} exit {r.returncode}: {(r.stderr or r.stdout).strip()[:200]}")
         return r.stdout, dt
 
+    def inspect_command(self, argv, timeout, limit, cancel=None, *, depth=0):
+        from .bounded_command import _process
+        if type(self).run is Backend.run:
+            return _process(argv, timeout, limit, cancel)
+        # Fake/replay/custom adapters own their command implementation.
+        out = self.run(argv, timeout)[0]
+        if not isinstance(out, str) or len(out.encode("utf-8")) > limit:
+            raise CommandError("Command output exceeded the inspection limit.")
+        return out
+
     def call(self, cmd: Sequence[str], timeout: float = 15.0) -> Tuple[bool, str]:
         """An action: (ok, combined output)."""
+        process = None
         try:
-            r = subprocess.run(list(cmd), capture_output=True, text=True, timeout=timeout)
-            return r.returncode == 0, (r.stdout + r.stderr).strip()
-        except (OSError, subprocess.TimeoutExpired) as e:
+            process = subprocess.Popen(list(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       text=True, start_new_session=True)
+            output, errors = process.communicate(timeout=timeout)
+            return process.returncode == 0, (output + errors).strip()
+        except subprocess.TimeoutExpired:
+            import signal
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+                output, errors = process.communicate(timeout=2)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                output, errors = process.communicate(timeout=2)
+            return False, f"{cmd[0]}: submission/action outcome unknown after timeout; inspect scheduler state before retrying\n{output}{errors}".strip()
+        except OSError as e:
             return False, str(e)
 
 
@@ -564,6 +602,10 @@ class FakeBackend(Backend):
             return True, f"sbatch: Job 99999999 to start at {self._ts(self.now() + wait)} using {cmd[cmd.index('-c') + 1] if '-c' in cmd else 1} processors on nodes a01-06 in partition {part}"
         if name == "scontrol":
             verb = cmd[1]
+            if verb == "top":
+                if len(cmd) != 3:
+                    return False, "scontrol: too many arguments for keyword:top"
+                ids = cmd[2].split(",")
             if verb == "requeue":
                 try:
                     self._requeue(ids)
@@ -728,12 +770,25 @@ def parse_sacct_steps(text: str) -> List[Step]:
     return out
 
 
+def _node_fields(line):
+    """New native rows are delimited; retain only unambiguous old captures."""
+    fields = [value.strip() for value in line.split("|")] if "|" in line else line.split()
+    if len(fields) not in ((8,) if "|" in line else (5, 8)):
+        return None
+    if not fields[0] or not re.fullmatch(r"[A-Za-z_~*+#$%@!^?\-]+", fields[4]):
+        return None
+    if len(fields) == 8 and (not re.fullmatch(r"\d+/\d+/\d+/\d+", fields[5])
+                             or not _unsigned(fields[6]) or not _unsigned(fields[7])):
+        return None
+    return fields
+
+
 def parse_node_map(text: str) -> Dict[str, NodeCell]:
     """sinfo -N -O SINFO_NODE_FMT -> every node once, with its partitions, CPU state, memory and GPUs."""
     out: Dict[str, NodeCell] = {}
     for line in text.splitlines():
-        f = line.split()
-        if len(f) < 5:
+        f = _node_fields(line)
+        if f is None:
             continue
         n = out.setdefault(f[0], NodeCell(name=f[0]))
         if f[1] not in n.partitions:
@@ -1001,8 +1056,8 @@ def parse_gpu_inventory(text: str, gpu_types: Sequence[str] = ()) -> Tuple[Dict[
     per: Dict[str, Dict[str, Dict[str, int]]] = {}
     seen = set()
     for line in text.splitlines():
-        f = line.split()
-        if len(f) < 5:
+        f = _node_fields(line)
+        if f is None:
             continue
         node, part, gres, used, state = f[0], f[1], f[2], f[3], f[4]
         down = any(k in state for k in ("down", "drain", "drng", "fail", "maint", "inval")) or state.endswith("*")
@@ -1094,6 +1149,12 @@ class Slurm:
                     raise CommandError("Slurm capability help exceeds its 1 MiB bound")
                 supported = bool(re.search(r"(?:^|\s)--json(?:[=\s\[]|$)", help_text))
                 reason = "command advertises --json" if supported else "command help does not advertise --json"
+                if supported and self.json_mode == "auto" and getattr(self.b, "probe_slurm_version", False):
+                    version, _ = self.b.run([command, "--version"], self.timeout)
+                    match = re.search(r"\bslurm\s+(\d+)\.(\d+)(?:\.\d+)?", version, re.I)
+                    if match and tuple(map(int, match.groups())) != (26, 5):
+                        supported = False
+                        reason = "Slurm " + match.group(0) + " has no qualified JSON reader; using native text"
                 known = (time.monotonic(), supported, reason)
                 self._json_capabilities[command] = known
             self.reader_status[source] = {"format": "json" if known[1] else "legacy fallback", "reason": known[2]}
@@ -1101,30 +1162,43 @@ class Slurm:
                 raise CommandError("Required Slurm JSON capability is unavailable: " + known[2])
             return known[1]
 
+    def _json_unavailable(self, command, source, reason):
+        from .job_logs.text import display_text
+        reason = display_text(str(reason))[:1024]
+        with self._capability_lock:
+            self._json_capabilities[command] = (time.monotonic(), False, reason)
+        self.reader_status[source] = {"format": "legacy fallback", "reason": reason, "json_attempted": True}
+        return None
+
     def _json_read(self, command, source, normalize):
-        if not self._json_supported(command[0], source):
+        try:
+            supported = self._json_supported(command[0], source)
+        except CommandError as exc:
+            if self.json_mode == "json":
+                raise
+            return self._json_unavailable(command[0], source, "JSON capability unavailable: " + str(exc))
+        if not supported:
             return None
         from . import slurm_json
         try:
             raw, _ = self.b.run(command, max(self.timeout, 20.) if source == "finished" else self.timeout)
         except CommandError as exc:
-            reason = str(exc).lower()
-            if self.json_mode == "json" or "json" not in reason or not any(term in reason for term in ("unrecognized option", "unknown option", "invalid option", "unsupported")):
+            if self.json_mode == "json":
                 raise
-            with self._capability_lock:
-                self._json_capabilities[command[0]] = (time.monotonic(), False, "command rejects --json")
-            self.reader_status[source] = {"format": "legacy fallback", "reason": "command rejects --json", "json_attempted": True}
-            return None
+            return self._json_unavailable(command[0], source, "JSON command unavailable: " + str(exc))
         try:
             value = slurm_json.document(raw)
         except slurm_json.UnsupportedShape as exc:
             if self.json_mode == "json":
                 raise CommandError(str(exc)) from exc
-            with self._capability_lock:
-                self._json_capabilities[command[0]] = (time.monotonic(), False, str(exc))
-            self.reader_status[source] = {"format": "legacy fallback", "reason": str(exc), "json_attempted": True}
-            return None
+            return self._json_unavailable(command[0], source, exc)
+        except slurm_json.SchedulerError as exc:
+            if self.json_mode == "json":
+                raise CommandError(str(exc)) from exc
+            return self._json_unavailable(command[0], source, exc)
         except ValueError as exc:
+            if self.json_mode == "auto":
+                return self._json_unavailable(command[0], source, "JSON document unavailable: " + str(exc))
             report = ParseDiagnostics(source, rows=1)
             report.issue("invalid JSON document")
             self._publish_parse(report)
@@ -1135,13 +1209,17 @@ class Slurm:
         try:
             result = normalize(value, report)
         except (ValueError, TypeError, KeyError) as exc:
+            if self.json_mode == "auto":
+                return self._json_unavailable(command[0], source, "JSON records unavailable: " + str(exc))
             report.issue("invalid structured scheduler record")
             self._publish_parse(report)
             raise CommandError(f"{source}: invalid structured scheduler record: {exc}") from exc
         self._publish_parse(report)
-        self.reader_status[source] = {"format": "json", "parser": value["meta"]["plugin"]["data_parser"],
+        self.reader_status[source] = {"format": "json", "parser": slurm_json.parser_identity(value),
                                       "reason": "qualified recorded data-parser shape"}
         if report.rows and (not report.accepted or (source in ("jobs", "account", "details") and not result)):
+            if self.json_mode == "auto":
+                return self._json_unavailable(command[0], source, report.summary())
             raise CommandError(report.summary() + "; keeping the last trustworthy snapshot")
         return result
 
@@ -1154,6 +1232,9 @@ class Slurm:
             report.reasons = {"response limit exceeded": 1}
             self._publish_parse(report)
             raise
+        coverage = getattr(self.b, "observation_coverage", None)
+        report.coverage_note = (f"History coverage limited: retained {coverage['retained_records']} of {coverage['available_records']} parent rows ({coverage['basis']})"
+                                if isinstance(coverage, dict) and coverage.get("partial") and source == "finished" else "")
         self._publish_parse(report)
         if (source == "details" and not result) or (report.rows and (not report.accepted or (source in ("jobs", "account") and not result))):
             raise CommandError(report.summary() + "; keeping the last trustworthy snapshot")
@@ -1164,9 +1245,10 @@ class Slurm:
             previous = self.parse_diagnostics.get(report.source, {})
             self.parse_diagnostics[report.source] = {
                 "rows": report.rows, "accepted": report.accepted, "rejected": report.rejected,
-                "ambiguous": report.ambiguous, "partial": report.partial,
+                "ambiguous": report.ambiguous, "partial": bool(report.rejected or getattr(report, "coverage_note", "")),
                 "total_errors": previous.get("total_errors", 0) + report.rejected + report.ambiguous,
-                "message": report.summary() if report.partial else "", "observed": time.time(),
+                "message": report.summary() if report.rejected else getattr(report, "coverage_note", ""), "note": report.summary() if report.ambiguous else "", "observed": time.time(),
+                "rejected_ids": sorted(report.rejected_ids),
                 "reasons": dict(report.reasons)}
 
     def jobs(self) -> List[Job]:
@@ -1179,7 +1261,11 @@ class Slurm:
             if j.user and j.user != self.user:
                 raise CommandError("Structured queue response contains another scheduler user; refusing publication")
             j.user = self.user        # The existing queue request is explicitly -u scoped.
-            j.hosts = self.hostnames(j.nodelist) if j.nodelist else []
+            try:
+                j.hosts = self.hostnames(j.nodelist) if j.nodelist else []
+            except (ValueError, CommandError) as exc:
+                j.hosts = []
+                self.reader_status["hosts:" + j.id] = {"format": "unavailable", "reason": str(exc)[:512]}
         return jobs
 
     def starts(self) -> Dict[str, str]:
@@ -1188,7 +1274,7 @@ class Slurm:
 
     def hostnames(self, nodelist: str) -> List[str]:
         if getattr(self.b, "collection", None) is not None:
-            from .raven_collection import expand_hostlist
+            from .hostlist import expand_hostlist
             return expand_hostlist(nodelist)
         if nodelist not in self._hosts:
             try:
@@ -1494,7 +1580,7 @@ class Slurm:
                 raise CommandError("Structured accounting response contains another scheduler user; refusing publication")
             return result
         fields = SACCT_LEGACY_FIELDS if self._sacct_group_fields_supported is False else SACCT_FIELDS
-        command = ["sacct", "-u", self.user, "-n", "-P", "-S", f"now-{int(days * 24)}hours", "-o", fields]
+        command = ["sacct", "-u", self.user, "-X", "-n", "-P", "-S", f"now-{int(days * 24)}hours", "-o", fields]
         try:
             out, _ = self.b.run(command, max(self.timeout, 20.0))
         except CommandError as error:
@@ -1553,7 +1639,7 @@ class Slurm:
         week = parse_sreport(out)
         limit: Dict[str, float] = {}
         try:
-            out, _ = self.b.run(["sacctmgr", "-n", "-P", "show", "assoc", f"where", f"account={account}", "format=Account,User,GrpTRESMins"], self.timeout)
+            out, _ = self.b.run(["sacctmgr", "-n", "-P", "show", "assoc", "where", f"account={account}", "format=Account,User,GrpTRESMins"], self.timeout)
             limit = parse_tres_mins(out)
         except CommandError:
             pass
@@ -1712,16 +1798,16 @@ class Slurm:
 
     # ---- actions ------------------------------------------------------------------------------------
     def cancel(self, ids: Sequence[str]) -> Tuple[bool, str]:
-        return self.b.call(["scancel"] + list(ids), self.action_timeout)
+        return self.b.call(["scancel"] + [_action_id(jid) for jid in ids], self.action_timeout)
 
     def hold(self, ids: Sequence[str]) -> Tuple[bool, str]:
-        return self.b.call(["scontrol", "hold"] + list(ids), self.action_timeout)
+        return self.b.call(["scontrol", "hold"] + [_action_id(jid) for jid in ids], self.action_timeout)
 
     def release(self, ids: Sequence[str]) -> Tuple[bool, str]:
-        return self.b.call(["scontrol", "release"] + list(ids), self.action_timeout)
+        return self.b.call(["scontrol", "release"] + [_action_id(jid) for jid in ids], self.action_timeout)
 
     def requeue(self, ids: Sequence[str]) -> Tuple[bool, str]:
-        return self.b.call(["scontrol", "requeue"] + list(ids), self.action_timeout)
+        return self.b.call(["scontrol", "requeue"] + [_action_id(jid) for jid in ids], self.action_timeout)
 
     def top(self, ids: Sequence[str]) -> Tuple[bool, str]:
-        return self.b.call(["scontrol", "top"] + list(ids), self.action_timeout)
+        return self.b.call(["scontrol", "top", ",".join(_action_id(jid) for jid in ids)], self.action_timeout)

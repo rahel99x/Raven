@@ -168,8 +168,9 @@ def test_no_trace_nested_startup_removes_only_verified_prior_raven_site(tmp_path
     second,new_run = launch_run(tmp_path)
     inherited = {'PYTHONPATH':old_site+':/user/modules:/site/modules','RAVEN_TRACE_SITE':old_site}
     prepare(new_run,second,inherited)
-    assert 'RAVEN_TRACE_SITE' not in inherited
-    assert inherited['PYTHONPATH'].split(os.pathsep) == ['/user/modules','/site/modules',second['runtime_bundle']]
+    assert inherited['RAVEN_TRACE_SITE'] != old_site
+    assert inherited['PYTHONPATH'].split(os.pathsep) == [inherited['RAVEN_TRACE_SITE'], '/user/modules','/site/modules']
+    assert inherited['RAVEN_TRACE_REQUESTED'] == '0'
     assert Path(old_site,'sitecustomize.py').exists()
 
 
@@ -179,8 +180,8 @@ def test_unverified_prior_site_does_not_remove_user_import_path(tmp_path):
     user_site = str(tmp_path/'user-site')
     inherited = {'PYTHONPATH':user_site+':/keep','RAVEN_TRACE_SITE':user_site}
     prepare(run,plan,inherited)
-    assert 'RAVEN_TRACE_SITE' not in inherited
-    assert inherited['PYTHONPATH'].split(os.pathsep)[:2] == [user_site,'/keep']
+    assert inherited['RAVEN_TRACE_SITE'] != user_site
+    assert inherited['PYTHONPATH'].split(os.pathsep)[1:3] == [user_site,'/keep']
 
 
 def test_capture_start_failure_keeps_partial_receipt_and_application_control(tmp_path,monkeypatch):
@@ -223,10 +224,11 @@ def test_nested_launch_replaces_verified_prior_runtime_only(tmp_path,prior_trace
     prepare(new_run,second,inherited,previous=previous)
     paths = inherited['PYTHONPATH'].split(os.pathsep)
     assert first['runtime_bundle'] not in paths
-    assert paths[-1] == second['runtime_bundle']
-    assert paths[-3:-1] == ['/user/modules','/site/modules']
+    assert second['runtime_bundle'] not in paths
+    assert paths[-2:] == ['/user/modules','/site/modules']
     assert Path(first['runtime_bundle']).is_file()
-    assert (inherited.get('RAVEN_TRACE_SITE') is not None) == next_trace
+    assert inherited.get('RAVEN_TRACE_SITE') is not None
+    assert inherited['RAVEN_TRACE_REQUESTED'] == ('1' if next_trace else '0')
 
 
 @pytest.mark.parametrize('invalid',['wrong-run','wrong-path','public-file'])
@@ -245,4 +247,4 @@ def test_unverified_inherited_archive_keeps_user_precedence(tmp_path,invalid):
     old_archive = previous['RAVEN_RUNTIME_BUNDLE']
     inherited = {'PYTHONPATH':old_archive+':/keep'}
     prepare(new_run,second,inherited,previous=previous)
-    assert inherited['PYTHONPATH'].split(os.pathsep) == [old_archive,'/keep',second['runtime_bundle']]
+    assert inherited['PYTHONPATH'].split(os.pathsep) == [inherited['RAVEN_TRACE_SITE'],old_archive,'/keep']

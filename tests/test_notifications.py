@@ -291,6 +291,31 @@ def test_local_guidance_identifies_evidence_without_claiming_live_diagnosis(mess
     assert all(isinstance(item, str) and item for item in diagnostic.causes + diagnostic.fixes)
 
 
+@pytest.mark.parametrize("message", [
+    "Governed collection: Scheduler read exceeded the site record budget",
+    "Scheduler read exceeded the site record budget",
+    "Governed collection: Scheduler read exceeded the site record budget: sacct returned 10001 records (limit 10000); narrow the query scope or history window, or review the configured record limit",
+])
+def test_record_budget_failure_guidance_distinguishes_response_size_from_request_rate(message):
+    center = N.NotificationCenter()
+    notice = center.get(center.post(message, source="finished"))
+    assert notice.severity == "critical"
+    assert notice.text == message
+    assert "per-response record limit" in notice.diagnosis.issue
+    assert "Narrow" in notice.diagnosis.fixes[0]
+    assert "history window" in notice.diagnosis.fixes[0]
+    assert "limits.max_records" in notice.diagnosis.fixes[1]
+    assert "raven.collection.max_response_records" in notice.diagnosis.fixes[1]
+    assert all("retry interval" not in fix and "increase" not in fix for fix in notice.diagnosis.fixes)
+
+
+def test_record_budget_phrase_in_an_unrelated_error_does_not_claim_a_budget_failure():
+    diagnostic = N.diagnose("Unrecognized error in '/tmp/Scheduler read exceeded the site record budget'")
+    assert "not been diagnosed" in diagnostic.issue
+    assert "permission failure" in N.diagnose(
+        "Governed collection: Scheduler read exceeded the site record budget; permission denied").issue
+
+
 def test_concurrent_posts_keep_one_identity_and_exact_occurrence_count():
     center = N.NotificationCenter()
     with ThreadPoolExecutor(max_workers=4) as pool:

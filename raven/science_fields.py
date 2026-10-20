@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import math
 
-from .operations import digest
+from .operation_support import digest
 from .runtime_contracts import integer, number, object_, sequence, text
 
 MAX_CELLS = 262144

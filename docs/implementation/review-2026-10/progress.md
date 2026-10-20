@@ -4,7 +4,7 @@ The authoritative accepted scope is the supplied handoff, reconciled against cur
 
 ## Gate 0
 
-- All four original handoff files are present and preserved with SHA-256 hashes in [coverage.json](coverage.json). The user supplied both complete reviews; no missing-text request is needed.
+- All four original handoff files are present and preserved with SHA-256 hashes in [coverage.json](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/coverage.json). The user supplied both complete reviews; no missing-text request is needed.
 - Local clean `work` branch and remote `main` both identified `33316a08bd583a242356c7722a21c10e00cff21b` on inspection. Work is isolated on `codex/review-reliability-tranche-1`; no publish/merge is authorized for this scope.
 - No `AGENTS.md` found. `CONTRIBUTING.md`, consolidation guide and current CI define the integration contracts.
 - Host: Linux, Python 3.12.14, 5 available CPUs. Development venv restored from `.[dev,terminal]`. The core remains dependency-free.
@@ -207,6 +207,6 @@ performed. The final handback, raw gate receipts and artifact index are review-r
 
 ## Final delivery packaging
 
-All 25 sequential Python 3.12 delivery gates passed on documentation commit `59221f794591d2807a3d0e9080d22f66cfabd14c`. The completed handback was included in the wheel/source qualification; the exact artifacts, inventories and lossless logs are bound in [the delivery receipt](evidence/delivery-packaging.json). Runtime, tests, scripts, schemas, packaging metadata and CI remain identical to the final five-interpreter-qualified revision. The receipt is outer verification metadata, added after building; no hosted run or publication is implied.
+All 25 sequential Python 3.12 delivery gates passed on documentation commit `59221f794591d2807a3d0e9080d22f66cfabd14c`. The completed handback was included in the wheel/source qualification; the exact artifacts, inventories and lossless logs are bound in [the delivery receipt](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/delivery-packaging.json). Runtime, tests, scripts, schemas, packaging metadata and CI remain identical to the final five-interpreter-qualified revision. The receipt is outer verification metadata, added after building; no hosted run or publication is implied.
 
-Final repository-retention audit caught ignore patterns matching 37 intentional metadata/trace evidence files. They were explicitly staged without changing bytes or global ignore policy. Every indexed artifact is now checked against the Git index as well as disk. The [retention receipt](evidence/repository-retention.json) records the source-archive limit for redundant extensionless checksum copies.
+Final repository-retention audit caught ignore patterns matching 37 intentional metadata/trace evidence files. They were explicitly staged without changing bytes or global ignore policy. Every indexed artifact is now checked against the Git index as well as disk. The [retention receipt](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/review-2026-10/evidence/repository-retention.json) records the source-archive limit for redundant extensionless checksum copies.

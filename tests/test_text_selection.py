@@ -17,6 +17,8 @@ def instance(**kw):
     app = SimpleNamespace(**data)
     app.say = app.messages.append
     app.fail = app.failures.append
+    from raven.workbench import bind_actions
+    bind_actions(app)
     return app
 
 
@@ -325,6 +327,7 @@ def test_optimized_slice_and_clip_match_scalar_reference_on_seeded_mixed_rows():
     def scalar_slice(row, left, right):
         result, column = [], 0
         for text, _ in row:
+            text = L.display_text(text)
             for char in text:
                 size = L.vlen(char)
                 if size == 0:
@@ -345,6 +348,10 @@ def test_optimized_slice_and_clip_match_scalar_reference_on_seeded_mixed_rows():
         for text, style in row:
             if used >= width:
                 break
+            # Clipping consumes display-safe segments: tabs expand before
+            # fitting, and controls never enter a painted row. Keep the
+            # scalar fitting oracle independent of the segment fast path.
+            text = L.display_text(text)
             if L.vlen(text) > width - used:
                 text = L.truncate(text, width - used)
             result.append((text, style))

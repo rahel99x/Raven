@@ -20,7 +20,7 @@ from . import __version__
 from .model import gres_gpus
 from .gpu_collectors import parse_probe_output, probe_command
 from .remote import LocalFiles, SshBackend
-from .slurm import Backend, CommandError, JOB_FMT, NVSMI, SACCT_FIELDS, Slurm, parse_jobs, parse_nvsmi, parse_sacct
+from .slurm import Backend, CommandError, JOB_FMT, NVSMI as NVSMI, SACCT_FIELDS, Slurm, parse_jobs, parse_nvsmi as parse_nvsmi, parse_sacct
 
 MAX_JOBS = 8
 MAX_NODES = 4
@@ -36,10 +36,7 @@ TOOL_PROBE = ('for tool in ' + ' '.join(TOOLS) + '; do '
               'if path=$(command -v "$tool" 2>/dev/null); then printf "%s|%s\\n" "$tool" "$path"; fi; done')
 
 
-def valid_job_id(value):
-    if value == "all" or JOB_ID.fullmatch(value):
-        return value
-    raise ValueError("use all or an individual numeric job ID, such as 123 or 123_4")
+from raven.jobs.identity import valid_job_id as valid_job_id
 
 
 def _text(value):
@@ -364,7 +361,7 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
                 start_command = len(evidence.records)
                 samples = slurm.gpu(probe_job)
                 entry["devices"] = [asdict(sample) for sample in samples]
-                attempts = evidence.records[start_command:]
+                _attempts = evidence.records[start_command:]
                 entry["sampling_scope"] = "devices associated by exact job identity and stable GPU IDs or a complete visible device set"
                 for warning in slurm.gpu_probe_warnings.get(job.id, ()):
                     add("gpu_partial_coverage", "warning", warning, job=job.id)
@@ -412,8 +409,8 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
 
         if state_path and not no_state:
             safe_id = "".join(char if char.isalnum() or char in "_-" else "_" for char in job.id)
-            from .series_identity import SeriesIdentity, fingerprint, scheduler_attempt
-            from .cli import forecast_scope
+            from raven.recordings.identity import SeriesIdentity, fingerprint, scheduler_attempt
+            from .connection_scope import forecast_scope
             attempt = scheduler_attempt(job, detail)
             verified = bool(attempt)
             if verified:
@@ -425,12 +422,12 @@ def diagnose(cfg, backend, files, *, user, job_id="all", no_gpu=False,
             entry["retained_gpu_rows"] = entry["retained_valid_gpu_rows"] = 0
             try:
                 local = LocalFiles()
-                from .series_storage import compact_path
+                from raven.recordings.storage import compact_path
                 packed = compact_path(series_path)
                 malformed = 0
                 coverage = ""
                 if os.path.exists(packed):
-                    from .series_blocks import read
+                    from raven.recordings.blocks import read
                     series_path = packed
                     items, status = read(packed, max_bytes=MAX_SERIES)
                     metadata = local.snapshot_stat(series_path)

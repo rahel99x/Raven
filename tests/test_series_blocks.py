@@ -35,7 +35,7 @@ def test_exact_json_values_order_missing_null_and_signed_zero(tmp_path):
 
 
 @pytest.mark.parametrize('cut', [1, 4, 17, 60])
-def test_truncated_append_returns_verified_prefix_and_refuses_further_append(tmp_path, cut):
+def test_truncated_append_preserves_prefix_quarantines_tail_and_resumes(tmp_path, cut):
     path = tmp_path / (NAME + '.rvb')
     B.append(path, [{'t': 1., 'cpu': 2.}])
     complete = path.read_bytes()
@@ -44,8 +44,13 @@ def test_truncated_append_returns_verified_prefix_and_refuses_further_append(tmp
     rows, status = B.read(path)
     assert rows == [{'t': 1., 'cpu': 2.}] and status['status'] == 'error'
     before = path.read_bytes()
-    with pytest.raises(ValueError): B.append(path, [{'t': 3.}])
-    assert path.read_bytes() == before
+    B.append(path, [{'t': 3.}])
+    restored, status=B.read(path)
+    assert status['status']=='ready' and restored[0]=={'t':1.,'cpu':2.} and restored[-1]=={'t':3.}
+    assert restored[1]['k']=='gap' and restored[1]['damaged_bytes']==len(frame)-cut
+    quarantine,=tmp_path.glob(path.name+'.damaged-*')
+    assert quarantine.read_bytes()==before[len(complete):]
+    assert path.read_bytes().startswith(complete)
 
 
 def test_corrupt_interior_stops_at_prefix_and_never_skips_to_later_blocks(tmp_path):
@@ -84,8 +89,11 @@ def test_copy_verify_preview_publication_and_cancel_keep_source(tmp_path):
 def test_incomplete_json_source_and_quota_never_publish_or_truncate(tmp_path):
     source = tmp_path / (NAME + '.jsonl'); source.write_bytes(b'{"t":1}\n{"t":')
     original = source.read_bytes()
-    with pytest.raises(ValueError, match='incomplete'): S.migrate(source, apply=True)
-    assert source.read_bytes() == original and not source.with_suffix('.rvb').exists()
+    result=S.migrate(source,apply=True)
+    assert result['ignored_records']==1 and result['source_coverage']=='partial'
+    assert B.read(source.with_suffix('.rvb'))[0]==[{'t':1}]
+    assert source.read_bytes() == original
+    source.with_suffix('.rvb').unlink()
     source.write_bytes(b'{"t":1}\n')
     with pytest.raises(ValueError, match='quota'): S.migrate(source, apply=True, quota=1)
     assert not source.with_suffix('.rvb').exists()
@@ -136,8 +144,9 @@ def test_arbitrary_finite_float_and_big_integer_round_trips(values):
 
 def test_overflow_json_exponent_is_never_admitted_as_finite_raw_value(tmp_path):
     source = tmp_path / (NAME + '.jsonl'); source.write_bytes(b'{"t":1,"cpu":1e999}\n')
-    with pytest.raises(ValueError, match='finite'): S.migrate(source, apply=True)
-    assert not source.with_suffix('.rvb').exists()
+    result=S.migrate(source,apply=True)
+    assert result['ignored_records']==1 and result['source_coverage']=='partial'
+    assert B.read(source.with_suffix('.rvb'))[0]==[]
 
 
 def test_total_decompressed_budget_stops_verified_prefix(tmp_path, monkeypatch):

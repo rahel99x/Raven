@@ -11,7 +11,7 @@ import json
 import time
 
 from . import historical_replay as H, layout as L
-from .log_text import display_text
+from .job_logs.text import display_text
 
 
 def initialize(app):
@@ -146,7 +146,7 @@ def _open(app):
         if app.mode == "run_home":
             binding = getattr(app, "run_home_state", {}).get("binding") or {}
             state["context_label"] = "From run home: " + str(binding.get("run_id", "unknown")) + " / attempt " + str(binding.get("attempt", "unknown")) + "; snapshot attribution is shown separately."
-        from .terminal_ui import _focus
+        from .terminal.ui import _focus
         from .pointer_routing import begin_gesture
         _focus(app, False)
         begin_gesture(app)

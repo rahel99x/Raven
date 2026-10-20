@@ -52,10 +52,11 @@ def cache(monkeypatch):
     return cache
 
 
-def test_form_registration_and_inspection_are_real_and_read_only(tmp_path):
+@pytest.mark.parametrize("entrypoint", [O, adapter], ids=["registry", "legacy-adapter"])
+def test_form_registration_and_inspection_are_real_and_read_only(tmp_path, entrypoint):
     doc, params, ctx = setup(tmp_path)
     assert O.specification("investigation-workflow")["group"] == "Investigation"
-    result = O.run("investigation-workflow", params, ctx)
+    result = entrypoint.run("investigation-workflow", params, ctx)
     assert "plan" not in result
     assert result["data"]["findings"][0]["state"] == "observed-pass"
     assert result["data"]["suggested"][0]["id"] == "accuracy"
@@ -156,22 +157,23 @@ def test_changed_review_sources_block_execution(tmp_path, source):
     assert not (tmp_path/"run").exists()
 
 
-def test_real_reviewed_campaign_returns_measured_findings_without_external_conversion(tmp_path, monkeypatch):
+@pytest.mark.parametrize("entrypoint", [O, adapter], ids=["registry", "legacy-adapter"])
+def test_real_reviewed_campaign_returns_measured_findings_without_external_conversion(tmp_path, monkeypatch, entrypoint):
     doc, params, ctx = setup(tmp_path)
     monkeypatch.setattr(adapter, "_launch_local", lambda recipe, root, ctx: diagnostic_trials.run(recipe, root, cancel=ctx.cancel))
-    review = O.run("investigation-workflow", dict(params, action="review-diagnostic"), ctx)
+    review = entrypoint.run("investigation-workflow", dict(params, action="review-diagnostic"), ctx)
     assert not (tmp_path/"run").exists()
-    result = O.apply("investigation-workflow", review["plan"], ctx)
+    result = entrypoint.apply("investigation-workflow", review["plan"], ctx)
     assert result["data"]["diagnostic"]["data"]["result"]["state"] == "completed"
-    status = O.run("investigation-workflow", dict(params, action="status"), ctx)
+    status = entrypoint.run("investigation-workflow", dict(params, action="status"), ctx)
     updated = status["data"]["updated_findings"][0]
     assert updated["state"] == "failed"
     assert {row["configuration"]: row["state"] for row in updated["result"]["measurements"]} == {"correct": "observed-pass", "incorrect": "failed"}
     assert updated["provenance"]["workspace"] == params["destination"]
     with pytest.raises(ValueError, match="attempted|claimed"):
-        O.apply("investigation-workflow", review["plan"], ctx)
+        entrypoint.apply("investigation-workflow", review["plan"], ctx)
     (tmp_path/"run"/"trials"/"0000"/"result.json").unlink()
-    status = O.run("investigation-workflow", dict(params, action="status"), ctx)
+    status = entrypoint.run("investigation-workflow", dict(params, action="status"), ctx)
     rows = status["data"]["updated_findings"][0]["result"]["measurements"]
     assert rows[0]["state"] == "unknown"
     assert rows[0]["missing"] == ["trial-0"]
@@ -344,3 +346,30 @@ def test_selected_scheduler_attempt_is_part_of_shared_analysis_key(tmp_path, cac
     changed = replace(selected, jobs=({**job, "start": "requeued"},))
     W.analyze("numerical-stability", source, changed)
     assert cache.stats()["misses"] == before+1
+
+
+def test_legacy_workflow_refuses_expiry_before_creating_a_workspace(tmp_path, monkeypatch):
+    _, params, ctx = setup(tmp_path)
+    review = adapter.run("investigation-workflow", dict(params, action="review-diagnostic"), ctx)
+    monkeypatch.setattr(O.time, "time", lambda: review["plan"]["created"] + O.PLAN_LIFETIME + 1)
+    with pytest.raises(ValueError, match="expired"):
+        adapter.apply("investigation-workflow", review["plan"], ctx)
+    assert not Path(params["destination"]).exists()
+
+
+def test_legacy_workflow_retains_uncertain_receipt_and_never_repeats_launch(tmp_path, monkeypatch):
+    _, params, ctx = setup(tmp_path)
+    attempts = []
+    def fail_after_admission(recipe, root, context):
+        attempts.append(str(root))
+        raise OSError("launch acknowledgement unavailable")
+    monkeypatch.setattr(adapter, "_launch_local", fail_after_admission)
+    review = adapter.run("investigation-workflow", dict(params, action="review-diagnostic"), ctx)
+    with pytest.raises(OSError, match="acknowledgement"):
+        adapter.apply("investigation-workflow", review["plan"], ctx)
+    receipts = list((Path(ctx.state_dir) / "operations-receipts").glob("*.result.json"))
+    assert len(receipts) == 2  # Outer workflow and its separately admitted diagnostic.
+    assert all(json.loads(path.read_text())["state"] == "error" for path in receipts)
+    with pytest.raises(ValueError, match="attempted|claimed"):
+        adapter.apply("investigation-workflow", review["plan"], ctx)
+    assert attempts == [params["destination"]]

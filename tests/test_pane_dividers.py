@@ -14,6 +14,8 @@ def app(**overrides):
         setattr(instance, key, value)
     instance.say = instance.messages.append
     instance.save = lambda: setattr(instance, "saves", instance.saves + 1)
+    from raven.workbench import bind_actions
+    bind_actions(instance)
     P.begin_frame(instance, instance.width, instance.height)
     return instance
 

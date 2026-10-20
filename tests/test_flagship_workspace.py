@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from raven import flagship_commands, job_panels, layout as L, operations, ops_ui, ops_workspace, trace_ui
+from raven import background_tasks, flagship_commands, job_panels, layout as L, operations, ops_ui, ops_workspace, trace_ui
 from raven.trace_recorder import Recorder
 from test_job_panels import dashboard
 from test_operations_sequences import operation_context, operation_dashboard
@@ -93,7 +93,7 @@ def test_late_trace_callback_cannot_restore_old_selection_or_change_page(dashboa
     hub = SimpleNamespace(lock=Lock(), closed=False, pending=None, future=None,
         start_task=lambda work, done: queued.append((work, done)) or True,
         cancel_task=lambda callback: None)
-    monkeypatch.setattr(job_panels, "_worker", lambda *args: hub)
+    monkeypatch.setattr(background_tasks, "research_hub", lambda *args: hub)
     trace_ui.tick(app)
     assert len(queued) == 1
     if change == "job":
@@ -118,7 +118,7 @@ def test_trace_paint_does_not_open_files_or_collect(dashboard, monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("Paint opened an evidence source")
     monkeypatch.setattr(trace_ui, "_read", forbidden)
-    monkeypatch.setattr(job_panels, "_worker", forbidden)
+    monkeypatch.setattr(background_tasks, "research_hub", forbidden)
     for width, height in ((42, 14), (80, 24), (180, 45)):
         _, rows, _ = dashboard.render(width, height)
         assert all(L.vlen(L.row_text(row)) <= width for row in rows)

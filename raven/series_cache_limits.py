@@ -1,8 +1,6 @@
-"""Shared count and byte admission for source and prepared metric caches.
+"""Compatibility module for :mod:`raven.recordings.cache_limits`."""
 
-A visible Advisor workspace can read dozens of small job histories per frame.
-Allow that working set without increasing either cache's retained-byte budget.
-"""
+import sys
+from .recordings import cache_limits as _implementation
 
-MAX_SERIES_CACHE_ENTRIES = 128
-MAX_SERIES_CACHE_BYTES = 24 << 20
+sys.modules[__name__] = _implementation

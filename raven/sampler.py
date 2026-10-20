@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import concurrent.futures
 from copy import deepcopy
+from dataclasses import replace
 import math
 import re
 import threading
@@ -12,9 +13,9 @@ from typing import Callable, Dict, List, Optional
 
 from . import clock
 from .model import Health, Job, Store
-from .refresh_rate import validate_multiplier
+from .cadence import validate_multiplier
 from .slurm import CommandError, Slurm
-from .worker_scheduler import WorkerScheduler, WorkerQueueFull
+from .worker_scheduler import WorkerScheduler
 
 
 HISTORY_REFRESH_MIN = 5.0
@@ -33,7 +34,7 @@ class Sampler(threading.Thread):
         super().__init__(daemon=True, name="raven-sampler")
         self.polling_multiplier = validate_multiplier(polling_multiplier)
         self.slurm, self.store, self.intervals = slurm, store, dict(intervals)
-        from .raven_collection import settings as collection_settings
+        from raven.collection.ledger import settings as collection_settings
         self.collection = collection_settings(collection) if collection is not None else None
         self._collection_demand = {"tab": "jobs", "selected": None, "sources": frozenset()}
         self._collection_activity = time.monotonic()
@@ -51,7 +52,7 @@ class Sampler(threading.Thread):
             # research readers. Monitoring never creates an unsolicited step
             # or test-only submission in either Raven execution mode.
             self.weather, self.probes = False, []
-        from .remote import LocalFiles
+        from .local_files import LocalFiles
         self.files = files or LocalFiles()
         self.want_fin: Optional[str] = None                # a finished job whose steps the details overlay wants
         self.want_trace: Optional[str] = None              # a job (running or finished) whose GPU trace the analytics view wants
@@ -159,7 +160,7 @@ class Sampler(threading.Thread):
         Failed/deferred work retains its recovery deadline, while an in-flight
         source completes once and schedules its successor using the new policy.
         """
-        from .raven_collection import settings
+        from raven.collection.ledger import settings
         updated = settings(collection)
         new_intervals = dict(self.intervals if intervals is None else intervals)
         if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0
@@ -187,15 +188,15 @@ class Sampler(threading.Thread):
         return True
 
     def _requested_interval(self, name, rate=1):
-        from .metric_sampling import interval
+        from .cadence import interval
         if self.collection is not None:
             # Managed profiles already carry the exact requested seconds. The
             # slider is resolved into that policy once; passing a 1 s preset
             # through the legacy native slider would turn it back into 5 s.
-            from .raven_collection import FLOORS
+            from raven.collection.ledger import FLOORS
             requested = float(self.intervals.get(name, self.collection.get(FLOORS.get(name), 30.)))
             if name == "trace":
-                from .refresh_rate import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
+                from .cadence import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
                 requested = max(requested, REMOTE_FILE_FLOOR if getattr(self.files, "remote", False) else LOCAL_FILE_FLOOR)
             return requested
         return interval(self.intervals.get(name, 30.0), self.polling_multiplier, rate, source=name,
@@ -208,18 +209,18 @@ class Sampler(threading.Thread):
 
     def _collection_interval(self, name, requested):
         if name == "trace" and self.collection is None and self._recordings_interval is not None:
-            from .refresh_rate import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
+            from .cadence import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
             transport = REMOTE_FILE_FLOOR if getattr(self.files, "remote", False) else LOCAL_FILE_FLOOR
             return max(transport, self._recordings_interval)
         if name == "trace" and self.telemetry_binding:
-            from .refresh_rate import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
+            from .cadence import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
             transport = REMOTE_FILE_FLOOR if getattr(self.files, "remote", False) else LOCAL_FILE_FLOOR
             # Existing recordings stay fresh independently of Slurm polling or
             # an older generic trace cadence. Mandatory site floors still win.
             return max(self._retained_trace_floor, transport, min(2., requested))
         if self.collection is None:
             return requested
-        from .raven_collection import interval
+        from raven.collection.ledger import interval
         result = interval(self.collection, name, requested)
         if (name != "trace" and time.monotonic() - self._collection_activity >= self.collection["idle_after_seconds"]):
             result *= max(1., self.collection["idle_interval_factor"])
@@ -306,7 +307,7 @@ class Sampler(threading.Thread):
         Unsupported readers belong to their own sampling service. A stale,
         completed or pending job cannot transfer a rate to a reused ID.
         """
-        from .metric_sampling import source, validate_rate
+        from .cadence import source, validate_rate
         if not isinstance(requests, dict) or len(requests) > METRIC_SAMPLING_MAX:
             raise ValueError("metric sampling requests must be a mapping of at most 128 metrics")
         validated = [(identity, validate_rate(value), source(identity)) for identity, value in requests.items()]
@@ -449,8 +450,14 @@ class Sampler(threading.Thread):
         return False
 
     def emit(self, events: List[dict]) -> None:
+        batch = getattr(self.on_event, "notify_many", None)
+        if callable(batch):
+            try:
+                batch(events)
+            except Exception:
+                pass
         for ev in events:
-            for fn in ([self.on_event] if self.on_event else []) + self.hooks:
+            for fn in ([self.on_event] if self.on_event and not callable(batch) else []) + self.hooks:
                 try:
                     fn(ev)
                 except Exception:
@@ -530,7 +537,7 @@ class Sampler(threading.Thread):
         self.kick.set()
 
     def run_source(self, name: str):
-        from .raven_collection import Deferred
+        from raven.collection.ledger import Deferred
         h = self.health(name)
         previous_context = getattr(self._sampling_context, "current", None)
         context = {"source": name, "targets": {}, "baseline": False}
@@ -667,6 +674,7 @@ class Sampler(threading.Thread):
     def run(self):
         while not self.stop.is_set():
             self.round()
+            self.store.flush_persistence(_series_only=True, _defer_series=True)
             self.kick.wait(self.wake_interval())
             self.kick.clear()
 
@@ -711,13 +719,32 @@ class Sampler(threading.Thread):
                 self.store.configure_series_loader(self.pool.submit)
 
     # ---- sources -----------------------------------------------------------------------------------
+    def _keep_rejected(self, source, current, previous):
+        """A warning proves no missing row. Keep identifiable rejects briefly."""
+        diagnostic = getattr(self.slurm, "parse_diagnostics", {}).get(source, {})
+        rejected = set(diagnostic.get("rejected_ids", ())) if diagnostic.get("rejected") else set()
+        counters = getattr(self, "_partial_rows", {})
+        seen = {row.id for row in current}
+        kept, active = [], set()
+        for row in previous:
+            key = (source, row.id)
+            if row.id not in seen and row.id in rejected:
+                streak = counters.get(key, 0) + 1
+                counters[key] = streak
+                active.add(key)
+                if streak <= 2:
+                    kept.append(replace(row, collection_stale=True))
+        for key in list(counters):
+            if key[0] == source and key not in active:
+                counters.pop(key)
+        self._partial_rows = counters
+        diagnostic["stale_ids"] = [row.id for row in kept]
+        return current + kept
+
     def src_jobs(self):
         jobs = self.slurm.jobs()
         with self.store.lock:
-            if getattr(self.slurm, "parse_diagnostics", {}).get("jobs", {}).get("partial"):
-                # Partial observation cannot prove that an absent job departed.
-                seen = {job.id for job in jobs}
-                jobs = jobs + [job for job in self.store.jobs if job.id not in seen]
+            jobs = self._keep_rejected("jobs", jobs, self.store.jobs)
             returning = {job.id for job in jobs} & self.store.preserved_detail_ids()
             events = self.store.apply_jobs(jobs, _persist=False)
             self._gpu_cache_reapply_locked(time.monotonic())
@@ -740,6 +767,51 @@ class Sampler(threading.Thread):
             self.request_history()
         self.check_alerts()
         self.observe_jobs()
+
+    def _verify_recording_attempts(self, targets):
+        """Rotate bounded exact legacy reads; structured queue rows need none.
+
+        The queue is already published. A site without structured restart
+        counters can qualify unselected recordings without an unbounded burst
+        of controller calls or coupling correctness to the current cursor.
+        """
+        read = getattr(self.slurm, 'record_details', None)
+        if not callable(read) or not self.store.persist:
+            return
+        with self.store.lock:
+            publication = self.store._queue_publication
+            jobs = [job for job in targets if job.state == 'RUNNING' and job.restarts is None
+                    and self.store._sample_recording_proofs.get(job.id, (None,))[0] != publication]
+            captured = {job.id: (self.store.job_attempt(job.id), self._gpu_identity(job)) for job in jobs}
+        if not jobs:
+            return
+        offset = getattr(self, '_attempt_verification_cursor', 0) % len(jobs)
+        ordered = jobs[offset:] + jobs[:offset]
+        deadline = time.monotonic() + .5
+        attempted = 0
+        for job in ordered[:16]:
+            if self.stop.is_set() or time.monotonic() >= deadline:
+                break
+            attempted += 1
+            try:
+                details = read(job)
+            except CommandError:
+                # A disappearing/unreadable job remains session-isolated;
+                # the next bounded rotation retries through normal admission.
+                continue
+            from raven.recordings.identity import scheduler_attempt
+            if scheduler_attempt(job, details) is None:
+                continue
+            with self.store.lock:
+                current = self.store.job(job.id)
+                if self.store._queue_publication != publication or current is None or captured[job.id] != (self.store.job_attempt(job.id), self._gpu_identity(current)):
+                    continue
+                self.store.details[job.id] = details
+                self.store.bind_series_scheduler(job.id, details, queue_publication=publication)
+        self._attempt_verification_cursor = offset + attempted
+        # Promotion copies and queued row redirection share the existing owned
+        # persistence lane; all file work remains outside Store.lock.
+        self.store.flush_persistence(_series_only=True, _defer_series=True)
 
     def observe_jobs(self):
         """Observers consume sampled jobs; they never request additional Slurm commands."""
@@ -792,7 +864,7 @@ class Sampler(threading.Thread):
         if eng is None or not eng.rules:
             return
         try:
-            eng.check(self.store.snapshot(), marks=getattr(self, "marks", ()), tags=self.store.tag_map())
+            eng.check(self.store.render_snapshot(), marks=getattr(self, "marks", ()), tags=self.store.tag_map())
         except Exception:
             pass
 
@@ -812,6 +884,10 @@ class Sampler(threading.Thread):
             identities = {j.id: self._gpu_identity(j) for j in jobs}
             previous = {j.id: self.store.prev_cpu.get(j.id) for j in jobs}
         jobs = self._sampling_targets("live", jobs)
+        self._verify_recording_attempts(jobs)
+        with self.store.lock:
+            recording_identities = {job.id:self.store.capture_series_identity(job.id) for job in jobs}
+            previous = {job.id:self.store.prev_cpu.get(job.id) for job in jobs}
         batched = None
         if self.collection is not None:
             requested = {self._collection_demand["selected"]} | set(self._active_metric_rates_locked("live"))
@@ -842,7 +918,7 @@ class Sampler(threading.Thread):
                 self.store.prev_cpu[job.id] = keep
                 self.store.apply_live(job.id, lv, _persist=False, identity=recording_identities[job.id])
                 self.store.steps[job.id] = steps
-            self.store.flush_persistence(_series_only=True)
+            self.store.flush_persistence(_series_only=True, _defer_series=True)
         with self.store.lock:
             alive = {job.id for job in self.store.jobs}
             for jid in set(self.store.steps) - alive:
@@ -950,6 +1026,9 @@ class Sampler(threading.Thread):
             except CommandError as exc:
                 discovery_error = f"GPU allocation discovery: {exc}"
         jobs = self._sampling_targets("gpu", [j for j in running if j.gpus])
+        self._verify_recording_attempts(jobs)
+        with self.store.lock:
+            recording_identities = {job.id:self.store.capture_series_identity(job.id) for job in jobs}
         if not jobs:
             if discovery_error:
                 raise CommandError(discovery_error)
@@ -992,7 +1071,7 @@ class Sampler(threading.Thread):
                         warnings = getattr(self.slurm, "gpu_probe_warnings", {}).get(job.id, ())
                         if warnings:
                             failures.append(f"job {job.id}: partial GPU coverage: " + "; ".join(str(item)[:300] for item in warnings[:3]))
-                self.store.flush_persistence(_series_only=True)
+                self.store.flush_persistence(_series_only=True, _defer_series=True)
         for fut in pending:
             fut.cancel()
         self.check_alerts()
@@ -1032,10 +1111,8 @@ class Sampler(threading.Thread):
         with self._schedule_lock:
             requested = self._finished_requested
         fin = self.slurm.finished(self.history_days)
-        if getattr(self.slurm, "parse_diagnostics", {}).get("finished", {}).get("partial"):
-            with self.store.lock:
-                seen = {job.id for job in fin}
-                fin = fin + [job for job in self.store.finished if job.id not in seen]
+        with self.store.lock:
+            fin = self._keep_rejected("finished", fin, self.store.finished)
         self.store.apply_finished(fin, history_days=self.history_days)
         with self.store.lock:
             pending = bool(self.store.departed_jobs)
@@ -1063,10 +1140,8 @@ class Sampler(threading.Thread):
     def src_account(self):
         """Everyone's jobs in the account (the Group tab) and the account's load (the header)."""
         jobs = self.slurm.group(self.account)
-        if getattr(self.slurm, "parse_diagnostics", {}).get("account", {}).get("partial"):
-            with self.store.lock:
-                seen = {job.id for job in jobs}
-                jobs = jobs + [job for job in self.store.group if job.id not in seen]
+        with self.store.lock:
+            jobs = self._keep_rejected("account", jobs, self.store.group)
         running = [j for j in jobs if not j.pending]
         info = dict(account=self.account, running=len(running), cpus=sum(j.cpus for j in running), gpus=sum(j.gpus for j in running),
                     pending=sum(1 for j in jobs if j.pending))
@@ -1149,7 +1224,7 @@ class Sampler(threading.Thread):
 
     def src_trace(self):
         """Read selected retained CPU/GPU recordings and optional NVIDIA CSVs."""
-        from .raven_collection import Deferred
+        from raven.collection.ledger import Deferred
         if self.collection is not None and not self._collection_needed("trace"):
             return
         with self.store.lock:
@@ -1262,6 +1337,7 @@ class Sampler(threading.Thread):
             selected_record = finished or next((job for job in self.store.jobs if job.id == jid), None)
             previous = dict(self.store.details.get(jid, {}))
             attempt = self.store.job_attempt(jid)
+            queue_publication = self.store._queue_publication
         record_reader = getattr(self.slurm, "record_details", None)
         detail_identity = (attempt, *(getattr(selected_record, key, "") for key in ("submit", "start", "user", "cluster")))
         if finished is None:
@@ -1325,7 +1401,7 @@ class Sampler(threading.Thread):
             if current_finished is not None:
                 kv = dict(kv, JobState=current_finished.state)
             self.store.details[jid] = kv
-            self.store.bind_series_scheduler(jid, kv)
+            self.store.bind_series_scheduler(jid, kv, queue_publication=queue_publication)
             alive = {j.id for j in self.store.jobs}
             retained = set(self._historical_details) | self.store.preserved_detail_ids()
             for k in [k for k in self.store.details if k not in alive and k not in retained and k != jid]:

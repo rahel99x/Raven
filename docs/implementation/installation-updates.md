@@ -72,7 +72,7 @@ Local qualification at `02ac2786bb2c882989d434f00eae174f95a12b24` passed:
   installations, including the piped bootstrap, overwrite, revert, second
   recovery, and terminal extras.
 
-The [machine-readable receipt](installation-updates-evidence.json) records
+The [machine-readable receipt](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/installation-updates-evidence.json) records
 source hashes, commands, elapsed seconds, log hashes, review conclusions, and
 qualification limits. The first full run exposed a host-dependent profiler
 fixture; its correction preserves the original ownership assertions and adds
@@ -85,7 +85,7 @@ its recorded historical revisions.
 For publication, the unpublished commits were recreated with the account's
 GitHub noreply address to respect its email privacy settings. Author names,
 dates, messages, and source trees were preserved. The
-[identity mapping](publication-identity-map.json) connects the recorded
+[identity mapping](https://github.com/rahel99x/Raven/blob/evidence/pre-review-2026-10-20/docs/implementation/publication-identity-map.json) connects the recorded
 qualification commits to their public equivalents; historical receipts retain
 the exact hashes that were tested.
 

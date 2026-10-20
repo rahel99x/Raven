@@ -16,6 +16,8 @@ def app(monkeypatch):
         selected_id=None, state_dir=None)
     obj.fail = obj.failures.append
     obj.say = obj.messages.append
+    from raven.workbench import bind_actions
+    bind_actions(obj)
     monkeypatch.setattr(clipboard, "copy", lambda value, *a, **k: obj.copies.append(value) or "copied")
     return obj
 

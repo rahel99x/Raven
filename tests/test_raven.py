@@ -127,6 +127,20 @@ def make_app(tmp_path, t0=None):
     return backend, store, sampler, actions, views, app
 
 
+def complete_action(app):
+    """Drive the real worker completion as the terminal loop would."""
+    deadline = time.monotonic() + 5
+    hub = getattr(app, "research", None)
+    while hub is not None and hub.pending and time.monotonic() < deadline:
+        hub.poll_task()
+        time.sleep(.005)
+    assert hub is None or hub.pending is None, "scheduler action did not finish"
+
+
+def without_resubmit_marker(text):
+    return re.sub(r" --comment=raven-resubmit-[0-9a-f]{32}", "", text)
+
+
 def test_controller_marks_confirms_and_acts(tmp_path):
     backend, store, sampler, actions, views, app = make_app(tmp_path)
     W, H = 160, 45
@@ -145,6 +159,7 @@ def test_controller_marks_confirms_and_acts(tmp_path):
     app.handle("n")
     assert app.mode == "main" and app.message == "kept" and not any(c[0] == "scancel" for c in backend.calls)
     app.handle("c"); app.handle("y")
+    complete_action(app)
     assert ["scancel", "12480002_[0-7]", "12477369"] in backend.calls and app.marks == set() and app.message.startswith("cancel 12480002_[0-7], 12477369: sent")
     assert [e for e in store.events if e["kind"] == "action"][-1]["ok"]
     sampler.round(time.time() + 100, wait=True)
@@ -155,6 +170,7 @@ def test_controller_marks_confirms_and_acts(tmp_path):
     app.cursor["jobs"] = app.visible_ids.index("12480003")
     views.compose(store.snapshot(), app, W, H, actions)
     app.handle("h"); app.handle("y")
+    complete_action(app)
     assert ["scontrol", "hold", "12480003"] in backend.calls
     sampler.round(time.time() + 200, wait=True)
     views.compose(store.snapshot(), app, W, H, actions)
@@ -162,6 +178,7 @@ def test_controller_marks_confirms_and_acts(tmp_path):
     app.handle("h")
     assert app.confirm["action"] == "release"
     app.handle("y")
+    complete_action(app)
     assert ["scontrol", "release", "12480003"] in backend.calls
     # hold on a running job is refused with a reason, top on a running job too
     app.cursor["jobs"] = app.visible_ids.index("12480001")
@@ -171,6 +188,7 @@ def test_controller_marks_confirms_and_acts(tmp_path):
     app.handle("t")
     assert app.mode == "main" and app.message == "top applies to pending jobs"
     app.handle("R"); app.handle("y")
+    complete_action(app)
     assert ["scontrol", "requeue", "12480001"] in backend.calls
 
 
@@ -258,18 +276,18 @@ def test_cli_once_json_and_watch_from_the_simulated_cluster():
     import signal
 
     env = dict(os.environ, COLUMNS="150", USER="alex")
-    r = subprocess.run([sys.executable, DASH, "--fake", "--once", "--ascii", "--no-color", "--no-state", "--width", "150"], env=env, capture_output=True, text=True)
+    r = subprocess.run([sys.executable, DASH, "--user", "alex", "--fake", "--once", "--ascii", "--no-color", "--no-state", "--width", "150"], env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert "Raven Light/slurm - alex" in r.stdout and "running 2 (40 cpus, 1 gpus)" in r.stdout and "-- selected" in r.stdout
     assert all(label in r.stdout.splitlines()[3] for label in ("Jobs", "History", "Analytics", "Research", "Log"))
     assert "[Launch]" in r.stdout.splitlines()[0] and "Queue:" in r.stdout.splitlines()[0]
-    r = subprocess.run([sys.executable, DASH, "--fake", "--json", "--no-state"], env=env, capture_output=True, text=True)
+    r = subprocess.run([sys.executable, DASH, "--user", "alex", "--fake", "--json", "--no-state"], env=env, capture_output=True, text=True)
     assert r.returncode == 0 and json.loads(r.stdout)["account"]["account"] == "lab_01"
     output = {"stdout": bytearray(), "stderr": bytearray()}
     title = b"Raven Light/slurm - alex"
     with selectors.DefaultSelector() as ready:
         process = subprocess.Popen(
-            [sys.executable, DASH, "--fake", "--watch", "--ascii", "--no-state", "--interval", "0.5"],
+            [sys.executable, DASH, "--user", "alex", "--fake", "--watch", "--ascii", "--no-state", "--interval", "0.5"],
             env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             bufsize=0, start_new_session=True,
         )
@@ -333,7 +351,7 @@ def test_curses_screen_through_a_pseudo_terminal(tmp_path):
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 45, 150, 0, 0))
     env = dict(os.environ, COLUMNS="150", LINES="45", TERM="xterm-256color", USER="alex",
-               XDG_CACHE_HOME=str(tmp_path / "cache"))
+               XDG_CACHE_HOME=str(tmp_path / "cache"), RAVEN_EXPORT_DIR=str(tmp_path / "durable-exports"))
     process = subprocess.Popen(
         [sys.executable, DASH, "--fake", "--no-state", "--ascii", "--interval", "0.5",
          "--config", str(config)],
@@ -385,7 +403,7 @@ def test_curses_screen_through_a_pseudo_terminal(tmp_path):
         os.write(master, b"v")
         until(lambda: "Select rendered lines" in rendered(), "Rendered-line selection")
         os.write(master, b"jy")
-        copied = tmp_path / "raven-exports" / "clipboard.txt"
+        copied = tmp_path / "durable-exports" / "clipboard.txt"
         until(lambda: copied.exists() and "copied 2 lines" in rendered(), "Two-line copy receipt")
         assert copied.read_text().count("\n") == 2
         os.write(master, b":tab history\r")
@@ -469,7 +487,8 @@ def make_rich_app(tmp_path, rounds=4):
     return backend, store, sampler, actions, views, app
 
 
-def test_selection_copy_and_exports(tmp_path):
+def test_selection_copy_and_exports(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "durable-exports"))
     from raven import text_selection
 
     backend, store, sampler, actions, views, app = make_rich_app(tmp_path)
@@ -503,7 +522,10 @@ def test_selection_copy_and_exports(tmp_path):
     app.handle("down")                                                 # arrows extend the selection
     assert text_selection.initialize(app)["selection"]["end"] == 3
     app.handle("y")
-    text = (tmp_path / "state" / "clipboard.txt").read_text()
+    for future in app.clipboard_pending: future.result(timeout=3)
+    from raven.clipboard import poll
+    poll(app)
+    text = (tmp_path / "durable-exports" / "clipboard.txt").read_text()
     assert text == expected and "rb1-allrank" not in text
     assert text.count("\n") == 4 and "12480001" in text and "12477369" in text and app.message.startswith("copied 4 lines")
     assert text_selection.initialize(app)["selection"] is None and app.sel_anchor is None
@@ -535,7 +557,7 @@ def test_command_palette_and_analytics_views(tmp_path):
     # Rapid fake sampling rounds can share one rounded wall timestamp. This
     # test exercises interactive time bounds, so supply a deterministic span.
     for series in store.series.values():
-        first = series[0]["t"]
+        first = time.time() - 12 * (len(series) - 1)
         for index, point in enumerate(series):
             point["t"] = first + 12 * index
     W, H = 150, 44
@@ -726,6 +748,7 @@ def test_log_tab_pages_scroll_and_search_through_the_controller(tmp_path):
         for ch in "window 12 done":
             app.handle(ch if ch != " " else "space")
         app.handle("enter")
+        complete_action(app)
         assert app.logs.search == "window 12 done" and app.message.startswith("1 lines match")
         rows, _ = render_log()
         hl = [r for r in rows if any("sel" in s.split("+") for _, s in r)]
@@ -738,6 +761,7 @@ def test_log_tab_pages_scroll_and_search_through_the_controller(tmp_path):
         for ch in "find Traceback":
             app.handle(ch if ch != " " else "space")
         app.handle("enter")
+        complete_action(app)
         assert app.logs.match == 300
         for _ in range(400):
             app.handle("down")                                        # bounded cursor while paused
@@ -812,8 +836,8 @@ def test_ssh_backend_and_remote_files_through_a_local_shell(tmp_path):
     from raven.logs import LogBuffer
     from raven.slurm import CommandError
 
-    def runner(argv, timeout):                                    # "ssh host -- <command>": run the command in a local shell instead
-        assert argv[0] == "ssh" and argv[-2] == "--" and "alex@login.example" in argv and "ControlMaster=auto" in argv
+    def runner(argv, timeout):                                    # "ssh -- host <command>": run the command in a local shell instead
+        assert argv[0] == "ssh" and argv[-3] == "--" and argv[-2] == "alex@login.example" and "ControlMaster=auto" in argv
         r = subprocess.run(["sh", "-c", argv[-1]], capture_output=True, text=True, timeout=timeout)
         return r.returncode, r.stdout, r.stderr
 
@@ -829,7 +853,7 @@ def test_ssh_backend_and_remote_files_through_a_local_shell(tmp_path):
     f = tmp_path / "x.out"
     f.write_text("abcdef\nghij\n")
     assert rf.stat(str(f))[0] == 12 and rf.read(str(f), 3, 4) == b"def\n" and rf.exists(str(f)) and not rf.exists(str(f) + ".nope")
-    assert rf.tail(str(f), 5) == (b"ghij\n", 12) and rf.less_argv(str(f))[:2] == ["ssh", "-t"] and rf.less_argv(str(f))[-3] == "alex@login.example" and "x.out" in rf.listdir(str(tmp_path))
+    assert rf.tail(str(f), 5) == (b"ghij\n", 12) and rf.less_argv(str(f))[:2] == ["ssh", "-t"] and rf.less_argv(str(f))[-3:-1] == ["--", "alex@login.example"] and "x.out" in rf.listdir(str(tmp_path))
     rf.min_refresh = 0.0
     buf = LogBuffer(str(f), files=rf)
     assert buf.refresh() and buf.lines == ["abcdef", "ghij"]
@@ -839,7 +863,7 @@ def test_ssh_backend_and_remote_files_through_a_local_shell(tmp_path):
     f.write_text("abcdef\nghij\nklm\nnew\n")
     assert buf.refresh() is False                                  # a remote file is not re-checked every frame
     env = dict(os.environ, COLUMNS="150", USER="alex")
-    r = subprocess.run([sys.executable, DASH, "--host", "nowhere.invalid", "--once", "--no-state", "--ascii", "--no-color", "--width", "150"], env=env,
+    r = subprocess.run([sys.executable, DASH, "--user", "alex", "--host", "nowhere.invalid", "--once", "--no-state", "--ascii", "--no-color", "--width", "150"], env=env,
                        capture_output=True, text=True, timeout=120)
     assert r.returncode == 0 and "alex@nowhere.invalid" in r.stdout
     assert "Notifications" in r.stdout
@@ -858,7 +882,7 @@ def test_profiles_merge_and_switch(tmp_path):
     with pytest.raises(KeyError):
         cfg.profile("nope")
     env = dict(os.environ, COLUMNS="150", USER="alex")
-    r = subprocess.run([sys.executable, DASH, "--fake", "--config", str(p), "--profile", "carc", "--once", "--ascii", "--no-color", "--no-state", "--width", "150", "--tab", "history"],
+    r = subprocess.run([sys.executable, DASH, "--user", "alex", "--fake", "--config", str(p), "--profile", "carc", "--once", "--ascii", "--no-color", "--no-state", "--width", "150", "--tab", "history"],
                        env=env, capture_output=True, text=True)
     assert r.returncode == 0 and "alex [carc]" in r.stdout and "last 7 days" in r.stdout
     backend, store, sampler, actions, views, app = make_app(tmp_path)
@@ -910,6 +934,7 @@ def test_plugins_add_commands_flags_tabs_hooks_and_sources(tmp_path):
     rows, _ = views.compose(store.snapshot(), app, 120, 30, actions)
     assert app.tab == "hello" and any("hi there 5" in L.row_text(r) for r in rows) and any(h[3] == "hello" for h in app.tab_hits)
     app.run_command("cancel 12480003"); app.handle("y")
+    complete_action(app)
     assert "action" in api.modules["hello"].seen                  # the hook saw the action
     from raven.views import TABS
     TABS[:] = [t for t in TABS if t[0] != "hello"]                             # leave the module as the other tests expect it
@@ -1287,12 +1312,12 @@ def test_resubmit_flags_overrides_and_clone_building():
     assert output_pattern("/x/logs/rb1-allrank-12480001.out", "12480001", "rb1-allrank") == "/x/logs/%x-%j.out"
     info = parse_submit_info("12480001|sbatch --mem=64G jobs/rb1_allrank.sbatch|/home/x|rb1-allrank|main|anak|normal|32|64G|12:00:00|1|cpu=32,mem=64G,node=1\n12480001.batch|||||||||||\n")
     c = build("12480001", info, {}, overrides={"mem": "33G"})
-    assert c.command() == "sbatch --mem=33G jobs/rb1_allrank.sbatch" and c.source == "submit line" and c.workdir == "/home/x" and c.notes == []
+    assert without_resubmit_marker(c.command()) == "sbatch --mem=33G jobs/rb1_allrank.sbatch" and c.source == "submit line" and c.workdir == "/home/x" and any("does not preserve argument boundaries" in note for note in c.notes)
     d = dict(JobName="rb2", Partition="gpu", Account="anak", NumNodes="1", MinMemoryNode="32G", TimeLimit="23:00:00", TresPerNode="gres/gpu:a100:1", Command="/home/x/rb2.sbatch",
              StdOut="/home/x/logs/rb2-12480003.out", StdErr="/home/x/logs/rb2-12480003.out", WorkDir="/home/x", Dependency="afterok:12480001")
     d["CPUs/Task"] = "8"
     c2 = build("12480003", {}, d, overrides={"time": "04:00:00"})
-    assert c2.command() == "sbatch -J rb2 -p gpu -A anak -c 8 --mem=32G --time=04:00:00 --gres=gpu:a100:1 --output=/home/x/logs/%x-%j.out /home/x/rb2.sbatch" and c2.source == "record"
+    assert without_resubmit_marker(c2.command()) == "sbatch -J rb2 -p gpu -A anak -c 8 --mem=32G --time=04:00:00 --gres=gpu:a100:1 --output=/home/x/logs/%x-%j.out /home/x/rb2.sbatch" and c2.source == "record"
     c3 = build("12480002_3", {}, dict(JobName="arr", Partition="main"), overrides={})
     assert any("array" in n for n in c3.notes) and any("script path is unknown" in n for n in c3.notes)
     assert parse_submitted("Submitted batch job 12480099\n") == "12480099" and parse_submitted("sbatch: error: invalid partition") is None
@@ -1311,32 +1336,37 @@ def test_resubmit_through_the_dashboard_and_scripted(tmp_path):
     for ch in "--mem 12G -c 4":
         app.handle(ch if ch != " " else "space")
     app.handle("enter")
+    complete_action(app)
     assert app.mode == "confirm" and app.confirm["action"] == "resubmit"
     c = app.confirm["clone"]
-    assert c.command() == "sbatch --mem=12G --cpus-per-task=4 jobs/rb1_allrank.sbatch" and c.source == "submit line" and c.probe.startswith("sbatch --test-only: would start")
+    assert without_resubmit_marker(c.command()) == "sbatch --mem=12G --cpus-per-task=4 jobs/rb1_allrank.sbatch" and c.source == "submit line" and c.probe.startswith("sbatch --test-only: would start")
     ov = views.overlay(store.snapshot(), app, W, H)
     text = "\n".join(L.row_text(r) for _, _, r in ov)
     assert "Resubmit 12480001 rb1-allrank?" in text and "--mem=12G --cpus-per-task=4" in text and "would start" in text and "cpus 4  mem 12G" in text
     app.handle("y")
+    complete_action(app)
     assert app.message == "resubmitted 12480001 as 12480100"
-    assert any(call[:2] == ["sh", "-c"] and call[2].endswith("&& sbatch --test-only --mem=12G --cpus-per-task=4 jobs/rb1_allrank.sbatch") for call in backend.calls)
+    assert any(call[:2] == ["sh", "-c"] and without_resubmit_marker(call[2]).endswith("&& sbatch --test-only --mem=12G --cpus-per-task=4 jobs/rb1_allrank.sbatch") for call in backend.calls)
     sent = [c for c in backend.calls if c[:2] == ["sh", "-c"] and "sbatch" in c[2]]
-    assert sent and sent[-1][2].endswith("&& sbatch --mem=12G --cpus-per-task=4 jobs/rb1_allrank.sbatch") and sent[-1][2].startswith("cd ")
+    assert sent and without_resubmit_marker(sent[-1][2]).endswith("&& sbatch --mem=12G --cpus-per-task=4 jobs/rb1_allrank.sbatch") and sent[-1][2].startswith("cd ")
     ev = [e for e in store.events if e.get("action") == "resubmit"][-1]
     assert ev["ok"] and ev["new_id"] == "12480100" and "[sbatch --mem=12G" in ev["text"]
     sampler.round(wait=True)
     assert store.job("12480100") and store.job("12480100").pending and store.job("12480100").cpus == 4 and store.tags_of("12480100") == ["from-12480001"]
     # a finished job from its record, with the advisor's flags
     app.run_command("resubmit 12475990 --advised")
+    complete_action(app)
     c = app.confirm["clone"]
     assert c.source == "submit line" and "--mem=3G" in c.argv and "--time=03:00:00" in c.argv and "--cpus-per-task=1" in c.argv and c.argv[-1].endswith("rb_setup.sbatch")
     app.handle("n"); assert app.message == "kept"
-    app.run_command("resubmit 999"); assert app.message.startswith("resubmit: no job 999")
+    app.run_command("resubmit 999")
+    complete_action(app)
+    assert app.message.startswith("resubmit: no job 999")
     env = dict(os.environ, COLUMNS="150", USER="alex")
     r = subprocess.run([sys.executable, DASH, "--fake", "--no-state", "run", "resubmit", "12475990", "--mem", "4G", "--time", "02:00:00"], env=env, capture_output=True, text=True)
     assert r.returncode == 3 and "would run in" in r.stdout and "--mem=4G" in r.stdout and "--time=02:00:00" in r.stdout and "add --yes" in r.stdout
     r = subprocess.run([sys.executable, DASH, "--fake", "--no-state", "run", "resubmit", "12480001", "--advised", "--yes"], env=env, capture_output=True, text=True)
-    assert r.returncode == 0 and "resubmitted 12480001 as 12480100" in r.stdout and "[sbatch --mem=33G jobs/rb1_allrank.sbatch]" in r.stdout
+    assert r.returncode == 0 and "resubmitted 12480001 as 12480100" in r.stdout and "[sbatch --mem=33G jobs/rb1_allrank.sbatch]" in without_resubmit_marker(r.stdout)
 
 
 # ------------------------------------------------------------------------------------------------ layer E: the terminal report, replay controls, log extras

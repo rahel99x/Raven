@@ -528,22 +528,24 @@ pages. The right edge shows `›` for the cursor and orange `◆` for selected l
 endings without display headers, line numbers, wrapping, or search decorations.
 Ranges above 256 KiB or 4,096 lines, and any non-UTF-8 range, run on the shared
 worker. Those copies pin the selected exact bytes and save a private
-`state/exports/log-selected-<uuid>.log` file before clipboard delivery. Invalid
+`log-selected-<uuid>.log` file in the durable export directory before clipboard delivery. Invalid
 UTF-8 skips text clipboard transport instead of replacing bytes.
-Small valid UTF-8 ranges keep the immediate atomic `clipboard.txt` fallback.
-With `--no-state`, exports use `./raven-exports/`. If rotation, truncation, or
+Small valid UTF-8 ranges keep the private atomic `clipboard.txt` fallback.
+Exports use `$XDG_DATA_HOME/raven/exports` (default `~/.local/share/raven/exports`),
+including with `--no-state`; an absolute `RAVEN_EXPORT_DIR` overrides the destination.
+If rotation, truncation, or
 retained-tail eviction invalidates a selection, `y` asks for reselection rather
 than silently copying a whole file; stale mouse targets are rejected too.
 
 `V` then `y`, `Y`, `:copy all`, or `y` without a line selection reads the whole
 exact selected log through the shared worker rather than copying the retained
 tail. Raven streams its initial byte range in 1 MiB chunks to a unique private
-`state/exports/log-full-<uuid>.log` file (mode `0600`), or `./raven-exports/` with
-`--no-state`. Later appends are excluded and reported. Detected rotation,
+`log-full-<uuid>.log` file (mode `0600`) in that same durable export directory. Later appends are excluded and reported. Detected rotation,
 replacement, truncation, in-place change, or short reads fail without publishing
 a partial copy. This does not lock the producer or establish an application
-checkpoint. Treat exports as generated private evidence, outside public Git;
-ignore `raven-exports/` if using the no-state fallback within your project.
+checkpoint. Treat exports as generated private evidence, outside public Git.
+The export directory must be owned by the user and not writable by others;
+individual exports are created exclusively and never follow planted symlinks.
 
 The complete raw export survives clipboard limitations. OSC 52 is requested
 only for complete UTF-8 text that fits its limit; no prefix is silently copied.

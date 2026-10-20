@@ -102,3 +102,23 @@ def test_cold_legacy_history_still_loads_without_inventing_missing_provenance(tm
     assert record.workdir == "/project"
     assert record.user == record.account == record.comment == ""
     assert backend.calls == []
+
+
+@pytest.mark.parametrize("exact_error", [False, True])
+def test_allocation_only_replay_upgrade_preserves_scope_and_exact_precedence(tmp_path, exact_error):
+    current=["sacct","-u","alex","-X","-n","-P","-S","now-48hours","-o",SACCT_FIELDS]
+    old=[part for part in current if part!="-X"]
+    old[-1]=OLD_FINISHED
+    exact={"t":200,"cmd":current,"err":"current accounting failed"} if exact_error else {"t":200,"cmd":current,"out":"current accounting"}
+    backend=replay(tmp_path,[{"t":100,"cmd":old,"out":"legacy accounting"},exact])
+    # Once this exact command has a recording, its future result must not be
+    # borrowed early through an alias at an earlier replay time.
+    with pytest.raises(CommandError,match="at or before"):
+        backend.run(current)
+    backend.clock.seek(200)
+    if exact_error:
+        with pytest.raises(CommandError,match="current accounting failed"):backend.run(current)
+    else:assert backend.run(current)[0]=="current accounting"
+    for flag,value in (("-u","other"),("-S","now-72hours")):
+        changed=list(current);changed[changed.index(flag)+1]=value
+        with pytest.raises(CommandError,match="not in the recording"):backend.run(changed)

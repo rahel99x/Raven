@@ -95,7 +95,7 @@ def button(app, available, *, ascii_=False):
 
 
 def restore(app, data):
-    state = initialize(app)
+    _state = initialize(app)
     cfg = getattr(app, "cfg", {})
     if "worker_mode" in getattr(cfg, "ui_locked_settings", ()):
         return

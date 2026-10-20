@@ -48,7 +48,13 @@ class BackendFixture:
                 raise value
             return value, .001
         if argv[:4] == ["scontrol", "show", "job", "-o"]:
+            if "," in argv[4]:
+                raise CommandError("Invalid job id specified")
             value = self.jobs.get(argv[4])
+            if value is None and "_" in argv[4]:
+                parent, task = argv[4].split("_", 1)
+                if parent in self.jobs and isinstance(self.jobs[parent], dict) and self.jobs[parent].get("ArrayJobId") == parent:
+                    value = dict(self.jobs[parent], ArrayTaskId=task)
             if isinstance(value, Exception):
                 raise value
             if value is None:
@@ -60,7 +66,22 @@ class BackendFixture:
             jid = argv[2].split("=", 1)[1]
             field, value = argv[3].split("=", 1)
             self.jobs[jid][field] = value
+            for sibling in self.jobs.values():
+                if isinstance(sibling, dict) and sibling.get("ArrayJobId") == jid:
+                    sibling[field] = value
             return "", .001
+        if argv[:2] == ["squeue", "--noheader"]:
+            parent = next((value.partition("=")[2] for value in argv if value.startswith("--jobs=")), "")
+            records = [row for row in self.jobs.values() if isinstance(row, dict) and row.get("ArrayJobId") == parent]
+            if "--format=%i|%T" in argv:
+                from raven.arrays import parse_range
+                result = []
+                for record in records:
+                    for part in parse_range(record["ArrayTaskId"]):
+                        for task in range(part["start"], part["end"] + 1, part["step"]):
+                            result.append(f"{parent}_{task}|{record['JobState']}")
+                return "\n".join(result), .001
+            return "\n".join(parent + "_" + (record["ArrayTaskId"] if record["ArrayTaskId"].isdigit() else "[" + record["ArrayTaskId"] + "]") for record in records), .001
         if argv[:3] == ["scontrol", "write", "batch_script"] or argv[0] == "sacct" and "--batch-script" in argv:
             return self.script, .001
         if argv[0] == "sacct":
@@ -95,7 +116,7 @@ def test_catalog_has_terminal_fields_and_documented_proposal(feature):
     assert len({field["key"] for field in spec["fields"]}) == len(spec["fields"])
 
 
-@pytest.mark.parametrize("value", ["--all", "42;id", "42\n43", "42.0", "42,43", "42_[1-9]", "-1", "٤٢", "4" * 21])
+@pytest.mark.parametrize("value", ["--all", "42;id", "42\n43", "42.0", "42,43", "42_[9-1]", "-1", "٤٢", "4" * 21])
 def test_job_id_rejected_before_io(ctx, value):
     with pytest.raises(ValueError):
         prepare(ctx, job_id=value)

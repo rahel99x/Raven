@@ -216,6 +216,10 @@
           "type": "boolean",
           "default": false
         },
+        "trace_cpu_placement": {
+          "type": "boolean",
+          "default": false
+        },
         "trace_process_bytes": {
           "type": "integer",
           "minimum": 4096,

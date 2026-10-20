@@ -30,6 +30,8 @@ the version markers of existing run, metric, or summary files. See the
 | [launch-report.schema.json](launch-report.schema.json) | Captured launch plan and exact attempt receipt | Read-only Research Submit / Results, separate from a prepared submission action |
 | [automation-settings.v1.schema.json](automation-settings.v1.schema.json) | Project `.raven/automation.json` | Guided setup, launch recipes, export preferences/presets |
 | [telemetry-index.v1.schema.json](telemetry-index.v1.schema.json) | Exact run's `telemetry/index.json` | Retained source discovery and coverage |
+| [telemetry-index.v2.schema.json](telemetry-index.v2.schema.json) | New segmented telemetry indexes | Shared row metadata, devices, segment inventory and retained coverage |
+| [telemetry-record.v2.schema.json](telemetry-record.v2.schema.json) | Compact rows in segmented telemetry streams | Validated before expansion into the declared v1 CPU/memory or GPU measurement |
 | [gpu-sample.v1.schema.json](gpu-sample.v1.schema.json) | Each retained GPU JSONL record | Exact node/device series and export |
 | [cpu-memory-sample.v1.schema.json](cpu-memory-sample.v1.schema.json) | Each retained CPU/memory JSONL record | Local process observations and export |
 | [export-request.v1.schema.json](export-request.v1.schema.json) | Selected attempts, families, range, destination | CLI, TUI, and completion exporter |

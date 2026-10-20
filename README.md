@@ -217,6 +217,7 @@ current project and job context.
 | Attach project metrics, logs, and artifacts | [Project connection](docs/guides/project-connection.md) |
 | Work in an embedded shell | [Terminal guide](docs/guides/terminal-fusion.md) |
 | Inspect prepared Python or native recordings | [Stack tracing](docs/guides/stack-tracing.md) |
+| Understand recording retention and recovery | [Recording storage](docs/guides/recording-storage.md) |
 | Review and apply supported operations | [Operation catalog](docs/guides/operations.md) |
 | Explore retained evidence, research tools and qualification limits | [Reliability and research guides](docs/guides/reliability-and-research.md) |
 

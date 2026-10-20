@@ -11,6 +11,11 @@ import pytest
 from raven import clipboard, editor_yank as E, toolbar, layout as L
 from raven.config import Config
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path))
+
+
 
 def executable(tmp_path, name):
     path = tmp_path / name

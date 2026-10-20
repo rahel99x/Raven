@@ -4,34 +4,45 @@ The browser paints records already present in the supplied snapshot. Pointer
 movement, layout changes and list scrolling do not inspect files or poll Slurm.
 An explicit job activation delegates to the existing page's source selector.
 """
+
 from __future__ import annotations
+from .ui.selection_state import cleared
+from .ui.list_preferences import fingerprint, mode
+from .ui.selection_effects import resume
+from .ui.text_rows import _replace
+
+from .ui.history_state import (
+    initialize as initialize,
+    _view as _view,
+    _current as _current,
+    Rect as Rect,
+    TABS as TABS,
+    DOCKS as DOCKS,
+)
 
 from dataclasses import dataclass
 import shlex
 
 from . import layout as L
-from .log_text import display_text
+from .job_logs.text import display_text
 from .model import stamp
-from . import scrollbars
+from .ui import scrollbar_state as scrollbars
+from .ui.geometry import take_panes, put_panes, map_panes, plot_state
+from .ui.chart_registry import place_since as place_plots_since
+from .ui.owner_ports import selection
 
 from .pointer_routing import capture_handler
 
-TABS = ("analytics", "deps", "log", "research")
-DOCKS = ("auto", "right", "bottom", "left", "top")
-_STYLES = {"RUNNING": "green", "COMPLETING": "cyan", "PENDING": "yellow",
-           "COMPLETED": "green", "FAILED": "red", "OUT_OF_MEMORY": "red",
-           "TIMEOUT": "red", "CANCELLED": "dim"}
-
-
-@dataclass(frozen=True)
-class Rect:
-    x: int
-    y: int
-    width: int
-    height: int
-
-    def contains(self, y, x):
-        return self.x <= x < self.x + self.width and self.y <= y < self.y + self.height
+_STYLES = {
+    "RUNNING": "green",
+    "COMPLETING": "cyan",
+    "PENDING": "yellow",
+    "COMPLETED": "green",
+    "FAILED": "red",
+    "OUT_OF_MEMORY": "red",
+    "TIMEOUT": "red",
+    "CANCELLED": "dim",
+}
 
 
 @dataclass(frozen=True)
@@ -52,26 +63,10 @@ class _Item:
         return self.meta.records if self.meta is not None else ()
 
 
-def initialize(app):
-    state = getattr(app, "history_browser_state", None)
-    if not isinstance(state, dict):
-        state = {"views": {}, "frame": None, "drag": None, "focused": False,
-                 "discard_release": False,
-                 "records": (), "record_key": None, "items": (), "index": 0}
-        app.history_browser_state = state
-    state.setdefault("discard_release", False)
-    return state
-
-
 def _cancel_drag(state):
     if state.get("drag"):
         state["drag"] = None
         state["discard_release"] = True
-
-
-def _view(app):
-    return initialize(app)["views"].setdefault(getattr(app, "tab", ""),
-        {"dock": "auto", "enabled": True, "ratio": 25, "top": 0, "selected": None, "explicit": False})
 
 
 def restore(app, data):
@@ -79,12 +74,21 @@ def restore(app, data):
         return
     state = initialize(app)
     for tab in TABS:
-        source = data.get("views", {}).get(tab, {}) if isinstance(data.get("views"), dict) else {}
+        source = (
+            data.get("views", {}).get(tab, {})
+            if isinstance(data.get("views"), dict)
+            else {}
+        )
         if not isinstance(source, dict):
             continue
-        view = {"dock": source.get("dock") if source.get("dock") in DOCKS else "auto",
-                "enabled": source.get("enabled") is not False,
-                "ratio": 25, "top": 0, "selected": None, "explicit": False}
+        view = {
+            "dock": source.get("dock") if source.get("dock") in DOCKS else "auto",
+            "enabled": source.get("enabled") is not False,
+            "ratio": 25,
+            "top": 0,
+            "selected": None,
+            "explicit": False,
+        }
         for key, lower, upper in (("ratio", 15, 55), ("top", 0, 1000000)):
             value = source.get(key)
             if isinstance(value, int) and not isinstance(value, bool):
@@ -97,7 +101,12 @@ def restore(app, data):
 
 def save(app):
     state = initialize(app)
-    return {"version": 1, "views": {tab: dict(view) for tab, view in state["views"].items() if tab in TABS}}
+    return {
+        "version": 1,
+        "views": {
+            tab: dict(view) for tab, view in state["views"].items() if tab in TABS
+        },
+    }
 
 
 def _persist(app):
@@ -114,25 +123,49 @@ def _say(app, message, *, failure=False):
 
 def _records(snap, state):
     """Cache ordering by exact display fields, including in-place publication."""
-    sources = (snap.get("jobs", ()), snap.get("finished", ()), snap.get("departed_jobs", ()))
+    sources = (
+        snap.get("jobs", ()),
+        snap.get("finished", ()),
+        snap.get("departed_jobs", ()),
+    )
     if isinstance(sources[2], dict):
         sources = (sources[0], sources[1], tuple(sources[2].values()))
-    key = tuple(tuple((id(record), getattr(record, "id", ""), getattr(record, "name", ""),
-                       getattr(record, "state", ""), getattr(record, "end", ""),
-                       getattr(record, "submit", ""), getattr(record, "start", ""),
-                       getattr(record, "reason", ""), getattr(record, "dependency", ""))
-                      for record in source) for source in sources)
+    key = tuple(
+        tuple(
+            (
+                id(record),
+                getattr(record, "id", ""),
+                getattr(record, "name", ""),
+                getattr(record, "state", ""),
+                getattr(record, "end", ""),
+                getattr(record, "submit", ""),
+                getattr(record, "start", ""),
+                getattr(record, "reason", ""),
+                getattr(record, "dependency", ""),
+            )
+            for record in source
+        )
+        for source in sources
+    )
     if key != state["record_key"]:
         by_id = {}
         for source in sources:
             for record in source:
                 if isinstance(getattr(record, "id", None), str):
                     by_id.setdefault(record.id, record)
+
         def order(record):
-            timestamp = next((value for name in ("submit", "start", "end")
-                              if (value := stamp(getattr(record, name, ""))) is not None), 0)
+            timestamp = next(
+                (
+                    value
+                    for name in ("submit", "start", "end")
+                    if (value := stamp(getattr(record, name, ""))) is not None
+                ),
+                0,
+            )
             job_id = record.id.split("_", 1)[0].split(".", 1)[0]
             return timestamp, int(job_id) if job_id.isdigit() else 0, record.id
+
         state["records"] = tuple(sorted(by_id.values(), key=order, reverse=True))
         state["record_key"] = key
     # Update object references even if a producer replaces equal display values.
@@ -140,10 +173,14 @@ def _records(snap, state):
 
 
 def _selected(app, view):
-    from .job_selection import cleared
     if cleared(app):
         return None
-    field = {"analytics": "analytics_job", "log": "log_job", "research": "research_job_id", "deps": "selected_id"}
+    field = {
+        "analytics": "analytics_job",
+        "log": "log_job",
+        "research": "research_job_id",
+        "deps": "selected_id",
+    }
     current = getattr(app, field.get(getattr(app, "tab", ""), "selected_id"), None)
     if getattr(app, "tab", "") == "deps":
         if view.get("explicit"):
@@ -154,28 +191,44 @@ def _selected(app, view):
 
 def _items(app, snap, records):
     # The shared deduction registry owns stable group identities and folding.
-    from . import job_groups
+    from raven.jobs import group_domain as job_groups
+
     state = initialize(app)
     context = "history:" + app.tab
-    from .job_list_controls import fingerprint, mode
     registry = job_groups.registry(app)
     enabled = mode(app, context) == "grouped"
     index = job_groups.frame_index(app, snap) if enabled else registry.index
-    cache_key = (app.tab, id(records), id(index), tuple(sorted(registry.collapsed)),
-                 fingerprint(app, context), _selected(app, _view(app)))
+    cache_key = (
+        app.tab,
+        id(records),
+        id(index),
+        tuple(sorted(registry.collapsed)),
+        fingerprint(app, context),
+        _selected(app, _view(app)),
+    )
     cached = state.get("item_cache")
     if cached is not None and cached[0] == cache_key:
         state["indices"] = cached[4]
         state["selection_ids"] = cached[5]
         return cached[1]
     projected = job_groups.project_records(app, snap, records, tab=context, index=index)
-    items = tuple(_Item(record, job_groups.metadata_for_record(app, context, record.id)) for record in projected)
+    items = tuple(
+        _Item(record, job_groups.metadata_for_record(app, context, record.id))
+        for record in projected
+    )
     indices = {item.record.id: index for index, item in enumerate(items)}
     state["indices"] = indices
     state["selection_ids"] = tuple(indices)
     # Keep the source identity objects alive; cache keys cannot alias recycled
     # Python object IDs when a producer replaces its inference index.
-    state["item_cache"] = (cache_key, items, index, records, indices, state["selection_ids"])
+    state["item_cache"] = (
+        cache_key,
+        items,
+        index,
+        records,
+        indices,
+        state["selection_ids"],
+    )
     return items
 
 
@@ -197,9 +250,10 @@ def activate(app, job_id):
     if callable(lookup):
         record = lookup(job_id)
     if record is None:
-        _say(app, "That job is no longer available in the current snapshot", failure=True)
+        _say(
+            app, "That job is no longer available in the current snapshot", failure=True
+        )
         return False
-    from .job_selection import resume
     resume(app)
     app.selected_id = job_id
     _view(app).update(selected=job_id, explicit=True)
@@ -209,7 +263,8 @@ def activate(app, job_id):
     elif app.tab == "log":
         app.open_log(job_id)
     elif app.tab == "research":
-        from .research import select_job
+        from .ui.research_binding import select_job
+
         select_job(app, job_id)
     else:
         app.selected_id = job_id
@@ -234,7 +289,9 @@ def _geometry(width, height, dock, ratio):
         # section heading and selected record. Show the extra browser
         # controls only when that minimum primary viewport still fits.
         minimum = 3 if height >= 7 else 2
-        size = max(minimum, min(max(minimum, height - 4), round((height - 1) * ratio / 100)))
+        size = max(
+            minimum, min(max(minimum, height - 4), round((height - 1) * ratio / 100))
+        )
         size = min(size, max(0, height - 2))
         main = max(0, height - size - 1)
         browser = Rect(0, 0 if dock == "top" else main + 1, width, size)
@@ -248,15 +305,35 @@ def _shift_hit(y, kind, value, rect):
         value = dict(value, left=rect.x + value["left"], right=rect.x + value["right"])
     elif kind == "sort_header" and isinstance(value, (tuple, list)) and len(value) == 4:
         value = (*value[:2], rect.x + value[2], rect.x + value[3])
-    elif kind in ("node_cell", "job_panel_tab", "job_panel_file", "job_panel_view", "job_panel_action") and isinstance(value, (tuple, list)) and len(value) == 3:
+    elif (
+        kind
+        in (
+            "node_cell",
+            "job_panel_tab",
+            "job_panel_file",
+            "job_panel_view",
+            "job_panel_action",
+        )
+        and isinstance(value, (tuple, list))
+        and len(value) == 3
+    ):
         value = (value[0], rect.x + value[1], rect.x + value[2])
     return rect.y + y, kind, value
 
 
 def _control(tab, key, label, y, left, right, command):
-    return (y, "control", {"id": "history:" + tab + ":" + key,
-        "label": label, "left": left, "right": right,
-        "action": ("command", command), "group": "job-history"})
+    return (
+        y,
+        "control",
+        {
+            "id": "history:" + tab + ":" + key,
+            "label": label,
+            "left": left,
+            "right": right,
+            "action": ("command", command),
+            "group": "job-history",
+        },
+    )
 
 
 def _text(value, ascii_):
@@ -272,23 +349,65 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
         return rows, hits, 0, 1
     handle = "::" if ascii_ else "⠿"
     jump_space = 4 if width >= 10 else 0
-    dock_label = " Dock " + dock.title() + " " if width >= 30 else " Dock " if width >= 24 else " D "
+    dock_label = (
+        " Dock " + dock.title() + " "
+        if width >= 30
+        else " Dock "
+        if width >= 24
+        else " D "
+    )
     close = " x "
     fixed = L.vlen(handle + " " + dock_label + close) + jump_space
-    title = L.cut("Jobs " + str(len(initialize(app)["records"])), max(0, width - fixed), ascii_)
+    title = L.cut(
+        "Jobs " + str(len(initialize(app)["records"])), max(0, width - fixed), ascii_
+    )
     header = " " * jump_space + handle + " " + title
     header = L.pad(header, max(0, width - len(dock_label) - len(close)))
-    rows[0] = [(header, "cyan+bold"), (dock_label, "accent+bg:surface"), (close, "dim+bg:surface")]
+    rows[0] = [
+        (header, "cyan+bold"),
+        (dock_label, "accent+bg:surface"),
+        (close, "dim+bg:surface"),
+    ]
     dock_x = width - len(dock_label) - len(close)
-    hits.append(_control(tab, "drag", "Drag job history to an edge", 0, jump_space,
-                         min(width, jump_space + L.vlen(handle)), "history-focus"))
+    hits.append(
+        _control(
+            tab,
+            "drag",
+            "Drag job history to an edge",
+            0,
+            jump_space,
+            min(width, jump_space + L.vlen(handle)),
+            "history-focus",
+        )
+    )
     if dock_x >= 0:
-        hits.append(_control(tab, "dock", "Change job-history dock", 0, dock_x, dock_x + len(dock_label), "history-dock next"))
-        hits.append(_control(tab, "off", "Hide job history", 0, width - len(close), width, "history-browser off"))
+        hits.append(
+            _control(
+                tab,
+                "dock",
+                "Change job-history dock",
+                0,
+                dock_x,
+                dock_x + len(dock_label),
+                "history-dock next",
+            )
+        )
+        hits.append(
+            _control(
+                tab,
+                "off",
+                "Hide job history",
+                0,
+                width - len(close),
+                width,
+                "history-browser off",
+            )
+        )
     columns = max(1, width // 26) if dock in ("top", "bottom") else 1
     first = 1
     if height >= 3 and width >= 19:
-        from .job_list_controls import controls
+        from .ui.list_controls import controls
+
         choices, choice_hits = controls(app, views.g, width, "history:" + tab)
         if len(choices) == 1:
             rows[1] = choices[0]
@@ -308,13 +427,20 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
     state["reveal"] = False
     view["top"] = top
     from .scrolling import viewport
-    painted = viewport(app, "history-browser:" + tab, top, len(items), page,
-                       context=(dock, width, height, columns))
+
+    painted = viewport(
+        app,
+        "history-browser:" + tab,
+        top,
+        len(items),
+        page,
+        context=(dock, width, height, columns),
+    )
     logical_top, top = top, painted
     content_width = max(1, width - 1)
     cell_width = max(1, content_width // columns)
     seen_groups = set()
-    for position, item in enumerate(items[top:top + page]):
+    for position, item in enumerate(items[top : top + page]):
         y, column = first + position // columns, position % columns
         x = column * cell_width
         size = content_width - x if column == columns - 1 else cell_width
@@ -324,53 +450,89 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
         if meta is not None:
             seen_groups.add(meta.group.id)
         if group is not None:
-            from .job_group_ui import fold_icon, fold_command
+            from raven.jobs.group_ui import fold_icon, fold_command
+
             icon = fold_icon(item.collapsed, ascii_=ascii_)
             contains_selected = item.collapsed and selected in group.members
-            selected_note = f" [>{_text(selected, ascii_)}]" if contains_selected and selected != item.record.id else ""
+            selected_note = (
+                f" [>{_text(selected, ascii_)}]"
+                if contains_selected and selected != item.record.id
+                else ""
+            )
             label = f"{icon} {_text(item.record.id, ascii_)}{selected_note} {_text(group.label, ascii_)} ({len(item.records)})"
             text = L.pad(L.cut(label, size, ascii_), size)
-            style = "sel+bold" if item.record.id == selected or contains_selected else "accent+bold"
+            style = (
+                "sel+bold"
+                if item.record.id == selected or contains_selected
+                else "accent+bold"
+            )
             if item.collapsed:
-                from .job_group_ui import summary_row
+                from raven.jobs.group_ui import summary_row
+
                 prefix = f"{icon} {_text(item.record.id, ascii_)}{selected_note} {len(item.records)} rec "
                 prefix = L.cut(prefix, size, ascii_)
-                segments = [(prefix, style)] + summary_row(item.meta.stats or item.records, max(0, size - L.vlen(prefix)),
-                    ascii_=ascii_, selected=item.record.id == selected or contains_selected)
+                segments = [(prefix, style)] + summary_row(
+                    item.meta.stats or item.records,
+                    max(0, size - L.vlen(prefix)),
+                    ascii_=ascii_,
+                    selected=item.record.id == selected or contains_selected,
+                )
             else:
                 segments = [(text, style)]
             command = "history-job " + shlex.quote(item.record.id)
             ident = "job:" + item.record.id
-            from .job_groups import summary
+            from raven.jobs.group_domain import summary
+
             states = summary(item.meta.stats or item.records)
             label += "; " + states + "; representative job " + item.record.id
         else:
             record = item.record
             if disclosure:
-                from .job_group_ui import fold_icon
+                from raven.jobs.group_ui import fold_icon
+
                 icon = fold_icon(meta.collapsed, ascii_=ascii_) + " "
             else:
                 icon = ">" if record.id == selected else " "
             label = f"{icon}{_text(record.id, ascii_)} {_text(record.state, ascii_)} {_text(record.name, ascii_)}"
             text = L.pad(L.cut(label, size, ascii_), size)
-            style = "sel+bold" if record.id == selected else _STYLES.get(record.state, "dim")
+            style = (
+                "sel+bold"
+                if record.id == selected
+                else _STYLES.get(record.state, "dim")
+            )
             segments = [(text, style)]
             command = "history-job " + shlex.quote(record.id)
             ident = "job:" + record.id
         if disclosure:
-            from .job_group_ui import fold_icon, fold_command
-            from .pane_drag import _replace
-            from .job_groups import summary
+            from raven.jobs.group_ui import fold_icon, fold_command
+            from raven.jobs.group_domain import summary
+
             # A scrolled continuation keeps the actual member's ID and row
             # action. Only its reserved leading cell gains the group button.
-            arrow_style = "accent+bold+sel" if "sel" in style.split("+") else "accent+bold"
-            segments = _replace(segments, 0, fold_icon(meta.collapsed, ascii_=ascii_), arrow_style, size)
-            hits.append(_control(tab, "group:" + meta.group.id,
-                                 ("Expand " if meta.collapsed else "Collapse ") + meta.group.label + "; " + summary(meta.stats or meta.records),
-                                 y, x, min(x + size, x + 2), fold_command(meta.group.id, meta.collapsed)))
+            arrow_style = (
+                "accent+bold+sel" if "sel" in style.split("+") else "accent+bold"
+            )
+            segments = _replace(
+                segments, 0, fold_icon(meta.collapsed, ascii_=ascii_), arrow_style, size
+            )
+            hits.append(
+                _control(
+                    tab,
+                    "group:" + meta.group.id,
+                    ("Expand " if meta.collapsed else "Collapse ")
+                    + meta.group.label
+                    + "; "
+                    + summary(meta.stats or meta.records),
+                    y,
+                    x,
+                    min(x + size, x + 2),
+                    fold_command(meta.group.id, meta.collapsed),
+                )
+            )
         if item.record.id in getattr(app, "marks", ()) and size > 2:
-            from .pane_drag import _replace
-            segments = _replace(segments, size - 1, "*" if ascii_ else "•", "warning+bold", size)
+            segments = _replace(
+                segments, size - 1, "*" if ascii_ else "•", "warning+bold", size
+            )
             label += "; marked"
         rows[y].extend(segments)
         hits.append(_control(tab, ident, label, y, x, x + size, command))
@@ -380,14 +542,46 @@ def _browser_rows(views, app, rect, items, selected, view, dock):
         arrow_up, arrow_down = (" ^ ", " v ") if ascii_ else (" ↑ ", " ↓ ")
         text = f" {top + 1 if items else 0}-{min(len(items), top + page)}/{len(items)} "
         limit = max(0, width - 6)
-        rows[-1] = [(L.pad(L.cut(text, limit, ascii_), limit), "dim"), (arrow_up + arrow_down, "cyan")]
+        rows[-1] = [
+            (L.pad(L.cut(text, limit, ascii_), limit), "dim"),
+            (arrow_up + arrow_down, "cyan"),
+        ]
         if width >= 6:
-            hits.extend([_control(tab, "previous", "Previous history page", height - 1, width - 6, width - 3, "history-scroll page-up"),
-                         _control(tab, "next", "Next history page", height - 1, width - 3, width, "history-scroll page-down")])
+            hits.extend(
+                [
+                    _control(
+                        tab,
+                        "previous",
+                        "Previous history page",
+                        height - 1,
+                        width - 6,
+                        width - 3,
+                        "history-scroll page-up",
+                    ),
+                    _control(
+                        tab,
+                        "next",
+                        "Next history page",
+                        height - 1,
+                        width - 3,
+                        width,
+                        "history-scroll page-down",
+                    ),
+                ]
+            )
     if data_height and width >= 2:
-        scrollbars.register(app, "history-browser:" + tab, (first, 0, first + data_height, width),
-            len(items), page, logical_top, top, lambda value: view.__setitem__("top", value),
-            context=(tab, dock, width, height, columns), header=(0, 0, width) if jump_space else None)
+        scrollbars.register(
+            app,
+            "history-browser:" + tab,
+            (first, 0, first + data_height, width),
+            len(items),
+            page,
+            logical_top,
+            top,
+            lambda value: view.__setitem__("top", value),
+            context=(tab, dock, width, height, columns),
+            header=(0, 0, width) if jump_space else None,
+        )
     return [L.clip_row(row, width) for row in rows], hits, page, columns
 
 
@@ -419,11 +613,17 @@ def wrap_render(views, snap, app, width, height, content_renderer):
     if selected_index is not None:
         state["index"] = selected_index
     elif selected:
-        from . import job_groups
+        from raven.jobs import group_domain as job_groups
+
         meta = job_groups.metadata_for_record(app, "history:" + app.tab, selected)
-        representative = state["indices"].get(meta.representative_id) if meta is not None else None
-        state["index"] = (representative if representative is not None else
-                          min(state["index"], max(0, len(items) - 1)))
+        representative = (
+            state["indices"].get(meta.representative_id) if meta is not None else None
+        )
+        state["index"] = (
+            representative
+            if representative is not None
+            else min(state["index"], max(0, len(items) - 1))
+        )
     else:
         state["index"] = min(state["index"], max(0, len(items) - 1))
     state["last_selected"] = selected
@@ -431,52 +631,137 @@ def wrap_render(views, snap, app, width, height, content_renderer):
     # fewer than three rows for primary content. Use the existing compact
     # strip until more space is available, retaining the user's dock choice.
     if not view["enabled"] or height < 6 or width < 8:
-        browser, content, divider, dock = Rect(0, 0, width, 1), Rect(0, 1, width, max(0, height - 1)), None, "off"
+        browser, content, divider, dock = (
+            Rect(0, 0, width, 1),
+            Rect(0, 1, width, max(0, height - 1)),
+            None,
+            "off",
+        )
         bar = L.cut(" Job history + ", width, views.g.ascii)
         browser_rows = [[(bar, "cyan+bg:surface")]]
-        browser_hits = [_control(app.tab, "show", "Show job history", 0, 0, L.vlen(bar), "history-browser on")]
+        browser_hits = [
+            _control(
+                app.tab,
+                "show",
+                "Show job history",
+                0,
+                0,
+                L.vlen(bar),
+                "history-browser on",
+            )
+        ]
         page, columns = 0, 1
     else:
-        dock, browser, content, divider = _geometry(width, height, view["dock"], view["ratio"])
+        dock, browser, content, divider = _geometry(
+            width, height, view["dock"], view["ratio"]
+        )
         browser_mark = scrollbars.mark(app)
-        browser_rows, browser_hits, page, columns = _browser_rows(views, app, browser, items, selected, view, dock)
-        scrollbars.place_since(app, browser_mark, dy=browser.y, dx=browser.x,
-            clip=(browser.y, browser.x, browser.y + browser.height, browser.x + browser.width))
-    state["frame"] = {"tab": app.tab, "mode": getattr(app, "mode", "main"), "width": width, "height": height,
-        "origin": origin, "browser": browser, "content": content, "divider": divider, "dock": dock,
-        "page": page, "columns": columns, "hits": browser_hits,
+        browser_rows, browser_hits, page, columns = _browser_rows(
+            views, app, browser, items, selected, view, dock
+        )
+        put_panes(
+            app,
+            map_panes(
+                take_panes(app, browser_mark),
+                dy=browser.y,
+                dx=browser.x,
+                clip=(
+                    browser.y,
+                    browser.x,
+                    browser.y + browser.height,
+                    browser.x + browser.width,
+                ),
+            ),
+        )
+    state["frame"] = {
+        "tab": app.tab,
+        "mode": getattr(app, "mode", "main"),
+        "width": width,
+        "height": height,
+        "origin": origin,
+        "browser": browser,
+        "content": content,
+        "divider": divider,
+        "dock": dock,
+        "page": page,
+        "columns": columns,
+        "hits": browser_hits,
         "geometry": (getattr(app, "width", None), getattr(app, "height", None)),
-        "preference": (view["dock"], view["enabled"], view["ratio"])}
-    app.history_browser_content_rect = Rect(content.x, content.y + origin, content.width, content.height)
-    app.history_browser_rect = Rect(browser.x, browser.y + origin, browser.width, browser.height)
-    from . import chart_interaction
-    chart_mark = chart_interaction.mark(app)
+        "preference": (view["dock"], view["enabled"], view["ratio"]),
+    }
+    app.history_browser_content_rect = Rect(
+        content.x, content.y + origin, content.width, content.height
+    )
+    app.history_browser_rect = Rect(
+        browser.x, browser.y + origin, browser.width, browser.height
+    )
+    chart_mark = len(plot_state(app)["pending"])
     scroll_mark = scrollbars.mark(app)
     rows, hits = content_renderer(content.width, content.height)
-    chart_interaction.place_since(app, chart_mark, dy=content.y, dx=content.x,
-        clip=(content.y, content.x, content.y + content.height, content.x + content.width))
-    scrollbars.place_since(app, scroll_mark, dy=content.y, dx=content.x,
-        clip=(content.y, content.x, content.y + content.height, content.x + content.width))
+    place_plots_since(
+        app,
+        chart_mark,
+        dy=content.y,
+        dx=content.x,
+        clip=(
+            content.y,
+            content.x,
+            content.y + content.height,
+            content.x + content.width,
+        ),
+    )
+    put_panes(
+        app,
+        map_panes(
+            take_panes(app, scroll_mark),
+            dy=content.y,
+            dx=content.x,
+            clip=(
+                content.y,
+                content.x,
+                content.y + content.height,
+                content.x + content.width,
+            ),
+        ),
+    )
     canvas = [[(" " * width, "bg:canvas")] for _ in range(height)]
     for y in range(height):
         chunks = []
         for rect, source in ((content, rows), (browser, browser_rows)):
             if rect.y <= y < rect.y + rect.height:
                 line = source[y - rect.y] if y - rect.y < len(source) else []
-                chunks.append((rect.x, L.fill_row(L.clip_row(line, rect.width), rect.width, "bg:canvas")))
+                chunks.append(
+                    (
+                        rect.x,
+                        L.fill_row(
+                            L.clip_row(line, rect.width), rect.width, "bg:canvas"
+                        ),
+                    )
+                )
         assembled, x = [], 0
         for left, line in sorted(chunks, key=lambda chunk: chunk[0]):
             assembled.append((" " * max(0, left - x), "bg:canvas"))
             assembled.extend(line)
             x = left + L.vlen(L.row_text(line))
         canvas[y] = L.fill_row(L.clip_row(assembled, width), width, "bg:canvas")
-    result_hits = [_shift_hit(y, kind, value, content) for y, kind, value in hits if 0 <= y < content.height]
-    result_hits += [_shift_hit(y, kind, value, browser) for y, kind, value in browser_hits if 0 <= y < browser.height]
+    result_hits = [
+        _shift_hit(y, kind, value, content)
+        for y, kind, value in hits
+        if 0 <= y < content.height
+    ]
+    result_hits += [
+        _shift_hit(y, kind, value, browser)
+        for y, kind, value in browser_hits
+        if 0 <= y < browser.height
+    ]
     if divider is not None:
         _register_divider(app)
-        from . import pane_drag
-        pane_drag.paint(canvas, app, "history:" + app.tab, origin_y=origin, ascii_=views.g.ascii)
-        hit = pane_drag.control_hit(app, "history:" + app.tab, origin_y=origin)
+        from .ui import divider_registry
+
+        divider_registry.paint(
+            canvas, app, "history:" + app.tab, origin_y=origin, ascii_=views.g.ascii
+        )
+        hit = divider_registry.control_hit(app, "history:" + app.tab, origin_y=origin)
         if hit:
             result_hits.append(hit)
     drag = state.get("drag")
@@ -488,12 +773,19 @@ def wrap_render(views, snap, app, width, height, content_renderer):
         if preview:
             text = L.cut(" Drop job history: " + preview + " ", width, views.g.ascii)
             line = height - 1 if preview == "bottom" else 0
-            canvas[line] = L.fill_row([(text, "accent+bold+bg:surface-raised")], width, "bg:surface-raised")
+            canvas[line] = L.fill_row(
+                [(text, "accent+bold+bg:surface-raised")], width, "bg:surface-raised"
+            )
             if preview in ("left", "right"):
-                from .pane_drag import _replace
                 edge = 0 if preview == "left" else width - 1
                 for index in range(1, height):
-                    canvas[index] = _replace(canvas[index], edge, "|" if views.g.ascii else "┃", "accent+bold", width)
+                    canvas[index] = _replace(
+                        canvas[index],
+                        edge,
+                        "|" if views.g.ascii else "┃",
+                        "accent+bold",
+                        width,
+                    )
     return canvas, result_hits
 
 
@@ -503,17 +795,31 @@ def _register_divider(app):
     divider, dock = frame["divider"], frame["dock"]
     if divider is None:
         return
-    from . import pane_drag
+    from .ui import divider_registry
+
     vertical = dock in ("left", "right")
     first = dock in ("left", "top")
+
     def resize(value):
         view["ratio"] = max(15, min(55, value if first else 100 - value))
-    return pane_drag.register(app, "history:" + app.tab, "vertical" if vertical else "horizontal",
-        divider.x, frame["origin"] + divider.y, divider.width, divider.height,
-        0 if vertical else frame["origin"], (frame["width"] if vertical else frame["height"]) - 1,
-        view["ratio"] if first else 100 - view["ratio"], resize,
-        minimum=15 if first else 45, maximum=55 if first else 85,
-        full_vertical=vertical, label="Resize job history")
+
+    return divider_registry.register(
+        app,
+        "history:" + app.tab,
+        "vertical" if vertical else "horizontal",
+        divider.x,
+        frame["origin"] + divider.y,
+        divider.width,
+        divider.height,
+        0 if vertical else frame["origin"],
+        (frame["width"] if vertical else frame["height"]) - 1,
+        view["ratio"] if first else 100 - view["ratio"],
+        resize,
+        minimum=15 if first else 45,
+        maximum=55 if first else 85,
+        full_vertical=vertical,
+        label="Resize job history",
+    )
 
 
 def offset_hits(app, body_origin):
@@ -525,30 +831,25 @@ def offset_hits(app, body_origin):
     frame["origin"] = body_origin
     for name in ("content", "browser"):
         rect = frame[name]
-        setattr(app, "history_browser_" + ("content_rect" if name == "content" else "rect"),
-                Rect(rect.x, rect.y + body_origin, rect.width, rect.height))
+        setattr(
+            app,
+            "history_browser_" + ("content_rect" if name == "content" else "rect"),
+            Rect(rect.x, rect.y + body_origin, rect.width, rect.height),
+        )
     _register_divider(app)
-
-
-def _current(app):
-    frame = initialize(app).get("frame")
-    toolbar = getattr(app, "toolbar_state", {})
-    if (not frame or frame["tab"] != getattr(app, "tab", "") or
-            frame["mode"] != getattr(app, "mode", "main") or frame["mode"] != "main" or
-            frame["geometry"] != (getattr(app, "width", None), getattr(app, "height", None)) or
-            isinstance(toolbar, dict) and (toolbar.get("menu") is not None or toolbar.get("panel"))):
-        return None
-    view = _view(app)
-    if frame.get("preference", (view["dock"], view["enabled"], view["ratio"])) != (view["dock"], view["enabled"], view["ratio"]):
-        return None
-    return frame
 
 
 def _drag_valid(app, drag):
     frame = _current(app)
     toolbar = getattr(app, "toolbar_state", {})
-    return bool(frame and (frame["tab"], frame["width"], frame["height"], frame["origin"]) == drag["context"]
-                and not (isinstance(toolbar, dict) and (toolbar.get("menu") or toolbar.get("panel"))))
+    return bool(
+        frame
+        and (frame["tab"], frame["width"], frame["height"], frame["origin"])
+        == drag["context"]
+        and not (
+            isinstance(toolbar, dict) and (toolbar.get("menu") or toolbar.get("panel"))
+        )
+    )
 
 
 def tick(app):
@@ -563,10 +864,14 @@ def _drop(frame, y, x):
     y -= frame["origin"]
     if not 0 <= x < frame["width"] or not 0 <= y < frame["height"]:
         return None
-    distances = {"left": x / max(1, frame["width"]), "right": (frame["width"] - 1 - x) / max(1, frame["width"]),
-                 "top": y / max(1, frame["height"]), "bottom": (frame["height"] - 1 - y) / max(1, frame["height"])}
+    distances = {
+        "left": x / max(1, frame["width"]),
+        "right": (frame["width"] - 1 - x) / max(1, frame["width"]),
+        "top": y / max(1, frame["height"]),
+        "bottom": (frame["height"] - 1 - y) / max(1, frame["height"]),
+    }
     edge = min(distances, key=distances.get)
-    return edge if distances[edge] <= .22 else None
+    return edge if distances[edge] <= 0.22 else None
 
 
 def header_control_contains(app, y, x):
@@ -576,9 +881,12 @@ def header_control_contains(app, y, x):
     if not frame or not rect or not rect.contains(y, x):
         return False
     local_y, local_x = y - rect.y, x - rect.x
-    return any(hy == local_y and (hy == 0 or value.get("group") == "job-list-controls")
-               and value["left"] <= local_x < value["right"]
-               for hy, kind, value in frame["hits"])
+    return any(
+        hy == local_y
+        and (hy == 0 or value.get("group") == "job-list-controls")
+        and value["left"] <= local_x < value["right"]
+        for hy, kind, value in frame["hits"]
+    )
 
 
 @capture_handler("history_browser")
@@ -586,9 +894,10 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if any(type(value) is not int for value in (y, x)):
         return False
     state = initialize(app)
-    from .job_selection import handle_mouse as selection_mouse
-    if (button in ("motion", "drag", "release")
-            and getattr(app, "job_selection_state", {}).get("capture")):
+    selection_mouse = selection(app).selection_mouse
+    if button in ("motion", "drag", "release") and getattr(
+        app, "job_selection_state", {}
+    ).get("capture"):
         if selection_mouse(app, y, x, button=button, shift=shift):
             return True
     drag = state.get("drag")
@@ -626,23 +935,47 @@ def handle_mouse(app, y, x, button="left", shift=False):
         if button in ("left", "press"):
             state["focused"] = False
         return False
-    if button in ("wheelup", "wheeldown", "wheel_up", "wheel_down", "wheel-up", "wheel-down"):
+    if button in (
+        "wheelup",
+        "wheeldown",
+        "wheel_up",
+        "wheel_down",
+        "wheel-up",
+        "wheel-down",
+    ):
         _scroll(app, "up" if "up" in button else "down", lines=3)
         return True
-    if button in ("press", "left") and selection_mouse(app, y, x, button=button, shift=shift):
+    if button in ("press", "left") and selection_mouse(
+        app, y, x, button=button, shift=shift
+    ):
         return True
     if button in ("right", "left", "press") and shift or button == "right":
         return True
     if button not in ("left", "press"):
         return False
     local_y, local_x = y - browser.y, x - browser.x
-    hit = next((value for hy, kind, value in frame["hits"]
-                if hy == local_y and value["left"] <= local_x < value["right"]), None)
+    hit = next(
+        (
+            value
+            for hy, kind, value in frame["hits"]
+            if hy == local_y and value["left"] <= local_x < value["right"]
+        ),
+        None,
+    )
     state["focused"] = True
     if hit:
         if hit["id"].endswith(":drag") and button == "press":
-            state["drag"] = {"context": (frame["tab"], frame["width"], frame["height"], frame["origin"]),
-                             "preview": None, "point": (y, x), "moved": False}
+            state["drag"] = {
+                "context": (
+                    frame["tab"],
+                    frame["width"],
+                    frame["height"],
+                    frame["origin"],
+                ),
+                "preview": None,
+                "point": (y, x),
+                "moved": False,
+            }
             state["discard_release"] = False
         else:
             arguments = shlex.split(hit["action"][1])
@@ -662,8 +995,16 @@ def _scroll(app, action, *, lines=1):
     total = len(state["items"])
     limit = max(0, total - page)
     top = view["top"]
-    value = (0 if action == "home" else limit if action == "end" else
-             top + {"up": -lines, "down": lines, "page-up": -page, "page-down": page}.get(action, 0))
+    value = (
+        0
+        if action == "home"
+        else limit
+        if action == "end"
+        else top
+        + {"up": -lines, "down": lines, "page-up": -page, "page-down": page}.get(
+            action, 0
+        )
+    )
     view["top"] = max(0, min(limit, value))
 
 
@@ -680,20 +1021,43 @@ def handle_key(app, key):
         return key == "esc"
     items = state["items"]
     if not items:
-        return key in ("up", "down", "left", "right", "pgup", "pgdn", "home", "end", "enter")
+        return key in (
+            "up",
+            "down",
+            "left",
+            "right",
+            "pgup",
+            "pgdn",
+            "home",
+            "end",
+            "enter",
+        )
     index = max(0, min(len(items) - 1, state["index"]))
     if key in ("left", "right") and items[index].meta is not None:
-        from . import job_groups
+        from raven.jobs import group_domain as job_groups
+
         meta = items[index].meta
         job_groups.fold(app, meta.group.id, collapsed=key == "left")
         if key == "left":
             state["index"] = state["indices"].get(meta.representative_id, index)
         _persist(app)
         return True
-    steps = {"up": -frame["columns"], "down": frame["columns"], "left": -1, "right": 1,
-             "pgup": -max(1, frame["page"]), "pgdn": max(1, frame["page"])}
+    steps = {
+        "up": -frame["columns"],
+        "down": frame["columns"],
+        "left": -1,
+        "right": 1,
+        "pgup": -max(1, frame["page"]),
+        "pgdn": max(1, frame["page"]),
+    }
     if key in steps or key in ("home", "end"):
-        index = 0 if key == "home" else len(items) - 1 if key == "end" else max(0, min(len(items) - 1, index + steps[key]))
+        index = (
+            0
+            if key == "home"
+            else len(items) - 1
+            if key == "end"
+            else max(0, min(len(items) - 1, index + steps[key]))
+        )
         state["index"] = index
         view = _view(app)
         if index < view["top"]:
@@ -705,12 +1069,12 @@ def handle_key(app, key):
             activate(app, job_id)
         return True
     if key == "space":
-        from .job_selection import handle_key as selection_key
-        return selection_key(app, key)
+        return selection(app).selection_key(app, key)
     if key == "enter":
         group = _header(items[index])
         if group:
-            from . import job_groups
+            from raven.jobs import group_domain as job_groups
+
             job_groups.fold(app, group.id)
             _persist(app)
         else:
@@ -720,14 +1084,24 @@ def handle_key(app, key):
 
 
 def command_names():
-    return ["history-dock", "history-browser", "history-job", "history-scroll", "history-focus"]
+    return [
+        "history-dock",
+        "history-browser",
+        "history-job",
+        "history-scroll",
+        "history-focus",
+    ]
 
 
 def run_command(app, args):
     if not args or args[0] not in command_names():
         return False
     if getattr(app, "tab", "") not in TABS:
-        _say(app, "Job history is available in Analytics, Deps, Log and Research", failure=True)
+        _say(
+            app,
+            "Job history is available in Analytics, Deps, Log and Research",
+            failure=True,
+        )
         return True
     state, view = initialize(app), _view(app)
     command, values = args[0], args[1:]
@@ -736,15 +1110,26 @@ def run_command(app, args):
             view["enabled"] = True
             _persist(app)
         state["focused"] = True
-        _say(app, "Job history: arrows select; Space marks; g groups; u ungroups; PgUp/PgDn page; Esc returns to data")
+        _say(
+            app,
+            "Job history: arrows select; Space marks; g groups; u ungroups; PgUp/PgDn page; Esc returns to data",
+        )
         return True
     if command == "history-job" and len(values) == 1:
         activate(app, values[0])
         return True
-    if command == "history-scroll" and len(values) == 1 and values[0] in ("up", "down", "page-up", "page-down", "home", "end"):
+    if (
+        command == "history-scroll"
+        and len(values) == 1
+        and values[0] in ("up", "down", "page-up", "page-down", "home", "end")
+    ):
         _scroll(app, values[0])
         return True
-    if command == "history-dock" and len(values) == 1 and values[0] in (*DOCKS, "next", "off"):
+    if (
+        command == "history-dock"
+        and len(values) == 1
+        and values[0] in (*DOCKS, "next", "off")
+    ):
         if values[0] == "off":
             view["enabled"] = False
             state["focused"] = False
@@ -752,22 +1137,36 @@ def run_command(app, args):
             view["enabled"] = True
             if values[0] == "next":
                 frame = _current(app)
-                current = frame["dock"] if view["dock"] == "auto" and frame else view["dock"]
+                current = (
+                    frame["dock"] if view["dock"] == "auto" and frame else view["dock"]
+                )
                 choices = DOCKS[1:]
-                view["dock"] = choices[(choices.index(current) + 1) % len(choices)] if current in choices else choices[0]
+                view["dock"] = (
+                    choices[(choices.index(current) + 1) % len(choices)]
+                    if current in choices
+                    else choices[0]
+                )
             else:
                 view["dock"] = values[0]
         _cancel_drag(state)
         _persist(app)
         return True
-    if command == "history-browser" and len(values) <= 1 and (not values or values[0] in ("on", "off")):
+    if (
+        command == "history-browser"
+        and len(values) <= 1
+        and (not values or values[0] in ("on", "off"))
+    ):
         view["enabled"] = not view["enabled"] if not values else values[0] == "on"
         if not view["enabled"]:
             state["focused"] = False
         _cancel_drag(state)
         _persist(app)
         return True
-    _say(app, "history-dock <auto|left|right|top|bottom|off>; history-browser [on|off]; history-job JOBID; history-scroll <up|down|page-up|page-down|home|end>", failure=True)
+    _say(
+        app,
+        "history-dock <auto|left|right|top|bottom|off>; history-browser [on|off]; history-job JOBID; history-scroll <up|down|page-up|page-down|home|end>",
+        failure=True,
+    )
     return True
 
 

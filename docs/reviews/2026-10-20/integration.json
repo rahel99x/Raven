@@ -1,0 +1,418 @@
+{
+  "checks": [
+    {
+      "command": "git rev-parse HEAD; .venv/bin/python /workspace/qualify-review-final-source-proof.py",
+      "evidence": {
+        "all_current_runtime_bytes_match_committed_source": true,
+        "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "later_evidence_commit": "Hosted CI must also cover the subsequent report/documentation commit; code qualification is pinned here.",
+        "proof": {
+          "bytes": 65309,
+          "path": "/workspace/review-final-source-proof-f63d82e.json",
+          "sha256": "d695bd77c87aec5aac97df80c81b9d8a104c014a37c8724ec205294726204b9c"
+        },
+        "python_files": 625,
+        "runtime_files": 626
+      },
+      "id": "final-runtime-and-test-freeze",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": ".venv/bin/python -m pytest -v -n 2 --maxfail=3 --junitxml=/workspace/review-final-regression-f63d82e.xml > /workspace/review-final-regression-f63d82e.log 2>&1",
+      "evidence": {
+        "errors": 0,
+        "failed": 0,
+        "junit": {
+          "bytes": 25681967,
+          "path": "/workspace/review-final-regression-f63d82e.xml",
+          "sha256": "6117b9ade832586564f57ccaabce25f1fbc5322fc47b57ff4e1325eb0140fd06"
+        },
+        "log": {
+          "bytes": 50213683,
+          "path": "/workspace/review-final-regression-f63d82e.log",
+          "sha256": "a1b2e457a49fdf49a04355f9cbeee2980b6cd5a6ab458791177cefabc407e5ba"
+        },
+        "maxfail": "Inactive: zero failures; all collected tests completed.",
+        "passed": 19486,
+        "seconds": 547.329,
+        "skipped": 24
+      },
+      "id": "final-complete-regression",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": ".venv/bin/python scripts/check_quality.py; .venv/bin/python scripts/check_import_layers.py --require-acyclic --json /workspace/review-structural-imports.json",
+      "evidence": {
+        "cycles": 0,
+        "dependency_contracts": 7,
+        "formatted_family_files": 275,
+        "function_imports": 2067,
+        "graph": {
+          "bytes": 242,
+          "path": "/workspace/review-structural-imports.json",
+          "sha256": "4b447dbc40047ca1c308141d291bdfe4599bf370b4175df6cf4c2f0e745ce3bb"
+        },
+        "log": {
+          "bytes": 1546,
+          "path": "/workspace/review-final-quality-f63d82e.log",
+          "sha256": "0ad0994053b8e5881a513141c290ea21cbc35727c83ed099979079306cc94741"
+        },
+        "modules": 625,
+        "strict_typed_sources": 11,
+        "unresolved_dynamic_targets": 0
+      },
+      "id": "final-quality-and-global-acyclicity",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": ".venv/bin/python scripts/validate_operation_schemas.py; .venv/bin/python scripts/generate_operation_reference.py --check; .venv/bin/python scripts/generate_capability_reference.py --check",
+      "evidence": {
+        "errors": 0,
+        "examples": 43,
+        "generated_references": "Both --check commands exited0 in the final quality invocation.",
+        "report": {
+          "bytes": 1942,
+          "path": "/workspace/review-final-schemas-f63d82e.json",
+          "sha256": "34a7d97593ba091d2711b668ddd7f8b606e7db9ba4dd19c0f407379628d753e0"
+        },
+        "schemas": 82
+      },
+      "id": "final-schemas-and-generated-references",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py; .venv/bin/python /workspace/qualify-review-final-source-proof.py",
+      "evidence": {
+        "artifacts": [
+          {
+            "bytes": 2216469,
+            "filename": "raven-7.0.0-py3-none-any.whl",
+            "sha256": "007120050d14c51a63a904794ecd3a36e42a2ece605e671aa379c6382d9550ae"
+          },
+          {
+            "bytes": 5086290,
+            "filename": "raven-7.0.0.tar.gz",
+            "sha256": "e44be4897fb36fa73eb7a1c26fe36b71f4be1aab300251c14bd51cfa323e9861"
+          }
+        ],
+        "completion": {
+          "bytes": 192,
+          "path": "/workspace/review-final-artifacts-f63d82e.json",
+          "sha256": "5ee6fbd2d9333a767df923e06f82bf1a897879eee0c9bfc05ba1c5daa511f380"
+        },
+        "inventory": {
+          "bytes": 575649,
+          "path": "/workspace/review-final-dist-f63d82e/release-inventory.json",
+          "sha256": "c2cd60da717da95d9ea50863cd92f4dfeca0fd79e1cdde1037ac6f280a0506fa"
+        },
+        "inventory_source_claim_limit": "Unsigned caller-supplied label alone is not provenance; every runtime wheel/sdist byte is independently compared to git archive.",
+        "source_proof": {
+          "bytes": 65309,
+          "path": "/workspace/review-final-source-proof-f63d82e.json",
+          "sha256": "d695bd77c87aec5aac97df80c81b9d8a104c014a37c8724ec205294726204b9c"
+        }
+      },
+      "id": "final-pristine-artifacts-and-release-policy",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "evidence": {
+        "commands": 17,
+        "flagship": {
+          "bytes": 5201,
+          "path": "/workspace/review-final-flagship-f63d82e.json",
+          "sha256": "3634eaef07131a631635365dc7019bd2ef737e9a95f41031a51eb9911deecfbe"
+        },
+        "installed_commands": {
+          "bytes": 2950,
+          "path": "/workspace/review-final-installed-smoke-f63d82e.json",
+          "sha256": "b1fe01b1bf0ed5687ed0744e425cb3e1fbf856f1788713577372faaf8a3f72d3"
+        },
+        "production_qualified": false,
+        "qualified": [
+          "documentation",
+          "source-cli",
+          "terminal-pages",
+          "real-pty",
+          "cli-trace",
+          "cli-runtime",
+          "cli-report",
+          "installed-wheel"
+        ],
+        "untested": [
+          "live-allocation-identity",
+          "physical-gpu",
+          "multi-node",
+          "terminal-emulator",
+          "production-ssh",
+          "external-user-study",
+          "scientific-outcomes"
+        ]
+      },
+      "id": "final-installed-commands-and-terminal",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": ".venv/bin/python /workspace/run-review-final-artifacts.py",
+      "evidence": {
+        "fixture_scope": "Actual extracted source imports itself, excludes docs/implementation, and contains exactly four temporal-holdout fixtures.",
+        "offline_log": {
+          "bytes": 1757,
+          "path": "/workspace/review-final-offline-f63d82e.log",
+          "sha256": "e12a2038b908935cfa5e441a0aeb03e1a4f1a69c8186258c3d94cba0e5448b5d"
+        },
+        "offline_report": {
+          "bytes": 44843,
+          "path": "/workspace/review-final-offline-f63d82e.txt",
+          "sha256": "b3d5dcfc2963e5d40d9db74e9929582dac96ec302da30d01188cc99e85f26e64"
+        },
+        "sdist_log": {
+          "bytes": 272,
+          "path": "/workspace/review-final-sdist-f63d82e.log",
+          "sha256": "bcc5a86d239ff7749a03f3022c4c191cae750980b74a26b3356e55bd74f02023"
+        },
+        "sdist_source_check": {
+          "bytes": 0,
+          "path": "/workspace/review-final-sdist-source-f63d82e.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "sdist_tests": {
+          "log": {
+            "bytes": 272,
+            "path": "/workspace/review-final-sdist-f63d82e.log",
+            "sha256": "bcc5a86d239ff7749a03f3022c4c191cae750980b74a26b3356e55bd74f02023"
+          },
+          "passed": 142,
+          "skipped": 7
+        }
+      },
+      "id": "final-offline-setup-and-extracted-sdist",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "/workspace/raven-compat/py3.10/bin/python -m pytest -q tests/test_review_collection_analysis.py tests/test_heavy_package_layout.py tests/test_review_injob_client.py tests/test_runtime_cleanup_governance.py tests/test_review_install_trust.py tests/test_config_trust.py tests/test_review_environment.py tests/test_trace_browser.py tests/test_trace_cpu.py tests/test_collection_package_layout.py tests/test_entry_capture_execution_architecture.py tests/test_job_group_domain_architecture.py tests/test_job_logs_package.py tests/test_recordings_package_layout.py tests/test_workbench_composition_identity.py tests/test_operation_composition_architecture.py tests/test_mutation_review.py tests/test_capture_protocol.py",
+        "/workspace/raven-compat/py3.14/bin/python -m pytest -q tests/test_review_collection_analysis.py tests/test_heavy_package_layout.py tests/test_review_injob_client.py tests/test_runtime_cleanup_governance.py tests/test_review_install_trust.py tests/test_config_trust.py tests/test_review_environment.py tests/test_trace_browser.py tests/test_trace_cpu.py tests/test_collection_package_layout.py tests/test_entry_capture_execution_architecture.py tests/test_job_group_domain_architecture.py tests/test_job_logs_package.py tests/test_recordings_package_layout.py tests/test_workbench_composition_identity.py tests/test_operation_composition_architecture.py tests/test_mutation_review.py tests/test_capture_protocol.py"
+      ],
+      "evidence": {
+        "interpreters": [
+          {
+            "log": {
+              "bytes": 432,
+              "path": "/workspace/review-final-compat-310-f63d82e.log",
+              "sha256": "4f8e85829a33126ad3f61662b311b55b5af3ac374f22477d87e51106465809f3"
+            },
+            "passed": 329,
+            "python": "3.10",
+            "skipped": 1
+          },
+          {
+            "log": {
+              "bytes": 421,
+              "path": "/workspace/review-final-compat-314-f63d82e.log",
+              "sha256": "393962296ae739c919249fd66a4ce1b886c4c792b448ae5aced67b1223191f4b"
+            },
+            "passed": 330,
+            "python": "3.14",
+            "skipped": 0
+          }
+        ],
+        "scope": "Focused final-source boundary/ownership/compatibility suites on3.10 and3.14; local fullsuite is3.12. Hosted CI requires full3.10–3.14 separately."
+      },
+      "id": "final-python-compatibility",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": "env -u USER TZ=America/Los_Angeles .venv/bin/python -m pytest -q -n2 tests/test_review_environment.py tests/test_doctor.py tests/test_adversarial_ui_review.py tests/test_setup_profiles.py tests/test_raven_config.py tests/test_forecast_scenarios.py tests/test_slurm_simulator.py",
+      "evidence": {
+        "log": {
+          "bytes": 383,
+          "path": "/workspace/review-final-environment-f63d82e.log",
+          "sha256": "79c1d020ad4735bc28e6e0e071ca9576b4f50f23e50c331ed39ed02fa8ebf2ee"
+        },
+        "passed": 222,
+        "skipped": 0
+      },
+      "id": "final-user-and-timezone",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": ".venv/bin/python scripts/distribution_prototype.py --output /workspace/review-final-prototype-f63d82e",
+      "evidence": {
+        "all626source_bytes_match": true,
+        "experimental": true,
+        "journeys": [
+          "core",
+          "lab",
+          "core-after-removal",
+          "lab-after-reinstall",
+          "lab-after-upgrade",
+          "lab-after-downgrade"
+        ],
+        "limits": [
+          "W44 human workflow evidence is unavailable",
+          "This first extraction is not the proposed few-dozen-module core",
+          "No coinstallation with the production raven wheel; private venv only"
+        ],
+        "manifest": {
+          "bytes": 140434,
+          "path": "/workspace/review-final-prototype-f63d82e/manifest.json",
+          "sha256": "1871689a88d32a157d2d3a0f31a34d522a3c947147db191d89ca19c4d356cc1e"
+        },
+        "mismatched_extension_refused": true,
+        "production_rename": false,
+        "published": false
+      },
+      "id": "final-experimental-package-extraction",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": "umask 002; env PATH=/tmp/raven-pipx-review-venv/bin:$PATH .venv/bin/python /workspace/review-final-update-source-f63d82e/scripts/qualify_updates.py --pipx --pipx-backend pip --output /workspace/review-final-updates-f63d82e",
+      "evidence": {
+        "checks": 33,
+        "limits": "Actual piped managed bootstrap/clone and optional pipx local clone, virtual environments and installed update/revert commands against an owned local Git origin; no HTTP bootstrap download, public source download, live Slurm, remote cluster, GPU or other operating system qualification.",
+        "pipx_backend": "pip",
+        "report": {
+          "bytes": 794677,
+          "path": "/workspace/review-final-updates-f63d82e/result.json",
+          "sha256": "cf6c17ad236582dff422cfbacb89a2670c9d4474f161b15330b7c34585d7a376"
+        },
+        "source_commit": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+        "source_isolation": "Detached immutable worktree avoids another task changing the qualification source.",
+        "umask": "002"
+      },
+      "id": "final-installed-update-and-revert",
+      "required": true,
+      "status": "passed"
+    },
+    {
+      "command": [
+        "env RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613 python3 /workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py --version 23.02.8 --skip-build --scenario review-findings --output /workspace/raven-final-slurm-003f3a5c/evidence/23.02.8",
+        "env RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613 python3 /workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py --version 23.11.11 --skip-build --scenario review-findings --output /workspace/raven-final-slurm-003f3a5c/evidence/23.11.11",
+        "env RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613 python3 /workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py --version 24.05.8 --skip-build --scenario review-findings --output /workspace/raven-final-slurm-003f3a5c/evidence/24.05.8",
+        "env RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613 python3 /workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py --version 24.11.7 --skip-build --scenario review-findings --output /workspace/raven-final-slurm-003f3a5c/evidence/24.11.7",
+        "env RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613 python3 /workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py --version 26.05.5 --skip-build --scenario review-findings --output /workspace/raven-final-slurm-003f3a5c/evidence/26.05.5",
+        "env RAVEN_QUALIFICATION_REVISION=003f3a5c515d70b48982d6c856c57a1d6607d613 python3 /workspace/raven-final-slurm-003f3a5c/scripts/qualify_slurm.py --version 26.05.5 --skip-build --scenario allocation-recovery --output /workspace/raven-final-slurm-003f3a5c/evidence/orphan-26.05.5",
+        ".venv/bin/python /workspace/qualify-review-final-source-proof.py"
+      ],
+      "evidence": {
+        "archive_commit": "3b104ee64d060b5fbbe7d9da2f37345cd63c91cc",
+        "backend_files_unchanged": 48,
+        "checks": 82,
+        "later_runtime_files": {
+          "raven/controller.py": {
+            "delivered_sha256": "8b1428fb8cb49d5cda9d9a8bce42f551822e760ecd84228a3448a47815bed9de",
+            "tested_sha256": "a9ab708576b2130bb2e85e48836ac15fc5ee72d3989df141a3532b2188ff7022"
+          },
+          "raven/installation/update_verification.py": {
+            "delivered_sha256": "b157ce18ab13105853f61de2dabb4f72859efb21a5512b097bef2c754a9d7780",
+            "tested_sha256": "092a16635b9ff8b156bbbb13bd1c63e65b84826665b0db40ccc59810b34f8bbe"
+          },
+          "raven/plugins.py": {
+            "delivered_sha256": "e73478c6af5252b444898064e24cd4a659c35cf5aecd30050abd0640a622612d",
+            "tested_sha256": "9a3b043f96f3cbe2c20cfcd43e1d67ac9d8034817ded2a32174e1a2159aea1e4"
+          },
+          "raven/pointer_routing.py": {
+            "delivered_sha256": "3700032b3d74a8ccb21f97c7a69a5c2550e25a948823cdb91af1ae4bfdbb6ebe",
+            "tested_sha256": "ce086e0d628eec61bfecc80709b18f3eca6709b37c53f035f1bcae19c0887685"
+          },
+          "raven/tracing/ui.py": {
+            "delivered_sha256": "dcb0d186c7f0907df63c800cf72209672ce9661adaa6579d89df59ec8e2b5c4e",
+            "tested_sha256": "cbdac121ff041b5f0a23233d68feb8aae22bf5723b0e57677c332c4de041b5a4"
+          },
+          "raven/workbench.py": {
+            "delivered_sha256": "8708eb19dc1896bb90d54df4345ab7a43f370a62b7f84fcbb1078a67f00f4ba5",
+            "tested_sha256": "be41f4910dbf3e5ef43b6fbea1ea8629e0eea1263297c37656088cffd859a620"
+          }
+        },
+        "scope_limit": "The five-version live Slurm matrix tested its exact earlier checkpoint. Unchanged backend proof does not claim the entire delivered source was live-qualified. New UI, plugin and update-policy paths require their final focused/full/installed/CI checks.",
+        "summary": {
+          "bytes": 20305,
+          "path": "/workspace/raven-final-slurm-qualification-artifacts-003f3a5c/summary.json",
+          "sha256": "eb141d508e6eb7a5155e6a5e76eb4064452b99908bf9f903e970eb5904e526b4"
+        },
+        "tested_revision": "003f3a5c515d70b48982d6c856c57a1d6607d613",
+        "versions": [
+          "23.02.8",
+          "23.11.11",
+          "24.05.8",
+          "24.11.7",
+          "26.05.5"
+        ]
+      },
+      "id": "final-live-slurm-scope",
+      "required": true,
+      "status": "passed"
+    }
+  ],
+  "ci_policy": {
+    "delivered_revision": true,
+    "hosted_status": "pending at report creation; merge is gated on actual delivered-commit checks",
+    "requires_hosted_checks": true
+  },
+  "code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+  "count_policy": "Full-suite JUnit is the only full-suite total. Focused cases, interpreters, command smokes, installed journeys and live Slurm assertions are overlapping or different units and never added together.",
+  "evidence_archive": {
+    "final_delivery_directory": "delivery-f63d82e",
+    "prior_final_checkpoint": "3b104ee64d060b5fbbe7d9da2f37345cd63c91cc",
+    "publication_locator": "The immutable final archive commit is recorded in evidence-archive.md outside this archived report, avoiding a self-referential commit hash."
+  },
+  "historical_integration_attempts": [
+    {
+      "log": {
+        "bytes": 463117,
+        "path": "/workspace/review-architecture-regression.log",
+        "sha256": "2bf370db34088ecc5be4a35f4f671b143f32f06019a57c0caae5c066c6727e3d"
+      },
+      "result": "204failed6445passed4skipped; interrupted to diagnose process-global callback leak and stale fixtures",
+      "revision": "003f3a5"
+    },
+    {
+      "log": {
+        "bytes": 64992,
+        "path": "/workspace/review-final-regression-3fd4d97.log",
+        "sha256": "3aa1f7232dcdd73239f7319a3b57e487ecd66ae1f64d845d6a8262a6856d03a1"
+      },
+      "result": "22failed13948passed10skipped; stopped to diagnose missing fixture ports and canonical spy",
+      "revision": "3fd4d97"
+    },
+    {
+      "log": {
+        "bytes": 49232,
+        "path": "/workspace/review-final-tail-preflight.log",
+        "sha256": "47febe34522778ac2e6ddb8dc2a3cccaf7782fe57b358a75057967b8700a9f93"
+      },
+      "result": "18failed6550passed16skipped; canonical spy/fixture assumptions then corrected without weakening behavior budgets",
+      "selection": "183 tail files"
+    },
+    {
+      "log": {
+        "bytes": 25445563,
+        "path": "/workspace/review-final-regression-a352f67.log",
+        "sha256": "d0cc0aa9f7191905b0a4f322af7fdf4165e0cacfe391ca78688a0b7b360d2980"
+      },
+      "result": "1217passed1skipped; deliberately interrupted at6% to include one last end-to-end regression before final freeze",
+      "revision": "a352f67"
+    }
+  ],
+  "schema": "raven.review-integration/v1",
+  "source_acceptance": {
+    "S-1": "Global all-depth zero-cycle/zero-unresolved acceptance is implemented and gated.",
+    "S-4": "Canonical package implementations and released compatibility identities implemented. Unpublished core/lab packaging remains an explicitly qualified experiment, not a production rename.",
+    "independent_findings": 10,
+    "physical_and_production": "No physical GPU, multi-node, production SSH/shared-filesystem, unfamiliar-user or scientific-efficacy qualification is claimed.",
+    "source_claims": 170
+  },
+  "status": "qualified-local"
+}

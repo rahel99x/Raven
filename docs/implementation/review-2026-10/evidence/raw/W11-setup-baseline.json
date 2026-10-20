@@ -1,9 +1,0 @@
-{
-  "schema": "raven.setup-baseline/v1",
-  "captured": "2026-10-18T01:08:41.272524+00:00",
-  "path": "scripts/setup.py",
-  "sha256": "8d0ce6fcea20eb4bc8e7e642a3f3c8d0468aa201eeb5bc430cd4c4d349bf7ed3",
-  "research_views": 14,
-  "text_cases": 48,
-  "scope": "Exact pre-batching driver; compare both drivers against the same frozen Raven modules in a later controlled window."
-}

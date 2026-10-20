@@ -62,7 +62,7 @@ def _freeze(value, depth=0):
 class MetricRasterCache:
     def __init__(self, *, budget=None):
         self.points = self.cells = 0
-        from .raven_limits import BudgetCache
+        from .cache_budget import BudgetCache
         self.entries = BudgetCache(budget,self._expired) if budget else OrderedDict()
         self.time_points = TimePointCache(budget=budget)
 
@@ -121,7 +121,7 @@ class TimePointCache:
     def __init__(self, *, budget=None):
         self.points = 0
         self.index_points = 0
-        from .raven_limits import BudgetCache
+        from .cache_budget import BudgetCache
         self.indexes = BudgetCache(budget, self._index_expired) if budget else OrderedDict()
         self.entries = BudgetCache(budget,self._expired) if budget else OrderedDict()
 
@@ -156,7 +156,7 @@ class TimePointCache:
                 indexed_entry = self.indexes.get(source)
                 index = indexed_entry[0] if indexed_entry else None
                 if index is None:
-                    from .series_summary import EnvelopeIndex
+                    from raven.recordings.summary import EnvelopeIndex
                     index = EnvelopeIndex(values, sample_times)
                     cost = len(values) * 12
                     self.index_points += cost

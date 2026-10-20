@@ -174,7 +174,7 @@ def advise_names(finished: Sequence[Finished]) -> List[Advice]:
         last = max(oom or tmo or done, key=lambda r: r.end)   # a failure sets the doubling
         a = advise_finished(last, done)
         a.id = f"{len(done)} run{'s' if len(done) != 1 else ''}"
-        req_hours = sum((secs(r.elapsed) or 0) * r.cpus for r in done) / 3600
+        _req_hours = sum((secs(r.elapsed) or 0) * r.cpus for r in done) / 3600
         a.wasted_core_hours = sum((1 - r.cpu_eff) * r.core_hours for r in done if r.cpu_eff is not None)
         a.notes = [n for n in a.notes if "doubled" not in n]
         if any(r.state == "OUT_OF_MEMORY" for r in done):

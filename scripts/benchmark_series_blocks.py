@@ -19,14 +19,86 @@ import platform
 import zlib
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from raven import charts, series_blocks as blocks
-from raven.series_summary import EnvelopeIndex
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--samples', type=int, default=8192)
 parser.add_argument('--repetitions', type=int, default=8)
+parser.add_argument('--source-root', type=Path, default=Path(__file__).resolve().parents[1])
+parser.add_argument('--review-case', choices=('store', 'retention', 'tail', 'batch'))
+parser.add_argument('--gap-seconds', type=float)
 args = parser.parse_args()
+args.source_root=args.source_root.resolve()
+if not (args.source_root/'raven'/'model.py').is_file():
+    parser.error('--source-root must contain the Raven source package')
+if not 1 <= args.samples <= 1000000 or not 1 <= args.repetitions <= 64:
+    parser.error('Use 1..1000000 samples and 1..64 repetitions')
+sys.path.insert(0, str(args.source_root))
+from raven import charts, series_blocks as blocks
+from raven.series_summary import EnvelopeIndex
+
+
+def review_case(case, samples):
+    """Matched adversarial fixtures; run each source revision in a fresh process."""
+    from raven.model import Job, Store
+    from raven import series_retention as retention, series_storage as storage
+    result={'case':case,'n':samples,'source_root':str(args.source_root),
+            'measurement':'single isolated process; synthetic fixture; no scheduler/GPU calls',
+            'rss_note':'process peak includes interpreter and fixture preparation; Python peak is separate'}
+    with tempfile.TemporaryDirectory(prefix='raven-storage-review-') as directory:
+        root=Path(directory)
+        if case=='store':
+            store=Store(persist=False)
+            store.apply_jobs([Job(str(i),'train','local','RUNNING') for i in range(samples)])
+            def operation():
+                for job in store.jobs:store.record(job.id,{'t':1,'k':'benchmark','rss':1234},_persist=False)
+        elif case=='retention':
+            path=root/('v2-37-'+'a'*64+'.jsonl')
+            with path.open('wb') as stream:
+                for index in range(samples):stream.write(storage._canonical({'t':index*5,'k':'live','cpu':.5,'rss':1234}))
+            settings={'gap_seconds':args.gap_seconds} if args.gap_seconds is not None else None
+            operation=lambda:retention.build(path,as_of=samples*5,apply=True,settings=settings)
+        elif case=='tail':
+            path=root/('v2-37-'+'a'*64+'.rvb')
+            with path.open('wb') as stream:
+                for index in range(samples):stream.write(blocks.encode([{'t':index,'k':'live','cpu':.5}],blocks._identity(path)))
+            operation=lambda:blocks.read(path,4000)
+        else:
+            store=Store(str(root),series_storage='blocks-v1')
+            def operation():
+                for index in range(samples):
+                    store.record('7',{'t':index,'k':'live','cpu':.5,'rss':1234},_persist=False)
+                    try:store.flush_persistence(_defer_series=True)
+                    except TypeError:store.flush_persistence()  # legacy comparison revision
+                store.close()
+                return blocks.read(next((root/'series').glob('*.rvb')),samples)
+        if case!='batch':tracemalloc.start()
+        start=time.perf_counter();cpu=time.process_time()
+        try:
+            value=operation();result['status']='complete'
+        except ValueError as exc:
+            value=None;result.update(status='refused',error=str(exc))
+        result.update(seconds=time.perf_counter()-start,cpu_seconds=time.process_time()-cpu)
+        if case!='batch':result['python_peak_bytes']=tracemalloc.get_traced_memory()[1];tracemalloc.stop()
+        if case=='store':result['retained']=sum(len(rows) for rows in store.series.values())
+        elif case=='retention' and value:
+            result.update(records=value['source']['records'],archive_bytes=value['archive_bytes'],gaps=len(value['observed_gaps']),source_bytes=path.stat().st_size)
+        elif case in ('tail','batch') and value:
+            rows,status=value
+            result.update(first=rows[0]['t'],last=rows[-1]['t'],count=len(rows),blocks=status['blocks'],read_bytes=status['bytes'])
+            if case=='batch':path=next((root/'series').glob('*.rvb'))
+            result['file_bytes']=path.stat().st_size
+    result['process_peak_rss_bytes']=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024
+    owners={'model.py':sys.modules[Store.__module__], 'series_blocks.py':blocks,
+            'series_storage.py':storage, 'series_retention.py':retention}
+    source_paths={name:Path(module.__file__).resolve() for name,module in owners.items()}
+    result['source_sha256']={name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in source_paths.items()}
+    result['source_paths']={name:str(path.relative_to(args.source_root)) for name,path in source_paths.items()}
+    return result
+
+
+if args.review_case:
+    print(json.dumps(review_case(args.review_case,args.samples),indent=2))
+    raise SystemExit(0)
+
 rows = [{'t': 1792279500. + index / 2, 'cpu': math.sin(index / 13), 'rss': 2**30 + index * 4096} for index in range(args.samples)]
 
 def timed(function):

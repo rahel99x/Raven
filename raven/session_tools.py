@@ -4,13 +4,12 @@ from __future__ import annotations
 from bisect import bisect_right
 
 import hashlib
-import math
 import socket
 import time
 
 from . import doctor, layout as L
 from .model import terminal_state, TERMINAL_STATES
-from .research import clean
+from .research_text import clean
 
 LIMIT = 256
 
@@ -109,7 +108,7 @@ def _pick(app):
 
 
 def _open_completion(app, item, logs=False):
-    state = initialize(app)
+    _state = initialize(app)
     record = item["record"]
     app.mode = "main"
     if logs:
@@ -194,7 +193,7 @@ def run_command(app, args):
                 app.save()
                 app.say("Quiet hours disabled.")
             elif values[0] == "quiet" and len(values) in (3, 4):
-                engine.set_quiet(values[1], values[2], values[3] if len(values) == 4 else "America/Los_Angeles")
+                engine.set_quiet(values[1], values[2], values[3] if len(values) == 4 else None)
                 app.save()
                 app.say(f"Quiet hours saved in {engine.quiet_zone}.")
             else:
@@ -221,7 +220,7 @@ def run_command(app, args):
     elif command == "terminaltest":
         if values == ["clipboard"]:
             from . import clipboard
-            app.say(clipboard.copy("Raven clipboard test", app.state_dir,
+            app.say(clipboard.copy_for_app(app, "Raven clipboard test", app.state_dir,
                 **clipboard.options(app)))
             state["probe_events"].append("Clipboard delivery requested. Paste into your terminal to verify the result.")
         elif values:

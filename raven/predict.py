@@ -17,6 +17,7 @@ import re
 from statistics import median
 
 from .model import Finished, Job, mem_request_bytes
+from .history_records import HistoryRecord, check
 
 _METRICS = {"runtime_seconds": "seconds", "memory_bytes": "bytes", "cpu_seconds": "CPU seconds"}
 _CORE = ("name", "partition", "cpus", "nodes", "gpus")
@@ -169,6 +170,16 @@ def _timestamp(value):
 
 
 def _record(value, position):
+    if isinstance(value, HistoryRecord):
+        if "prediction" not in value.memo:
+            try:
+                value.memo["prediction"] = _record(value.original, 0)
+            except (ValueError, TypeError, OverflowError, RecursionError):
+                value.memo["prediction"] = None
+        normalized = value.memo["prediction"]
+        if normalized is None:
+            raise ValueError("invalid or ineligible history record")
+        return dict(normalized, position=position)
     data = _mapping(value)
     identity = _identity(data)
     state = _text(data.get("state", ""), maximum=64).split(" ", 1)[0].rstrip("+").upper()
@@ -234,12 +245,20 @@ def _fit(values, coverage, min_samples):
     if n_validation:
         validation = values[-n_validation:]
         result["observed_coverage"] = sum(lower <= x <= upper for x in validation) / n_validation
-        if result["observed_coverage"] < coverage:
+        covered = sum(lower <= x <= upper for x in validation)
+        # A small holdout's empirical fraction naturally fluctuates. Only
+        # strong one-sided binomial evidence supports a validation warning.
+        probability = math.fsum(math.exp(math.lgamma(n_validation + 1) - math.lgamma(k + 1)
+                                - math.lgamma(n_validation - k + 1)
+                                + k * math.log(coverage) + (n_validation - k) * math.log1p(-coverage))
+                                for k in range(covered + 1)) if 0 < coverage < 1 else (1. if covered == n_validation else 0.)
+        result["validation_lower_tail_probability"] = probability
+        if probability < .01:
             result["status"] = "poor_validation"
     return result
 
 
-def predict(history, query=None, *, coverage=.8, min_samples=10, max_records=10000):
+def predict(history, query=None, *, coverage=.8, min_samples=10, max_records=10000, cancel=None):
     """Predict measurements for one exact workload/allocation cohort.
 
     ``memory_bytes`` mappings require ``memory_scope``.  ``rss``/``max_rss`` and
@@ -275,6 +294,8 @@ def predict(history, query=None, *, coverage=.8, min_samples=10, max_records=100
     unique = {}
     try:
         for position in range(max_records):
+            if position % 64 == 0:
+                check(cancel)
             try:
                 value = next(source)
             except StopIteration:

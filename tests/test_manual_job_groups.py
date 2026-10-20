@@ -268,6 +268,7 @@ def test_preference_conflicts_have_deterministic_unique_membership():
 
 def test_preference_bounds_and_mutation_limit_are_atomic(monkeypatch):
     monkeypatch.setattr(M, "MAX_IDENTITIES", 3)
+    monkeypatch.setattr("raven.job_group_membership.MAX_IDENTITIES", 3)
     value, records = app(), [job(i) for i in range(100, 105)]
     snap = {"jobs": records}
     M.create(value, snap, ["100", "101"])

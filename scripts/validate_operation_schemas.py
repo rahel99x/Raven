@@ -20,8 +20,9 @@ def markers(schema):
         for group in ("oneOf", "anyOf", "allOf"):
             for child in schema.get(group, ()):
                 result.extend(markers(child))
-        for child in schema.get("$defs", {}).values():
-            result.extend(markers(child))
+        # Definitions describe nested reusable values, not the document this
+        # schema validates. Registering their markers can silently replace the
+        # actual top-level schema (for example config inside site profiles).
     return result
 
 

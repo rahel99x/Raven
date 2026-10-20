@@ -262,7 +262,7 @@ class Inspector:
 
 def report_lines(report):
     """Plain, readable evidence for both the modal and clipboard export."""
-    from .metric_sampling import format_interval
+    from .cadence import format_interval
     duration = lambda value: "unknown" if value is None else "disabled (0s)" if value == 0 else format_interval(value, ascii_=True)
     lines = [f"Job: {report.get('job_id') or 'none (cluster capabilities)'} | Cluster: {report.get('cluster', 'unknown')}"]
     attempt = report.get("attempt", {})

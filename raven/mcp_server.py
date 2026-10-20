@@ -164,6 +164,19 @@ async def serve(session):
             return T.CallToolResult(content=[T.TextContent(type="text", text="Reader busy: at most eight admitted or waiting requests")], is_error=True)
         queued += 1
         cancel = threading.Event()
+        def cancel_reader():
+            cancel.set()
+            worker = session.router.worker() if hasattr(session.router, "worker") else None
+            wake = getattr(getattr(worker, "manager", None), "notify_activity", None)
+            if callable(wake):
+                wake()
+
+        async def watch_cancellation():
+            await _context.cancel_requested.wait()
+            cancel_reader()
+
+        watcher = (asyncio.create_task(watch_cancellation())
+                   if getattr(_context, "cancel_requested", None) is not None else None)
         try:
             E.arguments(params.name, params.arguments or {})
             async def dispatch():
@@ -182,8 +195,11 @@ async def serve(session):
             return T.CallToolResult(content=[T.TextContent(type="text", text=canonical({"schema": E.SCHEMA,
                 "status": "error", "message": str(exc)[:2000], "retry": "Correct the request or scope; no automatic replay"}).decode())], is_error=True)
         finally:
-            cancel.set()
+            cancel_reader()
             queued -= 1
+            if watcher is not None:
+                watcher.cancel()
+                await asyncio.gather(watcher, return_exceptions=True)
 
     server = Server("raven-evidence", version="1.0.0", on_list_tools=list_tools, on_call_tool=call_tool,
                     get_tool_input_schema=shapes.get,
@@ -208,7 +224,7 @@ def main(argv=None):
             raise ValueError("Install Raven's optional MCP extra: python -m pip install 'raven[mcp]'") from exc
         if not sdk.startswith("2.3."):
             raise ValueError("This adapter requires the qualified MCP SDK 2.3.x; install raven[mcp]")
-        from .raven_execution import router_for
+        from .execution.policy import router_for
         session = Session(E.scope(args.index, args.project), router_for())
         asyncio.run(serve(session))
         return 0

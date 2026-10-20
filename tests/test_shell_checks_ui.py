@@ -266,6 +266,8 @@ def test_noninteractive_command_publishes_machine_readable_evidence(app, script)
 
 def test_execution_form_button_and_key_use_same_reviewed_plan(app, script):
     from raven import execution_ui
+    from raven.workbench import bind_execution
+    bind_execution(app)
     plan = submission.prepare(str(script))
     execution_ui.initialize(app)
     execution_ui._open_form(app, plan)
@@ -281,6 +283,8 @@ def test_execution_form_button_and_key_use_same_reviewed_plan(app, script):
 
 def test_semantic_graph_excludes_underlying_tabs_and_supports_hover_and_arrows(app, script):
     from raven import interaction
+    from raven.workbench import bind_actions
+    bind_actions(app)
     state = open_checked(app, script)
     overlays = render(app)
     app.selected_id = "1234"

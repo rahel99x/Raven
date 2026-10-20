@@ -19,7 +19,7 @@ def test_loaders_reject_untrusted_paths_before_using_them(tmp_path, loader, unsa
     elif unsafe == 'parent':
         parent.chmod(0o777)
     elif unsafe == 'ancestor':
-        parent.parent.chmod(0o775)
+        parent.parent.chmod(0o777)
     elif unsafe == 'link':
         actual = path.with_suffix('.actual')
         path.rename(actual)
@@ -84,6 +84,52 @@ def test_plugin_executes_pinned_verified_bytes_not_replaced_path(tmp_path, monke
     monkeypatch.setattr(T, 'read', replace_after_read)
     api = plugins.load([str(path)])
     assert api.loaded == ['hello'] and 'verified' in api.commands and not api.errors
+
+
+def test_explicit_plugin_directory_alias_pins_the_selected_root_once(tmp_path):
+    actual = tmp_path / 'actual'
+    actual.mkdir()
+    (actual / 'hello.py').write_text('def setup(api): api.command("selected", lambda *a: "yes")\n')
+    selected = tmp_path / 'selected'
+    selected.symlink_to(actual, target_is_directory=True)
+    paths = plugins.discover(str(tmp_path / 'config.json'), [str(selected)])
+    assert paths == [str(actual / 'hello.py')]
+    alternate = tmp_path / 'alternate'
+    alternate.mkdir()
+    (alternate / 'hello.py').write_text('raise RuntimeError("retargeted alias executed")\n')
+    selected.unlink()
+    selected.symlink_to(alternate, target_is_directory=True)
+    api = plugins.load(paths)
+    assert api.loaded == ['hello'] and 'selected' in api.commands and not api.errors
+
+
+@pytest.mark.parametrize('unsafe', ['file_link', 'replaced_root', 'writable_root'])
+def test_selected_plugin_root_never_licenses_internal_symlinks_or_unsafe_ownership(tmp_path, unsafe):
+    actual = tmp_path / 'actual'
+    actual.mkdir()
+    marker = tmp_path / 'executed'
+    plugin = actual / 'hello.py'
+    payload = f'from pathlib import Path\nPath({str(marker)!r}).touch()\ndef setup(api): pass\n'
+    plugin.write_text(payload)
+    selected = tmp_path / 'selected'
+    selected.symlink_to(actual, target_is_directory=True)
+    paths = plugins.discover(str(tmp_path / 'config.json'), [str(selected)])
+    if unsafe == 'file_link':
+        outside = tmp_path / 'outside.py'
+        outside.write_text(payload)
+        plugin.unlink()
+        plugin.symlink_to(outside)
+    elif unsafe == 'replaced_root':
+        actual.rename(tmp_path / 'retained')
+        alternate = tmp_path / 'alternate'
+        alternate.mkdir()
+        (alternate / 'hello.py').write_text(payload)
+        actual.symlink_to(alternate, target_is_directory=True)
+    else:
+        actual.chmod(0o777)
+    api = plugins.load(paths)
+    assert not marker.exists() and not api.loaded
+    assert 'hello' in api.errors
 
 
 def test_replaced_ancestor_cannot_redirect_openat_read(tmp_path, monkeypatch):

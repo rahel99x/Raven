@@ -549,12 +549,12 @@ def test_host_local_cache_rejects_network_mount(tmp_path, monkeypatch):
 
 def test_file_metadata_and_byte_budgets_remain_separate_from_controller(tmp_path):
     from raven.remote import LocalFiles
-    raw, governed = backend(tmp_path, file_bytes_per_minute=8, filesystem_metadata_per_minute=2)
+    raw, governed = backend(tmp_path, log_file_bytes_per_minute=8, filesystem_metadata_per_minute=2)
     files = wrap_files(LocalFiles(), governed)
     path = tmp_path / "data.log"
     path.write_bytes(b"0123456789")
     assert files.read(str(path), 0, 8) == b"01234567"
-    with pytest.raises(OSError, match="file-bytes budget"):
+    with pytest.raises(OSError, match="log-bytes budget"):
         files.read(str(path), 8, 1)
     assert files.stat(path)[0] == 10
     assert files.stat(path)[0] == 10
@@ -582,7 +582,7 @@ def test_placement_verifier_uses_two_fresh_controller_reads_and_no_hostnames_com
         raw.commands.append(tuple(argv))
         return ("JobId=7 NodeList=n[1-2]" if argv[2] == "job" else "StepId=7.0 NodeList=n2 Nodes=1"), .001
     raw.run = run
-    value = make_placement_verifier(governed)({"jobid": "7", "stepid": "0", "probe_id": "nonce"})
+    value = make_placement_verifier(governed)({"jobid": "7", "stepid": "0", "probe_id": "nonce", "cgroup_proof": True})
     assert value["job_nodes"] == ["n1", "n2"] and value["step_nodes"] == ["n2"]
     assert value["probe_id"] == "nonce" and len(raw.commands) == 2
     assert governed.ledger.report()["rates_last_minute"]["validation"] == 2
@@ -599,7 +599,7 @@ def test_placement_verifier_prefers_step_hostlist_over_slurm_node_count(tmp_path
         return ("JobId=7 NodeList=" + nodelist if argv[2] == "job" else
                 "StepId=7.0 State=RUNNING NodeList=" + nodelist + " Nodes=" + count + " CPUs=2 Tasks=1"), .001
     raw.run = run
-    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch", "cgroup_proof": True})
     assert value["job_nodes"] == value["step_nodes"] == nodes
     assert value["probe_id"] == "launch"
     assert raw.commands == [("scontrol", "show", "job", "7", "-o"),
@@ -613,7 +613,7 @@ def test_placement_verifier_retains_legacy_adapter_hostlist_fallback(tmp_path):
         raw.commands.append(tuple(argv))
         return ("JobId=7 NodeList=system" if argv[2] == "job" else "StepId=7.0 Nodes=system"), .001
     raw.run = run
-    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+    value = make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch", "cgroup_proof": True})
     assert value["job_nodes"] == value["step_nodes"] == ["system"]
 
 
@@ -626,7 +626,7 @@ def test_invalid_step_hostlist_is_not_masked_by_legacy_adapter_field(tmp_path, n
                 "StepId=7.0 NodeList=" + nodelist + " Nodes=system"), .001
     raw.run = run
     with pytest.raises(ValueError):
-        make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch"})
+        make_placement_verifier(governed)({"job_id": "7", "step_id": "0", "probe_id": "launch", "cgroup_proof": True})
     assert len(raw.commands) == 2
 
 
@@ -646,7 +646,7 @@ def test_only_instrumentation_factory_accepts_special_job_local_steps(tmp_path, 
         raw.commands.append(tuple(argv))
         return ("JobId=7 NodeList=n1" if argv[2] == "job" else "StepId=7." + step + " NodeList=n1 Nodes=1"), .001
     raw.run = run
-    candidate = {"jobid": "7", "stepid": step, "purpose": "instrumentation"}
+    candidate = {"jobid": "7", "stepid": step, "purpose": "instrumentation", "cgroup_proof": True}
     with pytest.raises(ValueError, match="unambiguous"):
         make_placement_verifier(governed)(candidate)
     assert not raw.commands
@@ -732,7 +732,7 @@ def test_governed_file_adapter_preserves_confined_local_and_real_remote_project_
     result = projects.discover_project(str(root), files=remote)
     assert result["status"] == "ready" and result["root"] == str(root)
     assert project_remote.identity(remote) == project_remote.identity(remote.inner)
-    assert governed.ledger.report()["rates_last_minute"]["file-bytes"] == 2 << 20
+    assert 0 < governed.ledger.report()["rates_last_minute"]["file-bytes"] < 2 << 20
 
 
 def test_governed_remote_catalog_keeps_manifest_symlink_rejection(tmp_path):

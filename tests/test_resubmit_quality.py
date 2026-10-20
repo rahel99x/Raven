@@ -42,10 +42,10 @@ def test_memory_override_replaces_conflicting_memory_mode():
     assert apply_overrides(["--mem=8G", "job.sh"], {"mem_per_cpu": "2G"}) == ["--mem-per-cpu=2G", "job.sh"]
 
 
-def test_wrap_is_a_submission_and_can_be_replaced_with_a_script():
+def test_replayed_wrap_is_refused_until_replaced_with_an_explicit_script():
     clone = build("123", {"submit_line": "sbatch --wrap 'printf hello'"}, {}, overrides={"mem": "1G"})
-    assert has_submission(clone.argv) and not script_of(clone.argv)
-    assert flags_of(clone.argv)["wrap"] == "printf hello"
+    assert not has_submission(clone.argv)
+    assert any(note == "Not replayed: --wrap" for note in clone.notes)
     clone = build("123", {"submit_line": "sbatch --wrap 'printf hello'"}, {}, overrides={"script": "new job.sh"})
     assert "wrap" not in flags_of(clone.argv)
     assert script_of(clone.argv) == ["new job.sh"]
@@ -61,7 +61,7 @@ def test_clone_preview_uses_exact_arguments_and_workdir_before_confirmation(app,
     slurm = app.actions.slurm
     workdir = "/work/project with spaces"
     original = ["--no-kill", "--export-file", "env file", "--", "-job.sh", "value; still one argument"]
-    monkeypatch.setattr(slurm, "record_submit_info", lambda _: {"submit_line": shlex.join(["sbatch", *original]), "workdir": workdir})
+    monkeypatch.setattr(slurm, "record_submit_info", lambda _: {"submit_argv": ["sbatch", *original], "workdir": workdir})
     count = len(slurm.b.spec)
     app.run_command("resubmit 12480001 --mem 8G")
     assert app.command_ok and app.mode == "confirm"
@@ -85,11 +85,13 @@ def test_failed_preview_cannot_reach_confirmation_or_submit(app, monkeypatch):
     assert len(slurm.b.spec) == count
 
 
-def test_wrap_clone_reaches_confirmation_without_a_script(app, monkeypatch):
+def test_wrap_clone_cannot_reach_confirmation_without_an_explicit_script(app, monkeypatch):
     monkeypatch.setattr(app.actions.slurm, "record_submit_info", lambda _: {"submit_line": "sbatch --wrap 'printf hello'"})
     app.run_command("resubmit 12480001")
+    assert not app.command_ok and app.mode != "confirm" and not app.confirm
+    app.run_command("resubmit 12480001 --script replacement.sh")
     assert app.command_ok and app.mode == "confirm"
-    assert app.confirm["clone"].argv == ["--wrap", "printf hello"]
+    assert script_of(app.confirm["clone"].argv) == ["replacement.sh"]
 
 
 @pytest.mark.parametrize("command", ["resubmit 999", "hold 12480001", "resubmit 12480001 --mem", "chain fly", "tab nonexistent", "export html"])

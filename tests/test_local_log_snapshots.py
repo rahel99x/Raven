@@ -340,6 +340,9 @@ def test_real_interactive_local_snapshot_yanks_original_bytes_after_pan(tmp_path
         rows, _ = views.compose(store.snapshot(), app, 100, 24)
         assert "pan 2" in "\n".join(row_text(row) for row in rows)
         app.handle("y")
+        for future in app.clipboard_pending:
+            future.result(timeout=5)
+        clipboard.poll(app)
         assert copied == ["AB first\tcolumn 界\r\nCD second\r\n".encode()]
         app.run_command("logpan 0")
         rows, _ = views.compose(store.snapshot(), app, 100, 24)
@@ -364,6 +367,9 @@ def test_same_size_local_rewrite_reloads_without_mutating_published_snapshot(tmp
     try:
         ready = load(session, worker, path)
         session.search = 'ERROR'
+        log_tools.count_retained(app, ready)
+        if app.log_tools_state['retained_pending']:
+            finish(worker)
         assert log_tools.count_retained(app, ready) == 1
         assert session.begin_selection(ready, 0)
         token = session._buffer_token
@@ -380,6 +386,9 @@ def test_same_size_local_rewrite_reloads_without_mutating_published_snapshot(tmp
         assert session.cursor is None and session.top is None
         log_tools.observe_buffer(app, latest)
         assert all(saved['identity'][1] == latest.reloads for saved in app.log_tools_state['positions'].values())
+        log_tools.count_retained(app, latest)
+        if app.log_tools_state['retained_pending']:
+            finish(worker)
         assert log_tools.count_retained(app, latest) == 0
     finally: worker.close()
 

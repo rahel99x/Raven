@@ -1,5 +1,4 @@
 """Real recorded Slurm JSON equivalence and fail-closed capability discovery."""
-import copy
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -60,6 +59,25 @@ def test_recorded_accounting_shared_facts_match_legacy():
         assert instant(other.end) == instant(job.end)
 
 
+def test_recorded_accounting_restart_proof_preserves_completed_attempt_samples():
+    from raven.model import Store
+    queue = J.queue(J.document(raw("running-squeue-json")), ParseDiagnostics("jobs"))
+    finished = J.accounting(J.document(raw("accounting-json")), ParseDiagnostics("finished"))
+    live = next(job for job in queue if job.id == "1")
+    complete = next(job for job in finished if job.id == live.id)
+    assert live.restarts == complete.restarts == 0
+    store = Store(persist=False)
+    store.apply_jobs([live])
+    identity = store.capture_series_identity(live.id)
+    assert identity.verified
+    sample = {"t": 1., "k": "live", "cpu": .5}
+    store.record(live.id, sample)
+    store.apply_jobs([])
+    store.apply_finished([complete])
+    assert store.capture_series_identity(live.id) == identity
+    assert store.series_of(live.id) == [sample]
+
+
 def test_real_detail_keeps_spaces_and_exact_metadata():
     value = J.document(raw("running-scontrol-json"))
     job = value["jobs"][0]
@@ -102,10 +120,10 @@ def test_capability_probe_is_cached_and_explicitly_invalidated():
 
 @pytest.mark.parametrize("reply", ["not json", '{"jobs":[],"jobs":[]}', '{"jobs":[],"x":NaN}',
                                   CommandError("controller temporarily unavailable")])
-def test_transient_or_malformed_json_never_replays_as_legacy_success(reply):
+def test_explicit_json_mode_fails_closed_on_transient_or_malformed_json(reply):
     backend = Backend(reply)
     with pytest.raises(CommandError):
-        Slurm(backend, "raven").jobs()
+        Slurm(backend, "raven", json_mode="json").jobs()
     assert len(backend.calls) == 2 and "--json" in backend.calls[-1]
 
 
@@ -222,5 +240,5 @@ def test_recorded_2302_plural_metadata_allows_explicit_schema_fallback():
     value["meta"]["plugin"] = {"data_parser": "data_parser/v0.0.45"}
     rejected = Backend(json.dumps(value))
     with pytest.raises(CommandError, match="ambiguous"):
-        Slurm(rejected, "raven").jobs()
+        Slurm(rejected, "raven", json_mode="json").jobs()
     assert len(rejected.calls) == 2 and "--json" in rejected.calls[-1]

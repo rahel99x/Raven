@@ -4,6 +4,9 @@ win over the script's #SBATCH lines; previewed with ``sbatch --test-only`` befor
 from __future__ import annotations
 
 import shlex
+import os
+import re
+import uuid
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -16,6 +19,7 @@ FLAGS = {
     "output": (("-o",), ("--output",)), "error": (("-e",), ("--error",)), "account": (("-A",), ("--account",)), "qos": (("-q",), ("--qos",)),
     "nodes": (("-N",), ("--nodes",)), "ntasks": (("-n",), ("--ntasks",)), "gpus": ((), ("--gpus",)), "chdir": (("-D",), ("--chdir",)),
     "mem_per_cpu": ((), ("--mem-per-cpu",)), "constraint": (("-C",), ("--constraint",)), "wrap": ((), ("--wrap",)),
+    "comment": ((), ("--comment",)),
 }
 ALIASES = {"c": "cpus", "cpus-per-task": "cpus", "t": "time", "p": "partition", "J": "name", "job-name": "name", "d": "dependency", "a": "array",
            "o": "output", "e": "error", "A": "account", "q": "qos", "N": "nodes", "n": "ntasks", "D": "chdir", "mem-per-cpu": "mem_per_cpu", "C": "constraint"}
@@ -148,6 +152,7 @@ class Clone:
     source: str = ""                                     # "submit line" | "record"
     notes: List[str] = field(default_factory=list)
     probe: str = ""                                      # what sbatch --test-only said
+    intent_token: str = field(default_factory=lambda: uuid.uuid4().hex)
 
     def command(self) -> str:
         return "sbatch " + " ".join(shlex.quote(a) for a in self.argv)
@@ -181,11 +186,33 @@ def output_pattern(path: str, jid: str, name: str) -> str:
     """'/x/logs/train-12480001.out' -> '/x/logs/%x-%j.out' so the clone gets its own log."""
     if not path:
         return ""
+    directory, filename = os.path.split(path)
     base = jid.split("_")[0]
-    out = path.replace(base, "%j")
-    if name and name in out:
-        out = out.replace(name, "%x", 1)
-    return out
+    filename = re.sub(r"(?<![A-Za-z0-9])" + re.escape(base) + r"(?![A-Za-z0-9])", "%j", filename)
+    if name:
+        filename = re.sub(r"(?<![A-Za-z0-9])" + re.escape(name) + r"(?![A-Za-z0-9])", "%x", filename, count=1)
+    return os.path.join(directory, filename)
+
+
+def replay_options(argv):
+    """Discard submission-mode controls that must never be replayed implicitly."""
+    flags, rest = split_flags(argv)
+    unsafe = {"--wait", "-W", "--test-only", "--parsable", "--wrap", "--clusters", "-M"}
+    result, removed = [], []
+    for _, value, option in flags:
+        if option in unsafe:
+            removed.append(option)
+        elif option == "--":
+            result.append(option)
+        elif value is None:
+            result.append(option)
+        elif option.startswith("--"):
+            result.append(option + "=" + value)
+        else:
+            result.extend((option, value))
+    # Slurm's lossy SubmitLine can split one --wrap value into several words;
+    # none of that remainder can safely become a batch-script path.
+    return result + ([] if "--wrap" in removed else rest), removed
 
 
 def build(jid: str, info: Dict[str, str], details: Dict[str, str], job: Optional[Job] = None, fin: Optional[Finished] = None, overrides: Optional[Dict[str, str]] = None) -> Clone:
@@ -194,11 +221,25 @@ def build(jid: str, info: Dict[str, str], details: Dict[str, str], job: Optional
     line = (info or {}).get("submit_line", "").strip()
     c.workdir = (info or {}).get("workdir") or details.get("WorkDir", "") or (fin.workdir if fin else "")
     c.name = (info or {}).get("name") or details.get("JobName", "") or (job.name if job else (fin.name if fin else ""))
-    if line:
-        words = shlex.split(line)
+    exact = (info or {}).get("submit_argv")
+    if exact is not None:
+        if (not isinstance(exact, list) or not 1 <= len(exact) <= 512
+                or any(not isinstance(word, str) or not word or len(word) > 8192 or "\0" in word for word in exact)):
+            raise ValueError("Recorded submission argv is invalid")
+        words = exact[1:] if os.path.basename(exact[0]) == "sbatch" else exact
+        c.argv, removed = replay_options(words)
+        c.source = "recorded argv"
+        c.notes.extend("Not replayed: " + option for option in removed)
+    elif line:
+        # Slurm stores SubmitLine by joining argv with spaces, without shell
+        # quoting. Quotes are literal data; shlex would invent boundaries.
+        words = [word for word in line.split(" ") if word]
         if words and words[0].endswith("sbatch"):
             words = words[1:]
-        c.argv, c.source = words, "submit line"
+        c.argv, removed = replay_options(words)
+        c.source = "submit line"
+        c.notes.append("Slurm SubmitLine does not preserve argument boundaries; review every argv token and use an exact recorded launch when available.")
+        c.notes.extend("Not replayed: " + option for option in removed)
     else:
         c.source = "record"
         d = details or {}
@@ -242,8 +283,10 @@ def build(jid: str, info: Dict[str, str], details: Dict[str, str], job: Optional
         else:
             c.notes.append("the script path is unknown (no Command in scontrol and no submit line in sacct): add it")
         c.argv = argv
-    if "_" in jid and "array" not in flags_of(c.argv):
-        c.notes.append("one task of an array job: add --array=<ids> to resubmit several")
+    task = re.fullmatch(r"[0-9]+_([0-9]+)", jid)
+    if task:
+        c.argv = apply_overrides(c.argv, {"array": task[1]})
+        c.notes.append("Resubmitting only the selected array task " + task[1] + "; other tasks are excluded.")
     present = flags_of(c.argv)
     if "dependency" in present:
         c.notes.append(f"keeps the dependency {present['dependency']}; override with --dependency= to drop it")
@@ -257,6 +300,16 @@ def build(jid: str, info: Dict[str, str], details: Dict[str, str], job: Optional
             flags, rest = split_flags(c.argv)
             c.argv = c.argv[:len(c.argv) - len(rest)] + [overrides["script"]]
             c.notes = [n for n in c.notes if "script path" not in n]
+    script = script_of(c.argv)
+    if script and re.search(r"(?:^|/)\.raven/wrappers/[^/]+/batch\.sh$", script[0]):
+        raise ValueError(
+            "This Raven launch wrapper belongs to the original recording attempt. "
+            "Open Run home and choose 'Run again with these settings' to review a fresh launch; "
+            "replaying the old wrapper would mix recording attempts."
+        )
+    comment = flags_of(c.argv).get("comment", "")
+    marker = "raven-resubmit-" + c.intent_token
+    c.argv = apply_overrides(c.argv, {"comment": marker + (" " + comment[:900] if comment else "")})
     return c
 
 
@@ -321,7 +374,5 @@ def parse_override_args(args: Sequence[str]) -> Tuple[Dict[str, str], List[str],
 
 def parse_submitted(text: str) -> Optional[str]:
     """'Submitted batch job 12480099' -> '12480099'."""
-    for tok in text.replace("\n", " ").split():
-        if tok.isdigit() and "Submitted" in text:
-            return tok
-    return None
+    matches = re.findall(r"^Submitted batch job ([1-9][0-9]{0,19})\s*$", text, re.MULTILINE)
+    return matches[0] if len(set(matches)) == 1 else None

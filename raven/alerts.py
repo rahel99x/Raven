@@ -21,6 +21,7 @@ from typing import Callable, Dict, List, Optional
 
 from .expr import Expr, ExprError, cluster_ns, job_ns
 from .worker_scheduler import WorkerScheduler
+from .hooks import run_hook
 
 
 class Rule:
@@ -64,7 +65,7 @@ class AlertEngine:
         self.pool = self.worker_scheduler.lane("notification")
         self.snoozes = {}
         self.quiet = None
-        self.quiet_zone = "America/Los_Angeles"
+        self.quiet_zone = "local"
         for name, err in self.errors.items():
             store.event("alert_error", f"alert rule '{name}': {err}", name=name)
 
@@ -81,19 +82,22 @@ class AlertEngine:
             return []
         now = time.time()
         fired: List[dict] = []
+        deliveries = []
         cns = None
         for rule in self.rules:
             if rule.expr is None:
                 continue
+            from .expr import EvalBudget
+            budget = EvalBudget()
             try:
                 if rule.scope == "cluster":
                     cns = cns if cns is not None else cluster_ns(snap, self.user, marks, tags)
-                    hits = [("*", "", bool(rule.expr(cns)))]
+                    hits = [("*", "", bool(rule.expr(cns, budget=budget)))]
                 else:
                     hits = []
                     for j in snap.get("jobs", []):
                         ns = job_ns(j, snap, marks, tags)
-                        hits.append((j.id, j.name, bool(rule.expr(ns))))
+                        hits.append((j.id, j.name, bool(rule.expr(ns, budget=budget))))
             except ExprError as e:
                 if rule.name not in self.errors:
                     self.errors[rule.name] = str(e)
@@ -114,13 +118,14 @@ class AlertEngine:
                 text = f"{rule.name}: {key + ' ' + name if key != '*' else rule.when}".strip()
                 ev = self.store.event("alert", text, job_id=key if key != "*" else "", name=name, rule=rule.name)
                 fired.append(ev)
-                self.fire(rule, ev)
+                self.fire(rule, ev, batch=deliveries)
+        self._deliver(deliveries)
         if fired:
             with self.lock:
                 self.recent = (self.recent + fired)[-50:]
         return fired
 
-    def fire(self, rule: Rule, ev: dict):
+    def fire(self, rule: Rule, ev: dict, *, batch=None):
         if self.notification_muted(rule.name, str(ev.get("job", "") or "*")):
             return
         if "bell" in rule.actions:
@@ -130,24 +135,43 @@ class AlertEngine:
                     self.bell_fn()
                 except Exception:
                     pass
-        if "notify" in rule.actions and self.notify:
+        if batch is not None:
+            batch.append((rule, ev))
+        else:
+            self._deliver([(rule, ev)])
+
+    def _deliver(self, deliveries):
+        notifications = [dict(event, kind="alert") for rule, event in deliveries
+                         if "notify" in rule.actions]
+        if notifications and self.notify:
             try:
-                self.notify(dict(ev, kind="alert"))
+                publish = getattr(self.notify, "notify_many", None)
+                if callable(publish):
+                    publish(notifications)
+                else:
+                    for event in notifications:
+                        self.notify(event)
             except Exception:
                 pass
-        if "command" in rule.actions and rule.command:
-            env = dict(os.environ, RAVEN_EVENT="alert", RAVEN_ALERT=rule.name, RAVEN_JOBID=str(ev.get("job", "")), RAVEN_JOBNAME=str(ev.get("name", "")), RAVEN_TEXT=ev["text"])
-
-            def go():
+        commands = {}
+        for rule, event in deliveries:
+            if "command" in rule.actions and rule.command:
+                commands.setdefault(rule.command, []).append((rule.name, event))
+        for command, records in commands.items():
+            events = [event for _, event in records]
+            name, first = records[0]
+            env = dict(os.environ, RAVEN_EVENT="alert", RAVEN_ALERT=name,
+                       RAVEN_JOBID=str(first.get("job", "")),
+                       RAVEN_JOBNAME=str(first.get("name", "")), RAVEN_TEXT=first["text"])
+            def go(command=command, events=events, env=env):
                 try:
-                    subprocess.run(rule.command, shell=True, env=env, timeout=30, capture_output=True)
+                    run_hook(command, events, timeout=30, env=env)
                 except (OSError, subprocess.TimeoutExpired):
                     pass
-
             try:
                 self.pool.submit(go)
             except RuntimeError as exc:
-                self.errors[rule.name] = str(exc)[:512]
+                self.errors[name] = str(exc)[:512]
 
     def close(self):
         self.pool.shutdown(wait=False, cancel_futures=True)
@@ -180,7 +204,7 @@ class AlertEngine:
             else:
                 self.snoozes.pop((rule, job), None)
 
-    def set_quiet(self, start=None, end=None, zone="America/Los_Angeles"):
+    def set_quiet(self, start=None, end=None, zone=None):
         if start is None:
             with self.lock:
                 self.quiet = None
@@ -196,9 +220,11 @@ class AlertEngine:
         window = minutes(start), minutes(end)
         if window[0] == window[1]:
             raise ValueError("Choose different start and end times, or use quiet off.")
+        zone = zone or "local"
         if not isinstance(zone, str) or not zone or len(zone) > 96 or not zone.isprintable():
             raise ValueError("Choose a valid IANA timezone name.")
-        ZoneInfo(zone)  # Validate the zone before changing the current controls.
+        if zone != "local":
+            ZoneInfo(zone)  # Validate before changing the current controls.
         with self.lock:
             self.quiet, self.quiet_zone = window, zone
 
@@ -210,7 +236,8 @@ class AlertEngine:
                 return True
             window, zone = self.quiet, self.quiet_zone
         if window:
-            local = datetime.fromtimestamp(now, ZoneInfo(zone))
+            local = (datetime.fromtimestamp(now).astimezone() if zone == "local"
+                     else datetime.fromtimestamp(now, ZoneInfo(zone)))
             minute = local.hour * 60 + local.minute
             start, end = window
             return start <= minute < end if start < end else minute >= start or minute < end

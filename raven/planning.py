@@ -2,26 +2,16 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import fields, is_dataclass
 import json
 import math
 from itertools import islice
 
 from . import clock
-from .model import secs
-
-PLANNING_VIEWS = [("predict", "Resources"), ("forecast", "Forecast"), ("blockers", "Blockers"),
-                  ("tradeoffs", "Tradeoffs"), ("scaling", "Scaling"), ("workflow", "Workflow"),
-                  ("checkpoint-advice", "Checkpoint advice")]
+from .planning_catalog import PLANNING_VIEWS as PLANNING_VIEWS
+from .planning_records import record as record
 
 
-def record(value):
-    if isinstance(value, Mapping):
-        return dict(value) if len(value) <= 256 else {}
-    if is_dataclass(value) and not isinstance(value, type):
-        names = fields(value)
-        return {field.name: getattr(value, field.name) for field in names} if len(names) <= 256 else {}
-    return {}
+
 
 
 def _records(values, label):
@@ -94,7 +84,7 @@ def select_job(jobs, jid=None, *, pending=False):
     return rows[0] if rows else None
 
 
-def analyze(view, source, *, snap=None, job=None, observations=(), now=None, overrides=None):
+def analyze(view, source, *, snap=None, job=None, observations=(), now=None, overrides=None, cancel=None):
     """Source is a planning bundle, individual recipe, or a list of explicit records."""
     if isinstance(source, list) and view in ("forecast", "blockers"):
         source = {"jobs": source}
@@ -141,13 +131,13 @@ def analyze(view, source, *, snap=None, job=None, observations=(), now=None, ove
         if isinstance(source, list):
             history = source
         query = mapping.get("query", record(job) if job is not None else None)
-        return predict(history, query, coverage=mapping.get("coverage", .8))
+        return predict(history, query, coverage=mapping.get("coverage", .8), cancel=cancel)
     if view == "forecast":
         from .forecast import forecast
         if job is None:
             return {"status": "empty", "summary": "No queued job is available for forecasting."}
         return forecast(job, history, observations=mapping.get("observations", () if frozen_jobs else observations),
-                        now=now, coverage=mapping.get("coverage", .8))
+                        now=now, coverage=mapping.get("coverage", .8), cancel=cancel)
     if view == "blockers":
         from .blockers import explain
         if job is None:
@@ -166,7 +156,7 @@ def analyze(view, source, *, snap=None, job=None, observations=(), now=None, ove
         if candidates is None:
             candidates = candidates_from_history(history, job)
         return compare(candidates, history=history, queue_history=_records(mapping.get("queue_history", []), "queue history"),
-                       coverage=mapping.get("coverage", .8))
+                       coverage=mapping.get("coverage", .8), cancel=cancel)
     if view == "scaling":
         from .scaling import analyze as scaling_analyze, plan
         action = control.get("action")

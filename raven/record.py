@@ -52,8 +52,9 @@ def _json_float(text):
 
 
 class RecordingBackend(Backend):
-    def __init__(self, inner: Backend, path: str, meta: Optional[dict] = None):
+    def __init__(self, inner: Backend, path: str, meta: Optional[dict] = None, *, owns_inner=False):
         self.inner, self.path = inner, path
+        self._owns_inner, self._inner_closed = owns_inner, False
         self.probe_json = getattr(inner, "probe_json", False)
         self.lock = threading.Lock()
         self.n = 0
@@ -91,6 +92,17 @@ class RecordingBackend(Backend):
         self._write(dict(requested_at=t, cmd=list(cmd), out=out, dt=round(dt, 4)))
         return out, dt
 
+    def inspect_command(self, argv, timeout, limit, cancel=None, *, depth=0):
+        from .bounded_command import execute
+        started = time.time()
+        try:
+            out = execute(self.inner, argv, timeout, limit, cancel, depth + 1)
+        except Exception as exc:
+            self._write(dict(requested_at=started, cmd=list(argv), err=str(exc)[:4096]))
+            raise
+        self._write(dict(requested_at=started, cmd=list(argv), out=out, dt=time.time() - started))
+        return out
+
     def call(self, cmd: Sequence[str], timeout: float = 15.0) -> Tuple[bool, str]:
         t = time.time()
         ok, out = self.inner.call(cmd, timeout)
@@ -103,6 +115,11 @@ class RecordingBackend(Backend):
                 self.f.close()
             except OSError:
                 pass
+            inner = self.inner if self._owns_inner and not self._inner_closed else None
+            self._inner_closed = True
+        close = getattr(inner, "close", None)
+        if callable(close):
+            close()
 
 
 def read_recording(path: str) -> Tuple[dict, List[dict]]:
@@ -291,8 +308,20 @@ class ReplayBackend(Backend):
             index = key.index("-o") + 1
             formats = _LEGACY_FORMATS.get(os.path.basename(key[0]), {})
             legacy_formats = formats.get(key[index], ()) if index < len(key) else ()
-            for legacy in legacy_formats:
-                rec = self._pick(key[:index] + (legacy,) + key[index + 1:], now)
+            candidates = [key[:index] + (legacy,) + key[index + 1:] for legacy in legacy_formats]
+            if os.path.basename(key[0]) == "sacct" and key.count("-X") == 1 and index < len(key) and key[index] in formats:
+                # Released accounting recordings predate allocation-only
+                # reads. Their extra step rows are still discarded by the
+                # accounting parser, so only this known read upgrade aliases.
+                # User, time window, all other flags and publication time stay
+                # exact; live scheduler requests retain their -X bound.
+                allocation_index = key.index("-X")
+                older = key[:allocation_index] + key[allocation_index + 1:]
+                older_index = older.index("-o") + 1
+                candidates.append(older)
+                candidates.extend(older[:older_index] + (legacy,) + older[older_index + 1:] for legacy in legacy_formats)
+            for candidate in candidates:
+                rec = self._pick(candidate, now)
                 if rec is not None:
                     break
         if rec is None:

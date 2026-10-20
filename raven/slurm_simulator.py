@@ -142,7 +142,7 @@ def validate(document):
 
 def _run(document, *, factor=1., cancel=None, initial_delay=0., work_budget=None):
     jobs, nodes, policy = document["jobs"], document["nodes"], document["policy"]
-    by_id = {job["id"]: job for job in jobs}
+    _by_id = {job["id"]: job for job in jobs}
     waiting = sorted(jobs, key=lambda job: (job["submit"], job["id"]))
     running, completed, failed, output, pending = [], set(), set(), [], []
     blocked = {}

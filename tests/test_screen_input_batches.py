@@ -148,6 +148,8 @@ def test_wheel_counts_and_mouse_click_identity_survive_batch(monkeypatch):
                           logs=SimpleNamespace(path="same.log", browser=False),
                           keymap={"up": "up"}, handle=lambda key: calls.append(("key", key)),
                           click=lambda *args, **kw: calls.append(("click", args, kw)))
+    from raven.workbench import bind_actions
+    bind_actions(app)
     wheel = (0, 20, 12, 0, curses.BUTTON4_PRESSED)
     click = (0, 10, 7, 0, curses.BUTTON1_PRESSED | curses.BUTTON_SHIFT)
     window = InputWindow([wheel, wheel, click, curses.KEY_DOWN], mouse)
@@ -213,12 +215,16 @@ def test_log_burst_then_visual_yank_preserves_original_selected_bytes(dashboard,
 
 def test_curses_loop_repaints_before_queued_click_and_following_action(dashboard, monkeypatch):
     app, views, store = dashboard
+    app.cfg.data["raven"] = {"managed": True}
     mouse = deque()
     monkeypatch.setattr(curses, "getmouse", mouse.popleft)
     monkeypatch.setattr(curses, "has_colors", lambda: False)
     for name in ("curs_set", "mousemask", "mouseinterval", "doupdate", "set_escdelay"):
         monkeypatch.setattr(curses, name, lambda *args: None)
     monkeypatch.setattr(screen.time, "monotonic", lambda: 0)
+    # The visible wall clock is due in 75 ms. Deadline-driven waiting must
+    # honor that earlier refresh instead of retaining the former 200 ms poll.
+    monkeypatch.setattr("raven.clock.now", lambda: 100.925)
     row = next(y for y, kind, _ in app.last_hits if kind == "job")
 
     class PaintedWindow(InputWindow):
@@ -263,7 +269,7 @@ def test_curses_loop_repaints_before_queued_click_and_following_action(dashboard
     assert app.quit and not window.values
     assert app.marks == set(clicks) and len(clicks) == 1
     assert len(frames) == 4  # initial, scrolled, clicked, marked
-    assert window.timeouts[0] == 200 and window.timeouts[-1] == 200
+    assert window.timeouts[0] == 200 and window.timeouts[-1] == 75
 
 
 def test_discarded_mouse_report_keeps_the_published_document(dashboard):

@@ -1,0 +1,13 @@
+{
+  "source": "/workspace/Raven/raven/__init__.py",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "tasks": 50,
+  "startup_wall_ms": 56.6317210032139,
+  "task_median_wall_ms": 5.711967998649925,
+  "batch_wall_seconds": 0.29415582699584775,
+  "worker_and_children_cpu_seconds": 0.29,
+  "worker_peak_rss_kib": 17412,
+  "driver_peak_rss_kib": 40180,
+  "driver_python_allocation_peak_bytes": 140946,
+  "qualification": "Actual local software tasks; no scheduler, GPU or cross-host qualification. Run phases without competing heavy tests."
+}

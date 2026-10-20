@@ -6,12 +6,16 @@ not sandboxed.
 
 Raven checks the file and every directory leading to it before reading:
 
-- User configuration and plugins must belong to you or root. Neither files nor
-  directories may be writable by another user or group.
+- User configuration and plugins must belong to you or root. Group write is
+  accepted for a user-private primary group: its name matches your login, its
+  GID matches your primary GID, and it has no explicit members. Group permissions
+  below a user-owned `0700` directory are also accepted. World write is rejected.
 - Mandatory site policy must belong to root and must be reached through
   administrator-owned directories. Readable site files such as mode `0644` are
   supported; public readability is different from permission to modify them.
-- Symbolic links, nonregular files, oversized files and files changed during a
+- A user-selected home, shared root, or explicit plugin directory is resolved
+  once. Symbolic links inside
+  that root, nonregular files, oversized files and files changed during a
   read are rejected. Plugin execution uses the verified source bytes, without
   reopening the path or substituting a bytecode cache.
 - Shared sticky temporary ancestors are permitted only when owned by the system
@@ -30,9 +34,33 @@ chmod go-w ~/.config/raven/plugins/*.py
 ```
 
 Use only the commands applicable to directories and files that actually exist.
-A symlinked configuration must be replaced by a regular reviewed copy; do not
-change permissions on an unexpected target. Site-policy ownership is an
+An internal symlinked configuration must be replaced by a regular reviewed
+copy; do not change permissions on an unexpected target. Site-policy ownership is an
 administrator task. Setup can save only your own configuration.
+
+## Deliberately shared lab directories
+
+For a lab project owned by a principal investigator or a shared lab group,
+review its contents and explicitly trust the selected root:
+
+```bash
+raven trust /project/LabX
+raven trust --list
+raven trust /project/LabX --remove
+```
+
+Use `--yes` for a noninteractive grant after reviewing the directory. A grant
+allows its owner and group to supply configuration and executable plugins;
+every person who can write there can run code as you. It does not change Unix
+permissions, bypass mandatory site policy, permit world write, or grant access
+outside the selected root. A moved, replaced, or differently owned root needs
+a new grant. The registry is a bounded `0600` file under your private Raven
+configuration directory. Revocation takes effect on the next read.
+
+Raven reports detected installer path problems together. Apply its exact quoted
+correction only after reviewing those paths. It never recursively changes
+existing permissions on your behalf. Read-only diagnostics report the effective
+mutable-state path and its filesystem/ownership restrictions.
 
 Readable `0644` configuration remains accepted for nonsecret preferences. Store
 credentials in the supported agent/reference mechanism instead of embedding

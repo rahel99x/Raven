@@ -1,7 +1,0 @@
-{
-  "version": "1.25.0",
-  "tarball": "https://registry.npmjs.org/speedscope/-/speedscope-1.25.0.tgz",
-  "integrity": "sha512-cpf9HWTZf1ijLXBJrk87Ve/54tnYx6rlf0gUThvn3ook6h63hLXVOQiMf44PT+XoV503cPfvfiT5gP5vojp6Ag==",
-  "schema_path": "package/dist/release/file-format-schema.json",
-  "schema_sha256": "03d098921294fca54ac1b67ea050138d867e44228c7cb140d958fbdfe345c911"
-}

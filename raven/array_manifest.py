@@ -149,7 +149,7 @@ def read(path, files):
     size = before.get("size")
     if type(size) is not int or not 0 < size <= MAX_BYTES:
         raise ValueError("array manifest must be a nonempty regular file of at most 4 MiB")
-    from .remote import LocalFiles
+    from .local_files import LocalFiles
     if type(files) is LocalFiles:
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
         try:
@@ -177,7 +177,7 @@ def verify(path, files, manifest):
 
 def retry_metadata(manifest, path, specification):
     """Keep original identities, without enumerating a possibly huge task range."""
-    from .arrays import parse_range
+    from .array_ranges import parse_range
     ranges = parse_range(specification)
     retained = [entry for entry in manifest.entries if any(r["start"] <= entry.index <= r["end"] and
                 (entry.index - r["start"]) % r["step"] == 0 for r in ranges)]

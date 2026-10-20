@@ -90,8 +90,10 @@ with raven.watch(train_epoch, "loss", "val_acc", kind="objective"):
 
 It does not enable line-by-line tracing. A local absent on a return path
 contributes no value; yields, coroutine suspension and exception unwinds do not
-contribute completed-return observations. The watch chains an existing profile
-callback and applies to the current thread. Install it inside each thread that
+contribute completed-return observations. On CPython 3.12+, a watch enables
+return events only for the selected code object. Older Python versions, or a
+process with no free monitoring tool slot, use a profile callback that chains
+the existing profiler. The watch reports on the current thread. Install it inside each thread that
 needs it, and use the context manager or returned handle's `close()` to remove
 it. `measure` and `metric` are simpler for concurrent producers.
 
@@ -137,6 +139,22 @@ provides the metrics API, not the full Raven dashboard package. Launch readiness
 reports the detected client and possible shadowing; remove or relocate a stale
 vendored copy when the application needs other Raven modules.
 
+Applications using Sentry's legacy package named `raven` can use a distinct
+client module:
+
+```bash
+raven report vendor-client --root "$PWD" --path raven_metrics.py
+```
+
+```python
+import raven_metrics as metrics
+from raven import Client  # The application's installed Sentry package.
+metrics.metric("loss", 0.125)
+```
+
+A launch appends its bundled fallback after installed application packages;
+it does not replace an existing package named `raven`.
+
 ## Multiple processes and frameworks
 
 | Program | Reporting pattern |
@@ -151,7 +169,9 @@ vendored copy when the application needs other Raven modules.
 
 Rank discovery first uses an already initialized PyTorch or MPI runtime.
 Without one, it checks `RANK`, `OMPI_COMM_WORLD_RANK`, `PMI_RANK`, then
-`SLURM_PROCID`. Launcher-specific identity takes precedence over stale rank
+`SLURM_PROCID`, skipping empty or invalid values and recording a diagnostic.
+Rank and helper identity are refreshed when a distributed runtime initializes,
+including when the first measurement preceded initialization. Launcher-specific identity takes precedence over stale rank
 variables inherited from an outer Slurm allocation. Discovery does not import
 or initialize those frameworks. Use `raven.configure(all_ranks=True)`
 only when separate rank streams are intended. Those streams use
@@ -176,7 +196,23 @@ communicator it records coordinator-only coverage; that value is not a global
 sum or mean. An explicit reduction performs a readiness agreement followed by
 the value reduction. If any rank supplies an invalid scalar or metric field,
 all participants omit that observation. A local recording failure does not
-remove the rank from later collectives.
+remove the rank from later collectives. An unconfigured peer still participates
+in an explicit reduction. A raw-fork child cannot use its parent's inherited
+communicator; initialize a supported distributed runtime in a fresh process.
+
+NCCL reductions use `LOCAL_RANK` when available, checking the reported tensor's
+device against it. They do not change the application's current CUDA device.
+An inconsistent tensor device omits the observation through the collective
+readiness agreement. GPU/NCCL execution still requires qualification on the
+actual GPU configuration.
+
+The first coordinator exports its process ownership identity to subsequently
+started children. An ordinary evaluation subprocess counts metrics without
+merging them into the training stream. Call `configure(path=...)` explicitly
+for a separate reporting destination. New records include the producing `pid`;
+older records without that optional field remain valid. Independent programs
+must use distinct run directories rather than relying on inherited automatic
+step counters to establish a combined ordering.
 
 Keep `every=N` schedules identical across ranks. Wall-clock `seconds=` sampling
 with `reduce=` is refused because independent clocks could make one rank skip

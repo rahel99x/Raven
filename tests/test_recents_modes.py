@@ -274,7 +274,7 @@ def test_sequential_context_menu_does_not_promote_member_to_hidden_group(app):
 
 def test_grouped_prefix_does_not_admit_all_siblings_or_repeat_inference(app):
     app.store.apply_finished([finished("52_" + str(i), 1) for i in range(1000)])
-    with patch.object(table_ui, "matches", wraps=table_ui.matches) as matches:
+    with patch.object(recent_history, "matches", wraps=recent_history.matches) as matches:
         assert len(app.recent_jobs()) == 5
         assert matches.call_count == 5
     registry = job_groups.registry(app)

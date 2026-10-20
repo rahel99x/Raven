@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from . import layout as L
-from .log_text import display_text
+from .job_logs.text import display_text
 
 
 def buttons(g, width, choices, *, selected=None, group="buttons", prefix="", gap=1):

@@ -4,17 +4,46 @@ The terminal pointer uses thin Braille strokes in the theme accent. These paths 
 inspect published graph geometry. They do not sample, scan files, copy series,
 or request scheduler work. Zoom bounds are transient display state.
 """
+
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass, replace
+from dataclasses import replace
 import math
 import time
 
+from .ui.geometry import (
+    Plot as Plot,
+    plot_state as initialize,
+    translate_plot_rect as _translate,
+    plot_rect as _rect,
+    intersect_plot_rect as _intersection,
+    take_plots,
+    put_plots,
+    map_plots,
+)
 from . import charts, layout as L, selector_glyphs as G
-from .interaction import Rect
+from .ui.geometry import Rect
 
+from .ui.chart_state import (
+    ZoomIdentity as ZoomIdentity,
+    _display_scope as _display_scope,
+    _zoom_identity as _zoom_identity,
+    clear_source_zoom as clear_source_zoom,
+    _key as _key,
+    key as key,
+    _state as _state,
+    _context as _context,
+    _native as _native,
+    _capture_context as _capture_context,
+    _blocked as _blocked,
+    _at as _at,
+    cancel as cancel,
+)
 from .pointer_routing import capture_handler
+
+# Public compatibility aliases preserve class/function identity for adapters.
+take_since, put_records, map_records = take_plots, put_plots, map_plots
 
 MAX_PLOTS = 96
 MAX_ZOOMS = 128
@@ -30,189 +59,23 @@ CAPTURE_MARGIN = 3
 CROSSHAIR_STYLE = "accent"
 
 
-@dataclass(frozen=True)
-class Plot:
-    key: tuple
-    rect: Rect
-    visible: Rect
-    x_bounds: tuple
-    y_bounds: tuple
-    scale: str = "linear"
-    layer: int = 0
-    kind: str = "metric"
-    payload: tuple = ()
-    viewport: Rect | None = None
-    axes: Rect | None = None
-    context: tuple | None = None
-    pane: str | None = None
-
-
-def initialize(app):
-    state = getattr(app, "chart_interaction_state", None)
-    if not isinstance(state, dict):
-        state = {"pending": [], "plots": (), "pointer": None, "hovered": None,
-                 "capture": None, "zoom": OrderedDict(), "last_key": None,
-                 "revision": 0, "frame_context": None, "ascii": False, "cancelled_release": False}
-        app.chart_interaction_state = state
-    return state
-
-
-@dataclass(frozen=True)
-class ZoomIdentity:
-    """View-local display state without altering the shared source identity."""
-    source: tuple
-    pane: str
-
-
-def _display_scope(app):
-    explicit = getattr(app, "pane_identity", None)
-    if isinstance(explicit, str) and explicit:
-        return explicit
-    mode, tab = getattr(app, "mode", "main"), getattr(app, "tab", "")
-    if mode == "analysis":
-        return "analysis:" + str(_state(app, "analysis_state").get("modal", ""))
-    if tab in ("jobs", "history"):
-        panel = _state(app, "job_panel_state")
-        view = panel.get("mode", "inspector")
-        if view in ("analytics", "research"):
-            view += ":" + str(panel.get(view + "_view", "job" if view == "analytics" else "experiment"))
-        return tab + ":details:" + view
-    if tab == "research":
-        return "research:" + str(getattr(app, "research_view", "experiment"))
-    # Keep the existing primary Analytics key format for source consumers.
-    return None
-
-
-def _zoom_identity(identity, pane):
-    return ZoomIdentity(identity, pane) if pane is not None else identity
-
-
-def clear_source_zoom(app, identity, canonical):
-    """A Live toggle clears boxes only in this presentation of the source."""
-    state = initialize(app)
-    pane = _display_scope(app)
-    removed = [key for key in state["zoom"]
-               if (key.pane if isinstance(key, ZoomIdentity) else None) == pane
-               and canonical(key.source if isinstance(key, ZoomIdentity) else key) == identity]
-    for key in removed:
-        state["zoom"].pop(key, None)
-    if removed:
-        state["revision"] += 1
-    return bool(removed)
-
-
-def _translate(rect, dy=0, dx=0):
-    return Rect(rect.top + dy, rect.left + dx, rect.bottom + dy, rect.right + dx) if rect else None
-
-
 def _finite(value):
     try:
-        return isinstance(value, (float, int)) and not isinstance(value, bool) and math.isfinite(value)
+        return (
+            isinstance(value, (float, int))
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+        )
     except (ValueError, TypeError, OverflowError):
         return False
-
-
-def _key(key):
-    if isinstance(key, str):
-        key = (key,)
-    if not isinstance(key, tuple) or not 0 < len(key) <= MAX_KEY_PARTS:
-        return None
-    if any(not isinstance(value, (str, int, float, bool, type(None))) or
-           isinstance(value, str) and (len(value) > MAX_KEY_TEXT or value and not value.isprintable()) or
-           isinstance(value, float) and not math.isfinite(value) for value in key):
-        return None
-    return key
-
-
-def key(app, metric, source, jid=None, *, scope="metric", attempt=None):
-    """Identify the actual source and attempt, independent of fresh snapshots."""
-    research = getattr(app, "research", None)
-    project = getattr(app, "project_state", {})
-    project = project if isinstance(project, dict) else {}
-    binding = project.get("binding", {})
-    binding = binding if isinstance(binding, dict) and str(binding.get("job_id", "")) == str(jid or "") else {}
-    native = (isinstance(scope, str) and scope.startswith("resource-") or
-              source == "Raven session resource samples" and isinstance(attempt, str) and attempt.startswith("scheduler:"))
-    identity = (scope, str(jid or ""), str(metric), str(source),
-                attempt if attempt is not None else None if native else binding.get("attempt"),
-                None if native else binding.get("project_root") or project.get("root"),
-                None if native else binding.get("run_id"),
-                None if native else getattr(research, "generation", None))
-    # Do not truncate source paths into accidental identity collisions.
-    return _key(identity)
-
-
-def _state(app, name):
-    value = getattr(app, name, {})
-    return value if isinstance(value, dict) else {}
-
-
-def _context(app):
-    analysis = _state(app, "analysis_state")
-    panel = _state(app, "job_panel_state")
-    project = _state(app, "project_state")
-    toolbar = _state(app, "toolbar_state")
-    binding = project.get("binding", {})
-    binding = binding if isinstance(binding, dict) else {}
-    return (getattr(app, "mode", "main"), getattr(app, "tab", ""),
-            getattr(app, "width", None), getattr(app, "height", None),
-            getattr(app, "selected_id", None), getattr(app, "analytics_job", None),
-            getattr(app, "research_job_id", None), getattr(app, "research_view", None),
-            getattr(app, "analytics_view", None),
-            analysis.get("modal"), analysis.get("chart_job"), analysis.get("metric"),
-            panel.get("mode"), panel.get("research_view"), panel.get("analytics_view"),
-            project.get("root"), binding.get("run_id"), binding.get("job_id"), binding.get("attempt"),
-            getattr(getattr(app, "research", None), "generation", None),
-            toolbar.get("menu"), toolbar.get("panel"))
-
-
-def _native(identity):
-    return bool(identity and isinstance(identity[0], str) and
-                (identity[0].startswith("resource-") or
-                 len(identity) > 4 and identity[0] == "reported-metric" and
-                 identity[3] == "Raven session resource samples" and
-                 isinstance(identity[4], str) and identity[4].startswith("scheduler:")))
-
-
-def _capture_context(app, identity):
-    """Track the displayed source rather than unrelated project readers."""
-    app = getattr(app, "_chart_owner", app)
-    if not _native(identity):
-        return _context(app)
-    analysis, panel, toolbar = (_state(app, name) for name in
-                                ("analysis_state", "job_panel_state", "toolbar_state"))
-    mode, tab = getattr(app, "mode", "main"), getattr(app, "tab", "")
-    selected = (getattr(app, "selected_id", None) if tab in ("jobs", "history") else
-                getattr(app, "analytics_job", None) if tab == "analytics" else None)
-    return (mode, tab, getattr(app, "width", None), getattr(app, "height", None), selected,
-            getattr(app, "analytics_view", None) if tab == "analytics" else None,
-            panel.get("mode") if tab in ("jobs", "history") else None,
-            panel.get("analytics_view") if tab in ("jobs", "history") else None,
-            panel.get("research_view") if tab in ("jobs", "history") else None,
-            analysis.get("modal") if mode == "analysis" else None,
-            analysis.get("chart_job") if mode == "analysis" else None,
-            analysis.get("metric") if mode == "analysis" else None,
-            toolbar.get("menu"), toolbar.get("panel"))
-
-
-def _blocked(app):
-    startup = getattr(app, "startup_state", {})
-    if isinstance(startup, dict) and startup.get("running"):
-        from .startup import active
-        if active(app):
-            return True
-    toolbar = _state(app, "toolbar_state")
-    if toolbar.get("menu") is not None or toolbar.get("panel"):
-        return True
-    mode = getattr(app, "mode", "main")
-    analysis = _state(app, "analysis_state")
-    return mode != "main" and not (mode == "analysis" and analysis.get("modal") in ("chart", "diff"))
 
 
 def begin_frame(app, width=None, height=None):
     """Start one outer frame. Nested renderers must not clear this registry."""
     state = initialize(app)
-    if state["capture"] and state["capture"]["context"] != _capture_context(app, state["capture"]["plot"].key):
+    if state["capture"] and state["capture"]["context"] != _capture_context(
+        app, state["capture"]["plot"].key
+    ):
         cancel(app)
     state["pending"], state["plots"], state["hovered"] = [], (), None
     state["frame_context"] = _context(app)
@@ -226,29 +89,24 @@ def mark(app):
     return len(initialize(app)["pending"])
 
 
-def _rect(value):
-    if isinstance(value, Rect):
-        return value
-    if (isinstance(value, (tuple, list)) and len(value) == 4 and
-            all(isinstance(item, int) and not isinstance(item, bool) for item in value)):
-        return Rect(*value)
-    return None
-
-
-def _intersection(a, b):
-    result = Rect(max(a.top, b.top), max(a.left, b.left), min(a.bottom, b.bottom), min(a.right, b.right))
-    return result if result.top < result.bottom and result.left < result.right else None
-
-
 def _bounds(value):
-    return (tuple(value) if isinstance(value, (tuple, list)) and len(value) == 2 and
-            all(_finite(item) for item in value) and value[0] < value[1] else None)
+    return (
+        tuple(value)
+        if isinstance(value, (tuple, list))
+        and len(value) == 2
+        and all(_finite(item) for item in value)
+        and value[0] < value[1]
+        else None
+    )
 
 
 def _inspector_range(app, identity):
     analysis = _state(app, "analysis_state")
-    return (getattr(app, "mode", "main") == "analysis" and analysis.get("modal") == "chart" and
-            analysis.get("chart_interaction_key") == identity)
+    return (
+        getattr(app, "mode", "main") == "analysis"
+        and analysis.get("modal") == "chart"
+        and analysis.get("chart_interaction_key") == identity
+    )
 
 
 def _cropped(app, identity, scale):
@@ -259,11 +117,18 @@ def _cropped(app, identity, scale):
     if captured_bounds(app, identity, scale=scale) is not None:
         return True
     from .metric_live import canonical, initialize as live_state
+
     if live_state(app)["entries"].get(canonical(identity), {}).get("enabled"):
         return True
     analysis = _state(app, "analysis_state")
-    return bool(_inspector_range(app, identity) and
-                (analysis.get("zoom", 1) != 1 or analysis.get("pan", 0) != 0 or analysis.get("window")))
+    return bool(
+        _inspector_range(app, identity)
+        and (
+            analysis.get("zoom", 1) != 1
+            or analysis.get("pan", 0) != 0
+            or analysis.get("window")
+        )
+    )
 
 
 def record(app, identity, metadata, *, row=0, column=0, scale="linear", layer=0):
@@ -275,118 +140,71 @@ def record(app, identity, metadata, *, row=0, column=0, scale="linear", layer=0)
     """
     state = initialize(app)
     identity = _key(identity)
-    if (identity is None or not isinstance(metadata, dict) or not metadata.get("valid", True) or
-            scale not in ("linear", "log") or
-            any(not isinstance(item, int) or isinstance(item, bool) for item in (row, column, layer)) or
-            len(state["pending"]) >= MAX_PLOTS):
+    if (
+        identity is None
+        or not isinstance(metadata, dict)
+        or not metadata.get("valid", True)
+        or scale not in ("linear", "log")
+        or any(
+            not isinstance(item, int) or isinstance(item, bool)
+            for item in (row, column, layer)
+        )
+        or len(state["pending"]) >= MAX_PLOTS
+    ):
         return None
     empty = metadata.get("has_data", True) is False
     if empty and not _cropped(app, identity, scale):
         return None
-    rect, x_bounds, y_bounds = (_rect(metadata.get("plot_rect")), _bounds(metadata.get("x_bounds")),
-                               _bounds(metadata.get("y_bounds")))
-    if not rect or not x_bounds or not y_bounds or rect.right - rect.left < 3 or rect.bottom - rect.top < 2:
+    rect, x_bounds, y_bounds = (
+        _rect(metadata.get("plot_rect")),
+        _bounds(metadata.get("x_bounds")),
+        _bounds(metadata.get("y_bounds")),
+    )
+    if (
+        not rect
+        or not x_bounds
+        or not y_bounds
+        or rect.right - rect.left < 3
+        or rect.bottom - rect.top < 2
+    ):
         return None
     # The raster itself is bounded. Reject impossible geometry from embedders.
-    if rect.right - rect.left > charts.MAX_COLUMNS or rect.bottom - rect.top > charts.MAX_HEIGHT:
+    if (
+        rect.right - rect.left > charts.MAX_COLUMNS
+        or rect.bottom - rect.top > charts.MAX_HEIGHT
+    ):
         return None
-    rect = Rect(rect.top + row, rect.left + column, rect.bottom + row, rect.right + column)
+    rect = Rect(
+        rect.top + row, rect.left + column, rect.bottom + row, rect.right + column
+    )
     axes = _rect(metadata.get("axis_rect"))
-    if (axes is not None and not (axes.top == rect.top - row and axes.left <= rect.left - column and
-            axes.right == rect.right - column and rect.bottom - row <= axes.bottom <= rect.bottom - row + 3 and
-            0 < axes.right - axes.left <= charts.MAX_COLUMNS + 128)):
+    if axes is not None and not (
+        axes.top == rect.top - row
+        and axes.left <= rect.left - column
+        and axes.right == rect.right - column
+        and rect.bottom - row <= axes.bottom <= rect.bottom - row + 3
+        and 0 < axes.right - axes.left <= charts.MAX_COLUMNS + 128
+    ):
         axes = None
     axes = _translate(axes, row, column)
-    plot = Plot(identity, rect, rect, x_bounds, y_bounds, scale, layer,
-                kind="metric-empty" if empty else "metric", axes=axes,
-                context=_capture_context(app, identity), pane=_display_scope(app))
+    plot = Plot(
+        identity,
+        rect,
+        rect,
+        x_bounds,
+        y_bounds,
+        scale,
+        layer,
+        kind="metric-empty" if empty else "metric",
+        axes=axes,
+        context=_capture_context(app, identity),
+        pane=_display_scope(app),
+    )
     state["pending"].append(plot)
     return plot
 
 
-def place_since(app, first, *, dy=0, dx=0, clip=None):
-    """Translate and clip nested plots without changing their axis mapping.
-
-    A clip is in the translated coordinate system. Repeated placements compose
-    correctly for Research scrolling, Jobs Details, and a docked history pane.
-    """
-    state = initialize(app)
-    if (not isinstance(first, int) or isinstance(first, bool) or not 0 <= first <= len(state["pending"]) or
-            any(not isinstance(item, int) or isinstance(item, bool) for item in (dy, dx))):
-        return
-    clip = _rect(clip) if clip is not None else None
-    for i in range(first, len(state["pending"])):
-        plot = state["pending"][i]
-        if plot is None:
-            continue
-        rect = Rect(plot.rect.top + dy, plot.rect.left + dx, plot.rect.bottom + dy, plot.rect.right + dx)
-        visible = Rect(plot.visible.top + dy, plot.visible.left + dx, plot.visible.bottom + dy, plot.visible.right + dx)
-        viewport = _translate(plot.viewport, dy, dx)
-        if clip is not None:
-            visible = _intersection(visible, clip)
-            viewport = _intersection(viewport, clip) if viewport else clip
-        state["pending"][i] = replace(plot, rect=rect, visible=visible, viewport=viewport,
-                                      axes=_translate(plot.axes, dy, dx)) if visible else None
-
-
-def take_since(app, first):
-    """Detach a candidate layout so discarded width probes publish no plots."""
-    state = initialize(app)
-    if not isinstance(first, int) or isinstance(first, bool) or not 0 <= first <= len(state["pending"]):
-        return ()
-    records = tuple(plot for plot in state["pending"][first:] if plot is not None)
-    del state["pending"][first:]
-    return records
-
-
-def put_records(app, records):
-    """Restore only the final candidate's already transformed geometry."""
-    state = initialize(app)
-    for plot in records:
-        if len(state["pending"]) >= MAX_PLOTS:
-            break
-        if isinstance(plot, Plot):
-            state["pending"].append(plot)
-
-
-def map_records(records, mapping, *, dx=0, dy=0, clip=None):
-    """Map native plot rows through wrapping/sticky-header layout.
-
-    The renderer maps each original row to its actual final row. A curve is
-    dropped if its visible rows become noncontiguous or change relative order.
-    Missing rows at the top/bottom merely clip the gesture's visible region.
-    """
-    if any(not isinstance(item, int) or isinstance(item, bool) for item in (dx, dy)):
-        return ()
-    lookup = mapping if callable(mapping) else getattr(mapping, "get", None)
-    if not callable(lookup):
-        return ()
-    clip = _rect(clip) if clip is not None else None
-    output = []
-    for plot in records:
-        if not isinstance(plot, Plot):
-            continue
-        pairs = []
-        for row in range(plot.visible.top, plot.visible.bottom):
-            mapped = lookup(row)
-            if isinstance(mapped, int) and not isinstance(mapped, bool):
-                pairs.append((row, mapped))
-        if not pairs or any(b[0] != a[0] + 1 or b[1] != a[1] + 1 for a, b in zip(pairs, pairs[1:])):
-            continue
-        offset = pairs[0][1] - pairs[0][0] + dy
-        rect = Rect(plot.rect.top + offset, plot.rect.left + dx, plot.rect.bottom + offset, plot.rect.right + dx)
-        visible = Rect(pairs[0][1] + dy, plot.visible.left + dx,
-                       pairs[-1][1] + dy + 1, plot.visible.right + dx)
-        viewport = _translate(plot.viewport, offset, dx)
-        visible = _intersection(visible, clip) if clip is not None else visible
-        if clip is not None:
-            viewport = _intersection(viewport, clip) if viewport else clip
-        if visible:
-            output.append(replace(plot, rect=rect, visible=visible, viewport=viewport,
-                                  axes=_translate(plot.axes, offset, dx)))
-        if len(output) >= MAX_PLOTS:
-            break
-    return tuple(output)
+from .ui.chart_registry import place_since as place_since
 
 
 def publish(app, width=None, height=None):
@@ -397,18 +215,29 @@ def publish(app, width=None, height=None):
     plots, live_controls = [], []
     if not _blocked(app):
         layer = 1 if getattr(app, "mode", "main") == "analysis" else 0
-        screen = Rect(0, 0, height, width) if isinstance(width, int) and isinstance(height, int) else None
+        screen = (
+            Rect(0, 0, height, width)
+            if isinstance(width, int) and isinstance(height, int)
+            else None
+        )
         for plot in state["pending"]:
             if plot is None or plot.layer != layer:
                 continue
-            visible = _intersection(plot.visible, screen) if screen is not None else plot.visible
+            visible = (
+                _intersection(plot.visible, screen)
+                if screen is not None
+                else plot.visible
+            )
             if visible:
                 viewport = plot.viewport
                 if screen is not None:
                     viewport = _intersection(viewport, screen) if viewport else screen
                 painted = replace(plot, visible=visible, viewport=viewport)
-                (live_controls if plot.kind == "live-controls" else plots).append(painted)
+                (live_controls if plot.kind == "live-controls" else plots).append(
+                    painted
+                )
     from .metric_live import publish as publish_live
+
     publish_live(app, live_controls)
     state["plots"] = tuple(plots)
     state["frame_context"] = _context(app)
@@ -416,16 +245,6 @@ def publish(app, width=None, height=None):
     if state["pointer"]:
         hover(app, *state["pointer"])
     return state["plots"]
-
-
-def _at(app, y, x, *, allow_empty=False):
-    state = initialize(app)
-    if (any(not isinstance(value, int) or isinstance(value, bool) for value in (y, x)) or _blocked(app)):
-        return None
-    return next((plot for plot in reversed(state["plots"]) if plot.visible.contains(y, x) and
-                 (allow_empty or plot.kind != "metric-empty") and
-                 (plot.context == _capture_context(app, plot.key) if plot.context is not None else
-                  state["frame_context"] == _context(app))), None)
 
 
 def hover(app, y, x):
@@ -448,15 +267,19 @@ def hover(app, y, x):
 def _motion_enabled(app, ascii_=None):
     state = initialize(app)
     ascii_ = state["ascii"] if ascii_ is None else ascii_
-    return bool(not ascii_ and getattr(app, "theme", "default") != "reader" and
-                getattr(app, "animations_enabled", True) and getattr(app, "cfg", {}).get("animations", True))
+    return bool(
+        not ascii_
+        and getattr(app, "theme", "default") != "reader"
+        and getattr(app, "animations_enabled", True)
+        and getattr(app, "cfg", {}).get("animations", True)
+    )
 
 
 def _track_pointer(app, plot, y, x, *, snap=False, now=None):
     """Follow the newest event cell immediately, easing only its dot phase."""
     state = initialize(app)
     y, x = _clamp_pointer(plot, y, x)
-    target = (y + .5, x + .5)
+    target = (y + 0.5, x + 0.5)
     visual = state.get("visual")
     now = time.monotonic() if now is None else now
     same = bool(visual and visual["key"] == plot.key and visual["rect"] == plot.visible)
@@ -467,10 +290,31 @@ def _track_pointer(app, plot, y, x, *, snap=False, now=None):
         previous = visual["target"]
         # Start at the entry edge of this *new* cell. An arbitrary burst or
         # reversal never draws the head in an older event's terminal cell.
-        start = (y + (.125 if target[0] > previous[0] else .875 if target[0] < previous[0] else .5),
-                 x + (.25 if target[1] > previous[1] else .75 if target[1] < previous[1] else .5))
-    state["visual"] = {"key": plot.key, "rect": plot.visible, "start": start or target,
-                       "target": target, "started": now}
+        start = (
+            y
+            + (
+                0.125
+                if target[0] > previous[0]
+                else 0.875
+                if target[0] < previous[0]
+                else 0.5
+            ),
+            x
+            + (
+                0.25
+                if target[1] > previous[1]
+                else 0.75
+                if target[1] < previous[1]
+                else 0.5
+            ),
+        )
+    state["visual"] = {
+        "key": plot.key,
+        "rect": plot.visible,
+        "start": start or target,
+        "target": target,
+        "started": now,
+    }
 
 
 def _visual_pointer(app, plot, *, ascii_=None, now=None):
@@ -480,7 +324,7 @@ def _visual_pointer(app, plot, *, ascii_=None, now=None):
     if not raw:
         return None
     y, x = _clamp_pointer(plot, *raw)
-    target = (y + .5, x + .5)
+    target = (y + 0.5, x + 0.5)
     if not _motion_enabled(app, ascii_):
         state["visual"] = None
         return G.locate(*target)
@@ -488,8 +332,15 @@ def _visual_pointer(app, plot, *, ascii_=None, now=None):
         state["visual"] = None
         return G.locate(*target)
     now = time.monotonic() if now is None else now
-    position = G.interpolate(visual["start"], visual["target"], now - visual["started"],
-                             duration=G.SUBCELL_DURATION) or target
+    position = (
+        G.interpolate(
+            visual["start"],
+            visual["target"],
+            now - visual["started"],
+            duration=G.SUBCELL_DURATION,
+        )
+        or target
+    )
     # Keep the visible row/column pinned to the exact latest event even if an
     # embedding adapter supplies stale visual state or a clock moves backwards.
     cell = G.locate(*position)
@@ -506,9 +357,17 @@ def next_deadline(app, now=None):
         state["visual"] = None
         return float("inf")
     capture = state["capture"]
-    plot = capture["plot"] if capture else _at(app, *state["pointer"]) if state["pointer"] else None
-    if capture and (capture["context"] != _capture_context(app, plot.key) or
-                    not any(_same_plot(current, plot) for current in state["plots"])):
+    plot = (
+        capture["plot"]
+        if capture
+        else _at(app, *state["pointer"])
+        if state["pointer"]
+        else None
+    )
+    if capture and (
+        capture["context"] != _capture_context(app, plot.key)
+        or not any(_same_plot(current, plot) for current in state["plots"])
+    ):
         state["visual"] = None
         return float("inf")
     if plot is None or plot.key != visual["key"] or plot.visible != visual["rect"]:
@@ -526,12 +385,23 @@ def active(app):
 
 
 def _same_plot(current, original):
-    return (current is not None and current.key == original.key and current.rect == original.rect and
-            current.visible == original.visible and current.scale == original.scale and
-            current.x_bounds == original.x_bounds and current.y_bounds == original.y_bounds and
-            (current.kind == original.kind or {current.kind, original.kind} <= {"metric", "metric-empty"}) and
-            current.viewport == original.viewport and current.axes == original.axes and current.context == original.context
-            and current.pane == original.pane)
+    return (
+        current is not None
+        and current.key == original.key
+        and current.rect == original.rect
+        and current.visible == original.visible
+        and current.scale == original.scale
+        and current.x_bounds == original.x_bounds
+        and current.y_bounds == original.y_bounds
+        and (
+            current.kind == original.kind
+            or {current.kind, original.kind} <= {"metric", "metric-empty"}
+        )
+        and current.viewport == original.viewport
+        and current.axes == original.axes
+        and current.context == original.context
+        and current.pane == original.pane
+    )
 
 
 def capture_bounds(plot):
@@ -544,43 +414,44 @@ def capture_bounds(plot):
     axis = _intersection(axis, plot.viewport) if plot.viewport else axis
     if axis is None:
         return None
-    expanded = Rect(axis.top - CAPTURE_MARGIN, axis.left - CAPTURE_MARGIN,
-                    axis.bottom + CAPTURE_MARGIN, axis.right + CAPTURE_MARGIN)
+    expanded = Rect(
+        axis.top - CAPTURE_MARGIN,
+        axis.left - CAPTURE_MARGIN,
+        axis.bottom + CAPTURE_MARGIN,
+        axis.right + CAPTURE_MARGIN,
+    )
     return _intersection(expanded, plot.viewport) if plot.viewport else expanded
 
 
 def _clamp_pointer(plot, y, x):
-    return (min(plot.visible.bottom - 1, max(plot.visible.top, y)),
-            min(plot.visible.right - 1, max(plot.visible.left, x)))
+    return (
+        min(plot.visible.bottom - 1, max(plot.visible.top, y)),
+        min(plot.visible.right - 1, max(plot.visible.left, x)),
+    )
 
 
 def tick(app, now=None):
     state = initialize(app)
     capture = state["capture"]
     if capture:
-        current = next((plot for plot in state["plots"] if _same_plot(plot, capture["plot"])), None)
+        current = next(
+            (plot for plot in state["plots"] if _same_plot(plot, capture["plot"])), None
+        )
         now = time.monotonic() if now is None else now
-        if (_blocked(app) or capture["context"] != _capture_context(app, capture["plot"].key) or
-                not _same_plot(current, capture["plot"]) or
-                now - capture["last"] > CAPTURE_TIMEOUT):
+        if (
+            _blocked(app)
+            or capture["context"] != _capture_context(app, capture["plot"].key)
+            or not _same_plot(current, capture["plot"])
+            or now - capture["last"] > CAPTURE_TIMEOUT
+        ):
             cancel(app)
-    if _blocked(app) or state["hovered"] is not None and state["pointer"] and _at(app, *state["pointer"]) is None:
+    if (
+        _blocked(app)
+        or state["hovered"] is not None
+        and state["pointer"]
+        and _at(app, *state["pointer"]) is None
+    ):
         state["hovered"] = None
-
-
-def cancel(app):
-    """Discard a preview and consume its delayed release.
-
-    Zoom changes only on a valid release within the captured plot's bounded
-    tolerance. Its coordinates are clamped to the actual visible data cells.
-    """
-    state = initialize(app)
-    was_active = state["capture"] is not None
-    state["capture"] = None
-    state["visual"] = None
-    if was_active:
-        state["cancelled_release"] = True
-    return was_active
 
 
 def _say(app, message):
@@ -591,28 +462,44 @@ def _say(app, message):
 
 def _apply(app, plot, target):
     from .metric_live import stop_for_zoom
+
     stop_for_zoom(app, plot.key)
     state = initialize(app)
     zooms = state["zoom"]
     # Legacy/headless callers construct Plot directly without published pane
     # metadata. Bind those to the caller's presentation; published plots keep
     # their original scope even when the root App receives the pointer event.
-    pane = plot.pane if plot.context is not None or plot.pane is not None else _display_scope(app)
+    pane = (
+        plot.pane
+        if plot.context is not None or plot.pane is not None
+        else _display_scope(app)
+    )
     identity = _zoom_identity(plot.key, pane)
     old = zooms.get(identity)
     undo = list(old.get("undo", ())) if old else []
-    undo.append({"x": old["x"], "y": old["y"], "fit_y": old.get("fit_y", False)} if old else None)
+    undo.append(
+        {"x": old["x"], "y": old["y"], "fit_y": old.get("fit_y", False)}
+        if old
+        else None
+    )
     zooms[identity] = {**target, "scale": plot.scale, "undo": undo[-MAX_UNDO:]}
     zooms.move_to_end(identity)
     while len(zooms) > MAX_ZOOMS:
         zooms.popitem(last=False)
     state["last_key"] = plot.key
     state["revision"] += 1
-    _say(app, ("Chart time range zoomed; Y fits observed data" if target.get("fit_y") else "Chart area zoomed") +
-         "; u undoes, 0 resets while over this graph")
+    _say(
+        app,
+        (
+            "Chart time range zoomed; Y fits observed data"
+            if target.get("fit_y")
+            else "Chart area zoomed"
+        )
+        + "; u undoes, 0 resets while over this graph",
+    )
 
 
-@capture_handler("chart_interaction")
+@capture_handler("chart_interaction", cancel=cancel)
 def handle_mouse(app, y, x, button="left", shift=False):
     state = initialize(app)
     previous = state["capture"]
@@ -626,7 +513,11 @@ def handle_mouse(app, y, x, button="left", shift=False):
         return True
     if button == "drag" and capture is None and state.get("cancelled_release"):
         return True
-    if previous is not None and capture is None and button in ("motion", "drag", "release"):
+    if (
+        previous is not None
+        and capture is None
+        and button in ("motion", "drag", "release")
+    ):
         return True
     if button in ("motion", "drag"):
         hover(app, y, x)
@@ -649,17 +540,32 @@ def handle_mouse(app, y, x, button="left", shift=False):
             if margin is None or not margin.contains(y, x):
                 return True
             y, x = _clamp_pointer(plot, y, x)
-            if (abs(x - start_x) < 2 or
-                    capture.get("shift", False) and abs(y - start_y) < 1):
+            if (
+                abs(x - start_x) < 2
+                or capture.get("shift", False)
+                and abs(y - start_y) < 1
+            ):
                 return True
             left, right = sorted((start_x, x))
             top, bottom = sorted((start_y, y))
             # Terminal cells represent the endpoints of the actual plotted axes.
-            xf = lambda value: (value - plot.rect.left) / (plot.rect.right - plot.rect.left - 1)
-            yf = lambda value: 1 - (value - plot.rect.top) / (plot.rect.bottom - plot.rect.top - 1)
-            target = {"x": (charts._between(*plot.x_bounds, xf(left)), charts._between(*plot.x_bounds, xf(right))),
-                      "y": (charts._between(*plot.y_bounds, yf(bottom)), charts._between(*plot.y_bounds, yf(top))),
-                      "fit_y": not capture.get("shift", False)}
+            xf = lambda value: (
+                (value - plot.rect.left) / (plot.rect.right - plot.rect.left - 1)
+            )
+            yf = lambda value: (
+                1 - (value - plot.rect.top) / (plot.rect.bottom - plot.rect.top - 1)
+            )
+            target = {
+                "x": (
+                    charts._between(*plot.x_bounds, xf(left)),
+                    charts._between(*plot.x_bounds, xf(right)),
+                ),
+                "y": (
+                    charts._between(*plot.y_bounds, yf(bottom)),
+                    charts._between(*plot.y_bounds, yf(top)),
+                ),
+                "fit_y": not capture.get("shift", False),
+            }
             # A horizontal gesture is a valid time range. Keep a finite fallback
             # Y transform; the next renderer fits the actual observed curve.
             if target["fit_y"] and not _bounds(target["y"]):
@@ -677,12 +583,14 @@ def handle_mouse(app, y, x, button="left", shift=False):
     plot = _at(app, y, x, allow_empty=button == "right")
     if button == "right" and plot and shift:
         state["last_key"] = plot.key
-        from .data_export_ui import open_export
-        open_export(app, chart=True)
+        from .ui.owner_ports import charts as chart_actions
+
+        chart_actions(app).open_export(app, chart=True)
         return True
     if button == "right" and plot:
         from .metric_live import stop_for_zoom, cancel as cancel_live
         from .pane_drag import cancel as cancel_pane
+
         cancel_live(app)
         cancel_pane(app)
         selection = getattr(app, "job_selection_state", None)
@@ -698,7 +606,14 @@ def handle_mouse(app, y, x, button="left", shift=False):
         reset(app, plot.key)
         if _inspector_range(app, plot.key):
             analysis = _state(app, "analysis_state")
-            analysis.update(zoom=1.0, pan=0.0, cursor=0, preset="all", chart_box=None, chart_live_window=None)
+            analysis.update(
+                zoom=1.0,
+                pan=0.0,
+                cursor=0,
+                preset="all",
+                chart_box=None,
+                chart_live_window=None,
+            )
             analysis.pop("window", None)
             analysis.pop("chart_visible", None)
         state["last_key"] = plot.key
@@ -711,8 +626,14 @@ def handle_mouse(app, y, x, button="left", shift=False):
         state["last_key"] = plot.key
         if button == "press":
             state["cancelled_release"] = False
-            state["capture"] = {"plot": plot, "context": _capture_context(app, plot.key), "start": (y, x),
-                                "current": (y, x), "last": time.monotonic(), "shift": bool(shift)}
+            state["capture"] = {
+                "plot": plot,
+                "context": _capture_context(app, plot.key),
+                "start": (y, x),
+                "current": (y, x),
+                "last": time.monotonic(),
+                "shift": bool(shift),
+            }
         hover(app, y, x)
         if button == "press":
             _track_pointer(app, plot, y, x, snap=True)
@@ -724,7 +645,11 @@ def bounds(app, identity, *, scale=None):
     """Get source-specific coordinates without consulting source data."""
     state = initialize(app)
     identity = _key(identity)
-    zoom = state["zoom"].get(_zoom_identity(identity, _display_scope(app))) if identity else None
+    zoom = (
+        state["zoom"].get(_zoom_identity(identity, _display_scope(app)))
+        if identity
+        else None
+    )
     if zoom is None or scale is not None and zoom["scale"] != scale:
         return None
     return {"x": zoom["x"], "y": zoom["y"]}
@@ -734,10 +659,16 @@ def captured_bounds(app, identity, *, scale=None):
     """Hold painted axes during a drag without creating zoom notes or source work."""
     capture = initialize(app)["capture"]
     identity = _key(identity)
-    if (not capture or identity is None or _blocked(app) or capture["plot"].key != identity or
-            capture["plot"].pane != _display_scope(app) or
-            scale is not None and capture["plot"].scale != scale or
-            capture["context"] != _capture_context(app, identity)):
+    if (
+        not capture
+        or identity is None
+        or _blocked(app)
+        or capture["plot"].key != identity
+        or capture["plot"].pane != _display_scope(app)
+        or scale is not None
+        and capture["plot"].scale != scale
+        or capture["context"] != _capture_context(app, identity)
+    ):
         return None
     return {"x": capture["plot"].x_bounds, "y": capture["plot"].y_bounds}
 
@@ -750,13 +681,23 @@ def autofit(app, identity, *, scale=None):
     ``bounds`` retains its historical X/Y mapping for explicit box zoom callers.
     """
     identity = _key(identity)
-    value = initialize(app)["zoom"].get(_zoom_identity(identity, _display_scope(app))) if identity else None
-    return bool(value and value.get("fit_y") and (scale is None or value["scale"] == scale))
+    value = (
+        initialize(app)["zoom"].get(_zoom_identity(identity, _display_scope(app)))
+        if identity
+        else None
+    )
+    return bool(
+        value and value.get("fit_y") and (scale is None or value["scale"] == scale)
+    )
 
 
 def undo(app, identity=None):
     state = initialize(app)
-    identity = _key(identity) if identity is not None else state["hovered"] or state["last_key"]
+    identity = (
+        _key(identity)
+        if identity is not None
+        else state["hovered"] or state["last_key"]
+    )
     identity = _zoom_identity(identity, _display_scope(app))
     value = state["zoom"].get(identity)
     if not value:
@@ -774,7 +715,11 @@ def undo(app, identity=None):
 
 def reset(app, identity=None):
     state = initialize(app)
-    identity = _key(identity) if identity is not None else state["hovered"] or state["last_key"]
+    identity = (
+        _key(identity)
+        if identity is not None
+        else state["hovered"] or state["last_key"]
+    )
     identity = _zoom_identity(identity, _display_scope(app))
     if identity not in state["zoom"]:
         return False
@@ -810,7 +755,11 @@ def run_command(app, args):
         _say(app, "chartzoom undo|reset (last selected or hovered metric graph)")
     else:
         changed = (undo if args[1] == "undo" else reset)(app)
-        _say(app, "Chart zoom " + ("updated" if changed else "is already at its original view"))
+        _say(
+            app,
+            "Chart zoom "
+            + ("updated" if changed else "is already at its original view"),
+        )
     return True
 
 
@@ -850,7 +799,12 @@ def _painted_cells(app, visible, y, layers):
                 for index in range(start, max(start, end)):
                     glyph = text[index]
                     cell = position + index - visible.left
-                    cells[cell] = (glyph, style, not decorative and not glyph.isspace(), 1)
+                    cells[cell] = (
+                        glyph,
+                        style,
+                        not decorative and not glyph.isspace(),
+                        1,
+                    )
                     last = cell
                 position += len(text)
                 continue
@@ -865,7 +819,9 @@ def _painted_cells(app, visible, y, layers):
                     break
                 cell = position - visible.left
                 if position + size > visible.left:
-                    protected = size > 1 or (not decorative and not glyph.isspace() and glyph != "⠀")
+                    protected = size > 1 or (
+                        not decorative and not glyph.isspace() and glyph != "⠀"
+                    )
                     entry = (glyph, style, protected, size)
                     for column in range(max(0, cell), min(width, cell + size)):
                         cells[column] = entry
@@ -876,7 +832,15 @@ def _painted_cells(app, visible, y, layers):
     result = tuple(cells)
     # A malformed embedding's enormous source row is not retained merely to
     # paint a small intersecting plot. Normal renderer rows fit the terminal.
-    if sum(len(text) for _, row in signature for text, _ in row if isinstance(text, str)) <= 16384:
+    if (
+        sum(
+            len(text)
+            for _, row in signature
+            for text, _ in row
+            if isinstance(text, str)
+        )
+        <= 16384
+    ):
         cache[key] = (signature, result)
         cache.move_to_end(key)
         while len(cache) > MAX_FEEDBACK_ROWS:
@@ -901,7 +865,9 @@ def _compact_feedback(cells):
         for x, (char, style) in sorted(row_cells):
             if previous is None or x != previous + 1:
                 if segments:
-                    output.append((y, start, [("".join(parts), ink) for parts, ink in segments]))
+                    output.append(
+                        (y, start, [("".join(parts), ink) for parts, ink in segments])
+                    )
                 start, segments = x, []
             if segments and segments[-1][1] == style:
                 segments[-1][0].append(char)
@@ -909,7 +875,9 @@ def _compact_feedback(cells):
                 segments.append(([char], style))
             previous = x
         if segments:
-            output.append((y, start, [("".join(parts), ink) for parts, ink in segments]))
+            output.append(
+                (y, start, [("".join(parts), ink) for parts, ink in segments])
+            )
     return output
 
 
@@ -957,19 +925,34 @@ def feedback(app, *, ascii_=None, rows=None, overlays=(), compact=False):
             return CROSSHAIR_STYLE
         if style not in styles:
             from .palette import cell_style, resolve
+
             resolved = resolve(cell_style(style, theme), theme)
-            background = resolved.foreground if "rev" in resolved.flags else resolved.background
-            styles[style] = (CROSSHAIR_STYLE + "+bg-raw:#" +
-                             "".join(f"{part:02x}" for part in background)
-                             if background is not None else CROSSHAIR_STYLE)
+            background = (
+                resolved.foreground if "rev" in resolved.flags else resolved.background
+            )
+            styles[style] = (
+                CROSSHAIR_STYLE
+                + "+bg-raw:#"
+                + "".join(f"{part:02x}" for part in background)
+                if background is not None
+                else CROSSHAIR_STYLE
+            )
         return styles[style]
 
     def put(y, x, char):
-        if not plot.visible.contains(y, x) or (y, x) not in marks and len(marks) >= MAX_OVERLAY_CELLS:
+        if (
+            not plot.visible.contains(y, x)
+            or (y, x) not in marks
+            and len(marks) >= MAX_OVERLAY_CELLS
+        ):
             return
         old = marks.get((y, x))
         if old is not None:
-            if not ascii_ and 0x2800 <= ord(old) <= 0x28ff and 0x2800 <= ord(char) <= 0x28ff:
+            if (
+                not ascii_
+                and 0x2800 <= ord(old) <= 0x28FF
+                and 0x2800 <= ord(char) <= 0x28FF
+            ):
                 char = chr(0x2800 | (ord(old) - 0x2800) | (ord(char) - 0x2800))
             elif old == "+":
                 char = old
@@ -980,13 +963,21 @@ def feedback(app, *, ascii_=None, rows=None, overlays=(), compact=False):
         return []
     if capture:
         sy, sx = capture["start"]
-        start = G.locate(sy + .5, sx + .5)
+        start = G.locate(sy + 0.5, sx + 0.5)
         left, right = sorted((start.column, cursor.column))
         top, bottom = sorted((start.row, cursor.row))
-        start_horizontal = G.glyph(start.y_slot, start.x_slot, horizontal=True, ascii_=ascii_)
-        cursor_horizontal = G.glyph(cursor.y_slot, cursor.x_slot, horizontal=True, ascii_=ascii_)
-        start_vertical = G.glyph(start.y_slot, start.x_slot, vertical=True, ascii_=ascii_)
-        cursor_vertical = G.glyph(cursor.y_slot, cursor.x_slot, vertical=True, ascii_=ascii_)
+        start_horizontal = G.glyph(
+            start.y_slot, start.x_slot, horizontal=True, ascii_=ascii_
+        )
+        cursor_horizontal = G.glyph(
+            cursor.y_slot, cursor.x_slot, horizontal=True, ascii_=ascii_
+        )
+        start_vertical = G.glyph(
+            start.y_slot, start.x_slot, vertical=True, ascii_=ascii_
+        )
+        cursor_vertical = G.glyph(
+            cursor.y_slot, cursor.x_slot, vertical=True, ascii_=ascii_
+        )
         for x in range(left, right + 1):
             put(start.row, x, start_horizontal)
             put(cursor.row, x, cursor_horizontal)
@@ -997,7 +988,9 @@ def feedback(app, *, ascii_=None, rows=None, overlays=(), compact=False):
             for y, x in {(top, left), (top, right), (bottom, left), (bottom, right)}:
                 put(y, x, "+")
     elif pointer:
-        horizontal = G.glyph(cursor.y_slot, cursor.x_slot, horizontal=True, ascii_=ascii_)
+        horizontal = G.glyph(
+            cursor.y_slot, cursor.x_slot, horizontal=True, ascii_=ascii_
+        )
         vertical = G.glyph(cursor.y_slot, cursor.x_slot, vertical=True, ascii_=ascii_)
         for column in range(plot.visible.left, plot.visible.right):
             put(cursor.row, column, horizontal)
@@ -1013,5 +1006,7 @@ def feedback(app, *, ascii_=None, rows=None, overlays=(), compact=False):
             # Wide annotations remain on the base canvas rather than being
             # duplicated or split by a one-cell overlay.
             continue
-        output.append((y, x, [(char, style_at(original[1] if original is not None else None))]))
+        output.append(
+            (y, x, [(char, style_at(original[1] if original is not None else None))])
+        )
     return _compact_feedback(output) if compact else output

@@ -34,7 +34,7 @@ def text(value, name, limit=4096):
 
 
 def file_bytes(path, limit=4 << 20):
-    from .raven_execution import source_limit, source_read
+    from .source_budget import source_limit, source_read
     limit = source_limit(limit)
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(fd, "rb") as handle:
@@ -54,7 +54,7 @@ def file_bytes(path, limit=4 << 20):
 
 
 def file_hash(path, cancel=None, limit=1 << 30):
-    from .raven_execution import source_limit, source_read
+    from .source_budget import source_limit, source_read
     limit = source_limit(limit)
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(fd, "rb") as handle:

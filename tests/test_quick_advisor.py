@@ -621,7 +621,7 @@ def test_compact_decoded_budget_is_checked_before_decompression(dashboard, tmp_p
     store.series["900"].append(dict(t=2, k="live", cpu=.8))
     value = Q.capture(store, "900")
     assert [row['t'] for row in value['series']] == [2]
-    assert "budget reached; verified prefix" in " ".join(value['warnings'])
+    assert "budget reached; newest verified frames" in " ".join(value['warnings'])
 
 
 def test_compact_corruption_exposes_verified_prefix_and_error(dashboard, tmp_path):

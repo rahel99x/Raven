@@ -14,6 +14,8 @@ class App:
         self.selected_id = "7"
         self.last_hits, self.tab_hits = [], []
         self.calls = []
+        from raven.workbench import bind_actions
+        bind_actions(self)
 
     def click(self, y, x, hits, **kwargs):
         assert not ui.handle_mouse(self, y, x)

@@ -51,6 +51,25 @@ opens Raven. Follow those printed steps:
    toggles it later. For MPI, select the desired rank and PID; each rank has its
    own recording.
 
+The **Timeline** view draws recorded nested calls. Zoom, pan, select a call, or
+use `:trace find update_row` to inspect a particular function. **View in browser**
+saves and opens a private offline timeline with the same retained evidence.
+Browser snapshots are static; the terminal view follows the live recording.
+
+To include software CPU-placement observations on Linux, start a new run with:
+
+```bash
+bash examples/trace-lab/run.sh --slurm --cpu-placement
+```
+
+This option also works with `--variant mpi` or `--variant cuda`. In Trace, choose
+**CPU cores** to see the selected process's observed socket, physical core and
+logical CPU lanes. Each point is a bracketed OS query from the emitting thread;
+it does not prove continuous residency between events. Unobserved cores and
+missing topology remain unknown. Existing recordings cannot recover placement
+that was never recorded. Check `raven trace capabilities` on the execution host
+for available capture APIs; see the [capture guide](../../docs/guides/trace-capabilities.md).
+
 Keep the quotes in printed commands when a project path contains spaces. The
 command palette accepts those quoted paths.
 

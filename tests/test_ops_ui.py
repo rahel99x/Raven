@@ -89,7 +89,12 @@ def test_terminal_handoff_restores_input_after_all_child_outcomes(operation_dash
     app.ops_state["terminal"] = {"argv": ["srun", "--jobid=81", "/bin/bash"],
         "at": time.monotonic(), "scope": ops_ui.context(app).scope}
     events = []
-    terminal = SimpleNamespace(touchwin=lambda: events.append("touch"), refresh=lambda: events.append("refresh"))
+    from raven import terminal_ui
+    identity = ("reattached-session", 7)
+    monkeypatch.setattr(terminal_ui, "input_identity", lambda owner: identity)
+    delivered = []
+    monkeypatch.setattr(terminal_ui, "handle_key", lambda owner, key: delivered.append(key))
+    terminal = SimpleNamespace(touchwin=lambda: events.append("touch"), refresh=lambda: events.append("refresh"), get_wch=lambda: "a")
     curses = SimpleNamespace(endwin=lambda: events.append("endwin"), flushinp=lambda: events.append("flush"), error=RuntimeError)
     screen._INPUT_READERS[id(terminal)] = object()
     monkeypatch.setattr(screen, "_mouse_reporting", lambda enabled: events.append(("mouse", enabled)))
@@ -100,9 +105,15 @@ def test_terminal_handoff_restores_input_after_all_child_outcomes(operation_dash
         return outcome
     monkeypatch.setattr(screen.subprocess, "call", call)
     assert screen._operation_terminal(app, terminal, curses, True)
-    assert id(terminal) not in screen._INPUT_READERS
+    reader = screen._INPUT_READERS[id(terminal)]
+    assert reader.window is terminal
+    assert callable(reader.input_owner) and callable(reader.geometry_owner)
     assert events[0:2] == ["endwin", ("mouse", False)]
     assert events[-4:] == ["flush", ("mouse", True), "touch", "refresh"]
+    event = reader.read(__import__("curses"))
+    assert event.origin == identity
+    screen._apply_input(app, event, [], curses)
+    assert delivered == ["a"]
     assert not screen._operation_terminal(app, terminal, curses, True)
 
 

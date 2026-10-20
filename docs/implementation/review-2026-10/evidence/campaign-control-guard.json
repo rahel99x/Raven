@@ -1,8 +1,0 @@
-{
-  "command": ".venv/bin/python -m pytest -q tests/test_campaign_policy.py",
-  "result": "17 passed in 0.40s",
-  "sources": {
-    "raven/ops_campaign_policy.py": "18b26edbb1ed2c6998463eaae46dcbfbc2e583414544a411013f21363bfbcc47",
-    "tests/test_campaign_policy.py": "1bd02209ad666637de2e4c79c0b93100fa1c9209a0f1fc82852d8eddb4abcdf7"
-  }
-}

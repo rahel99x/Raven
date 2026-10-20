@@ -1,5 +1,4 @@
 """Known injected changes, exact attempts, evidence, abstention and finite cost."""
-from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -85,6 +84,7 @@ def test_store_uses_current_verified_attempt_and_notification_dismissal_is_stabl
     job = Job("7", "scientific job", "main", "RUNNING", submit="2026-10-17T00:00:00", start="2026-10-17T00:00:01", cluster="fixture")
     store.apply_jobs([job])
     store.details[job.id] = {"JobId": job.id, "SubmitTime": job.submit, "StartTime": job.start, "Restarts": "0", "Cluster": "fixture"}
+    assert store.bind_series_scheduler(job.id, store.details[job.id])
     current = store.capture_series_identity(job.id)
     assert current.verified
     for t in range(44):
@@ -97,6 +97,7 @@ def test_store_uses_current_verified_attempt_and_notification_dismissal_is_stabl
     app.notifications.dismiss(first.notices[0].id)
     assert not notifications.sync(app, {}).notices
     store.details[job.id] = {**store.details[job.id], "Restarts": "1"}
+    assert store.bind_series_scheduler(job.id, store.details[job.id])
     next_attempt = store.capture_series_identity(job.id)
     assert next_attempt != current
     previous_count = len(store.anomalies.recent)

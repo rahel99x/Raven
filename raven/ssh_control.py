@@ -16,6 +16,8 @@ import tempfile
 
 from .config_trust import directory_fd
 
+_FALLBACK_ROOTS = {}
+
 
 class MultiplexUnavailable(ValueError):
     """SSH can still run, but its configuration could not safely be scoped."""
@@ -49,13 +51,26 @@ def _config_options(options):
 def _private_root():
     # A short path avoids sockaddr_un's 108-byte Linux limit even with a long
     # home directory. A fixed uid path is safe only after no-follow/owner checks.
-    root = Path(tempfile.gettempdir()) / ('raven-ssh-' + str(os.getuid()))
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "")
+    base = Path(runtime) if runtime and Path(runtime).is_absolute() else Path(tempfile.gettempdir())
+    root = base / ('raven-ssh-' + str(os.getuid()))
     try:
         root.mkdir(mode=0o700)
     except FileExistsError:
         pass
-    with directory_fd(root, private=True):
-        pass
+    try:
+        with directory_fd(root, private=True):
+            pass
+        if len(os.fsencode(root)) + 1 + 32 + 17 >= 104:
+            raise MultiplexUnavailable("SSH socket root is too long")
+    except (OSError, ValueError):
+        key = os.getpid()
+        root = _FALLBACK_ROOTS.get(key)
+        if root is None:
+            root = Path(tempfile.mkdtemp(prefix='raven-ssh-', dir='/tmp'))
+            _FALLBACK_ROOTS[key] = root
+        with directory_fd(root, private=True):
+            pass
     return root
 
 
@@ -80,7 +95,7 @@ def prepare(target, options):
         with os.fdopen(fd, 'w', encoding='utf-8') as stream:
             stream.write(body)
         prefix = ['ssh', *options, '-F', wrapper]
-        result = subprocess.run([*prefix, '-G', target], capture_output=True, text=True, timeout=6)
+        result = subprocess.run([*prefix, '-G', '--', target], capture_output=True, text=True, timeout=6)
         if result.returncode or len(result.stdout) > 1024 * 1024:
             raise MultiplexUnavailable('OpenSSH could not resolve scoped multiplexing; using separate connections. Check SSH configuration ownership and ssh_options.')
         effective = dict(line.split(' ', 1) for line in result.stdout.splitlines() if ' ' in line)
@@ -98,6 +113,8 @@ def prepare(target, options):
         client = [socket.gethostname(), boot]
         key = hashlib.sha256(json.dumps([client, target, options, identity], ensure_ascii=True).encode()).hexdigest()[:32]
         control_path = str(root / key) if enabled else ''
+        if enabled and len(os.fsencode(control_path)) + 17 >= 104:
+            raise MultiplexUnavailable('SSH socket path exceeds its platform bound; using a plain connection')
         # Resolve every invocation so edited identity/proxy/security settings
         # select a new socket. Do not feed unknown ssh -G keys back as config.
         # This adds one bounded local ssh process, not an authentication.

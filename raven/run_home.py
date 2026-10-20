@@ -37,7 +37,7 @@ def load(binding, *, files=None):
     result = dict(selected=selected, report=None, errors={}, telemetry={}, inventory=selected["run"]["inventory"])
     if current.get("submit_file"):
         try:
-            from .launch_results import validate
+            from .launching.results import validate
             result["report"] = validate(projects.read_bound_json(current, current["submit_file"],
                 key="submit", files=files), current)
         except (OSError, ValueError) as exc:

@@ -15,6 +15,11 @@ from raven.remote import LocalFiles
 from raven.research import ResearchHub
 from raven.views import Views
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "state" / "exports"))
+
+
 
 @pytest.fixture
 def dashboard(tmp_path):
@@ -137,6 +142,7 @@ def test_cancellation_during_page_render_preserves_existing_export(dashboard, tm
     target = tmp_path / "output" / "exports"
     target.mkdir(parents=True)
     (target / "complete.txt").write_text("previous complete report")
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(target))
     cancelled = threading.Event()
     original = prepared.views.compose
     def render(*args, **kwargs):
@@ -155,6 +161,7 @@ def test_cancellation_during_write_removes_temporary_file(dashboard, tmp_path, m
     prepared = report.prepare_export(store.snapshot(), app, views)
     monkeypatch.setattr(prepared, "render", lambda **kwargs: "captured report\n" * 10000)
     target = tmp_path / "cancel-writing"
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(target / "exports"))
     checks = []
     def cancel():
         checks.append(True)

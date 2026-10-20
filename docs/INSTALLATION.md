@@ -40,11 +40,14 @@ To choose paths or a Python interpreter, pass options to Bash:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rahel99x/Raven/main/install.sh | \
-  bash -s -- --source-dir "$HOME/Raven" --python python3 --no-setup
+  bash -s -- --source-dir "$HOME/Raven" --clone --python python3 --no-setup
 ```
 
-`--source-dir PATH` selects the bootstrap checkout; `--python EXEC` selects
-Python. Other options are forwarded to the repository installer.
+`--source-dir PATH` selects an existing bootstrap checkout. Add `--clone` to
+create that explicit path; a missing path otherwise stops with a spelling hint.
+`--python EXEC` selects Python. Automatic discovery tries Python 3.14 through
+3.10 before `python3` and `python`. Other options are forwarded to the repository
+installer. Bash 3.2 and later are supported by the bootstrap.
 `--plan` makes no checkout, environment, or command changes and does not fetch
 source. With an existing checkout, it also checks installation destinations;
 without one, it previews where source would be cloned. The initial download of
@@ -91,7 +94,8 @@ execution.
 | `--without-terminal` | Install the core without `pyte` and `wcwidth`. |
 | `--no-setup` | Install or update without entering guided setup afterward. |
 
-Use real directories rather than directory symlinks for installation paths.
+User-selected installation roots are resolved once; symbolic links inside the
+chosen root remain prohibited.
 For example, preview a custom command directory before installing:
 
 ```bash
@@ -254,11 +258,38 @@ with guidance. Changes to recognized user configuration are preserved and do
 not block an ordinary update.
 There is no background update check or automatic replacement during a session.
 
+The default update policy requires every declared and effective fetch URL to
+identify the official Raven repository. It prints the full immutable
+source-commit range before building. Equivalent official HTTPS and SSH URLs
+are supported. Git `url.*.insteadOf` settings can redirect a declared URL;
+inspect `git remote get-url --all origin` for the effective URLs of `origin`.
+A deliberately configured fork or custom redirect requires
+`raven update --allow-fork`. Source is obtained through the configured
+authenticated Git transport; a local checksum detects changes but is not a
+publisher signature. Build-tool requirements are pinned.
+
+For a release artifact with a GitHub/Sigstore provenance attestation, require
+verification explicitly:
+
+```bash
+raven update --require-attestation --attested-artifact /path/to/downloaded-artifact.whl
+```
+
+This needs GitHub CLI `gh` and an artifact from the exact selected commit.
+`--attestation-bundle FILE` optionally supplies its downloaded bundle. A missing
+artifact, unavailable verifier, signer mismatch, or unsuccessful verification
+stops before checkout mutation. `--plan` validates the policy without invoking
+the verifier. Ordinary branch commits may have no release artifact: the default
+source-channel policy and attested release verification are distinct guarantees.
+
 Recognized configuration, application state, installation paths, and recorded
 extras are preserved. Project data outside the source checkout is unaffected.
 For the repository installer, a fresh release
-is built and checked before the active release changes. A failed build keeps
-the previous environment active. Its stable worker interpreter remains
+is built and checked from a pristine export before the active release changes.
+A failed build keeps the previous environment active and restores the source
+backup automatically when source mutation occurred. If restoration itself cannot
+complete, Raven prints the retained recovery path and actual active release.
+Its stable worker interpreter remains
 `PREFIX/current/bin/python`, using the prefix printed during installation.
 
 ```bash
@@ -340,6 +371,13 @@ configuration and state. A repository-installer installation reselects its
 validated retained previous release. A supported pipx installation reinstalls
 from the restored source; its recovery and failure guarantees remain those of
 pipx. Review the printed outcome if that reinstall fails.
+Raven retains the three newest completed recovery backups and any explicitly
+selected recovery point, together with the releases those backups reference.
+It prunes matching Git backup refs under the maintenance lock. A standalone
+install without recovery backups keeps the current and previous releases.
+Abandoned stages with Raven's private ownership marker are swept after one
+hour when their recorded process no longer exists. Older unmarked directories
+are preserved because Raven cannot establish their ownership history.
 If you moved a managed checkout, pass `--source /new/path/to/Raven` when needed
 for recovery and later updates: a retained release still records its original
 source location.
@@ -357,6 +395,9 @@ ravenh --plan
 `raven update` supports a same-user pipx installation when its metadata identifies
 the running environment and an original local Git checkout. It retains that
 source and its extras and delegates package replacement to pipx. The updater
+builds a pristine wheel and asks `pipx runpip` to install it, preserving pipx's
+original source metadata. It does not reuse the checkout's `build/` directory.
+The updater
 derives `PIPX_HOME` and the command directory from that verified installation,
 including a custom user-owned location. Pipx does not inherit the repository
 installer's atomic release-switch guarantee.

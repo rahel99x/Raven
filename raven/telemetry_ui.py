@@ -222,7 +222,7 @@ def _copy(app, *, all_report=False):
         anchor = state["cursor"] if state["anchor"] is None else state["anchor"]
         first, last = sorted((anchor, state["cursor"]))
         lines = state["lines"][first:last + 1]
-    app.say(clipboard.copy("\n".join(lines) + "\n", app.state_dir, **clipboard.options(app)))
+    app.say(clipboard.copy_for_app(app, "\n".join(lines) + "\n", app.state_dir, **clipboard.options(app)))
 
 
 def _activate(app, index):
@@ -298,7 +298,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             return True
     for hy, left, right, index in state["line_hits"]:
         if y == hy and left <= x < right:
-            from .text_selection import clear
+            from .ui.text_selection_state import clear
             clear(app)
             pointer = getattr(app, "interaction_state", None)
             if isinstance(pointer, dict):
@@ -316,7 +316,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
 
 def _wrapped_lines(state, width, ascii_):
     """Wrap once per result/width, retaining original evidence-line identity."""
-    from .research import clean
+    from .research_text import clean
     identity = (state["generation"], id(state["lines"]), width, ascii_)
     if state["wrapped"] and state["wrapped"][0] == identity:
         return state["wrapped"][1]
@@ -374,7 +374,7 @@ def overlay(views, snap, app, width, height):
     if state["running"]:
         rows.append([("Reading scheduler evidence in the background...", "accent")])
     elif state["error"]:
-        from .research import clean
+        from .research_text import clean
         error = clean(state["error"], views.g.ascii)
         while error and len(rows) < page + data_start:
             part = L.truncate(error, content_width)

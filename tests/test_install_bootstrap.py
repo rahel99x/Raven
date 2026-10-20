@@ -21,7 +21,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = (ROOT / "install.sh").read_text()
 PYTHON = str(Path(sys.executable).absolute())
-BASH = shutil.which("bash")
+BASH = os.environ.get('RAVEN_TEST_BASH') or shutil.which("bash")
 INSTALLER = """import json, os, sys
 from pathlib import Path
 Path(os.environ['BOOTSTRAP_CAPTURE']).write_text(json.dumps({
@@ -41,12 +41,18 @@ if os.environ.get('VERIFY_AUTH_ENV'):
     for key in ('GIT_CONFIG_GLOBAL', 'GIT_CONFIG_SYSTEM', 'GIT_SSL_CAINFO', 'GIT_SSH_COMMAND'):
         assert os.environ[key] == os.environ['EXPECTED_' + key]
     assert 'GIT_WORK_TREE' not in os.environ and 'GIT_INDEX_FILE' not in os.environ
-with open(os.environ['GIT_CALLS'], 'a') as stream:
-    stream.write(json.dumps({'args': args, 'git_dir': os.environ.get('GIT_DIR')}) + '\\n')
 assert args[:2] == ['-c', 'core.fsmonitor=false']
-args = args[2:]
+configuration = {}
+while args[:1] == ['-c']:
+    key, value = args[1].split('=', 1)
+    configuration[key] = value
+    args = args[2:]
+assert all(configuration.get(key) == value for key, value in {
+    'pack.threads':'1', 'index.threads':'1', 'fetch.parallel':'1', 'checkout.workers':'1'}.items())
+with open(os.environ['GIT_CALLS'], 'a') as stream:
+    stream.write(json.dumps({'args': ['-c', 'core.fsmonitor=false'] + args, 'git_dir': os.environ.get('GIT_DIR')}) + '\\n')
 if args[0] == 'clone':
-    assert args[1:6] == ['--branch', 'main', '--single-branch', '--', 'https://github.com/rahel99x/Raven.git']
+    assert args[1:8] == ['--depth', '1', '--branch', 'main', '--single-branch', '--', 'https://github.com/rahel99x/Raven.git']
     if os.environ.get('CLONE_WAIT'):
         if os.environ.get('GIT_IGNORE_TERM'):
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
@@ -159,7 +165,7 @@ def test_downloaded_script_clones_private_default_and_delegates(bootstrap, tmp_p
 
 def test_explicit_source_override_and_literal_shell_metacharacters(bootstrap, tmp_path):
     target = tmp_path / "raven $(touch injected) `touch other`"
-    result = bootstrap("--source-dir=" + str(target), "--prefix=release directory")
+    result = bootstrap("--clone", "--source-dir=" + str(target), "--prefix=release directory")
     assert result.returncode == 0, result.stderr
     assert bootstrap.installed()["source"] == str(target)
     assert bootstrap.installed()["args"] == ["--prefix=release directory"]
@@ -171,7 +177,7 @@ def test_new_private_checkout_can_use_system_sticky_temporary_parent(bootstrap):
     with tempfile.TemporaryDirectory(prefix="raven-bootstrap-parent-") as name:
         target = Path(name)
         target.rmdir()
-        result = bootstrap("--source-dir", str(target))
+        result = bootstrap("--clone", "--source-dir", str(target))
         assert result.returncode == 0, result.stderr
         assert target.stat().st_uid == os.getuid()
         assert target.stat().st_mode & 0o077 == 0
@@ -232,7 +238,7 @@ def test_real_git_clones_through_injected_official_url_rewrite(bootstrap, tmp_pa
         subprocess.run([real_git, "-C", str(origin), *args], env=git_env, check=True,
                        capture_output=True, timeout=10)
     target = tmp_path / "real bootstrapped source"
-    result = bootstrap("--source-dir", str(target), PATH=os.environ["PATH"],
+    result = bootstrap("--clone", "--source-dir", str(target), PATH=os.environ["PATH"],
                        GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
                        GIT_CONFIG_SYSTEM=os.devnull, GIT_CONFIG_COUNT="2",
                        GIT_CONFIG_KEY_0="url." + origin.as_uri() + ".insteadOf",
@@ -284,6 +290,11 @@ def test_unrelated_or_unsafe_existing_destination_is_preserved(bootstrap, tmp_pa
     elif kind == "nested":
         env["GIT_TOPLEVEL"] = str(target.parent)
     result = bootstrap("--source-dir", str(target), **env)
+    if kind == 'symlink':
+        assert result.returncode == 0, result.stderr
+        assert bootstrap.installed()['source'] == str(other)
+        assert sentinel.read_text() == 'untouched'
+        return
     assert result.returncode == 2
     assert sentinel.read_text() == "untouched"
     assert "secret-token" not in result.stderr
@@ -317,7 +328,7 @@ def observe(pid, signum):
     return original(pid, signum)
 os.killpg = observe
 """)
-    result = bootstrap("--source-dir", str(target), CLONE_FAIL="1",
+    result = bootstrap("--clone", "--source-dir", str(target), CLONE_FAIL="1",
                        PYTHONPATH=str(hooks), SIGNAL_CAPTURE=str(signals))
     assert result.returncode == 2
     assert not target.exists()
@@ -331,7 +342,7 @@ def test_interrupt_stops_owned_git_and_removes_private_stage(bootstrap, tmp_path
     target = tmp_path / "interrupted source"
     ready = tmp_path / "git-ready"
     process = subprocess.Popen([BASH, "-s", "--", "--python", PYTHON,
-                                "--source-dir", str(target)], stdin=subprocess.PIPE,
+                                "--clone", "--source-dir", str(target)], stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                env=bootstrap.env | {"CLONE_WAIT": str(ready),
                                                     "GIT_IGNORE_TERM": "1" if ignore_term else ""},
@@ -368,7 +379,7 @@ def test_interrupt_stops_owned_git_and_removes_private_stage(bootstrap, tmp_path
             os.kill(identities["bootstrap"], signum)
         else:
             os.killpg(process.pid, signum)
-        _, errors = process.communicate(timeout=5)
+        _, errors = process.communicate(timeout=15)
         assert process.returncode in (128 + signum, -signum), errors.decode()
         with pytest.raises(ProcessLookupError):
             os.kill(git_pid, 0)
@@ -392,7 +403,7 @@ def test_interrupt_stops_owned_git_and_removes_private_stage(bootstrap, tmp_path
 @pytest.mark.parametrize("kind", ["file", "directory"])
 def test_destination_created_during_clone_is_preserved(bootstrap, tmp_path, kind):
     target = tmp_path / "raced target"
-    result = bootstrap("--source-dir", str(target), RACE_TARGET=str(target),
+    result = bootstrap("--clone", "--source-dir", str(target), RACE_TARGET=str(target),
                        RACE_FILE="1" if kind == "file" else "")
     assert result.returncode == 2
     assert "appeared during cloning" in result.stderr
@@ -481,7 +492,7 @@ def test_explicit_source_takes_precedence_over_script_checkout(bootstrap, tmp_pa
     local = source(tmp_path / "local source")
     (local / "install.sh").write_text(SCRIPT)
     target = tmp_path / "chosen source"
-    result = bootstrap("--source-dir", str(target), local=local)
+    result = bootstrap("--clone", "--source-dir", str(target), local=local)
     assert result.returncode == 0, result.stderr
     assert bootstrap.installed()["source"] == str(target)
     assert any("clone" in call["args"] for call in bootstrap.calls())

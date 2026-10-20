@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from raven import clock, table_tools, table_ui
+from raven import clock, table_query, table_tools, table_ui
 from raven.config import Config
 from raven.controller import App
 from raven.model import Finished, Job, Live, Store, stamp
@@ -254,7 +254,7 @@ def test_default_recents_visit_only_enough_accounting_records(active_count, monk
     store.finished = [Finished(str(index), "completed", "COMPLETED") for index in range(10000)]
     store.jobs = [Job(str(index), "new attempt", "cpu", "RUNNING") for index in range(active_count)]
     app = App(store, None, None, Config({"animations": False}), "reader", interactive=False)
-    old_matches, old_window = table_ui.matches, table_tools.recent_matches
+    old_matches, old_window = table_query.matches, table_tools.recent_matches
     facet_visits, window_visits = [], []
 
     def match(application, table, record, snap):
@@ -265,7 +265,7 @@ def test_default_recents_visit_only_enough_accounting_records(active_count, monk
         window_visits.append(record.id)
         return old_window(application, record)
 
-    monkeypatch.setattr(table_ui, "matches", match)
+    monkeypatch.setattr(table_query, "matches", match)
     monkeypatch.setattr(table_tools, "recent_matches", window)
     actual = app.finished_jobs(store.snapshot(), recent=True)
     assert [record.id for record in actual] == [str(index) for index in range(active_count, active_count + 5)]
@@ -278,13 +278,13 @@ def test_sparse_recent_filter_stops_after_fifth_successful_match(monkeypatch):
     app = App(store, None, None, Config({"animations": False}), "reader", interactive=False)
     app.table_state["filters"]["recent"] = "keep"
     visited = []
-    original = table_ui.matches
+    original = table_query.matches
 
     def match(application, table, record, snap):
         visited.append(record.id)
         return original(application, table, record, snap)
 
-    monkeypatch.setattr(table_ui, "matches", match)
+    monkeypatch.setattr(table_query, "matches", match)
     assert [record.id for record in app.finished_jobs(store.snapshot(), recent=True)] == ["0", "10", "20", "30", "40"]
     assert visited == [str(index) for index in range(41)]
 

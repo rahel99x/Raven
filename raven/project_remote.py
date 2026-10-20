@@ -1,31 +1,75 @@
 """Confined project reads on the selected SSH host, using only its Python stdlib.
 
-The helper carries the installed reader implementation in memory. It installs
-nothing remotely, imports no project code, and exposes only explicit read
-operations. This keeps local and SSH path/identity validation identical.
+The helper caches a content-addressed reader bundle in a private remote
+temporary directory. It imports no project code and exposes only explicit
+read operations, keeping local and SSH path/identity validation identical.
 """
+
 from __future__ import annotations
 
+import ast
 import base64
 from functools import lru_cache
 import json
 from pathlib import Path
 import hashlib
+import importlib.util
 import secrets
 import lzma
 
-from .remote import RemoteFiles
+from .remote_files import RemoteFiles
 
-_MODULES = ("projects", "artifacts", "remote", "slurm", "model", "clock", "history_snapshots", "ui_state",
-            "series_archive", "series_publication", "series_cache_limits", "predict", "planning_io", "log_catalog", "provenance", "array_manifest",
-            "artifact_pages", "log_presentation", "retained_telemetry_io",
-            "series_identity", "state_ownership", "config_trust")
-_OPERATIONS = {"discover_project", "discover_job", "select_run", "read_bound_json",
-               "read_bound_passport", "read_bound_artifacts", "read_bound_tail",
-               "read_bound_metric_chunk", "read_bound_telemetry", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"}
+_MODULES = (
+    "projects",
+    "artifacts",
+    "remote",
+    "slurm",
+    "model",
+    "clock",
+    "history_snapshots",
+    "ui_state",
+    "series_archive",
+    "series_publication",
+    "series_cache_limits",
+    "predict",
+    "planning_io",
+    "log_catalog",
+    "provenance",
+    "array_manifest",
+    "artifact_pages",
+    "log_presentation",
+    "retained_telemetry_io",
+    "series_identity",
+    "state_ownership",
+    "config_trust",
+    "transport_errors",
+    "log_text",
+    "log_paths",
+    "user_identity",
+    "report_lock",
+    "source_budget",
+    "local_files",
+    "remote_files",
+    "project_files",
+)
+_OPERATIONS = {
+    "discover_project",
+    "discover_job",
+    "select_run",
+    "read_bound_json",
+    "read_bound_passport",
+    "read_bound_artifacts",
+    "read_bound_tail",
+    "read_bound_metric_chunk",
+    "read_bound_telemetry",
+    "read_passport",
+    "artifact_tree",
+    "preview_artifact",
+    "read_artifact_page",
+}
 MAX_REPLY = 96 * 1024 * 1024
 
-_BOOTSTRAP = r'''
+_BOOTSTRAP = r"""
 import base64, importlib.abc, importlib.util, json, sys, lzma
 decoder = lzma.LZMADecompressor(memlimit=32 * 1024 * 1024)
 source_bytes = decoder.decompress(base64.b64decode("".join(sys.argv[2:]), validate=True), max_length=2 * 1024 * 1024 + 1)
@@ -35,7 +79,7 @@ sources = json.loads(source_bytes)
 class ReaderLoader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
     def find_spec(self, fullname, path=None, target=None):
         if fullname in sources:
-            return importlib.util.spec_from_loader(fullname, self, is_package=fullname == "raven")
+            return importlib.util.spec_from_loader(fullname, self, is_package=any(name.startswith(fullname + ".") for name in sources))
     def create_module(self, spec):
         return None
     def exec_module(self, module):
@@ -59,7 +103,7 @@ try:
 except (OSError, ValueError, TypeError, KeyError, RecursionError) as exc:
     response = {"error": str(exc)[:2048], "missing": isinstance(exc, FileNotFoundError)}
 print(json.dumps(response, ensure_ascii=True, allow_nan=False, separators=(",", ":")))
-'''
+"""
 
 
 def supported(files):
@@ -79,7 +123,12 @@ def identity(files):
         nonce = secrets.token_hex(16)
         files._project_reader_nonce = nonce
     ssh = files.ssh
-    scope = (getattr(ssh, "target", None), getattr(ssh, "host", None), getattr(ssh, "user", None), tuple(getattr(ssh, "opts", ())))
+    scope = (
+        getattr(ssh, "target", None),
+        getattr(ssh, "host", None),
+        getattr(ssh, "user", None),
+        tuple(getattr(ssh, "opts", ())),
+    )
     cached = getattr(files, "_project_reader_scope", None)
     if not cached or cached[0] != scope:
         fingerprint = hashlib.sha256(repr(scope).encode("utf-8")).hexdigest()[:16]
@@ -91,8 +140,65 @@ def identity(files):
 def _payload():
     root = Path(__file__).parent
     sources = {"raven": ""}
-    for name in _MODULES:
-        sources["raven." + name] = (root / (name + ".py")).read_text(encoding="utf-8")
+    pending = ["raven." + name for name in _MODULES]
+
+    def source_path(fullname):
+        if not fullname.startswith("raven."):
+            return None
+        relative = fullname.removeprefix("raven.").split(".")
+        if not all(part.isidentifier() for part in relative):
+            return None
+        path = root.joinpath(*relative)
+        module = path.with_suffix(".py")
+        package = path / "__init__.py"
+        return module if module.is_file() else package if package.is_file() else None
+
+    while pending:
+        fullname = pending.pop()
+        if fullname in sources:
+            continue
+        path = source_path(fullname)
+        if path is None:
+            raise ValueError("project reader dependency is unavailable: " + fullname)
+        source = path.read_text(encoding="utf-8")
+        sources[fullname] = source
+        # Canonical reader families now have real packages. Include their
+        # initializer, preserving normal import/package identity in the bundle.
+        parent = fullname.rpartition(".")[0]
+        while parent != "raven":
+            pending.append(parent)
+            parent = parent.rpartition(".")[0]
+        package = (
+            fullname if path.name == "__init__.py" else fullname.rpartition(".")[0]
+        )
+        # Follow literal module-level dependencies only. Function-scoped feature
+        # handlers are outside this explicit read-operation bundle contract.
+        nodes = list(ast.parse(source).body)
+        while nodes:
+            node = nodes.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            if isinstance(node, ast.ImportFrom):
+                target = (
+                    importlib.util.resolve_name(
+                        "." * node.level + (node.module or ""), package
+                    )
+                    if node.level
+                    else node.module or ""
+                )
+                if source_path(target) is not None:
+                    pending.append(target)
+                for alias in node.names:
+                    child = target + "." + alias.name
+                    if source_path(child) is not None:
+                        pending.append(child)
+            elif isinstance(node, ast.Import):
+                pending.extend(
+                    alias.name
+                    for alias in node.names
+                    if source_path(alias.name) is not None
+                )
+            nodes.extend(ast.iter_child_nodes(node))
     data = json.dumps(sources, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
     if len(data) > 2 * 1024 * 1024:
         raise ValueError("project reader source exceeds its transfer budget")
@@ -102,7 +208,7 @@ def _payload():
     packed = base64.b64encode(lzma.compress(data, preset=6)).decode("ascii")
     if len(packed) > 512 * 1024:
         raise ValueError("project reader bundle exceeds its transfer budget")
-    return tuple(packed[i:i + 32000] for i in range(0, len(packed), 32000))
+    return tuple(packed[i : i + 24576] for i in range(0, len(packed), 24576))
 
 
 def request(files, operation, *args, **kwargs):
@@ -114,46 +220,97 @@ def request(files, operation, *args, **kwargs):
     if arguments and isinstance(arguments[0], dict) and "run_root" in arguments[0]:
         binding = dict(arguments[0])
         if binding.pop("remote_identity", None) != request_identity:
-            raise ValueError("project binding belongs to another connection; refresh its job first")
+            raise ValueError(
+                "project binding belongs to another connection; refresh its job first"
+            )
         # UI discovery summaries are not authority for a confined source read.
         # Keep them off the SSH command; the helper reopens current declarations.
         binding.pop("scientific_query", None)
         binding.pop("telemetry_sources", None)
         arguments[0] = binding
-    encoded = json.dumps({"operation": operation, "args": arguments, "kwargs": kwargs},
-                         ensure_ascii=True, allow_nan=False, separators=(",", ":"))
+    encoded = json.dumps(
+        {"operation": operation, "args": arguments, "kwargs": kwargs},
+        ensure_ascii=True,
+        allow_nan=False,
+        separators=(",", ":"),
+    )
     if len(encoded) > 65536:
         raise ValueError("project reader request exceeds its metadata budget")
     payload = _payload()
-    if sum(map(len, payload)) + len(encoded) * 2 + len(_BOOTSTRAP) > 120000:
-        raise ValueError("project reader command exceeds the SSH argument budget")
+    digest = hashlib.sha256("".join(payload).encode("ascii")).hexdigest()
+    from .project_wire import command
+
+    cached = getattr(files, "_project_reader_bundle", None)
+    root = cached[2] if cached and cached[:2] == (request_identity, digest) else ""
     try:
         runner = getattr(files, "project_command", ssh.run)
-        output, _ = runner(["python3", "-I", "-S", "-c", _BOOTSTRAP, encoded, *payload], files.timeout)
+        output, _ = runner(
+            command("read", digest, root, encoded, len(payload)), files.timeout
+        )
+        # A cache miss carries no project data and executes no uploaded code.
+        # Publish bounded, idempotent chunks, then retry the original request.
+        missing = (
+            json.loads(output).get("raven_cache_missing")
+            if isinstance(output, str) and len(output) < 8192
+            else None
+        )
+        if missing:
+            if not isinstance(missing, str) or len(missing) > 4096:
+                raise ValueError("invalid remote reader cache root")
+            for index, chunk in enumerate(payload):
+                runner(
+                    command(
+                        "upload",
+                        digest,
+                        missing,
+                        str(index) + ":" + chunk,
+                        len(payload),
+                    ),
+                    files.timeout,
+                )
+            output, _ = runner(
+                command("read", digest, missing, encoded, len(payload)), files.timeout
+            )
+            files._project_reader_bundle = (request_identity, digest, missing)
     except Exception as exc:
-        from .raven_collection import Deferred
+        from raven.collection.ledger import Deferred
+
         if isinstance(exc, Deferred):
             # Admission deferral is a retry instruction, not a failed SSH
             # read. Preserve its message and deadline for the sampler.
             raise
         raise OSError("SSH project reader: " + str(exc)[:512]) from exc
     if files.ssh is not ssh or identity(files) != request_identity:
-        raise ValueError("SSH project connection changed during its read; refresh this job")
+        raise ValueError(
+            "SSH project connection changed during its read; refresh this job"
+        )
     if not isinstance(output, str) or len(output) > MAX_REPLY:
         raise ValueError("SSH project reader returned an oversized result")
     from .artifacts import _json
+
     reply = _json(output.encode("utf-8"))
     if not isinstance(reply, dict):
         raise ValueError("SSH project reader returned an invalid result")
     if "error" in reply:
-        raise (FileNotFoundError if reply.get("missing") else ValueError)(str(reply["error"])[:2048])
+        raise (FileNotFoundError if reply.get("missing") else ValueError)(
+            str(reply["error"])[:2048]
+        )
     value = reply["value"]
-    selected = value.get("selected") if operation == "discover_job" else value if operation == "select_run" else None
+    selected = (
+        value.get("selected")
+        if operation == "discover_job"
+        else value
+        if operation == "select_run"
+        else None
+    )
     if selected:
         selected["binding"]["remote_identity"] = request_identity
         if selected.get("array_manifest_document"):
             from .array_manifest import parse
-            selected["array_manifest_record"] = parse(json.dumps(selected["array_manifest_document"], separators=(",", ":")))
+
+            selected["array_manifest_record"] = parse(
+                json.dumps(selected["array_manifest_document"], separators=(",", ":"))
+            )
     if operation == "read_bound_tail":
         value[0] = base64.b64decode(value[0], validate=True)
     return value

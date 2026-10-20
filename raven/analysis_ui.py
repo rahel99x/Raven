@@ -16,8 +16,8 @@ import sys
 import time
 
 from . import charts, chart_tools, chart_interaction, clock, layout as L, scrollbars as S
-from .model import human, secs, short_duration, stamp
-from .research import clean
+from .model import human, short_duration
+from .research_text import clean
 
 MAX_METRICS = 64
 MAX_POINTS = 10000
@@ -43,7 +43,7 @@ def initialize(app):
 def rows_selected(app, kind):
     """A cleared local row cursor stays hidden until deliberate selection."""
     if kind == "evidence":
-        from .job_selection import lines_cleared
+        from .ui.selection_state import lines_cleared
         return not lines_cleared(app)
     cleared = initialize(app).get("rows_deselected", {})
     return not isinstance(cleared, dict) or not cleared.get(kind, False)
@@ -51,7 +51,7 @@ def rows_selected(app, kind):
 
 def resume_rows(app, kind):
     if kind == "evidence":
-        from .job_selection import resume_lines
+        from .ui.selection_effects import resume_lines
         resume_lines(app)
     elif kind in ("chart", "timeline", "chart_events"):
         state = initialize(app)
@@ -74,6 +74,10 @@ def context_click(app, y, x, button="left"):
     # This also makes direct handler callers preserve graph-reset precedence.
     if chart_interaction.handle_mouse(app, y, x, button="right"):
         return True
+    # The foreground modal owns this gesture even when App.click dispatches
+    # directly through the focus stack instead of the screen adapter.
+    from .ui.selection_effects import clear_lines
+    clear_lines(app)
     state = initialize(app)
     modal = state.get("modal")
     if modal in ("chart", "timeline", "chart_events"):
@@ -200,7 +204,7 @@ def memory_series(app, jid):
 
 
 def _resource_series(app, jid):
-    from .views import prepared_series
+    from raven.recordings.presentation import prepared_series
     return prepared_series(app, jid, ("resource-columns/v1", MAX_POINTS),
                            lambda records: _resource_columns(records[-MAX_POINTS:]),
                            memory_only=True)
@@ -413,7 +417,8 @@ def _source_row(g, source, metadata, *, app=None, identity=None):
         cadence = " | observed cadence " + (format_delta(extra[0]) if _finite(extra[0]) else "unknown")
     polling = ""
     if app is not None and identity is not None:
-        from . import metric_live, metric_sampling
+        from . import metric_live
+        from . import metric_sampling_runtime as metric_sampling
         if metric_live._eligible(app, metric_live.canonical(identity)):
             seconds = metric_sampling.cadence(app, identity)
             if seconds is not None:
@@ -443,7 +448,7 @@ def _prepared_card_source(app, content):
     immutable scalar records are retained; interactive step metadata keeps its
     original path and cannot be mistaken for a card's reduced observations.
     """
-    from .raven_limits import cache as bounded_cache
+    from raven.collection.retention import cache as bounded_cache
     state = initialize(app)
     if 'chart_source_cache' not in state: state['chart_source_cache']=bounded_cache(app,'chart_source_cache')
     cache = state['chart_source_cache']
@@ -464,7 +469,7 @@ def _prepared_card_source(app, content):
 
 def _source_cadence(app, times, limit):
     """Cache cadence by exact sorted timestamps and admitted prefix length."""
-    from .raven_limits import cache as bounded_cache
+    from raven.collection.retention import cache as bounded_cache
     state = initialize(app)
     if 'chart_cadence_cache' not in state: state['chart_cadence_cache']=bounded_cache(app,'chart_cadence_cache')
     cache = state['chart_cadence_cache']
@@ -577,7 +582,8 @@ def _playback_resolution(app, identity, metadata, following):
 def _present_history(app, identity, *, interactive, g, width, height, times, low, high,
                      axis, cadence, acquired, last, now, source_token, following):
     """Keep an automatic history frame until its measured geometry can change."""
-    from . import metric_live, metric_playback, metric_sampling
+    from . import metric_live, metric_playback
+    from . import metric_sampling_runtime as metric_sampling
 
     presentation = ("reported-modal" if interactive else "reported-card", identity)
     if not following:
@@ -676,7 +682,7 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
            (box["x"], box["y"], auto_fit) if box else None, live_window,
            (live_now is not None, display_end if not box and not captured else None, newest),
            (captured["x"], captured["y"]) if captured else None)
-    from .raven_limits import cache as bounded_cache
+    from raven.collection.retention import cache as bounded_cache
     if 'chart_card_cache' not in state: state['chart_card_cache']=bounded_cache(app,'chart_card_cache')
     cache = state['chart_card_cache']
     entry = cache.get(key)
@@ -1128,7 +1134,7 @@ def _open_timeline_event(app, event, *, seek=False):
         app.say("Replay moved to " + _time(event["t"]))
         return
     if event.get("path"):
-        from . import log_workbench
+        from .job_logs import workbench as log_workbench
         from .navigation_ui import record
         state = initialize(app)
         previous = state.get("modal", "timeline")
@@ -1337,7 +1343,7 @@ def handle_key(app, key):
             return True
         if (getattr(app, "mode", "main") == "main" and getattr(app, "tab", "") == "research"
                 and getattr(app, "research_view", "") == "experiment" and key in ("up", "down")):
-            from .research import select_job
+            from .ui.research_binding import select_job
             snap = app.store.snapshot()
             ids = list(dict.fromkeys(job.id for job in snap.get("jobs", []) + snap.get("finished", [])))
             if ids:
@@ -1355,7 +1361,7 @@ def handle_key(app, key):
             if key == "enter" and ids:
                 if not rows_selected(app, "evidence"):
                     return True
-                from . import log_workbench
+                from .job_logs import workbench as log_workbench
                 citation = getattr(app, "research_evidence", {}).get(ids[min(state.get("evidence_cursor", 0), len(ids) - 1)])
                 if citation and citation.get("path"):
                     log_workbench.open_citation(app, citation)
@@ -1442,7 +1448,7 @@ def handle_key(app, key):
         app.mode, state["modal"] = "main", ""
         app.open_log(state.get("job"))
     elif modal == "inspect" and key == "e":
-        from .research import select_job
+        from .ui.research_binding import select_job
         from .navigation_ui import record
         record(app, "research", force=True)
         app.mode, state["modal"] = "main", ""
@@ -1828,7 +1834,11 @@ def overlay(views, snap, app, width, height):
 
 
 def handle_mouse(app, y, x, button="left", shift=False):
-    if getattr(app, "mode", "main") != "analysis" or button != "left":
+    if getattr(app, "mode", "main") != "analysis":
+        return False
+    if button == "right":
+        return context_click(app, y, x, button=button)
+    if button != "left":
         return False
     state = initialize(app)
     for row, kind, value in state.get("control_hits", []):

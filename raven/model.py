@@ -12,13 +12,13 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field, is_dataclass, replace
 from functools import lru_cache
-from typing import Any, Deque, Dict, List, Optional, Sequence
+from typing import Deque, Dict, List, Optional, Sequence
 
 from . import clock
-from .series_archive import SeriesArchive
+from raven.recordings.archive import SeriesArchive
 from .history_snapshots import HistoryDeque, immutable_histories
-from .series_publication import SeriesDeque
-from .series_cache_limits import MAX_SERIES_CACHE_ENTRIES, MAX_SERIES_CACHE_BYTES
+from raven.recordings.publication import SeriesDeque
+from raven.recordings.cache_limits import MAX_SERIES_CACHE_ENTRIES, MAX_SERIES_CACHE_BYTES
 from . import ui_state
 
 
@@ -248,6 +248,8 @@ class Job:
     workdir: str = ""                # squeue WorkDir; trailing fields preserve positional callers
     comment: str = ""                # optional explicit launch marker from squeue
     cluster: str = ""
+    restarts: Optional[int] = None   # explicit scheduler counter, never inferred zero
+    collection_stale: bool = False
 
     @property
     def pending(self) -> bool:
@@ -362,6 +364,8 @@ class Finished:
     cluster: str = ""
     comment: str = ""
     command: str = ""                # retained/imported provenance; sacct need not expose it
+    restarts: Optional[int] = None
+    collection_stale: bool = False
 
     @property
     def cpu_eff(self) -> Optional[float]:
@@ -473,6 +477,7 @@ class Store:
     def __init__(self, state_dir: Optional[str] = None, persist: bool = True, max_events: int = 200, series_keep: int = 4000, *, raven_limits=None, read_only=False, strict_owner=False, source_scope=None, series_storage="jsonl"):
         self.raven_limits = raven_limits
         self._ui_revision = 0
+        self.started_seq = 0
         if series_storage not in ("jsonl", "blocks-v1"):
             raise ValueError("Series storage must be jsonl or blocks-v1")
         self.series_storage = series_storage
@@ -516,13 +521,18 @@ class Store:
         self.series: Dict[str, Deque[dict]] = collections.defaultdict(lambda: SeriesDeque(maxlen=series_keep, lock=self.lock))
         self.series_keep = series_keep
         self._series_scope = object()
-        from .series_identity import default_scope, fingerprint
+        from raven.recordings.identity import default_scope, fingerprint
         self._recording_scope = fingerprint(source_scope if source_scope is not None else default_scope(state_dir))
         self._recording_session = uuid.uuid4().hex
         self._recording_identities = {}
         self._recording_observations = {}
         self._recording_evidence = {}
         self._recording_bindings = {}
+        self._queue_publication = 0
+        self._sample_recording_proofs = {}
+        self._isolated_recording_paths = {}
+        self._series_aliases = {}
+        self._series_rekeys = collections.deque()
         self._publications = collections.OrderedDict()
         self._series_loaded: set = set()
         self.gpu_mean: Dict[str, List[float]] = collections.defaultdict(lambda: [0.0, 0])
@@ -556,10 +566,24 @@ class Store:
         self._persist_queue_lock = threading.Lock()
         self._persist_io_lock = threading.Lock()
         self._persist_event_io_lock = threading.Lock()
+        self._persist_submit = None
+        self._persist_writer_lock = threading.RLock()
+        self._persist_writer_future = None
+        self._persist_writer_pending = False
+        self._series_last_flush = time.monotonic()
+        self._series_pending_counts = {}
+        self._series_batch_ready = False
+        self._record_lookup = {}
+        self._record_lookup_signature = None
         self._events_path = os.path.join(state_dir, "events.jsonl") if self.persist else None
         if self.persist:
             self._load_events()
             self._load_tags()
+        self._sync_pinned_limits()
+
+    def _sync_pinned_limits(self):
+        if self.raven_limits:
+            self.raven_limits.pinned_jobs = frozenset(jid for jid, value in self.tags.items() if value.get('pinned'))
 
     # ---- tags, pins, notes ---------------------------------------------------------------------------
     def _load_tags(self):
@@ -584,6 +608,7 @@ class Store:
     def close(self):
         self._storage_cancel.set()
         try:
+            self.configure_persistence_writer(None)
             # A finite maintenance child owns this lock until it is reaped.
             # Read-only sessions also wait; no helper outlives session close.
             with self._persist_io_lock:
@@ -662,7 +687,7 @@ class Store:
             if not rec["tags"] and not rec["pinned"] and not rec["note"]:
                 del self.tags[jid]
                 rec = dict(tags=[])
-        self._save_tags()
+        self._request_persistence()
         return list(rec["tags"])
 
     def pin(self, jid: str, value: Optional[bool] = None) -> bool:
@@ -674,9 +699,10 @@ class Store:
             rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
             rec["pinned"] = (not rec["pinned"]) if value is None else bool(value)
             out = rec["pinned"]
+            self._sync_pinned_limits()
             if not rec["tags"] and not rec["pinned"] and not rec["note"]:
                 del self.tags[jid]
-        self._save_tags()
+        self._request_persistence()
         return out
 
     def note(self, jid: str, text: str) -> str:
@@ -689,8 +715,88 @@ class Store:
             rec["note"] = text.strip()
             if not rec["tags"] and not rec["pinned"] and not rec["note"]:
                 del self.tags[jid]
-        self._save_tags()
+        self._request_persistence()
         return text.strip()
+
+    def tag_many(self, ids, *tags, remove=False):
+        """Apply one user edit atomically and persist its newest publication."""
+        values = {}
+        with self.lock:
+            for jid in dict.fromkeys(ids):
+                rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
+                for tag in tags:
+                    tag = tag.lstrip("#").strip()
+                    if tag:
+                        if remove:
+                            rec["tags"] = [value for value in rec["tags"] if value != tag]
+                        elif tag not in rec["tags"]:
+                            rec["tags"].append(tag)
+                values[jid] = list(rec["tags"])
+                if not rec["tags"] and not rec["pinned"] and not rec["note"]:
+                    self.tags.pop(jid)
+            self._tags_dirty = True; self._tags_revision += 1; self._ui_revision += 1
+            self._notify_ui()
+        self._request_persistence()
+        return values
+
+    def pin_many(self, ids, value=None):
+        ids = tuple(dict.fromkeys(ids))
+        with self.lock:
+            target = not all(self.tags.get(jid, {}).get("pinned", False) for jid in ids) if value is None else bool(value)
+            for jid in ids:
+                rec = self.tags.setdefault(jid, dict(tags=[], pinned=False, note=""))
+                rec["pinned"] = target
+                if not rec["tags"] and not rec["pinned"] and not rec["note"]:
+                    self.tags.pop(jid)
+            self._sync_pinned_limits()
+            self._tags_dirty = True; self._tags_revision += 1; self._ui_revision += 1
+            self._notify_ui()
+        self._request_persistence()
+        return target
+
+    def configure_persistence_writer(self, submit):
+        """Use the shared worker lane for interactive writes; no private pool."""
+        if submit is None:
+            with self._persist_writer_lock:
+                future, self._persist_submit = self._persist_writer_future, None
+            if future is not None:
+                try:
+                    future.result()
+                except Exception as exc:
+                    self._state_health('state persistence', 'Background writer stopped; draining pending edits: ' + str(exc)[:200])
+            self.flush_persistence()
+            if self._tags_dirty:
+                self._save_tags()
+        else:
+            with self._persist_writer_lock:
+                self._persist_submit = submit
+
+    def _request_persistence(self, *, events_only=False):
+        with self._persist_writer_lock:
+            submit = self._persist_submit
+            if submit is not None:
+                self._persist_writer_pending = True
+                if self._persist_writer_future is not None and not self._persist_writer_future.done():
+                    return
+                try:
+                    self._persist_writer_future = submit(self._background_persistence)
+                except RuntimeError as exc:
+                    self.tags_status = {"state": "pending", "message": "Edits await a persistence worker: " + str(exc)[:200]}
+                return
+        if self._tags_dirty:
+            self._save_tags()
+        self.flush_persistence(_events_only=events_only)
+
+    def _background_persistence(self):
+        while True:
+            with self._persist_writer_lock:
+                if not self._persist_writer_pending:
+                    self._persist_writer_future = None
+                    return
+                self._persist_writer_pending = False
+            if self._tags_dirty:
+                self._save_tags()
+            self.flush_persistence()
 
     def tags_of(self, jid: str) -> List[str]:
         return list(self.tags.get(jid, {}).get("tags", []))
@@ -707,17 +813,19 @@ class Store:
                   name=(job.name if job else extra.pop("name", "")), **extra)
         with self.lock:
             self.events.append(ev)
+            if kind == "started":
+                self.started_seq += 1
             self._ui_revision += 1
             self._notify_ui()
             self._queue_persistence(os.path.join(self.state_dir, "events.jsonl") if self.persist else None, ev)
         if _persist:
-            self.flush_persistence(_events_only=True)
+            self._request_persistence(events_only=True)
         return ev
 
     def _load_events(self):
         path = os.path.join(self.state_dir, "events.jsonl")
         if self.raven_limits:
-            from .series_archive import read_tail
+            from raven.recordings.archive import read_tail
             events,status=read_tail(path,self.events.maxlen,max_bytes=2<<20,max_line=64<<10)
             self.events.extend(dict(event,old=True) for event in events)
             if status.get('status')=='limited': self.raven_limits.coverage['events']=status
@@ -742,6 +850,7 @@ class Store:
         """Store a fresh squeue listing; returns the transition events (queued, started, finished, held, released)."""
         out = []
         with self.lock:
+            self._queue_publication += 1
             self._ui_revision += 1
             self._notify_ui()
             limited = False
@@ -811,12 +920,18 @@ class Store:
                 self.names[j.id] = j.name
             # keep the projected starts already known
             old = {j.id: j.est_start for j in self.jobs}
-            for j in jobs:
-                if not j.est_start:
-                    j.est_start = old.get(j.id, "")
+            # Caller-owned records can still back an earlier render.
+            # Publication never mutates those record objects.
+            jobs = [replace(j, est_start=old.get(j.id, '')) if not j.est_start and old.get(j.id) else j for j in jobs]
             self.jobs = list(jobs)
+            self._record_lookup_signature = None
             for job in jobs:
                 self.capture_series_identity(job.id, record=job)
+            if self.raven_limits:
+                active={path for job in jobs if (path:=self._series_identity_path(self._recording_identities[job.id]))}
+                active.update(self._series_identity_path(identity) for jid,identity in self._isolated_recording_paths.items() if jid in now)
+                self.raven_limits.active_paths=frozenset(active)
+                self._sync_pinned_limits()
             confirmed = False
             for jid in list(self.departed_jobs):
                 candidate = self._accounting_jobs.get(jid)
@@ -842,6 +957,11 @@ class Store:
                     for key in list(mapping):
                         if key.split(':',1)[0] not in retained:
                             del mapping[key]
+            retained = retained_attempts | set(self.series) | {job.id for job in self.finished}
+            for mapping in (self._recording_identities, self._recording_observations, self._recording_evidence, self._recording_bindings,
+                            self._sample_recording_proofs, self._isolated_recording_paths):
+                for jid in mapping.keys() - retained:
+                    del mapping[jid]
             self.t_jobs = clock.now()
         if _persist:
             self.flush_persistence(_events_only=True)
@@ -908,6 +1028,7 @@ class Store:
                                key=lambda job: job.end, reverse=True)
         if self.raven_limits:
             self.finished=self.finished[:self.raven_limits.values['max_history_rows']]
+        self._record_lookup_signature = None
 
     def apply_finished(self, jobs: Sequence[Finished], history_days: Optional[float] = None) -> None:
         """Reconcile an accounting snapshot with observed departures under one lock.
@@ -960,21 +1081,20 @@ class Store:
         with self.lock:
             self._ui_revision += 1
             self._notify_ui()
-            for j in self.jobs:
-                if j.id in starts:
-                    j.est_start = starts[j.id]
+            self.jobs = [replace(job, est_start=starts[job.id]) if job.id in starts else job for job in self.jobs]
+            self._record_lookup_signature = None
 
     # ---- per-job time series -----------------------------------------------------------------------
     def capture_series_identity(self, jid, *, record=None):
         """Capture before acquisition; the immutable token follows delayed writes."""
-        from .series_identity import SeriesIdentity, fingerprint, scheduler_attempt
+        from raven.recordings.identity import SeriesIdentity, fingerprint, scheduler_attempt
         with self.lock:
             if record is None:
                 record, details = self.record_context(jid)
             else:
                 details = self.details.get(jid, {})
             observation = (self._job_attempts.get(jid, 0), getattr(record, "submit", ""),
-                           getattr(record, "start", ""), getattr(record, "cluster", ""))
+                           getattr(record, "start", ""), getattr(record, "cluster", ""), getattr(record, "restarts", None))
             binding = self._recording_bindings.get(jid)
             if binding and binding[0] != observation:
                 self._recording_bindings.pop(jid, None)
@@ -989,36 +1109,80 @@ class Store:
                 verified or fingerprint((self._recording_session, jid, observation)), bool(verified))
             previous = self._recording_identities.get(jid)
             if previous is not None and previous != identity:
-                # Samples captured before verification retain their original
-                # session identity. Equal second-resolution timestamps do not
-                # prove that a rapid requeue did not occur between observations.
-                self.series.pop(jid, None)
-                self.prev_cpu.pop(jid, None)
-                self.live.pop(jid, None)
-                self.gpu.pop(jid, None)
-                self.hist_cpu.pop(jid, None)
-                for key in tuple(self.hist_gpu):
-                    if key.startswith(jid + ":"):
-                        self.hist_gpu.pop(key, None)
-                        self.gpu_mean.pop(key, None)
-                self._series_loaded.discard(jid)
-                self._series_archive.limited.discard(jid)
-                self._series_archive.states.pop(jid, None)
-                publication = self._publications.pop(jid, None)
-                if publication:
-                    publication[0].release_publication()
+                prior_observation = self._recording_observations.get(jid)
+                # An explicit zero restart count proves that the new detail
+                # cannot refer to a same-second requeue. Other ambiguous
+                # promotions remain isolated rather than relabelled.
+                restart = getattr(record, 'restarts', None)
+                restart = restart if restart is not None else details.get('Restarts')
+                promote = (not previous.verified and identity.verified and prior_observation is not None and prior_observation[:4] == observation[:4]
+                           and restart in (0, '0') and getattr(record, 'cluster', '') == observation[3])
+                if promote:
+                    old_path, new_path = self._series_identity_path(previous), self._series_identity_path(identity)
+                    if old_path and new_path and old_path != new_path:
+                        with self._persist_queue_lock:
+                            self._series_aliases[old_path] = new_path
+                            self._series_rekeys.append((old_path, new_path))
+                else:
+                    # Equal second-resolution timestamps alone cannot prove
+                    # that a rapid requeue did not occur between observations.
+                    self.series.pop(jid, None)
+                    self.prev_cpu.pop(jid, None)
+                    self.live.pop(jid, None)
+                    self.gpu.pop(jid, None)
+                    self.hist_cpu.pop(jid, None)
+                    for key in tuple(self.hist_gpu):
+                        if key.startswith(jid + ":"):
+                            self.hist_gpu.pop(key, None)
+                            self.gpu_mean.pop(key, None)
+                    self._series_loaded.discard(jid)
+                    self._series_archive.limited.discard(jid)
+                    self._series_archive.states.pop(jid, None)
+                    publication = self._publications.pop(jid, None)
+                    if publication:
+                        publication[0].release_publication()
             self._recording_identities[jid] = identity
             self._recording_observations[jid] = observation
             self._recording_evidence[jid] = evidence
             return identity
 
-    def bind_series_scheduler(self, jid, details):
+    def bind_series_scheduler(self, jid, details, *, queue_publication=None):
         """Called only after acquisition's queue-generation guard succeeded."""
         with self.lock:
+            if queue_publication is not None and queue_publication != self._queue_publication:
+                return False
             current = self.details.get(jid)
             if current != details:
                 return False
-            return self.capture_series_identity(jid).verified
+            identity = self.capture_series_identity(jid)
+            if identity.verified:
+                self._sample_recording_proofs[jid] = self._queue_publication, identity
+            return identity.verified
+
+    def sample_recording_identity(self, jid, *, identity=None):
+        """Separate fresh write authority from the previously verified graph.
+
+        Legacy queue rows omit restart counters. A cached detail remains useful
+        for viewing, but cannot authorize new verified appends after another
+        queue publication; deferred samples have an explicit session-only file.
+        """
+        from raven.recordings.identity import SeriesIdentity, fingerprint
+        with self.lock:
+            identity = identity or self.capture_series_identity(jid)
+            if not identity.verified:
+                return identity
+            record, _ = self.record_context(jid)
+            structured = (record is not None and type(getattr(record,'restarts',None)) is int and 0 <= record.restarts <= 9999999999
+                          and bool(getattr(record,'cluster','')))
+            proof = self._sample_recording_proofs.get(jid)
+            if structured or proof == (self._queue_publication,identity):
+                return identity
+            isolated = SeriesIdentity(jid,self._recording_scope,
+                fingerprint((self._recording_session,jid,self._recording_observations.get(jid),'awaiting-fresh-proof',identity.attempt)),False)
+            self._isolated_recording_paths[jid] = isolated
+            if self.raven_limits:
+                self.raven_limits.active_paths=self.raven_limits.active_paths|{self._series_identity_path(isolated)}
+            return isolated
 
     def bind_series_attempt(self, jid, binding):
         """Bind a previously verified retained launch identity, never a job ID.
@@ -1026,7 +1190,7 @@ class Store:
         The caller must have verified the manifest against its scheduler job.
         Required identity fields prevent accidental job-number-only binding.
         """
-        from .series_identity import fingerprint
+        from raven.recordings.identity import fingerprint
         required = ("run_root", "run_id", "attempt", "job_id", "submission_token", "cluster")
         if (not isinstance(binding, dict) or any(not isinstance(binding.get(key), str) or not binding[key] for key in required)
                 or binding["job_id"] != jid):
@@ -1034,7 +1198,12 @@ class Store:
         with self.lock:
             self.capture_series_identity(jid)
             self._recording_bindings[jid] = (self._recording_observations[jid], fingerprint({key: binding[key] for key in required}))
-            return self.capture_series_identity(jid)
+            identity = self.capture_series_identity(jid)
+            # The caller has just verified this exact retained-run binding.
+            # That proof authorizes this publication, not future legacy queue
+            # observations that could hide a same-second scheduler restart.
+            self._sample_recording_proofs[jid] = self._queue_publication, identity
+            return identity
 
     def _series_identity_path(self, identity):
         if not self.persist or not identity.filename:
@@ -1048,7 +1217,7 @@ class Store:
     def legacy_series(self, jid):
         """Explicit recovery read, never merged or attributed to a current run."""
         safe = "".join(c if c.isalnum() or c in "_-" else "_" for c in jid)
-        from .series_archive import read_tail
+        from raven.recordings.archive import read_tail
         if not self.persist:
             return [], {"status": "missing", "message": "Persistence is disabled."}
         values, status = read_tail(os.path.join(self.state_dir, "series", safe + ".jsonl"), self.series_keep,
@@ -1059,12 +1228,17 @@ class Store:
         if path is not None and self.writable:
             with self._persist_queue_lock:
                 queue = self._persist_event_queue if path == self._events_path else self._persist_queue
+                before = len(queue)
                 if self.raven_limits:
                     self.raven_limits.enqueue(queue,path,sample)
                 else:
                     queue.append((path, sample))
+                if queue is self._persist_queue and len(queue) != before:
+                    count = self._series_pending_counts.get(path, 0) + 1
+                    self._series_pending_counts[path] = count
+                    self._series_batch_ready = self._series_batch_ready or count >= 256
 
-    def flush_persistence(self, *, _events_only=False, _series_only=False):
+    def flush_persistence(self, *, _events_only=False, _series_only=False, _defer_series=False):
         """Write queued observations in publication order without Store.lock.
 
         Worker sources call this after publishing their entire atomic update.
@@ -1079,9 +1253,17 @@ class Store:
         if not _series_only:
             self._drain_persistence(self._persist_event_queue, self._persist_event_io_lock)
         if not _events_only:
+            if _defer_series:
+                with self._persist_queue_lock:
+                    pressure = (self.raven_limits is not None and self.raven_limits.pending_bytes >= self.raven_limits.values['persistence_queue_bytes'] * .75)
+                    if not self._series_batch_ready and not pressure and len(self._persist_queue) < 4096 and time.monotonic() - self._series_last_flush < 1.:
+                        return
             self._drain_persistence(self._persist_queue, self._persist_io_lock)
+            self._series_last_flush = time.monotonic()
 
     def _drain_persistence(self, queue, io_lock):
+        if queue is self._persist_queue:
+            self._drain_series_rekeys()
         if self.raven_limits:
             return self.raven_limits.drain(self,queue,io_lock)
         with io_lock:
@@ -1091,21 +1273,42 @@ class Store:
                         return
                     batch = list(queue)
                     queue.clear()
+                    if queue is self._persist_queue:
+                        self._series_pending_counts.clear(); self._series_batch_ready = False
                 paths = {}
                 for path, sample in batch:
+                    path = self._series_aliases.get(path, path)
                     paths.setdefault(path, []).append(sample)
                 for path, samples in paths.items():
                     try:
                         if path != self._events_path:
-                            from .series_storage import append as append_recordings
+                            from raven.recordings.storage import append as append_recordings
                             if append_recordings(path, samples, cache=self._series_format_cache):
                                 continue
-                        os.makedirs(os.path.dirname(path), exist_ok=True)
-                        with open(path, "a") as stream:
-                            for sample in samples:
-                                stream.write(json.dumps(sample) + "\n")
+                        from raven.recordings.storage import append_jsonl
+                        append_jsonl(path, samples)
                     except (OSError, ValueError) as exc:
                         self._state_health("state recordings", str(exc))
+
+    def _drain_series_rekeys(self):
+        if not self._series_rekeys:
+            return
+        from raven.recordings.storage import rekey
+        with self._persist_io_lock:
+            while self._series_rekeys:
+                with self._persist_queue_lock:
+                    old, new = self._series_rekeys[0]
+                try:
+                    rekey(old, new)
+                except (OSError, ValueError) as exc:
+                    self._state_health('state recordings', 'Attempt promotion awaits storage: ' + str(exc))
+                    return
+                with self._persist_queue_lock:
+                    pending = list(self._persist_queue)
+                    self._persist_queue.clear()
+                    self._persist_queue.extend((new if path == old else path, value) for path, value in pending)
+                    self._series_aliases.pop(old, None)
+                    self._series_rekeys.popleft()
 
     def record(self, jid: str, sample: dict, *, _persist: bool = True, identity=None):
         """Append a captured sample; defer IO when inside a larger publication."""
@@ -1114,22 +1317,25 @@ class Store:
             if identity is not None and identity != current:
                 return None
             identity = current
+            write_identity = self.sample_recording_identity(jid, identity=identity)
+            if self.raven_limits and not write_identity.verified:
+                self.raven_limits.note_session_path(self._series_identity_path(write_identity))
             self._ui_revision += 1
             self._notify_ui()
             series = self.series[jid]
             captured = series.append_owned(sample) if type(series) is SeriesDeque else None
             if type(series) is not SeriesDeque:
                 series.append(sample)
-            if identity.verified and sample.get("k") in ("live", "gpu"):
+            if write_identity.verified and sample.get("k") in ("live", "gpu"):
                 from .stream_anomalies import Monitor
                 monitor = getattr(self, "anomalies", None)
                 if monitor is None:
                     monitor = self.anomalies = Monitor()
-                monitor.observe(identity, sample)
+                monitor.observe(write_identity, sample)
             if self.raven_limits:
-                from .raven_limits import retained_size
+                from raven.collection.retention import retained_size
                 self.raven_limits.retain_series(self,jid,retained_size(sample,self.raven_limits.values['series_bytes']))
-            self._queue_persistence(self._series_identity_path(identity), captured if captured is not None else sample)
+            self._queue_persistence(self._series_identity_path(write_identity), captured if captured is not None else sample)
         if _persist:
             self.flush_persistence(_series_only=True)
         return sample
@@ -1148,7 +1354,7 @@ class Store:
 
     def series_publication(self, jid: str, *, background=True, memory_only=False):
         """Reuse an owned source revision across chart and advisor consumers."""
-        from .series_publication import PublishedSeries
+        from raven.recordings.publication import PublishedSeries
         if memory_only:
             with self.lock:
                 source = self.series.get(jid, ())
@@ -1172,7 +1378,13 @@ class Store:
 
     def series_status(self, jid: str) -> dict:
         """Explain whether saved history is loading, missing, limited or ready."""
-        return self._series_archive.status(jid)
+        status = self._series_archive.status(jid)
+        if jid in self._isolated_recording_paths:
+            path = self._series_identity_path(self._isolated_recording_paths[jid])
+            status = dict(status, attribution='session-observations-present', message=status.get('message','') +
+                ' Some current-session observations await a fresh scheduler restart proof; their session-only recording is separate: ' + str(path),
+                session_recording_path=path)
+        return status
 
     def series_jobs(self) -> List[str]:
         """Job IDs with a series on disk or in memory; synchronous inventory."""
@@ -1235,10 +1447,47 @@ class Store:
 
     def job(self, jid: str) -> Optional[Job]:
         with self.lock:
-            for j in self.jobs:
-                if j.id == jid:
-                    return j
+            entry = self._record_entry(jid)
+            return entry[0] if entry is not None and entry[1] is self.jobs else None
         return None
+
+    def _refresh_record_lookup(self, *, force=False):
+        signature = (id(self.jobs), len(self.jobs), id(self.finished), len(self.finished), id(self.departed_jobs), len(self.departed_jobs))
+        if signature != self._record_lookup_signature or force:
+            self._record_lookup = {jid: (job, self.departed_jobs, jid) for jid, job in self.departed_jobs.items()}
+            self._record_lookup.update((job.id, (job, self.finished, index)) for index, job in enumerate(self.finished))
+            self._record_lookup.update((job.id, (job, self.jobs, index)) for index, job in enumerate(self.jobs))
+            self._record_lookup_signature = signature
+            self._record_lookup_sources = (self.jobs, self.finished, self.departed_jobs)
+
+    def _record_entry(self, jid):
+        self._refresh_record_lookup()
+        entry = self._record_lookup.get(jid)
+        if entry is None and jid:
+            # A public-row replacement can introduce a new ID without changing
+            # list size. Do not cache absence without a source mutation token:
+            # a later in-place insertion must be visible on the next lookup.
+            # Existing sampled IDs retain their constant-time slot guard.
+            self._refresh_record_lookup(force=True)
+            entry = self._record_lookup.get(jid)
+        if entry is not None:
+            record, source, position = entry
+            # Native sources replace entire publications. Embedding adapters
+            # may replace one public row in place: validate just this indexed
+            # slot so asynchronous identity checks still see that correction.
+            try:
+                current = source[position]
+            except (KeyError, IndexError):
+                current = None
+            if current is not record or record.id != jid:
+                self._refresh_record_lookup(force=True)
+                entry = self._record_lookup.get(jid)
+        return entry
+
+    @property
+    def render_revision(self):
+        with self.lock:
+            return self._ui_revision
 
     def record_context(self, jid: Optional[str], *, include_group: bool = False):
         """Read one exact job and its scheduler paths without copying histories.
@@ -1246,18 +1495,13 @@ class Store:
         The record has the same shallow-copy semantics as ``snapshot``. The
         details dictionary is copied while holding the lock, so a reader sees
         one publication and cannot alter the store's path mapping. This lookup
-        deliberately keeps no cache: departures, accounting corrections and
-        changed working directories are visible on the next call.
+        uses a publication index with an exact-slot guard: departures,
+        accounting corrections and row replacement are visible on the next call.
         """
         with self.lock:
-            record = None
+            entry = self._record_entry(jid)
+            record = entry[0] if entry is not None else None
             if jid:
-                for records in (self.jobs, self.finished):
-                    record = next((job for job in records if job.id == jid), None)
-                    if record is not None:
-                        break
-                if record is None:
-                    record = self.departed_jobs.get(jid)
                 if record is None and include_group:
                     record = next((job for job in self.group if job.id == jid), None)
             return record, dict(self.details.get(jid, {})) if jid else {}
@@ -1266,8 +1510,7 @@ class Store:
         """Reuse immutable native scalar histories; other snapshot rules remain."""
         with self.lock:
             snapshot=self.snapshot(_immutable_history=True)
-            if self.raven_limits is not None:
-                snapshot['_ui_publication_token']=self.ui_publication_token()
+            snapshot['_ui_publication_token']=self.ui_publication_token()
             return snapshot
 
     def ui_publication_token(self):
@@ -1279,7 +1522,7 @@ class Store:
         and unknown producer setups retain the original refresh fallback.
         """
         with self.lock:
-            if (self.raven_limits is None or len(self.health)>32 or
+            if (len(self.health)>32 or
                     any(type(value) is not Health for value in self.health.values())):
                 return None
             health=tuple((name,h.calls,h.errors,h.enabled,h.inflight,h.last_ok,h.error,h.backoff)
@@ -1289,14 +1532,14 @@ class Store:
             return (self._ui_revision,self.t_jobs,self.history_revision,health,
                     tuple((id(value),len(value)) for value in collections),
                     bool(self._series_archive.worker),
-                    tuple((key,value.get('limited')) for key,value in self.raven_limits.coverage.copy().items()))
+                    tuple((key,value.get('limited')) for key,value in self.raven_limits.coverage.copy().items()) if self.raven_limits else ())
 
     def snapshot(self, *, _immutable_history=False) -> dict:
         with self.lock:
             return dict(jobs=list(self.jobs), live=dict(self.live), gpu=dict(self.gpu), nodes=dict(self.nodes), partitions=list(self.partitions),
                         gpu_inventory=dict(self.gpu_inventory), finished=list(self.finished), share=list(self.share), account=dict(self.account),
                         departed_jobs=dict(self.departed_jobs), job_transitions=[dict(e) for e in self.job_transitions],
-                        history_revision=self.history_revision,
+                        history_revision=self.history_revision, started_seq=self.started_seq,
                         coverage={key:dict(value) for key,value in self.raven_limits.coverage.copy().items()} if self.raven_limits else {},
                         details=dict(self.details), health={k: replace(v) for k, v in self.health.items()}, events=list(self.events),
                         group=list(self.group), weather=list(self.weather), pending_ahead=dict(self.pending_ahead), budget=dict(self.budget),

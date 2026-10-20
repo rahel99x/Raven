@@ -26,6 +26,9 @@ def app(tmp_path, tab='jobs'):
                       state_dir=str(tmp_path),messages=[],body_origin=4)
     a.say=lambda s:a.messages.append(s)
     a.fail=lambda s:a.messages.append('ERROR '+s)
+    from raven.workbench import bind_actions, bind_terminal
+    bind_actions(a)
+    bind_terminal(a)
     state=T.initialize(a); state.service=Service(); state.active='one'; state.modes[tab]='terminal'
     T._focus(a,True)
     T.render(a,40,12,x=55,y=6)
@@ -408,7 +411,8 @@ def test_tools_job_directory_prompt_opens_declared_job_directory(tmp_path,monkey
     a.files=SimpleNamespace(remote=False)
     a.cfg['terminal']={'shell':'/bin/bash'}
     opened=[]
-    monkeypatch.setattr(T,'open_session',lambda owner,**options:opened.append(options) or 'new-session')
+    from raven.terminal import sessions
+    monkeypatch.setattr(sessions,'open_session',lambda owner,**options:opened.append(options) or 'new-session')
     command=next(args for label,args in T._actions() if label=='Job directory')
     assert T.run_command(a,command)
     assert a.terminal_state.dialog['action']=='job-cwd'

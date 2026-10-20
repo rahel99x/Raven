@@ -64,20 +64,20 @@ def test_unknown_attempt_never_reads_prior_session_or_legacy_file(tmp_path):
     reopened.close()
 
 
-def test_verification_never_relabels_unverified_observations(tmp_path):
+def test_zero_restart_verification_preserves_and_promotes_matching_observations(tmp_path):
     store = Store(str(tmp_path))
     job = Job("7", "train", "gpu", "RUNNING", submit=SUBMIT, start=START, cluster="lab")
     store.apply_jobs([job]); store.record("7", {"t": 1})
     unverified = store._series_path("7")
     bind(store)
-    assert store.series_of("7") == []
+    assert store.series_of("7") == [{'t':1}]
     assert json.loads(Path(unverified).read_text()) == {"t": 1}
     store.record("7", {"t": 2})
     store.flush_persistence()
     assert store._series_path("7") != unverified
     store.close()
     reopened = Store(str(tmp_path)); bind(reopened)
-    assert reopened.series_of("7") == [{"t": 2}]
+    assert reopened.series_of("7") == [{"t":1},{"t": 2}]
     reopened.close()
 
 

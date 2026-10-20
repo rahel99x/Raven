@@ -1,0 +1,7 @@
+"""Compatibility alias for :mod:`raven.installation.update_verification`."""
+
+import sys as _sys
+from importlib import import_module as _import_module
+
+_implementation = _import_module(".installation.update_verification", __package__)
+_sys.modules[__name__] = _implementation

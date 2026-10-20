@@ -4,7 +4,7 @@ from __future__ import annotations
 import csv
 import io
 
-from .operations import checkpoint, read_json
+from .operation_support import checkpoint, read_json
 
 LIMIT = 2 * 1024 * 1024
 MAX_NODES = 10000

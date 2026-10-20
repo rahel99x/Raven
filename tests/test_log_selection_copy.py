@@ -10,6 +10,11 @@ import pytest
 from raven import clipboard, log_copy
 from raven.log_copy import copy_log_selection
 
+@pytest.fixture(autouse=True)
+def durable_export_destination(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAVEN_EXPORT_DIR", str(tmp_path / "state" / "exports"))
+
+
 
 def raw_export(chunks, state_dir, **kwargs):
     return copy_log_selection(chunks, state_dir, use_osc52=False, use_tools=False, **kwargs)
@@ -147,14 +152,16 @@ def test_large_selection_osc52_limit_never_sends_partial_prefix(tmp_path, monkey
     assert "OSC 52 skipped" in result["message"]
 
 
-def test_selection_export_directory_symlink_refused(tmp_path):
+def test_selection_explicit_export_root_symlink_resolves_once(tmp_path):
     state_dir, outside = tmp_path / "state", tmp_path / "outside"
     state_dir.mkdir()
     outside.mkdir()
     (state_dir / "exports").symlink_to(outside)
     result = raw_export(iter([b"private\n"]), state_dir)
-    assert result["status"] == "error"
-    assert not list(outside.iterdir())
+    assert result["status"] == "ready"
+    assert Path(result["export_path"]).parent == outside
+    assert Path(result["export_path"]).read_bytes() == b"private\n"
+    assert stat.S_IMODE(Path(result["export_path"]).stat().st_mode) == 0o600
 
 
 def test_selection_name_collision_preserves_previous_export(tmp_path, monkeypatch):

@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import builtins
 import json
 import threading
+import os
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -34,6 +35,19 @@ def blocked_open(monkeypatch, path, mode):
                 raise AssertionError("test did not release blocked storage")
         return real_open(target, selected, *args, **kwargs)
     monkeypatch.setattr(builtins, "open", delayed)
+    if mode=='a':
+        real_write=os.write
+        def delayed_write(fd,data):
+            try:
+                selected=os.readlink('/proc/self/fd/'+str(fd))
+            except OSError:
+                selected=''
+            if selected==str(path):
+                calls.append(threading.current_thread().name);entered.set()
+                if not release.wait(5):
+                    raise AssertionError('test did not release blocked storage')
+            return real_write(fd,data)
+        monkeypatch.setattr(os,'write',delayed_write)
     try:
         yield entered, release, calls
     finally:
@@ -63,6 +77,7 @@ def test_sampler_publishes_atomically_before_slow_disk_and_releases_store_lock(t
     slurm = SimpleNamespace(live=lambda *args: (live, (2., live.t), ["step"]),
                             gpu=lambda *args: gpu, jobs=lambda: [])
     sampler = Sampler(slurm, store, {}, [], workers=1)
+    store._series_last_flush = 0.  # Make the batching deadline due in this I/O fault test.
     path = tmp_path / "events.jsonl" if source == "jobs" else Path(store._series_path("7"))
     pool = ThreadPoolExecutor(max_workers=1)
     try:

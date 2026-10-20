@@ -10,7 +10,7 @@ import math
 import statistics
 
 from .runtime_contracts import identifier, number, object_, sequence, text, unique_names
-from .operations import digest
+from .operation_support import digest
 
 MAX_EVENTS = 20000
 

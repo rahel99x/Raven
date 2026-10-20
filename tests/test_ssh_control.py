@@ -88,14 +88,24 @@ def test_unresolvable_scope_disables_reuse_without_changing_host_key_policy(monk
     assert 'StrictHostKeyChecking=no' not in argv and item.control_diagnostic
 
 
-def test_unsafe_control_directory_rejected_without_chmod(tmp_path, monkeypatch):
+def test_unsafe_automatic_control_directory_ignored_without_chmod(tmp_path, monkeypatch):
     directory = tmp_path / ('raven-ssh-' + str(os.getuid()))
     directory.mkdir()
     directory.chmod(0o777)
     monkeypatch.setattr(ssh_control.tempfile, 'gettempdir', lambda: str(tmp_path))
-    with pytest.raises(ValueError, match='writable|0700'):
-        backend().argv(['squeue'])
+    monkeypatch.setenv('XDG_RUNTIME_DIR', str(tmp_path))
+    item = backend()
+    argv = item.argv(['squeue'])
+    if item.control_path:
+        parent = Path(item.control_path).parent
+        assert parent != directory
+        assert parent.stat().st_uid == os.getuid()
+        assert parent.stat().st_mode & 0o777 == 0o700
+    else:
+        assert 'ControlMaster=no' in argv and 'ControlPath=none' in argv
+    assert str(directory) not in ' '.join(argv)
     assert directory.stat().st_mode & 0o777 == 0o777
+    assert list(directory.iterdir()) == []
 
 
 def test_remote_pager_keeps_connection_security_and_proxy_options():

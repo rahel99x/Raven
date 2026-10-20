@@ -53,7 +53,7 @@ efficacy; each guide identifies its supported boundary.
 | Evaluate the unpublished core/lab extraction | [Distribution experiment](distribution-experiment.md) |
 | Prepare the five established usability journeys | [Usability study](usability-study.md) |
 
-The [implementation review ledger](../implementation/review-2026-10/coverage.json)
+The [implementation review ledger](https://github.com/rahel99x/Raven/blob/b98742fb967f18131905696f4afd3a61f2ad03f2/docs/implementation/review-2026-10/coverage.json)
 accounts for the accepted requirements and their evidence. Container scheduling,
 local process measurements, synthetic scientific fixtures and human/site
 qualification remain separate results.

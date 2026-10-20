@@ -171,6 +171,9 @@ def test_restarted_attempt_drops_demands_and_old_published_input_cannot_reactiva
     assert d.sampler.sampling_interval("live", "7") == 5.0
     app.click(*point(old.rate_slider, right=True), hits, button="left")
     assert not metric_live.set_rate(app, old.key, 100)
+    assert d.store.series_of("7") == []
+    for timestamp in (199.5, 200.0):
+        d.store.record("7", {"k": "live", "t": timestamp, "cpu": .5, "rss": 1024**3})
     d.draw()
     new = controls(app)[0]
     assert new.key[4] != old.key[4]

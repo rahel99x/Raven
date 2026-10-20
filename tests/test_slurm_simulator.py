@@ -162,7 +162,7 @@ def test_compute_task_cannot_acquire_live_discovery_transport():
 
 def test_recorded_real_slurm_temporal_holdout_remains_negative_evidence():
     from pathlib import Path
-    root = Path(__file__).resolve().parents[1] / "docs/implementation/review-2026-10/measurements/queue-temporal-holdout"
+    root = Path(__file__).resolve().parents[1] / "tests/fixtures/review-temporal-holdout/queue"
     model = json.loads((root / "model.json").read_text())
     recorded = json.loads((root / "result.json").read_text())
     result = S.simulate(model)

@@ -410,7 +410,7 @@ def test_unresolved_launches_cannot_consume_entire_pending_export_slice(run, mon
     assert completed['status'] == 'complete'
 
 
-def test_cancellation_retry_exhaustion_is_visible_and_never_changes_workload(run, monkeypatch):
+def test_cancellation_preserves_retry_budget_and_never_changes_workload(run, monkeypatch):
     A.capture(run, request())
     finish(run)
     before = (run / 'summary.json').read_bytes()
@@ -419,11 +419,10 @@ def test_cancellation_retry_exhaustion_is_visible_and_never_changes_workload(run
     monkeypatch.setattr(E, 'export_data', lambda *a, **k: {'status': 'cancelled', 'outputs': []})
     for attempt in range(3):
         value, = A.process_pending(run.parent.parent)
-        assert value['tries'] == attempt + 1
+        assert value['tries'] == 0
         now[0] += 1000
-    assert value['status'] == 'failed' and 'exhausted' in value['reason']
-    assert '--reconcile --retry' in value['reason']
-    assert A.process_pending(run.parent.parent) == []
+    assert value['status'] == 'pending' and 'no failure attempt' in value['reason']
+    assert A.pending_status(run.parent.parent)[0]['status']=='pending'
     assert (run / 'summary.json').read_bytes() == before
 
 

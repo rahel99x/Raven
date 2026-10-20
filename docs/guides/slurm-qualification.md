@@ -74,7 +74,7 @@ image reproducibility claim is made.
 
 ## Recorded qualification
 
-The [five-version receipt](../implementation/review-2026-10/evidence/W14-reader-matrix.json)
+The [five-version receipt](https://github.com/rahel99x/Raven/blob/b98742fb967f18131905696f4afd3a61f2ad03f2/docs/implementation/review-2026-10/evidence/W14-reader-matrix.json)
 and [review evidence](../implementation/review-2026-10/evidence/W14.md) record
 actual local lifecycle runs. Their exact compiled images were reused with the
 current read-only entrypoint; these receipts do not claim a clean rebuild from

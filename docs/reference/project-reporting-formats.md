@@ -194,6 +194,7 @@ with a newline:
 | Metric value | For each metric | Finite JSON number; negative measurements are permitted. |
 | `step` | No | Integer 0–2⁶³−1. |
 | `phase` | No | Printable string, at most 160 characters, e.g. `warmup`, `fit`, `validate`. |
+| `pid` | No | Producing process ID, integer 1–2⁶³−1. The Python client supplies it; existing files can omit it. |
 | `progress` | No | Object containing `completed` and `total`, optionally `unit`. |
 | `progress.completed` | If `progress` exists | Finite number, `0 <= completed <= total`. |
 | `progress.total` | If `progress` exists | Finite number strictly greater than zero. |
@@ -709,13 +710,19 @@ explains collection choices and the plotting-ready output columns.
 | Contract | Required interpretation |
 | --- | --- |
 | [`raven.telemetry-index/v1`](../schemas/telemetry-index.v1.schema.json) | `run_id` binds the exact attempt. Each source declares its `family`, relative `path`, row `schema`, `status`, `reason`, `coverage`, known `metrics`, and `devices`. |
+| [`raven.telemetry-index/v2`](../schemas/telemetry-index.v2.schema.json) | New recordings add ordered `segments`, invariant `row_defaults`, and `storage_format`. Coverage distinguishes lifetime, retained and evicted sample counts. Existing v1 indexes remain readable. |
+| [`raven.telemetry-compact/v1`](../schemas/telemetry-record.v2.schema.json) | A compact stored row supplies `sequence`, finite epoch `timestamp`, `elapsed_seconds`, changing observations and an optional `device` index. Readers merge `row_defaults` and the selected device descriptor, then validate the expanded measurement against its declared v1 schema. |
 | [`raven.gpu-sample/v1`](../schemas/gpu-sample.v1.schema.json) | Complete JSONL records with sequence, run/node/device identity, collector UTC timestamp, monotonic elapsed time, supported utilization/memory counters, units in field names, scope, and quality. |
 | [`raven.cpu-memory-sample/v1`](../schemas/cpu-memory-sample.v1.schema.json) | Complete JSONL records with the same clock/identity conventions and local process observations: `cpu_seconds`, `rss_bytes`, `process_count`, `cpu_scope`, and `memory_scope`. |
 | `raven.export-manifest/v1` | Immutable export selection, attempt identities, per-source byte cutoffs, coverage/outcomes, transformations, and output paths/counts/checksums. |
 
 The index lives at `RUN/telemetry/index.json`; its streams are
 `telemetry/gpu.jsonl` and `telemetry/cpu-memory.jsonl`. `timestamp` is Unix epoch
-seconds and `timestamp_utc` is its explicit UTC spelling. `source_time` remains
+seconds and `timestamp_utc` is its explicit UTC spelling in expanded records.
+V2 also lists sealed segments and stores invariant fields once in the index;
+readers reconstruct the expanded records before validation and export. See
+[recording storage and recovery](../guides/recording-storage.md) for segment
+retention, storage budgets and interrupted-write recovery. `source_time` remains
 `null` when the vendor or procfs supplies no clock. Collector timestamps do not
 establish simultaneous cross-node measurements. `elapsed_seconds` is monotonic
 duration from recording start. A sequence is local to its producer stream.

@@ -33,6 +33,11 @@ def installer(tmp_path, monkeypatch):
         source_ref="main", source_remote="origin", source_dirty=False))
     monkeypatch.setattr(I, "source_snapshot", lambda *args: "2" * 64)
     monkeypatch.setattr(I, "_build_inputs", lambda: set())
+    def build_root(stage, metadata):
+        destination = stage / '.source'
+        destination.mkdir()
+        return destination
+    monkeypatch.setattr(I, "_stage_source", build_root)
     return tmp_path / "releases", tmp_path / "bin", calls
 
 
@@ -181,10 +186,10 @@ def test_malformed_or_untrusted_marker_never_replaces_existing_release(installer
 
 
 @pytest.mark.parametrize("which", ["ancestor", "prefix", "bin"])
-def test_group_writable_directories_are_refused_before_build(installer, which):
+def test_world_writable_directories_are_refused_before_build(installer, which):
     prefix, bin_dir, calls = installer
     destination = prefix.parent if which == "ancestor" else prefix if which == "prefix" else bin_dir
-    destination.mkdir(exist_ok=True); destination.chmod(0o770)
+    destination.mkdir(exist_ok=True); destination.chmod(0o777)
     with pytest.raises(I.InstallError, match="group/world writable"):
         I.install(prefix, bin_dir)
     assert not calls and not (prefix / "current").exists()
