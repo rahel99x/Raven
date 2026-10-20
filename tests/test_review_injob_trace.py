@@ -26,7 +26,9 @@ def test_application_callback_does_not_wait_for_stalled_fsync_and_metadata_is_on
     tmp_path, monkeypatch
 ):
     recorder = Recorder(tmp_path, journal_format="blocks", flush_interval=0.01)
-    capture = PythonCapture(recorder, scope="project", roots=(tmp_path,))
+    capture = PythonCapture(
+        recorder, legacy=sys.version_info < (3, 12), scope="project", roots=(tmp_path,)
+    )
     program = {}
     exec(compile("def small(): return 7\n", str(tmp_path / "app.py"), "exec"), program)
     entered, release = threading.Event(), threading.Event()
@@ -343,7 +345,7 @@ def test_near_recursion_limit_application_does_not_receive_capture_error(tmp_pat
         "import sys\nfrom pathlib import Path\nfrom raven.trace_recorder import Recorder,PythonCapture\n"
         "def depth(n): return 0 if n == 0 else 1 + depth(n-1)\n"
         "sys.setrecursionlimit(1000)\nassert depth(985)==985\n"
-        "r=Recorder(Path(__file__).parent,journal_format='blocks')\nc=PythonCapture(r,scope='project')\n"
+        "r=Recorder(Path(__file__).parent,journal_format='blocks')\nc=PythonCapture(r,legacy=sys.version_info < (3,12),scope='project')\n"
         "c.start()\ntry:\n assert depth(985)==985\nfinally:\n c.stop();r.close()\n"
     )
     environment = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1]))

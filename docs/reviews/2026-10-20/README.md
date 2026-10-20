@@ -91,3 +91,10 @@ complete runtime-byte comparisons, installed commands, compatibility, environmen
 package extraction, and update/revert checks. Overlapping checks are not added
 to the full-suite total. Hosted CI is required on the subsequent delivered
 revision before merge; local qualification does not establish that result.
+
+The first hosted matrix exposed two capture fixtures with incorrect interpreter
+capability selection and a terminal fixture that published readiness before
+`nohup` installed its signal disposition. The [supplemental record](hosted-fixture-compatibility.json)
+preserves those failures, deterministic reproduction, and corrected checks with
+the original assertions. Runtime bytes remain unchanged; hosted full suites
+and packaging checks must pass on the corrected test revision before merge.

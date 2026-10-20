@@ -494,7 +494,15 @@ def test_optional_recording_is_private_and_can_be_stopped_without_shell_exit(ser
 def test_closing_terminal_preserves_explicit_nohup_background_job(service, tmp_path):
     pidfile = tmp_path / "nohup.pid"
     import shlex
-    command = "nohup sleep 30 >/dev/null 2>&1 & echo $! > " + shlex.quote(str(pidfile)) + "; wait"
+    # Bash can publish $! before nohup has installed SIGHUP=SIG_IGN. The
+    # actual workload publishes readiness only after verifying that inherited
+    # disposition, so closing immediately afterward tests an established job.
+    program = (
+        "import os, signal, sys, time; from pathlib import Path; "
+        "assert signal.getsignal(signal.SIGHUP) == signal.SIG_IGN; "
+        "Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(30)"
+    )
+    command = "nohup " + shlex.join([sys.executable, "-c", program, str(pidfile)]) + " >/dev/null 2>&1 & wait"
     sid = service.open(["/bin/bash", "-ic", command])
     wait_for(service, lambda: pidfile.exists() and pidfile.read_text().strip())
     pid = int(pidfile.read_text())
