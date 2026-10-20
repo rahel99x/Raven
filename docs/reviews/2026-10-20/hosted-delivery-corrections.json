@@ -1,0 +1,624 @@
+{
+  "schema": "raven.hosted-delivery-corrections/v1",
+  "baseline_head": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+  "runtime_code_revision": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+  "runtime_changes": false,
+  "runtime_files_verified_identical": 626,
+  "failed_hosted_candidate": {
+    "schema": "raven.hosted-candidate-results/v1",
+    "head": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+    "run_id": 39464080610,
+    "conclusion": "failure",
+    "python": [
+      {
+        "python": "3.10",
+        "job": 118770779715,
+        "conclusion": "failure",
+        "full_suite_summary": "1 failed, 19449 passed, 59 skipped in 683.71s (0:11:23)",
+        "log": "/workspace/review-hosted-py310-ffda87d.log",
+        "log_sha256": "62ca5d54cbbed537c1a4a294185c8a92f5e776f88acca53814b05643fc9d3e73"
+      },
+      {
+        "python": "3.11",
+        "job": 118770779739,
+        "conclusion": "failure",
+        "full_suite_summary": "1 failed, 19453 passed, 55 skipped in 583.53s (0:09:43)",
+        "log": "/workspace/review-hosted-py311-ffda87d.log",
+        "log_sha256": "11c8a96a2ccdd55e360e2e900b34768867be5ec08a4b45aa26133b05e3d7173d"
+      },
+      {
+        "python": "3.12",
+        "job": 118770779500,
+        "conclusion": "failure",
+        "full_suite_summary": "19486 passed, 24 skipped, 4 warnings in 536.88s (0:08:56)",
+        "log": "/workspace/review-hosted-py312-ffda87d.log",
+        "log_sha256": "c1fb8b1f6627b7c6cf33ea612e30fbe6594de76cbc1ec350006447790704e8a6"
+      },
+      {
+        "python": "3.13",
+        "job": 118770779815,
+        "conclusion": "success",
+        "full_suite_summary": "19462 passed, 48 skipped, 4 warnings in 594.74s (0:09:54)",
+        "log": "/workspace/review-hosted-py313-ffda87d.log",
+        "log_sha256": "db1f8908705bed3865d9cee4573c3fc382c081dc8ed7b3553d9b982938664c2a"
+      },
+      {
+        "python": "3.14",
+        "job": 118770779581,
+        "conclusion": "success",
+        "full_suite_summary": "19462 passed, 48 skipped, 4 warnings in 609.14s (0:10:09)",
+        "log": "/workspace/review-hosted-py314-ffda87d.log",
+        "log_sha256": "7a66eb1280955b84d3f4b106f15f2f4102a53e517b06d369019d2aff888e3bab"
+      }
+    ],
+    "runtime_source_checkpoint": "f63d82ecd40c8b3ad4bdb42c5f92a492d9b0cdc0",
+    "runtime_files_verified_identical": 626,
+    "limits": "Per-interpreter tests overlap. Python3.12 full suite passed before experimental build failed;3.13/14 complete jobs succeeded;3.10/11 failed one test each. No whole-workflow success."
+  },
+  "corrections": {
+    "prototype_build_isolation": {
+      "schema": "raven.prototype-build-isolation-review/v1",
+      "baseline_revision": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+      "hosted_failure": {
+        "run": 39464080610,
+        "manifest": "/workspace/review-hosted-ffda87d-distributions/tmp/raven-distribution-prototype/manifest.json",
+        "actual_stderr": "Pinned setuptools==84.0.0 required, outer setuptools84.2.0 found; pinned wheel==0.48.0 absent"
+      },
+      "independent_baseline": {
+        "manifest": "/workspace/review-prototype-clean-baseline/manifest.json",
+        "log": "/workspace/review-prototype-clean-baseline.log",
+        "exit": 1,
+        "reproduced_same_unmet_dependencies": true
+      },
+      "design": "Use normal isolated PEP517 builds and copy the source build-system table into generated core/lab metadata. No matching backend packages or exact backend pins are imposed on the outer CI/developer environment. Five builds retain all source/wheel inventory checks and six installed journeys.",
+      "simpler_alternative_rejected": "Pinning only the outer hosted runner would hide the standalone qualifier dependency and still leave generated backend requirements divergent. Isolated backend provisioning uses the established build frontend rather than a custom shared mutable build venv.",
+      "validation": {
+        "focused": {
+          "command": ".venv/bin/python -m pytest -q tests/test_distribution_prototype.py tests/test_distribution_profile.py",
+          "result": "8 passed in 0.47s",
+          "log": "/workspace/review-prototype-isolation-focused.log"
+        },
+        "complete": {
+          "command": "/workspace/review-prototype-clean-outer/bin/python scripts/distribution_prototype.py --output /workspace/review-prototype-isolation-final",
+          "status": "passed-experimental-extraction",
+          "manifest": "/workspace/review-prototype-isolation-final/manifest.json",
+          "log": "/workspace/review-prototype-isolation-final.log",
+          "journeys": [
+            "core",
+            "lab",
+            "core-after-removal",
+            "lab-after-reinstall",
+            "lab-after-upgrade",
+            "lab-after-downgrade"
+          ],
+          "mismatched_extension_refused": true,
+          "wheel_sdist_inventory_and_disjoint_ownership_checks": "passed",
+          "outer_packages_unchanged": {
+            "build": "1.6.1",
+            "setuptools": "84.2.0",
+            "wheel": null
+          },
+          "captured_package_sources": 626,
+          "runtime_source_bytes_exactly_match_commit": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d"
+        },
+        "builds": [
+          {
+            "kind": "full",
+            "log": "/workspace/review-prototype-isolation-final/full-build.log",
+            "sha256": "98ee8daa60831d8e444cfecf02d96f2f65fb55eacdce9ec25f6b46c34ecc78f0",
+            "isolated": true,
+            "requirements": [
+              "setuptools==84.0.0",
+              "wheel==0.48.0"
+            ]
+          },
+          {
+            "kind": "core",
+            "log": "/workspace/review-prototype-isolation-final/core-build.log",
+            "sha256": "5d9426d7b444c46179022a3d69b6be43a2d2f970399c6466467f2a0fd037b0e0",
+            "isolated": true,
+            "requirements": [
+              "setuptools==84.0.0",
+              "wheel==0.48.0"
+            ]
+          },
+          {
+            "kind": "lab",
+            "log": "/workspace/review-prototype-isolation-final/lab-build.log",
+            "sha256": "173da4d6e34e49498b402636bcc62e237e77f1a740980fca40c6d45c184caffc",
+            "isolated": true,
+            "requirements": [
+              "setuptools==84.0.0",
+              "wheel==0.48.0"
+            ]
+          },
+          {
+            "kind": "next-core",
+            "log": "/workspace/review-prototype-isolation-final/next-core-build.log",
+            "sha256": "8917df66c08a916e1ca2fd9342e8c8d2a653cf66fdda0ad50d7d6289a0202be9",
+            "isolated": true,
+            "requirements": [
+              "setuptools==84.0.0",
+              "wheel==0.48.0"
+            ]
+          },
+          {
+            "kind": "next-lab",
+            "log": "/workspace/review-prototype-isolation-final/next-lab-build.log",
+            "sha256": "cd7061d690fcb451075dec04256287a8567af5dbf4dfd982dade744bb5c5e3c9",
+            "isolated": true,
+            "requirements": [
+              "setuptools==84.0.0",
+              "wheel==0.48.0"
+            ]
+          }
+        ],
+        "lint": "Ruff E4/E7/E9/F, default88 format and owned diff whitespace checks pass"
+      },
+      "files_sha256": {
+        "scripts/distribution_prototype.py": "40336273d05752c571bca2da09ff9bea326316bdd1af885c249ecd750a1264ec",
+        "tests/test_distribution_prototype.py": "5476bfeb7616b8ea730d5381c68fc43946526b5822068a361d663ae7061a8643",
+        "pyproject.toml": "04ca75302f930cc299e89d36e288b62ab757149c30351d3f3c3a1a98e874550e",
+        "docs/guides/distribution-experiment.md": "70d98eacb31cd439c5cf85682eccc804e0ed821748030ce183c81664f2013732"
+      },
+      "experimental": true,
+      "published": false,
+      "production_rename": false,
+      "limits": [
+        "Local real package builds and private installed workflows against fake scheduler fixtures; no live scheduler, GPU, remote or hardware qualification.",
+        "Backend provisioning needs its configured package index/cache. No offline capability is claimed.",
+        "This local working-tree script fix still requires final committed-source hosted CI."
+      ]
+    },
+    "remote_log_responsiveness_fixture": {
+      "schema": "raven.remote-log-fixture-final/v1",
+      "scope": "Only tests/test_remote_log_snapshots.py changed by this correction; Raven runtime unchanged.",
+      "base_revision": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+      "test_file": {
+        "path": "tests/test_remote_log_snapshots.py",
+        "baseline_sha256": "193bca9b120f36eec4ba409dcfe5131bc0d3fe70e9e2f7297a9dae50bf17fc29",
+        "final_sha256": "fb2b12b6f2be4f62376dfc1e3cf69cc6c5bc3c04aca02cbe07616d2c0ada2df1"
+      },
+      "hosted_observation": {
+        "python": "3.11",
+        "wall_seconds": 0.8175736379999989,
+        "old_bound_seconds": 0.5,
+        "artifact": {
+          "path": "/workspace/review-hosted-py311-ffda87d.log",
+          "sha256": "11c8a96a2ccdd55e360e2e900b34768867be5ec08a4b45aa26133b05e3d7173d"
+        },
+        "qualification": "Hosted output recorded only wall time. The exact contribution from CPU work, disk publication or descheduling is unavailable; this report does not claim to have reproduced that specific host scheduling delay."
+      },
+      "verified_diagnosis": [
+        "The original test built App and ResearchHub directly but omitted cli.session worker_ui.bind and ui_persistence.bind. Its 50 v keys therefore executed 50 synchronous Store.save_ui/ui_state.write calls on the UI thread; cProfile verifies that chain.",
+        "Production cli.session gives ResearchHub and UIWriter the same WorkerScheduler. The fixture now uses one shared scheduler with independent source and research lanes, binds worker_ui/UIWriter, and passes it into ResearchHub; it introduces no additional executor.",
+        "The blocked-read loop still executes all 50 down/v/tick/compose iterations and retains the future identity, pending-read, cold-selection, navigation, exact copied bytes, remote-worker ownership and three-call assertions.",
+        "Pending result/exception/condition waits, UI-thread sleep, synchronous preference I/O and direct remote operations are rejected independently of elapsed time. Blocking attempts are recorded so a swallowed exception cannot evade the assertion.",
+        "The 0.5-second UI-thread CPU bound limits actual frame work; wall time is measured and included in failure diagnostics. CPU alone would hide waiting, which is why deterministic no-blocking guards are required too.",
+        "Clipboard copying was already asynchronous. The test now waits at most five seconds for each accepted copy only after the remote read is released and the guarded section has ended, then polls completion and retains the exact byte assertion. Five seconds matches the existing finish(hub) explicit test barrier."
+      ],
+      "alternatives_reviewed": [
+        {
+          "alternative": "Increase the original wall-time threshold",
+          "decision": "Rejected: still conflates host scheduling/storage jitter with blocking and provides no direct guarantee against waiting."
+        },
+        {
+          "alternative": "Use only a UI CPU assertion",
+          "decision": "Rejected: sleeping or waiting on a pending Future consumes little CPU and could pass."
+        },
+        {
+          "alternative": "Disable preference persistence or mock saves",
+          "decision": "Rejected: would omit the real interactive UI writer and its shared-worker ownership."
+        },
+        {
+          "alternative": "Faithful shared scheduler plus guarded nonblocking contract and unchanged numerical CPU budget",
+          "decision": "Implemented: exercises real preference publication, immutable remote reads, UI frames and accepted copy completion without treating uncontrolled wall scheduling as direct evidence of remote blocking."
+        }
+      ],
+      "lifecycle_review": {
+        "production": "cli.Session._close_services saves App, closes UIWriter before ResearchHub, then shuts shared WorkerScheduler; Session.close closes Store in finally. ResearchHub with an injected scheduler closes only its own lane.",
+        "fixture": "Release blocked read; ui_persistence.close; ResearchHub.close; shared scheduler.shutdown(wait=True); Store.close. The synchronous final scheduler join is an explicit test cleanup barrier outside measured frames.",
+        "observed": "Each interpreter completed ten full bodies, one profiled body and six rejected blocking mutations with FD count 4 -> 4 and no newly live threads."
+      },
+      "validation": [
+        {
+          "command": "/workspace/raven-compat/py3.11/bin/python -m pytest tests/test_remote_log_snapshots.py -q",
+          "result": "21 passed in 0.76s",
+          "log": {
+            "path": "/workspace/review-remote-log-whole-py311.log",
+            "sha256": "27960904309bdee7a7330b011c129898af0e213a69ab2f2af1becb6281fb541d"
+          }
+        },
+        {
+          "command": ".venv/bin/python -m pytest tests/test_remote_log_snapshots.py -q",
+          "result": "21 passed in 0.67s",
+          "log": {
+            "path": "/workspace/review-remote-log-whole-py312.log",
+            "sha256": "bcbc8187e0ef324d98968b7a1a6e5d86ed27f97ff687e2b02c1db3014c1d7881"
+          }
+        },
+        {
+          "command": "PYTHONPATH=. /workspace/raven-compat/py3.11/bin/python /workspace/profile-remote-ui-final.py /workspace/review-remote-log-final-py311.json",
+          "result": "Ten original 50-iteration bodies, one profiled body, six negative guards and owned cleanup pass",
+          "log": {
+            "path": "/workspace/review-remote-log-final-py311-profile.log",
+            "sha256": "f07ec10a07cfc7c25ae1a5971b5435f8fd0ba1d45416c8c3bcc5363612a0c2d6"
+          }
+        },
+        {
+          "command": "PYTHONPATH=. .venv/bin/python /workspace/profile-remote-ui-final.py /workspace/review-remote-log-final-py312.json",
+          "result": "Ten original 50-iteration bodies, one profiled body, six negative guards and owned cleanup pass",
+          "log": {
+            "path": "/workspace/review-remote-log-final-py312-profile.log",
+            "sha256": "056d50e283c47bb76ccaa7abd6724da17e4d96c3853bf2672c1b71537a3fa3c7"
+          }
+        },
+        {
+          "command": "git diff --check -- tests/test_remote_log_snapshots.py",
+          "result": "PASS"
+        }
+      ],
+      "measurement_units": "All elapsed, UI-thread CPU, process CPU and cProfile durations are seconds. cProfile rounds are excluded from unprofiled summary statistics.",
+      "measurements": [
+        {
+          "python": "3.11.17",
+          "summary": [
+            {
+              "fixture": "before",
+              "rounds": 7,
+              "wall_seconds": {
+                "min": 0.10153046599589288,
+                "median": 0.10925919399596751,
+                "max": 0.141499549994478
+              },
+              "ui_thread_cpu_seconds": {
+                "min": 0.10152943299999984,
+                "median": 0.1092273800000001,
+                "max": 0.1414095419999999
+              }
+            },
+            {
+              "fixture": "after",
+              "rounds": 10,
+              "wall_seconds": {
+                "min": 0.08685907200560905,
+                "median": 0.09785488600027747,
+                "max": 0.10663297999417409
+              },
+              "ui_thread_cpu_seconds": {
+                "min": 0.08611771199999996,
+                "median": 0.09745550299999994,
+                "max": 0.10638415400000001
+              }
+            }
+          ],
+          "before_artifact": {
+            "path": "/workspace/review-remote-ui-profile-py311.json",
+            "sha256": "4c047d1bcb5fd9e8f57e7435f738dbcc2576e1ea5b844d79f13183ac7811774e"
+          },
+          "after_artifact": {
+            "path": "/workspace/review-remote-log-final-py311.json",
+            "sha256": "f07ec10a07cfc7c25ae1a5971b5435f8fd0ba1d45416c8c3bcc5363612a0c2d6"
+          },
+          "negative_guard_probes": {
+            "pending_result": {
+              "rejected": true,
+              "message": "The UI thread must not block on result"
+            },
+            "pending_exception": {
+              "rejected": true,
+              "message": "The UI thread must not block on exception"
+            },
+            "pending_condition_wait": {
+              "rejected": true,
+              "message": "The UI thread must not block on pending future condition"
+            },
+            "ui_sleep": {
+              "rejected": true,
+              "message": "The UI thread must not block on sleep"
+            },
+            "synchronous_preferences": {
+              "rejected": true,
+              "message": "The UI thread must not block on preference I/O"
+            },
+            "ui_remote_io": {
+              "rejected": true,
+              "message": "SSH cannot run on the terminal thread"
+            }
+          },
+          "resource_ownership": {
+            "file_descriptors_before": 4,
+            "file_descriptors_after": 4,
+            "new_live_threads_after_owned_shutdown": []
+          }
+        },
+        {
+          "python": "3.12.14",
+          "summary": [
+            {
+              "fixture": "before",
+              "rounds": 7,
+              "wall_seconds": {
+                "min": 0.0920733290258795,
+                "median": 0.10377261799294502,
+                "max": 0.15959336099331267
+              },
+              "ui_thread_cpu_seconds": {
+                "min": 0.09205606199999994,
+                "median": 0.10377091900000002,
+                "max": 0.15959145600000002
+              }
+            },
+            {
+              "fixture": "after",
+              "rounds": 10,
+              "wall_seconds": {
+                "min": 0.08227930299472064,
+                "median": 0.09210327451000921,
+                "max": 0.10461557400412858
+              },
+              "ui_thread_cpu_seconds": {
+                "min": 0.08210850600000008,
+                "median": 0.09176070649999997,
+                "max": 0.10443167100000006
+              }
+            }
+          ],
+          "before_artifact": {
+            "path": "/workspace/review-remote-ui-profile-py312.json",
+            "sha256": "707e8e2464e083d5cf5a854b4f0925d2ed41b1c3e6a8febed39e55c7729e73db"
+          },
+          "after_artifact": {
+            "path": "/workspace/review-remote-log-final-py312.json",
+            "sha256": "056d50e283c47bb76ccaa7abd6724da17e4d96c3853bf2672c1b71537a3fa3c7"
+          },
+          "negative_guard_probes": {
+            "pending_result": {
+              "rejected": true,
+              "message": "The UI thread must not block on result"
+            },
+            "pending_exception": {
+              "rejected": true,
+              "message": "The UI thread must not block on exception"
+            },
+            "pending_condition_wait": {
+              "rejected": true,
+              "message": "The UI thread must not block on pending future condition"
+            },
+            "ui_sleep": {
+              "rejected": true,
+              "message": "The UI thread must not block on sleep"
+            },
+            "synchronous_preferences": {
+              "rejected": true,
+              "message": "The UI thread must not block on preference I/O"
+            },
+            "ui_remote_io": {
+              "rejected": true,
+              "message": "SSH cannot run on the terminal thread"
+            }
+          },
+          "resource_ownership": {
+            "file_descriptors_before": 4,
+            "file_descriptors_after": 4,
+            "new_live_threads_after_owned_shutdown": []
+          }
+        }
+      ],
+      "drivers": [
+        {
+          "path": "/workspace/profile-remote-ui-loop.py",
+          "sha256": "e2215f257857873881f47a45c9471f13b5604d2e083dd71bfb91451ea6639281"
+        },
+        {
+          "path": "/workspace/profile-remote-ui-final.py",
+          "sha256": "2563c398dec2f545eed18398770b7f7acd534d277e88a9f6d23e35ed2e219c1c"
+        }
+      ],
+      "baseline_observation_commands": [
+        "PYTHONPATH=. /workspace/raven-compat/py3.11/bin/python /workspace/profile-remote-ui-loop.py /workspace/review-remote-ui-profile-py311.json",
+        "PYTHONPATH=. .venv/bin/python /workspace/profile-remote-ui-loop.py /workspace/review-remote-ui-profile-py312.json"
+      ],
+      "runtime_unchanged": true,
+      "runtime_identity": {
+        "raven/cli.py": "c4764121e6cea95541c68f076d9051bd55daec39415f584e6cf55991787cae2f",
+        "raven/ui_persistence.py": "9c1196614a46a685af537bb108dc98d2100cb4e56fe935edb41b4645c8c83ec4",
+        "raven/research.py": "e553f1ef9e17063839c10ce7c823c89e351b2da3f7bc8dc1d20d868868f26812",
+        "raven/worker_scheduler.py": "1df5d74bba0a305a5b890dd3e0936c2a23d92787f1d2370fc8eb47fa2ab98175",
+        "raven/clipboard.py": "6467be6b79b4f24cc0ced3a6b4e796793cda30ddd1931f3fdef0396a6543e7cf"
+      },
+      "limits": "Local Linux shared-host observations, with no controlled benchmark window or release-performance gain claimed. Different fixture bindings and varying host load make the before/after descriptive, not an isolated product speed comparison. No live SSH/cluster/GPU qualification or hosted wall-delay attribution is inferred.",
+      "report_projection": "Acceptance summary only. Complete per-round observations and cProfile tables remain in the source report identified by source_reports_sha256."
+    },
+    "owned_git_helper_fixture": {
+      "schema": "raven.update-helper-fixture-review/v1",
+      "status": "fixture-corrected-local-checks-passed-hosted-cause-unresolved",
+      "base_revision": "ffda87d9bd1bc4b12c0c66784faa9feb61f0001d",
+      "runtime_changed": false,
+      "production_matches_base_revision": true,
+      "files": [
+        {
+          "path": "/workspace/Raven/tests/test_update_source.py",
+          "bytes": 27265,
+          "sha256": "3fa09bbe570a74fc6339435a674f4bbe9665f9161cfceb3c0cdfe4085e701857"
+        },
+        {
+          "path": "/workspace/Raven/raven/installation/update_source.py",
+          "bytes": 43128,
+          "sha256": "00d018e1b8d89be57a9931dce0ecd0383b7e5e5a23c60c43aecbdd5c91ad8f86"
+        }
+      ],
+      "historical_observation": {
+        "test": "tests/test_update_source.py::test_exited_git_leader_cannot_strand_helper_holding_stdout",
+        "python": "3.10 hosted runner",
+        "failure": "PID read from shared helper.pid appeared alive after the existing two-second assertion.",
+        "cause": "Unresolved: hosted failure log lacks helper PID/PGID/SID/start-time and signal-state evidence; deterministic ambiguity below does not establish the historical cause."
+      },
+      "verified_baseline": {
+        "instrumented_iterations": 30,
+        "survivors": 0,
+        "evidence": "/workspace/review-update-helper-probe-310.json",
+        "ownership": "Actual command leader stays unreaped while its original private group receives TERM/KILL; recorded helper becomes zombie; unrelated sentinel remains alive."
+      },
+      "verified_fixture_ambiguity": {
+        "evidence": "/workspace/review-update-helper-interference-310.json",
+        "mechanism": "Global PATH and shared helper PID environment redirect concurrent unrelated Git calls to the same fake, whose helper overwrites helper.pid.",
+        "owned_helper": {
+          "pid": 593647,
+          "pgid": 593646,
+          "state": "Z"
+        },
+        "pidfile_helper": {
+          "pid": 593649,
+          "pgid": 593648,
+          "state": "S"
+        },
+        "result": "The original two-second assertion can observe an unrelated live helper; production correctly leaves that other group untouched."
+      },
+      "implementation": [
+        "Inject the fake through a module-local subprocess proxy only for this exact command on the test owner thread; preserve process-wide PATH, environment and subprocess.Popen.",
+        "Verify actual leader/helper PGID, SID and birth evidence at readiness; retain the exact helper pidfd until cleanup.",
+        "Concurrently run real Git on the same checkout to assert unrelated calls remain unaffected.",
+        "Retain the timeout, helper death and unrelated sentinel assertions; clean the owned group even if readiness raises before U.git receives Popen.",
+        "Check group cleanup while the exact unreaped Popen reserves the leader PID, and signal any retained helper through the captured pidfd rather than reopening a numeric PID."
+      ],
+      "simpler_alternative": {
+        "considered": "Give each fake invocation a separate PID filename while retaining global PATH redirection.",
+        "reason_not_selected": "This still redirects unrelated background Git calls and requires identifying the exact invocation. Narrow injection directly removes that cross-test/global environment effect."
+      },
+      "preserved_assertions": {
+        "command_timeout_seconds": 0.1,
+        "helper_exit_assertion_seconds": 2,
+        "unrelated_sentinel_must_remain_alive": true,
+        "no_skip_or_timeout_relaxation": true,
+        "new_guards": [
+          "exact Popen invocation and thread",
+          "leader/helper PGID and SID match",
+          "helper birth identity",
+          "actual unrelated Git succeeds",
+          "global Popen unchanged"
+        ]
+      },
+      "checks": [
+        {
+          "command": "/workspace/raven-compat/py3.10/bin/python -m pytest -q tests/test_update_source.py > /workspace/review-update-helper-whole-310.log 2>&1",
+          "result": "32 passed in 5.93s"
+        },
+        {
+          "command": ".venv/bin/python -m pytest -q tests/test_update_source.py > /workspace/review-update-helper-whole-312.log 2>&1",
+          "result": "32 passed in 5.79s"
+        },
+        {
+          "command": "/workspace/raven-compat/py3.14/bin/python -m pytest -q tests/test_update_source.py::test_exited_git_leader_cannot_strand_helper_holding_stdout > /workspace/review-update-helper-scoped-314.log 2>&1",
+          "result": "1 passed in 0.50s"
+        },
+        {
+          "command": "PYTHONPATH=/workspace/Raven /workspace/raven-compat/py3.10/bin/python /workspace/review-update-helper-scoped-repeat.py --iterations 20 --output /workspace/review-update-helper-scoped-repeat-310.json > /workspace/review-update-helper-scoped-repeat-310.log 2>&1",
+          "result": "20 actual scoped fixtures passed; FD 4 -> 4"
+        },
+        {
+          "command": "PYTHONPATH=/workspace/Raven /workspace/raven-compat/py3.10/bin/python /workspace/review-update-helper-readiness-failure.py > /workspace/review-update-helper-readiness-failure-310.log 2>&1",
+          "result": "Forced readiness failure raised before U.git receives Popen; exact owned leader/helper stopped and resources/control thread cleaned."
+        }
+      ],
+      "non_additive_counts": true,
+      "qualification_limits": [
+        "Local Linux subprocess tests; no hosted replacement run has passed yet.",
+        "No production cleanup regression was reproduced; no runtime fix is claimed.",
+        "Iteration durations are diagnostics, not controlled performance measurements.",
+        "Final integrated/hosted CI qualification remains the parent task."
+      ],
+      "evidence": [
+        {
+          "path": "/workspace/review-hosted-py310-ffda87d.log",
+          "bytes": 96908,
+          "sha256": "62ca5d54cbbed537c1a4a294185c8a92f5e776f88acca53814b05643fc9d3e73"
+        },
+        {
+          "path": "/workspace/review-update-helper-probe.py",
+          "bytes": 4849,
+          "sha256": "9ae5cd0ad30d8e8fea70f7fa47110308cdd26801c34ff7bed5327b52da89725a"
+        },
+        {
+          "path": "/workspace/review-update-helper-probe-310.json",
+          "bytes": 210252,
+          "sha256": "fec966a348660120aa0a90e302f3a38513520195b6fb08639536f0ffed0fbcab"
+        },
+        {
+          "path": "/workspace/review-update-helper-interference.py",
+          "bytes": 2888,
+          "sha256": "84753c6758af19f5fb479bd8dea59bd6db2a925dde635bf6fa55cf96b64b4b37"
+        },
+        {
+          "path": "/workspace/review-update-helper-interference-310.json",
+          "bytes": 631,
+          "sha256": "5ad52c6ef5c9710a95ed21a928cd08f12d0b88aae6cabe60a5cc6d5cac923d21"
+        },
+        {
+          "path": "/workspace/review-update-helper-scoped-repeat.py",
+          "bytes": 2083,
+          "sha256": "8babe003eb4348959597c0e92c29f124bb69accfeab529169e486178678c0f38"
+        },
+        {
+          "path": "/workspace/review-update-helper-scoped-repeat-310.json",
+          "bytes": 2100,
+          "sha256": "f5c92f15fbecfd55fafd6caa7eec0a6fa5773ecbabafe9c8f5d2e3438824f1dd"
+        },
+        {
+          "path": "/workspace/review-update-helper-scoped-repeat-310.log",
+          "bytes": 102,
+          "sha256": "fee687ee4df29d022d7a6a2b1d149c03482376007be756c72921313eb6dc4266"
+        },
+        {
+          "path": "/workspace/review-update-helper-readiness-failure.py",
+          "bytes": 3156,
+          "sha256": "d3d19545d0f333d8e98a40c03b716a915106341822f4b8ee4d37fb9c55c98985"
+        },
+        {
+          "path": "/workspace/review-update-helper-readiness-failure-310.json",
+          "bytes": 1039,
+          "sha256": "5d44713bbec90a9afed0ad97ff5ef52a63d3edc4b057127ebfae930dca0b8a4c"
+        },
+        {
+          "path": "/workspace/review-update-helper-readiness-failure-310.log",
+          "bytes": 67,
+          "sha256": "0622b6e640e807f7fb0938caa582e78e2d34587d66bd5db113e676b33f2cec5e"
+        },
+        {
+          "path": "/workspace/review-update-helper-whole-310.log",
+          "bytes": 99,
+          "sha256": "743ee6587d16a73b2572a7d1260e16ebcd51c22b15df324463b2a181f4941b35"
+        },
+        {
+          "path": "/workspace/review-update-helper-whole-312.log",
+          "bytes": 99,
+          "sha256": "37d5d50fb9817a35a79be62892e759b7dc26c3a0b68bb93572007a53a8b8b3d8"
+        },
+        {
+          "path": "/workspace/review-update-helper-scoped-314.log",
+          "bytes": 98,
+          "sha256": "7f20721722339faad833bedbd918bbce72ec5ee8917b82cf8b1a09bf4e47f2f3"
+        }
+      ]
+    }
+  },
+  "source_reports_sha256": {
+    "prototype_build_isolation": "f19b4b3d53639aba6850479acb6d2b8ad80b00f333fd95614c7973c3576f3f8d",
+    "remote_log_responsiveness_fixture": "3c7d8bdf6b8943b4a4368d96b6b52e2270744f4df01ef8eebaed719b601ca15c",
+    "owned_git_helper_fixture": "09830e681cc173088f47549319b0b228be698f13f4f1e7986298786d8587f095"
+  },
+  "quality": {
+    "required_global_gate": "passed: seven contracts, zero cycles/unresolved imports, formatting and eleven typed boundaries",
+    "additional_lint_baseline": {
+      "baseline": "ffda87d",
+      "baseline_diagnostics": 45,
+      "working_diagnostics": 45,
+      "new_diagnostics": [],
+      "required_global_quality": "passed; scripts/check_quality.py",
+      "scope": "Explicit widened test-file style scan retains pre-existing E701/E702/F401 findings; no additional diagnostic introduced. Prototype/new test clean."
+    }
+  },
+  "independent_review": "Packaging correction independently inspected: all five isolated build tables/pins/logs and six journeys match the retained report; no substantive finding.",
+  "acceptance": "Retain all semantic navigation/copy, nonblocking I/O, bounded UI CPU, owned Git helper death, unrelated process survival, exact source inventory and six installed prototype journeys. Correct fixture composition/identity and build isolation rather than skip or reduce coverage.",
+  "qualification_limit": "These local focused corrections do not establish a successful hosted matrix. All required jobs must pass on the next committed candidate before merge. Historical full-suite outcomes remain separate from focused checks. Runtime source bytes match the previously qualified checkpoint; no new runtime performance or live-site claim."
+}

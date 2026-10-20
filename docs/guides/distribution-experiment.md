@@ -22,7 +22,12 @@ python scripts/distribution_prototype.py --output /tmp/raven-distribution-check
 ```
 
 Choose a new directory. The command builds source and wheel artifacts from the
-current checkout, creates private clean virtual environments, and exercises:
+current checkout. Each build uses an isolated PEP 517 environment with the
+backend versions pinned in the source `pyproject.toml`; the generated core and
+lab projects reuse those pins. Build dependencies must be available through the
+configured package index or cache. The developer environment does not need
+matching backend versions. The command creates private clean installation
+environments and exercises:
 
 - The same 80-column synthetic monitor in complete and core installs.
 - Actual local launch, retained logs, exact Run home and installed Heavy child.

@@ -27,7 +27,7 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-# The extraction qualifier builds without isolation in the developer interpreter.
+# Extraction builds isolate their pinned backends from this developer environment.
 dev = ["pytest>=8,<10", "build>=1,<2", "setuptools>=77", "jsonschema>=4.18,<5", "hypothesis>=6,<7", "pytest-xdist>=3,<4", "import-linter>=2,<3", "ruff>=0.14,<1", "mypy>=1.18,<2"]
 terminal = ["pyte>=0.8.2,<0.9", "wcwidth>=0.2.13,<1"]
 wasi = ["wasmtime==49.0.0"]

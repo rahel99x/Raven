@@ -7,7 +7,9 @@ import shutil
 import signal
 import subprocess
 import sys
+import threading
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -445,28 +447,123 @@ def test_exited_git_leader_cannot_strand_helper_holding_stdout(checkout, tmp_pat
     fake = binary / "git"
     fake.write_text("#!/bin/sh\n/bin/sh -c 'echo $$ > \"$1\"; exec /bin/sleep 30' helper \"$RAVEN_TEST_HELPER_PID\" &\nexit 0\n")
     fake.chmod(0o700)
-    monkeypatch.setenv("PATH", str(binary))
-    monkeypatch.setenv("RAVEN_TEST_HELPER_PID", str(helper_pid))
     monkeypatch.setattr(U, "COMMAND_TIMEOUT", .1)
+    owner = threading.current_thread()
+    original_popen = subprocess.Popen
+    children, ownership, control_results = [], [], []
+    ready = threading.Event()
+
+    def identity(pid):
+        try:
+            fields = Path(f"/proc/{pid}/stat").read_text().split(") ", 1)[1].split()
+            return fields[0], int(fields[2]), int(fields[3]), fields[19]
+        except (FileNotFoundError, ProcessLookupError):
+            return None
+
+    def scoped_popen(command, *args, **kwargs):
+        if (threading.current_thread() is not owner or command[0] != "git"
+                or command[-3:] != ["-C", str(source), "status"]):
+            return original_popen(command, *args, **kwargs)
+        # Replacing global PATH/Popen redirects background Git callers too;
+        # their helper can overwrite the shared PID file despite belonging to
+        # another group. Inject only this invocation's executable/environment.
+        assert kwargs["start_new_session"] is True
+        kwargs["env"] = dict(kwargs["env"], RAVEN_TEST_HELPER_PID=str(helper_pid))
+        child = original_popen([str(fake), *command[1:]], *args, **kwargs)
+        children.append(child)
+        leader = identity(child.pid)
+        assert leader is not None and leader[1:3] == (child.pid, child.pid)
+        deadline = time.monotonic() + 3
+        helper, proof = None, None
+        while time.monotonic() < deadline:
+            try:
+                value = helper_pid.read_text().strip()
+            except FileNotFoundError:
+                value = ""
+            if value.isdigit():
+                helper = int(value)
+                proof = identity(helper)
+                if proof is not None:
+                    break
+            time.sleep(.001)
+        assert proof is not None and proof[1:3] == (child.pid, child.pid)
+        descriptor = os.pidfd_open(helper)
+        try:
+            captured = identity(helper)
+            assert captured is not None and captured[1:] == proof[1:]
+        except BaseException:
+            os.close(descriptor)
+            raise
+        ownership.append((helper, proof, descriptor))
+        ready.set()
+        return child
+
+    # A module-local transport proxy leaves the process-wide subprocess module
+    # and environment intact, including callers in unrelated worker threads.
+    monkeypatch.setattr(U, "subprocess", SimpleNamespace(
+        Popen=scoped_popen, DEVNULL=subprocess.DEVNULL, PIPE=subprocess.PIPE,
+        TimeoutExpired=subprocess.TimeoutExpired))
+
+    def concurrent_git():
+        if not ready.wait(3):
+            return
+        try:
+            result = subprocess.run(["git", "-C", str(source), "status", "--porcelain"],
+                                    capture_output=True, timeout=5)
+            control_results.append((result.returncode, result.stdout, result.stderr))
+        except Exception as exc:
+            control_results.append(exc)
+
+    control = threading.Thread(target=concurrent_git)
     sentinel = subprocess.Popen(["/bin/sleep", "30"], start_new_session=True)
     def alive(pid):
-        try:
-            return Path(f"/proc/{pid}/stat").read_text().split(") ", 1)[1].split()[0] != "Z"
-        except (FileNotFoundError, ProcessLookupError):
-            # Exit can remove the entry before open or invalidate it during read.
-            return False
+        current = identity(pid)
+        # A reused numeric PID is not the helper whose ownership was proved.
+        return current is not None and current[0] != "Z" and current[3] == ownership[0][1][3]
     child = None
     try:
+        control.start()
         with pytest.raises(U.SourceUpdateError, match="timed out"):
             U.git(source, "status")
         assert helper_pid.exists()
         child = int(helper_pid.read_text())
+        assert len(children) == 1 and len(ownership) == 1 and ownership[0][0] == child
         deadline = time.monotonic() + 2
         while alive(child) and time.monotonic() < deadline:
             time.sleep(.01)
         assert not alive(child), "Git helper survived its bounded command"
         assert sentinel.poll() is None, "Cleanup signalled an unrelated process"
+        control.join(timeout=5)
+        assert not control.is_alive() and control_results == [(0, b"", b"")]
+        assert subprocess.Popen is original_popen
     finally:
-        if child is not None and alive(child):
-            os.kill(child, signal.SIGKILL)
-        sentinel.kill(); sentinel.wait(timeout=2)
+        ready.set()
+        try:
+            if control.ident is not None:
+                control.join(timeout=6)
+            # A readiness assertion can fail before the test Popen wrapper
+            # returns to U.git. This exact Popen has never been polled/reaped;
+            # its reserved PID and start_new_session own the fixture group.
+            try:
+                for process in children:
+                    try:
+                        if process.returncode is None:
+                            try:
+                                os.killpg(process.pid, signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
+                            process.wait(timeout=2)
+                    finally:
+                        process.stdout.close()
+                        process.stderr.close()
+            finally:
+                for _, _, descriptor in ownership:
+                    try:
+                        signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    finally:
+                        os.close(descriptor)
+        finally:
+            sentinel.kill(); sentinel.wait(timeout=2)
+        assert not control.is_alive(), "The unrelated Git control did not finish"

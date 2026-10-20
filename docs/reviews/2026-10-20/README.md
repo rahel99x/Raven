@@ -98,3 +98,13 @@ capability selection and a terminal fixture that published readiness before
 preserves those failures, deterministic reproduction, and corrected checks with
 the original assertions. Runtime bytes remain unchanged; hosted full suites
 and packaging checks must pass on the corrected test revision before merge.
+
+The second hosted matrix cleared those failures. Python 3.13 and 3.14 completed
+all checks; Python 3.12 passed the full suite and installed checks before the
+experimental packaging helper encountered mismatched outer build tools. The
+[delivery corrections](hosted-delivery-corrections.json) record that reproduced
+failure and the fix using isolated pinned builds. They also preserve the
+Python 3.11 responsiveness fixture's production writer composition and the
+Python 3.10 Git fixture's exact process ownership checks. Historical failures
+remain visible. These helper and fixture corrections leave runtime bytes
+unchanged and require another complete hosted matrix before merge.

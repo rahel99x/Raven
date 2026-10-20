@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -59,6 +60,15 @@ def stage(output):
     }
     from raven import __version__
 
+    full_metadata = (ROOT / "pyproject.toml").read_text()
+    # All three distributions use the project's reviewed backend and pins.
+    # Copy this complete table rather than maintaining a second requirement list.
+    build_system = re.search(
+        r"(?ms)^\[build-system\][ \t]*\r?\n.*?(?=^\[|\Z)", full_metadata
+    )
+    if build_system is None:
+        raise ValueError("The source project has no build-system table")
+    build_metadata = build_system.group().rstrip() + "\n"
     version = __version__
     profile = {
         "profile": "core-experiment",
@@ -103,14 +113,17 @@ def stage(output):
         dependencies = (
             f'["raven-core-experiment=={version}"]' if kind == "lab" else "[]"
         )
-        metadata = f'''[build-system]\nrequires = ["setuptools>=77"]\nbuild-backend = "setuptools.build_meta"\n[project]\nname = "raven-{kind}-experiment"\nversion = "{version}"\nrequires-python = ">=3.10"\ndescription = "Unpublished Raven core/lab qualification prototype"\nlicense = "MIT"\ndependencies = {dependencies}\n[tool.setuptools.packages.find]\ninclude = ["raven", "raven.*"]\nnamespaces = true\n[tool.setuptools.package-data]\nraven = ["_distribution_profile.json"]\n"raven.transport" = ["py.typed"]\n'''
+        metadata = (
+            build_metadata
+            + f'''[project]\nname = "raven-{kind}-experiment"\nversion = "{version}"\nrequires-python = ">=3.10"\ndescription = "Unpublished Raven core/lab qualification prototype"\nlicense = "MIT"\ndependencies = {dependencies}\n[tool.setuptools.packages.find]\ninclude = ["raven", "raven.*"]\nnamespaces = true\n[tool.setuptools.package-data]\nraven = ["_distribution_profile.json"]\n"raven.transport" = ["py.typed"]\n'''
+        )
         if kind == "core":
             metadata += '\n[project.scripts]\nraven = "raven.raven_launch:light_main"\nravenl = "raven.raven_launch:light_main"\nravenh = "raven.raven_launch:heavy_main"\n'
             (target / "raven/_distribution_profile.json").write_text(
                 json.dumps(profile, indent=2) + "\n"
             )
         if kind == "full":
-            metadata = (ROOT / "pyproject.toml").read_text()
+            metadata = full_metadata
         (target / "pyproject.toml").write_text(metadata)
     return profile, {
         str(path): hashlib.sha256(data).hexdigest() for path, data in snapshot.items()
@@ -133,6 +146,10 @@ def main(argv=None):
         "experimental": True,
         "published": False,
         "production_rename": False,
+        "build_policy": {
+            "isolation": "PEP 517 default",
+            "requirements_source": "pyproject.toml:[build-system]",
+        },
         "profile": profile,
         "source_sha256": source_hashes,
         "limits": [
@@ -162,9 +179,7 @@ def main(argv=None):
         wheels = {}
         members = {}
         for kind in ("full", "core", "lab"):
-            result = run(
-                [sys.executable, "-m", "build", "--no-isolation"], output / kind
-            )
+            result = run([sys.executable, "-m", "build"], output / kind)
             (output / (kind + "-build.log")).write_text(result.stdout + result.stderr)
             (wheel,) = (output / kind / "dist").glob("*.whl")
             wheels[kind] = wheel
@@ -247,9 +262,7 @@ def main(argv=None):
                     __version__, __version__ + "+qualification1"
                 )
             )
-            result = run(
-                [sys.executable, "-m", "build", "--no-isolation", "--wheel"], target
-            )
+            result = run([sys.executable, "-m", "build", "--wheel"], target)
             (output / ("next-" + kind + "-build.log")).write_text(
                 result.stdout + result.stderr
             )
