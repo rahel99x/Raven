@@ -87,7 +87,7 @@ class GovernedBackend:
         self._temporary_cache = None
         self.ledger = None
         if collection is not None:
-            from .raven_collection import Ledger
+            from raven.collection.ledger import Ledger
             self.ledger = Ledger(cache, scope, collection)
             self.capabilities = P.capabilities({"schema": P.CAPABILITIES, "source": "slurm-cli",
                 "version": "raven-managed-cli/v1", "operations": list(self.policy["operations"]),
@@ -123,7 +123,7 @@ class GovernedBackend:
         self._last.coverage = None
         descriptor = None
         if self.ledger is not None:
-            from .raven_collection import classify
+            from raven.collection.ledger import classify
             descriptor = classify(cmd)
             if descriptor is None:
                 raise CommandError("Raven collection: unclassified generated command is unavailable")
@@ -138,7 +138,7 @@ class GovernedBackend:
                     with self.ledger.admit(descriptor, cmd, validation=True):
                         return self._execute(cmd, timeout, limit, cancel)
                 except RuntimeError as exc:
-                    from .raven_collection import Deferred
+                    from raven.collection.ledger import Deferred
                     if isinstance(exc, Deferred):
                         raise
                     raise CommandError(str(exc)) from exc
@@ -164,7 +164,7 @@ class GovernedBackend:
             raise CommandError("Site collection duration is too short for a scheduler read")
         requested_interval = max(self.interval, .5)
         if descriptor is not None:
-            from .raven_collection import interval as collection_interval
+            from raven.collection.ledger import interval as collection_interval
             requested_interval = .001 if fresh else collection_interval(self.ledger.config, descriptor.source, 0)
             if descriptor.endpoint == "local":
                 requested_interval = 900.
@@ -203,10 +203,10 @@ class GovernedBackend:
                                       read_only=True, cancel=cancel, fresh=fresh)
         except (ValueError, TimeoutError, OSError, RuntimeError) as exc:
             if (cancel is None or not cancel.is_set()) and ("invalidated" in str(exc).lower() or "cancelled during collection" in str(exc).lower()):
-                from .raven_collection import Deferred
+                from raven.collection.ledger import Deferred
                 raise Deferred("Observation invalidated by a changed scheduler scope; retrying", retry_after=1.) from exc
             if self.ledger is not None:
-                from .raven_collection import Deferred
+                from raven.collection.ledger import Deferred
                 if isinstance(exc, Deferred):
                     raise
             raise CommandError("Governed collection: " + str(exc)) from exc
@@ -246,7 +246,7 @@ class GovernedBackend:
         # invalidate cached observations, even if the action reports failure.
         try:
             if self.ledger is not None:
-                from .raven_collection import classify
+                from raven.collection.ledger import classify
                 descriptor = classify(cmd)
                 if descriptor is None:
                     return False, "Raven collection: unclassified generated action is unavailable"
@@ -330,7 +330,7 @@ def wrap_backend(backend, cfg, scope, state_dir):
     if cfg.get("site_policy"):
         policy = P.validate(_read(cfg["site_policy"]))
     else:
-        from .raven_collection import settings
+        from raven.collection.ledger import settings
         collection = settings(collection)
         policy = P.validate({"schema": P.SCHEMA, "id": "raven-managed-user-host", "revision": "1",
             "sources": ["slurm-cli"], "operations": ["queue", "accounting", "nodes", "statistics", "job-detail",
@@ -370,7 +370,7 @@ def wrap_backend(backend, cfg, scope, state_dir):
             cache = ProcessQueryCache(max_bytes=maximum)
         else:
             if collection is not None:
-                from .raven_collection import cache_directory
+                from raven.collection.ledger import cache_directory
                 directory = cache_directory(explicit)
             else:
                 directory = explicit or str(Path(state_dir) / "collection-cache" / host[:24])

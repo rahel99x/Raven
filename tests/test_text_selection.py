@@ -17,6 +17,8 @@ def instance(**kw):
     app = SimpleNamespace(**data)
     app.say = app.messages.append
     app.fail = app.failures.append
+    from raven.workbench import bind_actions
+    bind_actions(app)
     return app
 
 

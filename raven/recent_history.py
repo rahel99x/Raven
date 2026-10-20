@@ -5,9 +5,16 @@ fetch accounting, prepare logs, persist preferences, or start worker tasks.
 The default preview inspects only enough source records to fill its viewport.
 Older records are admitted in page-sized blocks when the user asks for them.
 """
-from __future__ import annotations
 
-from dataclasses import dataclass, field, fields, is_dataclass
+from __future__ import annotations
+from .table_query import recent_limit
+from .table_query import filter_text, recent_matches
+from .table_query import matches
+from .table_query import fingerprint
+from .table_sort import history_value, sort_rows
+from .table_query import snapshot
+
+from dataclasses import fields, is_dataclass
 from functools import lru_cache
 import math
 import os
@@ -16,45 +23,14 @@ import time
 
 from . import clock
 from .model import Finished, Job, Live, stamp
+from .ui.recent_state import RecentState as RecentState, initialize as initialize
 
 INDEX_THRESHOLD = 256
 LOAD_BLOCK = 32
 
 
-@dataclass
-class RecentState:
-    enabled: bool = False
-    ratio: int = 35
-    manual_split: bool = False
-    page: int = 5
-    queue_count: int = 0
-    target: int = 5
-    exhausted: bool = False
-    focus: bool = False
-    rect: object = None
-    loaded: list = field(default_factory=list)
-    observation: dict = field(default_factory=dict, repr=False)
-    options: object = None
-    index_key: object = field(default=None, repr=False)
-    index: list = field(default_factory=list, repr=False)
-    index_generation: int = 0
-    sorted_key: object = field(default=None, repr=False)
-    sorted_rows: list = field(default_factory=list, repr=False)
-    expiry: float | None = None
-    projector: object = field(default=None, repr=False)
-    transition_anchor: str | None = field(default=None, repr=False)
-
-
-def initialize(app):
-    state = getattr(app, "recent_history_state", None)
-    if not isinstance(state, RecentState):
-        state = RecentState()
-        app.recent_history_state = state
-    return state
-
-
 def _base(app):
-    from .table_tools import recent_limit
+
     value = recent_limit(app)
     return max(1, value) if type(value) is int else 5
 
@@ -69,7 +45,10 @@ def allocate(app, height, queue_count, *, reserved=0, recent_count=None):
     state = initialize(app)
     state.enabled = True
     state.queue_count = max(0, int(queue_count))
-    state.focus = bool(state.loaded) and getattr(app, "cursor", {}).get("jobs", 0) >= state.queue_count
+    state.focus = (
+        bool(state.loaded)
+        and getattr(app, "cursor", {}).get("jobs", 0) >= state.queue_count
+    )
     height = max(0, int(height) - max(0, int(reserved)))
     if recent_count == 0:
         state.rect = None
@@ -82,7 +61,9 @@ def allocate(app, height, queue_count, *, reserved=0, recent_count=None):
         # six rows while keeping either section selectable. Show the focused
         # section with its normal header instead of hiding both tables.
         capacity = max(0, height - 2)
-        queue_rows, recent_rows = (0, capacity) if state.focus else (min(state.queue_count, capacity), 0)
+        queue_rows, recent_rows = (
+            (0, capacity) if state.focus else (min(state.queue_count, capacity), 0)
+        )
     else:
         slots = max(0, height - 4)
         recent_rows = max(1, min(slots - 1, round(slots * state.ratio / 100)))
@@ -128,21 +109,34 @@ def _record_key(record):
         # attrgetter avoids constructing twenty field/value pairs per record
         # each time a deliberately opened large history index is validated.
         if type(record) not in (Finished, Live):
-            values = tuple(tuple(value) if isinstance(value, list) else value for value in values)
+            values = tuple(
+                tuple(value) if isinstance(value, list) else value for value in values
+            )
     else:
         values = tuple(sorted(vars(record).items()))
     return id(record), values
 
 
 def _tag_key(tags):
-    return tuple(sorted((str(jid), tuple(sorted((str(key), tuple(value) if isinstance(value, list) else value)
-                                               for key, value in entry.items())))
-                        for jid, entry in tags.items() if isinstance(entry, dict)))
+    return tuple(
+        sorted(
+            (
+                str(jid),
+                tuple(
+                    sorted(
+                        (str(key), tuple(value) if isinstance(value, list) else value)
+                        for key, value in entry.items()
+                    )
+                ),
+            )
+            for jid, entry in tags.items()
+            if isinstance(entry, dict)
+        )
+    )
 
 
 def _matching(app, snap, source, *, active, pending_ids=(), limit=None):
-    from .table_tools import filter_text, recent_matches
-    from .table_ui import matches
+
     text = filter_text(app, "recent").casefold()
     result, seen = [], set(pending_ids)
     for record in source:
@@ -151,11 +145,18 @@ def _matching(app, snap, source, *, active, pending_ids=(), limit=None):
         if not matches(app, "recent", record, snap) or not recent_matches(app, record):
             continue
         if text.startswith("#"):
-            if text[1:] not in [str(tag).casefold() for tag in snap.get("tags", {}).get(record.id, {}).get("tags", [])]:
+            if text[1:] not in [
+                str(tag).casefold()
+                for tag in snap.get("tags", {}).get(record.id, {}).get("tags", [])
+            ]:
                 continue
         elif text:
-            values = (record.id, record.name, record.partition,
-                      "awaiting accounting" if isinstance(record, Job) else record.state)
+            values = (
+                record.id,
+                record.name,
+                record.partition,
+                "awaiting accounting" if isinstance(record, Job) else record.state,
+            )
             if not any(text in str(value).casefold() for value in values):
                 continue
         result.append(record)
@@ -173,8 +174,7 @@ def records(app, snap):
     That cache checks record contents, tags, active IDs and filter settings;
     history_revision alone does not prove amended accounting is unchanged.
     """
-    from .table_ui import fingerprint, history_value, sort_rows
-    from .table_tools import snapshot
+
     snap = snapshot(app, snap)
     state = initialize(app)
     options = fingerprint(app, "recent")
@@ -183,22 +183,49 @@ def records(app, snap):
     # A selected queue job can disappear alongside more completions than the
     # initial Recents preview admits. Keep its exact identity through that
     # transition, just as for a selected row already loaded in Recents.
-    anchor = state.transition_anchor or (selected if state.enabled and selected not in active and options == state.options and
-              (any(record.id == selected for record in state.loaded) or
-               selected in (getattr(app, "last_jobs_ids", None) or ())) else None)
+    anchor = state.transition_anchor or (
+        selected
+        if state.enabled
+        and selected not in active
+        and options == state.options
+        and (
+            any(record.id == selected for record in state.loaded)
+            or selected in (getattr(app, "last_jobs_ids", None) or ())
+        )
+        else None
+    )
     if state.options is not None and options != state.options:
-        state.target = max(_base(app), state.page, state.target if state.transition_anchor else 0)
+        state.target = max(
+            _base(app), state.page, state.target if state.transition_anchor else 0
+        )
         state.exhausted = False
         getattr(app, "top", {}).update(recent=0)
         state.index_key, state.index = None, []
         state.sorted_key, state.sorted_rows = None, []
     state.options = options
     # Retain only observation fields required by filters and typed sorting.
-    state.observation = {key: snap.get(key, {} if key in ("departed_jobs", "tags", "live", "details") else [])
-                         for key in ("jobs", "finished", "departed_jobs", "tags", "live", "details", "group")}
+    state.observation = {
+        key: snap.get(
+            key, {} if key in ("departed_jobs", "tags", "live", "details") else []
+        )
+        for key in (
+            "jobs",
+            "finished",
+            "departed_jobs",
+            "tags",
+            "live",
+            "details",
+            "group",
+        )
+    }
     limit = candidate_limit(app)
-    pending = _matching(app, snap, reversed(list(snap.get("departed_jobs", {}).values())),
-                        active=active, limit=limit)
+    pending = _matching(
+        app,
+        snap,
+        reversed(list(snap.get("departed_jobs", {}).values())),
+        active=active,
+        limit=limit,
+    )
     pending_ids = {job.id for job in pending}
     needed = max(0, limit - len(pending))
     indexed = False
@@ -210,14 +237,36 @@ def records(app, snap):
         window = getattr(app, "table_tools_state", {}).get("recents", {}).get("window")
         # Numeric filters can use retained live samples even after accounting
         # appears. A timezone change also changes local Slurm date boundaries.
-        live_key = tuple(sorted((jid, _record_key(value)) for jid, value in snap.get("live", {}).items()))
-        zone = (os.environ.get("TZ"), time.tzname, time.timezone,
-                getattr(time, "altzone", time.timezone), time.daylight) if window else None
-        key = (tuple(_record_key(record) for record in source), tuple(sorted(active)),
-               tuple(sorted(pending_ids)), _tag_key(snap.get("tags", {})), live_key, options, zone)
+        live_key = tuple(
+            sorted(
+                (jid, _record_key(value)) for jid, value in snap.get("live", {}).items()
+            )
+        )
+        zone = (
+            (
+                os.environ.get("TZ"),
+                time.tzname,
+                time.timezone,
+                getattr(time, "altzone", time.timezone),
+                time.daylight,
+            )
+            if window
+            else None
+        )
+        key = (
+            tuple(_record_key(record) for record in source),
+            tuple(sorted(active)),
+            tuple(sorted(pending_ids)),
+            _tag_key(snap.get("tags", {})),
+            live_key,
+            options,
+            zone,
+        )
         now = clock.now()
         if key != state.index_key or state.expiry is not None and now >= state.expiry:
-            state.index = _matching(app, snap, source, active=active, pending_ids=pending_ids)
+            state.index = _matching(
+                app, snap, source, active=active, pending_ids=pending_ids
+            )
             state.index_key = key
             state.index_generation += 1
             boundaries = []
@@ -227,13 +276,30 @@ def records(app, snap):
                     if ended is not None:
                         # The lower time boundary is inclusive; expiration
                         # occurs immediately after it, rather than at it.
-                        boundaries.extend(point for point in (ended, math.nextafter(ended + window, math.inf)) if point > now)
+                        boundaries.extend(
+                            point
+                            for point in (
+                                ended,
+                                math.nextafter(ended + window, math.inf),
+                            )
+                            if point > now
+                        )
             state.expiry = min(boundaries) if boundaries else None
         finished = state.index[:needed]
     else:
-        finished = _matching(app, snap, snap.get("finished", []), active=active,
-                             pending_ids=pending_ids, limit=needed)
-    if anchor and anchor not in active and not any(record.id == anchor for record in pending + finished):
+        finished = _matching(
+            app,
+            snap,
+            snap.get("finished", []),
+            active=active,
+            pending_ids=pending_ids,
+            limit=needed,
+        )
+    if (
+        anchor
+        and anchor not in active
+        and not any(record.id == anchor for record in pending + finished)
+    ):
         # New completions can push a selected boundary row past a bounded
         # preview while Queue size remains constant. Find only this displaced
         # identity, and admit enough accounting prefix to keep it available.
@@ -241,21 +307,49 @@ def records(app, snap):
         departed = snap.get("departed_jobs", {})
         if anchor in departed:
             ordered = reversed(list(departed.values()))
-            found = next(((index, record) for index, record in enumerate(ordered) if record.id == anchor), None)
+            found = next(
+                (
+                    (index, record)
+                    for index, record in enumerate(ordered)
+                    if record.id == anchor
+                ),
+                None,
+            )
             prefix = 0
         else:
-            found = next(((index, record) for index, record in enumerate(snap.get("finished", []))
-                          if record.id == anchor), None)
+            found = next(
+                (
+                    (index, record)
+                    for index, record in enumerate(snap.get("finished", []))
+                    if record.id == anchor
+                ),
+                None,
+            )
             prefix = len(pending)
-        if found and _matching(app, snap, [found[1]], active=active, pending_ids=pending_ids):
+        if found and _matching(
+            app, snap, [found[1]], active=active, pending_ids=pending_ids
+        ):
             state.target = max(limit + LOAD_BLOCK, found[0] + prefix + 1)
             return records(app, snap)
-    sorted_key = (state.index_generation, limit, tuple(_record_key(record) for record in pending), options) if indexed else None
+    sorted_key = (
+        (
+            state.index_generation,
+            limit,
+            tuple(_record_key(record) for record in pending),
+            options,
+        )
+        if indexed
+        else None
+    )
     if indexed and sorted_key == state.sorted_key:
         result = list(state.sorted_rows)
     else:
-        result = sort_rows(app, "recent", pending + finished,
-                           value=lambda record, column: history_value(record, column, snap))
+        result = sort_rows(
+            app,
+            "recent",
+            pending + finished,
+            value=lambda record, column: history_value(record, column, snap),
+        )
         if indexed:
             state.sorted_key, state.sorted_rows = sorted_key, list(result)
     state.loaded = result
@@ -283,21 +377,33 @@ def register_scrollbar(app, width, first, page, painted, *, header):
     logical offset; filters, grouping and sorting remain render work.
     """
     from . import scrollbars
+
     state = initialize(app)
     if width < 2 or page <= 0:
         return
-    retained = (len(state.observation.get("finished", ())) +
-                len(state.observation.get("departed_jobs", {})))
+    retained = len(state.observation.get("finished", ())) + len(
+        state.observation.get("departed_jobs", {})
+    )
     loaded_count = len(getattr(app, "recent_ids", state.loaded))
     count = loaded_count if state.exhausted else max(loaded_count, retained)
+
     def seek(value):
         value = max(0, int(value))
         if not state.exhausted:
             state.target = max(state.target, value + max(1, page))
         app.top["recent"] = value
-    scrollbars.register(app, "recent", (first, 0, first + page, width),
-        count, page, getattr(app, "top", {}).get("recent", painted), painted, seek,
-        header=(header, 0, width) if width >= 6 else None)
+
+    scrollbars.register(
+        app,
+        "recent",
+        (first, 0, first + page, width),
+        count,
+        page,
+        getattr(app, "top", {}).get("recent", painted),
+        painted,
+        seek,
+        header=(header, 0, width) if width >= 6 else None,
+    )
 
 
 def contains(app, y, x):
@@ -317,7 +423,11 @@ def _grow(app, desired, *, all_records=False):
         return
     block = max(LOAD_BLOCK, state.page)
     if all_records:
-        state.target = len(state.observation.get("finished", [])) + len(state.observation.get("departed_jobs", {})) + 1
+        state.target = (
+            len(state.observation.get("finished", []))
+            + len(state.observation.get("departed_jobs", {}))
+            + 1
+        )
     else:
         state.target = max(state.target + block, desired + block)
     previous = getattr(app, "selected_id", None)
@@ -339,7 +449,11 @@ def _grow(app, desired, *, all_records=False):
 def navigate(app, action, *, wheel=False):
     """Move exact Recents IDs, loading more only at the admitted prefix edge."""
     state = initialize(app)
-    if not state.enabled or getattr(app, "tab", "") != "jobs" or getattr(app, "mode", "main") != "main":
+    if (
+        not state.enabled
+        or getattr(app, "tab", "") != "jobs"
+        or getattr(app, "mode", "main") != "main"
+    ):
         return False
     if action not in ("up", "down", "page_up", "page_down", "home", "end"):
         return False
@@ -350,7 +464,9 @@ def navigate(app, action, *, wheel=False):
     cur = max(0, cur - state.queue_count)
     if wheel and getattr(app, "cursor", {}).get("jobs", 0) < state.queue_count:
         cur = max(0, getattr(app, "top", {}).get("recent", 0))
-    delta = {"up": -1, "down": 1, "page_up": -state.page, "page_down": state.page}.get(action, 0)
+    delta = {"up": -1, "down": 1, "page_up": -state.page, "page_down": state.page}.get(
+        action, 0
+    )
     desired = 0 if action == "home" else cur + delta
     if action == "end":
         _grow(app, desired, all_records=True)
@@ -393,7 +509,12 @@ def handle_key(app, key):
 
 
 def handle_mouse(app, y, x, button="left", shift=False):
-    if button not in ("wheel-up", "wheel-down", "wheel_up", "wheel_down") or not contains(app, y, x):
+    if button not in (
+        "wheel-up",
+        "wheel-down",
+        "wheel_up",
+        "wheel_down",
+    ) or not contains(app, y, x):
         return False
     layout = getattr(app, "layout_state", None)
     if layout is not None:
@@ -401,7 +522,9 @@ def handle_mouse(app, y, x, button="left", shift=False):
     panel = getattr(app, "job_panel_state", {})
     if isinstance(panel, dict):
         panel["focus"] = ""
-    return navigate(app, "up" if button in ("wheel-up", "wheel_up") else "down", wheel=True)
+    return navigate(
+        app, "up" if button in ("wheel-up", "wheel_up") else "down", wheel=True
+    )
 
 
 def save(app):

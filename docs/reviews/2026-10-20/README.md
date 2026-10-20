@@ -72,13 +72,12 @@ costs, fidelity checks, commands, and environmental limits.
 
 ## Structural and deployment limits
 
-The review labels the complete architecture rewrite as ongoing. This revision
-extracts real terminal, Heavy, installation, and UI-contract packages; introduces
-explicit domain/application ports; and checks function-level and literal dynamic
-imports. Strict application-reader, transport, cadence, and presentation
-boundaries are enforced. The complete no-cycle goal remains unmet: the coverage
-ledger identifies the remaining component and dynamic imports. The default gate
-prevents new cyclic edges; it does not certify global acyclicity.
+The strict all-depth import graph now has no cycles and no unresolved runtime
+imports. Actual subsystem implementations live in canonical packages, with
+released import identities and saved feature keys preserved. Seven dependency
+contracts and a mandatory global acyclicity gate enforce the boundaries. The
+[architecture acceptance record](architecture-closure.md) documents the design,
+compatibility checks, and deliberate deferred-loading decisions.
 
 Real Slurm qualification uses disposable owned local containers, not a production
 site. Physical GPU, multi-node transport, production SSH/shared filesystems,

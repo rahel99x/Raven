@@ -46,7 +46,8 @@
           "canonical_package_files_present": true,
           "archive_ref": "b98742fb967f18131905696f4afd3a61f2ad03f2",
           "removed_historical_raw_bytes": 19534267,
-          "historical_markdown_reports_preserved": 52
+          "historical_markdown_reports_preserved": 52,
+          "qualification_stage": "Archive-cleanup milestone before subsequent family extraction; final integrated artifacts are qualified separately."
         },
         "shallow_clone": {
           "implementation": "install.sh uses --depth 1 --branch main --single-branch for new clones.",
@@ -91,15 +92,15 @@
       "id": "S-4 gates",
       "status": "implemented; final integrated local quality gate passed",
       "evidence": [
-        "Ruff F covers all raven core files, including canonical implementations rather than only compatibility shims.",
-        "Default 88-column formatting covers canonical terminal/heavy/ui/installation families plus reviewed domain/application ports; original 100-column transport boundary retained.",
-        "Strict mypy covers 10 source files: existing transport/command callbacks and seven pure typed contracts.",
-        "Six import-linter contracts protect pure presentation, log paths, cadence and application-reader ports.",
-        "AST gate counts function-level and literal dynamic imports; remaining cycles remain explicit baseline debt."
+        "Ruff F covers every raven core file, including actual canonical implementations.",
+        "Default88-column formatting covers275 actual migrated implementation files across terminal,heavy,ui,installation,jobs,job_logs,recordings,tracing,launching,entry,execution,configuration,collection and operation adapters; the original100-column transport boundary remains.",
+        "Strict mypy covers11 source files, including the new typed owner-action interface.",
+        "Six import-linter contracts protect pure presentation,log paths,cadence and application-reader ports.",
+        "Global AST --require-acyclic counts every import depth and resolved finite runtime composition:625 modules,2067function imports,zero strongly connected components,zero unresolved dynamic import expressions.",
+        "81 unambiguous pure query/geometry imports were hoisted from hot UI paths in22 files with lexical binding conflict checks. Intentional owner composition and optional adapters remain explicit; no claim that all function imports were removed."
       ],
       "remaining": [
-        "Hosted CI and final delivered-commit rerun are release integration checks.",
-        "The graph remains explicitly cyclic: a 109-module strongly connected component and eight unresolved dynamic expressions remain baseline debt."
+        "Hosted CI and final delivered-commit rerun are release integration checks."
       ]
     }
   ],
@@ -125,11 +126,11 @@
     },
     {
       "command": ".venv/bin/python -m mypy --config-file mypy-boundary.ini",
-      "result": "Success: no issues found in 10 source files"
+      "result": "Success: no issues found in11 source files"
     },
     {
       "command": ".venv/bin/python scripts/check_quality.py",
-      "result": "PASS: whole-core Ruff F, six import contracts, three original boundary files, 76 migrated implementation files formatted, strict mypy for 10 source files, AST containment with 421 modules/2,009 function imports/largest SCC 109/eight dynamic expressions."
+      "result": "PASS: whole-core Ruff F,six import contracts,three original boundary files,275 actual migrated files formatted,strict mypy11 sources,global AST --require-acyclic625 modules/2067function imports/zeroSCC/zero unresolved dynamic expressions."
     },
     {
       "command": ".venv/bin/python -m pytest -q tests/test_command_registry.py",
@@ -160,7 +161,8 @@
       "reduction_bytes": 8249357,
       "reduction_percent": 63.22550793967341,
       "limits": "Both artifacts were built from original/current trees with the same backend on the same host. Current artifact also contains other integrated review changes; this is an observed distribution-content comparison, not an isolated install-speed or S3-only causal benchmark."
-    }
+    },
+    "build_qualification_stage": "Measured archive-cleanup milestone, before final architecture family changes; not the final delivered artifact sizes."
   },
   "review": {
     "assertions_preserved": [
@@ -173,15 +175,16 @@
   },
   "source_sha256": {
     "MANIFEST.in": "22fbd3643ee0f4f56fa7713eb970a55c404df1fdad60035599b14b62087e19d3",
-    ".github/workflows/tests.yml": "1411ddd91cd60205e546a3cfdd02d6edc1ac0d7ccc4da5389c46f5aa830e41dd",
-    "scripts/check_quality.py": "49a4eb90c430fae2a3640879b086fa2316b55f7b89f3cd5c3ce9eaaff2286b05",
-    "mypy-boundary.ini": "4e15220e39e989820b9d223123086f1a1ff275c7515760c1bec8f912ea738adb",
+    ".github/workflows/tests.yml": "2f48a969a93ffc9e21676258e4270c35e16f105143b8c4cdf0c93a1e54e486aa",
+    "scripts/check_quality.py": "e781fa062ecb914304396890e994a2c027ce839784e257da64ed7ef150084ce3",
+    "mypy-boundary.ini": "9a0bed809fc9391669d561295781b238b495893a864c4d3f2b920fb08aaa4db3",
     "tests/conftest.py": "e96f0fc046a0329e21660c2a74cd4745bbeb594fe1c67665cef5deb19475611e",
     "tests/test_review_environment.py": "b8106e52a1a9ab3a870b07461db37eecf6f8e8ae566e010ec0f2309cab86b8e0",
     "tests/test_forecast_scenarios.py": "5d1d7b15700e0644d79b6e98d32b30d5db7cfb7dafd7785dec46e2b585ab9114",
     "tests/test_slurm_simulator.py": "94c1be4300c04b3a01ff116774b9f4ac13b22572f71c4d2a38fa7013015948c6",
     "docs/implementation/ARCHIVE.md": "471144d468dc5f65b56958bae84a988635c8a52f2e06b2f11bc78948f0d87988",
-    "tests/fixtures/review-temporal-holdout/README.md": "c78f34d2a944b0681797ce015811f9a8496803131d1866b8f8c7f64572bfe185"
+    "tests/fixtures/review-temporal-holdout/README.md": "c78f34d2a944b0681797ce015811f9a8496803131d1866b8f8c7f64572bfe185",
+    "scripts/benchmark_ui_dispatch.py": "fb2fc5630a8d073862711dfff73e2363758b86355a7df06927a759a07e0fc396"
   },
   "qualification_limits": [
     "This is working-tree focused evidence, not a claim that every latest integrated file or hosted matrix has passed.",
@@ -189,10 +192,10 @@
     "The archive ref exists locally; publication is a required release step."
   ],
   "architecture_snapshot": {
-    "modules": 421,
-    "function_level_imports": 2009,
-    "largest_remaining_scc": 109,
-    "unresolved_dynamic_expressions": 8,
-    "status": "Integrated quality gate passed; baseline debt remains explicit."
+    "modules": 625,
+    "function_level_imports": 2067,
+    "largest_remaining_scc": 0,
+    "unresolved_dynamic_expressions": 0,
+    "status": "Strict global acyclicity passed in current integrated working tree; final commit and hosted CI recorded by root."
   }
 }

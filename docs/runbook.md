@@ -554,9 +554,11 @@ for UTF-8 logs, without Raven headers, row numbers, or wrapping.
 
 Ranges above 256 KiB or 4,096 lines run on the shared worker, as do non-UTF-8
 ranges. These copies save the pinned exact bytes as
-`state/exports/log-selected-<uuid>.log` (or `./raven-exports/` with `--no-state`)
-before clipboard delivery; non-UTF-8 skips text transport. Small valid UTF-8
-ranges keep the immediate private `clipboard.txt` fallback.
+`log-selected-<uuid>.log` in the durable export directory before clipboard
+delivery; non-UTF-8 skips text transport. Exports use
+`$XDG_DATA_HOME/raven/exports` (default `~/.local/share/raven/exports`), including
+with `--no-state`; an absolute `RAVEN_EXPORT_DIR` selects another location.
+Small valid UTF-8 ranges retain the private atomic `clipboard.txt` fallback.
 If rotation, truncation, or tail eviction invalidates a range, `y` asks you to
 reselect instead of copying the whole file. A stale mouse click also asks for
 a fresh selection rather than choosing a changed screen row.
@@ -565,10 +567,9 @@ Use `V` then `y`, `Y`, or `:copy all` for the entire exact selected file. `y`
 without a line selection in Logs also copies the entire file. This reads through
 the selected local/SSH backend on the shared worker, independent of the retained
 tail, search, scrolling, or wrapping. The private, unique export is
-`exports/log-full-<uuid>.log` under the active connection-scoped state directory.
-Use the path reported by the copy result.
-With `--no-state`, use the reported file under `./raven-exports/` instead. Files
-are mode `0600` and stream in 1 MiB chunks with bounded memory.
+`log-full-<uuid>.log` in that same durable export directory. Use the path
+reported by the copy result. Files are mode `0600` and stream in 1 MiB chunks
+with bounded memory; interactive copies finish on the shared background worker.
 
 The copy captures the source's initial bytes; later appends are excluded and
 reported. Detected rotation, replacement, truncation, mutation, or a short read

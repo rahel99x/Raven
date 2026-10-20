@@ -298,7 +298,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             return True
     for hy, left, right, index in state["line_hits"]:
         if y == hy and left <= x < right:
-            from .text_selection import clear
+            from .ui.text_selection_state import clear
             clear(app)
             pointer = getattr(app, "interaction_state", None)
             if isinstance(pointer, dict):

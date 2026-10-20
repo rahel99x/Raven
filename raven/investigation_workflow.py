@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from . import evidence, operations as O, science_contracts as C
+from . import evidence, operation_support as O, science_contracts as C
 from .derived_results import RESULTS, ResultKey
 from .science_analysis import analyze as _analyze
 
@@ -138,7 +138,8 @@ def inspect(params, ctx):
     findings, missing, known = [], [], []
     for source in document["sources"]:
         if source["operation"] in TRACE_READERS:
-            from . import ops_trace, trace_protocol
+            from . import ops_trace
+            from .tracing import protocol as trace_protocol
             trace_path = _path(root, source["path"])
             if trace_path not in captures:
                 try:
@@ -237,7 +238,7 @@ def verify_sources(records, ctx):
             prefixes.append(record)
             continue
         if record.get("format") == "trace-index":
-            from .trace_protocol import discover_trace
+            from .tracing.protocol import discover_trace
             if discover_trace(record["path"], record["job_id"], record["attempt"]) != record["paths"]:
                 raise ValueError("Registered trace streams changed during investigation; inspect again")
             continue
@@ -311,7 +312,7 @@ def _measurements(link, status, ctx, identity):
 
 
 def run(params, ctx):
-    from . import ops_investigation as adapter
+    from .operation_adapters import investigation as adapter
     document, data, root = inspect(params, ctx)
     action = params.get("action", "inspect")
     if action not in {"inspect", "review-diagnostic", "status"}:
@@ -393,7 +394,8 @@ def apply(plan, ctx):
     verify_sources(current["sources"], ctx)
     verify_sources(payload["sources"], ctx)
     nested = payload["nested_plan"]
-    result = O.apply(nested["feature"], nested, ctx)
+    from .operation_adapters import investigation as adapter
+    result = O.apply_adapter(nested["feature"], nested, ctx, adapter.apply)
     return O.report("investigation-workflow", "Reviewed diagnostic started; inspect status for updated findings",
                     status=result["status"], rows=result["rows"], warnings=result["warnings"],
                     data={"identity": payload["identity"], "diagnostic": result,

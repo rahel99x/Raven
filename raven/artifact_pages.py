@@ -9,7 +9,7 @@ import stat
 
 from .project_files import _local, _root
 from .artifacts import _contract, _json, _open_local, _signature
-from .log_presentation import json_page
+from .job_logs.presentation import json_page
 
 PAGE_ROWS = 128
 PAGE_BYTES = 262144

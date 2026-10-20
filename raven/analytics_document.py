@@ -19,7 +19,7 @@ def eligible(app, height=None):
             or getattr(app, "analytics_view", "") != "job"
             or getattr(app, "mode", "main") != "main" or height is None):
         return False
-    from .workspace_layout import enabled
+    from .ui.workspace_state import enabled
     return not enabled(app)
 
 

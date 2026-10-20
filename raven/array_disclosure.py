@@ -30,7 +30,7 @@ def _index(app, array_id, cluster):
 
 def select(app, target):
     """Select an exact row; legacy plain IDs remain valid when unambiguous."""
-    from .job_selection import resume
+    from .ui.selection_effects import resume
     array_id, cluster = target if isinstance(target, tuple) and len(target) == 2 else (target, None)
     index = _index(app, array_id, cluster)
     resume(app, "research")
@@ -55,7 +55,7 @@ def set_open(app, array_id, opened, *, cluster=None):
     index = _index(app, array_id, cluster)
     current = getattr(app, "cursor", {}).get("research", 0)
     if opened:
-        from .job_selection import resume
+        from .ui.selection_effects import resume
         resume(app, "research")
         if current != index or not getattr(app, "research_array_open", False):
             app.research_task_offset = 0

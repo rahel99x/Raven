@@ -224,7 +224,7 @@ def main(argv=None):
             raise ValueError("Install Raven's optional MCP extra: python -m pip install 'raven[mcp]'") from exc
         if not sdk.startswith("2.3."):
             raise ValueError("This adapter requires the qualified MCP SDK 2.3.x; install raven[mcp]")
-        from .raven_execution import router_for
+        from .execution.policy import router_for
         session = Session(E.scope(args.index, args.project), router_for())
         asyncio.run(serve(session))
         return 0

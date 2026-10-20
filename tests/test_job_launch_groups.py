@@ -246,7 +246,7 @@ def test_large_groups_are_linear_and_cached_without_pairwise_comparison(monkeypa
         seen += 1
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(G, "_evidence", counted)
+    monkeypatch.setattr("raven.job_group_domain._evidence", counted)
     first = registry.ensure(snap)
     assert len(first.groups) == 1 and len(first.by_job) == 10000
     assert seen == 10000
@@ -322,7 +322,7 @@ def test_ordinary_accounting_fastpath_still_detects_later_launch_evidence(monkey
         seen += 1
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(G, "_evidence", counted)
+    monkeypatch.setattr("raven.job_group_domain._evidence", counted)
     assert not groups.ensure(snap).groups and seen == 0
     snap["details"] = {"100": {"RavenLaunchId": "later"}, "101": {"RavenLaunchId": "later"}}
     group, = groups.ensure(snap).groups.values()
@@ -339,7 +339,7 @@ def test_bounded_collapsed_registry_retains_the_group_just_closed(monkeypatch):
     records = [job("1_0"), job("1_1"), job("9_0"), job("9_1")]
     groups = G.Registry(["9", "8"])
     groups.ensure({"jobs": records})
-    monkeypatch.setattr(G, "MAX_COLLAPSED", 2)
+    monkeypatch.setattr("raven.job_group_domain.MAX_COLLAPSED", 2)
     assert groups.fold("array:1", True)
     assert groups.is_collapsed(groups.index.groups["array:1"])
     assert len(groups.collapsed) == 2

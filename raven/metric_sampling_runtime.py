@@ -93,7 +93,7 @@ def cadence(app, identity, rate=None):
             "collection"
         )
         if collection is not None:
-            from .raven_collection import interval as collection_interval
+            from raven.collection.ledger import interval as collection_interval
 
             value = collection_interval(collection, collector, value)
         return value

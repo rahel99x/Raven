@@ -1,0 +1,277 @@
+{
+  "schema": "raven.architecture-owner-evidence/v1",
+  "owner": "C: entry, capture, launch runtime and execution adapters",
+  "accepted_scope": [
+    "S1: exact current graph and every owner-C requirement in architecture-closure.md",
+    "S4: actual coherent entry/tracing/launching/execution/configuration implementations; legacy paths remain compatibility only"
+  ],
+  "baseline_revision": "976eeb2ca76b09699a45ca5c72e5ff32e4379112",
+  "delivered_revision": "Shared frozen working tree; parent records final integrated commit and full CI. This document does not claim a future commit was tested.",
+  "architecture": {
+    "graph_command": ".venv/bin/python scripts/check_import_layers.py --require-acyclic --json /workspace/owner-c-architecture-final.json",
+    "graph": {
+      "schema": "raven.import-layers/v1",
+      "modules": 625,
+      "function_import_statements": 2067,
+      "modules_with_function_imports": 270,
+      "cyclic_components": [],
+      "cyclic_edges": [],
+      "dynamic_module_expressions": [],
+      "violations": []
+    },
+    "families": {
+      "entry": "Dashboard/bootstrap/launch grammars, onboarding service and CLI delegation, composition launchers, submission and placement adapters, offline qualification.",
+      "tracing": "Capture core, verified protocol and traversal, native/MPI adapters, common provenance, offline documents/export and terminal/browser UI, with CLI dispatch above capture.",
+      "launching": "Exclusive I/O, attempt-owned runtime cache, diagnostics and capture shutdown, plan inventory, bootstrap/autotrace, launch settings and workflow/UI.",
+      "execution": "Pure scope and policy/context, admission, explicit lazy callable worker registry, task dispatch, planning results, log-export admission and published capability catalog.",
+      "configuration": "Dashboard settings, versioned bootstrap policy, allocation preferences and reusable site/project profiles."
+    },
+    "preserved_compatibility": "All 53 moved legacy modules are exact sys.modules aliases. trace_recorder and raven_execution are public compatibility aggregates with exact object exports and no extracted implementation. Production code imports canonical implementations; AST regression checks old facades are not reintroduced.",
+    "finite_registry": "Every admitted pure operation has an explicit lazy callable loader; unknown names fail. Pre-fork worker warming retains only the chosen operation. No computed module names, reflection or TYPE_CHECKING edges hide dependencies.",
+    "effect_ports": "Narrow validated ExecutionNavigation and TraceBrowserEffects callbacks are composed in workbench. Read-only connection scope, script formatting and submission preparation live below UI owners; callbacks resolve current canonical handler attributes so monkeypatches remain effective."
+  },
+  "packages": [
+    {
+      "id": "C-entry",
+      "status": "implemented",
+      "baseline": "Readers imported cli or root launch composition for parsing/scope, onboarding service delegated upward into launchers.",
+      "implementation": "Shared canonical option grammar, lower connection scope, separate onboarding CLI callback composition, canonical launcher/workload/qualification and configuration families. Pure Heavy plan calls allocation_adapters.prepare without constructing owned socketpairs.",
+      "simpler_alternative": "Duplicating parser/scope logic or keeping directory-only wrappers leaves policy drift or the same source cycles. Actual extraction shares one implementation and retains old module identity.",
+      "compatibility": "Product help retains the original dashboard description; installed entrypoints target entry.launcher. Both python -m raven and python raven work. Existing Config/Resolved identities remain exact at legacy imports."
+    },
+    {
+      "id": "C-capture",
+      "status": "implemented",
+      "baseline": "Capture dispatched CLI and document/browser logic shared UI dependencies; provenance created a stream/export cycle.",
+      "implementation": "Capture and CLI separate, common provenance leaf, pure document exporter below browser request. All trace implementations now canonical tracing members.",
+      "simpler_alternative": "Late imports only defer the same dependency cycle. Explicit leaves preserve the existing algorithm and data fidelity without adding an executor or buffering whole recordings."
+    },
+    {
+      "id": "C-runtime",
+      "status": "implemented",
+      "baseline": "Bootstrap/autotrace imported runtime orchestration merely to obtain writes, diagnostics and stop helpers.",
+      "implementation": "Actual owned I/O/cache/diagnostic/inventory leaves. Runtime ZIP includes nested packages, private bootstrap targets canonical package paths, and internal imports remain relative so vendor raven.py never shadows owned capture.",
+      "recovery": "Failure injection continues to exercise actual recorder/diagnostic owners; optional failures preserve workload stdout, argv, exit status, original exception and trace partial state. Existing content-addressed cache, no-clobber permissions and governed ownership cleanup remain unchanged."
+    },
+    {
+      "id": "C-execution",
+      "status": "implemented",
+      "baseline": "Worker used computed imports and ordinary readers depended on execution orchestration; planning result construction imported UI dispatch.",
+      "implementation": "Explicit lazy operation bindings above readers, canonical policy/admission/scope leaves, pure planning result construction and separate capability catalog. Background callable allowlists were changed only for the exact moved canonical owners, with unknown modules still rejected.",
+      "simpler_alternative": "One eagerly imported global registry would add scientific startup work. Lazy explicit fixed loaders retain pre-fork amortization without computing import names."
+    },
+    {
+      "id": "C-ui-seams",
+      "status": "implemented",
+      "baseline": "Execution/array/shell-check UI and trace browser/trace UI retained small SCCs.",
+      "implementation": "Pure script text and submission preparation leaves; typed execution navigation and trace-browser service callbacks bound by composition. Existing scheduler/hub reused.",
+      "compatibility": "Only internal injection targets in fixtures changed to canonical owners; behavioral assertions for cancellation, failure isolation, selection and verified intervals were preserved."
+    }
+  ],
+  "validation": [
+    {
+      "command": "pytest targeted phase1 entry/onboarding/launch/background-heavy/trace protocol-export-browser suites",
+      "result": "228 passed in75.84s (intermediate canonical extraction, before final family relocation)."
+    },
+    {
+      "command": "pytest architecture/execution/worker/runtime faults/background-heavy phase2",
+      "result": "206 passed in4.90s (intermediate canonical extraction)."
+    },
+    {
+      "command": "pytest browser/execution/orchestrator-port suites",
+      "result": "204 passed in2.72s (before final module-family relocation)."
+    },
+    {
+      "command": "pytest tests/test_entry_capture_execution_architecture.py tests/test_heavy_adversarial.py",
+      "result": "37 passed in16.28s; includes actual 2,000 acknowledged tasks through one local software worker, retained task/retirement bounds and refused task-ID reuse. Functional soak only; not controlled performance qualification."
+    },
+    {
+      "command": "pytest tests/test_entry_capture_execution_architecture.py tests/test_launch_trace_failure_isolation.py tests/test_trace_timeline_workflow.py tests/test_launch_wizard.py tests/test_setup_profiles.py tests/test_setup_config.py",
+      "result": "158 passed in12.62s on final launch/config families."
+    },
+    {
+      "command": "pytest tests/test_raven_launch.py",
+      "result": "30 passed in0.79s after restoring absolute direct-package-directory bootstrap import."
+    },
+    {
+      "command": "pytest tests/test_raven_worker_runtime.py tests/test_worker_fault_models.py tests/test_raven_execution.py",
+      "result": "176 passed in8.70s on frozen runtime. Earlier broad-worker failures were exact build-digest refusal during concurrent source formatting/manifest changes, not bypassed."
+    },
+    {
+      "command": "pytest tests/test_launch_trace_auto.py::test_vendored_client_does_not_shadow_owned_trace_runtime tests/test_collection_package_layout.py tests/test_entry_capture_execution_architecture.py",
+      "result": "12 passed in9.51s after package-relative retained-budget imports fixed the real vendor-shadow failure."
+    },
+    {
+      "command": "ruff check --select F raven/entry raven/tracing raven/launching raven/execution raven/configuration; ruff format --check same five families",
+      "result": "Pass; 63 actual package modules formatted."
+    }
+  ],
+  "review_findings_resolved": [
+    "A mechanical import rewrite initially made the direct package-directory bootstrap relative; restored its absolute canonical import and re-ran every launcher test.",
+    "Collection-family migration introduced absolute imports in automatic trace budgets and their retained-budget dependency. Changed to package-relative imports, verified both implicit and explicit tracing with vendored raven.py and preserved application execution.",
+    "Worker build-digest refusal during live source edits was preserved, not disabled. Restarted validation on frozen source; all176 worker/execution regressions passed.",
+    "Private trace failure fixtures initially patched obsolete aggregate slots. They now inject the actual canonical capture and diagnostic owners, keeping all failure/partial-state/exit-status assertions."
+  ],
+  "performance": {
+    "comparison": "Equivalent local software fixtures before976eeb2 vs frozen625-source-manifest tree; separate from original adversarial-review performance claims.",
+    "commands": [
+      "python scripts/benchmark-injob.py --before /workspace/owner-c-before --after /workspace/Raven --repeat 3 --output tracing-startup.json",
+      "PYTHONPATH=SOURCE python /workspace/raven-heavy-benchmark.py output.json (three serial50-task runs per source)"
+    ],
+    "environment": {
+      "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+      "os": "Linux",
+      "machine": "x86_64",
+      "notes": "Serial fresh processes; stop peer builds/tests for controlled measurements. Linux RSS is KiB; block output operations are not scheduler RPCs."
+    },
+    "source_manifest_sha256": "828b8787952dac6077aa8152c25a606670891a303d928df2531cdf8386dbb81e",
+    "source_manifest_files": 625,
+    "controlled_window_seconds": 15.222998202982126,
+    "tracing": {
+      "calls": {
+        "before": {
+          "application_s": 0.06919466599356383,
+          "complete_s": 0.21352501297951676,
+          "cpu_s": 0.211318887,
+          "journal_bytes": 4054829,
+          "events": 20004,
+          "dropped": 0,
+          "manifest_publications": 3,
+          "rss_peak_kib": 16384,
+          "block_output_ops": 0
+        },
+        "after": {
+          "application_s": 0.06933562899939716,
+          "complete_s": 0.20853105498827063,
+          "cpu_s": 0.20768942499999998,
+          "journal_bytes": 4054829,
+          "events": 20004,
+          "dropped": 0,
+          "manifest_publications": 3,
+          "rss_peak_kib": 16384,
+          "block_output_ops": 0
+        }
+      },
+      "fib": {
+        "before": {
+          "application_s": 0.055992431996855885,
+          "complete_s": 0.17497830200591125,
+          "cpu_s": 0.17163962,
+          "journal_bytes": 3388690,
+          "events": 16726,
+          "dropped": 0,
+          "manifest_publications": 3,
+          "rss_peak_kib": 16000,
+          "block_output_ops": 0
+        },
+        "after": {
+          "application_s": 0.05760702598490752,
+          "complete_s": 0.18452275902382098,
+          "cpu_s": 0.184400051,
+          "journal_bytes": 3388690,
+          "events": 16726,
+          "dropped": 0,
+          "manifest_publications": 3,
+          "rss_peak_kib": 16128,
+          "block_output_ops": 0
+        }
+      }
+    },
+    "startup": {
+      "before": {
+        "untraced": {
+          "median_s": 0.023507399993832223,
+          "samples_s": [
+            0.022867869993206114,
+            0.029003534000366926,
+            0.02187090800725855,
+            0.024146929994458333,
+            0.022096308006439358,
+            0.022442990011768416,
+            0.026428092998685315,
+            0.03039794700453058,
+            0.02275212001404725,
+            0.02432585900533013
+          ]
+        },
+        "traced": {
+          "median_s": 0.05043470099917613,
+          "samples_s": [
+            0.050268269988009706,
+            0.050115950987674296,
+            0.047977062000427395,
+            0.047348434978630394,
+            0.047916506009642035,
+            0.05060113201034255,
+            0.05191769200609997,
+            0.05389864501194097,
+            0.06575415900442749,
+            0.054326051991665736
+          ]
+        }
+      },
+      "after": {
+        "untraced": {
+          "median_s": 0.023384240004816093,
+          "samples_s": [
+            0.03046347599592991,
+            0.021554519014898688,
+            0.023198137991130352,
+            0.022947795980144292,
+            0.023570342018501833,
+            0.026546000997768715,
+            0.024119457986671478,
+            0.026371092011686414,
+            0.020492179988650605,
+            0.02229330100817606
+          ]
+        },
+        "traced": {
+          "median_s": 0.05147888099600095,
+          "samples_s": [
+            0.047343450016342103,
+            0.053591927979141474,
+            0.05089996199239977,
+            0.04826183200930245,
+            0.05156374099897221,
+            0.0513940209930297,
+            0.05174932099180296,
+            0.05073285099933855,
+            0.05369046199484728,
+            0.05196728801820427
+          ]
+        }
+      }
+    },
+    "workers": {
+      "before": {
+        "startup_wall_ms": 63.34445098764263,
+        "task_median_wall_ms": 6.032838995452039,
+        "batch_wall_seconds": 0.31465385100455023,
+        "worker_and_children_cpu_seconds": 0.33,
+        "worker_peak_rss_kib": 17460,
+        "driver_peak_rss_kib": 14976,
+        "driver_python_allocation_peak_bytes": 138055
+      },
+      "after": {
+        "startup_wall_ms": 68.88970997533761,
+        "task_median_wall_ms": 6.3786995015107095,
+        "batch_wall_seconds": 0.33127798297209665,
+        "worker_and_children_cpu_seconds": 0.35,
+        "worker_peak_rss_kib": 17440,
+        "driver_peak_rss_kib": 14976,
+        "driver_python_allocation_peak_bytes": 138405
+      }
+    },
+    "fidelity": "Both 10,000-call fixtures commit20,004 events and4,054,829 bytes; recursive fixtures commit16,726 events and3,388,690 bytes, every run CLOSED with zero drops. Data fidelity was not reduced for speed.",
+    "interpretation": "10k-call application median69.19\u219269.34ms, full drain213.53\u2192208.53ms, unchanged16,384KiB process peak. Recursive drain174.98\u2192184.52ms (+9.54ms) and CPU171.64\u2192184.40ms (+12.76ms); process peak16,000\u219216,128KiB. Traced child startup50.43\u219251.48ms. Worker task median6.033\u21926.379ms (+5.7%); three-run ranges overlap substantially. Worker peakRSS17,460\u219217,440KiB; driver Python allocation peak138,055\u2192138,405bytes. These small measured regressions are reported without statistical significance or blanket improvement claims.",
+    "limits": "Exclusive serial local software window coordinated across all agents. Fresh processes; no OS page-cache flush, scheduler RPC, GPU, network or production cluster claim. Linux process ru_maxrss/VmHWM in KiB and driver Python tracemalloc bytes are distinct measurements. This architecture comparison starts at976eeb2, not original adversarial-review b987 or6fa baseline.",
+    "raw_evidence": "/workspace/owner-c-performance/report.json; parent may publish a new source-bound evidence object. Existing sealed INP archive identity is unchanged."
+  },
+  "qualification_limits": [
+    "No final integrated full-suite, installed wheel or CI result is claimed here; parent owns those checks after source freeze.",
+    "Local software workers and captures do not qualify real Slurm, SSH, MPI, GPU or hardware tracing; earlier INP Gloo/MPI/SSH qualification remains separately source-labelled.",
+    "This refactor does not claim new unavailable ground truth, automatic hardware capture or simulation efficacy.",
+    "No configuration-file migration is required. Reinstalling the delivered wheel or editable checkout refreshes canonical console entrypoints; legacy imports and commands remain compatible."
+  ]
+}

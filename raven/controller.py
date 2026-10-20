@@ -9,7 +9,7 @@ import os
 from typing import Dict, List, Optional, Sequence
 
 from . import clipboard, export, workbench, command_registry
-from .logs import LogSession
+from .job_logs.buffer import LogSession
 from .actions import Actions
 from .model import Job, Store, secs
 from .sampler import Sampler
@@ -315,7 +315,7 @@ class App:
         """The same sorted/filtered accounting records drive rendering and every row action."""
         from .table_tools import snapshot, filter_text, history_matches, recent_matches, recent_limit
         snap = snapshot(self, self.store.render_snapshot()) if snap is None else snap
-        from .table_ui import matches
+        from .table_query import matches
         if recent:
             limit = recent_limit(self)
             if type(limit) is int and limit > 0:
@@ -346,7 +346,7 @@ class App:
             active = {j.id for j in snap["jobs"]}
             fin = [f for f in fin if f.id not in active]
         else:
-            from .table_ui import chain, history_value, sort_rows
+            from .table_sort import chain, history_value, sort_rows
             cascade = chain(self, "history")
             key = self.sort.get("history", "end")
             keyfn = {"end": lambda f: f.end, "name": lambda f: (f.name, f.end),
@@ -365,12 +365,12 @@ class App:
         if recent:
             return fin[:recent_limit(self)]
         self.history_all_records = fin
-        from .job_groups import project_records
+        from raven.jobs.group_domain import project_records
         return project_records(self, snap, fin, tab="history")
 
     def history_jobs(self, snap=None):
-        from .table_ui import fingerprint
-        from .job_groups import registry
+        from .table_query import fingerprint
+        from raven.jobs.group_domain import registry
         if snap is None:
             from .table_tools import snapshot
             snap = snapshot(self, self.store.render_snapshot())
@@ -392,7 +392,7 @@ class App:
     def sync_history_selection(self, snap=None):
         fin = self.history_jobs(snap)
         ids = [f.id for f in fin]
-        from .table_ui import fingerprint
+        from .table_query import fingerprint
         options = self.filter, self.sort.get("history", "end"), self.reverse.get("history", False), fingerprint(self, "history")
         previous = self.last_history_ids
         if (previous is not None and ids != previous and options == self.last_history_options
@@ -400,14 +400,15 @@ class App:
                 and self.cursor["history"] == previous.index(self.selected_id)):
             self.cursor["history"] = ids.index(self.selected_id)
         self.last_history_ids, self.last_history_options = ids, options
-        from .job_selection import selected
+        from .ui.selection_state import selected
         self.selected_id = selected(self, "history", ids[self.clamp_cursor("history", len(ids))] if ids else None)
         return fin
 
     def recent_jobs(self, snap=None):
         from .table_tools import snapshot
         snap = snapshot(self, self.store.render_snapshot()) if snap is None else snap
-        from . import recent_history, job_groups
+        from . import recent_history
+        from raven.jobs import group_domain as job_groups
         state = recent_history.initialize(self)
         state.projector = lambda observation, raw: job_groups.project_records(self, observation, raw, tab="recent")
         recent = state.projector(snap, recent_history.records(self, snap))
@@ -430,7 +431,7 @@ class App:
                     ids = self.visible_ids + self.recent_ids
                 if selected in ids:
                     self.cursor["jobs"] = ids.index(selected)
-                from .job_selection import selected as selection_value
+                from .ui.selection_state import selected as selection_value
                 self.selected_id = selection_value(self, "jobs", ids[self.clamp_cursor("jobs", len(ids))] if ids else None)
                 self.last_jobs_ids, self.jobs_selection_options = ids, self.jobs_options()
             elif active == "history":
@@ -466,7 +467,7 @@ class App:
         """A changed group representative must not retarget a queued action."""
         if not selected or selected in displayed or not self.table_state.get("groups"):
             return False
-        from .job_groups import registry, fold
+        from raven.jobs.group_domain import registry, fold
         groups = registry(self)
         group = groups.ensure(snap).for_job(selected)
         if group is None or not groups.is_collapsed(group):
@@ -509,8 +510,8 @@ class App:
         return self.read_log_buffer(path)
 
     def read_log_buffer(self, path):
-        from .log_workbench import sync_source, observe_buffer
-        from .log_tools import observe_buffer as observe_position
+        from .job_logs.workbench import sync_source, observe_buffer
+        from .job_logs.tools import observe_buffer as observe_position
         if (self.mode not in ("main", "filter", "palette")
                 or self.logs.search and getattr(self, "log_tools_state", {}).get("retained_pending")):
             # The modal owns an exact immutable source snapshot. Refreshing its
@@ -526,12 +527,12 @@ class App:
         return buf
 
     def find_log_match(self, buf, backwards=False):
-        from .log_tools import find_retained
+        from .job_logs.tools import find_retained
         result = find_retained(self, buf, backwards=backwards)
         return result[1] if result is not None else self.logs.find_next(buf, backwards=backwards)
 
     def count_log_matches(self, buf):
-        from .log_tools import count_retained
+        from .job_logs.tools import count_retained
         return count_retained(self, buf) if buf is not None and self.logs.search else 0
 
     def log_search_message(self, buf):
@@ -546,7 +547,7 @@ class App:
         return f"{count} lines match '{self.logs.search}'"
 
     def jobs_options(self):
-        from .table_ui import fingerprint
+        from .table_query import fingerprint
         return (self.filter, self.sort.get("jobs", "state"), self.reverse.get("jobs", False),
                 fingerprint(self, "jobs"), fingerprint(self, "recent"))
 
@@ -561,7 +562,7 @@ class App:
             self.fail("no job selected for logs")
             return
         if selects_job:
-            from .job_selection import resume
+            from .ui.selection_effects import resume
             resume(self, "log")
         from .navigation_ui import record as remember
         remember(self, "log", force=self.tab == "log" and jid != self.log_job)
@@ -570,7 +571,7 @@ class App:
         if binding and binding.get("job_id") != jid:
             clear_binding(self)
         if jid != self.log_job:
-            from .log_tools import before_source_change
+            from .job_logs.tools import before_source_change
             before_source_change(self)
             self.logs.clear_selection(reset_cursor=True)
             self.log_selection_expected = False
@@ -581,14 +582,14 @@ class App:
             self.logs.browser_cursor, self.logs.browser_top, self.logs.file_filter = 0, 0, ""
         self.log_job, self.log_record, self.logs.top = jid, record, None
         self.enter_tab("log")
-        from .job_selection import selected
+        from .ui.selection_state import selected
         self.selected_id = selected(self, "log", jid)
         if self.sampler:
             self.sampler.select(jid)
 
     def log_entries(self):
         flt = self.logs.file_filter.casefold()
-        from .log_workbench import visible_entries
+        from .job_logs.workbench import visible_entries
         entries = [entry for entry in self.logs.entries if not flt or
                    any(flt in str(entry.get(key, "")).casefold() for key in ("label", "group", "path", "description"))]
         return visible_entries(self, entries)
@@ -598,14 +599,14 @@ class App:
         if not entries:
             self.say("no log file selected")
             return False
-        from .job_selection import resume_lines
+        from .ui.selection_effects import resume_lines
         resume_lines(self)
         from .navigation_ui import record
         record(self, "log", force=True)
         self.logs.browser_cursor = max(0, min(self.logs.browser_cursor, len(entries) - 1))
         entry = entries[self.logs.browser_cursor]
         if not self.logs.entry or self.logs.entry["path"] != entry["path"]:
-            from .log_tools import before_source_change
+            from .job_logs.tools import before_source_change
             before_source_change(self)
             self.logs.clear_selection(reset_cursor=True)
             self.log_selection_expected = False
@@ -627,11 +628,11 @@ class App:
         """Marked ids, else the selected one (on the History tab the row under the cursor)."""
         if self.marks:
             return sorted(self.marks)
-        from .job_selection import cleared
+        from .ui.selection_state import cleared
         if cleared(self):
             return []
         if self.tab == "history":
-            from .job_selection import selected
+            from .ui.selection_state import selected
             if selected(self, "history", True) is None:
                 return []
             ids = [f.id for f in self.history_jobs()]
@@ -662,12 +663,12 @@ class App:
                 self.recent_ids = [f.id for f in self.recent_jobs(snap)]
                 self.jobs_selection_options = self.jobs_options()
             ids = self.visible_ids + self.recent_ids
-            from .job_selection import selected
+            from .ui.selection_state import selected
             self.selected_id = selected(self, "jobs", ids[self.clamp_cursor("jobs", len(ids))] if ids else None)
         elif self.tab == "history":
             self.sync_history_selection()
         elif self.tab in ("log", "analytics", "research"):
-            from .job_selection import selected
+            from .ui.selection_state import selected
             field = {"log": "log_job", "analytics": "analytics_job", "research": "research_job_id"}[self.tab]
             self.selected_id = selected(self, self.tab, getattr(self, field, None))
         elif self.tab == "deps":
@@ -677,7 +678,7 @@ class App:
             if scoped and self.selected_id == scoped:
                 return
             cur = self.clamp_cursor("deps", len(self.dep_ids))
-            from .job_selection import selected
+            from .ui.selection_state import selected
             self.selected_id = selected(self, "deps", self.dep_ids[cur] if self.dep_ids else None)
         elif self.tab == "group":
             self.selected_id = self.group_selected()
@@ -722,7 +723,7 @@ class App:
         if text_key(self, key):
             return
         from .manual_group_ui import handle_key as manual_group_key
-        from .job_selection import context as job_list_context
+        from .ui.selection_state import context as job_list_context
         grouping_key_blocked = key == "u" and job_list_context(self) is None
         if manual_group_key(self, key):
             return
@@ -866,14 +867,14 @@ class App:
             self.set_days(self.days_index + (1 if action == "days_more" else -1))
         elif action == "visual":
             if self.tab == "log" and not self.logs.browser:
-                from .job_selection import resume_lines
+                from .ui.selection_effects import resume_lines
                 resume_lines(self)
                 self.log_selection_expected = self.logs.begin_selection(self.prepare_log())
             else:
                 self.start_selection(self.cursor_row())
         elif action == "visual_all":
             if self.tab == "log" and not self.logs.browser:
-                from .job_selection import resume_lines
+                from .ui.selection_effects import resume_lines
                 resume_lines(self)
                 self.log_selection_expected = self.logs.select_all(self.prepare_log())
             else:
@@ -913,7 +914,7 @@ class App:
         elif action == "mark_all":
             if self.tab == "jobs":
                 self.marks.update(self.visible_ids)
-                from .job_selection import _bind_marks
+                from .ui.selection_state import _bind_marks
                 _bind_marks(self, self.visible_ids)
                 self.say(f"{len(self.marks)} marked")
         elif action == "unmark_all":
@@ -927,7 +928,7 @@ class App:
             if self.tab == "log" and self.logs.browser:
                 self.select_log_file()
             elif self.tab == "research" and self.research_view == "arrays":
-                from .job_selection import cleared
+                from .ui.selection_state import cleared
                 if cleared(self, "research"):
                     self.say("Select an array cohort before opening its tasks")
                     return
@@ -984,7 +985,7 @@ class App:
                 self.logs.clear_selection(reset_cursor=True)
                 self.log_selection_expected = False
                 self.logs.entry, self.logs.browser = None, False
-                from .log_tools import before_source_change
+                from .job_logs.tools import before_source_change
                 before_source_change(self)
                 self.logs.which = "err" if self.logs.which == "out" else "out"
                 self.logs.file_index, self.logs.top, self.logs.match = 0, None, None
@@ -1037,7 +1038,7 @@ class App:
         elif action.startswith("replay_"):
             self.replay_control(action[7:])
         elif action == "sort":
-            from .table_ui import reset_sort
+            from .table_sort import reset_sort
             reset_sort(self, self.tab)
             opts = SORTS.get(self.tab, ["name"])
             cur = self.sort.get(self.tab, opts[0])
@@ -1045,7 +1046,7 @@ class App:
             self.table_sort_changed(self.tab, persist=False)
             self.say(f"sorted by {self.sort[self.tab]}")
         elif action == "reverse":
-            from .table_ui import reset_sort
+            from .table_sort import reset_sort
             reset_sort(self, self.tab)
             self.reverse[self.tab] = not self.reverse.get(self.tab, False)
             self.table_sort_changed(self.tab, persist=False)
@@ -1077,7 +1078,7 @@ class App:
 
     def open_details(self):
         """The details overlay of the selected job: scontrol and the steps of a running job, sacct -j of a finished one."""
-        from .job_selection import cleared
+        from .ui.selection_state import cleared
         if cleared(self):
             self.say("Select a job before opening its inspector")
             return
@@ -1099,7 +1100,7 @@ class App:
 
     def group_selected(self) -> Optional[str]:
         ids = getattr(self, "group_ids", [])
-        from .job_selection import selected
+        from .ui.selection_state import selected
         return selected(self, "group", ids[self.clamp_cursor("group", len(ids))] if ids else None)
 
     def handle_action(self, action: str):
@@ -1116,7 +1117,7 @@ class App:
         from .scrollbars import resume as resume_scroll
         if not (self.tab == "analytics" and self.analytics_view != "job"):
             resume_scroll(self)
-        from .job_selection import resume
+        from .ui.selection_effects import resume
         self.click_row = None
         scoped = getattr(self, "history_browser_state", {}).get("views", {}).get("deps", {})
         if self.tab == "deps" and scoped.get("explicit"):
@@ -1129,7 +1130,7 @@ class App:
             return
         if self.tab == "research":
             if action in ("page_up", "page_down", "home", "end"):
-                from .job_selection import cleared
+                from .ui.selection_state import cleared
                 if (self.research_view == "arrays" and self.research_array_open
                         and not cleared(self, "research") and action in ("page_up", "page_down")):
                     self.research_task_offset = max(0, self.research_task_offset + (-24 if action == "page_up" else 24))
@@ -1176,7 +1177,7 @@ class App:
                     self.analytics_job = ids[max(0, min(len(ids) - 1, cur + step))]
             return
         if self.tab == "log":
-            from .job_selection import resume_lines
+            from .ui.selection_effects import resume_lines
             resume_lines(self)
             if self.logs.browser:
                 n = len(self.log_entries())
@@ -1191,7 +1192,7 @@ class App:
         if tab in ("jobs", "history", "group", "deps"):
             resume(self)
         elif tab == "sources":
-            from .job_selection import resume_lines
+            from .ui.selection_effects import resume_lines
             resume_lines(self)
         n = len(self.history_jobs()) if tab == "history" else {"jobs": len(self.visible_ids) + len(self.recent_ids),
              "sources": len(self.ordered_source_ids()), "group": len(getattr(self, "group_ids", [])), "deps": len(self.dep_ids)}.get(tab, 0)
@@ -1207,7 +1208,7 @@ class App:
 
     def enter_tab(self, name: str):
         """Switch tabs; entering Analytics from Jobs or History carries the job under the cursor along."""
-        from .text_selection import clear as clear_text
+        from .ui.text_selection_state import clear as clear_text
         clear_text(self)
         from .navigation_ui import record
         record(self, name)
@@ -1264,7 +1265,7 @@ class App:
         n = len(self.last_rows)
         if n == 0:
             return
-        from .job_selection import resume_lines
+        from .ui.selection_effects import resume_lines
         resume_lines(self)
         self.sel_anchor = self.sel_end = max(0, min(n - 1, row))
 
@@ -1282,7 +1283,7 @@ class App:
         from .text_selection import copy_selection
         if copy_selection(self):
             return
-        from .job_copy import copy_selection as copy_jobs
+        from raven.jobs.copy import copy_selection as copy_jobs
         if copy_jobs(self):
             return
         from .row_copy import copy_selection as copy_row
@@ -1338,7 +1339,7 @@ class App:
         if not path:
             self.fail("Open a log with Enter before copying its contents" if self.logs.browser else "no log file selected")
             return
-        from .log_copy import copy_full_log
+        from .job_logs.copy import copy_full_log
         files = self.logs.files
         cb = dict(self.cfg["clipboard"])
         self.start_log_copy(lambda service: copy_full_log(path, self.state_dir, files=files,
@@ -1359,7 +1360,7 @@ class App:
                 yield b"\n"
             if partial is not None:
                 yield partial
-        from .log_copy import copy_log_selection
+        from .job_logs.copy import copy_log_selection
         cb = dict(self.cfg["clipboard"])
         self.start_log_copy(lambda service: copy_log_selection(chunks(), self.state_dir, source_path=path,
             use_osc52=bool(cb.get("osc52", True)), use_tools=bool(cb.get("tools", True)),
@@ -1607,7 +1608,7 @@ class App:
     def _command_sort(self, args: list[str], line: str, cmd: str) -> None:
         opts = SORTS.get(self.tab, ["name"])
         if args and args[0] in opts:
-            from .table_ui import reset_sort
+            from .table_sort import reset_sort
             reset_sort(self, self.tab)
             self.sort[self.tab] = args[0]
             self.table_sort_changed(self.tab)
@@ -1662,12 +1663,12 @@ class App:
                 if buf is None or max(map(int, args)) > buf.total:
                     self.fail("copy line range is outside the loaded log")
                     return
-                from .job_selection import resume_lines
+                from .ui.selection_effects import resume_lines
                 resume_lines(self)
                 self.log_selection_expected = self.logs.begin_selection(buf, int(args[0]) - 1)
                 self.logs.selection_end = self.logs.cursor = int(args[1]) - 1
             else:
-                from .text_selection import clear as clear_text
+                from .ui.text_selection_state import clear as clear_text
                 clear_text(self)
                 self.sel_anchor, self.sel_end = int(args[0]) - 1, int(args[1]) - 1
             self.yank()
@@ -1785,7 +1786,7 @@ class App:
         else:
             identifiers = [a for a in args if self.store.job(a)]
         self.marks.update(identifiers)
-        from .job_selection import _bind_marks
+        from .ui.selection_state import _bind_marks
         _bind_marks(self, identifiers)
         self.say(f"{len(self.marks)} marked")
 
@@ -1794,7 +1795,7 @@ class App:
             self.marks.difference_update(args)
         else:
             self.marks.clear()
-        from .job_selection import _bind_marks
+        from .ui.selection_state import _bind_marks
         _bind_marks(self, ())
         self.say(f"{len(self.marks)} marked")
 
@@ -1916,7 +1917,7 @@ class App:
             return "advise <id | name>"
         j = self.store.job(what)
         if j and not j.pending:
-            from .views import _native_series
+            from raven.recordings.presentation import _native_series
             a = advisor.advise_running(j, snap["live"].get(j.id), _native_series(self.store.series_of(j.id)), snap["finished"])
             return f"{j.id} {j.name} so far: " + (a.summary(self.views_ref.g.dot if self.views_ref else "|") or "nothing to change yet")
         f = next((f for f in snap["finished"] if f.id == what), None)
@@ -1951,10 +1952,10 @@ class App:
         from .historical_ui import handle_mouse as historical_mouse
         if historical_mouse(self, y, x, button=button, shift=shift):
             return
-        from .terminal_ui import handle_mouse as terminal_mouse
+        from .terminal.ui import handle_mouse as terminal_mouse
         if terminal_mouse(self, y, x, button=button, shift=shift, alt=alt):
             return
-        from .interaction import initialize as pointer_state, _current as current_graph, _scope as pointer_scope
+        from .ui.interaction_state import initialize as pointer_state, _current as current_graph, _scope as pointer_scope
         pointer = pointer_state(self)
         published_graph = pointer.get("graph")
         fresh_activation = button in ("press", "left")
@@ -1977,7 +1978,7 @@ class App:
             if self.mode == "main" and tab_frame_current:
                 tab_target = next((key for ty, left, right, key in self.tab_hits
                                    if y == ty and left <= x < right), None)
-            from .interaction import hit_token
+            from .ui.interaction_state import hit_token
             published_hit_token = pointer.get("published_hit_token")
             content_current = (current_graph(self) is not None and
                                published_hit_token is not None and
@@ -1997,12 +1998,12 @@ class App:
         if workbench.route_modal_mouse(self, y, x, button=button, shift=shift,
                                        current=content_current):
             return
-        from .history_log_export import active as export_active, handle_mouse as export_mouse
+        from .job_logs.history_export import active as export_active, handle_mouse as export_mouse
         from .scrollbars import handle_mouse as scrollbar_mouse
         from .column_resize import handle_mouse as column_mouse
         from .group_queue_drag import handle_mouse as queue_mouse
-        from .job_group_drag import handle_mouse as group_drag_mouse
-        from .job_group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
+        from raven.jobs.group_drag import handle_mouse as group_drag_mouse
+        from raven.jobs.group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
         if group_menu_active(self):
             if scrollbar_mouse(self, y, x, button=button, shift=shift):
                 return
@@ -2026,9 +2027,9 @@ class App:
                 return
             if group_menu_mouse(self, y, x, button=button, shift=shift):
                 return
-        from .job_selection import context_click
+        from raven.jobs.selection import context_click
         if button == "right":
-            from .text_selection import clear as clear_text
+            from .ui.text_selection_state import clear as clear_text
             clear_text(self)
         if context_click(self, y, x, button=button, shift=shift):
             return
@@ -2059,7 +2060,7 @@ class App:
             return
         if queue_mouse(self, y, x, button=button, shift=shift, alt=alt):
             return
-        from .job_selection import pointer_focus as job_pointer_focus
+        from raven.jobs.selection import pointer_focus as job_pointer_focus
         if fresh_activation:
             job_pointer_focus(self, y, x)
             if group_drag_mouse(self, y, x, button=button, shift=shift, alt=alt):
@@ -2067,7 +2068,8 @@ class App:
         from .text_selection import handle_mouse as text_mouse
         if getattr(self, "text_selection_state", {}).get("explicit") and text_mouse(self, y, x, button=button, shift=shift):
             return
-        from .job_selection import active as job_capture, advisor_pointer, handle_mouse as select_mouse
+        from .ui.selection_state import active as job_capture, advisor_pointer
+        from raven.jobs.selection import handle_mouse as select_mouse
         if (job_capture(self) or advisor_pointer(self, y, x)) and select_mouse(self, y, x, button=button, shift=shift):
             return
         from .pane_drag import handle_mouse as pane_mouse
@@ -2082,14 +2084,14 @@ class App:
         from .chart_interaction import handle_mouse as chart_mouse
         if chart_mouse(self, y, x, button=button, shift=shift):
             if button in ("press", "left") and not getattr(self, "text_selection_state", {}).get("explicit"):
-                from .text_selection import clear as clear_text
+                from .ui.text_selection_state import clear as clear_text
                 clear_text(self)
             return
         if text_mouse(self, y, x, button=button, shift=shift):
             return
         if button == "press" and not shift and pointer_mouse(self, y, x, button="left"):
             return
-        from .job_selection import handle_mouse as select_mouse
+        from raven.jobs.selection import handle_mouse as select_mouse
         if button in ("press", "left") and any(row == y and kind in
                 ("job", "recent", "fin", "group", "source", "dep", "log_file")
                 for row, kind, _ in hits):
@@ -2112,7 +2114,7 @@ class App:
         if handle_click_hit(self, y, x, hits, button=button, shift=shift):
             return
         if button == "left" and not shift:
-            from .table_ui import cycle_sort, valid_header
+            from .table_sort import cycle_sort, valid_header
             for row, kind, payload in hits:
                 if row != y or kind != "sort_header" or not valid_header(payload):
                     continue
@@ -2130,7 +2132,7 @@ class App:
                     self.log_selection_expected = True
                     self.fail("Log changed since that row was drawn; select a line in the current display")
                     return
-                from .job_selection import resume_lines
+                from .ui.selection_effects import resume_lines
                 resume_lines(self)
                 if shift:
                     if not self.logs.selection_active:
@@ -2156,28 +2158,28 @@ class App:
             if hy == y:
                 if kind == "job":
                     if key in self.visible_ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "jobs")
                         self.cursor["jobs"] = self.visible_ids.index(key)
                 elif kind == "recent":
                     if key in self.recent_ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "jobs")
                         self.cursor["jobs"] = len(self.visible_ids) + self.recent_ids.index(key)
                 elif kind == "log_file":
                     ids = [entry["id"] for entry in self.log_entries()]
                     if key in ids:
-                        from .job_selection import resume_lines
+                        from .ui.selection_effects import resume_lines
                         resume_lines(self)
                         self.logs.browser_cursor = ids.index(key)
                 elif kind == "log_group":
-                    from .log_workbench import run_command
+                    from .job_logs.workbench import run_command
                     self.log_workbench_state["current_group"] = key
                     run_command(self, ["loggroup", key])
                 elif kind == "research_evidence":
                     ids = self.analysis_state.get("evidence_ids", [])
                     if key in ids:
-                        from .job_selection import resume_lines
+                        from .ui.selection_effects import resume_lines
                         resume_lines(self)
                         self.analysis_state["evidence_cursor"] = ids.index(key)
                         from .analysis_ui import handle_key
@@ -2188,24 +2190,24 @@ class App:
                 elif kind == "fin":
                     ids = [f.id for f in self.history_jobs()]
                     if key in ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "history")
                         self.cursor["history"] = ids.index(key)
                 elif kind == "source":
                     names = self.ordered_source_ids()
                     if key in names:
-                        from .job_selection import resume_lines
+                        from .ui.selection_effects import resume_lines
                         resume_lines(self)
                         self.cursor["sources"] = names.index(key)
                 elif kind == "group":
                     ids = getattr(self, "group_ids", [])
                     if key in ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "group")
                         self.cursor["group"] = ids.index(key)
                 elif kind == "dep":
                     if key in self.dep_ids:
-                        from .job_selection import resume
+                        from .ui.selection_effects import resume
                         resume(self, "deps")
                         self.cursor["deps"] = self.dep_ids.index(key)
                 elif kind == "research_array":
@@ -2251,7 +2253,7 @@ class App:
                 result = exc
             done(result)
             return True
-        from .job_panels import _worker
+        from raven.jobs.panels import _worker
         hub = _worker(self, getattr(self, "files", None))
         hub.poll_task()
         from .project_ui import cancel_automatic
@@ -2307,7 +2309,7 @@ class App:
         if job is None and fin is None:
             raise ValueError(f"no job {jid} in the queue or the history")
         if "advised" in switches:
-            from .views import _native_series
+            from raven.recordings.presentation import _native_series
             adv = advisor.advise_running(job, snap["live"].get(jid), _native_series(self.store.series_of(jid)), snap["finished"]) if job and not job.pending else \
                 (advisor.advise_finished(fin, snap["finished"]) if fin else None)
             if adv:

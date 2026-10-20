@@ -163,16 +163,18 @@ class Hub:
 
 
 def test_ui_action_exports_off_paint_and_only_opens_after_exact_context_completion(tmp_path, monkeypatch):
-    from raven import job_panels, trace_ui
+    from raven import background_tasks, trace_ui
     value, _ = snapshot(tmp_path / 'trace')
     hub = Hub()
     context = {'key': ('job', 'attempt'), 'job_id': '42', 'light': False}
     app = SimpleNamespace(state_dir=str(tmp_path / 'state'), say=lambda text: messages.append(text), fail=lambda text: messages.append(text))
     messages, opened = [], []
-    monkeypatch.setattr(job_panels, '_worker', lambda *args: hub)
+    monkeypatch.setattr(background_tasks, 'research_hub', lambda *args: hub)
     monkeypatch.setattr(trace_ui, 'cancel', browser.cancel)
     monkeypatch.setattr(trace_ui, '_context', lambda _: context)
     monkeypatch.setattr(browser, 'open_browser', lambda path: opened.append(path) or 'Browser open requested')
+    from raven.workbench import bind_trace_browser
+    bind_trace_browser(app)
     assert browser.request(app, value, context)
     assert not opened and not list(tmp_path.glob('state/exports/*.html'))
     result = hub.work()
@@ -186,7 +188,7 @@ def test_ui_action_exports_off_paint_and_only_opens_after_exact_context_completi
 @pytest.mark.parametrize('state_enabled', [False, True])
 @pytest.mark.parametrize('configured', [False, True])
 def test_browser_exports_use_durable_root_independent_of_state_and_workdir(tmp_path, monkeypatch, state_enabled, configured):
-    from raven import job_panels, trace_ui
+    from raven import background_tasks, trace_ui
     value, _ = snapshot(tmp_path / 'trace')
     hub, messages = Hub(), []
     context = {'key': ('job', 'attempt'), 'job_id': '42'}
@@ -200,8 +202,10 @@ def test_browser_exports_use_durable_root_independent_of_state_and_workdir(tmp_p
         monkeypatch.setenv('RAVEN_EXPORT_DIR', str(expected))
     app = SimpleNamespace(state_dir=str(tmp_path / 'ephemeral-state') if state_enabled else None,
         say=messages.append, fail=messages.append)
-    monkeypatch.setattr(job_panels, '_worker', lambda *args: hub)
+    monkeypatch.setattr(background_tasks, 'research_hub', lambda *args: hub)
     monkeypatch.setattr(trace_ui, 'cancel', browser.cancel)
+    from raven.workbench import bind_trace_browser
+    bind_trace_browser(app)
     assert browser.request(app, value, context)
     assert not expected.exists(), 'Directory creation belongs to the background task'
     result = hub.work()
@@ -214,15 +218,17 @@ def test_browser_exports_use_durable_root_independent_of_state_and_workdir(tmp_p
 
 @pytest.mark.parametrize('cancelled', [False, True])
 def test_changed_selection_retains_export_feedback_without_opening_stale_attempt(tmp_path, monkeypatch, cancelled):
-    from raven import job_panels, trace_ui
+    from raven import background_tasks, trace_ui
     value, _ = snapshot(tmp_path / 'trace')
     hub, messages, opened = Hub(), [], []
     context = {'key': ('job', 'attempt'), 'job_id': '42'}
     app = SimpleNamespace(state_dir=str(tmp_path / 'state'), say=messages.append, fail=messages.append)
-    monkeypatch.setattr(job_panels, '_worker', lambda *args: hub)
+    monkeypatch.setattr(background_tasks, 'research_hub', lambda *args: hub)
     monkeypatch.setattr(trace_ui, 'cancel', browser.cancel)
     monkeypatch.setattr(trace_ui, '_context', lambda _: {'key': ('different', 'attempt')})
     monkeypatch.setattr(browser, 'open_browser', lambda path: opened.append(path))
+    from raven.workbench import bind_trace_browser
+    bind_trace_browser(app)
     assert browser.request(app, value, context)
     result = hub.work()
     if cancelled:
@@ -236,7 +242,7 @@ def test_changed_selection_retains_export_feedback_without_opening_stale_attempt
 
 @pytest.mark.parametrize("large_window", [False, True])
 def test_managed_browser_action_uses_real_admitted_background_lane(tmp_path, monkeypatch, large_window):
-    from raven import job_panels, trace_ui
+    from raven import background_tasks, trace_ui
     from raven.research import ResearchHub
     from raven.raven_execution import ExecutionRouter, background_allowed
     value, _ = snapshot(tmp_path / 'trace')
@@ -259,12 +265,14 @@ def test_managed_browser_action_uses_real_admitted_background_lane(tmp_path, mon
     hub.execution = ExecutionRouter(config)
     messages, opened = [], []
     app = SimpleNamespace(state_dir=str(tmp_path / 'state'), research=hub, say=messages.append, fail=messages.append)
-    monkeypatch.setattr(job_panels, '_worker', lambda *args: hub)
+    monkeypatch.setattr(background_tasks, 'research_hub', lambda *args: hub)
     monkeypatch.setattr(trace_ui, 'cancel', browser.cancel)
     monkeypatch.setattr(trace_ui, '_context', lambda _: context)
     monkeypatch.setattr(browser, 'open_browser', lambda path: opened.append(path) or 'Requested')
     try:
         assert not background_allowed(hub.execution, lambda: None)
+        from raven.workbench import bind_trace_browser
+        bind_trace_browser(app)
         assert browser.request(app, value, context), messages
         hub.future.result(timeout=5)
         assert not opened

@@ -101,3 +101,45 @@ forbidden_modules =
     raven.sampler
     raven.research
     raven.slurm
+
+[importlinter:contract:canonical-application-services]
+name = Canonical application and capture services cannot import interactive owners
+type = forbidden
+source_modules =
+    raven.operation_support
+    raven.execution.policy
+    raven.execution.admission
+    raven.execution.worker
+    raven.execution.planning
+    raven.collection
+    raven.recordings.archive
+    raven.recordings.publication
+    raven.recordings.retention
+    raven.recordings.storage
+    raven.terminal.sessions
+    raven.terminal.session_state
+    raven.terminal.evidence
+    raven.tracing.capture
+    raven.tracing.protocol
+    raven.tracing.provenance
+    raven.tracing.document
+    raven.tracing.export
+    raven.tracing.stream
+    raven.tracing.stream_export
+forbidden_modules =
+    raven.controller
+    raven.screen
+    raven.views
+    raven.workbench
+    raven.jobs.panels
+    raven.jobs.selection
+    raven.job_logs.workbench
+    raven.job_logs.tools
+    raven.terminal.ui
+    raven.terminal.workflows
+    raven.terminal.playback
+    raven.terminal.fusion
+    raven.terminal.diagnostics
+    raven.tracing.ui
+    raven.tracing.browser
+    raven.tracing.timeline_ui

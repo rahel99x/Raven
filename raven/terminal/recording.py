@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import stat
 import time
+from .text import recording_text as recording_text
 
 SCHEMA = "raven.terminal-recording/v1"
 MAX_FILE = 16 << 20

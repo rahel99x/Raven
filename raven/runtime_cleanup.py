@@ -48,7 +48,7 @@ def _entries(path, maximum):
 
 
 def _eligible(root, folder, cutoff):
-    from .launch_contract import plan_inventory
+    from .launching.contract import plan_inventory
 
     _owned(folder, directory=True)
     _owned(folder / "plan.json")
@@ -139,7 +139,7 @@ def _eligible(root, folder, cutoff):
 
 def _confirmed_absent(candidates, execution):
     """One fresh shared-ledger query, on the exact retained connection only."""
-    from .launch_scheduler_context import capture, matches
+    from .launching.scheduler_context import capture, matches
 
     backend = getattr(execution, "source_backend", None)
     eligible, jobs = [], set()
@@ -293,7 +293,7 @@ def cleanup(project, *, apply=False, older_than_days=30.0, execution=None):
     _owned(wrappers, directory=True)
     cutoff = time.time() - older_than_days * 86400
     if execution is None:
-        from .execution_policy import router_for
+        from .execution.policy import router_for
 
         execution = router_for()
     with lock(root, name="runtime-cleanup.lock"):

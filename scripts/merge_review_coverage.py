@@ -364,13 +364,60 @@ def derive(
             raise ValueError(
                 "Architecture graph component/edge/dynamic fields must be arrays"
             )
-        by_id["S-1"]["status"] = "adjusted_staged_architectural_milestone"
+        closure = packages.get("structure", {}).get("architecture_closure")
+        complete_graph = not (
+            components or edges or dynamic or architecture_graph.get("violations")
+        )
+        reconciled = False
+        if closure is not None:
+            if not isinstance(closure, dict):
+                raise ValueError("Architecture closure evidence must be an object")
+            if closure.get("status") == "qualified-local":
+                if not complete_graph:
+                    raise ValueError(
+                        "Architecture closure cannot waive cycles, unresolved imports or violations"
+                    )
+                if not re.fullmatch(
+                    r"[0-9a-f]{40}", str(closure.get("code_revision", ""))
+                ):
+                    raise ValueError(
+                        "Architecture closure requires its qualified code revision"
+                    )
+                if (
+                    closure.get("graph_sha256")
+                    != hashlib.sha256(
+                        encode(architecture_graph, compact=True)
+                    ).hexdigest()
+                ):
+                    raise ValueError(
+                        "Architecture closure graph digest does not match the actual evidence"
+                    )
+                command = closure.get("command")
+                if (
+                    not isinstance(command, str)
+                    or "--require-acyclic" not in command.split()
+                ):
+                    raise ValueError(
+                        "Architecture closure requires the strict all-depth gate command"
+                    )
+                if not isinstance(closure.get("tests"), list) or not closure["tests"]:
+                    raise ValueError(
+                        "Architecture closure requires behavioral qualification evidence"
+                    )
+                reconciled = True
+        by_id["S-1"]["status"] = (
+            "implemented" if reconciled else "adjusted_staged_architectural_milestone"
+        )
         by_id["S-1"]["scope_adjustment"] = {
             "source_plan": architecture_plan,
-            "original_global_no_cycle_target": "unmet"
+            "original_global_no_cycle_target": "met"
+            if reconciled
+            else "unmet"
             if components or dynamic
             else "requires explicit root reconciliation",
-            "delivered_scope": "Enforced layer boundaries and staged extraction; PR 17 remains ongoing.",
+            "delivered_scope": "Declared layer boundaries, explicit composition and globally acyclic imports including function bodies."
+            if reconciled
+            else "Enforced layer boundaries and staged extraction; PR 17 remains ongoing.",
             "graph_evidence": "packages/architecture-graph.json",
             "current_graph": {
                 "cyclic_components": len(components),
@@ -380,9 +427,13 @@ def derive(
                 "cyclic_edges": len(edges),
                 "dynamic_module_expressions": len(dynamic),
             },
-            "remaining_work": "Break the residual UI cooperation cycles using explicit application/domain ports or composition registration, and resolve the remaining dynamic module expressions.",
+            "remaining_work": None
+            if reconciled
+            else "Break the residual UI cooperation cycles using explicit application/domain ports or composition registration, and resolve the remaining dynamic module expressions.",
             "external_hardware_block": False,
         }
+        if reconciled:
+            by_id["S-1"]["architecture_acceptance"] = closure
     for left, right in SHARED:
         if left in by_id and right in by_id:
             for identity, other in ((left, right), (right, left)):
@@ -555,6 +606,17 @@ def main(argv=None):
             architecture_graph=architecture_graph,
             architecture_plan=architecture_plan,
         )
+        closure = packages.get("structure", {}).get("architecture_closure")
+        if (
+            integration_report is not None
+            and integration_report["status"] == "qualified-local"
+            and isinstance(closure, dict)
+            and closure.get("status") == "qualified-local"
+            and closure.get("code_revision") != integration_report["code_revision"]
+        ):
+            raise ValueError(
+                "Architecture closure and integrated qualification must refer to the same code revision"
+            )
         final_revision = args.final_revision
         integration_status = "pending: final integrated regression, packaging, schema, compatibility and CI evidence"
         integrated_validation = "pending"

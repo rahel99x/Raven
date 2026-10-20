@@ -40,9 +40,9 @@ Repository = "https://github.com/rahel99x/Raven"
 Issues = "https://github.com/rahel99x/Raven/issues"
 
 [project.scripts]
-raven = "raven.raven_launch:light_main"
-ravenl = "raven.raven_launch:light_main"
-ravenh = "raven.raven_launch:heavy_main"
+raven = "raven.entry.launcher:light_main"
+ravenl = "raven.entry.launcher:light_main"
+ravenh = "raven.entry.launcher:heavy_main"
 
 [tool.setuptools.packages.find]
 include = ["raven", "raven.*"]

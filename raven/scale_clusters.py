@@ -56,7 +56,7 @@ def configuration(value, cfg=None):
 
 
 def collect_one(ctx, source, user, hours):
-    from .operations import command, checkpoint
+    from .operation_support import command, checkpoint
     from .remote import SshBackend, LocalFiles, RemoteFiles
     from .slurm import Backend, Slurm, JOB_FMT, SACCT_FIELDS, parse_jobs, parse_sacct
     # Never reuse or mutate the selected connection. Each source owns its adapter.
@@ -103,7 +103,7 @@ def collect_one(ctx, source, user, hours):
 
 
 def collect(ctx, sources, *, user="", history_hours=24):
-    from .operations import checkpoint
+    from .operation_support import checkpoint
     checkpoint(ctx)
     if ctx.replay:
         raise ValueError("Concurrent live clusters are unavailable in a recorded session")

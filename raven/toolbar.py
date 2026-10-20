@@ -328,7 +328,7 @@ def _activate(app, item):
     elif action == "rate":
         _open_refresh(app)
     elif action == "clear-selection":
-        from .text_selection import clear
+        from .ui.text_selection_state import clear
         clear(app)
         app.sel_anchor = None
         app.logs.clear_selection()
@@ -375,7 +375,7 @@ def _refresh_summary(app, ascii_=False):
 
 def render_bar(views, app, width, y=0):
     """One 80-column-first row: menus, launch, compute status, refresh summary."""
-    from . import raven_ui
+    from .ui import allocation as raven_ui
     state = initialize(app)
     width = max(0, int(width))
     if state["width"] != width or state["bar_y"] != y:
@@ -567,7 +567,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             open_export(app)
         elif kind == "launch-job":
             _close(app)
-            from .launch_wizard_ui import open_launch
+            from .launching.wizard_ui import open_launch
             open_launch(app)
         elif kind == "copy-mode":
             from .editor_yank import toggle
@@ -577,7 +577,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
             run_command(app, ["workers", "toggle"])
         elif kind == 'raven':
             _close(app)
-            from .raven_ui import run_command
+            from .ui.allocation import run_command
             run_command(app, ['raven', 'status'])
         return True
     if state["menu"] is not None:
@@ -615,7 +615,7 @@ def control_descriptors(app):
     labels = {"quit": "Quit", "launch-job": "Launch job",
               "refresh-settings": "Refresh settings: " + _refresh_summary(app)}
     if any(hit[3] == 'raven' for hit in state['hits']):
-        from .raven_ui import summary
+        from .ui.allocation import summary
         labels['raven'] = summary(app)
     for y, left, right, kind, key in state["hits"]:
         label = MENUS[key] if kind == "menu" else labels.get(kind, kind)

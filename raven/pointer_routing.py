@@ -6,7 +6,8 @@ collection, document copies, or hit-map rebuilds run in this module.
 """
 from dataclasses import dataclass
 from functools import wraps
-from importlib import import_module
+from types import MappingProxyType
+from typing import Callable
 
 BUTTONS = frozenset(("press", "left", "right", "motion", "drag", "release", "wheel-up", "wheel-down"))
 CONTINUATIONS = frozenset(("motion", "drag", "release"))
@@ -37,6 +38,37 @@ OWNERS = (
 )
 _BY_NAME = {owner.name: owner for owner in OWNERS}
 RELEASE_MARKERS = tuple((owner.state, owner.marker) for owner in OWNERS if owner.marker)
+
+
+@dataclass(frozen=True)
+class CaptureBinding:
+    """A known control's callable capabilities, supplied by composition."""
+
+    owner: CaptureOwner
+    mouse: Callable[..., object]
+    cancel: Callable[[object], object] | None = None
+
+
+_BINDINGS: dict[str, CaptureBinding] = {}
+
+
+def bind(app, *, pointer_motion: Callable[..., object] | None = None):
+    """Pin the fully composed capture registry to this application session."""
+    missing = set(_BY_NAME) - _BINDINGS.keys()
+    if missing:
+        raise RuntimeError("Unbound pointer owners: " + ", ".join(sorted(missing)))
+    app.pointer_bindings = MappingProxyType(dict(_BINDINGS))
+    app.pointer_motion = pointer_motion
+
+
+def _binding(app, owner):
+    # Standalone component adapters use their own decorator-bound callbacks;
+    # the full application pins the complete immutable registry once at startup.
+    bindings = getattr(app, "pointer_bindings", _BINDINGS)
+    binding = bindings.get(owner.name)
+    if binding is None or binding.owner != owner:
+        raise RuntimeError("Pointer owner has no callable binding: " + owner.name)
+    return binding
 
 
 @dataclass(frozen=True)
@@ -118,9 +150,14 @@ def _cancel_owner(app, owner):
             state["discard_release"] = True
         state.update(dragging=False, pressed=False, drag_width=None)
     elif owner.name == "history_browser":
-        import_module("raven.history_browser")._cancel_drag(state)
+        if state.get("drag"):
+            state["drag"] = None
+            state["discard_release"] = True
     else:
-        import_module("raven." + owner.name).cancel(app)
+        callback = _binding(app, owner).cancel
+        if callback is None:
+            raise RuntimeError("Pointer owner has no cancellation binding: " + owner.name)
+        callback(app)
 
 
 def active(app):
@@ -174,7 +211,7 @@ def _claim(app, owner, capture, *, fresh=False):
     state["lease"] = PointerLease(owner, state["generation"], _context(app), id(capture))
 
 
-def capture_handler(name):
+def capture_handler(name, *, cancel=None):
     """Bind a control's existing mouse handler to the shared lifetime protocol."""
     owner = _BY_NAME[name]
     def decorate(handler):
@@ -201,6 +238,7 @@ def capture_handler(name):
                         # a fresh press. A completed release has no tombstone.
                         if not _marked(root, owner):
                             state["lease"] = None
+        _BINDINGS[name] = CaptureBinding(owner, wrapped, cancel)
         return wrapped
     return decorate
 
@@ -240,10 +278,11 @@ def route_capture(app, event):
             # Publish cosmetic position once, with no control activation.
             # Ownership must not leave global hover stuck at the initial press.
             if isinstance(getattr(app, "interaction_state", None), dict):
-                from .interaction import handle_mouse as pointer_motion
-                pointer_motion(app, event.y, event.x, button="motion", shift=event.shift)
+                pointer_motion = getattr(app, "pointer_motion", None)
+                if pointer_motion is not None:
+                    pointer_motion(app, event.y, event.x, button="motion", shift=event.shift)
             options = {"alt": event.alt} if owner.modifiers else {}
-            handled = import_module("raven." + owner.name).handle_mouse(
+            handled = _binding(app, owner).mouse(
                 app, event.y, event.x, button=event.button, shift=event.shift, **options)
             # A continuation belongs to its original owner even if validation
             # cancelled it. It cannot activate a control beneath the release.
@@ -253,7 +292,7 @@ def route_capture(app, event):
     for owner in OWNERS[:3]:
         if _marked(app, owner):
             options = {"alt": event.alt} if owner.modifiers else {}
-            if import_module("raven." + owner.name).handle_mouse(
+            if _binding(app, owner).mouse(
                     app, event.y, event.x, button=event.button, shift=event.shift, **options):
                 return True
     return False

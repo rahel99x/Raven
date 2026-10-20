@@ -714,7 +714,7 @@ def read_bound_tail(binding, entry, max_bytes, *, files=None):
             document = _json(data)
             if document.get("run_id", binding["run_id"]) != binding["run_id"]:
                 raise ValueError("log manifest identity does not match selected run")
-            from .log_catalog import _manifest_entries
+            from .job_logs.catalog import _manifest_entries
             allowed.update(item["path"] for item in _manifest_entries(document, binding.get("job_id"), os.path.join(binding["run_root"], manifest)))
         if path not in allowed:
             raise ValueError("project log is no longer declared by this exact run")
@@ -881,7 +881,7 @@ def select_run(path, run_id, *, files=None):
                 manifest = _json(data)
                 if manifest.get("run_id", run_id) != run_id:
                     raise ValueError("log manifest run_id does not match selected run")
-                from .log_catalog import _manifest_entries
+                from .job_logs.catalog import _manifest_entries
                 for entry in _manifest_entries(manifest, binding["job_id"], binding["log_manifest"]):
                     relative = os.path.relpath(entry["path"], run_root).replace(os.sep, "/")
                     external = relative == ".." or relative.startswith("../")

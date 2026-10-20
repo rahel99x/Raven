@@ -85,7 +85,7 @@ def _portable_location(app):
             saved.pop("analysis_context", None)
     saved["mode"] = "analysis" if saved.get("mode") == "analysis" and saved.get("analysis_context") else "main"
     saved["profile"] = getattr(app, "profile_name", "")
-    from .log_tools import _target
+    from .job_logs.tools import _target
     saved["source_target"] = _target(app.logs.files)
     saved["logs"].pop("_buffer_token", None)
     if "project_context" in saved:
@@ -334,7 +334,7 @@ def _open_location(app, name):
         app.fail("This location belongs to a different cluster profile")
         return
     if saved["tab"] == "log" or saved.get("log_page_descriptor"):
-        from .log_tools import _target
+        from .job_logs.tools import _target
         if saved.get("source_target", "local") != _target(app.logs.files):
             app.fail("This log location belongs to a different source connection")
             return
@@ -342,7 +342,7 @@ def _open_location(app, name):
     navigation_ui._restore_location(app, copy.deepcopy(saved))
     app.logs._buffer_token = None
     if saved.get("log_page_descriptor"):
-        from .log_tools import restore_location
+        from .job_logs.tools import restore_location
         if not restore_location(app, saved["log_page_descriptor"]):
             return
     app.say("Opened location " + name)
@@ -487,7 +487,7 @@ def _open_settings(app):
 
 
 def _settings_default(app):
-    from .config import Config, DEFAULTS
+    from .configuration.dashboard import Config, DEFAULTS
     defaults = Config(DEFAULTS)
     values = {key: defaults.get(key, True) for key in _setting_keys(app)}
     if _managed_settings(app):
@@ -628,7 +628,7 @@ def _bindings_key(app, key):
     elif key == "t":
         state["test"] = True
     elif key == "D":
-        from .config import DEFAULTS
+        from .configuration.dashboard import DEFAULTS
         state["binding_draft"] = copy.deepcopy(DEFAULTS["keys"])
         state["cursor"] = min(state["cursor"], len(state["binding_draft"]) - 1)
     elif key == "a":

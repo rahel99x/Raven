@@ -54,7 +54,7 @@ class PluginAPI:
 def plugin_dir(config_path: str) -> str:
     base = os.path.dirname(config_path) if config_path else ""
     if not base:
-        from .config import default_path
+        from .configuration.dashboard import default_path
         base = os.path.dirname(default_path())
     return os.path.join(base, "plugins")
 

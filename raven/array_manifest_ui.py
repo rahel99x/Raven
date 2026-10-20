@@ -348,7 +348,7 @@ def overlay(views, snap, app, width, height):
             content.append(row(state["notice"], "yellow"))
         if view == "detail" and state["matches"]:
             entry = state["matches"][min(state["cursor"], len(state["matches"]) - 1)]
-            from .execution_ui import _wrap
+            from .ui.script_text import _wrap
             cache_key = (manifest.revision, entry.index, inner, ascii_)
             cached = state["detail_cache"]
             if not cached or cached[0] != cache_key:

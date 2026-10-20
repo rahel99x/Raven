@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import importlib
 from functools import lru_cache
 from types import MappingProxyType
 
 from . import column_resize
+
+# This input-only feature registers its capture callback during composition.
+from . import text_selection as text_selection
 from .ui.focus import FocusStack, Frame, Owner
 
 INSPECTION_MODES = {
@@ -86,7 +88,112 @@ FEATURES = (
 
 @lru_cache(maxsize=1)
 def modules():
-    return tuple(importlib.import_module("raven." + name) for name in FEATURES)
+    """Finite UI composition: every core target is visible to the layer gate."""
+    from . import historical_ui
+    from . import startup
+    from .terminal import ui as terminal_ui
+    from .jobs import group_menu as job_group_menu
+    from .jobs import group_drag as job_group_drag
+    from . import group_queue_drag
+    from . import grouping_toolbar
+    from .job_logs import history_export as history_log_export
+    from . import data_export_ui
+    from . import refresh_rate
+    from . import worker_ui
+    from . import toolbar
+    from . import onboarding_ui
+    from .launching import wizard_ui as launch_wizard_ui
+    from . import setup_ui
+    from . import telemetry_settings_ui
+    from . import notification_ui
+    from .ui import allocation as raven_ui
+    from . import scrollbars
+    from . import pane_drag
+    from . import metric_live
+    from . import chart_interaction
+    from . import history_browser
+    from .jobs import selection as job_selection
+    from . import interaction
+    from . import scrolling
+    from . import recent_history
+    from .jobs import panels as job_panels
+    from . import analytics_document
+    from . import workspace_layout
+    from . import navigation_ui
+    from . import command_ui
+    from . import navigation_tools
+    from . import table_ui
+    from . import table_tools
+    from . import activity_ui
+    from . import session_tools
+    from . import project_ui
+    from . import connect_data_ui
+    from . import run_home_ui
+    from .job_logs import workbench as log_workbench
+    from .job_logs import tools as log_tools
+    from . import analysis_ui
+    from . import execution_ui
+    from .jobs import progress as job_progress
+    from . import telemetry_ui
+    from . import shell_checks_ui
+    from . import array_manifest_ui
+    from . import gpu_provider_ui
+    from .ui import operations as ops_ui
+    from .tracing import ui as trace_ui
+
+    return (
+        historical_ui,
+        startup,
+        terminal_ui,
+        job_group_menu,
+        job_group_drag,
+        group_queue_drag,
+        grouping_toolbar,
+        history_log_export,
+        data_export_ui,
+        refresh_rate,
+        worker_ui,
+        toolbar,
+        onboarding_ui,
+        launch_wizard_ui,
+        setup_ui,
+        telemetry_settings_ui,
+        notification_ui,
+        raven_ui,
+        scrollbars,
+        pane_drag,
+        metric_live,
+        chart_interaction,
+        history_browser,
+        job_selection,
+        interaction,
+        scrolling,
+        recent_history,
+        job_panels,
+        analytics_document,
+        workspace_layout,
+        navigation_ui,
+        command_ui,
+        navigation_tools,
+        table_ui,
+        table_tools,
+        activity_ui,
+        session_tools,
+        project_ui,
+        connect_data_ui,
+        run_home_ui,
+        log_workbench,
+        log_tools,
+        analysis_ui,
+        execution_ui,
+        job_progress,
+        telemetry_ui,
+        shell_checks_ui,
+        array_manifest_ui,
+        gpu_provider_ui,
+        ops_ui,
+        trace_ui,
+    )
 
 
 # Mode-to-owner is an immutable composition contract, not handler probing.
@@ -141,21 +248,24 @@ MODE_FEATURES = MappingProxyType(
 
 @lru_cache(maxsize=1)
 def module_map():
-    return MappingProxyType(
-        {module.__name__.rsplit(".", 1)[-1]: module for module in modules()}
-    )
+    features = modules()
+    if len(features) != len(FEATURES) or len(set(FEATURES)) != len(FEATURES):
+        raise RuntimeError(
+            "Feature composition needs one module for each stable feature key"
+        )
+    return MappingProxyType(dict(zip(FEATURES, features)))
 
 
 @lru_cache(maxsize=1)
 def owners():
     registered = {
-        feature.__name__.rsplit(".", 1)[-1]: Owner(
-            feature.__name__.rsplit(".", 1)[-1],
+        name: Owner(
+            name,
             getattr(feature, "handle_key", None),
             getattr(feature, "handle_mouse", None),
             getattr(feature, "paste", None),
         )
-        for feature in modules()
+        for name, feature in module_map().items()
     }
     # Column resizing is an input-only owner, with no command/overlay feature.
     registered["column_resize"] = Owner(
@@ -323,6 +433,52 @@ def initialize(app):
     app.research_interaction = INTERACTION
     for feature in modules():
         feature.initialize(app)
+    text_selection.initialize(app)
+    from .pointer_routing import bind
+
+    bind(app, pointer_motion=module_map()["interaction"].handle_mouse)
+    bind_terminal(app)
+    bind_actions(app)
+    bind_navigation(app)
+    bind_execution(app)
+    bind_trace_browser(app)
+
+
+def bind_terminal(app):
+    """Compose concrete terminal navigation and presentation capabilities."""
+    from .terminal.ports import TerminalNavigation, TerminalPresentation
+    from .ui import operations as ops_ui
+    from . import project_ui
+    from . import workspace_layout
+    from . import interaction
+    from .pointer_routing import active, begin_gesture
+    from .ui.control_feedback import decorate
+
+    def allocation(target, feature, values):
+        ops_ui._open(target, feature)
+        ops_ui.initialize(target)["values"].update(values)
+        ops_ui._inspect(target)
+
+    def acceptance(target, values):
+        ops_ui.run_command(target, ["ops", "open", "acceptance"])
+        ops_ui.initialize(target)["values"].update(values)
+
+    app.terminal_navigation = TerminalNavigation(
+        maximize=lambda target: workspace_layout.run_command(target, ["maximize"]),
+        open_allocation=allocation,
+        open_acceptance=acceptance,
+        open_project=lambda target, path: project_ui.run_command(
+            target, ["project", path]
+        ),
+        preview_artifact=lambda target, node: project_ui._preview(target, node),
+    )
+    app.terminal_presentation = TerminalPresentation(
+        decorate=decorate,
+        pointer_active=active,
+        begin_gesture=begin_gesture,
+        pointer_motion=interaction.handle_mouse,
+        wrap_workspace=workspace_layout.wrap_terminal_workspace,
+    )
 
 
 def tick(app):
@@ -338,16 +494,16 @@ def tick(app):
 
 def restore(app, data):
     data = data if isinstance(data, dict) else {}
-    for feature in modules():
+    for name, feature in module_map().items():
         callback = getattr(feature, "restore", None)
         if callback:
-            callback(app, data.get(feature.__name__.rsplit(".", 1)[-1], {}))
+            callback(app, data.get(name, {}))
 
 
 def save(app):
     return {
-        feature.__name__.rsplit(".", 1)[-1]: feature.save(app)
-        for feature in modules()
+        name: feature.save(app)
+        for name, feature in module_map().items()
         if hasattr(feature, "save")
     }
 
@@ -388,12 +544,12 @@ def run_command(app, args):
 def overlay(views, snap, app, width, height):
     toolbar_rows = None
     app.content_overlay_rows, app.toolbar_overlay_rows = [], []
-    for feature in modules():
-        if feature.__name__ == "raven.startup":
+    for name, feature in module_map().items():
+        if name == "startup":
             # Welcome animation is painted beneath ordinary modals by curses.
             continue
         rows = feature.overlay(views, snap, app, width, height)
-        if feature.__name__ == "raven.toolbar":
+        if name == "toolbar":
             toolbar_rows = rows
             app.toolbar_overlay_rows = rows or []
             continue
@@ -403,3 +559,166 @@ def overlay(views, snap, app, width, height):
             app.content_overlay_rows = rows
             return rows + (toolbar_rows or [])
     return toolbar_rows
+
+
+def bind_navigation(app):
+    """Compose peer-form effects above the independent feature implementations."""
+    from . import array_manifest_ui
+    from . import data_export_ui
+    from . import historical_ui
+    from .jobs import selection as job_selection
+    from .launching import setup_ui as launch_setup_ui
+    from .launching import wizard_ui as launch_wizard_ui
+    from .job_logs import tools as log_tools
+    from . import navigation_ui
+    from . import onboarding_ui
+    from . import project_ui
+    from . import run_home_ui
+    from . import setup_ui
+    from . import telemetry_settings_ui
+    from .ui.navigation_ports import (
+        ExportBackground,
+        FormNavigation,
+        ProjectBindingEffects,
+        ResearchNavigation,
+    )
+
+    def bind_run(target, root, selected):
+        project_ui.initialize(target).update(root=root, registered_root=root)
+        return project_ui._apply_run(target, selected)
+
+    app.form_navigation = FormNavigation(
+        telemetry=lambda target: telemetry_settings_ui.open_settings(target),
+        run_home=lambda target, binding: run_home_ui.open_run(target, binding=binding),
+        relaunch=lambda target, draft: launch_wizard_ui.open_from_run(target, draft),
+        advanced_launch=lambda target, root: launch_setup_ui.open_setup(
+            target, root=root
+        ),
+        launch_receipt=lambda target, receipt: run_home_ui.open_receipt(
+            target, receipt
+        ),
+        outputs=lambda target: project_ui.run_command(target, ["outputs"]),
+        export_run=lambda target: data_export_ui.open_export(target),
+        historical=lambda target: historical_ui.run_command(target, ["asof"]),
+        connections=lambda target: onboarding_ui.run_command(target, ["profiles"]),
+        allocation=lambda target: setup_ui.run_command(target, ["setup", "allocation"]),
+        recordings=lambda target: setup_ui.run_command(target, ["setup", "telemetry"]),
+        diagnostics=lambda target: setup_ui.run_command(
+            target, ["setup", "installation"]
+        ),
+    )
+    app.project_binding_effects = ProjectBindingEffects(
+        before_log_source_change=lambda target: log_tools.before_source_change(target),
+        detach_array=lambda target: array_manifest_ui.detach_automatic(target),
+        apply_array=lambda target, selected: array_manifest_ui.apply_automatic(
+            target, selected
+        ),
+        bind_run=bind_run,
+        clear_binding=lambda target, **kwargs: project_ui.clear_binding(
+            target, **kwargs
+        ),
+    )
+    app.research_navigation = ResearchNavigation(
+        record=lambda target, view, **kwargs: navigation_ui.record(
+            target, view, **kwargs
+        ),
+        resume=lambda target, view: job_selection.resume(target, view),
+    )
+    app.export_background = ExportBackground(
+        queue=lambda target, label, work, complete: data_export_ui._queue(
+            target, label, work, complete
+        )
+    )
+
+
+def bind_actions(app):
+    """Bind neighboring feature actions once, retaining native owner checks."""
+    from .ui.owner_ports import (
+        SelectionActions,
+        InteractionSources,
+        PanelActions,
+        ChartActions,
+        ListActions,
+    )
+    from .jobs import selection as job_selection
+    from . import history_browser
+    from . import chart_interaction
+    from .job_logs import tools as log_tools
+    from . import analysis_ui
+    from .job_logs import history_export as history_log_export
+    from . import toolbar
+    from .jobs import group_menu as job_group_menu
+    from .jobs import list_menu as job_list_menu
+    from .ui import operations as ops_ui
+    from .jobs import panels as job_panels
+    from . import data_export_ui
+    from . import grouping_toolbar
+    from . import table_ui
+
+    # Resolve these explicit capabilities through their owner at invocation so
+    # embedders can replace a handler without rebuilding unrelated UI state.
+    app.selection_actions = SelectionActions(
+        selection_mouse=lambda *args, **kwargs: job_selection.handle_mouse(
+            *args, **kwargs
+        ),
+        selection_key=lambda *args, **kwargs: job_selection.handle_key(*args, **kwargs),
+        history_activate=lambda *args, **kwargs: history_browser.activate(
+            *args, **kwargs
+        ),
+        graph_mouse=lambda *args, **kwargs: chart_interaction.handle_mouse(
+            *args, **kwargs
+        ),
+        graph_hover=lambda *args, **kwargs: chart_interaction.hover(*args, **kwargs),
+        log_mouse=lambda *args, **kwargs: log_tools.handle_mouse(*args, **kwargs),
+        analysis_context=lambda *args, **kwargs: analysis_ui.context_click(
+            *args, **kwargs
+        ),
+        history_export_mouse=lambda *args, **kwargs: history_log_export.handle_mouse(
+            *args, **kwargs
+        ),
+    )
+    app.interaction_sources = InteractionSources(
+        toolbar_descriptors=lambda target: toolbar.control_descriptors(target),
+        group_menu_active=lambda target: job_group_menu.active(target),
+        group_menu_controls=lambda target: job_group_menu.controls(target),
+        list_menu_active=lambda target: job_list_menu.active(target),
+        list_menu_controls=lambda target: job_list_menu.controls(target),
+        history_export_active=lambda target: history_log_export.active(target),
+        history_export_controls=lambda target: history_log_export.controls(target),
+        pin_focused=lambda target, control: ops_ui.pin_focused(target, control),
+    )
+    app.panel_actions = PanelActions(
+        activate=lambda *args, **kwargs: job_panels._activate(*args, **kwargs)
+    )
+    app.chart_actions = ChartActions(
+        open_export=lambda *args, **kwargs: data_export_ui.open_export(*args, **kwargs)
+    )
+    app.list_actions = ListActions(
+        grouping_command=lambda target, args: grouping_toolbar.run_command(
+            target, args
+        ),
+        table_command=lambda target, args: table_ui.run_command(target, args),
+    )
+
+
+def bind_execution(app):
+    """Compose reviewed-plan navigation without peer feature imports below it."""
+    from . import shell_checks_ui
+    from .ui.execution_ports import ExecutionNavigation
+
+    app.execution_navigation = ExecutionNavigation(
+        open_shell_checks=lambda target, plan: shell_checks_ui.open_for_plan(
+            target, plan
+        )
+    )
+
+
+def bind_trace_browser(app):
+    """Bind exact-attempt browser completion checks above its request handler."""
+    from .tracing import ui as trace_ui
+    from .ui.trace_ports import TraceBrowserEffects
+
+    app.trace_browser_effects = TraceBrowserEffects(
+        current_context=lambda target: trace_ui._context(target),
+        cancel_reader=lambda target: trace_ui.cancel(target),
+    )

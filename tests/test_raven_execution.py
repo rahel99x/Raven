@@ -530,13 +530,14 @@ def test_managed_trace_recorder_rejects_unverified_programmatic_entry(tmp_path, 
 
 
 def test_public_managed_job_local_rejection_closes_owned_source_and_never_launches(tmp_path, monkeypatch, capsys):
-    from raven import cli, raven_launch, raven_resources
+    from raven import cli, raven_resources
+    from raven.entry import placement
     from raven.raven_config import DEFAULTS
     marker = tmp_path/"never-executed"
     closed = []
     backend = SimpleNamespace(ledger=object(), close=lambda: closed.append(True))
     manager = SimpleNamespace(collection_backend=None)
-    monkeypatch.setattr(raven_launch, "configure_placement", lambda _policy, owner: setattr(owner, "collection_backend", backend))
+    monkeypatch.setattr(placement, "configure_placement", lambda _policy, owner: setattr(owner, "collection_backend", backend))
     monkeypatch.setattr(raven_resources, "_proc_cgroups", lambda: "")
     monkeypatch.setenv("SLURM_JOB_ID", "42")
     monkeypatch.delenv("SLURM_STEP_ID", raising=False)

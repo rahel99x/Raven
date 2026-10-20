@@ -40,13 +40,8 @@ An SSH-absent fixture explicitly forbids connection construction; it makes no
 claim about a remote host or this machine's installed SSH client. Installer
 jobs retain actual Bash 3.2/4.2 and umask-002 lifecycle qualification.
 
-The quality gate now checks undefined/unused core names throughout Raven and
-formats actual terminal, Heavy, UI and installation packages alongside reviewed
-application/domain ports. The integrated local gate passed whole-core Ruff F,
-formatting for 76 migrated implementation files, strict typing for ten source
-files, and six dependency contracts. The architecture gate counts imports
-inside functions and literal dynamic imports: 421 modules, 2,009 function-level
-imports, a 109-module strongly connected component and eight unresolved dynamic
-expressions. Those cycles remain explicit architecture debt. The complete
-regression suite, hosted Python matrix, installed commands, release inventories
-and checks against the final delivered commit remain release-integration checks.
+The quality gate checks undefined and unused core names throughout Raven. Default 88-column formatting covers 275 actual migrated files across the terminal, Heavy, UI, installation, jobs, logs, recordings, tracing, launching, entry, execution, configuration, collection and operation-adapter families; the original transport boundary retains its 100-column rule. Strict typing covers 11 source files, including the new owner-action interface, and all six dependency contracts pass.
+
+The global architecture gate now requires acyclicity at every import depth. The final focused check counted 625 modules and 2,067 function imports, with zero cyclic components and zero unresolved dynamic expressions. Finite feature composition uses explicit imports and stable persisted feature keys. Actual lower query implementations and named callable ports replaced peer-feature backedges; 81 unambiguous query/geometry imports were also hoisted from 22 hot UI files. Intentional deferred composition and optional adapters remain explicit; this is not a claim that all local imports disappeared.
+
+The complete regression suite, hosted Python matrix, installed commands, release inventories and checks against the final delivered commit remain release-integration checks. The archive artifact measurements above precede the later architecture extraction; final artifacts are measured separately.

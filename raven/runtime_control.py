@@ -18,7 +18,7 @@ import stat
 import time
 import uuid
 
-from .operations import canonical, digest
+from .operation_support import canonical, digest
 from .runtime_contracts import identifier, integer, number, object_, sequence as sequence, text, unique_names
 
 MAX_REQUESTS = 10000

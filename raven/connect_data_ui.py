@@ -6,7 +6,7 @@ import os
 
 from . import connect_data as C, layout as L
 from .control_rows import place_hits
-from .log_text import display_text
+from .job_logs.text import display_text
 from .setup_ui import _wrap
 
 LABELS = (("cpu-memory", "CPU / memory"), ("gpu", "GPU"),
@@ -95,7 +95,7 @@ def open_connect(app, path=None):
     prior_mode = getattr(app, "mode", "main")
     if prior_mode != "connect_data":
         state["return_mode"] = "main" if prior_mode in ("palette", "toolbar_menu") else prior_mode
-        from . import terminal_ui
+        from .terminal import ui as terminal_ui
         if terminal_ui.focused(app):
             terminal_ui.blur(app)
         from .pointer_routing import begin_gesture

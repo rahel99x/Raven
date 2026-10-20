@@ -19,7 +19,7 @@ from . import layout as L
 from . import clock
 from . import palette as P
 from .model import to_plain
-from .log_paths import stdout_path as stdout_path
+from .job_logs.paths import stdout_path as stdout_path
 from .ui_trace import timed as _timed_ui
 from .ui.keys import _ESCAPE_KEYS
 
@@ -948,7 +948,7 @@ def _bind_input(stdscr, app):
     reader = _INPUT_READERS.get(id(stdscr))
     if reader is None or reader.window is not stdscr:
         reader = _INPUT_READERS[id(stdscr)] = _InputReader(stdscr)
-    from .terminal_ui import input_identity
+    from .terminal.ui import input_identity
 
     reader.input_owner = lambda: input_identity(app)
     reader.geometry_owner = lambda: _terminal_geometry(app)
@@ -972,7 +972,7 @@ def _terminal_pointer(app, event):
         getattr(app, "terminal_state", None), "capture", None
     ):
         return False
-    from .terminal_ui import owns_mouse
+    from .terminal.ui import owns_mouse
 
     return owns_mouse(app, event[1][2], event[1][1])
 
@@ -992,8 +992,8 @@ def _navigation_context(app):
     page = getattr(app, "log_tools_state", {}).get("page") or {}
     toolbar = getattr(app, "toolbar_state", {}) or {}
     panels = getattr(app, "job_panel_state", {}) or {}
-    from .terminal_ui import input_identity
-    from .interaction import _guided_context
+    from .terminal.ui import input_identity
+    from .ui.interaction_state import _guided_context
 
     return (
         app.mode,
@@ -1174,7 +1174,7 @@ def _apply_input(app, event, hits, curses):
             active=True,
             sources=("live", "trace") if inline else (),
         )
-    from . import terminal_ui
+    from .terminal import ui as terminal_ui
 
     identity = terminal_ui.input_identity(app)
     if name != "mouse":
@@ -1323,22 +1323,16 @@ def _apply_input(app, event, hits, curses):
         # clicks. Do not run underlying pane/browser pre-dispatch handlers.
         click(my, mx, hits, button=button, shift=shift)
         return
-    from .history_log_export import (
-        active as export_active,
-        handle_mouse as export_mouse,
-    )
+    from .job_logs.history_export import active as export_active, handle_mouse as export_mouse
     from .scrollbars import handle_mouse as scrollbar_mouse
     from .column_resize import active as column_active, handle_mouse as column_mouse
     from .group_queue_drag import active as queue_active
-    from .job_group_drag import pending as group_drag_pending
+    from raven.jobs.group_drag import pending as group_drag_pending
     from .pointer_routing import PointerEvent, route_capture
 
     if route_capture(app, PointerEvent(my, mx, button, shift, alt)):
         return
-    from .job_group_menu import (
-        active as group_menu_active,
-        handle_mouse as group_menu_mouse,
-    )
+    from raven.jobs.group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
 
     if group_menu_active(app):
         if scrollbar_mouse(app, my, mx, button=button, shift=shift):
@@ -1364,10 +1358,10 @@ def _apply_input(app, event, hits, curses):
             return
         if group_menu_mouse(app, my, mx, button=button, shift=shift):
             return
-    from .job_selection import context_click
+    from raven.jobs.selection import context_click
 
     if button == "right":
-        from .text_selection import clear as clear_text
+        from .ui.text_selection_state import clear as clear_text
 
         clear_text(app)
     if context_click(app, my, mx, button=button, shift=shift):
@@ -1419,7 +1413,7 @@ def _apply_input(app, event, hits, curses):
         if scrollbar_mouse(app, my, mx, button=button, shift=shift, rail_only=True):
             return
     if button in ("motion", "drag", "release"):
-        from .job_selection import active as selection_active
+        from .ui.selection_state import active as selection_active
 
         if (
             selection_active(app)
@@ -1453,7 +1447,7 @@ def _apply_input(app, event, hits, curses):
         ).get("deps", {}).get("explicit"):
             app.move("up" if button == "wheel-up" else "down")
             return
-        from .job_panels import contains as in_job_panel, handle_mouse as panel_mouse
+        from raven.jobs.panels import contains as in_job_panel, handle_mouse as panel_mouse
 
         if in_job_panel(app, my, mx):
             if app.mode == "main":
@@ -1484,7 +1478,7 @@ def _apply_input(app, event, hits, curses):
         curses.BUTTON1_CLICKED | curses.BUTTON1_PRESSED | curses.BUTTON1_DOUBLE_CLICKED
     ):
         origin = app.tab
-        from .job_panels import contains as in_job_panel
+        from raven.jobs.panels import contains as in_job_panel
 
         double_target = None
         if (
@@ -1513,7 +1507,7 @@ def _apply_input(app, event, hits, curses):
             )
             pointer = getattr(app, "interaction_state", {}) or {}
             if double_target is not None and pointer.get("graph") is not None:
-                from .interaction import _current, hit_token
+                from .ui.interaction_state import _current, hit_token
 
                 graph = _current(app)
                 kind, key = double_target
@@ -1568,7 +1562,7 @@ def _consume_input_batch(app, stdscr, curses, hits, first, *, effects=None):
     )
     count = 0
     motion = None
-    from .interaction import needs_frame
+    from .ui.interaction_state import needs_frame
 
     def apply(value):
         if effects is not None:
@@ -1825,7 +1819,7 @@ class _DifferentialPainter:
 def _toolbar_feedback_token(app):
     state = getattr(app, "toolbar_state", {}) or {}
     from .worker_ui import token as worker_token
-    from .raven_ui import token as allocation_token
+    from .ui.allocation import token as allocation_token
 
     return tuple(
         state.get(key)
@@ -1931,14 +1925,12 @@ def _quiet_jobs_token(app, *, publication=_UNREAD_PUBLICATION):
         or not settings.get("managed")
     ):
         return None
-    from . import (
-        startup,
-        scrolling,
-        metric_live,
-        pointer_routing,
-        terminal_ui,
-        raven_ui,
-    )
+    from .terminal import ui as terminal_ui
+    from . import startup
+    from . import scrolling
+    from . import metric_live
+    from . import pointer_routing
+    from .ui import allocation as raven_ui
 
     if (
         startup.active(app)
@@ -2052,7 +2044,7 @@ class _FrameCache:
 
     def due(self, app, width, height, now=None):
         now = time.monotonic() if now is None else now
-        from .interaction import needs_frame
+        from .ui.interaction_state import needs_frame
         from . import metric_live
 
         revision_changed = metric_live.document_revision(app) != self.live_revision
@@ -2174,7 +2166,7 @@ class _FrameCache:
         finish_frame(app)
         self.rows = getattr(app, "frame_rows", rows)
         self.hits, self.welcome = hits, welcome
-        from .job_progress import publish_animation
+        from raven.jobs.progress import publish_animation
 
         publish_animation(
             app,
@@ -2309,7 +2301,7 @@ class _FrameCache:
         from . import toolbar
 
         width, height = self.geometry
-        from . import job_group_menu
+        from raven.jobs import group_menu as job_group_menu
 
         group_menu_token = _group_menu_feedback_token(app)
         if job_group_menu.active(app) and group_menu_token != self.group_menu_token:
@@ -2377,16 +2369,16 @@ class _FrameCache:
             )
             self.toolbar_token = _toolbar_feedback_token(app)
         rows = decorate(app, self.rows)
-        from .job_progress import animate_rows
+        from raven.jobs.progress import animate_rows
 
         rows = animate_rows(app, rows)
-        from .job_progress import next_animation_deadline
+        from raven.jobs.progress import next_animation_deadline
 
         self.next_feedback = next_animation_deadline(app)
-        from .terminal_ui import feedback as terminal_feedback
+        from .terminal.ui import feedback as terminal_feedback
 
         rows = terminal_feedback(app, rows)
-        from .job_group_drag import feedback as group_drag_feedback
+        from raven.jobs.group_drag import feedback as group_drag_feedback
 
         rows = group_drag_feedback(app, rows)
         from .group_queue_drag import feedback as queue_drag_feedback
@@ -2476,7 +2468,7 @@ def _wait_for_input(app, stdscr, curses, cache, waiter):
         seconds = cache.wait_ms() / 1000
         if reader is not None:
             seconds = min(seconds, max(0, reader.deadline() - time.monotonic()))
-        from .terminal_ui import showing
+        from .terminal.ui import showing
 
         if showing(app):
             seconds = min(seconds, 0.016)
@@ -2516,14 +2508,14 @@ def run_curses(app, views, sampler, store, actions, cfg):
     if scheduler is not None:
         scheduler.ui_trace = getattr(app, "ui_trace", None)
     locale.setlocale(locale.LC_ALL, "")
-    from .terminal_sync import TerminalSync
+    from .terminal.sync import TerminalSync
 
     synchronized = TerminalSync(sys.stdout, cfg.get("synchronized_output", "auto"))
     if app is not None:
         app.terminal_sync = synchronized
     raster = None
     if cfg.get("terminal_raster", "off") != "off":
-        from .terminal_raster import TerminalRaster
+        from .terminal.raster import TerminalRaster
 
         raster = TerminalRaster(sys.stdout, cfg.get("terminal_raster"))
         if not raster.enabled and hasattr(app, "say"):
@@ -2579,7 +2571,7 @@ def run_curses(app, views, sampler, store, actions, cfg):
         painted_theme = app.theme
 
         def paint(y, x0, segs, width, height):
-            from .log_text import display_text
+            from .job_logs.text import display_text
 
             x = x0
             for text, style in segs:
@@ -2608,10 +2600,12 @@ def run_curses(app, views, sampler, store, actions, cfg):
         painter = _DifferentialPainter(stdscr, paint)
         app.views_ref = views
         from . import startup
-        from .ops_ui import defer_quit as defer_operation_quit
+        from .ui.operations import defer_quit as defer_operation_quit
 
         startup.begin(app)
-        from . import terminal_ui, raven_ui, raven_diagnostics
+        from .terminal import ui as terminal_ui
+        from raven.collection import diagnostics as raven_diagnostics
+        from .ui import allocation as raven_ui
 
         _bind_input(stdscr, app)
         _INPUT_READERS[id(stdscr)].control_response = synchronized.receive
@@ -2872,7 +2866,7 @@ def _terminal_handoff(app, stdscr, curses, mouse_enabled, argv):
 
 def _operation_terminal(app, stdscr, curses, mouse_enabled):
     """Hand an explicitly reviewed allocation to the terminal, then restore it."""
-    from . import ops_ui
+    from .ui import operations as ops_ui
 
     argv = ops_ui.take_terminal(app)
     if argv is None:

@@ -339,7 +339,7 @@ def collect(backend, previous, *, max_records, queue=True, accounting=True, canc
     from . import slurm_json as J
     from .slurm import ParseDiagnostics
     from .model import to_plain
-    from .operations import _backend_command
+    from .operation_support import _backend_command
     from .platform_session import GovernedBackend
     value = {**previous, 'source_errors': dict(previous['source_errors'])}
     commands = []
@@ -425,7 +425,7 @@ class SharedClient(Client):
 
 
 def serve(directory, policy_file, *, config=None, site=None, cancel=None):
-    from .raven_config import resolve, to_raven_config
+    from .configuration.policy import resolve, to_raven_config
     from .platform_session import wrap_backend
     from .slurm import Backend
     resolved = resolve(config, site=site, launcher='light')

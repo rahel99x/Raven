@@ -166,7 +166,7 @@ def config_data(config):
 def prepare(config, reuse=None, *, observed_cluster=None):
     data = config_data(config)
     if data.get("schema") == "raven.config/v1":
-        from ..raven_config import admission_config
+        from ..configuration.policy import admission_config
 
         data = admission_config(data)
     site, execution, connection = (

@@ -72,3 +72,22 @@ of its measured cost. RSS is a whole-process Linux measurement, not Python
 allocation tracing. Runs are observational measurements on a shared cloud host,
 without affinity control or statistical confidence intervals. They establish no
 live Slurm, GPU, remote-host or vendor-specific hardware qualification.
+
+## Architecture closure follow-up
+
+The interim 109-module UI cycle was eliminated with actual lower state/geometry implementations and named typed owner actions. `workbench.bind_actions` composes selection, graph, table/group commands and panel effects; pointer capture holds validated callable bindings. Missing composition fails explicitly. Pure focus/scroll/query/placement operations remain direct lower calls. Existing ResearchHub worker ownership is shared through an application service, with no additional executor.
+
+The original behavioral assertions remain: 497 interaction/selection/group/panel cases passed, 285 chart/panel/workspace cases passed, and 270 history/chart/scrollbar cases passed. Four new interface tests cover missing composition, immutable callable records, exact late-injected arguments, and compatibility identities. Final integrated revision, global graph gate and full regression qualification are recorded in the top-level acceptance ledger. These timings describe test runs, not controlled performance gains.
+
+The log family now has 13 actual implementations under `raven.job_logs`, including retained buffer/discovery/matching and UI owners. Former module paths alias the exact canonical modules. The log/mutation/export/interface suite passed 496 cases; 14 new package checks verify all 13 legacy module identities and the shared LogBuffer class. No source-relative helper paths changed in this family.
+
+After all family moves and query hoists, 2,198 focused selection, metric,
+scrollbar, pane, cache, log and operation tests passed in 20.67 s. The controlled
+dispatch fixture used the reviewed `b98742f` controller method against the same
+current feature contracts. Seven rounds of 5,000 consumed notification keys
+measured 23.91 µs/key for the reviewed control flow and 10.55 µs/key for the current
+path. CPU time for the measured rounds was 0.841 s and 0.377 s, respectively.
+The combined process peaked at 41,472 KiB RSS; Python allocations were not
+measured. This does not compare whole releases or their memory use.
+See [the compact measurement record](measurements/ui-dispatch.json) and
+`scripts/benchmark_ui_dispatch.py`.

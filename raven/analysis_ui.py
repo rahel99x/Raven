@@ -43,7 +43,7 @@ def initialize(app):
 def rows_selected(app, kind):
     """A cleared local row cursor stays hidden until deliberate selection."""
     if kind == "evidence":
-        from .job_selection import lines_cleared
+        from .ui.selection_state import lines_cleared
         return not lines_cleared(app)
     cleared = initialize(app).get("rows_deselected", {})
     return not isinstance(cleared, dict) or not cleared.get(kind, False)
@@ -51,7 +51,7 @@ def rows_selected(app, kind):
 
 def resume_rows(app, kind):
     if kind == "evidence":
-        from .job_selection import resume_lines
+        from .ui.selection_effects import resume_lines
         resume_lines(app)
     elif kind in ("chart", "timeline", "chart_events"):
         state = initialize(app)
@@ -76,7 +76,7 @@ def context_click(app, y, x, button="left"):
         return True
     # The foreground modal owns this gesture even when App.click dispatches
     # directly through the focus stack instead of the screen adapter.
-    from .job_selection import clear_lines
+    from .ui.selection_effects import clear_lines
     clear_lines(app)
     state = initialize(app)
     modal = state.get("modal")
@@ -204,7 +204,7 @@ def memory_series(app, jid):
 
 
 def _resource_series(app, jid):
-    from .views import prepared_series
+    from raven.recordings.presentation import prepared_series
     return prepared_series(app, jid, ("resource-columns/v1", MAX_POINTS),
                            lambda records: _resource_columns(records[-MAX_POINTS:]),
                            memory_only=True)
@@ -448,7 +448,7 @@ def _prepared_card_source(app, content):
     immutable scalar records are retained; interactive step metadata keeps its
     original path and cannot be mistaken for a card's reduced observations.
     """
-    from .raven_limits import cache as bounded_cache
+    from raven.collection.retention import cache as bounded_cache
     state = initialize(app)
     if 'chart_source_cache' not in state: state['chart_source_cache']=bounded_cache(app,'chart_source_cache')
     cache = state['chart_source_cache']
@@ -469,7 +469,7 @@ def _prepared_card_source(app, content):
 
 def _source_cadence(app, times, limit):
     """Cache cadence by exact sorted timestamps and admitted prefix length."""
-    from .raven_limits import cache as bounded_cache
+    from raven.collection.retention import cache as bounded_cache
     state = initialize(app)
     if 'chart_cadence_cache' not in state: state['chart_cadence_cache']=bounded_cache(app,'chart_cadence_cache')
     cache = state['chart_cadence_cache']
@@ -682,7 +682,7 @@ def chart_rows(g, app, points, width, height, name, source, *, interactive=True,
            (box["x"], box["y"], auto_fit) if box else None, live_window,
            (live_now is not None, display_end if not box and not captured else None, newest),
            (captured["x"], captured["y"]) if captured else None)
-    from .raven_limits import cache as bounded_cache
+    from raven.collection.retention import cache as bounded_cache
     if 'chart_card_cache' not in state: state['chart_card_cache']=bounded_cache(app,'chart_card_cache')
     cache = state['chart_card_cache']
     entry = cache.get(key)
@@ -1134,7 +1134,7 @@ def _open_timeline_event(app, event, *, seek=False):
         app.say("Replay moved to " + _time(event["t"]))
         return
     if event.get("path"):
-        from . import log_workbench
+        from .job_logs import workbench as log_workbench
         from .navigation_ui import record
         state = initialize(app)
         previous = state.get("modal", "timeline")
@@ -1361,7 +1361,7 @@ def handle_key(app, key):
             if key == "enter" and ids:
                 if not rows_selected(app, "evidence"):
                     return True
-                from . import log_workbench
+                from .job_logs import workbench as log_workbench
                 citation = getattr(app, "research_evidence", {}).get(ids[min(state.get("evidence_cursor", 0), len(ids) - 1)])
                 if citation and citation.get("path"):
                     log_workbench.open_citation(app, citation)

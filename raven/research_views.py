@@ -67,7 +67,7 @@ def render(views, snap, app, width, height):
             group="research-tools", prefix="research-tools:")
         hits += [(y + len(rows), kind, data) for y, kind, data in control_hits]
         rows += controls
-    from . import ops_ui
+    from .ui import operations as ops_ui
     if view in ops_ui.CONTEXT_TOOLS:
         controls, control_hits = ops_ui.contextual_controls(g, width, ops_ui.CONTEXT_TOOLS[view])
         hits += [(y + len(rows), kind, data) for y, kind, data in control_hits]
@@ -179,8 +179,8 @@ def render(views, snap, app, width, height):
             rows.append(row(" Bounded tail: earlier records are outside this inspection window.", "yellow"))
     elif view == "arrays":
         from . import array_manifest_ui
-        from .job_selection import selected, cleared
-        from .job_group_ui import fold_icon
+        from .ui.selection_state import selected, cleared
+        from raven.jobs.group_ui import fold_icon
         from .array_disclosure import publish
         from collections import Counter
         import shlex
@@ -313,7 +313,7 @@ def render(views, snap, app, width, height):
         passport = result.get("passport") or {}
         rows.extend(analysis_ui.passport_rows(g, passport, result.get("differences")))
     elif view == "submit" and result.get("launch_report"):
-        from .launch_results import rows as launch_rows
+        from .launching.results import rows as launch_rows
         rows.extend(launch_rows(result["launch_report"], width, ascii_=g.ascii))
     elif view == "submit":
         plan = result.get("plan") or {}

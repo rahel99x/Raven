@@ -420,7 +420,7 @@ def _argument_values(app, previous, prefix):
                 choices += [(value, "chart option") for value in ("window", "zoom", "pan", "cursor", "preset", "axis", "range", "events", "event", "shared")]
             return choices
     if command == "columns" and previous[-1] in ("show", "hide"):
-        from .table_ui import definitions
+        from .ui.table_schema import definitions
         return [(column.key, column.title) for column in definitions(app.tab if app.tab in ("jobs", "history") else "jobs")]
     if command == "tab":
         return [(key, label) for key, label in TABS]

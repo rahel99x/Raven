@@ -34,7 +34,7 @@ class Sampler(threading.Thread):
         super().__init__(daemon=True, name="raven-sampler")
         self.polling_multiplier = validate_multiplier(polling_multiplier)
         self.slurm, self.store, self.intervals = slurm, store, dict(intervals)
-        from .raven_collection import settings as collection_settings
+        from raven.collection.ledger import settings as collection_settings
         self.collection = collection_settings(collection) if collection is not None else None
         self._collection_demand = {"tab": "jobs", "selected": None, "sources": frozenset()}
         self._collection_activity = time.monotonic()
@@ -160,7 +160,7 @@ class Sampler(threading.Thread):
         Failed/deferred work retains its recovery deadline, while an in-flight
         source completes once and schedules its successor using the new policy.
         """
-        from .raven_collection import settings
+        from raven.collection.ledger import settings
         updated = settings(collection)
         new_intervals = dict(self.intervals if intervals is None else intervals)
         if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0
@@ -193,7 +193,7 @@ class Sampler(threading.Thread):
             # Managed profiles already carry the exact requested seconds. The
             # slider is resolved into that policy once; passing a 1 s preset
             # through the legacy native slider would turn it back into 5 s.
-            from .raven_collection import FLOORS
+            from raven.collection.ledger import FLOORS
             requested = float(self.intervals.get(name, self.collection.get(FLOORS.get(name), 30.)))
             if name == "trace":
                 from .cadence import LOCAL_FILE_FLOOR, REMOTE_FILE_FLOOR
@@ -220,7 +220,7 @@ class Sampler(threading.Thread):
             return max(self._retained_trace_floor, transport, min(2., requested))
         if self.collection is None:
             return requested
-        from .raven_collection import interval
+        from raven.collection.ledger import interval
         result = interval(self.collection, name, requested)
         if (name != "trace" and time.monotonic() - self._collection_activity >= self.collection["idle_after_seconds"]):
             result *= max(1., self.collection["idle_interval_factor"])
@@ -537,7 +537,7 @@ class Sampler(threading.Thread):
         self.kick.set()
 
     def run_source(self, name: str):
-        from .raven_collection import Deferred
+        from raven.collection.ledger import Deferred
         h = self.health(name)
         previous_context = getattr(self._sampling_context, "current", None)
         context = {"source": name, "targets": {}, "baseline": False}
@@ -799,7 +799,7 @@ class Sampler(threading.Thread):
                 # A disappearing/unreadable job remains session-isolated;
                 # the next bounded rotation retries through normal admission.
                 continue
-            from .series_identity import scheduler_attempt
+            from raven.recordings.identity import scheduler_attempt
             if scheduler_attempt(job, details) is None:
                 continue
             with self.store.lock:
@@ -1224,7 +1224,7 @@ class Sampler(threading.Thread):
 
     def src_trace(self):
         """Read selected retained CPU/GPU recordings and optional NVIDIA CSVs."""
-        from .raven_collection import Deferred
+        from raven.collection.ledger import Deferred
         if self.collection is not None and not self._collection_needed("trace"):
             return
         with self.store.lock:

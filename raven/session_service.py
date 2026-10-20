@@ -358,7 +358,7 @@ class RemoteClient(Client):
         self.cursor = 0
 
     def query(self, operation='events'):
-        from .operations import _backend_command
+        from .operation_support import _backend_command
         request = C.request(operation, session=self.session, epoch=self.epoch, cursor=self.cursor)
         text = _backend_command(self.backend, [self.python, '-m', 'raven.session_service', 'bridge', self.remote_directory,
                                              '--request', C.encoded(request).decode()], 10, C.MAX_RESPONSE, None)
@@ -367,8 +367,8 @@ class RemoteClient(Client):
 
 def _managed_session(directory, config=None, site=None, *, demo=False):
     from . import cli
-    from .config import Config
-    from .raven_config import resolve, to_raven_config
+    from .configuration.dashboard import Config
+    from .configuration.policy import resolve, to_raven_config
     resolved = resolve(config, site=site, launcher='light', cli_overrides={'storage': {'state_dir': str(directory / 'state')}})
     cfg = Config(to_raven_config(resolved))
     args = cli.parse(['--no-plugins', '--no-gpu'] + (['--fake', '--no-state'] if demo else []))
@@ -383,7 +383,7 @@ def serve(directory, *, config=None, site=None, demo=False, cancel=None):
     try:
         # Acquire the service owner before constructing any collection owner.
         # Scope is resolved first without starting threads or scheduler work.
-        from .raven_config import resolve
+        from .configuration.policy import resolve
         resolved = resolve(config, site=site, launcher='light')
         scope = {'uid': os.getuid(), 'profile': resolved.data['profile'], 'connection': resolved.data['connection'], 'demo': demo}
         server = Server(root, scope)

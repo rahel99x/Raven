@@ -608,7 +608,7 @@ class AllocationManager:
     def _launch(self, reviewed):
         admission = None
         if self.config.get("schema") == "raven.config/v1":
-            from ..raven_collection import admit_allocation_launch
+            from raven.collection.ledger import admit_allocation_launch
 
             admission = admit_allocation_launch(self.collection_backend, reviewed)
         parent, child = socket.socketpair()
@@ -834,7 +834,7 @@ class AllocationManager:
         try:
             self._send({"op": "placement", "records": future.result()})
         except Exception as exc:
-            from ..raven_collection import Deferred
+            from raven.collection.ledger import Deferred
 
             if (
                 isinstance(exc, Deferred)

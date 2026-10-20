@@ -4,8 +4,8 @@
 The debt baseline permits existing cycles; it is not an acyclicity assertion.
 New cycle edges and unresolved dynamic-import expressions fail. Literal dynamic
 imports and relative compatibility aliases participate in the graph.
---require-acyclic is the stricter final architecture gate. Variable module names
-remain recorded debt, rather than proof the complete runtime graph is acyclic.
+--require-acyclic is the final architecture gate. It rejects both cycles and
+unresolved imports: an unseen runtime target cannot establish acyclicity.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ PURE = frozenset(
         "raven.ui.focus",
         "raven.ui.geometry",
         "raven.ui.catalog",
+        "raven.ui.workspace_state",
         "raven.research_text",
         "raven.research_context",
         "raven.planning_catalog",
@@ -54,6 +55,48 @@ READ_SERVICES = frozenset(
         "raven.projects",
         "raven.metrics",
         "raven.log_catalog",
+        "raven.operation_support",
+        "raven.execution.policy",
+        "raven.execution.admission",
+        "raven.execution.worker",
+        "raven.execution.planning",
+        "raven.collection.ledger",
+        "raven.collection.retention",
+        "raven.recordings.archive",
+        "raven.recordings.publication",
+        "raven.recordings.retention",
+        "raven.recordings.storage",
+        "raven.terminal.sessions",
+        "raven.terminal.session_state",
+        "raven.terminal.evidence",
+        "raven.tracing.capture",
+        "raven.tracing.protocol",
+        "raven.tracing.provenance",
+        "raven.tracing.document",
+        "raven.tracing.export",
+        "raven.tracing.stream",
+        "raven.tracing.stream_export",
+    }
+)
+CANONICAL_UI_OWNERS = frozenset(
+    {
+        "raven.jobs.panels",
+        "raven.jobs.selection",
+        "raven.jobs.group_drag",
+        "raven.jobs.group_menu",
+        "raven.jobs.list_menu",
+        "raven.jobs.group_actions",
+        "raven.job_logs.workbench",
+        "raven.job_logs.tools",
+        "raven.job_logs.history_export",
+        "raven.terminal.ui",
+        "raven.terminal.workflows",
+        "raven.terminal.playback",
+        "raven.terminal.fusion",
+        "raven.terminal.diagnostics",
+        "raven.tracing.ui",
+        "raven.tracing.browser",
+        "raven.tracing.timeline_ui",
     }
 )
 UI_OWNERS = frozenset(
@@ -81,7 +124,10 @@ UI_OWNERS = frozenset(
 def ui_owner(module):
     leaf = module.rsplit(".", 1)[-1]
     return module not in PURE and (
-        leaf.endswith("_ui") or leaf in UI_OWNERS or module.startswith("raven.ui.")
+        leaf.endswith("_ui")
+        or leaf in UI_OWNERS
+        or module.startswith("raven.ui.")
+        or module in CANONICAL_UI_OWNERS
     )
 
 
@@ -118,11 +164,14 @@ def analyze(package):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         import_functions = {"import_module", "__import__"}
         for imported in ast.walk(tree):
-            if isinstance(imported, ast.ImportFrom) and imported.module == "importlib":
+            if isinstance(imported, ast.ImportFrom) and imported.module in {
+                "importlib",
+                "builtins",
+            }:
                 import_functions.update(
                     alias.asname or alias.name
                     for alias in imported.names
-                    if alias.name == "import_module"
+                    if alias.name in {"import_module", "__import__"}
                 )
         parents = {
             child: node
@@ -134,7 +183,7 @@ def analyze(package):
                 isinstance(node.func, ast.Name)
                 and node.func.id in import_functions
                 or isinstance(node.func, ast.Attribute)
-                and node.func.attr == "import_module"
+                and node.func.attr in {"import_module", "__import__"}
             ):
                 target = None
                 if node.args and isinstance(node.args[0], ast.Constant):
@@ -330,6 +379,8 @@ def main(argv=None):
     errors = violations(report, graph, baseline)
     if args.require_acyclic and report["cyclic_components"]:
         errors.append("Import graph still contains cyclic components")
+    if args.require_acyclic and report["dynamic_module_expressions"]:
+        errors.append("Import graph has unresolved runtime import targets")
     report["violations"] = errors
     if args.json:
         args.json.write_text(json.dumps(report, indent=2) + "\n")

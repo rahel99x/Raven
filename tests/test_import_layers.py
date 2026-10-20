@@ -2,6 +2,7 @@
 
 import importlib.util
 from pathlib import Path
+import pytest
 
 
 spec = importlib.util.spec_from_file_location(
@@ -82,3 +83,47 @@ def test_new_unresolved_imports_fail_but_line_number_changes_do_not(tmp_path):
     assert checker.violations(result, graph, baseline) == [
         "New unresolved dynamic import: raven.one:5"
     ]
+
+
+def test_builtin_import_aliases_and_attribute_calls_are_visible(tmp_path):
+    package = tmp_path / "raven"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "one.py").write_text(
+        "from builtins import __import__ as load\n"
+        "load('raven.two')\n"
+        "import builtins\n"
+        "builtins.__import__(runtime_target)\n"
+    )
+    (package / "two.py").write_text("from .one import load\n")
+    report, graph = checker.analyze(package)
+    assert graph["raven.one"] == {"raven.two"}
+    assert report["cyclic_components"] == [["raven.one", "raven.two"]]
+    assert len(report["dynamic_module_expressions"]) == 1
+    assert report["dynamic_module_expressions"][0]["line"] == 4
+
+
+@pytest.mark.parametrize("unresolved", [False, True])
+def test_strict_gate_cannot_be_waived_by_rewriting_a_debt_baseline(
+    tmp_path, monkeypatch, unresolved
+):
+    package = tmp_path / "raven"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "one.py").write_text(
+        "import importlib\nimportlib.import_module(target)\n"
+        if unresolved
+        else "def read():\n    from .two import value\n"
+    )
+    (package / "two.py").write_text(
+        "from .one import read\n" if not unresolved else "value=1\n"
+    )
+    monkeypatch.setattr(checker, "ROOT", tmp_path)
+    assert checker.main(
+        [
+            "--baseline",
+            str(tmp_path / "debt.json"),
+            "--write-baseline",
+            "--require-acyclic",
+        ]
+    )

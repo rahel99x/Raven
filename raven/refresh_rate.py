@@ -176,7 +176,7 @@ def candidate_cadence(app, source, value):
         return enforced(source, result)
     collection = cfg.get("raven", {}).get("collection")
     if collection is not None:
-        from .raven_collection import interval
+        from raven.collection.ledger import interval
 
         result = interval(collection, source, result)
     return result

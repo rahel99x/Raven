@@ -92,7 +92,7 @@ def test_drag_reserves_chosen_queue_space_even_when_only_one_job_remains(app):
 
 def test_default_unfiltered_preview_does_not_traverse_ten_thousand_records(app):
     snap = observation(10_000)
-    with patch.object(table_ui, "matches", wraps=table_ui.matches) as matches:
+    with patch("raven.table_query.matches", wraps=table_ui.matches) as matches:
         result = recents.records(app, snap)
     assert [record.id for record in result] == [str(1000 + index) for index in range(5)]
     assert matches.call_count == 5
@@ -233,7 +233,7 @@ def test_large_index_skips_repeat_filter_work_but_amended_content_invalidates(ap
     activate(app, snap)
     state = recents.initialize(app)
     state.target = 500
-    with patch.object(table_ui, "matches", wraps=table_ui.matches) as matches:
+    with patch("raven.table_query.matches", wraps=table_ui.matches) as matches:
         first = recents.records(app, snap)
         initial_count = matches.call_count
         assert initial_count == 1000
@@ -252,7 +252,7 @@ def test_large_history_does_not_repeat_cascading_sort_without_data_changes(app):
     set_sort(app, "recent", "id", "asc")
     recents.records(app, snap)
     recents.initialize(app).target = 500
-    with patch.object(table_ui, "sort_rows", wraps=table_ui.sort_rows) as sort_rows:
+    with patch("raven.table_sort.sort_rows", wraps=table_ui.sort_rows) as sort_rows:
         first = recents.records(app, snap)
         second = recents.records(app, snap)
         assert first == second and first is not second

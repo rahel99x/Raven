@@ -15,7 +15,7 @@ import json
 import threading
 
 from .evidence import canonical, text
-from .operations import canonical as result_canonical
+from .operation_support import canonical as result_canonical
 
 
 class StaleResult(ValueError):

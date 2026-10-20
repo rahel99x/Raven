@@ -642,7 +642,7 @@ Ranges larger than 256 KiB or 4,096 lines run on the shared worker, as do ranges
 containing invalid UTF-8. These copies pin the selected source bytes and publish
 a private unique `log-selected-<uuid>.log` file in the export directory before attempting
 clipboard delivery. Invalid UTF-8 skips text clipboard transport rather than
-substituting replacement characters. Small valid UTF-8 ranges keep the immediate
+substituting replacement characters. Small valid UTF-8 ranges keep the
 private atomic `clipboard.txt` fallback. Exports use the durable directory
 `$XDG_DATA_HOME/raven/exports` (default `~/.local/share/raven/exports`), including
 with `--no-state`. Set an absolute `RAVEN_EXPORT_DIR` to choose another location.

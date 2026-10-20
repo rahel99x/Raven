@@ -156,7 +156,7 @@ class TimePointCache:
                 indexed_entry = self.indexes.get(source)
                 index = indexed_entry[0] if indexed_entry else None
                 if index is None:
-                    from .series_summary import EnvelopeIndex
+                    from raven.recordings.summary import EnvelopeIndex
                     index = EnvelopeIndex(values, sample_times)
                     cost = len(values) * 12
                     self.index_points += cost

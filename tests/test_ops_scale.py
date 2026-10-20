@@ -269,7 +269,7 @@ def test_cluster_single_mode_honors_one_worker(ctx, monkeypatch):
 
 
 def test_cluster_collect_one_keeps_partial_queue_on_history_error(ctx, monkeypatch):
-    from raven import operations
+    from raven import operation_support as operations
     backend = FakeBackend()
     captured = []
     def run(context, argv, **kwargs):
@@ -287,7 +287,7 @@ def test_cluster_collect_one_keeps_partial_queue_on_history_error(ctx, monkeypat
 
 
 def test_cluster_reused_sacct_ids_keep_distinct_attempts(ctx, monkeypatch):
-    from raven import operations
+    from raven import operation_support as operations
     line = "7|run|COMPLETED|00:01:00|1|00:00:30|1G|10M|2026-10-01T01:00:00|2026-10-01T01:01:00|main|1|0:0|cpu=1|n1|2026-10-01T00:00:00|/tmp|00:10:00|alex|lab|"
     lines = line + "\n" + line.replace("2026-10-01", "2026-10-02")
     monkeypatch.setattr(operations, "command", lambda context, argv, **kwargs: "" if argv[0] == "squeue" else lines)
@@ -298,7 +298,7 @@ def test_cluster_reused_sacct_ids_keep_distinct_attempts(ctx, monkeypatch):
 
 
 def test_cluster_garbage_output_is_not_empty_healthy_queue(ctx, monkeypatch):
-    from raven import operations
+    from raven import operation_support as operations
     monkeypatch.setattr(operations, "command", lambda *args, **kwargs: "unexpected wire format")
     source = C.configuration({"schema": "raven.cluster-workspace/v1", "clusters": [{"name": "a"}]})[0]
     assert C.collect_one(ctx, source, "alex", 24)["status"] == "unavailable"

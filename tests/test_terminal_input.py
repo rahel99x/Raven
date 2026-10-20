@@ -201,6 +201,9 @@ def pane_app(tmp_path):
                           state_dir=str(tmp_path), errors=[], messages=[])
     app.fail = app.errors.append
     app.say = app.messages.append
+    from raven.workbench import bind_actions, bind_terminal
+    bind_actions(app)
+    bind_terminal(app)
     state = terminal_ui.initialize(app)
     state.service = Service()
     state.active = "s"

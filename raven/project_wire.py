@@ -1,4 +1,5 @@
 """Fixed stdlib SSH reader transport; independent of readers and UI imports."""
+
 from __future__ import annotations
 
 import hashlib
@@ -8,14 +9,28 @@ import shlex
 
 CHUNK_BYTES = 24576
 MAX_PACKED = 512 * 1024
-OPERATIONS = frozenset({"discover_project", "discover_job", "select_run", "read_bound_json",
-    "read_bound_passport", "read_bound_artifacts", "read_bound_tail", "read_bound_metric_chunk",
-    "read_bound_telemetry", "read_passport", "artifact_tree", "preview_artifact", "read_artifact_page"})
+OPERATIONS = frozenset(
+    {
+        "discover_project",
+        "discover_job",
+        "select_run",
+        "read_bound_json",
+        "read_bound_passport",
+        "read_bound_artifacts",
+        "read_bound_tail",
+        "read_bound_metric_chunk",
+        "read_bound_telemetry",
+        "read_passport",
+        "artifact_tree",
+        "preview_artifact",
+        "read_artifact_page",
+    }
+)
 
 # Only these exact source bytes may pass the governed adapter. Uploaded source
 # is data here: execution follows the digest-checked reader's fixed operation
 # allowlist, never a project-supplied module or shell program.
-CACHED_BOOTSTRAP = r'''
+CACHED_BOOTSTRAP = r"""
 import base64, hashlib, importlib.abc, importlib.util, json, lzma, marshal, os, stat, sys, tempfile
 from pathlib import Path
 ACTION, DIGEST, ROOT, PAYLOAD, COUNT = sys.argv[1:6]
@@ -159,7 +174,7 @@ except (FileNotFoundError, EOFError, ValueError, TypeError):
 class ReaderLoader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
     def find_spec(self, fullname, path=None, target=None):
         if fullname in codes:
-            return importlib.util.spec_from_loader(fullname, self, is_package=fullname == 'raven')
+            return importlib.util.spec_from_loader(fullname, self, is_package=any(name.startswith(fullname + '.') for name in codes))
     def create_module(self, spec):
         return None
     def exec_module(self, module):
@@ -183,39 +198,76 @@ try:
 except (OSError, ValueError, TypeError, KeyError, RecursionError) as exc:
     response = {'error': str(exc)[:2048], 'missing': isinstance(exc, FileNotFoundError)}
 print(json.dumps(response, ensure_ascii=True, allow_nan=False, separators=(',', ':')))
-'''
+"""
 
 
 def command(action, digest, root, payload, count):
-    argv = ['python3', '-I', '-S', '-c', CACHED_BOOTSTRAP, action, digest, root, payload, str(count)]
+    argv = [
+        "python3",
+        "-I",
+        "-S",
+        "-c",
+        CACHED_BOOTSTRAP,
+        action,
+        digest,
+        root,
+        payload,
+        str(count),
+    ]
     classify(argv)
     return argv
 
 
 def classify(argv):
     """Validate the exact fixed helper and return detached admission metadata."""
-    if (not isinstance(argv, (list, tuple)) or len(argv) != 10
-            or list(argv[:5]) != ['python3', '-I', '-S', '-c', CACHED_BOOTSTRAP]
-            or any(not isinstance(item, str) for item in argv)):
-        raise ValueError('Unclassified project reader helper')
-    if len(shlex.join(argv).encode('utf-8')) > 120000:
-        raise ValueError('Reader command exceeds the SSH argument budget')
+    if (
+        not isinstance(argv, (list, tuple))
+        or len(argv) != 10
+        or list(argv[:5]) != ["python3", "-I", "-S", "-c", CACHED_BOOTSTRAP]
+        or any(not isinstance(item, str) for item in argv)
+    ):
+        raise ValueError("Unclassified project reader helper")
+    if len(shlex.join(argv).encode("utf-8")) > 120000:
+        raise ValueError("Reader command exceeds the SSH argument budget")
     action, digest, root, payload, count = argv[5:]
-    if action not in {'read', 'upload'} or not re.fullmatch('[0-9a-f]{64}', digest) or len(root) > 4096 or not count.isdecimal() or not 1 <= int(count) <= 32:
-        raise ValueError('Invalid project reader envelope')
-    if action == 'read':
+    if (
+        action not in {"read", "upload"}
+        or not re.fullmatch("[0-9a-f]{64}", digest)
+        or len(root) > 4096
+        or not count.isdecimal()
+        or not 1 <= int(count) <= 32
+    ):
+        raise ValueError("Invalid project reader envelope")
+    if action == "read":
         if len(payload) > 65536:
-            raise ValueError('Reader request exceeds metadata budget')
+            raise ValueError("Reader request exceeds metadata budget")
         request = json.loads(payload)
-        if (not isinstance(request, dict) or set(request) != {'operation', 'args', 'kwargs'}
-                or request['operation'] not in OPERATIONS or not isinstance(request['args'], list)
-                or not isinstance(request['kwargs'], dict)):
-            raise ValueError('Invalid project reader request')
+        if (
+            not isinstance(request, dict)
+            or set(request) != {"operation", "args", "kwargs"}
+            or request["operation"] not in OPERATIONS
+            or not isinstance(request["args"], list)
+            or not isinstance(request["kwargs"], dict)
+        ):
+            raise ValueError("Invalid project reader request")
         uploaded = 0
     else:
-        index, sep, chunk = payload.partition(':')
-        if not sep or not index.isdecimal() or not 0 <= int(index) < int(count) or len(chunk) > CHUNK_BYTES or not re.fullmatch('[A-Za-z0-9+/=]*', chunk):
-            raise ValueError('Invalid reader chunk')
+        index, sep, chunk = payload.partition(":")
+        if (
+            not sep
+            or not index.isdecimal()
+            or not 0 <= int(index) < int(count)
+            or len(chunk) > CHUNK_BYTES
+            or not re.fullmatch("[A-Za-z0-9+/=]*", chunk)
+        ):
+            raise ValueError("Invalid reader chunk")
         uploaded = len(chunk)
-    return {'action': action, 'identity': digest + ':' + action + ':' + hashlib.sha256(payload.encode()).hexdigest(),
-            'upload_bytes': uploaded}
+    return {
+        "action": action,
+        "identity": digest
+        + ":"
+        + action
+        + ":"
+        + hashlib.sha256(payload.encode()).hexdigest(),
+        "upload_bytes": uploaded,
+    }

@@ -30,7 +30,7 @@ args.source_root=args.source_root.resolve()
 if not (args.source_root/'raven'/'model.py').is_file():
     parser.error('--source-root must contain the Raven source package')
 if not 1 <= args.samples <= 1000000 or not 1 <= args.repetitions <= 64:
-    parser.error('Use1..1000000 samples and1..64 repetitions')
+    parser.error('Use 1..1000000 samples and 1..64 repetitions')
 sys.path.insert(0, str(args.source_root))
 from raven import charts, series_blocks as blocks
 from raven.series_summary import EnvelopeIndex
@@ -87,8 +87,11 @@ def review_case(case, samples):
             if case=='batch':path=next((root/'series').glob('*.rvb'))
             result['file_bytes']=path.stat().st_size
     result['process_peak_rss_bytes']=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*1024
-    result['source_sha256']={name:hashlib.sha256((args.source_root/'raven'/name).read_bytes()).hexdigest()
-        for name in ('model.py','series_blocks.py','series_storage.py','series_retention.py')}
+    owners={'model.py':sys.modules[Store.__module__], 'series_blocks.py':blocks,
+            'series_storage.py':storage, 'series_retention.py':retention}
+    source_paths={name:Path(module.__file__).resolve() for name,module in owners.items()}
+    result['source_sha256']={name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in source_paths.items()}
+    result['source_paths']={name:str(path.relative_to(args.source_root)) for name,path in source_paths.items()}
     return result
 
 

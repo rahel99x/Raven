@@ -51,14 +51,14 @@ def _stop(process):
 
 
 def _policy_check(config):
-    from ..raven_config import worker_policy_check
+    from ..configuration.policy import worker_policy_check
 
     checked = worker_policy_check(config)
     return config if checked is None else checked
 
 
 def _manifest():
-    from ..raven_execution import OPERATIONS
+    from ..execution.policy import OPERATIONS
 
     return {
         name: {
@@ -106,7 +106,8 @@ def task_main(expected_parent):
     budget = request["budget"]
     try:
         enforcement = apply_limits(budget)
-        from ..raven_execution import DEFAULT_BUDGET, OPERATIONS, execute_operation
+        from ..execution.policy import DEFAULT_BUDGET, OPERATIONS
+        from ..execution.worker import execute_operation
 
         operation = request["operation"]
         if operation not in OPERATIONS or request.get("version") != OPERATIONS[
@@ -482,12 +483,11 @@ class Worker:
             ):
                 # A controlled single-threaded fork server amortizes imports,
                 # while every operation still receives fresh rlimits and pipes.
-                from ..raven_execution import _PURE
+                from ..execution.policy import _PURE
+                from ..execution.registry import pure_binding
 
                 if operation in _PURE:
-                    import importlib
-
-                    importlib.import_module("raven." + _PURE[operation][0])
+                    pure_binding(operation)
                 from .fork_task import TaskProcess
 
                 process = TaskProcess(child_environment(budget["cpus"]), task_main)

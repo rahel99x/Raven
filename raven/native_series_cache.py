@@ -6,10 +6,7 @@ from collections import OrderedDict
 import pickle
 
 from . import charts
-from .series_cache_limits import (
-    MAX_SERIES_CACHE_ENTRIES as MAX_ENTRIES,
-    MAX_SERIES_CACHE_BYTES as MAX_TOTAL_BYTES,
-)
+from raven.recordings.cache_limits import MAX_SERIES_CACHE_ENTRIES as MAX_ENTRIES, MAX_SERIES_CACHE_BYTES as MAX_TOTAL_BYTES
 
 MAX_RECORDS = 64000
 MAX_SIGNATURE_BYTES = 4 << 20
@@ -109,7 +106,7 @@ class NativeSeriesCache:
         self.bytes -= len(entry[0]) if isinstance(entry[0],bytes) else entry[2]
 
     def remember(self, key, samples, build):
-        from .series_publication import PublishedSeries
+        from raven.recordings.publication import PublishedSeries
         if type(samples) is PublishedSeries:
             # A Store-owned publication already captured nested corrections;
             # comparing its retained identity is constant-time and exact.

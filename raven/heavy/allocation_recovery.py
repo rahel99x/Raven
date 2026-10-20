@@ -533,7 +533,7 @@ def reconcile(directory, planned, backend, cancel=None, *, reset=False, now=None
             complete, reason = _observe(backend, receipt, planned, cancel, now=now)
             recovery["phase"] = "resolved" if complete else "confirming"
         except Exception as exc:
-            from ..raven_collection import Deferred
+            from raven.collection.ledger import Deferred
 
             reason = str(exc)[:2048]
             recovery["phase"] = "deferred" if isinstance(exc, Deferred) else "waiting"

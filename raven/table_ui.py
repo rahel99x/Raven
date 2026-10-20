@@ -1,25 +1,73 @@
 """Explicit columns, field filters and named table views with stable job IDs."""
+
 from __future__ import annotations
+from .table_query import validate_numeric, validate_dates
+from .table_query import snapshot
+from .ui.list_preferences import invalidate as _invalidate
+from .table_query import filter_text, numeric_rules
+from .table_query import set_filter_text
+
+from .table_query import (
+    facets_fingerprint as facets_fingerprint,
+    fingerprint as fingerprint,
+    matches as matches,
+)
+
+from .ui.table_schema import (
+    definitions as definitions,
+    _order as _order,
+    _widths as _widths,
+    _hidden as _hidden,
+    _facets as _facets,
+    columns as columns,
+    ordered_definitions as ordered_definitions,
+    FIELDS as FIELDS,
+    REQUIRED as REQUIRED,
+)
 
 from .ui.catalog import SORTS
-from dataclasses import replace
 import copy
 import math
 import re
 
 from . import layout as L
-from .table_sort import (TABLE_KEYS, chain, clear_sort, cycle_sort, describe_sort, header_hits as header_hits,
-                         history_value as history_value, reset_sort, set_sort, sort_fingerprint, sort_rows as sort_rows,
-                         valid_header as valid_header, validate_chain)
+from .table_sort import (
+    TABLE_KEYS,
+    chain,
+    clear_sort,
+    cycle_sort,
+    describe_sort,
+    header_hits as header_hits,
+    history_value as history_value,
+    reset_sort,
+    set_sort,
+    sort_rows as sort_rows,
+    valid_header as valid_header,
+    validate_chain,
+)
 
 MAX_VIEWS = 32
 COLUMN_LAYOUT_VERSION = 2
-FIELDS = {"state", "partition", "tag", "name", "id", "user"}
-REQUIRED = {"id", "name", "st", "state"}
 
 
 def initialize(app):
-    app.table_state = {"hidden": {}, "order": {}, "widths": {}, "filters": {}, "facets": {}, "views": {}, "sorts": {}, "cursor": 0, "tab": "jobs", "groups": True, "auto_groups": True, "jobs_batch_sort": "min", "recents_mode": "grouped", "collapsed": [], "control_hits": []}
+    app.table_state = {
+        "hidden": {},
+        "order": {},
+        "widths": {},
+        "filters": {},
+        "facets": {},
+        "views": {},
+        "sorts": {},
+        "cursor": 0,
+        "tab": "jobs",
+        "groups": True,
+        "auto_groups": True,
+        "jobs_batch_sort": "min",
+        "recents_mode": "grouped",
+        "collapsed": [],
+        "control_hits": [],
+    }
 
 
 def restore(app, data):
@@ -27,7 +75,12 @@ def restore(app, data):
         return
     legacy_columns = data.get("column_layout_version") != COLUMN_LAYOUT_VERSION
     for tab in TABLE_KEYS:
-        for key, check in (("hidden", _hidden), ("facets", _facets), ("order", _order), ("widths", _widths)):
+        for key, check in (
+            ("hidden", _hidden),
+            ("facets", _facets),
+            ("order", _order),
+            ("widths", _widths),
+        ):
             values = data.get(key, {})
             if isinstance(values, dict) and tab in values:
                 try:
@@ -36,16 +89,24 @@ def restore(app, data):
                     pass
         if legacy_columns and tab == "jobs" and tab in app.table_state["order"]:
             order = app.table_state["order"][tab]
-            app.table_state["order"][tab] = ["progress"] + [key for key in order if key != "progress"]
+            app.table_state["order"][tab] = ["progress"] + [
+                key for key in order if key != "progress"
+            ]
         filters = data.get("filters", {})
-        if isinstance(filters, dict) and isinstance(filters.get(tab), str) and len(filters[tab]) <= 256:
+        if (
+            isinstance(filters, dict)
+            and isinstance(filters.get(tab), str)
+            and len(filters[tab]) <= 256
+        ):
             app.table_state["filters"][tab] = filters[tab]
     sorts = data.get("sorts", {})
     if isinstance(sorts, dict):
         for table in TABLE_KEYS:
             if table in sorts:
                 try:
-                    app.table_state["sorts"][table] = validate_chain(table, sorts[table])
+                    app.table_state["sorts"][table] = validate_chain(
+                        table, sorts[table]
+                    )
                 except ValueError:
                     pass
     views = data.get("views", {})
@@ -56,7 +117,9 @@ def restore(app, data):
             try:
                 view = _view(app, value)
                 if legacy_columns and view["tab"] == "jobs":
-                    view["order"] = ["progress"] + [key for key in view["order"] if key != "progress"]
+                    view["order"] = ["progress"] + [
+                        key for key in view["order"] if key != "progress"
+                    ]
                 app.table_state["views"][name] = view
             except ValueError:
                 continue
@@ -64,33 +127,60 @@ def restore(app, data):
         app.table_state["groups"] = data.get("groups") is True
     if isinstance(data.get("auto_groups"), bool):
         app.table_state["auto_groups"] = data["auto_groups"]
-    from .job_batch_sort import MODES
+    from raven.jobs.batch_sort import MODES
+
     if data.get("jobs_batch_sort") in MODES:
         app.table_state["jobs_batch_sort"] = data["jobs_batch_sort"]
     from .recents_ui import MODES as RECENT_MODES
+
     if data.get("recents_mode") in RECENT_MODES:
         app.table_state["recents_mode"] = data["recents_mode"]
-    from .job_list_controls import restore as restore_job_lists
+    from raven.jobs.list_controls import restore as restore_job_lists
+
     restore_job_lists(app.table_state, data)
-    from .job_groups import valid_group_id
-    app.table_state["collapsed"] = [value for value in data.get("collapsed", [])[:256] if valid_group_id(value)] if isinstance(data.get("collapsed"), list) else []
-    from .manual_job_groups import validate_state
+    from raven.jobs.group_domain import valid_group_id
+
+    app.table_state["collapsed"] = (
+        [value for value in data.get("collapsed", [])[:256] if valid_group_id(value)]
+        if isinstance(data.get("collapsed"), list)
+        else []
+    )
+    from raven.jobs.manual_groups import validate_state
+
     app.table_state["manual_groups"] = validate_state(data.get("manual_groups"))
 
 
 def save(app):
-    result = {key: copy.deepcopy(app.table_state[key]) for key in ("hidden", "order", "widths", "filters", "facets", "views", "sorts", "groups", "collapsed")}
+    result = {
+        key: copy.deepcopy(app.table_state[key])
+        for key in (
+            "hidden",
+            "order",
+            "widths",
+            "filters",
+            "facets",
+            "views",
+            "sorts",
+            "groups",
+            "collapsed",
+        )
+    }
     result["auto_groups"] = app.table_state.get("auto_groups", True) is True
-    from .job_batch_sort import mode
+    from raven.jobs.batch_sort import mode
+
     result["jobs_batch_sort"] = mode(app)
     from .recents_ui import mode as recent_mode
+
     result["recents_mode"] = recent_mode(app)
-    from .job_list_controls import restore as restore_job_lists
+    from raven.jobs.list_controls import restore as restore_job_lists
+
     restore_job_lists(result, app.table_state)
     from .column_resize import committed_widths
+
     committed_widths(app, result["widths"])
     result["column_layout_version"] = COLUMN_LAYOUT_VERSION
-    from .manual_job_groups import validate_state
+    from raven.jobs.manual_groups import validate_state
+
     result["manual_groups"] = validate_state(app.table_state.get("manual_groups"))
     return result
 
@@ -100,177 +190,68 @@ def command_names():
 
 
 def group_rows(app, rows, snap=None, tab="jobs", *, index=None):
-    from .job_groups import project_rows
+    from raven.jobs.group_domain import project_rows
+
     return project_rows(app, rows, snap, tab, index=index)
-
-
-def definitions(tab):
-    from .views import JOB_COLS, Views
-    if tab == "jobs":
-        return JOB_COLS
-    if tab in ("history", "recent"):
-        return Views.FIN_COLS
-    if tab == "group":
-        return Views.GROUP_COLS
-    labels = {"nodes": {"name": "NODE", "cpus": "ALLOC/CPUS", "loadpct": "LOAD%", "mem": "MEM USED", "gused": "GRES USED", "gutil": "GPU%", "jobs": "MY JOBS"},
-              "cluster": {"name": "PARTITION", "cidle": "CPUS IDLE", "calloc": "CPUS ALLOC", "mine": "MY RUN", "minep": "MY PEND", "gpus": "GPUS FREE/UP"},
-              "sources": {"name": "SOURCE", "every": "INTERVAL", "last": "LAST OK"}}
-    return [L.Column(key, labels.get(tab, {}).get(key, key.upper()), 4, 60)
-            for key in TABLE_KEYS.get(tab, ())]
-
-
-def _order(value, tab):
-    available = {column.key for column in definitions(tab)}
-    if (not isinstance(value, list) or len(value) > len(available) or
-            any(not isinstance(key, str) or key not in available for key in value) or len(value) != len(set(value))):
-        raise ValueError("invalid column order")
-    return list(value)
-
-
-def _widths(value, tab):
-    available = {column.key for column in definitions(tab)}
-    if (not isinstance(value, dict) or len(value) > len(available) or
-            any(key not in available or isinstance(width, bool) or not isinstance(width, int) or not 2 <= width <= 120
-                for key, width in value.items())):
-        raise ValueError("column widths must be between 2 and 120 terminal cells")
-    result = dict(value)
-    if tab == "jobs" and "progress" in result:
-        result["progress"] = 6
-    return result
-
-
-def _hidden(value, tab):
-    available = {column.key for column in definitions(tab)}
-    if (not isinstance(value, list) or len(value) > len(available) or
-            any(not isinstance(key, str) or key not in available or key in REQUIRED for key in value)):
-        raise ValueError("invalid hidden columns")
-    return sorted(set(value))
-
-
-def _facets(value, tab):
-    if (not isinstance(value, dict) or len(value) > len(FIELDS) or
-            any(key not in FIELDS or not isinstance(text, str) or len(text) > 256
-                for key, text in value.items())):
-        raise ValueError("invalid field filters")
-    return {key: text for key, text in value.items() if text}
 
 
 def _view(app, value):
     """Validate the complete restored view before changing any navigation."""
-    if not isinstance(value, dict) or not isinstance(value.get("tab"), str) or value["tab"] not in TABLE_KEYS:
+    if (
+        not isinstance(value, dict)
+        or not isinstance(value.get("tab"), str)
+        or value["tab"] not in TABLE_KEYS
+    ):
         raise ValueError("invalid table")
     tab = value["tab"]
     text, sort = value.get("filter", ""), value.get("sort", app.sort.get(tab, "name"))
-    reverse, days = value.get("reverse", False), value.get("days", app.analytics_days_value())
-    if (not isinstance(text, str) or len(text) > 256 or sort not in SORTS.get(tab, ["name"]) or
-            not isinstance(reverse, bool) or isinstance(days, bool) or
-            not isinstance(days, (int, float)) or not math.isfinite(days) or not 0 < days <= 3650):
+    reverse, days = (
+        value.get("reverse", False),
+        value.get("days", app.analytics_days_value()),
+    )
+    if (
+        not isinstance(text, str)
+        or len(text) > 256
+        or sort not in SORTS.get(tab, ["name"])
+        or not isinstance(reverse, bool)
+        or isinstance(days, bool)
+        or not isinstance(days, (int, float))
+        or not math.isfinite(days)
+        or not 0 < days <= 3650
+    ):
         raise ValueError("invalid table settings")
-    result = {"tab": tab, "hidden": _hidden(value.get("hidden", []), tab),
-              "order": _order(value.get("order", []), tab), "widths": _widths(value.get("widths", {}), tab),
-              "facets": _facets(value.get("facets", {}), tab), "filter": text,
-              "sort": sort, "reverse": reverse, "days": days}
+    result = {
+        "tab": tab,
+        "hidden": _hidden(value.get("hidden", []), tab),
+        "order": _order(value.get("order", []), tab),
+        "widths": _widths(value.get("widths", {}), tab),
+        "facets": _facets(value.get("facets", {}), tab),
+        "filter": text,
+        "sort": sort,
+        "reverse": reverse,
+        "days": days,
+    }
     if "sorts" in value:
         result["sorts"] = validate_chain(tab, value["sorts"])
     if "numeric" in value or "dates" in value:
-        from .table_tools import validate_numeric, validate_dates
         result["numeric"] = validate_numeric(value.get("numeric", []))
         result["dates"] = validate_dates(value.get("dates"))
     return result
 
 
-def columns(app, tab, original):
-    state = getattr(app, "table_state", {})
-    hidden = state.get("hidden", {}).get(tab, [])
-    hidden = hidden if isinstance(hidden, list) else []
-    order = state.get("order", {}).get(tab, [])
-    positions = {key: index for index, key in enumerate(order)} if isinstance(order, list) else {}
-    original = sorted(original, key=lambda column: positions.get(column.key, len(positions)))
-    widths = state.get("widths", {}).get(tab, {})
-    original = [replace(column, lo=6, hi=6, flex=False) if tab == "jobs" and column.key == "progress" else
-                replace(column, lo=widths[column.key], hi=widths[column.key], flex=False)
-                if isinstance(widths, dict) and isinstance(widths.get(column.key), int) and not isinstance(widths[column.key], bool) and 2 <= widths[column.key] <= 120
-                else column for column in original]
-    selected = chain(app, tab)
-    if selected is not None:
-        indicators = {key: f" {'^' if direction == 'asc' else 'v'}{index}"
-                      for index, (key, direction) in enumerate(selected, 1)}
-        # Keep compact progress at its requested width, including the full
-        # cascading priority. Other headings retain their normal sizing.
-        titles = {column.key: ((L.cut(column.title, max(0, column.hi - L.vlen(indicators[column.key])))
-                   if column.key == "progress" else column.title) + indicators[column.key])
-                  for column in original if column.key in indicators}
-        return [replace(column, title=titles[column.key],
-                        lo=column.lo if column.key in widths else max(column.lo, L.vlen(titles[column.key])),
-                        hi=column.hi if column.key in widths else max(column.hi, L.vlen(titles[column.key])))
-                if column.key in indicators else column for column in original
-                if column.key not in hidden or column.key in REQUIRED]
-    key = app.sort.get(tab, "")
-    mapping = {"state": "st" if tab == "jobs" else "state", "cpu_eff": "ce", "mem_eff": "me"}
-    sorted_key = mapping.get(key, key)
-    return [replace(column, title=column.title + (" v" if app.reverse.get(tab) else " ^"),
-                    lo=column.lo if column.key in widths else max(column.lo, L.vlen(column.title) + 2),
-                    hi=column.hi if column.key in widths else max(column.hi, L.vlen(column.title) + 2))
-            if column.key == sorted_key else column for column in original
-            if column.key not in hidden or column.key in REQUIRED]
-
-
-def facets_fingerprint(app, tab):
-    facets = getattr(app, "table_state", {}).get("facets", {}).get(tab, {})
-    return tuple(sorted(facets.items())) if isinstance(facets, dict) else ()
-
-
-def fingerprint(app, tab):
-    """Selection cache identity includes both filters and explicit sort state."""
-    from .table_tools import extra_fingerprint
-    from .job_list_controls import fingerprint as job_list_fingerprint
-    return (facets_fingerprint(app, tab), sort_fingerprint(app, tab), extra_fingerprint(app, tab),
-            getattr(app, "table_state", {}).get("auto_groups", True) is True,
-            job_list_fingerprint(app, tab) if tab in ("jobs", "recent", "history", "group") else None)
-
-
-def matches(app, tab, record, snap):
-    facets = getattr(app, "table_state", {}).get("facets", {}).get(tab, {})
-    rules = getattr(app, "table_tools_state", {}).get("numeric", {}).get(tab, ())
-    active_numeric = isinstance(rules, (list, tuple)) and bool(rules)
-    # Most table passes have no field filters. Read current settings directly
-    # so in-place changes take effect, without preparing unused record fields
-    # or sorting a fingerprint for every row in a large accounting window.
-    if isinstance(facets, dict) and facets:
-        get = record.get if isinstance(record, dict) else lambda key, default="": getattr(record, key, default)
-        for field, expected in facets.items():
-            if field == "tag":
-                value = " ".join(snap.get("tags", {}).get(get("id", ""), {}).get("tags", []))
-            elif field == "state":
-                value = "ACCOUNTING" if get("id", "") in snap.get("departed_jobs", {}) else get("state", "")
-            elif field == "user":
-                value = get("user", "") or "?"
-            else:
-                value = get(field, "") if field in FIELDS else ""
-            actual = str(value).casefold()
-            choices = [part.casefold() for part in str(expected).split(",")]
-            if field in ("state", "partition", "id", "user"):
-                if actual not in choices:
-                    return False
-            elif field == "tag":
-                if not any(choice in actual.split() for choice in choices):
-                    return False
-            elif not any(choice in actual for choice in choices):
-                return False
-    if active_numeric:
-        from .table_tools import numeric_matches
-        return numeric_matches(app, tab, record, snap)
-    return True
-
-
 def chips(app, tab, width, ascii_=False):
     facets = facets_fingerprint(app, tab)
     from .research_text import clean
-    from .table_tools import numeric_rules
+
     entries = [(key, f"[{key}={value} x]") for key, value in facets]
     rules = numeric_rules(app, tab)
-    entries += [(f"numeric:{index}", f"[{rule[0]}{rule[1]}{rule[3]} x]") for index, rule in enumerate(rules)]
-    app.table_chip_rule_ids = {f"numeric:{index}": tuple(rule) for index, rule in enumerate(rules)}
+    entries += [
+        (f"numeric:{index}", f"[{rule[0]}{rule[1]}{rule[3]} x]")
+        for index, rule in enumerate(rules)
+    ]
+    app.table_chip_rule_ids = {
+        f"numeric:{index}": tuple(rule) for index, rule in enumerate(rules)
+    }
     x, cells, segments = 9, [], [(" Filters ", "accent")]
     for key, label in entries:
         text = clean(label + "  ", ascii_)
@@ -290,23 +271,29 @@ def run_command(app, args):
     command, values = args[0], list(args[1:])
     if command == "jobgroup":
         if values == ["reset"]:
-            from .manual_job_groups import reset
+            from raven.jobs.manual_groups import reset
+
             result = reset(app)
             app.say(result.message)
             if result.changed:
                 app.job_selection_state["capture"] = None
-                app.interaction_state.update(active=False, focused=None, frame_required=True)
+                app.interaction_state.update(
+                    active=False, focused=None, frame_required=True
+                )
                 app.save()
             return True
         if values in (["create"], ["ungroup"]):
             from .manual_group_ui import run_action
+
             run_action(app, values[0], explicit=True)
             return True
         if len(values) != 2 or values[0] not in ("toggle", "open", "close"):
-            app.fail("Usage: jobgroup create|ungroup|reset, or jobgroup toggle|open|close GROUP_ID")
+            app.fail(
+                "Usage: jobgroup create|ungroup|reset, or jobgroup toggle|open|close GROUP_ID"
+            )
             return True
-        from .job_groups import fold, registry
-        from .table_tools import snapshot
+        from raven.jobs.group_domain import fold, registry
+
         groups = registry(app)
         groups.ensure(snapshot(app, app.store.snapshot()))
         gid = values[1]
@@ -317,22 +304,37 @@ def run_command(app, args):
             app.fail("That launch group is no longer present")
         else:
             group = groups.index.groups[gid]
-            app.say(group.label + (" closed" if groups.is_collapsed(group) else " open") + "; " + group.reason)
+            app.say(
+                group.label
+                + (" closed" if groups.is_collapsed(group) else " open")
+                + "; "
+                + group.reason
+            )
         return True
     if command == "sortby":
         # A column can share a table name (History's NODES; Nodes' MY JOBS).
         # Treat it as the current column when followed by a direction, or when
         # cycling it alone. An explicit table still precedes another column.
         current_keys = TABLE_KEYS.get(app.tab, ())
-        explicit_table = bool(values and values[0] in TABLE_KEYS and
-                              (values[0] not in current_keys or
-                               len(values) > 1 and values[1] not in ("asc", "desc", "off")))
+        explicit_table = bool(
+            values
+            and values[0] in TABLE_KEYS
+            and (
+                values[0] not in current_keys
+                or len(values) > 1
+                and values[1] not in ("asc", "desc", "off")
+            )
+        )
         table = values.pop(0) if explicit_table else app.tab
         if table not in TABLE_KEYS:
             app.fail("Choose a sortable table: " + ", ".join(TABLE_KEYS))
             return True
         if not values:
-            app.say(f"{table}: " + describe_sort(app, table) + "; sortby COLUMN asc|desc|off, or sortby clear")
+            app.say(
+                f"{table}: "
+                + describe_sort(app, table)
+                + "; sortby COLUMN asc|desc|off, or sortby clear"
+            )
             return True
         try:
             if values == ["clear"]:
@@ -342,7 +344,9 @@ def run_command(app, args):
             elif len(values) == 2:
                 set_sort(app, table, values[0], values[1])
             else:
-                raise ValueError("sortby [TABLE] COLUMN asc|desc|off, or sortby [TABLE] clear")
+                raise ValueError(
+                    "sortby [TABLE] COLUMN asc|desc|off, or sortby [TABLE] clear"
+                )
         except ValueError as exc:
             app.fail(str(exc) + "; columns: " + ", ".join(TABLE_KEYS[table]))
             return True
@@ -356,20 +360,30 @@ def run_command(app, args):
         if values not in ([], ["on"], ["off"]):
             app.fail("Usage: jobgroups [on|off]")
         else:
-            app.table_state["groups"] = not app.table_state["groups"] if not values else values == ["on"]
+            app.table_state["groups"] = (
+                not app.table_state["groups"] if not values else values == ["on"]
+            )
             # The legacy global command remains an explicit override; local
             # buttons can subsequently choose their own presentation again.
             app.table_state["job_list_modes"] = {}
             if values == ["on"]:
                 app.table_state["auto_groups"] = True
-            from .grouping_toolbar import _invalidate
             _invalidate(app)
-            app.say("Launch grouping " + ("on; Left/Right closes or opens the selected group" if app.table_state["groups"] else "off") +
-                    "; Recents uses its own Grouped/Sequential mode")
+            app.say(
+                "Launch grouping "
+                + (
+                    "on; Left/Right closes or opens the selected group"
+                    if app.table_state["groups"]
+                    else "off"
+                )
+                + "; Recents uses its own Grouped/Sequential mode"
+            )
         return True
     tab = values.pop(0) if values and values[0] in TABLE_KEYS else app.tab
     if tab not in TABLE_KEYS:
-        app.fail("Choose a table, or specify jobs, recent, history, group, nodes, cluster or sources")
+        app.fail(
+            "Choose a table, or specify jobs, recent, history, group, nodes, cluster or sources"
+        )
         return True
     state = app.table_state
     if command == "columns":
@@ -377,18 +391,28 @@ def run_command(app, args):
             # Embedded Recents deliberately shares Queue geometry. Do not
             # accept settings that would save successfully but never appear.
             from .column_resize import RECENT_ALIASES
+
             inverse = {value: key for key, value in RECENT_ALIASES.items()}
             available_jobs = {column.key for column in definitions("jobs")}
-            requested = ([values[1]] if len(values) == 3 and values[0] == "width" else
-                         [part for value in values[1:] for part in value.split(",")]
-                         if values and values[0] in ("order", "show", "hide") else [])
+            requested = (
+                [values[1]]
+                if len(values) == 3 and values[0] == "width"
+                else [part for value in values[1:] for part in value.split(",")]
+                if values and values[0] in ("order", "show", "hide")
+                else []
+            )
             translated = [inverse.get(key, key) for key in requested]
             if any(key not in available_jobs for key in translated):
-                app.fail("Recents shares Queue columns; configure History for completed-only columns")
+                app.fail(
+                    "Recents shares Queue columns; configure History for completed-only columns"
+                )
                 return True
             if requested:
-                values = (["width", translated[0], values[2]] if values[0] == "width" else
-                          [values[0], ",".join(translated)])
+                values = (
+                    ["width", translated[0], values[2]]
+                    if values[0] == "width"
+                    else [values[0], ",".join(translated)]
+                )
             tab = "jobs"
             if not values:
                 app.say("Recents shares the Queue column layout")
@@ -402,7 +426,9 @@ def run_command(app, args):
             app.say(f"{tab} columns reset")
         elif len(values) >= 2 and values[0] == "order":
             try:
-                state["order"][tab] = _order([part for value in values[1:] for part in value.split(",")], tab)
+                state["order"][tab] = _order(
+                    [part for value in values[1:] for part in value.split(",")], tab
+                )
                 app.say(f"{tab} column order updated")
             except ValueError as exc:
                 app.fail(str(exc))
@@ -414,8 +440,14 @@ def run_command(app, args):
                         raise ValueError("unknown column")
                     updated.pop(values[1], None)
                 else:
-                    if tab == "jobs" and values[1] == "progress" and int(values[2]) != 6:
-                        raise ValueError("Progress uses a fixed width of six terminal cells")
+                    if (
+                        tab == "jobs"
+                        and values[1] == "progress"
+                        and int(values[2]) != 6
+                    ):
+                        raise ValueError(
+                            "Progress uses a fixed width of six terminal cells"
+                        )
                     updated[values[1]] = int(values[2])
                 state["widths"][tab] = _widths(updated, tab)
                 app.say(f"{tab} column width updated")
@@ -423,15 +455,23 @@ def run_command(app, args):
                 app.fail(str(exc))
         elif len(values) >= 2 and values[0] in ("show", "hide"):
             requested = {part for value in values[1:] for part in value.split(",")}
-            if not requested <= available or (values[0] == "hide" and requested & REQUIRED):
-                app.fail("Unknown columns or required identity/state column; use :columns to browse")
+            if not requested <= available or (
+                values[0] == "hide" and requested & REQUIRED
+            ):
+                app.fail(
+                    "Unknown columns or required identity/state column; use :columns to browse"
+                )
             else:
                 hidden = set(state["hidden"].get(tab, []))
-                hidden = hidden | requested if values[0] == "hide" else hidden - requested
+                hidden = (
+                    hidden | requested if values[0] == "hide" else hidden - requested
+                )
                 state["hidden"][tab] = sorted(hidden)
                 app.say(f"{tab} columns updated")
         else:
-            app.fail("Usage: columns [TABLE] [show|hide KEYS|order KEYS|width KEY 2..120|width KEY auto|reset]")
+            app.fail(
+                "Usage: columns [TABLE] [show|hide KEYS|order KEYS|width KEY 2..120|width KEY auto|reset]"
+            )
     elif command == "facet":
         if values == ["clear"]:
             state["facets"][tab] = {}
@@ -440,7 +480,9 @@ def run_command(app, args):
             for value in values:
                 field, separator, content = value.partition("=")
                 if not separator or field not in FIELDS or len(content) > 256:
-                    app.fail("Filters use state=FAILED,TIMEOUT partition=gpu tag=TAG name=TEXT id=ID")
+                    app.fail(
+                        "Filters use state=FAILED,TIMEOUT partition=gpu tag=TAG name=TEXT id=ID"
+                    )
                     return True
                 if content:
                     parsed[field] = content
@@ -452,22 +494,37 @@ def run_command(app, args):
     else:
         action = values[0] if values else "list"
         if action == "list":
-            app.say("Saved views: " + (", ".join(sorted(state["views"])) or "none; savedview save NAME"))
+            app.say(
+                "Saved views: "
+                + (", ".join(sorted(state["views"])) or "none; savedview save NAME")
+            )
         elif len(values) == 2 and action in ("save", "load", "delete"):
             name = values[1]
             if not re.fullmatch(r"[\w .-]{1,64}", name):
-                app.fail("View names must be 1–64 letters, numbers, spaces, dots or hyphens")
+                app.fail(
+                    "View names must be 1–64 letters, numbers, spaces, dots or hyphens"
+                )
             elif action == "save":
                 if name not in state["views"] and len(state["views"]) >= MAX_VIEWS:
                     app.fail("At most 32 saved views; delete an unused view first")
                 else:
-                    from .table_tools import filter_text, numeric_rules
-                    view = {"tab": tab, "hidden": list(state["hidden"].get(tab, [])),
-                        "order": list(state["order"].get(tab, [])), "widths": dict(state["widths"].get(tab, {})),
-                        "facets": dict(state["facets"].get(tab, {})), "filter": filter_text(app, tab),
-                        "numeric": list(numeric_rules(app, tab)), "dates": copy.deepcopy(getattr(app, "table_tools_state", {}).get("dates")) if tab == "history" else None,
-                        "sort": app.sort.get(tab, "name"), "reverse": bool(app.reverse.get(tab)),
-                        "days": app.analytics_days_value()}
+                    view = {
+                        "tab": tab,
+                        "hidden": list(state["hidden"].get(tab, [])),
+                        "order": list(state["order"].get(tab, [])),
+                        "widths": dict(state["widths"].get(tab, {})),
+                        "facets": dict(state["facets"].get(tab, {})),
+                        "filter": filter_text(app, tab),
+                        "numeric": list(numeric_rules(app, tab)),
+                        "dates": copy.deepcopy(
+                            getattr(app, "table_tools_state", {}).get("dates")
+                        )
+                        if tab == "history"
+                        else None,
+                        "sort": app.sort.get(tab, "name"),
+                        "reverse": bool(app.reverse.get(tab)),
+                        "days": app.analytics_days_value(),
+                    }
                     selected = chain(app, tab)
                     if selected is not None:
                         view["sorts"] = selected
@@ -482,7 +539,9 @@ def run_command(app, args):
                 try:
                     view = _view(app, state["views"][name])
                 except ValueError as exc:
-                    app.fail(f"Saved view {name} is damaged: {exc}; delete it and save a new view")
+                    app.fail(
+                        f"Saved view {name} is damaged: {exc}; delete it and save a new view"
+                    )
                     return True
                 target = view["tab"]
                 app.enter_tab("jobs" if target == "recent" else target)
@@ -490,7 +549,6 @@ def run_command(app, args):
                 state["order"][target] = view["order"]
                 state["widths"][target] = view["widths"]
                 state["facets"][target] = view["facets"]
-                from .table_tools import set_filter_text
                 set_filter_text(app, target, view["filter"])
                 app.sort[target] = view["sort"]
                 if "numeric" in view and hasattr(app, "table_tools_state"):
@@ -514,14 +572,21 @@ def run_command(app, args):
 
 
 def handle_key(app, key):
-    if app.mode == "main" and app.tab in ("jobs", "history", "group", "deps") and key in ("left", "right"):
-        from .job_list_controls import mode as list_mode
-        in_recent = app.tab == "jobs" and app.selected_id in getattr(app, "recent_ids", ())
+    if (
+        app.mode == "main"
+        and app.tab in ("jobs", "history", "group", "deps")
+        and key in ("left", "right")
+    ):
+        from raven.jobs.list_controls import mode as list_mode
+
+        in_recent = app.tab == "jobs" and app.selected_id in getattr(
+            app, "recent_ids", ()
+        )
         visible = list_mode(app, "recent" if in_recent else app.tab) == "grouped"
         if not visible:
             return False
-        from .job_groups import fold, registry
-        from .table_tools import snapshot
+        from raven.jobs.group_domain import fold, registry
+
         groups = registry(app)
         groups.ensure(snapshot(app, app.store.snapshot()))
         group = groups.index.for_job(app.selected_id)
@@ -558,7 +623,14 @@ def handle_key(app, key):
         if key == "a":
             widths.pop(column.key, None)
         else:
-            widths[column.key] = max(2, min(120, widths.get(column.key, max(column.lo, L.vlen(column.title))) + (-1 if key == "-" else 1)))
+            widths[column.key] = max(
+                2,
+                min(
+                    120,
+                    widths.get(column.key, max(column.lo, L.vlen(column.title)))
+                    + (-1 if key == "-" else 1),
+                ),
+            )
     elif key == "r":
         for field, value in (("order", []), ("widths", {}), ("hidden", [])):
             state[field][state["tab"]] = value
@@ -568,13 +640,6 @@ def handle_key(app, key):
         if callable(callback):
             callback()
     return True
-
-
-def ordered_definitions(app, tab):
-    cols = definitions(tab)
-    order = getattr(app, "table_state", {}).get("order", {}).get(tab, [])
-    positions = {key: index for index, key in enumerate(order)}
-    return sorted(cols, key=lambda column: positions.get(column.key, len(positions)))
 
 
 def handle_mouse(app, y, x, button="left", shift=False):
@@ -589,7 +654,9 @@ def handle_mouse(app, y, x, button="left", shift=False):
         if table != state["tab"]:
             return False
         cols = ordered_definitions(app, table)
-        index = next((index for index, item in enumerate(cols) if item.key == column), None)
+        index = next(
+            (index for index, item in enumerate(cols) if item.key == column), None
+        )
         if index is None:
             return False
         state["cursor"] = index
@@ -614,21 +681,28 @@ def overlay(views, snap, app, width, height):
     available = max(0, height - 6)
     start = max(0, min(max(0, len(cols) - available), cursor - available // 2))
     from . import modal_scrollbars as B
+
     context = ("columns", state["tab"])
-    logical, start = B.window(app, "modal:columns", start, len(cols), available,
-                              context=context, focus=cursor)
-    rows = [[(" Space show/hide | Up/Down select | Left/Right reorder", "dim")],
-            [(" +/- width | a automatic width | r reset | Enter done", "dim")]]
-    for index, column in enumerate(cols[start:start + available], start):
+    logical, start = B.window(
+        app, "modal:columns", start, len(cols), available, context=context, focus=cursor
+    )
+    rows = [
+        [(" Space show/hide | Up/Down select | Left/Right reorder", "dim")],
+        [(" +/- width | a automatic width | r reset | Enter done", "dim")],
+    ]
+    for index, column in enumerate(cols[start : start + available], start):
         required = " (required)" if column.key in REQUIRED else ""
-        width_text = ("6 (fixed)" if state["tab"] == "jobs" and column.key == "progress"
-                      else str(state["widths"].get(state["tab"], {}).get(column.key, "auto")))
+        width_text = (
+            "6 (fixed)"
+            if state["tab"] == "jobs" and column.key == "progress"
+            else str(state["widths"].get(state["tab"], {}).get(column.key, "auto"))
+        )
         text = f" [{' ' if column.key in hidden else 'x'}] {column.title:16} {column.key} width {width_text}{required}"
         rows.append([(text, "sel" if index == cursor else "")])
     rendered = L.box(views.g, rows, width, height, state["tab"].title() + " columns")
     # The box may clip rows or terminal cells. Derive controls only from its
     # actual interior placements, never guessed modal offsets or labels.
-    for index, column in enumerate(cols[start:start + available]):
+    for index, column in enumerate(cols[start : start + available]):
         line_index = index + 2
         if line_index >= max(0, len(rendered) - 2):
             break
@@ -639,10 +713,32 @@ def overlay(views, snap, app, width, height):
             continue
         left, right = x + 1, x + 1 + visible_width
         required = column.key in REQUIRED
-        state["control_hits"].append((y, "control", {
-            "id": f"column:{state['tab']}:{column.key}", "label": column.title + " checkbox",
-            "left": left, "right": right, "action": ("click", y, left), "group": "columns",
-            "column": (state["tab"], column.key), "enabled": not required,
-            "reason": "Required identity/state column" if required else ""}))
-    return B.boxed(app, "modal:columns", rendered, start=2, count=len(cols), page=available,
-                   target=logical, painted=start, setter=lambda value: None, context=context)
+        state["control_hits"].append(
+            (
+                y,
+                "control",
+                {
+                    "id": f"column:{state['tab']}:{column.key}",
+                    "label": column.title + " checkbox",
+                    "left": left,
+                    "right": right,
+                    "action": ("click", y, left),
+                    "group": "columns",
+                    "column": (state["tab"], column.key),
+                    "enabled": not required,
+                    "reason": "Required identity/state column" if required else "",
+                },
+            )
+        )
+    return B.boxed(
+        app,
+        "modal:columns",
+        rendered,
+        start=2,
+        count=len(cols),
+        page=available,
+        target=logical,
+        painted=start,
+        setter=lambda value: None,
+        context=context,
+    )

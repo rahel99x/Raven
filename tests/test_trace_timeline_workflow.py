@@ -93,7 +93,8 @@ def test_live_pause_follow_and_completion_preserve_selected_verified_interval(da
     queued = []
     hub = SimpleNamespace(lock=Lock(), closed=False, pending=None, future=None,
         start_task=lambda work, done: queued.append((work, done)) or True, cancel_task=lambda callback: None)
-    monkeypatch.setattr(job_panels, "_worker", lambda *args: hub)
+    from raven import background_tasks
+    monkeypatch.setattr(background_tasks, "research_hub", lambda *args, **kwargs: hub)
 
     def refresh():
         state = trace_ui.initialize(app)

@@ -1,6 +1,6 @@
 """Bounded planning worker input construction without worker dispatch."""
 
-from .execution_policy import AdmissionError, MAX_INPUT, _json
+from .execution.policy import AdmissionError, MAX_INPUT, _json
 from .planning_records import record
 
 

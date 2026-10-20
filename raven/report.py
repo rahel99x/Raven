@@ -22,7 +22,7 @@ from . import clock, layout
 from .ui.keys import KEY_LABELS_ASCII
 from .ui.catalog import ANALYTICS_VIEWS, TABS
 from .ui.catalog import RESEARCH_VIEWS
-from .series_archive import SeriesArchive
+from raven.recordings.archive import SeriesArchive
 
 
 _TRANSLATE = str.maketrans({"\u00b7": ".", "\u2026": "...", "\u2192": "->", "\u2190": "<-", "\u2013": "-", "\u2014": "--", "\u00d7": "x"})

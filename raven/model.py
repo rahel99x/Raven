@@ -15,10 +15,10 @@ from functools import lru_cache
 from typing import Deque, Dict, List, Optional, Sequence
 
 from . import clock
-from .series_archive import SeriesArchive
+from raven.recordings.archive import SeriesArchive
 from .history_snapshots import HistoryDeque, immutable_histories
-from .series_publication import SeriesDeque
-from .series_cache_limits import MAX_SERIES_CACHE_ENTRIES, MAX_SERIES_CACHE_BYTES
+from raven.recordings.publication import SeriesDeque
+from raven.recordings.cache_limits import MAX_SERIES_CACHE_ENTRIES, MAX_SERIES_CACHE_BYTES
 from . import ui_state
 
 
@@ -521,7 +521,7 @@ class Store:
         self.series: Dict[str, Deque[dict]] = collections.defaultdict(lambda: SeriesDeque(maxlen=series_keep, lock=self.lock))
         self.series_keep = series_keep
         self._series_scope = object()
-        from .series_identity import default_scope, fingerprint
+        from raven.recordings.identity import default_scope, fingerprint
         self._recording_scope = fingerprint(source_scope if source_scope is not None else default_scope(state_dir))
         self._recording_session = uuid.uuid4().hex
         self._recording_identities = {}
@@ -825,7 +825,7 @@ class Store:
     def _load_events(self):
         path = os.path.join(self.state_dir, "events.jsonl")
         if self.raven_limits:
-            from .series_archive import read_tail
+            from raven.recordings.archive import read_tail
             events,status=read_tail(path,self.events.maxlen,max_bytes=2<<20,max_line=64<<10)
             self.events.extend(dict(event,old=True) for event in events)
             if status.get('status')=='limited': self.raven_limits.coverage['events']=status
@@ -1087,7 +1087,7 @@ class Store:
     # ---- per-job time series -----------------------------------------------------------------------
     def capture_series_identity(self, jid, *, record=None):
         """Capture before acquisition; the immutable token follows delayed writes."""
-        from .series_identity import SeriesIdentity, fingerprint, scheduler_attempt
+        from raven.recordings.identity import SeriesIdentity, fingerprint, scheduler_attempt
         with self.lock:
             if record is None:
                 record, details = self.record_context(jid)
@@ -1166,7 +1166,7 @@ class Store:
         for viewing, but cannot authorize new verified appends after another
         queue publication; deferred samples have an explicit session-only file.
         """
-        from .series_identity import SeriesIdentity, fingerprint
+        from raven.recordings.identity import SeriesIdentity, fingerprint
         with self.lock:
             identity = identity or self.capture_series_identity(jid)
             if not identity.verified:
@@ -1190,7 +1190,7 @@ class Store:
         The caller must have verified the manifest against its scheduler job.
         Required identity fields prevent accidental job-number-only binding.
         """
-        from .series_identity import fingerprint
+        from raven.recordings.identity import fingerprint
         required = ("run_root", "run_id", "attempt", "job_id", "submission_token", "cluster")
         if (not isinstance(binding, dict) or any(not isinstance(binding.get(key), str) or not binding[key] for key in required)
                 or binding["job_id"] != jid):
@@ -1217,7 +1217,7 @@ class Store:
     def legacy_series(self, jid):
         """Explicit recovery read, never merged or attributed to a current run."""
         safe = "".join(c if c.isalnum() or c in "_-" else "_" for c in jid)
-        from .series_archive import read_tail
+        from raven.recordings.archive import read_tail
         if not self.persist:
             return [], {"status": "missing", "message": "Persistence is disabled."}
         values, status = read_tail(os.path.join(self.state_dir, "series", safe + ".jsonl"), self.series_keep,
@@ -1282,10 +1282,10 @@ class Store:
                 for path, samples in paths.items():
                     try:
                         if path != self._events_path:
-                            from .series_storage import append as append_recordings
+                            from raven.recordings.storage import append as append_recordings
                             if append_recordings(path, samples, cache=self._series_format_cache):
                                 continue
-                        from .series_storage import append_jsonl
+                        from raven.recordings.storage import append_jsonl
                         append_jsonl(path, samples)
                     except (OSError, ValueError) as exc:
                         self._state_health("state recordings", str(exc))
@@ -1293,7 +1293,7 @@ class Store:
     def _drain_series_rekeys(self):
         if not self._series_rekeys:
             return
-        from .series_storage import rekey
+        from raven.recordings.storage import rekey
         with self._persist_io_lock:
             while self._series_rekeys:
                 with self._persist_queue_lock:
@@ -1333,7 +1333,7 @@ class Store:
                     monitor = self.anomalies = Monitor()
                 monitor.observe(write_identity, sample)
             if self.raven_limits:
-                from .raven_limits import retained_size
+                from raven.collection.retention import retained_size
                 self.raven_limits.retain_series(self,jid,retained_size(sample,self.raven_limits.values['series_bytes']))
             self._queue_persistence(self._series_identity_path(write_identity), captured if captured is not None else sample)
         if _persist:
@@ -1354,7 +1354,7 @@ class Store:
 
     def series_publication(self, jid: str, *, background=True, memory_only=False):
         """Reuse an owned source revision across chart and advisor consumers."""
-        from .series_publication import PublishedSeries
+        from raven.recordings.publication import PublishedSeries
         if memory_only:
             with self.lock:
                 source = self.series.get(jid, ())

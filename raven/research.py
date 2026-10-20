@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .log_paths import stdout_path
+from .job_logs.paths import stdout_path
 from collections import OrderedDict
 import math
 import os
@@ -40,7 +40,7 @@ class ResearchHub:
         slurm=None,
         worker_scheduler=None,
     ):
-        from .execution_policy import router_for
+        from .execution.policy import router_for
 
         self.execution = router_for(cfg)
         self.files = files or LocalFiles()
@@ -257,7 +257,7 @@ class ResearchHub:
 
     def start_task(self, fn, completion):
         """Explicit UI commands share the single worker, without an unbounded queue."""
-        from .execution_policy import background_allowed, bounded_background
+        from .execution.policy import background_allowed, bounded_background
 
         if not background_allowed(self.execution, fn):
             return False
@@ -394,7 +394,7 @@ class ResearchHub:
                     return entry[1]
                 if self.future is None or self.future.done():
                     try:
-                        from .execution_policy import bounded_background
+                        from .execution.policy import bounded_background
 
                         self.future = self.pool.submit(
                             bounded_background(
@@ -567,7 +567,7 @@ class ResearchHub:
                     isinstance(plan, dict)
                     and plan.get("schema") == "raven.launch-report/v1"
                 ):
-                    from .launch_results import validate
+                    from .launching.results import validate
 
                     report = validate(plan, context["binding"])
                     return {
@@ -648,7 +648,7 @@ class ResearchHub:
         and job-scoped directory logs; reads are bounded across all sources.
         """
         from .investigate import MAX_LOG_BYTES, MAX_LOG_SOURCES, MAX_TOTAL_LOG_BYTES
-        from .log_catalog import build_catalog
+        from .job_logs.catalog import build_catalog
 
         job, settings = context["job"], context["settings"]
         binding = context.get("binding") or {}

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 def prepare_drop(app, source, target, placement="before"):
     """source/target are TargetEvidence from the painted grouping frame."""
-    from . import job_groups, manual_job_groups as M, operations as O, ops_ui, ops_queue_order
+    from . import operations as O
+    from .ui import operations as ops_ui
+    from . import ops_queue_order
+    from raven.jobs import group_domain as job_groups
+    from raven.jobs import manual_groups as M
     from .table_tools import snapshot
     try:
         if (not isinstance(source, M.TargetEvidence) or not isinstance(target, M.TargetEvidence)

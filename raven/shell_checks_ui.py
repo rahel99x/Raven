@@ -186,7 +186,7 @@ def _document(state, width, ascii_):
     token = (id(state["result"]), state["error"], state["running"], width, ascii_)
     if state["document"] and state["document"][0] == token:
         return state["document"][1]
-    from .execution_ui import _wrap
+    from .ui.script_text import _wrap
     result = state["result"] or {}
     texts = [("Local file: " + clean(state["path"]), "accent"),
              ("Scope: this script only; dependencies and runtime behavior are not validated.", "muted")]

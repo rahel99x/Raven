@@ -321,8 +321,10 @@ def bound_app(dashboard):
     return app
 
 
-def test_jobs_progress_reads_on_existing_worker_without_opening_research(dashboard, monkeypatch):
+@pytest.mark.parametrize("managed", [False, True])
+def test_jobs_progress_reads_on_existing_worker_without_opening_research(dashboard, monkeypatch, managed):
     app = bound_app(dashboard)
+    dashboard.hub.execution.policy = {"managed": managed}
     entered, release = Event(), Event()
     contexts = []
     def background(context):

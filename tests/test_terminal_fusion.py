@@ -282,7 +282,7 @@ def test_duplicate_start_marks_incomplete_without_fabricating_end():
 
 
 def app_for_ui(monkeypatch):
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     app=SimpleNamespace(tab='jobs',mode='main',reports=[],errors=[])
     app.fail=app.errors.append
     monkeypatch.setattr(terminal_ui,'show_report',lambda app,lines,title='':app.reports.append((title,list(lines))))
@@ -367,7 +367,7 @@ def test_unregister_revokes_capability_without_forgetting_evidence(monkeypatch):
 
 def test_background_file_export_does_not_write_or_retarget_before_completion(tmp_path,monkeypatch):
     app,state=app_for_ui(monkeypatch)
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     pending=[]
     app.interactive=True
     app.say=lambda *_:None
@@ -432,7 +432,7 @@ def test_absolute_helper_commands_quote_local_source_paths(monkeypatch,tmp_path)
 
 def test_hook_preparation_uses_absolute_helper_and_rejects_remote(monkeypatch):
     app,state=app_for_ui(monkeypatch)
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     terminal=terminal_ui.initialize(app)
     terminal.active='s'
     snapshot={'kind':'local','metadata':{'host':socket.gethostname(),'shell':'/bin/bash'}}
@@ -441,7 +441,11 @@ def test_hook_preparation_uses_absolute_helper_and_rejects_remote(monkeypatch):
     monkeypatch.setattr(terminal_ui,'prepare_input',lambda app,text,**kwargs:prepared.append(text))
     assert F.run_command(app,['terminal','hook','bash'])
     assert len(prepared)==1 and 'source <(' in prepared[0]
-    assert 'raven terminal' not in prepared[0] and 'terminal_bridge.py' in prepared[0]
+    assert 'raven terminal' not in prepared[0]
+    import shlex
+    helper = shlex.split(prepared[0][len('source <('):-1])
+    assert helper[1] == str(Path(B.__file__).resolve())
+    assert helper[2:] == ['hook', '--shell', 'bash']
     snapshot.update(kind='ssh',metadata={'host':'other-host'})
     assert F.run_command(app,['terminal','hook','bash'])
     assert len(prepared)==1 and 'explicit local' in app.errors[-1]
@@ -495,7 +499,7 @@ def test_real_bash_hooks_work_without_raven_on_path_and_with_quoted_source(tmp_p
 @pytest.mark.parametrize('actual,requested',[('/bin/sh','bash'),('/bin/bash','zsh'),('/bin/zsh','fish'),('/usr/bin/python','bash'),('','bash')])
 def test_hook_preparation_refuses_unknown_or_mismatched_shell(monkeypatch,actual,requested):
     app,_=app_for_ui(monkeypatch)
-    from raven import terminal_ui
+    from raven.terminal import sessions as terminal_ui
     terminal=terminal_ui.initialize(app);terminal.active='s'
     snapshot={'kind':'local','metadata':{'host':socket.gethostname(),'shell':actual}}
     terminal.service=SimpleNamespace(snapshot=lambda _:snapshot)

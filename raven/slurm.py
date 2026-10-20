@@ -1163,7 +1163,7 @@ class Slurm:
             return known[1]
 
     def _json_unavailable(self, command, source, reason):
-        from .log_text import display_text
+        from .job_logs.text import display_text
         reason = display_text(str(reason))[:1024]
         with self._capability_lock:
             self._json_capabilities[command] = (time.monotonic(), False, reason)

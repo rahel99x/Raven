@@ -6,6 +6,14 @@ State is transient, bounded, and scoped to an exact job/source/attempt.
 """
 
 from __future__ import annotations
+from .ui.chart_state import _key
+from .ui.geometry import Plot, put_plots as put_records
+from .ui.chart_state import _blocked as blocked
+from .ui.interaction_state import _current as current_graph
+from .ui.interaction_state import initialize as interaction_state
+from .ui.chart_state import clear_source_zoom
+from .ui.control_feedback import decorate
+from .ui.chart_state import cancel as cancel_chart
 
 import math
 import time
@@ -68,7 +76,6 @@ def initialize(app):
 
 def canonical(identity):
     """A companion filled area shares its source curve's live display window."""
-    from .chart_interaction import _key
 
     identity = _key(identity)
     if identity is None:
@@ -115,7 +122,7 @@ def delta_at(value):
 
 
 def format_delta(value):
-    return f"{value:.3g}s" if value >= 1 else f"{value*1000:.3g}ms"
+    return f"{value:.3g}s" if value >= 1 else f"{value * 1000:.3g}ms"
 
 
 def rate_fraction(value):
@@ -145,7 +152,9 @@ def _sync_sampling(app):
 
     state["sampling_syncing"] = True
     try:
-        sync(app, state=initialize(getattr(app, "_chart_owner", app)), eligible=_eligible)
+        sync(
+            app, state=initialize(getattr(app, "_chart_owner", app)), eligible=_eligible
+        )
     finally:
         state["sampling_syncing"] = False
 
@@ -225,9 +234,10 @@ def _entry(app, identity, *, running=None):
         if state["current"].get(_family(stale)) == stale:
             state["current"].pop(_family(stale), None)
     if running is not None:
-        changed_sampling |= entry["running"] != (running is True) and entry.get(
-            "rate", MIN_RATE
-        ) != MIN_RATE
+        changed_sampling |= (
+            entry["running"] != (running is True)
+            and entry.get("rate", MIN_RATE) != MIN_RATE
+        )
         if running is True:
             # A fresh source publication can establish a replacement attempt.
             # Retained old commands only run through _eligible and are rejected.
@@ -347,13 +357,15 @@ def _playback_key(identity):
         return identity
     scope, jid, metric, source, attempt = identity[:5]
     if scope == "reported-metric" and source == "Raven session resource samples":
-        metric = {"CPU per core (%)": "cpu-rate", "Memory (GB)": "resident-memory"}.get(metric)
+        metric = {"CPU per core (%)": "cpu-rate", "Memory (GB)": "resident-memory"}.get(
+            metric
+        )
         if metric is None:
             return identity
         scope = "resource-series"
     if scope == "resource-series":
         if isinstance(attempt, str) and attempt.startswith("scheduler:"):
-            attempt = attempt[len("scheduler:"):]
+            attempt = attempt[len("scheduler:") :]
         return ("native-playback", jid, metric, attempt)
     return identity
 
@@ -366,8 +378,16 @@ def buffered(app, identity):
     return bool(initialize(app)["entries"][identity].get("buffered"))
 
 
-def display_end(app, identity, now=None, *, newest=None, previous=None,
-                oldest=None, poll_interval=None):
+def display_end(
+    app,
+    identity,
+    now=None,
+    *,
+    newest=None,
+    previous=None,
+    oldest=None,
+    poll_interval=None,
+):
     """Advance the buffered source clock from received timestamps.
 
     Full-history renderers may pace the published endpoint separately. No sampler demand,
@@ -380,16 +400,28 @@ def display_end(app, identity, now=None, *, newest=None, previous=None,
     entry = initialize(app)["entries"][identity]
     entry["buffered"] = True
     from . import metric_playback
+
     if poll_interval is None:
         from .metric_sampling_runtime import cadence
+
         poll_interval = cadence(app, identity)
     owner = getattr(app, "_chart_owner", app)
     replay = getattr(getattr(owner, "replay", None), "clock", None)
-    generation = (entry.get("generation"), id(replay), getattr(replay, "generation", None))
+    generation = (
+        entry.get("generation"),
+        id(replay),
+        getattr(replay, "generation", None),
+    )
     result = metric_playback.advance(
-        app, _playback_key(identity), now=clock.now() if now is None else now,
-        newest=newest, previous=previous, oldest=oldest, poll_interval=poll_interval,
-        generation=generation)
+        app,
+        _playback_key(identity),
+        now=clock.now() if now is None else now,
+        newest=newest,
+        previous=previous,
+        oldest=oldest,
+        poll_interval=poll_interval,
+        generation=generation,
+    )
     entry["playback"] = result
     return result.end if result is not None else None
 
@@ -409,6 +441,7 @@ def playback_label(app, identity, *, ascii_=False, displayed_end=None):
     if result is None:
         return "buffering"
     from .cadence import format_interval
+
     label = {"buffering": "buffering", "held": "held"}.get(result.status, "buffered")
     lag = result.lag
     if _finite(displayed_end):
@@ -436,15 +469,30 @@ def display_resolution(app, identity, span, width, *, following=True):
         entry["display_interval"] = DOCUMENT_INTERVAL
 
 
-def window(app, identity, now=None, *, newest=_UNSET_OBSERVATION,
-           previous=None, oldest=None, poll_interval=None):
+def window(
+    app,
+    identity,
+    now=None,
+    *,
+    newest=_UNSET_OBSERVATION,
+    previous=None,
+    oldest=None,
+    poll_interval=None,
+):
     """Read the displayed Live window; observations opt into clock advancement."""
     identity = canonical(identity)
     if identity is None or not _eligible(app, identity):
         return None
     if newest is not _UNSET_OBSERVATION:
-        display_end(app, identity, now, newest=newest, previous=previous,
-                    oldest=oldest, poll_interval=poll_interval)
+        display_end(
+            app,
+            identity,
+            now,
+            newest=newest,
+            previous=previous,
+            oldest=oldest,
+            poll_interval=poll_interval,
+        )
     entry = initialize(app)["entries"][identity]
     if not entry["enabled"]:
         return None
@@ -481,8 +529,6 @@ def set_enabled(app, identity, value):
     state = initialize(app)
     entry = state["entries"][identity]
     if value:
-        from .chart_interaction import clear_source_zoom
-
         clear_source_zoom(app, identity, canonical)
     if entry["enabled"] != value:
         entry["enabled"] = value
@@ -547,13 +593,15 @@ def _row(g, entry, width, *, app=None, identity=None, poll_interval=_UNSET_INTER
         poll_interval = cadence(app, identity) if app is not None else None
     current_interval = (
         format_interval(poll_interval, ascii_=g.ascii)
-        if poll_interval is not None else "?"
+        if poll_interval is not None
+        else "?"
     )
     # A faster global or companion-metric request can keep the effective poll
     # interval unchanged. Report this control's setting separately so its
     # value never appears frozen while the thumb moves. Neither value claims
     # the external producer publishes new observations at this cadence.
     from .cadence import poll_interval as requested_interval
+
     requested = format_interval(
         requested_interval(entry.get("rate", MIN_RATE), MAX_RATE), ascii_=g.ascii
     )
@@ -573,22 +621,28 @@ def _row(g, entry, width, *, app=None, identity=None, poll_interval=_UNSET_INTER
         delta_prefix = "Delta " + L.pad(format_delta(entry["delta"]), 6) + " 30s "
         delta_suffix = " 1s"
         rate_prefix = (
-            "Poll " + L.pad(current_interval, 6) + " Set "
-            + L.pad(requested, 6) + " "
+            "Poll " + L.pad(current_interval, 6) + " Set " + L.pad(requested, 6) + " "
         )
         rate_suffix = " " + L.pad(fast_interval, 6)
         separator = " | " if g.ascii else " │ "
     fixed = sum(
         L.vlen(part)
         for part in (
-            toggle, " ", delta_prefix, delta_suffix, separator,
-            rate_prefix, rate_suffix,
+            toggle,
+            " ",
+            delta_prefix,
+            delta_suffix,
+            separator,
+            rate_prefix,
+            rate_suffix,
         )
     )
     available = max(4, width - fixed)
     delta_count, rate_count = available // 2, available - available // 2
     delta_left = L.vlen(toggle + " " + delta_prefix)
-    rate_left = delta_left + delta_count + L.vlen(delta_suffix + separator + rate_prefix)
+    rate_left = (
+        delta_left + delta_count + L.vlen(delta_suffix + separator + rate_prefix)
+    )
     track, thumb = ("-", "o") if g.ascii else ("─", "◆")
 
     def slider(count, value):
@@ -604,15 +658,22 @@ def _row(g, entry, width, *, app=None, identity=None, poll_interval=_UNSET_INTER
         (" " + delta_prefix, "text-secondary"),
     ]
     row.extend(slider(delta_count, fraction(entry["delta"])))
-    row.extend([
-        (delta_suffix, "dim"), (separator, "border"),
-        (rate_prefix, "text-secondary"),
-    ])
+    row.extend(
+        [
+            (delta_suffix, "dim"),
+            (separator, "border"),
+            (rate_prefix, "text-secondary"),
+        ]
+    )
     row.extend(slider(rate_count, rate_fraction(entry.get("rate", MIN_RATE))))
     row.append((rate_suffix, "text-secondary" if width < 68 else "dim"))
     return L.clip_row(row, width), (
-        0, L.vlen(toggle), delta_left, delta_left + delta_count,
-        rate_left, rate_left + rate_count,
+        0,
+        L.vlen(toggle),
+        delta_left,
+        delta_left + delta_count,
+        rate_left,
+        rate_left + rate_count,
     )
 
 
@@ -634,7 +695,6 @@ def controls(g, app, identity, width, *, running=True, row=0, column=0, layer=0)
     ):
         return [], []
     rendered, spans = _row(g, entry, width, app=app, identity=identity)
-    from .chart_interaction import Plot, put_records
 
     rect = Rect(row, column, row + 1, column + width)
     payload = (*spans, entry["token"])
@@ -696,13 +756,12 @@ def controls(g, app, identity, width, *, running=True, row=0, column=0, layer=0)
 
 
 def _context(app):
-    from .chart_interaction import _context as context
+    from .ui.chart_state import _context as context
 
     return context(app)
 
 
 def _blocked(app):
-    from .chart_interaction import _blocked as blocked
 
     return blocked(app)
 
@@ -952,9 +1011,14 @@ def tick(app, now=None, *, identities=None):
     # Maintenance validates all retained collection requests. Cosmetic feedback
     # needs only its visible controls; visiting offscreen requests for every
     # mouse report repeatedly acquires Store locks with no visible benefit.
-    entries = (state["entries"].items() if identities is None else
-               ((identity, state["entries"].get(identity))
-                for identity in dict.fromkeys(identities)))
+    entries = (
+        state["entries"].items()
+        if identities is None
+        else (
+            (identity, state["entries"].get(identity))
+            for identity in dict.fromkeys(identities)
+        )
+    )
     for identity, entry in entries:
         if not entry:
             continue
@@ -1017,8 +1081,6 @@ def _move(app, control, x, kind="window"):
 
 def _focus_graph(app, token, kind):
     """Transfer focus to this already published control without activating it."""
-    from .interaction import _current as current_graph
-    from .interaction import initialize as interaction_state
 
     graph = current_graph(app)
     identity = kind + ":" + token
@@ -1031,7 +1093,7 @@ def _focus_graph(app, token, kind):
             browser["focused"] = False
 
 
-@capture_handler("metric_live")
+@capture_handler("metric_live", cancel=cancel)
 def handle_mouse(app, y, x, button="left", shift=False):
     state = initialize(app)
     previous = state["capture"]
@@ -1085,8 +1147,6 @@ def handle_mouse(app, y, x, button="left", shift=False):
                 return True
             continue
         if control.toggle.contains(y, x):
-            from .chart_interaction import cancel as cancel_chart
-
             cancel_chart(app)
             entry = state["entries"][control.key]
             set_enabled(app, control.key, not entry["enabled"])
@@ -1099,13 +1159,12 @@ def handle_mouse(app, y, x, button="left", shift=False):
         elif control.rate_slider and control.rate_slider.contains(y, x):
             kind = "sampling"
         if kind:
-            from .chart_interaction import cancel as cancel_chart
-
             cancel_chart(app)
             state["focus"] = control.token
             state["focus_kind"] = kind
             _focus_graph(
-                app, control.token,
+                app,
+                control.token,
                 "metric-sampling" if kind == "sampling" else "metric-window",
             )
             if button == "press":
@@ -1139,12 +1198,21 @@ def handle_key(app, key):
         entry = state["entries"][control.key]
         if state.get("focus_kind") == "sampling":
             step = 10 if key in ("pgup", "pgdn") else 1
-            value = MIN_RATE if key == "home" else MAX_RATE if key == "end" else (
-                min(MAX_RATE, max(
-                    MIN_RATE,
-                    entry.get("rate", MIN_RATE)
-                    + (-step if key in ("left", "pgup") else step),
-                ))
+            value = (
+                MIN_RATE
+                if key == "home"
+                else MAX_RATE
+                if key == "end"
+                else (
+                    min(
+                        MAX_RATE,
+                        max(
+                            MIN_RATE,
+                            entry.get("rate", MIN_RATE)
+                            + (-step if key in ("left", "pgup") else step),
+                        ),
+                    )
+                )
             )
             set_rate(app, control.key, value)
             return True
@@ -1217,7 +1285,8 @@ def run_command(app, args):
                 interval = cadence(app, control.key)
                 description = (
                     format_interval(interval, ascii_=ascii_)
-                    if interval is not None else "unavailable"
+                    if interval is not None
+                    else "unavailable"
                 )
                 _say(app, "Metric polling interval: " + description)
             else:
@@ -1283,15 +1352,26 @@ def feedback(app, g):
             continue
         poll_interval = cadence(app, control.key)
         cache_key = (
-            control.key, control.token, control.rect, control.visible,
-            bool(g.ascii), state["revision"], entry["enabled"],
-            entry["delta"], entry.get("rate", MIN_RATE), poll_interval,
+            control.key,
+            control.token,
+            control.rect,
+            control.visible,
+            bool(g.ascii),
+            state["revision"],
+            entry["enabled"],
+            entry["delta"],
+            entry.get("rate", MIN_RATE),
+            poll_interval,
         )
         row = previous.get(cache_key)
         if row is None:
             row, _ = _row(
-                g, entry, control.rect.right - control.rect.left,
-                app=app, identity=control.key, poll_interval=poll_interval,
+                g,
+                entry,
+                control.rect.right - control.rect.left,
+                app=app,
+                identity=control.key,
+                poll_interval=poll_interval,
             )
             row = tuple(row)
         current[cache_key] = row
@@ -1305,7 +1385,6 @@ def feedback(app, g):
                 skip = max(0, left - position)
                 clipped.append((text[skip:], style))
             position += size
-        from .interaction import decorate
 
         rendered = L.clip_row(clipped, control.visible.right - control.visible.left)
         rendered = decorate(

@@ -1,10 +1,13 @@
 """Focused-list manual grouping; scheduler actions retain exact job targets."""
+
 from __future__ import annotations
+from .ui.selection_state import initialize
+from .ui.selection_effects import resume
+from .table_query import snapshot
 
 
 def _finish(app, context, result, targets, *, created=False):
-    from . import job_groups
-    from .job_selection import initialize, resume
+    from raven.jobs import group_domain as job_groups
 
     initialize(app)["capture"] = None
     app.marks.difference_update(result.job_ids)
@@ -13,8 +16,11 @@ def _finish(app, context, result, targets, *, created=False):
     if created:
         app.table_state["groups"] = True
         scope = context["scope"]
-        if scope == "recent" or (scope == "jobs" and targets and
-                                  all(jid in getattr(app, "recent_ids", ()) for jid in targets)):
+        if scope == "recent" or (
+            scope == "jobs"
+            and targets
+            and all(jid in getattr(app, "recent_ids", ()) for jid in targets)
+        ):
             app.table_state["recents_mode"] = "grouped"
         else:
             app.table_state.setdefault("job_list_modes", {})[scope] = "grouped"
@@ -27,6 +33,7 @@ def _finish(app, context, result, targets, *, created=False):
         scope = context["scope"]
         if scope.startswith("history:"):
             from .history_browser import activate
+
             activate(app, selected)
         elif scope == "analytics:advisor":
             app.analytics_job = selected
@@ -47,7 +54,8 @@ def _finish(app, context, result, targets, *, created=False):
 
 def run_action(app, action, *, explicit=False):
     """Use marked rows in this list, or its cursor for member/group removal."""
-    from .job_selection import context
+    from .ui.selection_state import context
+
     current = context(app)
     if current is None:
         if explicit:
@@ -70,15 +78,18 @@ def run_action(app, action, *, explicit=False):
 
     # Keyboard ownership ends the drag even when source validation rejects the
     # command. A delayed release must not extend an obsolete range afterward.
-    from .job_selection import initialize
     initialize(app)["capture"] = None
 
-    from .table_tools import snapshot
-    from . import job_groups, manual_job_groups
+    from raven.jobs import group_domain as job_groups
+    from raven.jobs import manual_groups as manual_job_groups
+
     snap = snapshot(app, app.store.snapshot())
     published = current.get("tokens", {})
     observed = manual_job_groups.selection_tokens(snap, targets)
-    if any(published.get(jid) is None or observed.get(jid) != published[jid] for jid in targets):
+    if any(
+        published.get(jid) is None or observed.get(jid) != published[jid]
+        for jid in targets
+    ):
         app.say("Selected jobs changed; select the current rows again before grouping")
         return True
     registry = job_groups.registry(app)
@@ -93,7 +104,8 @@ def run_action(app, action, *, explicit=False):
                 continue
             # Only a displayed collapsed row implies the whole group. An
             # expanded member never silently adds its siblings to the action.
-            from .job_list_controls import painted_group
+            from raven.jobs.list_controls import painted_group
+
             whole_group = painted_group(app, current["scope"], jid, group)
             if whole_group:
                 groups.append(group.id)

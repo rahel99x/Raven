@@ -10,7 +10,7 @@ import math
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
-from .log_text import display_text
+from .job_logs.text import display_text
 
 Seg = Tuple[str, str]
 Row = List[Seg]

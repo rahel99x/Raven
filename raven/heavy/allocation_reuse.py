@@ -43,7 +43,7 @@ def memory_mib(value):
 def review(backend, job_id, planned, cancel=None):
     """Fresh admitted queries; invoke only on the manager's finite lane."""
     from ..slurm import parse_kv
-    from ..raven_collection import expand_hostlist
+    from raven.collection.ledger import expand_hostlist
 
     if getattr(backend, "ledger", None) is None:
         raise ValueError("Reuse requires the governed collection owner")

@@ -41,7 +41,7 @@ def initialize(app):
     resolved = getattr(app, "raven_resolved", None) or getattr(getattr(app, "cfg", None), "raven_resolved", None)
     state = getattr(app, "telemetry_settings_state", None)
     if not isinstance(state, dict):
-        from . import raven_config as C
+        from .configuration import policy as C
         baseline = C.merge(C.DEFAULTS, {key: value for key, value in raw.items() if key in C.DEFAULTS})
         preferences = _preference(baseline.get("telemetry"))
         restrictions = copy.deepcopy(getattr(resolved, "restrictions", raw.get("_raven_site_restrictions", ())))
@@ -58,7 +58,7 @@ def initialize(app):
         # Allocation Setup can change the active lab account before entering
         # Heavy. Reuse that admission context while preserving unsaved sampling
         # preferences and the original Light collection configuration.
-        from . import raven_config as C
+        from .configuration import policy as C
         state["baseline"] = C.merge(C.DEFAULTS, {key: value for key, value in raw.items() if key in C.DEFAULTS})
         state["restrictions"] = copy.deepcopy(getattr(resolved, "restrictions", raw.get("_raven_site_restrictions", ())))
         state["resolved"] = resolved
@@ -74,13 +74,13 @@ def _heavy(app):
 
 
 def _policies(state):
-    from .raven_config import POLICY_SCHEMA
+    from .configuration.policy import POLICY_SCHEMA
     return [("captured:" + str(index), {"schema": POLICY_SCHEMA, "restrictions": rule["rules"]})
             for index, rule in enumerate(state["restrictions"]) if isinstance(rule, dict) and "rules" in rule]
 
 
 def _calculate(app, state, position):
-    from . import raven_config as C
+    from .configuration import policy as C
     from .cadence import validate_multiplier
     value = copy.deepcopy(state["baseline"])
     heavy = _heavy(app)
@@ -241,8 +241,8 @@ def prepare_save(app):
 
 def save_settings(request):
     """Merge only telemetry preferences; atomically preserve unrelated edits."""
-    from . import raven_config as C
-    from .setup_config import _atomic_write, _decode, _read_snapshot
+    from .configuration import policy as C
+    from .configuration.allocation import _atomic_write, _decode, _read_snapshot
     preferences = _preference(request["preferences"])
     path = Path(request["path"]).expanduser().absolute()
     raw, token = _read_snapshot(path)

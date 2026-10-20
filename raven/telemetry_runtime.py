@@ -11,7 +11,7 @@ import math
 
 def apply(app, collection, intervals, research_seconds, *, retained_trace_floor=0.):
     """Retune a live session after configuration and site limits are resolved."""
-    from .raven_collection import settings
+    from raven.collection.ledger import settings
 
     policy = settings(collection)
     intervals = dict(intervals)

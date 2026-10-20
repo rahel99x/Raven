@@ -385,7 +385,7 @@
         "56 adversarial mouse tests passed, including toolbar mode/tab/resize cancellation.",
         "766 other pointer tests passed; stale fixed-timeout test now sets a deterministic wall-clock boundary and asserts the exact75ms native deadline while preserving frame/selection/order assertions."
       ],
-      "architecture": "The new explicit workbench\u2192column_resize edge was separately reviewed and recorded by the architecture owner; the109-module SCC remains incomplete."
+      "architecture": "Input-owner edge preserved by explicit finite composition. The interim109-module SCC was subsequently eliminated by the owner/state/typed-effect interfaces recorded below."
     },
     {
       "issue": "Idle document cadence changes must preserve unknown/mutable-source responsiveness and source freshness.",
@@ -404,5 +404,71 @@
       ],
       "performance_limit": "Native idle still waits up to1s and uses bounded publication metadata. Conservative source ownership retains correctness; test timing is not presented as a benchmark."
     }
-  ]
+  ],
+  "architecture_completion": {
+    "status": "Implemented; final integrated qualification and committed revision recorded by root",
+    "state_and_geometry": "Actual state/query/placement implementations live in ui.chart_state,chart_registry,scrollbar_state,divider_state,divider_registry,workspace_actions,selection_effects,text_selection_state,control_feedback. Legacy public class/function identities are reexported exactly.",
+    "effects": "Frozen typed SelectionActions,InteractionSources,PanelActions,ChartActions,ListActions composed by workbench.bind_actions. CaptureBinding stores actual owner handlers/cancellation callbacks; pointer routes never import feature modules. Known owner fields forward to concrete module attributes, preserving late injected handlers and native identity/stale/cancellation checks.",
+    "service": "Shared background_tasks.research_hub replaces presentation-pane imports for worker ownership; no new executor or event loop.",
+    "tradeoff": "Pure state transitions avoid effect ports. Cross-owner effects use named callable fields, rather than generic string invocation or importing roots. Standalone component fixtures bind the same production composition explicitly; fail-closed missing-port behavior is tested.",
+    "validation": [
+      {
+        "command": ".venv/bin/python -m pytest -q tests/test_interaction_graph.py tests/test_analysis_selection_clear.py tests/test_job_panels.py tests/test_job_context_selection.py tests/test_job_drag_selection.py tests/test_job_list_menu.py tests/test_grouping_toolbar.py tests/test_trace_ui_integration.py",
+        "result": "497 passed in5.49s"
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q tests/test_chart_interaction.py tests/test_job_panels.py tests/test_workspace_layout.py",
+        "result": "285 passed in4.38s"
+      },
+      {
+        "command": ".venv/bin/python -m pytest -q tests/test_ui_owner_ports.py",
+        "result": "4 passed in0.45s; missing-port safety, invalid-callable/frozen records, exact late-injection argument forwarding, exact legacy query/geometry identities"
+      },
+      {
+        "owner": "review_heavy",
+        "result": "270 history/chart/scrollbar tests passed3.31s after canonical query/effect extraction; original coordinate/capture assertions unchanged"
+      }
+    ],
+    "qualification_limits": "These are software architecture/regression checks, not live scheduler/GPU/remote qualification. Shared-host suite durations are not performance measurements.",
+    "log_family": {
+      "package": "raven.job_logs",
+      "actual_implementations": 13,
+      "compatibility": "Every former log_* path, logs,history_log_export aliases the exact canonical module; original and canonical LogBuffer classes are identical. No source-relative helper paths in this family.",
+      "validation": {
+        "command": ".venv/bin/python -m pytest -q tests/test_log*.py tests/test_qol_operations.py tests/test_ui_owner_ports.py",
+        "result": "496 passed in5.54s",
+        "identity_command": ".venv/bin/python -m pytest -q tests/test_job_logs_package.py",
+        "identity_result": "14 passed in0.34s"
+      }
+    },
+    "post_hoist_regression": {
+      "command": ".venv/bin/python -m pytest -q -n 2 tests/test_*selection*.py tests/test_*scrollbar*.py tests/test_*metric*.py tests/test_pane*.py tests/test_interaction_graph.py tests/test_quiet_jobs_frames.py tests/test_responsive_input.py tests/test_log*.py tests/test_qol_operations.py tests/test_ui_owner_ports.py tests/test_job_logs_package.py tests/test_ops_ui.py",
+      "result": "2198 passed in20.67s",
+      "assertions": "Original behavioral assertions preserved; standalone component fixtures explicitly bind the same production typed composition."
+    },
+    "controlled_dispatch_benchmark": {
+      "evidence": "measurements/ui-dispatch.json",
+      "median_us_per_key_before": 23.909651598660275,
+      "median_us_per_key_after": 10.554708197014406,
+      "cpu_seconds_before": 0.8408390139999999,
+      "cpu_seconds_after": 0.3765811969999999,
+      "process_high_water_rss_kib_combined": 41472,
+      "python_allocations": "not measured",
+      "scope": "Reviewed b98742f controller control flow compiled against identical current feature contracts. This isolates dispatch; it does not compare whole releases or their memory use."
+    },
+    "source_sha256": {
+      "raven/ui/owner_ports.py": "3c3a7c0edec8b62c1f9b036875cf700c9753a1e5859e794e74bcc99d122186c5",
+      "raven/ui/chart_registry.py": "966f503ac95f1f87d29852449bfb989f217f502d25960c41d8b6d647fc425476",
+      "raven/ui/chart_state.py": "c84d6058dc4652dbb2baeda5a068c4e4e98783b9496824e6cd48df4a289c58d9",
+      "raven/ui/workspace_actions.py": "7df078354278add3201e25858fc2088f3a1b517af6f800250351c6fff902eecb",
+      "raven/ui/divider_registry.py": "f538692aeddeea8e10ebd2388f3fc5cf25770194cebb62d25f13786f91d24069",
+      "raven/ui/scrollbar_state.py": "b3dab19c2fd00671cde5a4e41433af1f688110c075b1c13ac643451d43a70974",
+      "raven/workbench.py": "be41f4910dbf3e5ef43b6fbea1ea8629e0eea1263297c37656088cffd859a620",
+      "raven/job_logs/buffer.py": "fc64329bbb2aabf9d3c44af4eae1dc7df3bc97e857bf49942615f8507abe527f",
+      "raven/job_logs/tools.py": "33a76e4e7002345d6897ce36d95ef7f63fba93a6c528b66dc35c30bf0d7b58ec",
+      "raven/job_logs/workbench.py": "9f468c85d0800f6ea88ef15d90147f580a80d114b264b5428919aca7b6f83711",
+      "raven/jobs/selection.py": "40422ee734fb09802503ac0d934317d8bce478cb872d21319a63e1499872c4b4",
+      "scripts/benchmark_ui_dispatch.py": "fb2fc5630a8d073862711dfff73e2363758b86355a7df06927a759a07e0fc396"
+    }
+  }
 }

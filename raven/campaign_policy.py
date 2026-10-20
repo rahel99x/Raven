@@ -232,7 +232,7 @@ def analyze(document, *, cancel=None):
 def export_manifest(review, model_path, limits_path, destination, *, receipt=None):
     """Export a current sealed review without overwriting or submitting work."""
     from .planning_io import load_json
-    from .operations import atomic_json
+    from .operation_support import atomic_json
     value = {"schema": "raven.campaign-policy/v1", "review": copy.deepcopy(review),
              "queue_model": load_json(model_path, max_bytes=4 << 20),
              "limits": load_json(limits_path, max_bytes=64 << 10)}

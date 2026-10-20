@@ -149,7 +149,7 @@ def _selected_export(app, entries):
 
 def _preview_export(app, item):
     from .research import ResearchHub
-    from .log_text import display_text
+    from .job_logs.text import display_text
     activity = app.activity
     if app.research is None:
         app.research = ResearchHub(app.cfg, app.logs.files)

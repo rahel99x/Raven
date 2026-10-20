@@ -84,7 +84,7 @@ def job_record_count(text):
 def document(text):
     value = _bounded_document(text)
     if value.get("errors"):
-        from .log_text import display_text
+        from .job_logs.text import display_text
         errors = value["errors"]
         first = errors[0] if isinstance(errors, list) else errors
         description = first.get("description") or first.get("error") if isinstance(first, dict) else first

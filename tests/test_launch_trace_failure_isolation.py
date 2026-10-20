@@ -6,7 +6,8 @@ import sys
 
 import pytest
 
-from raven import launch_trace as T, reporting as R, trace_recorder
+from raven import launch_trace as T, reporting as R
+from raven.tracing import capture as trace_recorder
 
 
 @pytest.fixture
@@ -90,7 +91,7 @@ def test_cleanup_failure_preserves_success_exit_or_original_exception(applicatio
 
 def test_failed_warning_storage_does_not_prevent_application(application, monkeypatch, capsys):
     script, run = application
-    from raven import launch_runtime
+    from raven.launching import diagnostics as launch_runtime
     monkeypatch.setattr(R, '_read_json', lambda path: (_ for _ in ()).throw(OSError('metadata unavailable')))
     monkeypatch.setattr(launch_runtime, '_warn', lambda *args: (_ for _ in ()).throw(RuntimeError('warning storage unavailable')))
     T.python_application()
@@ -113,7 +114,7 @@ def test_hook_metadata_failure_executes_original_argv_unchanged(application, mon
 
 @pytest.mark.parametrize('metadata', [[], {'trace': True, 'settings': []}, {'trace': True, 'settings': {'trace_adapter': []}}, {'trace': 'yes'}, {'trace': True, 'settings': {'trace_adapter': 'native-cooperative'}}])
 def test_invalid_or_unsupported_hook_metadata_keeps_original_command_despite_broken_warning_sink(application, monkeypatch, metadata):
-    from raven import launch_runtime
+    from raven.launching import diagnostics as launch_runtime
     monkeypatch.setattr(R, '_read_json', lambda path: metadata)
     monkeypatch.setattr(launch_runtime, '_warn', lambda *args: (_ for _ in ()).throw(ValueError('warning sink closed')))
     commands = []

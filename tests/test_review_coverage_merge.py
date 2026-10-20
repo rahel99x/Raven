@@ -149,6 +149,74 @@ def test_architectural_milestone_does_not_claim_original_global_target_is_done()
     assert scope["external_hardware_block"] is False
 
 
+def test_zero_cycle_graph_still_requires_explicit_bound_closure_evidence():
+    graph = {
+        "cyclic_components": [],
+        "cyclic_edges": [],
+        "dynamic_module_expressions": [],
+        "violations": [],
+    }
+    package = {
+        "items": [{"id": "S-1", "status": "implemented", "acceptance": "strict gate"}]
+    }
+    findings, _, _ = merge.derive(
+        [claim("S-1")], {"structure": package}, {}, architecture_graph=graph
+    )
+    assert (
+        findings[0]["scope_adjustment"]["original_global_no_cycle_target"]
+        == "requires explicit root reconciliation"
+    )
+    closure = {
+        "status": "qualified-local",
+        "code_revision": "a" * 40,
+        "graph_sha256": hashlib.sha256(merge.encode(graph, compact=True)).hexdigest(),
+        "command": "python scripts/check_import_layers.py --require-acyclic",
+        "tests": [
+            {"command": "python -m pytest tests/test_import_layers.py", "passed": True}
+        ],
+    }
+    package["architecture_closure"] = closure
+    findings, _, _ = merge.derive(
+        [claim("S-1")], {"structure": package}, {}, architecture_graph=graph
+    )
+    assert findings[0]["status"] == "implemented"
+    assert findings[0]["architecture_acceptance"] == closure
+    assert findings[0]["scope_adjustment"]["original_global_no_cycle_target"] == "met"
+    assert findings[0]["scope_adjustment"]["remaining_work"] is None
+    package["architecture_closure"]["graph_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="digest"):
+        merge.derive(
+            [claim("S-1")], {"structure": package}, {}, architecture_graph=graph
+        )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("cyclic_components", [["a", "b"]]),
+        ("cyclic_edges", [["a", "b"]]),
+        ("dynamic_module_expressions", [{"module": "a"}]),
+        ("violations", ["an upward dependency"]),
+    ],
+)
+def test_claimed_closure_cannot_waive_any_architecture_gap(field, value):
+    graph = {
+        "cyclic_components": [],
+        "cyclic_edges": [],
+        "dynamic_module_expressions": [],
+        "violations": [],
+    }
+    graph[field] = value
+    package = {
+        "items": [{"id": "S-1", "status": "implemented", "acceptance": "strict gate"}],
+        "architecture_closure": {"status": "qualified-local"},
+    }
+    with pytest.raises(ValueError, match="cannot waive"):
+        merge.derive(
+            [claim("S-1")], {"structure": package}, {}, architecture_graph=graph
+        )
+
+
 def integration_report():
     return {
         "schema": "raven.review-integration/v1",

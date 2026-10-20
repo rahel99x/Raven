@@ -14,7 +14,7 @@ import threading
 import time
 from types import MappingProxyType
 
-from .log_text import display_text
+from .job_logs.text import display_text
 
 
 SEVERITIES = ("critical", "moderate", "mild")

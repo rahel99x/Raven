@@ -271,7 +271,7 @@ class Broker:
                 slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0)
             )
             os.set_blocking(master, False)
-            child = str(Path(__file__).parent.parent / "terminal_child.py")
+            child = str(Path(__file__).with_name("child.py"))
             deadline = session.metadata.get("launch_deadline")
             if deadline is not None and time.monotonic() > float(deadline):
                 raise ValueError(

@@ -11,6 +11,14 @@ from raven import raven_migration as M
 from raven import raven_config as C
 
 
+def test_migration_legacy_alias_preserves_exact_module_identity(monkeypatch):
+    from raven.installation import config_migration
+    assert M is config_migration
+    marker = object()
+    monkeypatch.setattr(M, "_migration_alias_probe", marker, raising=False)
+    assert config_migration._migration_alias_probe is marker
+
+
 @pytest.fixture
 def migration(tmp_path):
     old=tmp_path/'old-config';old.mkdir(mode=0o700)

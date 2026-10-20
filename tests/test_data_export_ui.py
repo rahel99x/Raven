@@ -122,8 +122,8 @@ def test_entry_points_keep_exact_bound_run(app, tab):
 
 
 def test_only_admitted_collapsed_members_are_frozen(app, monkeypatch):
-    from raven import job_selection
-    monkeypatch.setattr(job_selection, 'context', lambda app: {'scope': 'jobs', 'ids': ('1', '3'), 'selected': '1'})
+    from raven.ui import selection_state
+    monkeypatch.setattr(selection_state, 'context', lambda app: {'scope': 'jobs', 'ids': ('1', '3'), 'selected': '1'})
     app.tab, app.selected_id = 'jobs', '1'
     app.job_group_metadata = {'jobs': {'1': SimpleNamespace(header=True, collapsed=True,
                                 records=(SimpleNamespace(id='1'), SimpleNamespace(id='2')))}}

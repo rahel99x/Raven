@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from fractions import Fraction
 
-from .operations import digest
+from .operation_support import digest
 from .runtime_contracts import identifier, number, object_, sequence, text, unique_names
 
 
