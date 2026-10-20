@@ -79,6 +79,27 @@ def _network_mount(path):
     return kind in {"nfs", "nfs4", "lustre", "gpfs", "beegfs", "fhgfs", "pvfs2", "cifs", "smb3", "ceph", "afs", "glusterfs"} or kind.startswith("fuse.")
 
 
+class _ThreadConnection:
+    """Close on owner-thread teardown without SQLite's internal GC cycle."""
+
+    def __init__(self, connection):
+        self.connection = connection
+
+    def close(self):
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
+
+    def __del__(self):
+        # threading.local drops this non-cyclic owner when its thread exits.
+        # Keep SQLite's normal thread affinity instead of closing a connection
+        # in use by a different session worker from the shutdown thread.
+        try:
+            self.close()
+        except Exception:
+            pass
+
+
 class SharedQueryCache:
     def __init__(self, directory, *, capacity=128, max_bytes=16 << 20):
         E.integer(capacity, "shared cache capacity", 1024)
@@ -138,7 +159,8 @@ class SharedQueryCache:
                 raise ValueError("Shared cache storage exceeds its bound")
         if os.getpid() != self._owner[0]:
             raise ValueError("Create a new shared cache client after forking")
-        connection = getattr(self._connections, "connection", None)
+        owner = getattr(self._connections, "owner", None)
+        connection = owner.connection if owner is not None else None
         if connection is None:
             # A connection belongs to one existing caller thread. WAL readers
             # do not block short owner/publication transactions; NORMAL avoids
@@ -151,7 +173,7 @@ class SharedQueryCache:
                 connection.execute("PRAGMA journal_size_limit=" + str(4 << 20))
                 page_size = connection.execute("PRAGMA page_size").fetchone()[0]
                 connection.execute("PRAGMA max_page_count=" + str((2 * self.max_bytes + (4 << 20)) // page_size))
-                self._connections.connection = connection
+                self._connections.owner = _ThreadConnection(connection)
             except BaseException:
                 connection.close()
                 raise
@@ -160,10 +182,10 @@ class SharedQueryCache:
 
     def close(self):
         """Close this thread's idle connection; other callers own theirs."""
-        connection = getattr(self._connections, "connection", None)
-        if connection is not None:
-            connection.close()
-            del self._connections.connection
+        owner = getattr(self._connections, "owner", None)
+        if owner is not None:
+            owner.close()
+            del self._connections.owner
 
     @staticmethod
     def _dead(row):

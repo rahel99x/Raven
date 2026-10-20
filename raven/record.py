@@ -52,8 +52,9 @@ def _json_float(text):
 
 
 class RecordingBackend(Backend):
-    def __init__(self, inner: Backend, path: str, meta: Optional[dict] = None):
+    def __init__(self, inner: Backend, path: str, meta: Optional[dict] = None, *, owns_inner=False):
         self.inner, self.path = inner, path
+        self._owns_inner, self._inner_closed = owns_inner, False
         self.probe_json = getattr(inner, "probe_json", False)
         self.lock = threading.Lock()
         self.n = 0
@@ -114,6 +115,11 @@ class RecordingBackend(Backend):
                 self.f.close()
             except OSError:
                 pass
+            inner = self.inner if self._owns_inner and not self._inner_closed else None
+            self._inner_closed = True
+        close = getattr(inner, "close", None)
+        if callable(close):
+            close()
 
 
 def read_recording(path: str) -> Tuple[dict, List[dict]]:

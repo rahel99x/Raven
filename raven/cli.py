@@ -147,7 +147,7 @@ def make_backend(args, cfg: Config, user: str):
     record = args.record or cfg["record"]
     if record and not args.replay:
         from .record import RecordingBackend
-        backend = RecordingBackend(backend, os.path.expanduser(record), meta=dict(user=user, host=args.host or cfg["host"], profile=cfg.profile_name))
+        backend = RecordingBackend(backend, os.path.expanduser(record), meta=dict(user=user, host=args.host or cfg["host"], profile=cfg.profile_name), owns_inner=True)
     return backend, files, replay, user
 
 
@@ -252,7 +252,7 @@ def build(args, cfg: Config, *, raven_allocation=None) -> Session:
             # Record at the transport, below the existing owner. This retains
             # exact admission and does not create a second connection/cache.
             shared_backend.inner = RecordingBackend(shared_backend.inner, os.path.expanduser(record),
-                                                    meta=dict(user=user, host=cfg["host"], profile=cfg.profile_name))
+                                                    meta=dict(user=user, host=cfg["host"], profile=cfg.profile_name), owns_inner=True)
     else:
         backend, files, replay, user = make_backend(args, cfg, user)
     sdir = None if (args.no_state or args.fake or args.replay) else scoped_state_dir(backend, cfg, user)

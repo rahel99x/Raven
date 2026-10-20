@@ -3,7 +3,8 @@
 
 This documentation-only tool never imports Raven or changes runtime code. Owner
 ledgers may continue to evolve: every run reads them again and replaces derived
-coverage rather than appending to it. Final integrated qualification stays pending.
+coverage rather than appending to it. Integrated qualification stays pending
+unless an explicit, validated root integration report is supplied.
 """
 
 from __future__ import annotations
@@ -89,9 +90,9 @@ def read_json(path):
                 raise ValueError(f"Owner ledger changed while reading: {path}")
             value = json.loads(raw)
             if not isinstance(value, dict):
-                raise ValueError(f"Expected an owner ledger object: {path}")
+                raise TypeError(f"Expected an owner ledger object: {path}")
             return value, hashlib.sha256(raw).hexdigest()
-        except (json.JSONDecodeError, OSError, ValueError):
+        except (json.JSONDecodeError, OSError, TypeError, ValueError):
             if attempt == 2:
                 raise
             time.sleep(0.05)
@@ -212,6 +213,78 @@ def rows(package):
     raise ValueError("Owner ledger has no items/findings/coverage array")
 
 
+def validate_integration(report, *, final_revision=None):
+    """Local regression evidence does not establish hosted CI or source acceptance."""
+    if (
+        not isinstance(report, dict)
+        or report.get("schema") != "raven.review-integration/v1"
+    ):
+        raise ValueError("Expected integration schema raven.review-integration/v1")
+    revision = report.get("code_revision")
+    if not isinstance(revision, str) or re.fullmatch(r"[a-f0-9]{40}", revision) is None:
+        raise ValueError(
+            "Integration code_revision requires a complete lowercase 40-character commit ID"
+        )
+    if final_revision is not None and final_revision != revision:
+        raise ValueError("Integration code_revision does not match --final-revision")
+    status = report.get("status")
+    if status not in ("qualified-local", "pending", "failed"):
+        raise ValueError(
+            "Integration status must be qualified-local, pending or failed"
+        )
+    checks = report.get("checks")
+    if not isinstance(checks, list) or not checks:
+        raise ValueError("Integration checks must be a nonempty array")
+    identities, required = set(), []
+    for check in checks:
+        if not isinstance(check, dict):
+            raise TypeError("Integration checks must be objects")
+        identity = check.get("id")
+        if (
+            not isinstance(identity, str)
+            or not identity.strip()
+            or identity in identities
+        ):
+            raise ValueError("Integration check IDs must be nonempty and unique")
+        identities.add(identity)
+        if check.get("status") not in ("passed", "failed", "pending", "blocked"):
+            raise ValueError(f"Integration check {identity} has an unsupported status")
+        is_required = check.get("required", True)
+        if not isinstance(is_required, bool):
+            raise TypeError("Integration check required must be a boolean")
+        command = check.get("command")
+        commands = command if isinstance(command, list) else [command]
+        if not commands or not all(
+            isinstance(value, str) and value.strip() for value in commands
+        ):
+            raise ValueError(f"Integration check {identity} requires an actual command")
+        evidence = check.get("evidence")
+        if not isinstance(evidence, (str, list, dict)) or not evidence:
+            raise ValueError(
+                f"Integration check {identity} requires substantive evidence"
+            )
+        if is_required:
+            required.append(check)
+    if not required:
+        raise ValueError("Integration report requires at least one required check")
+    if status == "qualified-local" and any(
+        check["status"] != "passed" for check in required
+    ):
+        raise ValueError(
+            "Qualified-local integration requires every required check to pass"
+        )
+    policy = report.get("ci_policy")
+    if (
+        not isinstance(policy, dict)
+        or policy.get("requires_hosted_checks") is not True
+        or policy.get("delivered_revision") is not True
+    ):
+        raise ValueError(
+            "Integration ci_policy must require hosted checks on the delivered revision"
+        )
+    return report
+
+
 def derive(
     claims,
     packages,
@@ -322,7 +395,7 @@ def derive(
         for item in rows(package):
             supplied = item.get("related_source_claims", [])
             if not isinstance(supplied, list):
-                raise ValueError("Independent related_source_claims must be an array")
+                raise TypeError("Independent related_source_claims must be an array")
             related = [normalize_id(value) for value in supplied]
             if not related:
                 try:
@@ -369,7 +442,12 @@ def main(argv=None):
     )
     parser.add_argument(
         "--final-revision",
-        help="Full root-supplied delivered commit; does not assert CI success",
+        help="Full qualified code commit; later evidence-only commits and CI are recorded separately",
+    )
+    parser.add_argument(
+        "--integration-report",
+        type=Path,
+        help="Root integration JSON; omitted reports preserve pending qualification",
     )
     parser.add_argument(
         "--check",
@@ -383,6 +461,12 @@ def main(argv=None):
     ):
         parser.error("--final-revision requires the complete lowercase commit ID")
     try:
+        integration_report, integration_source_sha = None, None
+        if args.integration_report is not None:
+            integration_report, integration_source_sha = read_json(
+                args.integration_report
+            )
+            validate_integration(integration_report, final_revision=args.final_revision)
         source = (args.review_dir / "source-review.md").read_bytes()
         claims = source_claims(source.decode("utf-8"))
         coverage_path = args.review_dir / "coverage.json"
@@ -471,6 +555,31 @@ def main(argv=None):
             architecture_graph=architecture_graph,
             architecture_plan=architecture_plan,
         )
+        final_revision = args.final_revision
+        integration_status = "pending: final integrated regression, packaging, schema, compatibility and CI evidence"
+        integrated_validation = "pending"
+        integration = {
+            "status": "pending",
+            "revision": final_revision,
+            "note": "Owner focused results and simulations are retained as recorded; they do not establish full integrated validation.",
+        }
+        if integration_report is not None:
+            raw_report = encode(integration_report)
+            outputs[args.review_dir / "integration.json"] = raw_report
+            final_revision = final_revision or integration_report["code_revision"]
+            integration_status = integration_report["status"]
+            if integration_status == "qualified-local":
+                integrated_validation = "regression-qualified"
+            for finding in findings:
+                finding["integrated_validation"] = integrated_validation
+            integration = {
+                "status": integration_status,
+                "revision": final_revision,
+                "report": "integration.json",
+                "source_sha256": integration_source_sha,
+                "sha256": hashlib.sha256(raw_report).hexdigest(),
+                "note": "Local regression qualification preserves each finding's acceptance limits. Hosted CI remains required on the delivered revision and is not established by qualified-local status.",
+            }
         coverage = {
             "schema": "raven.adversarial-review-coverage/v2",
             "reviewed_revision": old.get("reviewed_revision", "b98742f"),
@@ -482,13 +591,9 @@ def main(argv=None):
             "package_ledgers": manifest,
             "independent_findings": independent_rows,
             "additional_package_findings": additional,
-            "final_revision": args.final_revision,
-            "integration_status": "pending: final integrated regression, packaging, schema, compatibility and CI evidence",
-            "integration": {
-                "status": "pending",
-                "revision": args.final_revision,
-                "note": "Owner focused results and simulations are retained as recorded; they do not establish full integrated validation.",
-            },
+            "final_revision": final_revision,
+            "integration_status": integration_status,
+            "integration": integration,
         }
         outputs[coverage_path] = encode(coverage)
         changed = [
@@ -508,7 +613,7 @@ def main(argv=None):
                     "independent_findings": len(independent_rows),
                     "package_ledgers": len(manifest),
                     "changed_files": len(changed),
-                    "integrated_validation": "pending",
+                    "integrated_validation": integrated_validation,
                 },
                 sort_keys=True,
             )

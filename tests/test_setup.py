@@ -74,7 +74,8 @@ def test_setup_covers_every_research_workspace():
     assert len(setup.RESEARCH_SMOKE_VIEWS) == 14
 
 
-def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeypatch):
+@pytest.mark.parametrize("recording", [False, True])
+def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeypatch, recording):
     import signal
     import threading
     import time
@@ -86,7 +87,9 @@ def test_batched_views_use_fresh_closed_real_launcher_sessions(tmp_path, monkeyp
     build, render = cli.build, screen.once_text
     cases = list(setup.view_cases())
     # Repeat the same real frame after all other cases to detect shared UI state.
-    monkeypatch.setattr(setup, "view_cases", lambda: iter([*cases, cases[0]]))
+    recording_flags = ["--record", str(tmp_path / "sessions.jsonl")] if recording else []
+    monkeypatch.setattr(setup, "view_cases", lambda: iter(
+        (name, [*options, *recording_flags]) for name, options in [*cases, cases[0]]))
     monkeypatch.setattr(clock, "now", lambda: 1700000000.)
     fake_init = cli.FakeBackend.__init__
     monkeypatch.setattr(cli.FakeBackend, "__init__", lambda self, user: fake_init(self, user, t0=1700000000., speed=0.))

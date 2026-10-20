@@ -171,7 +171,7 @@ records distinguish later correctness edits from the measured snapshots. Python
 allocation peaks, process RSS, physical I/O, and logical I/O remain separate
 quantities; none is substituted for another to imply a gain.
 
-The [W42 raw report and harness](measurements/distribution-final/) retain all
+The [W42 raw report and harness](https://github.com/rahel99x/Raven/tree/b98742fb967f18131905696f4afd3a61f2ad03f2/docs/implementation/review-2026-10/measurements/distribution-final/) retain all
 observations from the exclusive 01:59:14.579–01:59:40.100 UTC window, including
 unnormalized frames and exact artifacts. The initial import phase changed only
 61.32 → 59.66 ms, within ordinary variation. Reaped-child CPU stayed effectively

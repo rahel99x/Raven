@@ -95,6 +95,11 @@ jobs:
           /tmp/raven-wheel-venv/bin/ravenh update --help
           /tmp/raven-wheel-venv/bin/raven revert --help
           /tmp/raven-wheel-venv/bin/ravenh revert --help
+          /tmp/raven-wheel-venv/bin/raven trust --help
+          /tmp/raven-wheel-venv/bin/ravenl trust --help
+          /tmp/raven-wheel-venv/bin/ravenh trust --help
+          /tmp/raven-wheel-venv/bin/raven trace cleanup-runtime --help
+          /tmp/raven-wheel-venv/bin/raven trace capabilities --json
           /tmp/raven-wheel-venv/bin/ravenl qualify --offline > /tmp/raven-offline-qualification.json
           /tmp/raven-wheel-venv/bin/raven --fake --no-state --no-plugins --report /tmp/raven-wheel.txt
       - name: Qualify local CLI, documentation and terminal boundaries

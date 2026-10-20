@@ -16,7 +16,7 @@ import time
 import tempfile
 
 from . import evidence as E, site_policy as P
-from .shared_collection import SharedQueryCache
+from .shared_collection import ProcessQueryCache, SharedQueryCache
 from .read_acquisition import for_cache
 from .slurm import CommandError, FakeBackend
 
@@ -67,10 +67,11 @@ def _response_records(cmd, raw):
 
 
 class GovernedBackend:
-    def __init__(self, backend, policy, cache, scope, *, interval=None, collection=None):
+    def __init__(self, backend, policy, cache, scope, *, interval=None, collection=None, owns_cache=False):
         self.inner = backend
         self.policy = P.validate(policy)
         self.cache = cache
+        self._owns_cache = owns_cache
         self.acquisition = for_cache(cache)
         # v1 admitted compact JSON by physical line count. Do not reuse those
         # responses under semantic job/step record admission.
@@ -286,6 +287,13 @@ class GovernedBackend:
             if callable(close):
                 close()
         finally:
+            # Each cache owns a thread-local connection. Closing this caller's
+            # idle handle preserves the on-disk observations and other worker
+            # handles; their thread-local owners close when those threads end.
+            # A caller-supplied portable cache can serve another subscriber;
+            # its close is terminal, unlike the shared cache's per-thread close.
+            if self._owns_cache or not isinstance(self.cache, ProcessQueryCache):
+                self.cache.close()
             temporary = self._temporary_cache
             if temporary is not None:
                 self.acquisition.broker.close(wait=False)
@@ -332,7 +340,7 @@ def wrap_backend(backend, cfg, scope, state_dir):
             "allocation_required": False, "allow_intrusive": False})
     if collection is None and not state_dir and not cfg.get("collection_cache_dir"):
         raise ValueError("Governed collection requires a private host-local cache directory")
-    from .shared_collection import _host, _process_start, _network_mount, ProcessQueryCache
+    from .shared_collection import _host, _process_start, _network_mount
     explicit = cfg.get("collection_cache_dir", "")
     if explicit:
         # A fallback is a capability decision, never permission to accept an
@@ -368,7 +376,7 @@ def wrap_backend(backend, cfg, scope, state_dir):
                 directory = explicit or str(Path(state_dir) / "collection-cache" / host[:24])
             temporary = tempfile.TemporaryDirectory(prefix="raven-simulation-", dir="/tmp") if simulated and collection is not None else None
             cache = SharedQueryCache(temporary.name if temporary else directory, max_bytes=maximum)
-        governed = GovernedBackend(backend, policy, cache, scope, interval=cfg.get("collection_interval"), collection=collection)
+        governed = GovernedBackend(backend, policy, cache, scope, interval=cfg.get("collection_interval"), collection=collection, owns_cache=True)
         governed._temporary_cache = temporary
         governed.cache_coordination = "process-local; host identity unavailable" if portable else "shared host-local"
         return governed
