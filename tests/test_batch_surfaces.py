@@ -164,14 +164,14 @@ def test_fold_controls_never_escape_narrow_table_frames(batch, width):
 def test_group_info_splices_once_with_wide_combining_and_selection_parity(batch, monkeypatch):
     import random
     from types import SimpleNamespace
-    from raven import job_group_ui, pane_drag
+    from raven import job_group_ui
     app, views, store = batch
-    original = pane_drag._replace
+    original = job_group_ui._replace
     calls = []
     def counted(*args, **kwargs):
         calls.append(True)
         return original(*args, **kwargs)
-    monkeypatch.setattr(pane_drag, "_replace", counted)
+    monkeypatch.setattr(job_group_ui, "_replace", counted)
     random_ = random.Random(90211)
     meta = SimpleNamespace(collapsed=True, records=store.jobs)
     def characters(row):

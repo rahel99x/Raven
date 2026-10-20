@@ -179,7 +179,6 @@ def run_command(app, args):
     state = initialize(app)
     from ..ui.owner_ports import panels
 
-    _activate = panels(app).activate
     from .timeline_ui import command as timeline_command
 
     current = _context(app)
@@ -193,7 +192,7 @@ def run_command(app, args):
     if len(args) == 1:
         if getattr(app, "tab", "") not in ("jobs", "history"):
             app.enter_tab("jobs")
-        _activate(app, "trace")
+        panels(app).activate(app, "trace")
     elif len(args) == 3 and args[1] == "attach":
         if (
             not args[2]
@@ -206,7 +205,7 @@ def run_command(app, args):
         else:
             cancel(app, clear=True)
             state.update(explicit=args[2], context=_context(app), next_read=0.0)
-            _activate(app, "trace")
+            panels(app).activate(app, "trace")
     elif args[1:] in (["summary"], ["events"], ["timeline"]):
         state.update(
             summary=args[1] == "summary",

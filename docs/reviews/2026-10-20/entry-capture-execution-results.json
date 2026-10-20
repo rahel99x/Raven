@@ -104,6 +104,10 @@
     {
       "command": "ruff check --select F raven/entry raven/tracing raven/launching raven/execution raven/configuration; ruff format --check same five families",
       "result": "Pass; 63 actual package modules formatted."
+    },
+    {
+      "command": ".venv/bin/python -m pytest -q tests/test_entry_capture_execution_architecture.py",
+      "result": "7 passed in2.64s after expanding exact-module-identity and canonical-production-import regressions to all53 moved legacy paths; runtime sources unchanged since measurement."
     }
   ],
   "review_findings_resolved": [
@@ -266,12 +270,23 @@
     "fidelity": "Both 10,000-call fixtures commit20,004 events and4,054,829 bytes; recursive fixtures commit16,726 events and3,388,690 bytes, every run CLOSED with zero drops. Data fidelity was not reduced for speed.",
     "interpretation": "10k-call application median69.19\u219269.34ms, full drain213.53\u2192208.53ms, unchanged16,384KiB process peak. Recursive drain174.98\u2192184.52ms (+9.54ms) and CPU171.64\u2192184.40ms (+12.76ms); process peak16,000\u219216,128KiB. Traced child startup50.43\u219251.48ms. Worker task median6.033\u21926.379ms (+5.7%); three-run ranges overlap substantially. Worker peakRSS17,460\u219217,440KiB; driver Python allocation peak138,055\u2192138,405bytes. These small measured regressions are reported without statistical significance or blanket improvement claims.",
     "limits": "Exclusive serial local software window coordinated across all agents. Fresh processes; no OS page-cache flush, scheduler RPC, GPU, network or production cluster claim. Linux process ru_maxrss/VmHWM in KiB and driver Python tracemalloc bytes are distinct measurements. This architecture comparison starts at976eeb2, not original adversarial-review b987 or6fa baseline.",
-    "raw_evidence": "/workspace/owner-c-performance/report.json; parent may publish a new source-bound evidence object. Existing sealed INP archive identity is unchanged."
+    "raw_evidence": "/workspace/owner-c-performance/report.json; parent may publish a new source-bound evidence object. Existing sealed INP archive identity is unchanged.",
+    "driver_sha256": {
+      "scripts/benchmark-injob.py": "b91a593bab5c5d89e53b7fe14aa9c41362628ca4d60fe9b4ce1a839364f8deae",
+      "/workspace/raven-heavy-benchmark.py": "dd174da4696a51cd0405b6c043077d5b6e3ddbf90da18d4493e1b11134e82ebc"
+    }
   },
   "qualification_limits": [
     "No final integrated full-suite, installed wheel or CI result is claimed here; parent owns those checks after source freeze.",
     "Local software workers and captures do not qualify real Slurm, SSH, MPI, GPU or hardware tracing; earlier INP Gloo/MPI/SSH qualification remains separately source-labelled.",
     "This refactor does not claim new unavailable ground truth, automatic hardware capture or simulation efficacy.",
     "No configuration-file migration is required. Reinstalling the delivered wheel or editable checkout refreshes canonical console entrypoints; legacy imports and commands remain compatible."
-  ]
+  ],
+  "integration_followup_forecast": {
+    "baseline": "Exact current isolated reproduction: test_scoped_outcomes_roundtrip_without_backend_queries failed uid1000!=1234. Forecast implementation now belongs to connection_scope but the fixture cloned cli.os, so it no longer injected the identity input.",
+    "implementation": "Test fixture clones and patches canonical connection_scope.os only. Boolean UID regression patches the same clone. All expected UID, hostname, real backend identity, connection separation, no-query and strict boolean-vs-int assertions are unchanged.",
+    "runtime_changes": "None. Filesystem ownership checks retain real process UID because the actual os module is never patched.",
+    "command": ".venv/bin/python -m pytest -q tests/test_forecast_integration.py tests/test_config_trust.py",
+    "result": "72 passed in1.95s; /workspace/owner-c-forecast-final.log. Historical E-preflight failure is preserved, not represented as a passing full suite."
+  }
 }

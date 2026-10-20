@@ -4,18 +4,22 @@ A lease owns only a gesture's lifetime. Each control retains its published
 geometry, attempt identity, preview, rollback, and commit rules. No source
 collection, document copies, or hit-map rebuilds run in this module.
 """
+
 from dataclasses import dataclass
 from functools import wraps
 from types import MappingProxyType
 from typing import Callable
 
-BUTTONS = frozenset(("press", "left", "right", "motion", "drag", "release", "wheel-up", "wheel-down"))
+BUTTONS = frozenset(
+    ("press", "left", "right", "motion", "drag", "release", "wheel-up", "wheel-down")
+)
 CONTINUATIONS = frozenset(("motion", "drag", "release"))
 
 
 @dataclass(frozen=True)
 class CaptureOwner:
     """Adapter to one existing control state machine, in dispatch priority."""
+
     name: str
     state: str
     field: str = "capture"
@@ -34,7 +38,9 @@ OWNERS = (
     CaptureOwner("pane_drag", "pane_drag_state"),
     CaptureOwner("history_browser", "history_browser_state", "drag"),
     CaptureOwner("metric_live", "metric_live_state", marker="cancelled_release"),
-    CaptureOwner("chart_interaction", "chart_interaction_state", marker="cancelled_release"),
+    CaptureOwner(
+        "chart_interaction", "chart_interaction_state", marker="cancelled_release"
+    ),
 )
 _BY_NAME = {owner.name: owner for owner in OWNERS}
 RELEASE_MARKERS = tuple((owner.state, owner.marker) for owner in OWNERS if owner.marker)
@@ -49,23 +55,53 @@ class CaptureBinding:
     cancel: Callable[[object], object] | None = None
 
 
-_BINDINGS: dict[str, CaptureBinding] = {}
+def binding_for(handler):
+    """Read a decorator's immutable capability without registering it globally."""
+    binding = getattr(handler, "__capture_binding__", None)
+    if not isinstance(binding, CaptureBinding) or binding.mouse is not handler:
+        raise TypeError("Pointer handler has no capture capability")
+    return binding
 
 
-def bind(app, *, pointer_motion: Callable[..., object] | None = None):
-    """Pin the fully composed capture registry to this application session."""
-    missing = set(_BY_NAME) - _BINDINGS.keys()
+def bind(app, bindings, *, pointer_motion: Callable[..., object] | None = None):
+    """Validate finite composition and pin it to one application session."""
+    composed = {}
+    for binding in bindings:
+        if (
+            not isinstance(binding, CaptureBinding)
+            or _BY_NAME.get(binding.owner.name) != binding.owner
+            or not callable(binding.mouse)
+            or binding.cancel is not None
+            and not callable(binding.cancel)
+        ):
+            raise TypeError("Invalid pointer capture capability")
+        if binding.owner.name in composed:
+            raise ValueError("Duplicate pointer owner: " + binding.owner.name)
+        composed[binding.owner.name] = binding
+    missing = set(_BY_NAME) - composed.keys()
     if missing:
         raise RuntimeError("Unbound pointer owners: " + ", ".join(sorted(missing)))
-    app.pointer_bindings = MappingProxyType(dict(_BINDINGS))
+    app.pointer_bindings = MappingProxyType(composed)
     app.pointer_motion = pointer_motion
 
 
+def _remember_binding(app, binding):
+    """A directly invoked component belongs only to its root application.
+
+    Normal App composition already contains the same binding, so mouse motion
+    does not allocate or copy a registry. Standalone component callers can use
+    the protocol without initializing unrelated features or future sessions.
+    """
+    previous = getattr(app, "pointer_bindings", None)
+    if previous is not None and previous.get(binding.owner.name) is binding:
+        return
+    scoped = dict(previous or ())
+    scoped[binding.owner.name] = binding
+    app.pointer_bindings = MappingProxyType(scoped)
+
+
 def _binding(app, owner):
-    # Standalone component adapters use their own decorator-bound callbacks;
-    # the full application pins the complete immutable registry once at startup.
-    bindings = getattr(app, "pointer_bindings", _BINDINGS)
-    binding = bindings.get(owner.name)
+    binding = getattr(app, "pointer_bindings", {}).get(owner.name)
     if binding is None or binding.owner != owner:
         raise RuntimeError("Pointer owner has no callable binding: " + owner.name)
     return binding
@@ -81,7 +117,12 @@ class PointerEvent:
 
     @property
     def valid(self):
-        return type(self.y) is int and type(self.x) is int and type(self.button) is str and self.button in BUTTONS
+        return (
+            type(self.y) is int
+            and type(self.x) is int
+            and type(self.button) is str
+            and self.button in BUTTONS
+        )
 
     @property
     def fresh(self):
@@ -91,6 +132,7 @@ class PointerEvent:
 @dataclass(frozen=True)
 class PointerLease:
     """Small scalar token; completed gestures never retain large row ranges."""
+
     owner: CaptureOwner
     generation: int
     context: tuple
@@ -112,9 +154,14 @@ def _state(app):
 
 def _context(app):
     toolbar = getattr(app, "toolbar_state", {})
-    return (getattr(app, "mode", "main"), getattr(app, "tab", ""),
-            getattr(app, "width", None), getattr(app, "height", None),
-            toolbar.get("menu"), toolbar.get("panel"))
+    return (
+        getattr(app, "mode", "main"),
+        getattr(app, "tab", ""),
+        getattr(app, "width", None),
+        getattr(app, "height", None),
+        toolbar.get("menu"),
+        toolbar.get("panel"),
+    )
 
 
 def _payload(app, owner):
@@ -127,7 +174,9 @@ def _payload(app, owner):
 
 
 def _marked(app, owner):
-    return bool(owner.marker and (getattr(app, owner.state, None) or {}).get(owner.marker))
+    return bool(
+        owner.marker and (getattr(app, owner.state, None) or {}).get(owner.marker)
+    )
 
 
 def _clear_marker(app, owner):
@@ -156,7 +205,9 @@ def _cancel_owner(app, owner):
     else:
         callback = _binding(app, owner).cancel
         if callback is None:
-            raise RuntimeError("Pointer owner has no cancellation binding: " + owner.name)
+            raise RuntimeError(
+                "Pointer owner has no cancellation binding: " + owner.name
+            )
         callback(app)
 
 
@@ -198,7 +249,12 @@ def begin_gesture(app):
 def _claim(app, owner, capture, *, fresh=False):
     state = _state(app)
     previous = state["lease"]
-    if not fresh and previous and previous.owner == owner and previous.capture_token == id(capture):
+    if (
+        not fresh
+        and previous
+        and previous.owner == owner
+        and previous.capture_token == id(capture)
+    ):
         return
     # Legacy callers can invoke control handlers directly. Their new capture
     # must be just as exclusive as one entered through the screen/controller.
@@ -208,16 +264,20 @@ def _claim(app, owner, capture, *, fresh=False):
     for other in OWNERS:
         _clear_marker(app, other)
     state["generation"] += 1
-    state["lease"] = PointerLease(owner, state["generation"], _context(app), id(capture))
+    state["lease"] = PointerLease(
+        owner, state["generation"], _context(app), id(capture)
+    )
 
 
 def capture_handler(name, *, cancel=None):
     """Bind a control's existing mouse handler to the shared lifetime protocol."""
     owner = _BY_NAME[name]
+
     def decorate(handler):
         @wraps(handler)
         def wrapped(app, y, x, button="left", shift=False, **options):
             root = _root(app)
+            _remember_binding(root, binding)
             before = _payload(root, owner)
             try:
                 return handler(app, y, x, button=button, shift=shift, **options)
@@ -233,13 +293,20 @@ def capture_handler(name, *, cancel=None):
                 else:
                     state = getattr(root, "pointer_routing_state", None)
                     lease = state.get("lease") if isinstance(state, dict) else None
-                    if lease and lease.owner == owner and (before is None or id(before) == lease.capture_token):
+                    if (
+                        lease
+                        and lease.owner == owner
+                        and (before is None or id(before) == lease.capture_token)
+                    ):
                         # A cancelled owner keeps a tombstone until release or
                         # a fresh press. A completed release has no tombstone.
                         if not _marked(root, owner):
                             state["lease"] = None
-        _BINDINGS[name] = CaptureBinding(owner, wrapped, cancel)
+
+        binding = CaptureBinding(owner, wrapped, cancel)
+        wrapped.__capture_binding__ = binding
         return wrapped
+
     return decorate
 
 
@@ -255,7 +322,9 @@ def route_capture(app, event):
     if lease is None:
         # Compatibility with controls populated before this protocol or by a
         # headless renderer. Normal claims are registered by their handlers.
-        owner = next((owner for owner in OWNERS if _payload(app, owner) is not None), None)
+        owner = next(
+            (owner for owner in OWNERS if _payload(app, owner) is not None), None
+        )
         if owner is not None:
             _claim(app, owner, _payload(app, owner))
             lease = state["lease"]
@@ -274,16 +343,23 @@ def route_capture(app, event):
                 return True
             if not _marked(app, owner):
                 state["lease"] = None
-        elif event.button in CONTINUATIONS or owner.name in ("column_resize", "group_queue_drag", "job_group_drag"):
+        elif event.button in CONTINUATIONS or owner.name in (
+            "column_resize",
+            "group_queue_drag",
+            "job_group_drag",
+        ):
             # Publish cosmetic position once, with no control activation.
             # Ownership must not leave global hover stuck at the initial press.
             if isinstance(getattr(app, "interaction_state", None), dict):
                 pointer_motion = getattr(app, "pointer_motion", None)
                 if pointer_motion is not None:
-                    pointer_motion(app, event.y, event.x, button="motion", shift=event.shift)
+                    pointer_motion(
+                        app, event.y, event.x, button="motion", shift=event.shift
+                    )
             options = {"alt": event.alt} if owner.modifiers else {}
             handled = _binding(app, owner).mouse(
-                app, event.y, event.x, button=event.button, shift=event.shift, **options)
+                app, event.y, event.x, button=event.button, shift=event.shift, **options
+            )
             # A continuation belongs to its original owner even if validation
             # cancelled it. It cannot activate a control beneath the release.
             return event.button in CONTINUATIONS or handled
@@ -293,6 +369,7 @@ def route_capture(app, event):
         if _marked(app, owner):
             options = {"alt": event.alt} if owner.modifiers else {}
             if _binding(app, owner).mouse(
-                    app, event.y, event.x, button=event.button, shift=event.shift, **options):
+                app, event.y, event.x, button=event.button, shift=event.shift, **options
+            ):
                 return True
     return False

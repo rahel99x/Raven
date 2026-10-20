@@ -434,9 +434,7 @@ def initialize(app):
     for feature in modules():
         feature.initialize(app)
     text_selection.initialize(app)
-    from .pointer_routing import bind
-
-    bind(app, pointer_motion=module_map()["interaction"].handle_mouse)
+    bind_pointer(app)
     bind_terminal(app)
     bind_actions(app)
     bind_navigation(app)
@@ -721,4 +719,29 @@ def bind_trace_browser(app):
     app.trace_browser_effects = TraceBrowserEffects(
         current_context=lambda target: trace_ui._context(target),
         cancel_reader=lambda target: trace_ui.cancel(target),
+    )
+
+
+def bind_pointer(app):
+    """Compose the finite pointer owners without process-global registration."""
+    from .pointer_routing import bind, binding_for
+
+    features = module_map()
+    handlers = (
+        column_resize.handle_mouse,
+        features["group_queue_drag"].handle_mouse,
+        features["job_group_drag"].handle_mouse,
+        features["scrollbars"].handle_mouse,
+        features["toolbar"].handle_mouse,
+        text_selection.handle_mouse,
+        features["job_selection"].handle_mouse,
+        features["pane_drag"].handle_mouse,
+        features["history_browser"].handle_mouse,
+        features["metric_live"].handle_mouse,
+        features["chart_interaction"].handle_mouse,
+    )
+    bind(
+        app,
+        tuple(binding_for(handler) for handler in handlers),
+        pointer_motion=features["interaction"].handle_mouse,
     )
