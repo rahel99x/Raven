@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "backend": "gloo",
+  "world_size": 2,
+  "torch": "2.9.1+cpu",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "metrics": "/workspace/raven-gloo-qualification-ds6oqutb/metrics.jsonl",
+  "cases": [
+    "rank0 early plain metric before process-group init",
+    "rank1 without configured client",
+    "Raven reduction then application all_reduce",
+    "invalid-scalar readiness then application all_reduce"
+  ]
+}

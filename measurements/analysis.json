@@ -1,0 +1,96 @@
+{
+  "schema": "raven.analysis-review-benchmark/v1",
+  "limits": [
+    "Equivalent synthetic algorithm fixtures, not live scheduler/site qualification.",
+    "Linux process peak RSS includes interpreter/imports and fixture; tracemalloc is measured in a separate process.",
+    "Run serially without concurrent builds/tests; shared cloud host activity outside this task remains uncontrolled.",
+    "Normal tradeoffs timings were rerun serially in a separately confirmed quiet window; original overlapping timings retained only as discarded observations."
+  ],
+  "cases": {
+    "lineage": {
+      "baseline": {
+        "timing": {
+          "wall_seconds": 25.174343285994837,
+          "cpu_seconds": 25.170284,
+          "process_peak_rss_kib": 27604,
+          "python_allocation_peak_bytes": null,
+          "fixture_sha256": "7f362afbc11fc080b48a29ed9a57719fa45b3b84ea33262fe6171bf94f4dbabb",
+          "result_sha256": "12ce21df68ab6e55a1095bd960a661589ee555914a9a6815f2a829fd689e387d"
+        },
+        "allocation_probe": null
+      },
+      "current": {
+        "timing": {
+          "wall_seconds": 0.8952112599799875,
+          "cpu_seconds": 0.895157,
+          "process_peak_rss_kib": 22900,
+          "python_allocation_peak_bytes": null,
+          "fixture_sha256": "7f362afbc11fc080b48a29ed9a57719fa45b3b84ea33262fe6171bf94f4dbabb",
+          "result_sha256": "12ce21df68ab6e55a1095bd960a661589ee555914a9a6815f2a829fd689e387d"
+        },
+        "allocation_probe": {
+          "wall_seconds": 1.4908344570139889,
+          "cpu_seconds": 1.486735,
+          "process_peak_rss_kib": 28640,
+          "python_allocation_peak_bytes": 7266728,
+          "fixture_sha256": "7f362afbc11fc080b48a29ed9a57719fa45b3b84ea33262fe6171bf94f4dbabb",
+          "result_sha256": "12ce21df68ab6e55a1095bd960a661589ee555914a9a6815f2a829fd689e387d"
+        }
+      },
+      "equivalent_result": true
+    },
+    "tradeoffs": {
+      "baseline": {
+        "timing": {
+          "wall_seconds": 12.903363132994855,
+          "cpu_seconds": 12.898109999999999,
+          "process_peak_rss_kib": 23552,
+          "python_allocation_peak_bytes": null,
+          "fixture_sha256": "9a7d2c8bf62bb74411d964be377c23b32c4767ab7e879dac12c77d934d520fff",
+          "result_sha256": "a672239855ebc2d8ef98069ae8c9960f6f7531d26b2973679bd55c0cf3199c82",
+          "started_at": "2026-10-20T14:29:18.359043+00:00",
+          "ended_at": "2026-10-20T14:29:31.368615+00:00"
+        },
+        "allocation_probe": null,
+        "discarded_contested_timing": {
+          "wall_seconds": 12.726803866011323,
+          "cpu_seconds": 12.725769999999999,
+          "process_peak_rss_kib": 24448,
+          "python_allocation_peak_bytes": null,
+          "fixture_sha256": "9a7d2c8bf62bb74411d964be377c23b32c4767ab7e879dac12c77d934d520fff",
+          "result_sha256": "a672239855ebc2d8ef98069ae8c9960f6f7531d26b2973679bd55c0cf3199c82"
+        }
+      },
+      "current": {
+        "timing": {
+          "wall_seconds": 3.6958173580060247,
+          "cpu_seconds": 3.695591,
+          "process_peak_rss_kib": 49024,
+          "python_allocation_peak_bytes": null,
+          "fixture_sha256": "9a7d2c8bf62bb74411d964be377c23b32c4767ab7e879dac12c77d934d520fff",
+          "result_sha256": "a672239855ebc2d8ef98069ae8c9960f6f7531d26b2973679bd55c0cf3199c82",
+          "started_at": "2026-10-20T14:29:31.368638+00:00",
+          "ended_at": "2026-10-20T14:29:35.195243+00:00"
+        },
+        "allocation_probe": {
+          "wall_seconds": 22.98179664000054,
+          "cpu_seconds": 22.957008,
+          "process_peak_rss_kib": 87460,
+          "python_allocation_peak_bytes": 25889715,
+          "fixture_sha256": "9a7d2c8bf62bb74411d964be377c23b32c4767ab7e879dac12c77d934d520fff",
+          "result_sha256": "a672239855ebc2d8ef98069ae8c9960f6f7531d26b2973679bd55c0cf3199c82",
+          "qualification": "Python allocation counts/process peak RSS only; probe wall timing overlapped an installer lifecycle and is excluded from speed claims"
+        },
+        "discarded_contested_timing": {
+          "wall_seconds": 3.898902420012746,
+          "cpu_seconds": 3.897418,
+          "process_peak_rss_kib": 49024,
+          "python_allocation_peak_bytes": null,
+          "fixture_sha256": "9a7d2c8bf62bb74411d964be377c23b32c4767ab7e879dac12c77d934d520fff",
+          "result_sha256": "a672239855ebc2d8ef98069ae8c9960f6f7531d26b2973679bd55c0cf3199c82"
+        }
+      },
+      "equivalent_result": true
+    }
+  }
+}

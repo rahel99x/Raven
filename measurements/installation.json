@@ -1,0 +1,81 @@
+{
+  "schema": "raven.source-update-benchmark/v1",
+  "baseline_revision": "b98742f",
+  "implementation_base": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+  "implementation_uncommitted": true,
+  "runner": "/workspace/review-install-benchmark.py",
+  "fixture": "2672 small Python files in 32 layer directories and 32 branch directories, one upstream update, private owned local Git clones, equal warm-byte-cache setup",
+  "normal": {
+    "baseline": {
+      "mode": "baseline-raw",
+      "seconds": 5.33605313001317,
+      "files": 2672,
+      "process_max_rss_kib": 18096,
+      "child_max_rss_kib": 18096,
+      "cpu_user_seconds": 1.3975499999999998,
+      "cpu_system_seconds": 1.3460309999999998,
+      "input_blocks_512_bytes": 0,
+      "output_blocks_512_bytes": 24568,
+      "changed": true,
+      "head": "f16def1079bc10fea3a25d7e45e7f611a4aff46c"
+    },
+    "current": {
+      "mode": "current-raw",
+      "seconds": 2.7630275449773762,
+      "files": 2672,
+      "process_max_rss_kib": 17648,
+      "child_max_rss_kib": 17648,
+      "cpu_user_seconds": 0.3625769999999999,
+      "cpu_system_seconds": 0.9389250000000001,
+      "input_blocks_512_bytes": 0,
+      "output_blocks_512_bytes": 24560,
+      "changed": true,
+      "head": "f16def1079bc10fea3a25d7e45e7f611a4aff46c"
+    }
+  },
+  "payload": {
+    "files": 2672,
+    "sha256": "18ca8d92f963814c7df36d31d0d63904e7532a7b61967fda08403f73c1597696",
+    "git_status": ""
+  },
+  "traced": {
+    "baseline": {
+      "mode": "baseline",
+      "seconds": 33.59562634199392,
+      "files": 2672,
+      "changed": true,
+      "head": "f16def1079bc10fea3a25d7e45e7f611a4aff46c"
+    },
+    "current": {
+      "mode": "current",
+      "seconds": 8.779069864976918,
+      "files": 2672,
+      "changed": true,
+      "head": "f16def1079bc10fea3a25d7e45e7f611a4aff46c"
+    }
+  },
+  "selected_syscalls": {
+    "baseline": {
+      "openat": 155604,
+      "newfstatat": 34773,
+      "fstat": 173278,
+      "fsync": 5416,
+      "total": 369071
+    },
+    "current": {
+      "openat": 26406,
+      "newfstatat": 29665,
+      "fstat": 28482,
+      "fsync": 2745,
+      "total": 87298
+    }
+  },
+  "limits": [
+    "Normal measurements used the coordinated quiet window after installation qualification and before root final benchmarks.",
+    "Traced wall times include strace overhead and must not be compared with normal wall times.",
+    "Process max RSS includes imports; Python allocation peaks were not measured. Child high-water RSS is retained separately.",
+    "Linux local container filesystem; no NFS, remote cluster, Slurm scheduler or GPU performance is claimed.",
+    "Warm input block counts were zero. Disk output counts use Linux 512-byte blocks, not application payload bytes.",
+    "All payload files and final Git commit match exactly; full pre-mutation verification and file fsync remain enabled."
+  ]
+}

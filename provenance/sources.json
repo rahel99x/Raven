@@ -1,0 +1,43 @@
+{
+  "schema": "raven.measurement-source-provenance/v1",
+  "base_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+  "limits": [
+    "The checkout base revision alone does not identify the uncommitted implementation. Use source hashes inside individual reports and the exact qualified source/runtime archives.",
+    "Slurm matrix and instrumentation runtime snapshots predate later integrated fixes. They are evidence for those snapshots, not a claim the eventual delivered package is byte-identical.",
+    "Original focus/mutation dispatch experiments isolate current feature contracts and simulated scheduler delay. They do not qualify a complete release or live scheduler performance.",
+    "Comment-only benchmark-harness clarification occurred after the analysis measurement. The copied harness hash is capture-time provenance only.",
+    "Reports preserve explicitly discarded/contested samples for transparency. Those samples do not support speed claims."
+  ],
+  "data_author_limits": "Original isolated synthetic processes, siblings paused, Python3.12/localFS.35k retention CPU regression documented;60001 baseline refuses so no throughput ratio. Final recovery/quota/pure-port/index-slot correctness work postdates timings; no remeasurement claim.",
+  "installation_author_source_snapshot": "Author source map accompanies qualification snapshot7f6a738716ab1829cc931fd667ed84fb159a6e4c; original benchmark report predates later packaging, retained verbatim.",
+  "analysis_author_attestation": "Parent implementation author confirms scientific_lineage.py/tradeoffs.py unchanged since controlled quiet measurement; fixture/result hashes retained verbatim.",
+  "analysis_measured_implementation_sha256": {
+    "raven/scientific_lineage.py": "07a050d93a414592518cf3a10b2e728308fa31d56d37c215ca152301556bfb82",
+    "raven/tradeoffs.py": "b92dbd6585859d74c8330bfe412c43268b40d5459c3dc4e3325b500ae32b5999"
+  },
+  "author_source_maps": {
+    "installation": {
+      "schema": "raven.adversarial-review-package/v1"
+    },
+    "instrumentation": {
+      "schema": "raven.injob-adversarial-review/v1",
+      "base_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+      "source_sha256": {
+        "raven/client.py": "b3e0acf8808f8fcbf42774cc71c430dcd16daa88bbb82947c8fc54f22d4c4d3f",
+        "raven/trace_recorder.py": "ed77963d8511de83fd603c197e2aa06b5f03d6d7231122c95ad61bd0392f94fd",
+        "raven/trace_protocol.py": "abb3cb88bbe42be550ef48387e446b6bec682f3e596b25d0ca8ddd6b77ebf4a4",
+        "raven/launch_autotrace.py": "e906a2d686842c082e3716ea19ddf538259994fdbee55b34769b45c752c768e0",
+        "raven/launch_runtime.py": "d6f675fecbdd6b524e98f27003d7b7bb8bb0832975309564e9600dfc54b343a3",
+        "raven/launch_bootstrap.py": "52698ef96efb16fbfb589b2cea95d466bba1200c043c9b177a7c98e45bc19a68",
+        "raven/trace_stream.py": "cbe06126dc3f43ae3b952553a0e4662a45d94ccd5c69282d6f0c9c7c297bcfea",
+        "raven/trace_stream_export.py": "63c7cf5b054ac170f3e425da42e4ed6256b274edabeb52000e2c9efe86ab105f",
+        "raven/runtime_cleanup.py": "21a0a9012d0a45d186274825cf3ecfa2a5292e8f4c7c5c1dd46ec5f8941c702b",
+        "raven/connection_scope.py": "3d80dee37d0d70baeef143a076bd1fe6b1092161ce02f143c5b556f019a76eb4",
+        "raven/launch_scheduler_context.py": "c94c13bbb07d7c984abd5dae9b6fc365f4beb334c5029e09099a9cce115d0c12",
+        "raven/cadence.py": "a672bbfad8ebbb4ca7833afdb25a27d8054393913d3ffb86ac9a38761708bceb",
+        "raven/refresh_preferences.py": "aca898787576e850ee65bcfea1d1d1323268cbab5bb5baf6c042d21b18164cd9",
+        "raven/metric_sampling_runtime.py": "a1bd8982851f50e1e4ec9a67deca093b19632da77bc04232f608f8901e1b39a3"
+      }
+    }
+  }
+}

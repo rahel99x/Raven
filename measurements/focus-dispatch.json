@@ -1,0 +1,33 @@
+{
+  "schema": "raven.focus-latency/v1",
+  "fixture": "same notifications mode, same unknown consumed key, same current feature contracts,2000keys per round7rounds",
+  "limits": "original HEAD _handle control flow compiled against current unchanged owner callbacks; isolates dispatch overhead, not original whole-release performance; no I/O or live scheduler; controlled benchmark only",
+  "results": {
+    "original_HEAD_control_flow_current_feature_contracts": {
+      "median_us_per_key": 23.29563398961909,
+      "round_us_per_key": [
+        21.596996506559663,
+        23.29563398961909,
+        30.11061500001233,
+        31.140336999669668,
+        18.796613003360108,
+        20.22577350726351,
+        31.716185505501922
+      ]
+    },
+    "foreground_focus_stack": {
+      "median_us_per_key": 14.532960005453788,
+      "round_us_per_key": [
+        14.532960005453788,
+        15.497332002269106,
+        14.7965979995206,
+        14.052456506760791,
+        13.832426004228182,
+        14.385374990524724,
+        14.673744997708127
+      ]
+    }
+  },
+  "max_rss_kib": 40180,
+  "python_allocations": "not measured; RSS is process high-water RSS"
+}

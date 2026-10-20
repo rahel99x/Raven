@@ -1,0 +1,36 @@
+{
+  "schema": "raven.mutation-latency/v1",
+  "fixture": "identical one-target FakeBackend cancellation with 100 ms scheduler delay",
+  "limits": "cloud Linux Python process; scheduler delay simulated; baseline retains synchronous CLI path as equivalent old blocking control; no live scheduler latency claim",
+  "repetitions": 7,
+  "results": {
+    "equivalent_synchronous_baseline": {
+      "handler_median_ms": 100.26585301966406,
+      "completion_median_ms": 100.26634400128387,
+      "scheduler_calls_each": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "interactive_worker": {
+      "handler_median_ms": 0.3941320173908025,
+      "completion_median_ms": 102.1011270058807,
+      "scheduler_calls_each": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  },
+  "max_rss_kib": 40180,
+  "python_allocations": "not measured separately; process RSS reported only"
+}

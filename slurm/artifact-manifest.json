@@ -1,0 +1,68 @@
+{
+  "schema": "raven.qualification-artifact-manifest/v1",
+  "source_package_sha256": "672635ece60c12e121a83a0695032870729ef92211afb37edc61a6c8e9f0fbfc",
+  "base_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+  "files": {
+    "23.02.8.tar.gz": {
+      "sha256": "3d5e755bcc87854afbb1e2d116a0a68c53fab5e4bf169ec4bb253d3fa7c9b658",
+      "bytes": 79981
+    },
+    "23.11.11.tar.gz": {
+      "sha256": "44677f0fb3e791537f14e91c5adfb32bdfe714b64cfac29c9e274d69d05f1e84",
+      "bytes": 80221
+    },
+    "24.05.8-initial-accounting-visibility.tar.gz": {
+      "sha256": "2fa582e6af99a4dc6c6c4402d618465060527e888633a166d53ba326fe107084",
+      "bytes": 60640
+    },
+    "24.05.8.tar.gz": {
+      "sha256": "a5d47dee0d5450e8fd2005c06c4f1c1f3849200f23d84ce2044bafae723f6803",
+      "bytes": 84048
+    },
+    "24.11.7.tar.gz": {
+      "sha256": "d7975a4d761728566092ddbe932e7b32742f7917eb8f1b1303fdeb62fdceedc2",
+      "bytes": 83631
+    },
+    "26.05.5-before-pid-proof.tar.gz": {
+      "sha256": "873db80b55266fce08983f8a4693b1c01bea05c7a3922dd06c924483a8af4d0b",
+      "bytes": 81826
+    },
+    "26.05.5.tar.gz": {
+      "sha256": "2028cc99053f518ddf79f662144ec5bde9bad29ebe613061785f1cca95bd8609",
+      "bytes": 97539
+    },
+    "README.md": {
+      "sha256": "980462adbeeef166f894bf3941f457a35d7afbeed692cf1ea44d489da85011a1",
+      "bytes": 1755
+    },
+    "orphan-26.05.5.tar.gz": {
+      "sha256": "c8adf413bf4218aaaa5c4f13f94be257a82f5916c8e608d6f0758ae04821db9d",
+      "bytes": 26853
+    },
+    "prepare_snapshot.py": {
+      "sha256": "caa017b825bc8ac1a7b124317d924c26919bd1b9212d4636720e76a6d8943782",
+      "bytes": 2463
+    },
+    "qualified-source.tar.gz": {
+      "sha256": "5ae52c63b751a3c36dc4fff61d1f04f8bfffc6879b49adf1463f7791cdc336b7",
+      "bytes": 1903622
+    },
+    "qualify_review_snapshot.py": {
+      "sha256": "49f660678c71b5e1caf05dae43702cfdca4e05a43e7e5dec631457559f4fc03c",
+      "bytes": 8215
+    },
+    "review_findings_driver.py": {
+      "sha256": "73d55447eb745d18804153f4b2a844629700bc2bfd7580c16daa0c1047900ce6",
+      "bytes": 19546
+    },
+    "review_findings_initial_driver.py": {
+      "sha256": "fe2254347867c5c7a71fbec915fc260cdbac31b39b17768ba278a6761506fbca",
+      "bytes": 19196
+    },
+    "summary.json": {
+      "sha256": "ffd1170c57b7865f08f05a6ea429099a3321fdce12f68b592753001899b42223",
+      "bytes": 666872
+    }
+  },
+  "constraints": "Owned disposable local Slurm only; initial failures and evidence-driver adjustments are explicitly retained. Final MCP resource/cancellation changes are outside this matrix snapshot."
+}

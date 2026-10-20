@@ -1,0 +1,257 @@
+{
+  "schema": "raven.adversarial-review-artifacts/v1",
+  "base_revision": "6faeea2aeb00eaaf367cd36095558d5a1cc4ff16",
+  "historical_archive_commit": "b98742fb967f18131905696f4afd3a61f2ad03f2",
+  "files": {
+    "README.md": {
+      "bytes": 2484,
+      "sha256": "e66fea84728c8520aeec122dc7574c5c57210b286eaa5a53721e1ae8e5fc555c",
+      "role": "Archive scope, verification and qualification limits"
+    },
+    "drivers/analysis.py": {
+      "bytes": 6135,
+      "sha256": "2d918713b2a3353e1f230c7900dfc13a36f10846287276cbdd411faef02f70c0",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/Raven/scripts/benchmark_analysis_review.py"
+    },
+    "drivers/data-export-dense-original.py": {
+      "bytes": 1062,
+      "sha256": "2b5fb9e322d6492badfc82764707837e7a08617018392c263a727cd1f525d0a1",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/tmp/bench_data_export_dense.py"
+    },
+    "drivers/data-export-original.py": {
+      "bytes": 1009,
+      "sha256": "bf24d4c72782fc63473e938bf66b6dd3b0f9bbfb45a8ae9fcf0466126de9c411",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/tmp/bench_data_export.py"
+    },
+    "drivers/data-original.py": {
+      "bytes": 2793,
+      "sha256": "8b0c6d243c45e5427a53ea2a9e8a9a54a16acef90e39e1ea5634f3878c4b78ce",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/tmp/bench_review_data.py"
+    },
+    "drivers/data-portable.py": {
+      "bytes": 11449,
+      "sha256": "ad0eca8e7c202a0275fdf6e7c7cf5b91ed05cfbf7b06dc13a7afd87283613c6d",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/Raven/scripts/benchmark_series_blocks.py"
+    },
+    "drivers/focus-dispatch-original.py": {
+      "bytes": 1921,
+      "sha256": "4d0994124e481e289ace1547c2a40bdccf38702b8ba9665a35f425f6368769a1",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/benchmark-review-focus.py"
+    },
+    "drivers/gloo.py": {
+      "bytes": 1977,
+      "sha256": "25721c7ad51ec937fb86e8e65960542a9acb276c26347f963fa4af8e42d87d47",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/review-injob-gloo.py"
+    },
+    "drivers/installation-original.py": {
+      "bytes": 3432,
+      "sha256": "dcbd84f365551f1cfc66b2526e3077e6b5b5ac62c9f2c91928053a5d9af3c767",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/review-install-benchmark.py"
+    },
+    "drivers/installation-portable.py": {
+      "bytes": 12714,
+      "sha256": "b03c70238838bb942a71e6ea674fbc4e77b4628cd5c368aeaa9ac138460336bf",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/Raven/scripts/benchmark_install_review.py"
+    },
+    "drivers/instrumentation.py": {
+      "bytes": 6389,
+      "sha256": "b91a593bab5c5d89e53b7fe14aa9c41362628ca4d60fe9b4ce1a839364f8deae",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/Raven/scripts/benchmark-injob.py"
+    },
+    "drivers/mpi.py": {
+      "bytes": 745,
+      "sha256": "ce107d7dac7539d2e50129068b3afec02ce0fff059195e5cd404468bf7a30cab",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/review-injob-mpi.py"
+    },
+    "drivers/mutation-dispatch-original.py": {
+      "bytes": 2334,
+      "sha256": "0002537236b13affca7214331733760441c6d5b096b72db8cbcdc7232f201a04",
+      "role": "Original or subsequently packaged reproduction driver; capture-time hash is not a claim its file bytes were the measured harness",
+      "source_path": "/workspace/benchmark-review-mutations.py"
+    },
+    "instrumentation/measured-runtime.pyz": {
+      "bytes": 2056735,
+      "sha256": "0db372f9e384a8b130377dbe513e50ff70d24223172566d9f281e59e151ee60c",
+      "role": "Exact instrumentation/startup runtime archive SHA0db372f9e384a8b130377dbe513e50ff70d24223172566d9f281e59e151ee60c",
+      "source_path": "/workspace/raven-startup-bench-expdqn9k/.raven/wrappers/72ca6680544546b093821eb413ce03fd/runtime.pyz"
+    },
+    "measurements/analysis.json": {
+      "bytes": 4483,
+      "sha256": "bd7f16cc0cc15842c6f576c668230241cb61a5ff6fd8230bf7ba840e3b056381",
+      "role": "Verbatim original bounded measurement report; retain its units, source identity and qualification limits",
+      "source_path": "/workspace/review-analysis-benchmark.json"
+    },
+    "measurements/data.json": {
+      "bytes": 11561,
+      "sha256": "a8c935c394180ecd80a2a997d4e68748de3068f1d6ac44ccd668083c20bfbecc",
+      "role": "Verbatim original bounded measurement report; retain its units, source identity and qualification limits",
+      "source_path": "/workspace/review-data-benchmarks.json"
+    },
+    "measurements/focus-dispatch.json": {
+      "bytes": 1160,
+      "sha256": "c0b05ec2a13e004b995bbed9fe1d244d85d5372c2fc3823ae38a58e5b57eb62f",
+      "role": "Verbatim original bounded measurement report; retain its units, source identity and qualification limits",
+      "source_path": "/workspace/review-focus-benchmark.json"
+    },
+    "measurements/gloo.json": {
+      "bytes": 458,
+      "sha256": "a9602b2d720891ebd1e9f99fec7a860c6b7ff41f4532c6a9861362116ffd793a",
+      "role": "Verbatim original bounded measurement report; retain its units, source identity and qualification limits",
+      "source_path": "/workspace/review-injob-gloo-results.json"
+    },
+    "measurements/installation.json": {
+      "bytes": 2866,
+      "sha256": "300e016332caa1d741700fa548a7209cbfd70a4029d96567345dda62a2acf753",
+      "role": "Verbatim original bounded measurement report; retain its units, source identity and qualification limits",
+      "source_path": "/workspace/review-install-benchmark.json"
+    },
+    "measurements/instrumentation.json": {
+      "bytes": 14551,
+      "sha256": "df517600c7cbffe6fd7c0b1a18419b7cbd877e2ef1607fefc4780a9257fd3d04",
+      "role": "Verbatim original bounded measurement report; retain its units, source identity and qualification limits",
+      "source_path": "/workspace/review-injob-performance-final.json"
+    },
+    "measurements/mutation-dispatch.json": {
+      "bytes": 959,
+      "sha256": "2e2da5295e143ee33b9e222613144adcce7a159234130ab815737dbf76f0d102",
+      "role": "Verbatim original bounded measurement report; retain its units, source identity and qualification limits",
+      "source_path": "/workspace/review-mutations-benchmark.json"
+    },
+    "provenance/analysis-measured-source.json": {
+      "bytes": 754,
+      "sha256": "43059d15a7baf0d20962c68c3f5ed955b7d60138fb027000cfd09d2d03b0def4",
+      "role": "Author-qualified postcapture runtime source map; explicitly unchanged since measurement window",
+      "source_path": "/workspace/review-analysis-measured-source.json"
+    },
+    "provenance/analysis-source/scientific_lineage.py": {
+      "bytes": 7310,
+      "sha256": "07a050d93a414592518cf3a10b2e728308fa31d56d37c215ca152301556bfb82",
+      "role": "Author confirms these exact implementation sources unchanged since controlled quiet measurement",
+      "source_path": "/workspace/Raven/raven/scientific_lineage.py"
+    },
+    "provenance/analysis-source/tradeoffs.py": {
+      "bytes": 28831,
+      "sha256": "b92dbd6585859d74c8330bfe412c43268b40d5459c3dc4e3325b500ae32b5999",
+      "role": "Author confirms these exact implementation sources unchanged since controlled quiet measurement",
+      "source_path": "/workspace/Raven/raven/tradeoffs.py"
+    },
+    "provenance/installation-review.json": {
+      "bytes": 20093,
+      "sha256": "1facb8195ad5b39efe5167d61a7d501f9523e75d075c7fa4f73b6fee2d447d32",
+      "role": "Latest installer coverage/source-provenance ledger; postmeasurement migration diagnostic change explicitly qualified",
+      "source_path": "/workspace/review-install-results.json"
+    },
+    "provenance/sources.json": {
+      "bytes": 3675,
+      "sha256": "5d3a9f140570d01d70dfed22a3d9fa816e2a0861befdf7abbb867eb7798bbdc3",
+      "role": "Source identities and explicit measured-vs-capture-time qualifications"
+    },
+    "slurm/23.02.8.tar.gz": {
+      "bytes": 79981,
+      "sha256": "3d5e755bcc87854afbb1e2d116a0a68c53fab5e4bf169ec4bb253d3fa7c9b658",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/23.02.8.tar.gz"
+    },
+    "slurm/23.11.11.tar.gz": {
+      "bytes": 80221,
+      "sha256": "44677f0fb3e791537f14e91c5adfb32bdfe714b64cfac29c9e274d69d05f1e84",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/23.11.11.tar.gz"
+    },
+    "slurm/24.05.8-initial-accounting-visibility.tar.gz": {
+      "bytes": 60640,
+      "sha256": "2fa582e6af99a4dc6c6c4402d618465060527e888633a166d53ba326fe107084",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/24.05.8-initial-accounting-visibility.tar.gz"
+    },
+    "slurm/24.05.8.tar.gz": {
+      "bytes": 84048,
+      "sha256": "a5d47dee0d5450e8fd2005c06c4f1c1f3849200f23d84ce2044bafae723f6803",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/24.05.8.tar.gz"
+    },
+    "slurm/24.11.7.tar.gz": {
+      "bytes": 83631,
+      "sha256": "d7975a4d761728566092ddbe932e7b32742f7917eb8f1b1303fdeb62fdceedc2",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/24.11.7.tar.gz"
+    },
+    "slurm/26.05.5-before-pid-proof.tar.gz": {
+      "bytes": 81826,
+      "sha256": "873db80b55266fce08983f8a4693b1c01bea05c7a3922dd06c924483a8af4d0b",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/26.05.5-before-pid-proof.tar.gz"
+    },
+    "slurm/26.05.5.tar.gz": {
+      "bytes": 97539,
+      "sha256": "2028cc99053f518ddf79f662144ec5bde9bad29ebe613061785f1cca95bd8609",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/26.05.5.tar.gz"
+    },
+    "slurm/README.md": {
+      "bytes": 1755,
+      "sha256": "980462adbeeef166f894bf3941f457a35d7afbeed692cf1ea44d489da85011a1",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/README.md"
+    },
+    "slurm/artifact-manifest.json": {
+      "bytes": 2581,
+      "sha256": "c36b9eb039b278ce540c5644afa3098bd0a4cceac8eb541fb80eb41d8c00b519",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/artifact-manifest.json"
+    },
+    "slurm/orphan-26.05.5.tar.gz": {
+      "bytes": 26853,
+      "sha256": "c8adf413bf4218aaaa5c4f13f94be257a82f5916c8e608d6f0758ae04821db9d",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/orphan-26.05.5.tar.gz"
+    },
+    "slurm/prepare_snapshot.py": {
+      "bytes": 2463,
+      "sha256": "caa017b825bc8ac1a7b124317d924c26919bd1b9212d4636720e76a6d8943782",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/prepare_snapshot.py"
+    },
+    "slurm/qualified-source.tar.gz": {
+      "bytes": 1903622,
+      "sha256": "5ae52c63b751a3c36dc4fff61d1f04f8bfffc6879b49adf1463f7791cdc336b7",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/qualified-source.tar.gz"
+    },
+    "slurm/qualify_review_snapshot.py": {
+      "bytes": 8215,
+      "sha256": "49f660678c71b5e1caf05dae43702cfdca4e05a43e7e5dec631457559f4fc03c",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/qualify_review_snapshot.py"
+    },
+    "slurm/review_findings_driver.py": {
+      "bytes": 19546,
+      "sha256": "73d55447eb745d18804153f4b2a844629700bc2bfd7580c16daa0c1047900ce6",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/review_findings_driver.py"
+    },
+    "slurm/review_findings_initial_driver.py": {
+      "bytes": 19196,
+      "sha256": "fe2254347867c5c7a71fbec915fc260cdbac31b39b17768ba278a6761506fbca",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/review_findings_initial_driver.py"
+    },
+    "slurm/summary.json": {
+      "bytes": 666872,
+      "sha256": "ffd1170c57b7865f08f05a6ea429099a3321fdce12f68b592753001899b42223",
+      "role": "Frozen actual Slurm qualification artifact; nested manifest binds exact source snapshot and per-command evidence",
+      "source_path": "/workspace/raven-review-slurm-qualification-artifacts/summary.json"
+    }
+  }
+}
