@@ -90,9 +90,11 @@ def main(argv=None):
         for name in ('y.tab.c', 'y.tab.h'):
             (source / name).touch()
         env = dict(os.environ, CC='gcc -std=gnu89 -Wno-error=implicit-function-declaration', ac_cv_func_working_mktime='yes')
+        # Older Bash submakes rebuild shared readline/history object files.
+        # Serialize the build so one cannot remove another's input to ar.
         commands = [
             ('configure', ['./configure', '--without-bash-malloc', '--disable-nls'], source),
-            ('build', ['make', '-j2'], source),
+            ('build', ['make', '-j1'], source),
             ('tests', [sys.executable, '-m', 'pytest', 'tests/test_install_bootstrap.py', '-q'], ROOT),
         ]
         for label, command, cwd in commands:
