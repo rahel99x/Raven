@@ -10,7 +10,6 @@ from collections import deque, OrderedDict
 import argparse
 import hashlib
 import os
-import resource
 import selectors
 import signal
 import socket
@@ -37,6 +36,7 @@ from .resources import (
     child_environment,
     limits,
     placement_probe,
+    reserve_supervisor,
     task_limits,
     verify_placement,
 )
@@ -169,6 +169,7 @@ class Worker:
         self.probe = None
         self.identity = {}
         self.output_registered = False
+        self.supervisor_memory_mib = 64
         for signum in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
             signal.signal(
                 signum, lambda _signum, _frame: setattr(self, "shutting_down", True)
@@ -270,14 +271,7 @@ class Worker:
         self.config = config
         self.nonce = nonce
         self.operations = _manifest()
-        task_limits(
-            {}, config["resources"]
-        )  # Check aggregate memory reservation before readiness.
-        current_hard = resource.getrlimit(resource.RLIMIT_AS)[1]
-        supervisor_as = 64 << 20
-        if current_hard != resource.RLIM_INFINITY:
-            supervisor_as = min(supervisor_as, current_hard)
-        resource.setrlimit(resource.RLIMIT_AS, (supervisor_as, current_hard))
+        self.supervisor_memory_mib = reserve_supervisor(config["resources"])
         if config.get("site_kind") == "desktop":
             if config.get("desktop_explicit") is not True:
                 raise ValueError("Desktop Heavy requires explicit desktop policy")
@@ -310,13 +304,17 @@ class Worker:
             build_digest=build_digest(),
             policy_digest=self.config["policy_digest"],
             identity=self.identity,
-            resources=self.config["resources"],
+            resources={
+                **self.config["resources"],
+                "supervisor_memory_mib": self.supervisor_memory_mib,
+            },
             operations=self.operations,
             enforcement={
                 "mechanism": "rlimit-process-group",
                 "hard_rss": False,
                 "cpu_percentage": False,
                 "native_threads": "per-task admitted CPUs",
+                "supervisor_address_space_mib": self.supervisor_memory_mib,
                 "placement": self.identity["verification"],
             },
         )
@@ -424,7 +422,11 @@ class Worker:
                 )
         elif expected_effects != "none":
             raise ValueError("No worker adapter for these external side effects")
-        budget = task_limits(task.get("budget"), self.config["resources"])
+        budget = task_limits(
+            task.get("budget"),
+            self.config["resources"],
+            supervisor_memory_mib=self.supervisor_memory_mib,
+        )
         contract = self.operations[operation]
         target = (
             "desktop"
@@ -480,6 +482,7 @@ class Worker:
                 sys.platform.startswith("linux")
                 and hasattr(os, "fork")
                 and threading.active_count() == 1
+                and budget["memory_mib"] >= self.supervisor_memory_mib
             ):
                 # A controlled single-threaded fork server amortizes imports,
                 # while every operation still receives fresh rlimits and pipes.
@@ -492,6 +495,8 @@ class Worker:
 
                 process = TaskProcess(child_environment(budget["cpus"]), task_main)
             else:
+                # A child with a smaller quota must not inherit the supervisor's
+                # larger interpreter/library mappings before applying its cap.
                 process = subprocess.Popen(
                     worker_argv() + ["--task", "--parent-pid", str(os.getpid())],
                     stdin=subprocess.PIPE,
@@ -760,7 +765,7 @@ class Worker:
                     except (
                         ValueError,
                         TypeError,
-                        KeyError,
+                        LookupError,
                         OSError,
                         ImportError,
                     ) as exc:
@@ -839,7 +844,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         return task_main(args.parent_pid) if args.task else Worker().run()
-    except (ValueError, TypeError, OSError, ImportError, KeyError) as exc:
+    except MemoryError:
+        sys.stderr.write(
+            "Raven worker: memory budget exhausted; increase Heavy memory or "
+            "reduce worker concurrency\n"
+        )
+        return 2
+    except (ValueError, TypeError, OSError, ImportError, LookupError) as exc:
         # No nonce/config/environment is printed, even when handshake fails.
         sys.stderr.write("Raven worker: " + type(exc).__name__ + "\n")
         return 2
