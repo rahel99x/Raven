@@ -646,3 +646,39 @@ browser/history viewing and qualification boundaries, see the
 regression, packaging and supported-Python checks are attached to the current
 PR HEAD before merge; source fixtures are not presented as physical hardware
 qualification.
+
+### Hosted merge-gate shutdown correction
+
+The expanded example revision `c6575ab` passed the local full suite (20,198
+passed, 30 expected skips), strict hosted Chromium (91 passed), actual hosted
+Slurm (16/16), and the Python 3.10/3.11/3.14 release pipelines. Its Python 3.13
+full suite exposed a real demo shutdown race: all PTY interactions passed, but
+exit returned 2 because a background SQLite writer recreated a file during
+`TemporaryDirectory.cleanup()` (`ENOTEMPTY` in `/tmp/raven-simulation-*`). The
+failed run remains [available in CI](https://github.com/rahel99x/Raven/actions/runs/40066342667);
+it is not reclassified as a passing or merely flaky result.
+
+Synthetic Fake/Replay managed observations now reuse the existing bounded
+`ProcessQueryCache`, including its SQL ledger and lease contracts. Each session
+retains an independent identity; no synthetic cache directory or WAL is created.
+Shutdown closes the uniquely owned broker before the terminal process cache,
+so ordinary and fresh late reads cannot publish. A caller-provided process cache
+and real host-local shared caches retain their established ownership semantics.
+Explicit unsafe configuration paths are still validated.
+
+This is smaller than adding a new cross-thread disk-cache retirement protocol
+or blocking dashboard exit on every callback. It also avoids masking cleanup
+errors with retries. The tradeoff is bounded in-process SQLite memory for
+simulations rather than a temporary disk cache; no improvement to live scheduler
+cache performance is claimed. Independent lifecycle review confirmed this
+boundary and the preserved real-cache subscriber behavior.
+
+Regression evidence includes deterministic gated shutdown with ordinary and
+fresh reads, rejection of new reads after close, absence of synthetic cache
+files, independent simulation ledgers and the unchanged PTY success assertion.
+The focused collection/acquisition/lifecycle checks passed 170 tests on actual
+Python 3.13; another 72 checks passed, including the original PTY shutdown,
+record budgets, portable-cache fallback and runtime cleanup. Required quality
+and dependency checks passed. The corrected final
+HEAD must pass the complete hosted release, Chromium and actual Slurm gates;
+PR #7 records those exact revision/run results before merge.

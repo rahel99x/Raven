@@ -343,22 +343,60 @@ def test_cached_equivalent_reads_consume_one_actual_command_allowance(tmp_path):
     assert len(raw.commands) == 1
 
 
-def test_simulations_have_independent_ephemeral_caches_and_do_not_fill_live_owner(tmp_path):
+def test_simulations_have_independent_ephemeral_caches_and_do_not_fill_live_owner(tmp_path, monkeypatch):
+    from raven.shared_collection import ProcessQueryCache
     from raven.slurm import FakeBackend
     raw, real = backend(tmp_path)
     real.run(["squeue"])
+    def no_disk_cache(*args, **kwargs):
+        pytest.fail("Synthetic observations must not create filesystem caches")
+    monkeypatch.setattr("raven.platform_session.SharedQueryCache", no_disk_cache)
     cfg = {"raven": {"collection": {}}, "collection_cache_dir": str(tmp_path / "cache")}
     simulations = [wrap_backend(FakeBackend("test"), cfg, {"user": "test", "backend": "demo"}, None) for _ in range(3)]
     paths = [item.cache.path for item in simulations]
     try:
+        assert all(isinstance(item.cache, ProcessQueryCache) for item in simulations)
         assert len(set(paths)) == 3 and all(path != real.cache.path for path in paths)
         assert all(Slurm(item, "test").jobs() for item in simulations)
         assert real.ledger.report()["rates_last_minute"]["controller"] == 1
     finally:
         for item in simulations:
             item.close()
-    assert all(not path.parent.exists() for path in paths)
+    assert all(item.cache._database is None for item in simulations)
+    assert all(item.acquisition.stats()["closed"] for item in simulations)
     assert real.cache.path.exists()
+
+
+@pytest.mark.parametrize("fresh", [False, True])
+def test_simulation_shutdown_rejects_late_writes_and_new_reads(tmp_path, fresh):
+    from concurrent.futures import ThreadPoolExecutor
+    from raven.slurm import FakeBackend
+    entered, release = threading.Event(), threading.Event()
+
+    class Blocking(FakeBackend):
+        def run(self, argv, timeout=8):
+            entered.set()
+            assert release.wait(5)
+            return "1|RUNNING\n", .001
+
+    cfg = {"raven": {"collection": {}}, "collection_cache_dir": str(tmp_path / "unused")}
+    governed = wrap_backend(Blocking("test"), cfg, {"user": "test", "backend": "demo"}, None)
+    read = lambda: governed._query(["squeue"], 8, 65536, None, fresh=fresh)
+    with ThreadPoolExecutor(1) as pool:
+        pending = pool.submit(read)
+        try:
+            assert entered.wait(5)
+            governed.close()
+            assert governed.cache._database is None
+            assert governed.acquisition.stats()["closed"]
+            with pytest.raises(CommandError, match="closed"):
+                read()
+        finally:
+            release.set()
+        with pytest.raises(CommandError, match="closed|cancel"):
+            pending.result(5)
+    assert governed.acquisition.stats()["active"] == 0
+    assert not list(tmp_path.iterdir())
 
 
 def test_completed_cache_values_evict_under_pressure_without_resetting_source_quotas(tmp_path):
