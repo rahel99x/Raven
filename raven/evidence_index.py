@@ -491,6 +491,10 @@ def _process_query(index, sql, options):
                 return {"schema": "raven.query-result/v1", "status": "partial", "reason": "cancelled", "columns": [], "rows": [], "bytes": 0}
             try:
                 output, _ = process.communicate(input=payload, timeout=.05)
+                # A reply may arrive inside this poll while cancellation was
+                # requested. Observe it before publishing the child's result.
+                if cancel is not None and cancel.is_set():
+                    return {"schema": "raven.query-result/v1", "status": "partial", "reason": "cancelled", "columns": [], "rows": [], "bytes": 0}
                 break
             except subprocess.TimeoutExpired:
                 payload = None
@@ -499,6 +503,8 @@ def _process_query(index, sql, options):
         if process.returncode or len(output) > (5 << 20):
             raise ValueError("Isolated SQL process exhausted its CPU/memory or output budget")
         result = json.loads(output)
+        if cancel is not None and cancel.is_set():
+            return {"schema": "raven.query-result/v1", "status": "partial", "reason": "cancelled", "columns": [], "rows": [], "bytes": 0}
         if "error" in result:
             raise ValueError(result["error"])
         return result

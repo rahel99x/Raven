@@ -166,23 +166,83 @@ def test_project_inventory_cannot_leak_another_projects_capture(capture):
     assert not index.exists()
 
 
-def test_mid_query_cancellation_reaps_compatibility_child(capture, monkeypatch):
+def test_mid_query_cancellation_reaps_compatibility_child(capture, monkeypatch, tmp_path):
     project, bundle, index = capture
     I.ingest(index, bundle, project)
     children = []
-    popen = I.subprocess.Popen
-    def tracked(*args, **kwargs):
-        process = popen(*args, **kwargs); children.append(process); return process
-    monkeypatch.setattr(I.subprocess, "Popen", tracked)
     cancel = threading.Event()
-    timer = threading.Timer(.002, cancel.set); timer.start()
+    entered = tmp_path / "sqlite-vm-active"
+    popen = I.subprocess.Popen
+    child = r'''
+import sqlite3, sys, time
+from pathlib import Path
+from raven import evidence_index as I
+entered = Path(sys.argv[1])
+connect = I.sqlite3.connect
+class ObservedConnection(sqlite3.Connection):
+    def set_progress_handler(self, callback, steps):
+        if callback is not None and steps == 100:
+            original = callback
+            def observed():
+                if not entered.exists():
+                    entered.write_text('query VM active')
+                    deadline = time.monotonic() + 4
+                    while time.monotonic() < deadline:
+                        time.sleep(.001)
+                return original()
+            callback = observed
+        return super().set_progress_handler(callback, steps)
+def observed_connect(*args, **kwargs):
+    return connect(*args, **dict(kwargs, factory=ObservedConnection))
+I.sqlite3.connect = observed_connect
+I._child()
+'''
+    def tracked(*args, **kwargs):
+        assert args[0] == [sys.executable, "-m", "raven.evidence_index"]
+        process = popen([sys.executable, "-c", child, str(entered)], **kwargs)
+        children.append(process)
+        return process
+    monkeypatch.setattr(I.subprocess, "Popen", tracked)
+    def cancel_active_vm():
+        deadline = time.monotonic() + 3
+        while not entered.exists() and time.monotonic() < deadline:
+            time.sleep(.001)
+        cancel.set()
+    watcher = threading.Thread(target=cancel_active_vm)
+    watcher.start()
     try:
         result = I.query(index, "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM n) SELECT sum(x) FROM n",
                          cancel=cancel, vm_steps=2000000, timeout=5)
     finally:
-        timer.join()
+        watcher.join(timeout=4)
+    assert not watcher.is_alive() and entered.exists()
     assert result["status"] == "partial" and result["reason"] == "cancelled"
+    assert children and all(child.returncode is not None for child in children)
     assert all(child.poll() is not None for child in children)
+
+
+def test_cancellation_during_reply_collection_wins_before_result_publication(capture, monkeypatch):
+    project, bundle, index = capture
+    I.ingest(index, bundle, project)
+    cancel, children = threading.Event(), []
+    popen = I.subprocess.Popen
+    def tracked(*args, **kwargs):
+        process = popen(*args, **kwargs)
+        communicate = process.communicate
+        def collecting_reply(*args, **kwargs):
+            reply = communicate(*args, **kwargs)
+            # Deterministically reproduce the request arriving after the
+            # broker's pre-poll check but before it receives a completed reply.
+            cancel.set()
+            return reply
+        process.communicate = collecting_reply
+        children.append(process)
+        return process
+    monkeypatch.setattr(I.subprocess, "Popen", tracked)
+    result = I.query(index, "SELECT count(*) FROM measurements", cancel=cancel)
+    assert result["status"] == "partial" and result["reason"] == "cancelled"
+    assert result["rows"] == []
+    assert children and all(child.poll() is not None for child in children)
 
 
 @pytest.mark.parametrize("alteration", [
