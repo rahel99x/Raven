@@ -32,6 +32,9 @@ _CEILINGS = {
 }
 _JOB = re.compile(r"^[0-9]+(?:_[0-9]+)?(?:\+[0-9]+)?$")
 _STEP = re.compile(r"^(?:[0-9]+|batch|extern)$")
+_MIB = 1 << 20
+_SUPERVISOR_MIN_MIB = 64
+_SUPERVISOR_HEADROOM_MIB = 32
 
 
 def limits(raw=None):
@@ -62,12 +65,26 @@ def limits(raw=None):
     return result
 
 
-def task_limits(requested, available):
+def task_limits(requested, available, *, supervisor_memory_mib=None):
+    if supervisor_memory_mib is None:
+        supervisor_memory_mib = available.get(
+            "supervisor_memory_mib", _SUPERVISOR_MIN_MIB
+        )
+    if (
+        type(supervisor_memory_mib) is not int
+        or supervisor_memory_mib < _SUPERVISOR_MIN_MIB
+    ):
+        raise ValueError("Invalid Heavy supervisor memory reservation")
     bounded = dict(available)
-    bounded["memory_mib"] = (available["memory_mib"] - 64) // available["max_tasks"]
+    # This is worker-observed metadata, never a task-requestable resource.
+    bounded.pop("supervisor_memory_mib", None)
+    bounded["memory_mib"] = (
+        available["memory_mib"] - supervisor_memory_mib
+    ) // available["max_tasks"]
     if bounded["memory_mib"] < 32:
         raise ValueError(
-            "Heavy memory budget cannot cover the requested worker concurrency"
+            "Heavy memory budget cannot cover this Python runtime and the "
+            "requested worker concurrency; increase Heavy memory or reduce max_tasks"
         )
     bounded["cpus"] = max(1, available["cpus"] // available["max_tasks"])
     if requested:
@@ -82,6 +99,46 @@ def task_limits(requested, available):
                 raise ValueError("Task exceeds admitted " + key + " budget")
             bounded[key] = value
     return limits(bounded)
+
+
+def reserve_supervisor(available):
+    """Bound existing mappings plus working headroom before admitting children.
+
+    AS includes interpreter/library mappings, not just resident Python objects.
+    Charge the full supervisor cap to the same budget used by task admission;
+    neither scheduler memory nor inherited process limits are increased here.
+    """
+    try:
+        with open("/proc/self/statm", "rb") as source:
+            raw = source.read(256)
+        fields = raw.split()
+        if len(raw) == 256 or not fields or not fields[0].isdigit():
+            raise ValueError("Invalid process virtual-memory measurement")
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        virtual_bytes = int(fields[0]) * page_size
+        if page_size <= 0 or virtual_bytes <= 0:
+            raise ValueError("Invalid process virtual-memory measurement")
+    except (OSError, ValueError) as exc:
+        raise ValueError(
+            "Cannot measure Heavy supervisor virtual memory from /proc/self/statm; "
+            "safe memory admission is unavailable on this host"
+        ) from exc
+    reservation = max(
+        _SUPERVISOR_MIN_MIB,
+        (virtual_bytes + _MIB - 1) // _MIB + _SUPERVISOR_HEADROOM_MIB,
+    )
+    task_limits({}, available, supervisor_memory_mib=reservation)
+    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+    wanted = reservation * _MIB
+    for inherited in (soft, hard):
+        if inherited != resource.RLIM_INFINITY and wanted > inherited:
+            raise ValueError(
+                f"Heavy supervisor needs {reservation} MiB of virtual address space "
+                "including this Python runtime, exceeding an inherited RLIMIT_AS; "
+                "review the process memory limit with your site administrator"
+            )
+    resource.setrlimit(resource.RLIMIT_AS, (wanted, hard))
+    return reservation
 
 
 def child_environment(cpus, source=None):
@@ -173,11 +230,24 @@ def placement_probe(
         re.search(r"(?:/|^)job_" + re.escape(job) + r"(?:/|$)", raw, re.M)
         and re.search(r"(?:/|^)step_" + re.escape(step) + r"(?:/|$)", raw, re.M)
     )
+    hostname = socket.gethostname() if host is None else host
+    fqdn = hostname
+    resolution = {}
+    if host is None:
+        try:
+            fqdn = socket.getfqdn(hostname)
+        except (OSError, LookupError) as exc:
+            # DNS/codec enrichment is optional. Kernel hostname, fresh scheduler
+            # membership and local cgroup/PID proof still decide placement.
+            resolution["hostname_resolution_error"] = (
+                type(exc).__name__ + ": " + str(exc)
+            )[:240]
     return {
+        **resolution,
         "job_id": job,
         "step_id": step,
-        "host": host or socket.gethostname(),
-        "fqdn": socket.getfqdn() if host is None else host,
+        "host": hostname,
+        "fqdn": fqdn,
         "uid": os.getuid() if uid is None else uid,
         "pid": os.getpid() if pid is None else pid,
         "cgroup_proof": proof,

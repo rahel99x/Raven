@@ -217,6 +217,11 @@ the scheduler's defaults; they do not create those defaults. The same release
 and worker interpreter must be available on the selected compute nodes. See
 the [Raven runbook](raven/README.md#choose-a-site) for site requirements.
 
+If an allocated worker exits during startup, see
+[Heavy startup troubleshooting](guides/heavy-startup.md). This includes failures
+while loading Python's `idna` codec, interpreter mapping overhead, and inherited
+process memory limits.
+
 `ravenl` opens Light without allocating compute. After reviewing the plan,
 `ravenh` requests a Slurm allocation and starts Heavy only after the worker is
 verified. On a machine **without Slurm**, select `--site desktop` explicitly;

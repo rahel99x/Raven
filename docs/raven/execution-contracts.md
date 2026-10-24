@@ -37,6 +37,27 @@ It acknowledges validated committed results. Mutation cancellation, lost replies
 and process failures are uncertain until their receipts are reconciled. Raven
 does not replay them automatically.
 
+### Worker startup memory
+
+The supervisor measures its existing virtual mappings through Linux
+`/proc/self/statm`. Its address-space reservation is the larger of 64 MiB or
+that measurement rounded up to MiB plus 32 MiB of working headroom. This includes
+the interpreter and mapped libraries; it is not an RSS measurement.
+
+Task admission subtracts this observed reservation from the total Heavy memory
+budget before dividing the remainder between concurrent tasks. The handshake
+reports `resources.supervisor_memory_mib`, so the interface and worker use the
+same share. Tasks cannot override that reservation. A task with a smaller quota
+than the supervisor starts in a fresh interpreter rather than inheriting its
+larger mappings through a fork.
+
+Startup preserves inherited address-space limits. Insufficient total memory,
+stricter inherited limits, or unavailable process-memory measurement produce a
+startup error before task admission. The portable adapter still does not claim
+hard aggregate RSS enforcement. Analysis children apply their admitted task cap
+in place of the supervisor's soft cap, without raising the inherited hard limit.
+See [startup troubleshooting](../guides/heavy-startup.md).
+
 ## Supported worker adapters
 
 Pure adapters cover statistical comparisons, acceptance, numerical stability,
