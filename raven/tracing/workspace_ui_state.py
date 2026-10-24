@@ -225,6 +225,10 @@ def _identity_key(result):
 
 
 def _live(result):
+    if result.get("job_finished") is True:
+        return False
+    if result.get("collection_following") is True:
+        return True
     sources = result.get("sources") or []
     return any(str(source.get("status", "")).upper() == "LIVE" for source in sources)
 
@@ -353,7 +357,12 @@ def publish(state, result):
         state.pop("_workspace_selected_interval", None)
         state.pop("workspace_symbol", None)
         state.pop("workspace_analysis", None)
-    elif previous and _mode(view, previous) == "live" and not _live(result):
+    elif (
+        previous
+        and _mode(view, previous) == "live"
+        and _live(previous)
+        and not _live(result)
+    ):
         clock = _clock(view, previous)
         windows = {key: list(_window(view, previous, key)) for key in _bounds(previous)}
         view.update(

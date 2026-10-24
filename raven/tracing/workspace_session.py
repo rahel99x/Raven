@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import threading
+import time
 
 _FILTERS = {
     "source_ids",
@@ -30,19 +31,26 @@ class WorkspaceSession:
 
     def __init__(self, paths, *, expected=None, index_path=None, light=False):
         from .workspace_index import TraceIndex
+        from .workspace_follow import source_paths
 
-        self.paths = tuple(dict.fromkeys(map(str, paths)))
-        if not self.paths or len(self.paths) > 512:
-            raise ValueError("Choose 1–512 exact-attempt trace sources")
+        self.paths = source_paths(paths)
         self.expected = dict(expected or {})
         self.light = light
         budget = (128 if light else 512) << 20
+        reader_budget = (16 if light else 64) << 20
         if index_path:
-            self.index = TraceIndex(Path(index_path), max_bytes=budget)
+            self.index = TraceIndex(
+                Path(index_path), max_bytes=budget, reader_memory_bytes=reader_budget
+            )
         else:
             from .workspace_cache import open_index
 
-            self.index = open_index(self.expected, self.paths, max_bytes=budget)
+            self.index = open_index(
+                self.expected,
+                self.paths,
+                max_bytes=budget,
+                reader_memory_bytes=reader_budget,
+            )
         self.path = self.index.path
         self.lock = threading.RLock()
         self.closed = False
@@ -53,6 +61,11 @@ class WorkspaceSession:
         self._retiring = threading.Event()
         self._browser_stop = threading.Event()
         self._browser_reader = None
+        self._discovery = None
+        self._next_discovery = 0.0
+        self.discovery_errors = []
+        self._metadata_errors = []
+        self._follow_errors = []
 
     def retire(self):
         """Selection changes retire owned I/O off the terminal's input thread."""
@@ -89,7 +102,9 @@ class WorkspaceSession:
                 raise ValueError(
                     "Choose the baseline before opening the browser viewer"
                 )
-            paths = tuple(dict.fromkeys(map(str, paths)))
+            from .workspace_follow import source_paths
+
+            paths = source_paths(paths)
             previous = self.baseline
             if paths == self.paths:
                 self.baseline = self
@@ -119,6 +134,126 @@ class WorkspaceSession:
                 )
             self.capacity = validate_context(value) if value is not None else None
 
+    def set_discovery(self, callback, *, primed=False):
+        """Register an owner-only metadata callback; never supplied by HTTP.
+
+        Primed means the owner has just completed the initial metadata scan.
+        Replacing an equivalent UI closure does not postpone every later scan.
+        """
+        if callback is not None and not callable(callback):
+            raise ValueError("Trace discovery must be a trusted owner callback")
+        with self.lock:
+            if self.closed:
+                raise ValueError("Trace workspace was closed")
+            first = self._discovery is None
+            self._discovery = callback
+            self.index.collection_following = callback is not None
+            if callback is None:
+                self._collection_errors([])
+            elif first:
+                self._next_discovery = time.monotonic() + 2 if primed else 0.0
+
+    def _collection_errors(self, values, *, channel="follow"):
+        from ..job_logs.text import display_text
+
+        if not isinstance(values, (list, tuple)):
+            raise ValueError("Trace discovery error metadata must be a bounded list")
+        errors = []
+        for value in values[:64]:
+            if not isinstance(value, dict):
+                value = {"read_error": str(value)}
+            errors.append(
+                {
+                    "path": display_text(str(value.get("path", ""))[:4096]),
+                    "read_error": display_text(
+                        str(
+                            value.get("read_error", "Unknown source discovery failure")
+                        )[:2048]
+                    ),
+                }
+            )
+        if channel == "metadata":
+            self._metadata_errors = errors
+        else:
+            self._follow_errors = errors
+        seen, errors = set(), []
+        for row in (*self._metadata_errors, *self._follow_errors):
+            signature = row["path"], row["read_error"]
+            if signature not in seen and len(errors) < 64:
+                errors.append(row)
+                seen.add(signature)
+        self.discovery_errors = errors
+        self.index.collection_error = "; ".join(
+            (row["path"] + ": " if row["path"] else "") + row["read_error"]
+            for row in errors[:4]
+        )[:4000]
+        self.index.collection_errors = errors
+
+    def _discover(self, cancel=None):
+        """Keep verified known paths while bounded source registration catches up."""
+        if self._discovery is None or time.monotonic() < self._next_discovery:
+            return
+        from .workspace_follow import Cancellation
+
+        cancellation = Cancellation(cancel, self._browser_stop, self._retiring)
+        if cancellation.is_set():
+            raise InterruptedError("Trace workspace discovery cancelled")
+        self._next_discovery = time.monotonic() + 2
+        try:
+            discovered = self._discovery(cancellation)
+            if cancellation.is_set():
+                raise InterruptedError("Trace workspace discovery cancelled")
+            if not isinstance(discovered, dict):
+                raise ValueError("Trace source discovery returned no bounded catalog")
+            paths = discovered.get("sources", [])
+            if not isinstance(paths, (list, tuple)) or len(paths) > 512:
+                raise ValueError("Trace source discovery exceeds the 512-source budget")
+            if any(
+                not isinstance(path, str)
+                or not path
+                or len(path) > 4096
+                or not path.isprintable()
+                for path in paths
+            ):
+                raise ValueError("Trace source discovery returned an invalid path")
+            if paths:
+                from .workspace_follow import source_paths
+
+                paths = source_paths(paths)
+            joined = tuple(dict.fromkeys((*self.paths, *paths)))
+            if len(joined) > 512:
+                raise ValueError(
+                    "Run exceeds the 512-source workspace budget; known verified sources remain available"
+                )
+            errors = discovered.get("discovery_errors", [])
+            if not isinstance(errors, (list, tuple)):
+                raise ValueError(
+                    "Trace source discovery returned invalid error metadata"
+                )
+            if not paths and not errors:
+                errors = [
+                    {
+                        "read_error": "No current source registrations were discovered; retaining known verified sources"
+                    }
+                ]
+            self.paths = joined
+            self._collection_errors(errors)
+            self._collection_errors([], channel="metadata")
+        except InterruptedError:
+            if cancellation.is_set():
+                raise
+            self._collection_errors(
+                [
+                    {
+                        "read_error": "Source discovery was interrupted; retaining known verified sources"
+                    }
+                ]
+            )
+        except Exception as exc:
+            self._collection_errors([{"read_error": str(exc)}])
+        finally:
+            self._next_discovery = max(self._next_discovery, time.monotonic() + 2)
+
     def refresh(self, options=None, *, light=False, cancel=None):
         from .workspace_model import project
 
@@ -126,6 +261,13 @@ class WorkspaceSession:
         with self.lock:
             if self.closed:
                 raise ValueError("Trace workspace was closed")
+            if type(options.get("job_finished")) is bool:
+                self.index.owner_job_finished = options["job_finished"]
+            if options.get("discovery_errors") or options.get("discovery_complete"):
+                self._collection_errors(
+                    options.get("discovery_errors", []), channel="metadata"
+                )
+            self._discover(cancel)
             catalog = self.index.refresh(
                 self.paths,
                 expected=self.expected,
@@ -207,6 +349,12 @@ class WorkspaceSession:
             result.setdefault("sources", catalog.get("sources", []))
             result.setdefault("bounds", catalog.get("bounds", []))
             result["caught_up"] = catalog.get("caught_up", False)
+            if self.discovery_errors:
+                result["discovery_errors"] = list(self.discovery_errors)
+                result["caught_up"] = False
+                result["warnings"] = list(result.get("warnings", [])) + [
+                    "Source discovery is incomplete; other verified sources remain available."
+                ]
             result["workspace_projection"] = project(
                 result, options.get("perspective", "execution")
             )
@@ -245,29 +393,17 @@ class WorkspaceSession:
             self._analysis(result, options)
             if options.get("functions"):
                 if options.get("all_clocks"):
-                    tables = [
-                        self.index.functions(
-                            **{
-                                key: value
-                                for key, value in request.items()
-                                if key in _FUNCTION_FILTERS
-                            },
-                            limit=max(1, 100 // len(requests)),
-                        )
-                        for request in requests
-                    ]
-                    combined = dict(tables[0])
-                    combined["functions"] = [
-                        row for table in tables for row in table["functions"]
-                    ][:100]
-                    combined["truncated"] = (
-                        any(table["truncated"] for table in tables)
-                        or sum(len(table["functions"]) for table in tables) > 100
-                    )
-                    combined["scope"] = (
-                        "Per-clock selected windows; unrelated node timestamps are not aligned"
-                    )
-                    result["functions"] = combined
+                    result["functions"] = self._functions_many(requests, cancel)
+                    if result["functions"]["unqueried_ranges"]:
+                        result["warnings"] = list(result.get("warnings", [])) + [
+                            "Function statistics reached their shared work budget; "
+                            + str(len(result["functions"]["unqueried_ranges"]))
+                            + " clock ranges remain unqueried. Choose a clock or narrow the range."
+                        ]
+                    elif result["functions"]["truncated"]:
+                        result["warnings"] = list(result.get("warnings", [])) + [
+                            "Function statistics reached a row or byte limit; queried clock ranges remain listed. Narrow the selection to inspect omitted rows."
+                        ]
                 else:
                     result["functions"] = self.index.functions(
                         **{
@@ -301,6 +437,81 @@ class WorkspaceSession:
             result["index_path"] = str(self.path)
             result["cache_rebuilt"] = getattr(self.index, "cache_rebuilt", False)
             return result
+
+    def _functions_many(self, requests, cancel=None):
+        """Share one SQL deadline across domains instead of one second each.
+
+        The index's nested budget owner preserves its progress handler and
+        serialization contract. Cancellation is checked between bounded SQL
+        calls; unfinished domains are disclosed without discarding the timeline.
+        """
+        from .workspace_index_storage import _json
+
+        tables, pending = [], []
+        deadline = time.monotonic() + 1.0
+        with self.index.lock, self.index._query_budget(seconds=1.0):
+            for position, request in enumerate(requests):
+                if cancel is not None and cancel.is_set():
+                    raise InterruptedError("Trace function statistics cancelled")
+                if time.monotonic() >= deadline:
+                    pending = requests[position:]
+                    break
+                try:
+                    tables.append(
+                        self.index.functions(
+                            **{
+                                key: value
+                                for key, value in request.items()
+                                if key in _FUNCTION_FILTERS
+                            },
+                            limit=max(1, 100 // max(1, len(requests))),
+                        )
+                    )
+                except ValueError as exc:
+                    if "work budget exceeded" not in str(exc):
+                        raise
+                    pending = requests[position:]
+                    break
+            if cancel is not None and cancel.is_set():
+                raise InterruptedError("Trace function statistics cancelled")
+        combined = (
+            dict(tables[0])
+            if tables
+            else {
+                "schema": "raven.trace-workspace-functions/v1",
+                "functions": [],
+                "units": "nanoseconds",
+                "clock_id": None,
+                "filters": {},
+                "alignment": "Independent clock ranges; no common axis is inferred",
+                "limitations": [],
+            }
+        )
+        rows, payload_bytes, byte_limit = [], 0, 8 << 20
+        total_rows = sum(len(table["functions"]) for table in tables)
+        for table in tables:
+            for row in table["functions"]:
+                amount = len(_json(row).encode("utf-8"))
+                if len(rows) >= 100 or payload_bytes + amount > byte_limit:
+                    break
+                rows.append(row)
+                payload_bytes += amount
+            else:
+                continue
+            break
+        combined.update(
+            functions=rows,
+            payload_bytes=payload_bytes,
+            byte_limit=byte_limit,
+            omitted_function_rows=total_rows - len(rows),
+            truncated=bool(pending)
+            or any(table["truncated"] for table in tables)
+            or total_rows > len(rows),
+            queried_ranges=[dict(request) for request in requests[: len(tables)]],
+            unqueried_ranges=[dict(request) for request in pending],
+            scope="Per-clock selected windows; unrelated node timestamps are not aligned",
+        )
+        return combined
 
     def _analysis(self, result, options):
         """Explicit bounded analyses share the exact visible query/evidence scope."""
@@ -354,8 +565,8 @@ class WorkspaceSession:
     def _ingest_browser(self):
         """Explicit viewer lifetime, independent of the terminal's active tab.
 
-        This performs no discovery, scheduling RPC or recorder control. The
-        same index writer serializes verified bounded source pages.
+        The optional trusted callback scans bounded registrations independently
+        of terminal ticks. No scheduling RPC or recorder control is performed.
         """
         while not self._browser_stop.wait(0.5):
             with self.lock:
@@ -371,6 +582,7 @@ class WorkspaceSession:
                     with owner.lock:
                         if owner.closed:
                             continue
+                        owner._discover(self._browser_stop)
                         owner.index.refresh(
                             owner.paths,
                             expected=owner.expected,
@@ -387,8 +599,11 @@ class WorkspaceSession:
 
 def expected_identity(snapshot):
     identity = snapshot.get("identity", {})
-    return {
+    result = {
         key: identity[key]
         for key in ("job_id", "attempt", "cluster")
         if key in identity
     }
+    if identity.get("run_id") and identity["run_id"] != identity.get("attempt"):
+        result["run_id"] = identity["run_id"]
+    return result

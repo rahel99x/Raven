@@ -24,6 +24,8 @@ from pathlib import Path
 
 from .workspace_index_alignment import AlignmentQueries
 from .workspace_index_filters import IndexFilters, FILTER_NAMES, validate_filters
+from .workspace_index_memory import IndexReaderMemory
+from .reader_budget import ReaderMemoryBudget, ReaderMemoryLimit
 from .workspace_index_statistics import IndexStatistics
 from .workspace_index_storage import (
     INDEX_SCHEMA,
@@ -36,6 +38,7 @@ from .workspace_index_storage import (
     _private_path,
     _text,
     _time,
+    common_identity,
 )
 
 _PAGE_EVENTS = 128
@@ -51,12 +54,14 @@ _ACTIVITIES = {
 }
 
 
-class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
+class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters, IndexReaderMemory):
     """One owned writer and bounded serialized queries over local derived data."""
 
-    def __init__(self, path, *, max_bytes=512 << 20):
+    def __init__(self, path, *, max_bytes=512 << 20, reader_memory_bytes=64 << 20):
         if type(max_bytes) is not int or not 1 << 20 <= max_bytes <= 8 << 30:
             raise ValueError("Trace index database budget must be 1 MiB–8 GiB")
+        self.reader_memory = ReaderMemoryBudget(reader_memory_bytes)
+        self._memory_limited = {}
         self.path, created = _private_path(path)
         lock_path, _ = _private_path(str(self.path) + ".lock")
         self._lock_fd = os.open(
@@ -106,6 +111,11 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
         self.closed = False
         self._query_deadlines = []
         self._path_ids = {}
+        self._requested_paths = {}
+        self._owned_sources = set()
+        self.collection_error = ""
+        self.collection_following = False
+        self.owner_job_finished = None
         self._discovery_errors = {}
         self._pending_source_paths = set()
         self._discovery_round = 0
@@ -174,6 +184,24 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
             self.db.execute(
                 "INSERT OR REPLACE INTO metadata VALUES('schema',?)", (INDEX_SCHEMA,)
             )
+            identity_row = self.db.execute(
+                "SELECT value FROM metadata WHERE key='identity'"
+            ).fetchone()
+            if identity_row:
+                identity = json.loads(identity_row[0])
+                if (
+                    not isinstance(identity, dict)
+                    or not {"job_id", "attempt", "cluster"} <= identity.keys()
+                    or identity.keys() - {"job_id", "attempt", "cluster", "run_id"}
+                ):
+                    raise ValueError(
+                        "Invalid cached trace identity; choose a new rebuildable index"
+                    )
+                if identity.get("run_id") == identity.get("attempt"):
+                    self.db.execute(
+                        "UPDATE metadata SET value=? WHERE key='identity'",
+                        (_json(common_identity(identity)),),
+                    )
             self._filters_initialize()
             self._alignment_initialize()
             self.db.execute("UPDATE sources SET validated=0,status='REVALIDATING'")
@@ -202,11 +230,15 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
     def close(self):
         with self.lock:
             if not self.closed:
-                self.db.close()
-                self.readers.clear()
-                fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
-                os.close(self._lock_fd)
-                self.closed = True
+                try:
+                    self.db.close()
+                finally:
+                    try:
+                        self._close_readers()
+                    finally:
+                        fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
+                        os.close(self._lock_fd)
+                        self.closed = True
 
     @contextmanager
     def _query_budget(self, seconds=1.0):
@@ -257,7 +289,8 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
         from .workspace_model import source_clock
 
         path = Path(path).absolute()
-        if path.is_dir():
+        requested_path = str(path)
+        if requested_path not in self._path_ids and path.is_dir():
             path = path / "manifest.json"
         if len(str(path)) > 4096:
             raise ValueError("Trace source path exceeds its bound")
@@ -274,6 +307,8 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                 raise ValueError(
                     "Trace source does not match the expected exact run attempt"
                 )
+            self._owned_sources.add(source)
+            self._path_ids[requested_path] = source
             return source
         manifest = read_json(path)
         if (
@@ -293,9 +328,7 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
         common = self.db.execute(
             "SELECT value FROM metadata WHERE key='identity'"
         ).fetchone()
-        binding = {key: identity[key] for key in ("job_id", "attempt", "cluster")}
-        if identity.get("run_id"):
-            binding["run_id"] = identity["run_id"]
+        binding = common_identity(identity)
         if common and json.loads(common[0]) != binding:
             raise ValueError(
                 "Trace sources from different job attempts or clusters cannot share a workspace"
@@ -347,11 +380,19 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
             self.db.execute(
                 "INSERT OR IGNORE INTO metadata VALUES('identity',?)", (_json(binding),)
             )
-            self.readers[source] = TraceReader(
-                path, retain=_PAGE_EVENTS, retain_bytes=8 << 20
-            )
+            try:
+                self.readers[source] = TraceReader(
+                    path,
+                    retain=_PAGE_EVENTS,
+                    retain_bytes=8 << 20,
+                    memory_budget=self.reader_memory,
+                )
+            except ReaderMemoryLimit as exc:
+                self._limit_reader(source, str(exc))
             self._initialized.add(source)
         self._path_ids[str(path)] = source
+        self._path_ids[requested_path] = source
+        self._owned_sources.add(source)
         return source
 
     def refresh(
@@ -391,12 +432,14 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                 raise ValueError("Trace workspace index is closed")
             if self._storage_error is not None:
                 raise ValueError(self._storage_error)
-            requested_paths = {str(path) for path in paths}
-            self._discovery_errors = {
-                path: reason
-                for path, reason in self._discovery_errors.items()
-                if path in requested_paths
-            }
+            requested_paths = {str(Path(path).absolute()): None for path in paths}
+            if len(self._requested_paths.keys() | requested_paths.keys()) > MAX_SOURCES:
+                raise ValueError(
+                    "Trace workspace exceeds its 512-source current-owner input bound"
+                )
+            self._requested_paths.update(requested_paths)
+            requested_paths = set(self._requested_paths)
+            paths = list(self._requested_paths)
             if paths:
                 offset = self._discovery_round % len(paths)
                 paths = paths[offset:] + paths[:offset]
@@ -426,6 +469,7 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                 ids = ids[position:] + ids[:position]
                 self._round += 1
             used = 0
+            deferred = set()
             advanced = True
             while advanced and used < max_events and time.monotonic() < until:
                 advanced = False
@@ -437,7 +481,11 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                         and cancel.is_set()
                     ):
                         break
-                    if source in self._invalid_sources:
+                    if (
+                        source in self._invalid_sources
+                        or source in self._memory_limited
+                        or source in deferred
+                    ):
                         continue
                     reader = self.readers[source]
                     previous = reader.sequence
@@ -448,6 +496,10 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                             max_seconds=max(0.001, min(1.0, until - time.monotonic())),
                             cancel=cancel,
                         )
+                    except ReaderMemoryLimit as exc:
+                        used += reader.sequence - previous
+                        self._limit_reader(source, str(exc))
+                        continue
                     except OSError as exc:
                         self._errors[source] = _text(str(exc), 2000)
                         continue
@@ -519,7 +571,9 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                         self._facet_pending.clear()
                         self._facet_truncated_pending.clear()
                         self._initialized.discard(source)
-                        self.readers.pop(source, None)
+                        retired = self.readers.pop(source, None)
+                        if retired is not None:
+                            retired.close()
                         self._path_ids = {
                             path: sid
                             for path, sid in self._path_ids.items()
@@ -530,8 +584,14 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                             + _text(str(exc), 500)
                             + "; reopen the index after correcting storage or increasing its budget"
                         )
+                        self._close_readers()
+                        self._filter_contexts.clear()
                         raise ValueError(self._storage_error) from exc
-                    self._errors.pop(source, None)
+                    if snapshot.get("read_error"):
+                        self._errors[source] = _text(snapshot["read_error"], 8192)
+                        deferred.add(source)
+                    else:
+                        self._errors.pop(source, None)
                     count = reader.sequence - previous
                     if count:
                         self._overview_cache.clear()
@@ -539,13 +599,15 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                     advanced |= count > 0 and not snapshot["caught_up"]
                     # Retained event copies are no longer needed after their page
                     # is committed. Integrity/code/stack state remains untouched.
-                    reader.events.clear()
-                    reader._event_sizes.clear()
-                    reader.retained_bytes = 0
+                    reader.release_consumed_window()
             return self.catalog()
 
     def _quarantine(self, source, reason):
         self._invalid_sources.add(source)
+        reader = self.readers.pop(source, None)
+        if reader is not None:
+            reader.close()
+        self._filter_contexts.pop(source, None)
         row = self.db.execute(
             "SELECT payload FROM sources WHERE id=?", (source,)
         ).fetchone()
@@ -938,9 +1000,13 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
             sources = []
             warnings = []
             catalog_bytes = 0
-            for source, valid, status, payload in self.db.execute(
-                "SELECT id,validated,status,payload FROM sources ORDER BY id"
-            ):
+            cohort = sorted(self._owned_sources)
+            query = (
+                "SELECT id,validated,status,payload FROM sources WHERE "
+                + ("id IN (" + ",".join("?" for _ in cohort) + ")" if cohort else "0")
+                + " ORDER BY id"
+            )
+            for source, valid, status, payload in self.db.execute(query, cohort):
                 catalog_bytes += len(payload)
                 if catalog_bytes > 8 << 20:
                     raise ValueError(
@@ -951,7 +1017,11 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                 if source in self._errors:
                     row["error"] = self._errors[source]
                     row["read_status"] = (
-                        "retry-later" if status != "INVALID" else "invalid"
+                        "resource-limit"
+                        if source in self._memory_limited
+                        else "retry-later"
+                        if status != "INVALID"
+                        else "invalid"
                     )
                     row["caught_up"] = False
                     warnings.append("Source read error: " + row["error"])
@@ -971,13 +1041,16 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
             warnings.extend(self._alignment_warnings.values())
             if self._storage_error:
                 warnings.append(self._storage_error)
+            collection_error = _text(self.collection_error, 8192)
+            if collection_error:
+                warnings.append("Source collection incomplete: " + collection_error)
             identity = self.db.execute(
                 "SELECT value FROM metadata WHERE key='identity'"
             ).fetchone()
             dimensions, dimensions_truncated = self._filter_dimensions()
             return dict(
                 schema=SCHEMA,
-                identity=json.loads(identity[0]) if identity else {},
+                identity=json.loads(identity[0]) if identity and sources else {},
                 sources=sources,
                 bounds=bounds,
                 aligned_bounds=self._alignment_bounds(),
@@ -985,10 +1058,16 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                 dimensions_truncated=dimensions_truncated,
                 catalog_metadata_byte_limit=8 << 20,
                 warnings=list(dict.fromkeys(warnings))[:64],
+                collection_error=collection_error,
+                collection_following=self.collection_following is True,
+                job_finished=self.owner_job_finished
+                if type(self.owner_job_finished) is bool
+                else None,
                 caught_up=bool(sources)
                 and not self._discovery_errors
                 and not self._pending_source_paths
                 and self._storage_error is None
+                and not collection_error
                 and all(row.get("caught_up") and row["validated"] for row in sources),
                 discovery=dict(
                     pending_count=len(self._pending_source_paths),
@@ -1005,6 +1084,8 @@ class TraceIndex(IndexStatistics, AlignmentQueries, IndexFilters):
                     revalidation="New owners replay source integrity before exposing indexed rows",
                     state="storage-blocked" if self._storage_error else "available",
                     error=self._storage_error,
+                    reader_memory=self.reader_memory.snapshot(),
+                    resource_limited_sources=len(self._memory_limited),
                 ),
             )
 

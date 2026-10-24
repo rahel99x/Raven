@@ -129,6 +129,11 @@ def _workspace_parser():
         action="store_true",
         help="Start an owned read-only loopback browser viewer until Ctrl-C",
     )
+    parser.add_argument(
+        "--follow-project",
+        type=Path,
+        help="Explicitly watch this local project's registrations for new sources in the verified initial attempt; fixed paths remain the default",
+    )
     parser.add_argument("--open-browser", action="store_true")
     parser.add_argument(
         "--max-seconds",
@@ -220,9 +225,36 @@ def workspace(argv):
         while True:
             result = session.refresh(options, light=light)
             if (
-                result.get("caught_up") and result.get("baseline_caught_up", True)
-            ) or time.monotonic() >= deadline:
+                (result.get("caught_up") and result.get("baseline_caught_up", True))
+                or time.monotonic() >= deadline
+                or args.serve
+            ):
                 break
+            if not result.get("caught_up"):
+                time.sleep(0.01)
+        if args.follow_project:
+            from .workspace_follow import deferred_project_discovery
+
+            session.set_discovery(
+                deferred_project_discovery(
+                    args.follow_project,
+                    session.index.catalog,
+                    on_identity=lambda identity: setattr(session, "expected", identity),
+                )
+            )
+            if not args.serve:
+                while True:
+                    result = session.refresh(options, light=light)
+                    if (
+                        (
+                            result.get("caught_up")
+                            and result.get("baseline_caught_up", True)
+                        )
+                        or result.get("collection_error")
+                        or time.monotonic() >= deadline
+                    ):
+                        break
+                    time.sleep(0.01)
         if args.serve:
             server = session.open_browser(open_browser=args.open_browser)
             _dump(

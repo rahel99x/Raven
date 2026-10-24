@@ -146,10 +146,12 @@ def _context(app):
         repr(scope),
     )
     from ..execution.policy import router_for
+    from ..model import Finished
 
     return dict(
         key=key,
         job_id=str(jid),
+        job_finished=isinstance(record, Finished),
         submit=key[1],
         start=key[2],
         root=root,
@@ -238,7 +240,11 @@ def run_command(app, args):
     if args[0] == "traces":
         app.enter_tab("traces")
         state.update(
-            view="workspace", view_choice="workspace", next_read=0.0, paint=None
+            view="workspace",
+            view_choice="workspace",
+            summary=False,
+            next_read=0.0,
+            paint=None,
         )
         return True
     if args[1:2] == ["workspace"]:
@@ -360,6 +366,8 @@ def run_command(app, args):
             state.update(explicit=args[2], context=_context(app), next_read=0.0)
             panels(app).activate(app, "trace")
     elif args[1:] in (["summary"], ["events"], ["timeline"]):
+        if (state.get("result") or {}).get("workspace_catalog_only"):
+            state.update(result=None, reader=None)
         state.update(
             summary=args[1] == "summary",
             view=args[1],
@@ -376,6 +384,9 @@ def run_command(app, args):
             else "Original retained trace events"
         )
     elif args[1:] == ["browser"]:
+        if state.get("view") == "workspace":
+            _workspace_browser(app, state, current)
+            return True
         if (
             current is None
             or state.get("context") is None
@@ -400,6 +411,13 @@ def run_command(app, args):
         state["paint"] = None
     elif args[1:] in (["refresh"], ["pause"], ["follow"], ["clear"]):
         operation = args[1]
+        if state.get("view") == "workspace" and operation in {"pause", "follow"}:
+            from .workspace_ui import command as workspace_command
+
+            workspace_command(
+                app, state, ["explore" if operation == "pause" else "live"]
+            )
+            return True
         if operation == "clear":
             cancel(app, clear=True)
         else:
@@ -432,6 +450,16 @@ def _matches(identity, context):
         raise ValueError("Trace belongs to a different job.")
     if context["cluster"] and identity.get("cluster") != context["cluster"]:
         raise ValueError("Trace belongs to a different cluster.")
+    # A launch/run identifier cannot override contradictory scheduler evidence.
+    # Sources without these optional anchors retain the existing unique-run
+    # binding and explicit, unverified retained-recording paths.
+    for source_key, selected_key in (
+        ("slurm_submit", "submit"),
+        ("slurm_start", "start"),
+    ):
+        recorded, selected = identity.get(source_key), context.get(selected_key)
+        if recorded and selected and recorded != selected:
+            return False
     if context["run_id"] and (
         identity.get("run_id") == context["run_id"]
         or identity.get("attempt") == context["run_id"]
@@ -707,7 +735,9 @@ def _read(
 def _read_workspace(result, context, session, options, event):
     from .workspace_session import WorkspaceSession, expected_identity
 
-    if not result.get("verified") and not context.get("standalone"):
+    if not (
+        result.get("verified") or result.get("association_verified")
+    ) and not context.get("standalone"):
         raise ValueError(
             "Run-wide tracing needs an exact verified job-attempt association."
         )
@@ -721,12 +751,13 @@ def _read_workspace(result, context, session, options, event):
             paths, expected=expected, light=context.get("light", False)
         )
     else:
-        joined = tuple(dict.fromkeys(session.paths + paths))
-        if len(joined) > 512:
-            raise ValueError(
-                "Run exceeds the 512-source workspace budget; select a smaller source set."
-            )
-        session.paths = joined
+        with session.lock:
+            joined = tuple(dict.fromkeys(session.paths + paths))
+            if len(joined) > 512:
+                raise ValueError(
+                    "Run exceeds the 512-source workspace budget; select a smaller source set."
+                )
+            session.paths = joined
     try:
         capacity_request = options.get("capacity_request")
         if capacity_request is not None and capacity_request != getattr(
@@ -741,7 +772,13 @@ def _read_workspace(result, context, session, options, event):
             )
             session.capacity_request = capacity_request
         prepared = session.refresh(
-            options, light=context.get("light", False), cancel=event
+            dict(
+                options,
+                discovery_errors=result.get("discovery_errors", []),
+                discovery_complete=bool(result.get("discovered")),
+            ),
+            light=context.get("light", False),
+            cancel=event,
         )
         if event.is_set():
             if created:
@@ -751,38 +788,56 @@ def _read_workspace(result, context, session, options, event):
         if created:
             session.close()
         raise
-    result.update(workspace_session=session, workspace_result=prepared)
-
-
-def _read_standalone(context, previous_path, reader, event):
-    """Integrity-checked viewing, without promoting report claims to ownership."""
-    from .protocol import TraceReader
-
-    if context["remote"]:
-        raise ValueError(
-            "Open Raven on the recording host; remote views never substitute local files."
+    by_path = {
+        os.path.abspath(source["path"]): source
+        for source in prepared.get("sources", [])
+        if source.get("path")
+    }
+    selected = by_path.get(os.path.abspath(result["path"]), {})
+    for process in result.get("processes", []):
+        source = by_path.get(os.path.abspath(process.get("path") or "."))
+        if source:
+            process.update(
+                status=source.get("status", "INDEXING").lower(),
+                checked=source.get("read_seq", 0),
+                reason=source.get("error")
+                or "; ".join(source.get("warnings", [])[:16]),
+            )
+    snapshot = result["snapshot"]
+    snapshot.update(
+        {
+            key: selected[key]
+            for key in (
+                "read_seq",
+                "committed_seq",
+                "sha256",
+                "caught_up",
+                "status",
+                "warnings",
+            )
+            if key in selected
+        }
+    )
+    snapshot["covered"] = selected.get("coverage", snapshot.get("covered", {}))
+    result["verified"] = bool(
+        not context.get("standalone")
+        and result.get("association_verified", result.get("verified"))
+        and selected.get("validated")
+    )
+    result["association"] = (
+        "declared recording; scheduler association not checked"
+        if context.get("standalone")
+        else "ready"
+        if result["verified"]
+        else "waiting for verified journal evidence"
+    )
+    if result.get("discovery_errors"):
+        result["association"] += "; discovery incomplete"
+    if selected.get("error"):
+        result["association"] += "; selected source " + selected.get(
+            "read_status", "unavailable"
         )
-    path = context["path"]
-    reader = (
-        reader if reader is not None and path == previous_path else TraceReader(path)
-    )
-    snapshot = reader.refresh(
-        max_events=512 if context["light"] else 4096,
-        max_bytes=256 << 10 if context["light"] else 2 << 20,
-        max_seconds=0.015,
-        cancel=event,
-    )
-    return dict(
-        sources=[path],
-        processes=[_process(snapshot["manifest"], path)],
-        snapshot=snapshot,
-        reader=reader,
-        path=path,
-        verified=False,
-        association="declared recording; scheduler association not checked",
-        discovered=True,
-        index=0,
-    )
+    result.update(workspace_session=session, workspace_result=prepared)
 
 
 def _workspace_browser(app, state, current):
@@ -965,10 +1020,13 @@ def tick(app):
     process_cache = state["processes"] if source_cache is not None else None
     context = dict(context, show_helpers=state["show_helpers"])
 
-    summary_requested = state.get("summary", False)
     workspace_requested = (
         state.get("view") == "workspace" or getattr(app, "tab", "") == "traces"
     )
+    summary_requested = state.get("summary", False) and not workspace_requested
+    fallback_sources = list(state["sources"])
+    fallback_processes = [dict(row) for row in state["processes"]]
+    fallback_snapshot = state.get("result")
     workspace = state.get("workspace_session")
     workspace_revision = state.get("workspace_revision", 0)
     workspace_options = {}
@@ -994,6 +1052,7 @@ def tick(app):
             overview=bool(state.get("workspace_dirty")),
             **state.get("workspace_symbol_paths", {}),
             capacity_request=state.get("workspace_capacity_request"),
+            job_finished=context.get("job_finished"),
         )
         symbol = symbol_request(state)
         if "frame_index" in symbol:
@@ -1005,10 +1064,80 @@ def tick(app):
                 workspace_options["causal"] = detail_request(state)
 
     def work():
-        result = (
-            _read_standalone(context, path, reader, event)
-            if context.get("standalone")
-            else _read(
+        if workspace_requested:
+            from .workspace_discovery import read as discover
+
+            try:
+                result = discover(
+                    context,
+                    explicit,
+                    index,
+                    event,
+                    source_cache,
+                    process_cache,
+                    launch_sources=_launch_sources,
+                    matches=_matches,
+                    process=_process,
+                )
+            except (OSError, ValueError) as exc:
+                if (
+                    workspace is None
+                    or workspace.closed
+                    or not fallback_sources
+                    or context.get("standalone")
+                    or explicit
+                ):
+                    raise
+                # Continue already registered sources while registry metadata
+                # is unavailable. Their journals retain exact-attempt checks.
+                result = discover(
+                    context,
+                    explicit,
+                    index,
+                    event,
+                    fallback_sources,
+                    fallback_processes,
+                    launch_sources=_launch_sources,
+                    matches=_matches,
+                    process=_process,
+                )
+                if result is not None:
+                    result.setdefault("discovery_errors", []).append(
+                        {
+                            "path": context.get("root", "registry"),
+                            "read_error": str(exc)[:8192],
+                        }
+                    )
+            if (
+                result is not None
+                and result.get("snapshot") is None
+                and workspace is not None
+                and not workspace.closed
+                and fallback_sources
+                and fallback_snapshot is not None
+                and not context.get("standalone")
+                and not explicit
+                and _matches(fallback_snapshot["identity"], context)
+            ):
+                # Absence from a temporarily unreadable registry does not
+                # withdraw a previously verified exact-attempt subscription.
+                result.update(
+                    sources=fallback_sources,
+                    processes=fallback_processes,
+                    snapshot=dict(fallback_snapshot),
+                    reader=None,
+                    path=path,
+                    verified=False,
+                    association_verified=True,
+                )
+                result.setdefault("discovery_errors", []).append(
+                    {
+                        "path": context.get("root", "registry"),
+                        "read_error": "No matching source metadata is currently available; continuing the previously verified source set.",
+                    }
+                )
+        else:
+            result = _read(
                 context,
                 explicit,
                 index,
@@ -1018,13 +1147,30 @@ def tick(app):
                 source_cache,
                 process_cache,
             )
-        )
         if (
             workspace_requested
             and result is not None
             and result.get("snapshot") is not None
         ):
             _read_workspace(result, context, workspace, workspace_options, event)
+            session = result.get("workspace_session")
+            if session is not None and not explicit and not context.get("standalone"):
+                from .workspace_discovery import read as discover
+
+                def registered_sources(cancel):
+                    return discover(
+                        context,
+                        "",
+                        0,
+                        cancel,
+                        launch_sources=_launch_sources,
+                        matches=_matches,
+                        process=_process,
+                    )
+
+                session.set_discovery(
+                    registered_sources, primed=bool(result.get("discovered"))
+                )
         if (
             summary_requested
             and result is not None
@@ -1230,6 +1376,14 @@ def _workspace_source_notices(app, context, result):
         for source in result.get("sources", [])
     ]
     rows.append(("index", result.get("index", {}).get("error", "")))
+    collection = result.get("catalog", result)
+    errors = result.get("discovery_errors", [])
+    collection_error = "\n".join(
+        (row.get("path", "") + ": " if row.get("path") else "")
+        + row.get("read_error", "")
+        for row in errors
+    ) or collection.get("collection_error", "")
+    rows.append(("collection", collection_error))
     for source_id, error in rows:
         key = ("trace-workspace-source", context["key"], source_id)
         if error:
@@ -1314,19 +1468,26 @@ def panel(views, app, job, width):
             ("command", "trace follow" if state["paused"] else "trace pause"),
         ),
     ]
-    if state.get("view", "timeline") != "timeline":
+    if state.get("view") == "workspace":
+        controls = [
+            ("timeline", "Single-source view", ("command", "trace timeline")),
+            ("browser", "Live browser", ("command", "trace workspace browser")),
+            ("plan", "Capture plan", ("command", "ops trace-capture")),
+        ]
+    elif state.get("view", "timeline") != "timeline":
         controls += [
             ("refresh", "Refresh", ("command", "trace refresh")),
             ("plan", "Capture plan", ("command", "ops trace-capture")),
             ("snapshot", "Python snapshot", ("command", "ops trace-snapshot")),
         ]
-    controls.append(
-        (
-            "helpers",
-            "Hide helpers" if state["show_helpers"] else "Show helpers",
-            ("command", "trace helpers"),
+    if state.get("view") != "workspace":
+        controls.append(
+            (
+                "helpers",
+                "Hide helpers" if state["show_helpers"] else "Show helpers",
+                ("command", "trace helpers"),
+            )
         )
-    )
     rows, raw_hits = buttons(
         views.g,
         width,
@@ -1358,7 +1519,7 @@ def panel(views, app, job, width):
             rows.append([("Browser snapshot: " + browser["path"], "text")])
     processes = state.get("processes", [])
     process_start = len(rows)
-    if processes:
+    if processes and state.get("view") != "workspace":
         source_indices = {path: index for index, path in enumerate(state["sources"])}
         hidden = (
             sum(_helper(row) for row in processes) if not state["show_helpers"] else 0

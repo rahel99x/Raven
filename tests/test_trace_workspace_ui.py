@@ -22,6 +22,29 @@ def app():
     )
 
 
+def test_closed_chunks_follow_until_known_job_completion_and_resume_is_explicit():
+    state = {}
+    owner, _, _ = app()
+    first = snapshot(complete=True)
+    first.update(collection_following=True, job_finished=False)
+    UI.publish(state, first)
+    UI.command(owner, state, ["live"])
+    original = UI.query_options(state)
+    between = snapshot(complete=True, end=110 * SECOND)
+    between.update(collection_following=True, job_finished=False)
+    UI.publish(state, between)
+    assert state["workspace_view"]["mode"] == "live"
+    assert UI.query_options(state)["end_ns"] > original["end_ns"]
+    before_completion = UI.query_options(state)
+    finished = dict(between, job_finished=True)
+    UI.publish(state, finished)
+    assert state["workspace_view"]["mode"] == "explore"
+    assert UI.query_options(state) == before_completion
+    UI.command(owner, state, ["live"])
+    UI.publish(state, finished)
+    assert state["workspace_view"]["mode"] == "live"
+
+
 def snapshot(*, complete=False, extra_clock=False, end=100 * SECOND):
     base = (1 << 62) + 31
     identity = dict(job_id="42", attempt="submit/start", cluster="local")

@@ -225,7 +225,7 @@ def test_controller_filter_sort_tabs_overlays_and_mouse(tmp_path):
     assert any("keys" in L.row_text(r) for _, _, r in ov)
     app.handle("q")
     assert app.mode == "main" and not app.quit
-    for key, tab in (("2", "cluster"), ("3", "history"), ("4", "nodes"), ("5", "log"), ("6", "sources"), ("tab", "research"), ("tab", "jobs"), ("btab", "research"), ("btab", "sources")):
+    for key, tab in (("2", "cluster"), ("3", "history"), ("4", "nodes"), ("5", "log"), ("6", "sources"), ("tab", "research"), ("tab", "traces"), ("tab", "jobs"), ("btab", "traces"), ("btab", "research"), ("btab", "sources")):
         app.handle(key)
         assert app.tab == tab
         rows, hits = views.compose(store.snapshot(), app, W, H, actions)

@@ -13,6 +13,18 @@ MAX_SOURCES = 512
 MAX_RESULTS = 10_000
 
 
+def common_identity(identity):
+    """Retain exact attempt identity without duplicating its run-ID alias.
+
+    Original source identities remain untouched. A distinct optional run ID
+    is still an additional constraint; absent values are never fabricated.
+    """
+    binding = {key: identity[key] for key in ("job_id", "attempt", "cluster")}
+    if identity.get("run_id") and identity["run_id"] != identity["attempt"]:
+        binding["run_id"] = identity["run_id"]
+    return binding
+
+
 def _json(value):
     return json.dumps(value, ensure_ascii=True, allow_nan=False, separators=(",", ":"))
 

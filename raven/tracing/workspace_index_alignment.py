@@ -245,7 +245,8 @@ class AlignmentQueries:
         return (
             clock_id is not None
             and self.db.execute(
-                "SELECT 1 FROM aligned_bounds WHERE clock=? LIMIT 1", (clock_id,)
+                "SELECT 1 FROM aligned_bounds b JOIN sources s ON s.id=b.source WHERE b.clock=? AND s.validated=1 AND s.status!='INVALID' LIMIT 1",
+                (clock_id,),
             ).fetchone()
             is not None
         )

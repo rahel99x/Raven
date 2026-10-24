@@ -218,7 +218,7 @@ def test_automatic_publication_of_another_stream_cannot_reuse_selected_sequence(
     owner = dashboard.app
     dashboard.render()
     job_panels._activate(owner, "trace")
-    context = {"key": ("test-context",)}
+    context = {"key": ("test-context",), "job_id": owner.selected_id}
     monkeypatch.setattr(trace_ui, "_context", lambda app: context)
     state = trace_ui.initialize(owner)
     state.update(context=context, result=ready()["result"], path="old-path")

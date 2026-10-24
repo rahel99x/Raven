@@ -148,7 +148,7 @@ def test_live_incremental_read_and_reopen_revalidation(tmp_path):
             finish(index, [rec.path])
             assert len(index.query()["intervals"]) == 2
     with TraceIndex(tmp_path / "index.sqlite") as index:
-        assert index.catalog()["sources"][0]["status"] == "REVALIDATING"
+        assert not index.catalog()["sources"]
         assert not index.query()["intervals"]
         finish(index, [rec.path])
         assert index.query()["intervals"][0]["id"] == original
@@ -298,6 +298,7 @@ def test_index_quota_stops_explicitly_without_false_complete_prefix(tmp_path):
             finish(index, [rec.path])
         assert not index.catalog()["caught_up"]
         assert index.catalog()["index"]["state"] == "storage-blocked"
+        assert index.reader_memory.used == 0
         prefix = index.query()["intervals"]
         statements = []
         index.db.set_trace_callback(statements.append)
@@ -572,21 +573,24 @@ def test_source_registration_rotates_when_io_consumes_the_work_slice(
             assert not first["caught_up"]
             index.refresh(sources, max_seconds=0.001)
             index.refresh(sources, max_seconds=0.001)
-        assert set(seen) == set(sources)
+        assert {str(path) for path in seen} == {str(path) for path in sources}
         assert finish(index, sources)["discovery"]["pending_count"] == 0
         assert len(index.query()["intervals"]) == 3
 
 
-def test_removed_missing_paths_do_not_accumulate_errors_without_bound(tmp_path):
+def test_missing_path_diagnostics_remain_scoped_to_the_current_owner(tmp_path):
     with recorder(tmp_path / "project") as rec:
         calls(rec)
     with TraceIndex(tmp_path / "index.sqlite") as index:
         finish(index, [rec.path])
         assert not index.refresh([rec.path, tmp_path / "old-missing"])["caught_up"]
         result = index.refresh([rec.path, tmp_path / "current-missing"])
-        assert len(index._discovery_errors) == 1
-        assert "current-missing" in result["warnings"][0]
-        assert "old-missing" not in str(result["warnings"])
+        assert len(index._discovery_errors) == 2
+        assert "current-missing" in str(result["warnings"])
+        assert "old-missing" in str(result["warnings"])
+    with TraceIndex(tmp_path / "index.sqlite") as index:
+        assert finish(index, [rec.path])["caught_up"]
+        assert not index._discovery_errors
 
 
 def test_imported_report_symbols_preserve_process_device_and_generation_scopes(

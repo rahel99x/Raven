@@ -122,7 +122,9 @@ class IndexFilters:
         self.db.execute(
             "CREATE INDEX IF NOT EXISTS intervals_scheduling_actor ON intervals(source,clock,tag_actor,tag_cpu,start,end) WHERE kind='scheduling' AND tag_cpu IS NOT NULL"
         )
-        for facet, value in self.db.execute("SELECT DISTINCT facet,value FROM facets"):
+        for facet, value in self.db.execute(
+            "SELECT DISTINCT f.facet,f.value FROM facets f JOIN sources s ON s.id=f.source WHERE s.validated=1 AND s.status!='INVALID'"
+        ):
             self._facet_values.setdefault(facet, set()).add(value)
 
     def _clear_filters(self, source):
@@ -130,15 +132,20 @@ class IndexFilters:
             self.db.execute(f"DELETE FROM {table} WHERE source=?", (source,))
         self._filter_contexts.pop(source, None)
         self._facet_values = {}
-        for facet, value in self.db.execute("SELECT DISTINCT facet,value FROM facets"):
+        for facet, value in self.db.execute(
+            "SELECT DISTINCT f.facet,f.value FROM facets f JOIN sources s ON s.id=f.source WHERE s.validated=1 AND s.status!='INVALID'"
+        ):
             self._facet_values.setdefault(facet, set()).add(value)
 
     def _filter_context(self, source):
         if source not in self._filter_contexts:
-            self._filter_contexts[source] = json.loads(
-                self.db.execute(
-                    "SELECT payload FROM sources WHERE id=?", (source,)
-                ).fetchone()[0]
+            identity, clock = self.db.execute(
+                "SELECT identity,clock FROM sources WHERE id=?", (source,)
+            ).fetchone()
+            self._filter_contexts[source] = dict(
+                id=source,
+                identity=json.loads(identity),
+                clock=json.loads(clock),
             )
         return self._filter_contexts[source]
 

@@ -1024,3 +1024,93 @@ if(errors.length)throw Error(errors.join('\n'));console.log(JSON.stringify({pass
             )
             assert result.returncode == 0, result.stdout + result.stderr
             assert json.loads(result.stdout)["unknownWeightPreserved"]
+
+
+@pytest.mark.parametrize("prior_finished", [None, False])
+def test_real_browser_owner_completion_freezes_once_and_explicit_resume_accepts_late_data(
+    tmp_path, prior_finished
+):
+    node, chromium = browser_prerequisites()
+
+    class PublishedLifecycle(Index):
+        def __init__(self):
+            super().__init__()
+            self.finished = prior_finished
+            self.live = True
+
+        def catalog(self):
+            result = super().catalog()
+            result.update(job_finished=self.finished, collection_following=True)
+            result["sources"][0]["status"] = "LIVE" if self.live else "COMPLETE"
+            result["bounds"][0]["end_ns"] = max(row["end_ns"] for row in self.rows)
+            return result
+
+    index = PublishedLifecycle()
+    process = None
+    with B.start(index) as service:
+        script = tmp_path / "completion-browser.cjs"
+        script.write_text(r"""
+const {chromium}=require('playwright');
+(async()=>{const browser=await chromium.launch({executablePath:process.argv[2],headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+try{const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
+await page.goto(process.argv[3]);await page.locator('#event_body button').filter({hasText:'outer'}).waitFor();
+await page.locator('#delta').fill('0.0003');await page.locator('#delta').dispatchEvent('change');
+await page.locator('#event_body button').filter({hasText:'outer'}).click();
+await page.waitForFunction(()=>document.getElementById('details').dataset.intervalId==='src:1');
+await page.locator('#live').click();await page.waitForFunction(()=>document.getElementById('live').getAttribute('aria-pressed')==='true');
+const held=await page.locator('#window').innerText();console.log(JSON.stringify({ready:true}));
+await page.waitForFunction(()=>document.getElementById('live').getAttribute('aria-pressed')==='false');
+if((await page.locator('#window').innerText())!==held)throw Error('Job completion moved the chosen viewport');
+if(await page.locator('#details').getAttribute('data-interval-id')!=='src:1')throw Error('Job completion lost pinned selection');
+console.log(JSON.stringify({paused:true}));await page.waitForTimeout(1200);
+if((await page.locator('#window').innerText())!==held)throw Error('Late data moved the completed Explore viewport');
+await page.locator('#live').click();await page.locator('#event_body button').filter({hasText:'late_after_completion'}).waitFor();
+await page.waitForTimeout(1200);
+if(await page.locator('#live').getAttribute('aria-pressed')!=='true')throw Error('Known completion repeatedly overrode an explicit Resume Live');
+const completed=await browser.newPage();await completed.goto(process.argv[3]);await completed.locator('#event_body button').first().waitFor();
+if(await completed.locator('#live').getAttribute('aria-pressed')!=='false')throw Error('An initially completed job opened in Live');await completed.close();
+if(errors.length)throw Error(errors.join('\n'));console.log(JSON.stringify({passed:true,completionPreserved:true,explicitResume:true}));
+}finally{await browser.close()}})().catch(error=>{console.error(error);process.exit(1)});
+""")
+        process = subprocess.Popen(
+            [node, str(script), chromium, service.url],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        try:
+            import select
+
+            for stage in ("ready", "paused"):
+                available, _, _ = select.select([process.stdout], [], [], 8)
+                assert available, (
+                    "Browser did not publish its lifecycle acknowledgement"
+                )
+                line = process.stdout.readline()
+                assert line and json.loads(line)[stage]
+                with index.lock:
+                    if stage == "ready":
+                        index.finished, index.live = True, False
+                    else:
+                        index.rows.append(
+                            {
+                                **index.rows[0],
+                                "id": "src:late",
+                                "name": "late_after_completion",
+                                "start_ns": BASE + 2000000,
+                                "end_ns": BASE + 2100000,
+                                "duration_ns": 100000,
+                                "self_ns": 100000,
+                            }
+                        )
+            output, error = process.communicate(timeout=10)
+            assert process.returncode == 0, error
+            assert json.loads(output)["completionPreserved"]
+        finally:
+            if process.poll() is None:
+                import signal
+
+                os.killpg(process.pid, signal.SIGKILL)
+                process.communicate(timeout=3)

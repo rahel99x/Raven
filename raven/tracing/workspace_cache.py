@@ -36,7 +36,9 @@ def _remove_database(path):
         name.unlink()
 
 
-def open_index(identity, paths, *, max_bytes, directory=None):
+def open_index(
+    identity, paths, *, max_bytes, reader_memory_bytes=64 << 20, directory=None
+):
     import fcntl
     from ..installation.config_migration import private_directory
     from .protocol import encoded
@@ -88,7 +90,9 @@ def open_index(identity, paths, *, max_bytes, directory=None):
             # slot between the availability check and Index's lifetime lock.
             rebuilt = False
             try:
-                index = TraceIndex(path, max_bytes=max_bytes)
+                index = TraceIndex(
+                    path, max_bytes=max_bytes, reader_memory_bytes=reader_memory_bytes
+                )
             except ValueError as exc:
                 if not any(
                     reason in str(exc)
@@ -106,7 +110,9 @@ def open_index(identity, paths, *, max_bytes, directory=None):
                     _remove_database(path)
                 finally:
                     os.close(lease)
-                index = TraceIndex(path, max_bytes=max_bytes)
+                index = TraceIndex(
+                    path, max_bytes=max_bytes, reader_memory_bytes=reader_memory_bytes
+                )
                 rebuilt = True
             try:
                 key_path, _ = _private_path(key)

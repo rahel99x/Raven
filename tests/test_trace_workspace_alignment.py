@@ -228,6 +228,9 @@ def test_calibrated_density_and_statistics_are_incremental_and_not_double_counte
         assert sum(row["inclusive_ns"] for row in ranged["functions"]) == 80
     with TraceIndex(tmp_path / "index.sqlite") as index:
         assert not index.query(clock_id="run-reference")["intervals"]
+        assert index.functions(clock_id="run-reference")["alignment"].startswith(
+            "raw recorded clocks"
+        )
         finish(index, [first.path, second.path])
         assert (
             sum(

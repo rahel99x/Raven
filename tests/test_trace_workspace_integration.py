@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import time
-from threading import Event, Lock
+from threading import Lock
 from types import SimpleNamespace
 
 import pytest
@@ -13,7 +13,7 @@ from raven import layout as L, trace_ui
 from raven.model import Finished
 from raven.trace_recorder import Recorder
 from raven.tracing.workspace_session import WorkspaceSession
-from test_job_panels import dashboard
+from test_job_panels import dashboard as dashboard
 from test_trace_timeline_workflow import connect
 
 
@@ -478,3 +478,33 @@ def test_source_inbox_keeps_full_error_and_verified_recovery(dashboard):
     trace_ui._workspace_source_notices(app, context, result)
     recovered = notifications.initialize(app).get(notice.id)
     assert recovered.resolved_at and "verified" in recovered.resolution
+
+
+def test_collection_discovery_error_reaches_inbox_and_recovers(dashboard):
+    from raven import notifications
+
+    app = connect(dashboard)
+    context = trace_ui._context(app)
+    detail = "Source registration temporarily unavailable: " + "diagnostic " * 500
+    result = dict(
+        sources=[dict(id="cpu", error="")],
+        discovery_errors=[dict(path="/project/logs", read_error=detail)],
+        catalog=dict(collection_error="/project/logs: " + detail),
+    )
+    trace_ui._workspace_source_notices(app, context, result)
+    trace_ui._workspace_source_notices(app, context, result)
+    center = notifications.initialize(app)
+    notice = next(
+        item
+        for item in notifications.sync(app, {}).notices
+        if item.source == "Trace source collection"
+    )
+    assert notice.text == "/project/logs: " + detail
+    assert notice.occurrences == 1 and not notice.resolved_at
+    # Known healthy sources alone cannot clear a metadata-discovery failure.
+    result.pop("discovery_errors")
+    trace_ui._workspace_source_notices(app, context, result)
+    assert not center.get(notice.id).resolved_at
+    result["catalog"]["collection_error"] = ""
+    trace_ui._workspace_source_notices(app, context, result)
+    assert center.get(notice.id).resolved_at
