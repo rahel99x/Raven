@@ -104,19 +104,21 @@ class TriggeredCapture:
             "capture_qualified": False,
         }
 
-    def _error(self, error):
+    def _error(self, error, *, receipt=None, status="error"):
         from ..job_logs.text import display_text
 
-        self.receipt["status"] = "error"
-        if len(self.receipt["errors"]) < 16:
-            self.receipt["errors"].append(
+        receipt = self.receipt if receipt is None else receipt
+        receipt["status"] = status
+        if len(receipt["errors"]) < 16:
+            receipt["errors"].append(
                 display_text(type(error).__name__ + ": " + str(error))[:2000]
             )
 
-    def _publish(self):
+    def _publish(self, receipt=None):
         from .capture import _safe_directory, _trace_root
         from ..reporting import _atomic_json
 
+        receipt = self.receipt if receipt is None else receipt
         try:
             if self.receipt_path is None:
                 parent = _trace_root(self.project).parent / "triggered-captures"
@@ -125,10 +127,10 @@ class TriggeredCapture:
                 folder = parent / uuid.uuid4().hex
                 folder.mkdir(mode=0o700)
                 self.receipt_path = folder / "receipt.json"
-                self.receipt["receipt"] = str(self.receipt_path)
-            _atomic_json(self.receipt_path, self.receipt, replace=True)
+                receipt["receipt"] = str(self.receipt_path)
+            _atomic_json(self.receipt_path, receipt, replace=True)
         except (OSError, ValueError) as error:
-            self._error(error)
+            self._error(error, receipt=receipt)
 
     def __enter__(self):
         if os.getpid() != self._pid:
@@ -318,19 +320,35 @@ class TriggeredCapture:
                 self._finish("post-time-budget")
 
     def _finish(self, reason, *, status="complete"):
-        self.receipt["stop_reason"] = reason
-        self.receipt["status"] = status
+        # The public receipt is also read without this owner's lock. Keep its
+        # terminal fields private until the journal and receipt are durable;
+        # returning from close alone does not prove a complete recorder footer.
+        final = dict(self.receipt, errors=list(self.receipt["errors"]))
+        final.update(stop_reason=reason, status=status)
         if self._timer is not None:
             self._timer.cancel()
             self._timer = None
         if self._recorder is not None:
             try:
                 self._recorder.close()
-                self.receipt["journal_bytes"] = self._recorder.bytes
-                self.receipt["capture_state"] = self._recorder.state
             except (OSError, ValueError) as error:
-                self._error(error)
-        self._publish()
+                self._error(error, receipt=final)
+            state = self._recorder.state
+            final.update(journal_bytes=self._recorder.bytes, capture_state=state)
+            if state == "ERROR" or final["status"] == "complete" and state != "CLOSED":
+                self._error(
+                    RuntimeError(
+                        "Recorder shutdown ended in "
+                        + str(state)
+                        + "; only its verified committed prefix is available"
+                    ),
+                    receipt=final,
+                    status="error" if state == "ERROR" else "partial",
+                )
+        self._publish(final)
+        # Preserve aliases held by existing SDK callers, while publishing all
+        # terminal fields together after both durability barriers above.
+        self.receipt.update(final)
 
     def close(self):
         if os.getpid() != self._pid:

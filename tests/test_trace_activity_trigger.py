@@ -116,6 +116,146 @@ def test_post_time_deadline_closes_only_capture_while_application_continues(tmp_
     assert scientific_result == 4950
 
 
+def test_deadline_receipt_is_not_terminal_until_journal_close_is_durable(
+    tmp_path, monkeypatch
+):
+    entered, release = threading.Event(), threading.Event()
+    with capture(tmp_path, post_seconds=60) as recorder:
+        assert recorder.trigger("controlled deadline")
+        receipt_alias = recorder.receipt
+        original_close = recorder._recorder.close
+
+        def held_close():
+            entered.set()
+            assert release.wait(5), "Test did not release the journal close barrier"
+            original_close()
+
+        monkeypatch.setattr(recorder._recorder, "close", held_close)
+        deadline = threading.Thread(target=recorder._expire)
+        deadline.start()
+        try:
+            assert entered.wait(2), "Deadline did not enter journal shutdown"
+            # Deliberately read the public dict without the owner's lock, as a
+            # monitoring caller does. No terminal success may precede fsync.
+            assert recorder.receipt["status"] == "recording"
+            assert "stop_reason" not in recorder.receipt
+            assert read_json(recorder.receipt_path)["status"] == "recording"
+            assert read_trace(recorder.receipt["manifest"])["status"] == "LIVE"
+        finally:
+            release.set()
+            deadline.join(timeout=2)
+        assert not deadline.is_alive()
+        assert receipt_alias is recorder.receipt
+        assert receipt_alias["status"] == "complete"
+        assert receipt_alias["stop_reason"] == "post-time-budget"
+        assert read_json(recorder.receipt_path)["status"] == "complete"
+        assert read_trace(recorder.receipt["manifest"])["status"] == "COMPLETE"
+
+
+def test_public_terminal_receipt_waits_for_its_own_atomic_publication(
+    tmp_path, monkeypatch
+):
+    from raven import reporting
+
+    entered, release = threading.Event(), threading.Event()
+    with capture(tmp_path, post_seconds=60) as recorder:
+        recorder.trigger("controlled receipt publication")
+        publish = reporting._atomic_json
+
+        def held_publish(path, value, **kwargs):
+            if Path(path) == recorder.receipt_path and value["status"] == "complete":
+                entered.set()
+                assert release.wait(5), "Test did not release receipt publication"
+            return publish(path, value, **kwargs)
+
+        monkeypatch.setattr(reporting, "_atomic_json", held_publish)
+        deadline = threading.Thread(target=recorder._expire)
+        deadline.start()
+        try:
+            assert entered.wait(2), "Shutdown did not publish its final receipt"
+            assert recorder.receipt["status"] == "recording"
+            assert "stop_reason" not in recorder.receipt
+            assert read_json(recorder.receipt_path)["status"] == "recording"
+            assert read_trace(recorder.receipt["manifest"])["status"] == "COMPLETE"
+        finally:
+            release.set()
+            deadline.join(timeout=2)
+        assert not deadline.is_alive()
+        assert recorder.receipt["status"] == "complete"
+        assert read_json(recorder.receipt_path)["status"] == "complete"
+
+
+@pytest.mark.parametrize(
+    "footer,status", [("PARTIAL", "partial"), ("LIMIT", "partial"), ("ERROR", "error")]
+)
+def test_nonraising_incomplete_recorder_close_never_certifies_complete_capture(
+    tmp_path, monkeypatch, footer, status
+):
+    with capture(tmp_path) as recorder:
+        recorder.trigger("incomplete footer")
+        original_close = recorder._recorder.close
+
+        def incomplete_close():
+            recorder._recorder.state = footer
+            return original_close()
+
+        monkeypatch.setattr(recorder._recorder, "close", incomplete_close)
+        recorder.close()
+        assert recorder._recorder.fd is None
+        assert recorder.receipt["status"] == status
+        assert recorder.receipt["capture_state"] == footer
+        assert any(footer in error for error in recorder.receipt["errors"])
+        assert read_json(recorder.receipt_path)["status"] == status
+        assert read_trace(recorder.receipt["manifest"])["status"] != "COMPLETE"
+        assert not recorder.emit("phase", {"name": "science continues"})
+        scientific_result = sum(range(10))
+    assert scientific_result == 45
+
+
+def test_close_flush_error_preserves_scientific_exception_and_actual_prefix(
+    tmp_path, monkeypatch
+):
+    with pytest.raises(LookupError, match="original scientific outcome"):
+        with capture(tmp_path) as recorder:
+            recorder.trigger("failed close flush")
+
+            def failed_flush():
+                raise OSError("fixture final journal fsync failure")
+
+            monkeypatch.setattr(recorder._recorder, "flush", failed_flush)
+            raise LookupError("original scientific outcome")
+    assert recorder._recorder.fd is None
+    # CLOSED in memory is not sufficient when its durable flush raised.
+    assert recorder.receipt["capture_state"] == "CLOSED"
+    assert recorder.receipt["status"] == "error"
+    assert any("fsync failure" in error for error in recorder.receipt["errors"])
+    assert read_json(recorder.receipt_path)["status"] == "error"
+    assert read_trace(recorder.receipt["manifest"])["status"] == "LIVE"
+
+
+def test_final_receipt_failure_does_not_publish_in_memory_success(
+    tmp_path, monkeypatch
+):
+    from raven import reporting
+
+    with capture(tmp_path) as recorder:
+        recorder.trigger("failed final receipt")
+
+        def failed_publish(*args, **kwargs):
+            raise OSError("fixture final receipt unavailable")
+
+        monkeypatch.setattr(reporting, "_atomic_json", failed_publish)
+        recorder.close()
+        assert recorder.receipt["status"] == "error"
+        assert any(
+            "receipt unavailable" in error for error in recorder.receipt["errors"]
+        )
+        assert read_json(recorder.receipt_path)["status"] == "recording"
+        assert read_trace(recorder.receipt["manifest"])["status"] == "COMPLETE"
+        scientific_result = 7 * 6
+    assert scientific_result == 42
+
+
 def test_journal_budget_stops_capture_without_registering_partial_as_complete(tmp_path):
     with capture(tmp_path, max_bytes=4096) as recorder:
         for number in range(10):
