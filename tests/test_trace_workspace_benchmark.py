@@ -10,6 +10,27 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/benchmark_trace_workspace.py"
 
 
+def test_legacy_comparison_uses_same_inclusive_boundary_as_index():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("trace_workspace_benchmark", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    model = dict(
+        origin_ns=100,
+        identity=dict(stream="source"),
+        intervals=[
+            dict(start_ns=0, end_ns=10, name="ends-at-start"),
+            dict(start_ns=20, end_ns=30, name="starts-at-end"),
+            dict(start_ns=21, end_ns=30, name="outside"),
+        ],
+    )
+    assert [row["name"] for row in module._legacy_query([model], 110, 120)] == [
+        "ends-at-start",
+        "starts-at-end",
+    ]
+
+
 def run_fixture(tmp_path, intervals):
     output = tmp_path / "benchmark.json"
     result = subprocess.run(

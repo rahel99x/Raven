@@ -239,7 +239,10 @@ def _legacy_query(models, start, end):
                 value["start_ns"] + model["origin_ns"],
                 value["end_ns"] + model["origin_ns"],
             )
-            if left < end and right > start:
+            # Both variants answer the same inclusive overlap predicate. A
+            # call ending exactly at the selected start remains inspectable;
+            # comparing a half-open scan to an inclusive index is unequal work.
+            if left <= end and right >= start:
                 rows.append(
                     dict(
                         value,
