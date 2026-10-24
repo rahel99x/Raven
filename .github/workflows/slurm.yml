@@ -11,6 +11,9 @@ on:
       - 'tests/fixtures/slurm/**'
       - 'raven/raven_allocation*.py'
       - 'raven/heavy/**'
+      - 'raven/tracing/**'
+      - 'raven/trace*.py'
+      - 'tests/test_trace*.py'
       - 'raven/placement_pids.py'
       - 'raven/raven_collection.py'
       - 'raven/collection/**'
@@ -63,9 +66,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Real controller, compute node and accounting lifecycle
         run: python3 scripts/qualify_slurm.py --version '${{ matrix.version }}' --output '/tmp/slurm-${{ matrix.version }}'
+      - name: Live and retained Trace Workspace on real Slurm
+        if: matrix.version == '26.05.5'
+        run: python3 scripts/qualify_slurm.py --skip-build --version '${{ matrix.version }}' --scenario trace-workspace --output '/tmp/slurm-trace-workspace-${{ matrix.version }}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: slurm-${{ matrix.version }}-${{ github.sha }}
           path: /tmp/slurm-${{ matrix.version }}
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.version == '26.05.5'
+        with:
+          name: slurm-trace-workspace-${{ matrix.version }}-${{ github.sha }}
+          path: /tmp/slurm-trace-workspace-${{ matrix.version }}
           retention-days: 14

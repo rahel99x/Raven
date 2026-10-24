@@ -1,5 +1,12 @@
 # Recorded stacks and distributed trace evidence
 
+Start with the [Trace Workspace guide](trace-workspace.md) for the combined
+terminal/live-browser workflow: Live Δ, Fit, simultaneous threads, CPU/node/GPU
+perspectives, retained-run range queries, tooltips, aggregate views and explicit
+causal links. The original single-process Timeline and private offline export
+remain available. Both consume verified recordings; recording capabilities are
+described independently in [capture capabilities](trace-capabilities.md).
+
 For a shell script launched through `raven launch`, choose `--trace` to attach
 supported Python processes automatically. The original script remains unchanged
 and every process shares the exact reporting attempt. Explicit `raven_exec`,
@@ -13,7 +20,9 @@ calls, spawned analysis workers, scientific metrics, and deliberate failure
 provide several paths to explore without extra application dependencies.
 Optional MPI and CUDA variants use mpi4py and PyTorch respectively. All normal
 runs include about two minutes of pacing for live inspection; CUDA records
-Python host calls rather than device kernels.
+Python host calls by default. The separate activity-window example adds an
+explicit optional framework profiler for actual operator/device activities
+when that execution environment supports them.
 
 ## Automatic attachment
 
@@ -23,6 +32,14 @@ then launch on Slurm:
 ```bash
 raven launch job.sh --project "$PWD" --research experiment --trace
 ```
+
+For a first qualification run, `--trace-profile pilot` enables project Python
+tracing with a 4 MiB/process, 32 MiB/run and 16-process budget. The `project`
+preset uses ordinary limits; `topology` also enables CPU-placement observations.
+The launch wizard exposes the same presets and a budget preview. Explicit
+trace flags override corresponding preset values. A preview bounds retained
+data, not slowdown, CPU usage or application memory; measure a short pilot
+under the intended workload and toolchain.
 
 Use `--local` only to execute on the current workstation. Add `--account LabX`
 for a lab account available to your login. The default monitoring adapter needs
@@ -122,7 +139,12 @@ unbounded pre-fork wait. Active multithreaded capture can still trigger Python's
 general fork-with-threads warning. Prefer `spawn` or `forkserver` for applications
 whose libraries require that stronger process boundary.
 
-The live terminal/browser view retains a bounded window. CLI `trace export`,
+The original single-process Timeline and offline browser snapshot retain a
+bounded window. Trace Workspace incrementally indexes the full retained,
+verified committed evidence into a disposable local index and queries bounded
+ranges. Its Fit overview counts interval starts; it is not a utilization plot.
+It does not reconstruct missing capture after a quota or an uncommitted tail.
+CLI `trace export`,
 `trace inspect`, and `trace summary create` traverse the entire verified
 committed prefix in bounded pages, including intervals crossing page boundaries.
 They use a private disk-backed spool capped at 256 MiB and a 60-second traversal
@@ -179,11 +201,22 @@ acknowledge transport acceptance, not per-event durable storage.
 | `raven trace native` | Compile explicit calls to the cooperative SDK | Events supplied by local C/C++ processes and threads | No automatic native unwinding; private inherited sockets do not cross SSH or `srun` automatically |
 | PMPI source adapter | Compile the optional adapter against the application's MPI runtime | Automatic C-binding WORLD Barrier, scalar Bcast and scalar Allreduce/SUM metadata | At most 256 ranks; no thread-multiple, Fortran, nonblocking or arbitrary communicator coverage |
 | `Trace → Capture current Python stacks` | Install `py-spy`, run Raven on the target process node, and review a verified job/PID | One non-atomic set of observed Python stacks | No previous history; permission or runtime support may prevent capture |
+| `raven trace import-activity` | Export a supported bounded Chrome Trace Event / Perfetto JSON report | Recorded host/device intervals, counters, markers and explicit flows | Producer-declared evidence; no native binary decoder or automatic device-stack capture |
+| `raven trace profile` | Explicit application interpreter with compatible PyTorch | CPU operators and optional available CUDA/HIP activities | Cooperative steps required for live windows; framework buffers are tool-dependent; framework replay stacks are separately experimental |
+| `raven trace sample` | Linux `perf`, supported control-fd/user-event permissions and frame pointers | Weighted sampled callchains of a newly owned child | Sampling does not establish exact call duration, off-CPU time or complete execution |
+| `TriggeredCapture` SDK | Explicit application event/span hooks and incident condition | Bounded pre/post incident metadata | Older pre-window events are intentionally evicted; no trigger saves only a receipt |
 
 Rust, OCaml, MPI and GPU applications can report the same cooperative events
 through an application adapter or C FFI. This is a protocol integration point,
 not a claim that automatic adapters for those runtimes are installed. There is
 no debugger, kernel permission change, extra MPI barrier or public TCP listener.
+
+For managed Slurm execution, `trace run`, `trace profile`, `trace sample` and
+native instrumentation launchers require an actual verified owned job/step.
+Run them as the application command in the existing allocation with the
+site-approved launcher. They do not move work to the interface/login host,
+request a nested allocation or treat `SLURM_*` hints as sufficient ownership.
+Read-only retained viewing remains independent of job-local capture admission.
 
 ## Record a Python job from its start
 
@@ -227,6 +260,13 @@ event-driven. Display refresh and event capture are separate.
 
 ### Explore the visual timeline
 
+Choose **Run workspace** in Trace, or enter `:trace workspace`, for run-wide
+indexed navigation. `:traces` opens its global destination; `:trace workspace
+open /absolute/path/to/manifest.json` opens an older or standalone recording
+without requiring a current scheduler row. Follow, pause, Δ, Fit and range
+selection apply to the view, independently of ongoing recording. See the
+[workspace guide](trace-workspace.md#live-explore-and-fit) for complete controls.
+
 Select a job in Jobs or History, open **Trace**, and choose **Timeline**. Time
 runs left to right; nested Python calls occupy successive depth rows. Each bar
 has a matched recorded entry and exit. Cooperative spans use separate lanes;
@@ -253,12 +293,15 @@ original retained event view; **Summaries** provides aggregate duration queries.
 Pausing, selecting a different process, and viewing a completed job all use the
 same exact-attempt recording checks.
 
-Choose **View in browser** for an interactive flame timeline with zooming,
+The original Timeline's **View in browser** exports an interactive flame
+timeline with zooming,
 panning, search, thread selection and call details. Raven writes a private,
 self-contained HTML snapshot of the current retained window, then requests a
 local browser. It does not upload the recording, require a website, or start a
 web server. The browser snapshot is static; use the terminal view for live
-updates, or export again for a newer snapshot.
+updates, or export again for a newer snapshot. Trace Workspace's browser action
+is distinct: it explicitly starts a private authenticated loopback range-query
+service and follows accessible committed data while that owned viewer is open.
 
 For a headless cluster session, export an HTML file explicitly, transfer it to
 your workstation using your normal file-transfer method, and open it locally:
@@ -276,8 +319,9 @@ process, attempt, sequence coverage, evicted events and unknown boundaries.
 
 This interaction follows the time-versus-stack approach used by
 [Magic Trace](https://blog.janestreet.com/magic-trace/). Raven visualizes its
-existing recordings: it does not collect Intel Processor Trace, native library
-internals, or CUDA kernels through this viewer. Recorded durations are inclusive
+existing recordings: the automatic Python recorder does not collect Intel
+Processor Trace, native library internals or CUDA kernels. Optional activity
+imports/profiling supply their own distinct device evidence. Recorded call durations are inclusive
 wall time, not CPU utilization. Empty regions, unfinished calls and loss markers
 remain unknown; Raven does not invent closing events or align independent MPI
 process clocks. Use the existing Perfetto export when another compatible trace

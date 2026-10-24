@@ -216,7 +216,8 @@ current project and job context.
 | Launch an existing script and export plotting-ready measurements | [Automated reporting and exports](docs/guides/automated-reporting-exports.md) |
 | Attach project metrics, logs, and artifacts | [Project connection](docs/guides/project-connection.md) |
 | Work in an embedded shell | [Terminal guide](docs/guides/terminal-fusion.md) |
-| Inspect prepared Python or native recordings | [Stack tracing](docs/guides/stack-tracing.md) |
+| Follow live traces or explore retained threads, CPU/GPU activities and causal evidence | [Trace Workspace](docs/guides/trace-workspace.md) · [Capture capabilities](docs/guides/trace-capabilities.md) |
+| Record Python calls, native hooks or incident windows | [Stack tracing](docs/guides/stack-tracing.md) · [Runnable trace lab](examples/trace-lab/README.md) |
 | Understand recording retention and recovery | [Recording storage](docs/guides/recording-storage.md) |
 | Review and apply supported operations | [Operation catalog](docs/guides/operations.md) |
 | Explore retained evidence, research tools and qualification limits | [Reliability and research guides](docs/guides/reliability-and-research.md) |

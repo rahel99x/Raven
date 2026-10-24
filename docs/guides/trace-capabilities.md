@@ -1,7 +1,7 @@
 # Trace capture across processors and platforms
 
-Raven uses the same verified timeline model in its terminal and offline browser
-views. A recording from an AMD, Intel, Arm, Marvell, Apple, or other processor
+Raven uses the same verified timeline model in its terminal, live browser and
+offline browser views. A recording from an AMD, Intel, Arm, Marvell, Apple, or other processor
 does not need a different viewer. What can be **recorded** depends on the runtime,
 operating system, instrumentation, and hardware available where the job runs.
 
@@ -34,7 +34,10 @@ not start continuous sampling or inspect another process.
 | Selected C MPI collectives on Linux | `raven trace mpi --source`, compiled against the application's MPI runtime and native SDK | `MPI_COMM_WORLD` Barrier, supported Bcast types, and scalar Allreduce with SUM, up to 256 ranks. Unsupported communicators and thread modes produce explicit gaps. |
 | An explicitly owned Linux process on a verified Heavy host | [Process observations](process-observations.md) | Sampled process/thread counters and observed states. This is not stack capture or a reconstruction of every scheduling event. |
 | CPU placement of an instrumented Python process/thread on Linux | Add `--trace-cpu-placement` to `raven launch --trace`, or use `raven trace run --cpu-placement` | Logical CPU observations bracketed in time, mapped to socket and physical-core IDs where Linux exposes them. This is not continuous residency. |
-| CUDA, ROCm, Metal, or other accelerator kernels | Host-side Python or cooperative spans only | A host call may enqueue asynchronous work. Its duration is not kernel execution time. Raven has no universal device-instruction capture adapter. |
+| Standard Chrome Trace Event / compatible Perfetto JSON reports | `raven trace import-activity` | Bounded reported host/device intervals, counters, markers and explicit flows. No binary report decoding, process attachment or independent qualification of producer claims. |
+| PyTorch CPU operators and optional CUDA/HIP activities | `raven trace profile --python APP_PYTHON` | Actual activities exposed by that application's compatible profiler. Scheduled live windows require explicit `step()` calls. Framework buffers and temporary exports are tool-dependent; no universal native/device call stacks. |
+| Native user stacks on Linux with permitted `perf` | `raven trace sample` | Statistical frame-pointer callchains of a newly owned program; no arbitrary PID attachment, exact call duration, continuous residency or decoded control flow. |
+| Short application-defined incidents | `raven.tracing.activity_trigger.TriggeredCapture` | Bounded rolling pre-trigger metadata and bounded post capture, with explicit evictions and a durable never-triggered receipt. No automatic sampling or thread attachment. |
 
 For a practical Python, MPI, or CUDA workload, use the
 [trace laboratory examples](../../examples/trace-lab/README.md). The capability
@@ -42,6 +45,56 @@ report's `runtime-present` status means an API is present, not that a capture
 has passed qualification. Launch still checks permissions, monitoring-slot
 availability, attempt identity, and recording limits. `requires-build` means
 the application needs explicit instrumentation and a matching toolchain.
+
+The launch wizard and `--trace-profile project|topology|pilot` provide Python
+recording presets and budget preview. They do not turn a Python host-call
+recording into a GPU activity trace. Existing Python, CPU/memory, GPU telemetry
+and scientific data retain independent health and coverage.
+
+## Activity capture and vendor scope
+
+Use the [Trace Workspace guide](trace-workspace.md) for exact import, profile,
+sample and viewing commands. Activity import treats reports as untrusted data:
+it enforces file/event/depth/byte bounds, preserves integer nanoseconds and the
+source digest, and writes private integrity journals. It never executes a path,
+SQL extension, plugin or command named in a report.
+
+| Ecosystem | Current portable path | Qualification still required |
+|---|---|---|
+| NVIDIA | Supported standard JSON exports; optional PyTorch CUDA activity capture when its profiler provides it | Physical device, driver/profiler compatibility, permitted execution and live kernel/copy validation |
+| AMD | Supported standard JSON exports; optional PyTorch HIP activity capture when its profiler provides it | Physical device, ROCm/runtime compatibility and live activity validation |
+| Intel | Supported standard JSON exports with declared device/queue identity | A matching Level Zero-capable producer and actual export schema; no dedicated binary decoder or automatic device-stack collector |
+| Apple | Supported standard JSON exports with declared device/queue identity | Supported host/producer and actual export schema; no Instruments binary decoder or automatic Metal/device-stack collector |
+
+A vendor name in JSON is a producer declaration, not evidence that its hardware
+was used. Device ordinals remain process/report-scoped unless physical identity
+and node metadata justify a stronger identity. Partition and context/queue
+lifetimes remain separate. GPU activities may include kernels and transfers;
+kernel duration alone does not establish occupancy or throughput. CPU launch
+calls remain separate from asynchronous device execution.
+
+An actual CPU-only exercise used PyTorch 2.6.0+cpu under Python 3.12.14: two
+scheduled windows were exported, imported and verified through the shared
+index on one producer-session axis. This is CPU adapter evidence only. The
+same exercise exposed a provider replay-stack assertion with framework Python
+stacks enabled. They are off by default; `--framework-stacks` is an explicitly
+experimental option, and Raven's independent Python recorder remains the path
+for supported Python call boundaries. The profiler adds no application-wide
+device synchronization. Its in-memory buffer and temporary export are not
+hard-bounded by the retained-output quota.
+
+The Linux sample collector requires `perf` control-fd acknowledgement,
+`cpu-clock:u`, permitted owned-process attachment and usable frame pointers.
+Its raw/text/derived artifact budgets and recording duration are separate from
+the application's resource limits. Stopping collection does not terminate
+the scientific child. The implementation host lacked `perf`; parser/ownership
+fixtures and unavailable-tool recovery do not qualify live sample capture.
+
+For managed Slurm execution, application profiling commands require an actual
+verified owned job/step. Environment hints, a billing account or a running Raven
+Heavy worker do not grant permission to run the scientific application on the
+interface host. No adapter silently requests an allocation or changes scheduler
+backends. Inspect the capture receipt in addition to the capability preview.
 
 ## Inspect a process by CPU socket and physical core
 
@@ -111,7 +164,7 @@ inspect without claiming that every CPU exposes equivalent hardware evidence.
 | AMD Instruction-Based Sampling | Samples describing selected instructions and operations on supported AMD processors. | Adapter not implemented. IBS samples cannot establish a continuous history of every call. They are not an Intel PT substitute. |
 | Apple Instruments and platform tools | Platform-specific profiling whose fidelity depends on the chosen instrument and permissions. | Adapter not implemented. Apple silicon does not imply a publicly accessible CoreSight trace path; finding `xcrun` does not prove Instruments readiness. |
 
-Future capture adapters must declare their fidelity: explicit events, sampled
+Capture adapters must declare their fidelity: explicit events, sampled
 stacks, or decoded control flow. Sampling intervals, dropped records, unknown
 boundaries, unavailable symbols, and clock domains must remain visible. A
 sampled stack must never be drawn as proof that a function ran continuously
