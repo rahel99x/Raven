@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import atexit
 import fcntl
+import hashlib
 import os
 import re
 import stat
@@ -67,6 +68,46 @@ def _capture_settings(settings):
         "mpi",
     }:
         raise ValueError("Unsupported trace adapter")
+
+
+def _capture_exclusions(run, plan, manifest):
+    """Exclude only this runtime and a receipt-verified generated startup file.
+
+    The frozen runtime can live below the scientific project, including inside
+    a ZIP. Its loaded package location is the boundary, never a guessed Raven
+    filename. A site's/application's own startup module remains observable.
+    """
+    files = ()
+    startup = (
+        manifest.get("metadata", {}).get("automation", {}).get("python_startup", {})
+    )
+    expected = plan.get("sitecustomize_sha256")
+    if (
+        isinstance(expected, str)
+        and isinstance(startup, dict)
+        and (startup.get("automatic") is True or startup.get("client") is True)
+        and startup.get("site_directory") == ".raven-runtime/site"
+        and startup.get("sitecustomize_sha256") == expected
+    ):
+        try:
+            path = R._under(run, ".raven-runtime/site/sitecustomize.py")
+            descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+            with os.fdopen(descriptor, "rb") as stream:
+                info = os.fstat(stream.fileno())
+                if (
+                    stat.S_ISREG(info.st_mode)
+                    and info.st_uid == os.getuid()
+                    and not info.st_mode & 0o077
+                    and info.st_size <= 65536
+                    and hashlib.sha256(stream.read(65537)).hexdigest() == expected
+                ):
+                    files = (str(path),)
+        except (OSError, ValueError):
+            pass  # Unverified source keeps its ordinary capture semantics.
+    return {
+        "internal_roots": (str(Path(__file__).parents[1]),),
+        "internal_files": files,
+    }
 
 
 def _process(*, forked=False):
@@ -345,6 +386,7 @@ class _Attachment:
             legacy=adapter == "python-legacy-profile",
             scope=settings.get("trace_scope", "project"),
             roots=(self.plan["project_root"], str(Path(self.plan["script"]).parent)),
+            **_capture_exclusions(self.run, self.plan, manifest),
         )
         with _lock(self.run):
             path, value = _index(self.run)

@@ -121,13 +121,17 @@ def _context(app):
         (
             binding.get("project_root") or project.get("root")
             if binding
-            else details.get("WorkDir")
+            else details.get("WorkDir") or getattr(record, "workdir", "")
         )
         or project.get("registered_root")
         or ""
     )
     cfg = getattr(app.cfg, "data", app.cfg)
-    cluster = str(cfg.get("cluster_name", "") or details.get("Cluster", ""))
+    cluster = str(
+        cfg.get("cluster_name", "")
+        or details.get("Cluster", "")
+        or getattr(record, "cluster", "")
+    )
     from ..connection_scope import execution_scope as connection_scope
 
     try:
@@ -593,6 +597,7 @@ def _read(
     process_cache=None,
 ):
     from .protocol import TraceReader, discover_trace, read_json
+    from .workspace_discovery import association_reason, empty_status
 
     if context["remote"]:
         raise ValueError(
@@ -612,7 +617,7 @@ def _read(
                 for path in discover_trace(context["root"], context["job_id"])
                 if path not in seen
             ]
-        sources = []
+        sources, rejected = [], []
         for path in candidates:
             if event.is_set():
                 return None
@@ -622,10 +627,28 @@ def _read(
             # different clusters. Ignore other identities during discovery;
             # explicitly attached mismatches still fail visibly below.
             if context["cluster"] and identity.get("cluster") != context["cluster"]:
+                if len(rejected) < 64:
+                    rejected.append(
+                        dict(
+                            path=path,
+                            status="unassociated",
+                            reason=association_reason(identity, context),
+                        )
+                    )
                 continue
             if _matches(identity, context):
                 sources.append(path)
                 processes.append(_process(manifest, path))
+            elif len(rejected) < 64:
+                rejected.append(
+                    dict(
+                        _process(manifest, path),
+                        status="unassociated",
+                        reason=association_reason(identity, context),
+                    )
+                )
+        if not sources:
+            processes.extend(rejected)
     else:
         sources = []
     if not sources:
@@ -638,6 +661,7 @@ def _read(
             verified=False,
             discovered=source_cache is None,
             index=0,
+            empty_status=empty_status(processes),
         )
     path = sources[max(0, min(index, len(sources) - 1))]
     manifest = read_json(path, limit=65536)
@@ -857,6 +881,45 @@ def _workspace_browser(app, state, current):
     request(app, session, current)
 
 
+def _empty_recording_rows(state):
+    """Render published discovery feedback without guessing capture failure."""
+    from ..job_logs.text import display_text
+
+    status = state.get("status", "missing")
+    if status in {"unassociated", "unavailable", "error"}:
+        message = (
+            "Recording metadata was found; its job-attempt association is not verified."
+            if status == "unassociated"
+            else "Recording could not be read or verified."
+        )
+        rows = [[(message, "warning")]]
+        error = display_text(str(state.get("error") or "")[:2048])
+        reasons = [error] if error else []
+        for process in state.get("processes", ()):
+            reason = display_text(str(process.get("reason") or "")[:2048])
+            if reason and reason not in reasons:
+                reasons.append(reason)
+                if len(reasons) == 4:
+                    break
+        rows.extend([(reason, "warning")] for reason in reasons)
+        return rows
+    return [
+        [("No verified recording is attached yet.", "dim")],
+        [
+            (
+                "Launch with raven launch SCRIPT --trace, or attach its manifest with :trace attach PATH.",
+                "dim",
+            )
+        ],
+        [
+            (
+                "Recording must begin before the events you need; opening this view does not attach a debugger.",
+                "dim",
+            )
+        ],
+    ]
+
+
 def render_global(views, snap, app, width, height):
     """A global destination over published Jobs/History and exact-run state."""
     from ..job_logs.text import display_text
@@ -940,6 +1003,13 @@ def render_global(views, snap, app, width, height):
             shown = state
         from .workspace_ui import render
 
+        if (
+            shown.get("result") is None
+            and state.get("context")
+            and state["context"]["key"] == context["key"]
+        ):
+            feedback, _ = _wrap(_empty_recording_rows(shown), [], width)
+            rows.extend(feedback)
         body, body_hits = render(views, shown, context["job_id"], width)
         rows.append(
             [
@@ -1288,7 +1358,7 @@ def tick(app):
                 status=(
                     result.get("association", "ready")
                     if result["snapshot"]
-                    else "missing"
+                    else result.get("empty_status", "missing")
                 ),
             )
             if result["snapshot"] is not None:
@@ -1628,21 +1698,7 @@ def panel(views, app, job, width):
         )
     process_end = len(rows)
     if state["result"] is None:
-        rows += [
-            [("No verified recording is attached yet.", "dim")],
-            [
-                (
-                    "Launch with raven launch SCRIPT --trace, or attach its manifest with :trace attach PATH.",
-                    "dim",
-                )
-            ],
-            [
-                (
-                    "Recording must begin before the events you need; opening this view does not attach a debugger.",
-                    "dim",
-                )
-            ],
-        ]
+        rows.extend(_empty_recording_rows(state))
     elif state.get("view") == "workspace":
         from .workspace_ui import render
 

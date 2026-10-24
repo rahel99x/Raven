@@ -22,6 +22,33 @@ HELPER_ROLES = frozenset(
 )
 
 
+def association_reason(identity, context):
+    """Explain rejected metadata without weakening exact-attempt admission."""
+    if context.get("cluster") and identity.get("cluster") != context["cluster"]:
+        return "Recording belongs to another cluster; check the selected connection and cluster."
+    if any(
+        identity.get(source)
+        and context.get(selected)
+        and identity[source] != context[selected]
+        for source, selected in (("slurm_submit", "submit"), ("slurm_start", "start"))
+    ):
+        return "Recording scheduler timestamps conflict with the selected job attempt."
+    if context.get("run_id"):
+        return "Recording does not match the selected project run and job attempt."
+    if identity.get("run_id"):
+        return "Recording exists, but its exact project run is not bound. Open its project with :project PATH, then choose its attempt with :run select RUN_ID."
+    return "Recording attempt cannot be verified against the selected job's submission and start."
+
+
+def empty_status(processes):
+    """Retain negative-discovery feedback while its bounded metadata is cached."""
+    if any(row.get("status") == "unassociated" for row in processes):
+        return "unassociated"
+    if any(row.get("status") == "unavailable" for row in processes):
+        return "unavailable"
+    return "missing"
+
+
 def _bounded_paths(rows):
     if not isinstance(rows, (tuple, list)) or len(rows) > MAX_SOURCES:
         raise ValueError(
@@ -195,7 +222,7 @@ def read(
             "coverage": "metadata unavailable",
         }
 
-    sources = []
+    sources, rejected = [], []
     if discovered and not explicit and not standalone:
         for entry in entries:
             if event.is_set():
@@ -208,6 +235,16 @@ def read(
             if associated:
                 sources.append(entry)
                 processes.append(row)
+            elif len(rejected) < MAX_ERRORS:
+                rejected.append(
+                    dict(
+                        row,
+                        status="unassociated",
+                        reason=association_reason(identity, context),
+                    )
+                )
+        if not sources:
+            processes.extend(rejected)
         processes.extend(gaps)
     else:
         sources = entries
@@ -230,6 +267,7 @@ def read(
             discovery_errors_omitted=omitted_errors,
             discovery_gaps_omitted=omitted_gaps,
             workspace_catalog_only=True,
+            empty_status=empty_status(processes),
         )
 
     while sources:
@@ -247,6 +285,11 @@ def read(
             sources.pop(selected)
             continue
         if not associated and not (explicit or standalone):
+            current.update(
+                status="unassociated", reason=association_reason(identity, context)
+            )
+            processes = [row for row in processes if row.get("path") != entry["path"]]
+            processes.append(current)
             sources.pop(selected)
             continue
         # Replace cached role metadata before selecting the default visible
