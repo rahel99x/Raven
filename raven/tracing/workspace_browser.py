@@ -102,13 +102,20 @@ def _parameters(target):
     if split.scheme or split.netloc or split.fragment:
         raise RequestError(400, "Use a relative trace request path")
     try:
-        values = parse_qs(
-            split.query,
-            keep_blank_values=True,
-            strict_parsing=True,
-            max_num_fields=16,
-            encoding="utf-8",
-            errors="strict",
+        # CPython 3.10's strict parser rejects an empty query as an empty
+        # field; later versions return {}. An absent query has no fields to
+        # validate. Keep strict parsing for every nonempty query.
+        values = (
+            parse_qs(
+                split.query,
+                keep_blank_values=True,
+                strict_parsing=True,
+                max_num_fields=16,
+                encoding="utf-8",
+                errors="strict",
+            )
+            if split.query
+            else {}
         )
     except (ValueError, UnicodeError) as exc:
         raise RequestError(400, "Malformed trace query") from exc

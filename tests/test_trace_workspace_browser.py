@@ -195,6 +195,11 @@ def test_static_page_contains_application_only_and_strict_csp(viewer):
     assert "Access-Control-Allow-Origin" not in headers
 
 
+@pytest.mark.parametrize("path", ["/", "/?", "/api/catalog", "/api/catalog?"])
+def test_empty_query_is_valid_without_relaxing_nonempty_query_validation(viewer, path):
+    assert request(viewer, path)[0] == 200
+
+
 @pytest.mark.parametrize(
     "headers",
     [
@@ -262,6 +267,9 @@ def test_same_origin_authenticated_queries_preserve_large_integer_ns(viewer):
         "projection=raw",
         "path=/etc/passwd",
         "bare",
+        "&",
+        "search=value&",
+        "search=value&&kind=call",
     ],
 )
 def test_query_bounds_and_unknown_fields_are_rejected(viewer, suffix):

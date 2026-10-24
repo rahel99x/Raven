@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
 import sys
+import threading
+import weakref
 from pathlib import Path
 
 import pytest
@@ -92,8 +95,47 @@ def test_all_scope_guards_preserve_exact_application_boundaries(
     names = {row["data"].get("function") for row in calls}
     if guarded:
         assert "current_thread" in names
-        assert "nullcontext.__enter__" in names
-        assert "nullcontext.__exit__" in names
+
+        # Python 3.10 code objects have co_name but no co_qualname. Verify
+        # exact code boundaries using file/line as well as the available name;
+        # an unrelated __enter__ must never satisfy the stdlib-call assertion.
+        def boundary(method):
+            code = method.__code__
+            return (
+                code.co_filename,
+                code.co_firstlineno,
+                getattr(code, "co_qualname", code.co_name),
+            )
+
+        def recorded(row):
+            data = row["data"]
+            return (data.get("file"), data.get("line"), data.get("function"))
+
+        observed_calls = [recorded(row) for row in calls]
+        observed_returns = [recorded(row) for row in returns]
+        for method in (
+            contextlib.nullcontext.__enter__,
+            contextlib.nullcontext.__exit__,
+            threading.current_thread,
+        ):
+            assert observed_calls.count(boundary(method)) == 1
+            assert observed_returns.count(boundary(method)) == 1
+        forbidden = {
+            boundary(method)
+            for method in (
+                contextlib._GeneratorContextManager.__enter__,
+                contextlib._GeneratorContextManager.__exit__,
+                contextlib.contextmanager(lambda: None),
+                weakref.WeakSet.__iter__,
+            )
+        }
+        assert not forbidden.intersection(observed_calls)
+        assert not any(
+            Path(row["data"]["file"]).is_relative_to(
+                Path(__file__).resolve().parents[1] / "raven"
+            )
+            for row in calls
+        )
         assert not any(
             name
             and (
