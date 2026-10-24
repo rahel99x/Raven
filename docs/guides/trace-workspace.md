@@ -56,15 +56,21 @@ raven --tab traces
 
 Use a real manifest printed by the recorder; `STREAM` above illustrates the path structure. Explicit opening verifies the journal and declared attempt. It does not independently verify scheduler membership or grant actions on a running job. The bounded run picker is a navigation aid, not an exhaustive filesystem scan.
 
-The run identity and source list identify the selected attempt, process/rank, node and recording adapter. Read/committed counts and warnings explain whether ingestion is caught up. A running job can have valid CPU data while GPU recording is unavailable.
+The run identity and source list identify the selected attempt, process/rank, node and recording adapter. Read/committed counts and warnings explain whether ingestion is caught up. CPU, memory and GPU sources have independent availability; an unavailable recording must not hide another source's valid data. Existing Research/Analytics recordings and trace-clock overlays retain their distinct association requirements described below.
 
 ### Live, Explore and Fit
 
 - **Live** follows the latest verified data through the trailing Δ time window.
 - **Explore** preserves the chosen range and selection while new recording data can continue arriving.
-- **Fit** leaves follow mode and fits the selected scope's indexed retained bounds. Resume Live restores the previous Δ.
+- **Fit** leaves follow mode and fits the current clock's whole verified retained range, or each displayed independent clock's range. Resume Live restores the previous Δ.
 
 Δ changes the visible span, not recording frequency or Slurm polling. Panning, zooming or selecting an interval makes inspection stable. Pausing the view does not pause the application recorder.
+
+Fit preserves run context when a CPU, device or event-type filter is active;
+it does not recompute a separate fitted recording extent for every resource
+predicate. The overview remains interval-start density for its declared
+source/clock scope. **Focus** zooms the actual selected event. Resource filters
+still apply to exact evidence before query limits.
 
 The terminal command palette exposes the same actions:
 
@@ -82,7 +88,7 @@ The terminal command palette exposes the same actions:
 :trace workspace child
 ```
 
-Lane groups can be expanded, collapsed and paged. Full names and timing are available through selection even when a narrow terminal abbreviates the bar label. Completion retains the same run context in History; it does not create a different trace merely because the scheduler state changed.
+Lane groups can be expanded, collapsed and paged. Full names and timing are available through selection even when a narrow terminal abbreviates the bar label. Completion retains the same run context in History; it does not create a different trace merely because the scheduler state changed. The transition to completed pauses following once and preserves the selected range/event. An explicit subsequent **Resume Live** remains honored, allowing inspection of later committed evidence without repeatedly forcing the view back to Explore.
 
 The compact default row keeps Follow, Fit, View, Δ and Find together. **More** exposes filters, lane pinning, saved ranges, function statistics and analysis modes. For example, `:trace workspace bookmark solve phase` annotates the current range. Bookmarks and presentation preferences are separate from captured evidence. Browser **Copy view link** retains the exact range/event within the current private viewer session; it is not a permanent public URL.
 
@@ -165,7 +171,31 @@ raven trace workspace "$raven_trace_manifest" --samples
 
 Multiple manifest arguments combine sources belonging to the same exact attempt. Other attempts or clusters are rejected. Select a source/clock/range with the options shown by `raven trace workspace --help`; use integer nanoseconds for `--start-ns` and `--end-ns`.
 
-The chronological graph and aggregate flamegraph answer different questions. A timeline bar occupies its recorded start/end range. A call-tree or bottom-up flamegraph aggregates recorded elapsed values over the returned query; its horizontal position is not chronological time. Large exact queries report their result limit. Narrow the range or source filters to inspect additional evidence. Fit's multiresolution overview counts interval starts, not utilization or complete activity coverage.
+The supplied manifests form a **fixed source set** by default. Live viewing
+continues reading newly committed data from those sources, but does not silently
+add every sibling process or profiler window registered later. To discover new
+sources for the same attempt, opt into following its local project:
+
+```bash
+read -r -p 'Local project root containing this run: ' raven_trace_project
+raven trace workspace "$raven_trace_manifest" \
+  --follow-project "$raven_trace_project" --serve --open-browser
+```
+
+Following binds to the initial source's verified committed job/attempt/cluster
+identity; matching registration metadata alone is insufficient. A distinct run
+ID remains an additional constraint. A redundant `run_id` equal to `attempt`
+is normalized only in the common cohort identity, so an equivalent optional
+alias does not prevent same-attempt sources joining. Original source identities
+and raw journals remain unchanged; this does not merge different attempts.
+
+Job-bound dashboard workspaces already subscribe to the associated run's
+registrations. Explicit retained-manifest opening remains fixed unless an
+owner registers project following. `--follow-project` is source discovery,
+independent of the Live/Explore display mode; without `--serve`, the CLI still
+produces a bounded one-shot result and exits.
+
+The chronological graph and aggregate flamegraph answer different questions. A timeline bar occupies its recorded start/end range. A call-tree or bottom-up flamegraph aggregates recorded elapsed values over the returned query; its horizontal position is not chronological time. Large exact queries report their result limit. Narrow the range or source filters to inspect additional evidence. Fit's multiresolution overview counts interval starts in its declared source/clock scope, not utilization or complete activity coverage; resource facets do not turn that overview into a filtered busy-time graph.
 
 To resolve a selected native sample against an explicitly chosen binary:
 
@@ -247,9 +277,42 @@ between samples do not become off-CPU time. GPU coverage is independently
 declared, so missing GPU data does not erase valid CPU observations. Unavailable
 metrics retain their actual missing-evidence or context error.
 
-The workspace uses a private, rebuildable local SQLite index. Use `--index` only for a private local filesystem path; shared NFS WAL behavior has not been qualified. Newly opened index owners revalidate source integrity from the beginning before exposing their rows. This preserves the source-verification boundary; it is not a trusted serialized-reader checkpoint or a guarantee of instant reopening for very large recordings. Another process cannot concurrently own the same index writer.
+The workspace uses a private, rebuildable local SQLite index. Use `--index` only for a private local filesystem path; shared-filesystem index locking has not been qualified. Newly opened index owners revalidate source integrity from the beginning before exposing their rows. This preserves the source-verification boundary; it is not a trusted serialized-reader checkpoint or a guarantee of instant reopening for very large recordings. Another process cannot concurrently own the same index writer.
 
-Only committed evidence is indexed. An incomplete tail or temporary read error retains the last verified prefix and reports its actual state. Corrupt sources are quarantined independently. “Caught up” means the current committed prefix was read; it does not prove that uninstrumented work or a stopped recorder captured the entire application.
+Cached rows, facet choices and source metadata are scoped to the sources
+requested by the current owner. Reopening one manifest cannot silently expose
+previously cached peers; add those paths explicitly or use project following.
+The default cache has four independently owned index slots. Separate dashboards
+can use separate slots for the same run; a fifth concurrent default owner is
+refused until a slot is released, or the user selects another private `--index`
+path. Reuse/cleanup affects only disposable indexes, never raw recordings.
+
+Reader working state is shared across sources with a **16 MiB Light / 64 MiB
+normal** admission budget, including retained metadata, partial blocks, event
+windows, code dictionaries and stack state with conservative Python-container
+charges. This is separate from the **128 MiB Light / 512 MiB normal** database
+budget. Neither figure is a process RSS limit: temporary decoding, SQLite,
+returned snapshots and the rest of Raven have other costs. The catalog reports
+charged/peak reader state explicitly. A resource-limited source retains its
+verified indexed prefix, reports the actual limit and releases its reader so
+other sources can progress. Reopen fewer sources to reduce that working set;
+changing a display limit cannot recover evidence that failed capture.
+
+Only committed evidence is indexed. Discovery reads bounded registration and
+manifest metadata; the index is the workspace's sole journal-integrity reader.
+Owned project-follow discovery scans run on a two-second cadence, independently
+of the half-second known-journal ingestion cadence and Slurm polling. New
+processes/windows can therefore appear after the next metadata scan while
+already known sources continue updating. Slow storage, work budgets and browser
+refresh add their own latency; these are cadences, not universal deadlines.
+
+An incomplete tail or temporary read error retains the last verified prefix and
+reports its actual state. If I/O fails midway through a page, already verified
+events are published once and normal-cadence retry continues from that prefix;
+the error does not turn sound evidence into corruption or add failure backoff.
+Corrupt sources are quarantined independently. “Caught up” means the current
+committed prefix was read; it does not prove that uninstrumented work or a
+stopped recorder captured the entire application.
 
 ## Open the browser viewer
 
