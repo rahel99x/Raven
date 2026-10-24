@@ -26,19 +26,48 @@ _RECORDERS = weakref.WeakSet()
 _CAPTURES = weakref.WeakSet()
 
 
-@contextmanager
-def _internal_callbacks():
-    """Own synchronization must not recursively profile its held Event locks."""
-    previous = []
-    for capture in list(_CAPTURES):
-        busy = getattr(capture.local, "busy", False)
-        capture.local.busy = True
-        previous.append((capture, busy))
-    try:
-        yield
-    finally:
-        for capture, busy in previous:
-            capture.local.busy = busy
+class _InternalCallbacks:
+    """An untraced guard, including the operations before/after busy is set.
+
+    A generator context manager would enter contextlib before suppression and
+    leave it after restoration, manufacturing unmatched library boundaries in
+    scope=all. These methods live in the already excluded recorder owner.
+    """
+
+    __slots__ = ("previous",)
+
+    def __init__(self):
+        self.previous = []
+
+    def __enter__(self):
+        try:
+            # Snapshot the stdlib WeakSet's raw weakrefs using builtin iteration.
+            # WeakSet.__iter__ itself is Python code and cannot run until every
+            # active tool's current-thread recursion guard has been installed.
+            for reference in tuple(_CAPTURES.data):
+                capture = reference()
+                if capture is not None:
+                    local = capture.local
+                    self.previous.append((local, getattr(local, "busy", False)))
+                    local.busy = True
+        except BaseException:
+            self._restore()
+            raise
+        return self
+
+    def _restore(self):
+        for local, busy in self.previous:
+            # Restore the original local object, not a replacement installed by
+            # an after-fork callback in the child.
+            local.busy = busy
+        self.previous.clear()
+
+    def __exit__(self, exc_type, exc, traceback):
+        self._restore()
+        return False
+
+
+_internal_callbacks = _InternalCallbacks
 
 
 def _fork_before():
@@ -1254,20 +1283,21 @@ class PythonCapture:
             self.profile = profile
             threading.setprofile(profile)
             sys.setprofile(profile)
-        try:
-            from .metrics_overlay import register
+        with _internal_callbacks():
+            try:
+                from .metrics_overlay import register
 
-            if not register(self):
+                if not register(self):
+                    self.recorder.coverage["scientific_metrics"] = {
+                        "status": "unavailable",
+                        "reason": "Scientific overlay registration budget reached",
+                    }
+            except Exception:  # noqa: BLE001 - optional hook cannot invalidate scientific execution
+                # Optional metric integration cannot invalidate Python capture.
                 self.recorder.coverage["scientific_metrics"] = {
                     "status": "unavailable",
-                    "reason": "Scientific overlay registration budget reached",
+                    "reason": "Scientific overlay hook could not be registered",
                 }
-        except Exception:  # noqa: BLE001 - optional hook cannot invalidate scientific execution
-            # Optional metric integration cannot invalidate Python capture.
-            self.recorder.coverage["scientific_metrics"] = {
-                "status": "unavailable",
-                "reason": "Scientific overlay hook could not be registered",
-            }
         return self
 
     def stop(self):
