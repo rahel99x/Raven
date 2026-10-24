@@ -31,6 +31,18 @@ def _drain_session(session, options=None):
     pytest.fail("Bounded fixture did not finish indexing")
 
 
+def test_global_empty_workspace_honors_ascii_heading(dashboard):
+    app = connect(dashboard)
+    app.selected_id = None
+    dashboard.views.g = L.Glyphs(True)
+    rendered = trace_ui.render_global(
+        dashboard.views, {"jobs": [], "finished": []}, app, 80, 24
+    )
+    text = "\n".join(L.row_text(row) for row in rendered[0])
+    assert "Trace workspace - live and retained run evidence" in text
+    assert text.isascii()
+
+
 def test_real_recordings_share_run_index_and_terminal_domain_selection(tmp_path):
     with _record(tmp_path) as first:
         first.emit("call", {"function": "alpha", "frame": "a"}, thread="thread-1")

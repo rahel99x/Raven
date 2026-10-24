@@ -862,7 +862,10 @@ def render_global(views, snap, app, width, height):
     from ..job_logs.text import display_text
 
     state = initialize(app)
-    rows = [[(" Trace workspace — live and retained run evidence", "heading")]]
+    separator = " - " if views.g.ascii else " — "
+    rows = [
+        [(" Trace workspace" + separator + "live and retained run evidence", "heading")]
+    ]
     from itertools import chain
 
     records, seen = [], set()

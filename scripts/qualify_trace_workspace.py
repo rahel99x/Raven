@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import platform
+import stat
 import sys
 import tempfile
 import time
@@ -21,6 +22,51 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TRACE_ACTIONS = ("workspace", "import-activity", "profile", "sample")
 COMMANDS = ("raven", "ravenl", "ravenh")
+
+
+def _standalone_cleanup(state_root):
+    """Check this fixture's durable owner confirmation and exact helper lifetime."""
+    directory = state_root / "raven" / "allocations"
+    receipts = list(directory.glob("*.json"))
+    if len(receipts) != 1 or any(directory.glob("*.claim")):
+        raise ValueError(
+            "Standalone Heavy did not leave one reconciled ownership receipt"
+        )
+    path = receipts[0]
+    info = path.lstat()
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_uid != os.getuid()
+        or info.st_mode & 0o077
+        or info.st_size > 65536
+    ):
+        raise ValueError(
+            "Standalone Heavy receipt is not a bounded private regular file"
+        )
+    value = json.loads(path.read_bytes())
+    if (
+        value.get("schema") != "raven.allocation-receipt/v1"
+        or value.get("site_kind") != "desktop"
+        or value.get("state") != "light"
+        or value.get("cleanup_uncertain") is not False
+    ):
+        raise ValueError("Standalone Heavy owner did not confirm worker cleanup")
+    pid, start = value.get("helper_pid"), value.get("helper_start")
+    if type(pid) is not int or pid <= 0 or not start or start == "unavailable":
+        raise ValueError("Standalone Heavy receipt lacks an exact helper lifetime")
+    try:
+        current = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[19]
+    except FileNotFoundError:
+        current = None
+    if current == start:
+        raise ValueError("Standalone Heavy ownership helper survived command exit")
+    return {
+        "state": "light",
+        "cleanup_uncertain": False,
+        "claim_released": True,
+        "helper_lifetime_exited": True,
+        "worker_exit_evidence": "private owner receipt after owned local process exit",
+    }
 
 
 def _request(viewer, target, *, authorized=True, method="GET"):
@@ -344,7 +390,17 @@ def qualify(*, wheel=None, installed_python=None):
     specification.loader.exec_module(owner)
     run = owner.run
 
-    checks = []
+    checks, diagnostics = [], []
+
+    def command_output(argv, **kwargs):
+        output = run(argv, separate_streams=True, **kwargs)
+        diagnostics.append(
+            {"command": [str(part) for part in argv], "stderr": output["stderr"]}
+        )
+        return output["stdout"]
+
+    def json_output(argv, **kwargs):
+        return json.loads(command_output(argv, **kwargs))
 
     def check(name, callback):
         started = time.monotonic()
@@ -408,23 +464,21 @@ def qualify(*, wheel=None, installed_python=None):
         driver = Path(__file__).resolve()
         source = check(
             "source-workspace",
-            lambda: json.loads(
-                run(
-                    [
-                        sys.executable,
-                        "-I",
-                        driver,
-                        "--probe",
-                        str(scratch / "source"),
-                        "--source-root",
-                        ROOT,
-                        "--expected-package",
-                        ROOT,
-                    ],
-                    cwd=scratch,
-                    env=env,
-                    timeout=30,
-                )
+            lambda: json_output(
+                [
+                    sys.executable,
+                    "-I",
+                    driver,
+                    "--probe",
+                    str(scratch / "source"),
+                    "--source-root",
+                    ROOT,
+                    "--expected-package",
+                    ROOT,
+                ],
+                cwd=scratch,
+                env=env,
+                timeout=30,
             ),
         )
         if wheel is not None:
@@ -464,21 +518,19 @@ def qualify(*, wheel=None, installed_python=None):
             prefix = installed_python.parent.parent
             installed = check(
                 "installed-workspace",
-                lambda: json.loads(
-                    run(
-                        [
-                            installed_python,
-                            "-I",
-                            driver,
-                            "--probe",
-                            str(scratch / "wheel"),
-                            "--expected-package",
-                            prefix,
-                        ],
-                        cwd=scratch,
-                        env=env,
-                        timeout=30,
-                    )
+                lambda: json_output(
+                    [
+                        installed_python,
+                        "-I",
+                        driver,
+                        "--probe",
+                        str(scratch / "wheel"),
+                        "--expected-package",
+                        prefix,
+                    ],
+                    cwd=scratch,
+                    env=env,
+                    timeout=30,
                 ),
             )
 
@@ -487,7 +539,8 @@ def qualify(*, wheel=None, installed_python=None):
                     raise ValueError(
                         "Installed probe failed; no fixture is available for command qualification"
                     )
-                helps, queries = [], []
+                helps, queries, query_commands = [], [], []
+                cleanup = None
                 for name in COMMANDS:
                     executable = installed_python.parent / name
                     if not executable.is_file():
@@ -495,7 +548,7 @@ def qualify(*, wheel=None, installed_python=None):
                             "Installed console command is missing: " + name
                         )
                     for action in TRACE_ACTIONS:
-                        output = run(
+                        output = command_output(
                             [executable, "trace", action, "--help"],
                             cwd=scratch,
                             env=env,
@@ -505,23 +558,27 @@ def qualify(*, wheel=None, installed_python=None):
                                 "No command help for " + name + " trace " + action
                             )
                         helps.append(name + " trace " + action)
-                    output = run(
-                        [
-                            executable,
-                            "trace",
-                            "workspace",
-                            installed["manifest"],
-                            "--index",
-                            scratch / (name + ".sqlite"),
-                            "--json",
-                            "--functions",
-                            "--samples",
-                            "--counters",
-                        ],
+                    # Heavy's normal launch still requires admission. This
+                    # offline check explicitly owns a standalone worker.
+                    prefix = [executable] + (
+                        ["--site", "desktop"] if name == "ravenh" else []
+                    )
+                    argv = prefix + [
+                        "trace",
+                        "workspace",
+                        installed["manifest"],
+                        "--index",
+                        scratch / (name + ".sqlite"),
+                        "--json",
+                        "--functions",
+                        "--samples",
+                        "--counters",
+                    ]
+                    value = json_output(
+                        argv,
                         cwd=scratch,
                         env=env,
                     )
-                    value = json.loads(output)
                     if not any(
                         row["name"] == "qualification_root"
                         for row in value["intervals"]
@@ -530,29 +587,38 @@ def qualify(*, wheel=None, installed_python=None):
                             "Installed workspace command did not read the exact retained fixture"
                         )
                     queries.append(name)
-                imported = json.loads(
-                    run(
-                        [
-                            installed_python.parent / "raven",
-                            "trace",
-                            "import-activity",
-                            installed["activity_input"],
-                            "--project",
-                            installed["project"],
-                            "--job-id",
-                            "44",
-                            "--attempt",
-                            "cli-import",
-                        ],
-                        cwd=scratch,
-                        env=env,
+                    query_commands.append(
+                        {
+                            "command": [str(part) for part in argv],
+                            "intent": "owned standalone Heavy retained read"
+                            if name == "ravenh"
+                            else "bounded retained read",
+                            "site": "desktop" if name == "ravenh" else "default",
+                        }
                     )
+                    if name == "ravenh":
+                        cleanup = _standalone_cleanup(scratch / "state")
+                imported = json_output(
+                    [
+                        installed_python.parent / "raven",
+                        "trace",
+                        "import-activity",
+                        installed["activity_input"],
+                        "--project",
+                        installed["project"],
+                        "--job-id",
+                        "44",
+                        "--attempt",
+                        "cli-import",
+                    ],
+                    cwd=scratch,
+                    env=env,
                 )
                 if not Path(imported["manifest"]).is_file():
                     raise ValueError(
                         "Installed activity import did not publish its verified manifest"
                     )
-                page = run(
+                page = command_output(
                     [
                         installed_python.parent / "raven",
                         "--fake",
@@ -574,6 +640,8 @@ def qualify(*, wheel=None, installed_python=None):
                 return {
                     "help": helps,
                     "retained_queries": queries,
+                    "retained_query_commands": query_commands,
+                    "standalone_heavy_cleanup": cleanup,
                     "activity_import": True,
                     "global_traces_destination": True,
                     "outside_checkout": True,
@@ -618,6 +686,7 @@ def qualify(*, wheel=None, installed_python=None):
         ],
         "source_fixture_available": source is not None,
         "checks": checks,
+        "command_diagnostics": diagnostics,
     }
 
 
