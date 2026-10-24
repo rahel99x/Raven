@@ -458,6 +458,19 @@ class _Client:
                     self.note("kind", "Conflicting metric kinds; the first declared kind is retained")
                 if unit:
                     self.units[name] = unit
+            # A successful Python tracer installs this optional in-process
+            # hook. Standalone/vendored metrics import no tracing modules.
+            overlay = sys.modules.get("_raven_scientific_trace_overlay")
+            if overlay is not None:
+                try:
+                    status = overlay.publish(
+                        self, record, kind=self.kinds.get(name, kind),
+                        unit=self.units.get(name, unit),
+                    )
+                    if status in {"ambiguous", "name-budget", "recorder-unavailable"}:
+                        self.coverage.add("Scientific trace overlay: " + status + "; original metrics reporting continues")
+                except Exception:
+                    self.coverage.add("Scientific trace overlay failed; original metrics reporting continues")
             now = time.monotonic()
             if sampled and now - self.last_sample.get(name, -math.inf) >= .05:
                 self.last_sample[name] = now

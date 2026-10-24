@@ -199,6 +199,8 @@ def open_launch(app):
             time="",
             gpu=None,
             cpu_memory=None,
+            trace=None,
+            trace_profile="",
             basic_research=False,
         ),
     )
@@ -513,6 +515,14 @@ def _activate(app, action):
             state["draft"][field] = {None: True, True: False, False: None}[
                 state["draft"].get(field)
             ]
+            if field == "trace" and state["draft"][field] is not True:
+                state["draft"]["trace_profile"] = ""
+        elif action.startswith("trace-profile:"):
+            from ..tracing.profiles import settings as trace_settings
+
+            profile = action.split(":", 1)[1]
+            trace_settings(profile)
+            state["draft"].update(trace=True, trace_profile=profile)
         elif action == "research":
             state["draft"]["basic_research"] = not state["draft"]["basic_research"]
         elif action == "save-recipe":
@@ -704,11 +714,28 @@ def _document(app):
         for key, label in (
             ("cpu_memory", "CPU and memory recording"),
             ("gpu", "GPU recording"),
+            ("trace", "Python call tracing"),
         ):
             value = {None: "Use saved/default setting", True: "On", False: "Off"}[
-                draft[key]
+                draft.get(key)
             ]
             rows.append((label + ": " + value, "toggle:" + key))
+        if draft.get("trace") is True:
+            rows += [
+                (
+                    "Trace preset: "
+                    + name
+                    + (" (selected)" if draft.get("trace_profile") == name else ""),
+                    "trace-profile:" + name,
+                )
+                for name in ("project", "topology", "pilot")
+            ]
+            rows.append(
+                (
+                    "Pilot: 4 MiB/process, 32 MiB/run, up to 16 processes. Topology adds CPU observations; neither captures device kernels. Python 3.10/3.11 requires an explicit legacy adapter in saved settings.",
+                    None,
+                )
+            )
         rows += [
             (
                 "Research: "
@@ -778,6 +805,22 @@ def _document(app):
             for item in plan["readiness"]
         ]
         rows += [(text, None) for text in plan["compatibility"]]
+        budget = plan.get("trace_budget", {})
+        if budget.get("enabled"):
+            rows += [
+                (
+                    "Trace budget: "
+                    + str(budget["process_bytes"] // (1 << 20))
+                    + " MiB/process; "
+                    + str(budget["run_bytes"] // (1 << 20))
+                    + " MiB/run; "
+                    + str(budget["max_processes"])
+                    + " processes.",
+                    None,
+                ),
+                (budget["overhead"], None),
+                (budget["fidelity"], None),
+            ]
         if plan.get("checkpoint_advice"):
             from ..checkpoint_advisor import review_lines
 

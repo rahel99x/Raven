@@ -53,6 +53,8 @@ def describe():
     linux = host["os"] == "Linux"
     native = linux and host["native_transport"] and host["proc_identity"]
     cpu = host["cpu_placement"]
+    from .workspace_capabilities import describe as workspace_capabilities
+
     adapters = [
         {
             "id": "python-monitoring",
@@ -160,9 +162,10 @@ def describe():
         "host": host,
         "adapters": adapters,
         "hardware": hardware,
+        "workspace": workspace_capabilities(host),
         "viewer": {
             "architecture_independent": True,
-            "scope": "The same verified Raven event timeline is used in the terminal and offline browser, regardless of the recording CPU vendor. Capture coverage is carried by each recording.",
+            "scope": "The same verified Raven event model is used in the terminal, offline browser and indexed live browser, regardless of the recording CPU vendor. Capture coverage is carried by each recording.",
         },
         "qualification": "Local prerequisites only; this command does not record, benchmark or qualify this host, remote workers, GPU execution, native instruction tracing or another operating system.",
         "platform_support": "Linux/WSL2 supports persistent Raven state. macOS dashboard use requires --no-state; macOS capture remains unqualified even when Python APIs are present.",
@@ -197,6 +200,20 @@ def render(report):
             )
             if cpu.get("reason"):
                 lines.append("    " + cpu["reason"])
+    lines.extend(
+        [
+            "",
+            "Workspace adapters (explicit capture/import; no device qualification implied):",
+        ]
+    )
+    for adapter in report["workspace"]["adapters"]:
+        lines.extend(
+            [
+                "  " + adapter["name"] + ": " + adapter["status"],
+                "    " + adapter["scope"],
+                "    " + adapter["next_step"],
+            ]
+        )
     lines.extend(["", "Hardware capture adapters:"])
     for adapter in report["hardware"]:
         visible = ", ".join(adapter["visible_pmus"]) or "none"

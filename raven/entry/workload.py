@@ -646,6 +646,13 @@ def resolve_plan(
             value for group in args.research for value in (group or F.DEFAULT_FEATURES)
         ]
         explicit["features"] = F.normalize_features(values)
+    trace_profile = getattr(args, "trace_profile", None)
+    if trace_profile:
+        from ..tracing.profiles import settings as trace_profile_settings
+
+        if args.trace is False:
+            raise ValueError("--trace-profile conflicts with --no-trace")
+        explicit.update(trace_profile_settings(trace_profile))
     for key in (
         "gpu",
         "cpu_memory",
@@ -736,6 +743,10 @@ def resolve_plan(
         if key not in settings:
             settings[key] = value
             setting_sources[key] = "built-in trace default"
+    if trace_profile:
+        for key in trace_profile_settings(trace_profile):
+            if getattr(args, key, None) is None:
+                setting_sources[key] = "trace profile " + trace_profile
     # Captured run settings and CLI additions receive the same validation as
     # saved project preferences before any script is materialized.
     S._launch(settings)
@@ -849,6 +860,9 @@ def resolve_plan(
         ],
         "mutations": 0,
     }
+    from ..tracing.profiles import preview as trace_budget_preview
+
+    plan["trace_budget"] = trace_budget_preview(settings)
     plan["receipt_file"] = receipt_path
     if settings.get("checkpoint_advice"):
         from ..checkpoint_advisor import advise
