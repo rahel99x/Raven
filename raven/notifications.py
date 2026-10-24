@@ -481,6 +481,6 @@ def sync(app, snap):
         center.condition(key, error, source="alert rule: " + str(name))
     # Other producers retain their own exact-run episodes. Source disappearance
     # or disabling is not evidence of recovery and must not mark alerts resolved.
-    keys.update(key for key in center._conditions if isinstance(key, tuple) and key[0] in ("run-home", "run-home-source"))
+    keys.update(key for key in center._conditions if isinstance(key, tuple) and key[0] in ("run-home", "run-home-source", "trace-workspace", "trace-workspace-source"))
     center.retain_conditions(keys)
     return center.snapshot()

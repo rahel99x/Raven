@@ -16,6 +16,8 @@ import time
 from collections import deque
 from pathlib import Path
 
+from .reader_budget import retained_size as _retained_object_size
+
 SCHEMA = "raven.trace/v1"
 MAX_EVENT = 64 * 1024
 MAX_EVENTS = 20_000
@@ -253,7 +255,9 @@ def read_trace(path, *, max_events=MAX_EVENTS, max_bytes=MAX_BYTES, cancel=None)
 class TraceReader:
     """Incremental worker-owned journal reader with bounded retained events."""
 
-    def __init__(self, path, *, retain=MAX_EVENTS, retain_bytes=MAX_BYTES):
+    def __init__(
+        self, path, *, retain=MAX_EVENTS, retain_bytes=MAX_BYTES, memory_budget=None
+    ):
         path = Path(path).absolute()
         self.path = path / "manifest.json" if path.is_dir() else path
         self.offset = 0
@@ -285,6 +289,59 @@ class TraceReader:
         self._code_sizes = {}
         self._code_bytes = 0
         self.frame_encoding = None
+        self._memory_budget = memory_budget
+        self._working_charges = {}
+        self._frame_charges = {}
+        self._event_charges = deque()
+        self._closed = False
+        if memory_budget is not None:
+            self._charge(
+                12288 + 4 * len(str(self.path)),
+                "reader metadata and bounded diagnostics",
+            )
+
+    def _charge(self, amount, component):
+        if self._memory_budget is not None:
+            self._memory_budget.reserve(amount, component)
+            self._working_charges[component] = (
+                self._working_charges.get(component, 0) + amount
+            )
+
+    def _release(self, amount, component):
+        if self._memory_budget is not None and amount:
+            held = self._working_charges.get(component, 0)
+            if not 0 <= amount <= held:
+                raise ValueError(
+                    "Trace reader working-state component release is inconsistent"
+                )
+            self._memory_budget.release(amount)
+            self._working_charges[component] = held - amount
+
+    def release_consumed_window(self):
+        """Drop published event copies; preserve cursor/hash/decoding state."""
+        self.events.clear()
+        self._event_sizes.clear()
+        self.retained_bytes = 0
+        if self._memory_budget is not None:
+            self._release(sum(self._event_charges), "event window")
+            self._event_charges.clear()
+
+    def close(self):
+        """Release all owned working state; this reader cannot resume afterward."""
+        if self._closed:
+            return
+        self.release_consumed_window()
+        self._block = None
+        self.stack_map.clear()
+        self._frame_charges.clear()
+        self._codes.clear()
+        self._code_sizes.clear()
+        self._code_bytes = 0
+        if self._memory_budget is not None:
+            for amount in self._working_charges.values():
+                self._memory_budget.release(amount)
+        self._working_charges.clear()
+        self._closed = True
 
     def iter_pages(
         self,
@@ -346,14 +403,24 @@ class TraceReader:
                 raise ValueError(
                     "Trace block exceeds its committed checkpoint or budget"
                 )
-            body = stream.read(header["bytes"])
-            signed = {key: value for key, value in header.items() if key != "sha256"}
-            digest = hashlib.sha256(encoded(signed) + b"\n")
-            digest.update(body)
-            if len(body) != header["bytes"] or digest.hexdigest() != header["sha256"]:
-                raise ValueError(
-                    "Trace block checksum mismatch or truncated committed block"
-                )
+            self._charge(header["bytes"] + 4096, "authenticated block")
+            try:
+                body = stream.read(header["bytes"])
+                signed = {
+                    key: value for key, value in header.items() if key != "sha256"
+                }
+                digest = hashlib.sha256(encoded(signed) + b"\n")
+                digest.update(body)
+                if (
+                    len(body) != header["bytes"]
+                    or digest.hexdigest() != header["sha256"]
+                ):
+                    raise ValueError(
+                        "Trace block checksum mismatch or truncated committed block"
+                    )
+            except BaseException:
+                self._release(header["bytes"] + 4096, "authenticated block")
+                raise
             self._block = [header, body, 0, 0]
             header_bytes = len(raw)
         header, body, cursor, count = self._block
@@ -382,6 +449,7 @@ class TraceReader:
         self._block[2:] = [end + 1, count]
         if count == header["count"]:
             self._block = None
+            self._release(header["bytes"] + 4096, "authenticated block")
         return (
             record,
             header_bytes + len(raw),
@@ -396,6 +464,8 @@ class TraceReader:
         cancel=None,
         max_seconds=None,
     ):
+        if self._closed:
+            raise ValueError("Trace reader is closed")
         if (
             isinstance(max_events, bool)
             or not 1 <= max_events <= 1_000_000
@@ -460,6 +530,8 @@ class TraceReader:
             raise ValueError(
                 "Trace identity changed; open a new reader for a new attempt"
             )
+        if self.identity is None:
+            self._charge(1024 + _retained_object_size(identity), "source identity")
         self.identity = identity
         journal_format = manifest.get("journal_format", EVENT_FORMAT)
         if journal_format not in {EVENT_FORMAT, BLOCK_FORMAT}:
@@ -500,7 +572,9 @@ class TraceReader:
             )
         self._checkpoint = (committed, committed_bytes)
         count = used = 0
+        read_error = None
         fd = regular_open(self.path.parent / "events.jsonl")
+        opened = None
         try:
             st = os.fstat(fd)
             signature = (st.st_dev, st.st_ino)
@@ -512,7 +586,9 @@ class TraceReader:
                     "Committed journal bytes are missing; recording is incomplete"
                 )
                 self.invalid = True
-            with os.fdopen(fd, "rb") as stream:
+            opened = os.fdopen(fd, "rb")
+            fd = None  # The file object now owns the descriptor.
+            with opened as stream:
                 stream.seek(self.offset)
                 while (
                     not self.invalid
@@ -600,13 +676,19 @@ class TraceReader:
                                     "Trace code dictionary identity changed"
                                 )
                             if prior is None:
-                                self._code_bytes += len(encoded(metadata))
-                                if self._code_bytes > 16 << 20:
+                                metadata_size = len(encoded(metadata))
+                                if self._code_bytes + metadata_size > 16 << 20:
                                     raise ValueError(
                                         "Trace code dictionary exceeds its byte budget"
                                     )
+                                if self._memory_budget is not None:
+                                    self._charge(
+                                        1024 + _retained_object_size(metadata),
+                                        "code dictionary",
+                                    )
+                                self._code_bytes += metadata_size
                                 self._codes[code_id] = metadata
-                                self._code_sizes[code_id] = len(encoded(metadata))
+                                self._code_sizes[code_id] = metadata_size
                         elif (
                             frame_encoding == "code-dictionary/v1"
                             and event["kind"]
@@ -637,10 +719,20 @@ class TraceReader:
                         self._warn(str(exc))
                         self.invalid = True
                         break
+                    except OSError as exc:
+                        # Earlier events in this page are already verified.
+                        # Publish them once instead of stranding their cursor
+                        # behind an exception and skipping them on the retry.
+                        read_error = str(exc)[:8192]
+                        break
                     self.offset += consumed
                     self.sequence = record["seq"]
                     self.previous = checksum
                     flat = {**identity, **event, "seq": self.sequence}
+                    if self._memory_budget is not None:
+                        charge = 256 + _retained_object_size(flat)
+                        self._charge(charge, "event window")
+                        self._event_charges.append(charge)
                     self.events.append(flat)
                     self._event_sizes.append(retained_size)
                     self.retained_bytes += retained_size
@@ -650,6 +742,8 @@ class TraceReader:
                     ):
                         self.events.popleft()
                         self.retained_bytes -= self._event_sizes.popleft()
+                        if self._memory_budget is not None:
+                            self._release(self._event_charges.popleft(), "event window")
                         self.evicted += 1
                     self._stack(flat)
                     if event["kind"] in {"gap", "lost", "drop", "loss", "dropped"}:
@@ -661,11 +755,19 @@ class TraceReader:
                     count += 1
                     used += consumed
                     if journal_format == BLOCK_FORMAT and self._block is None:
-                        stream.seek(self.offset)
+                        try:
+                            stream.seek(self.offset)
+                        except OSError as exc:
+                            read_error = str(exc)[:8192]
+                            break
         except BaseException:
-            # fdopen owns the descriptor after entry; protect earlier failures.
+            # A raw descriptor number may already have been reused after the
+            # context exits. Close only the resource still owned here.
             try:
-                os.close(fd)
+                if opened is not None:
+                    opened.close()
+                elif fd is not None:
+                    os.close(fd)
             except OSError:
                 pass
             raise
@@ -673,8 +775,11 @@ class TraceReader:
             self.sequence == committed
             and self.offset == committed_bytes
             and self._block is None
+            and read_error is None
         )
         warnings = list(self.warnings)
+        if read_error is not None:
+            warnings.append("Temporary trace read error: " + read_error)
         state = manifest.get("state", "UNKNOWN")
         loss = manifest.get("dropped", 0)
         if not caught_up:
@@ -764,6 +869,7 @@ class TraceReader:
             "sha256": self.previous,
             "evicted": self.evicted,
             "retained_bytes": self.retained_bytes,
+            "read_error": read_error,
             "window_start": self.events[0]["seq"] if self.events else self.sequence + 1,
             "window_end": self.sequence,
             "process": {
@@ -786,6 +892,20 @@ class TraceReader:
         if message not in self.warnings and len(self.warnings) < 32:
             self.warnings.append(message)
 
+    def _thread_stack(self, thread):
+        if thread not in self.stack_map:
+            if self._memory_budget is not None:
+                self._charge(512 + _retained_object_size(thread), "thread metadata")
+                self._frame_charges[thread] = []
+            self.stack_map[thread] = []
+        return self.stack_map[thread]
+
+    def _clear_stack(self, thread):
+        self.stack_map[thread].clear()
+        if self._memory_budget is not None:
+            self._release(sum(self._frame_charges[thread]), "stack frames")
+            self._frame_charges[thread].clear()
+
     def _stack(self, event):
         kind, data, thread = event["kind"], event["data"], event["thread"]
         if (
@@ -806,23 +926,46 @@ class TraceReader:
                 self._warn("Invalid stack checkpoint")
                 self.invalid = True
                 return
-            self.stack_map[thread] = [
+            self._thread_stack(thread)
+            charges = []
+            if self._memory_budget is not None:
+                charges = [
+                    256
+                    + _retained_object_size(
+                        {
+                            key: frame.get(key)
+                            for key in ("function", "file", "line", "frame")
+                        }
+                    )
+                    for frame in frames
+                ]
+                self._charge(sum(charges), "stack frames")
+            replacement = [
                 {key: frame.get(key) for key in ("function", "file", "line", "frame")}
                 for frame in frames
             ]
+            self._clear_stack(thread)
+            self.stack_map[thread] = replacement
+            if self._memory_budget is not None:
+                self._frame_charges[thread] = charges
         elif kind in {"call", "resume"}:
-            stack = self.stack_map.setdefault(thread, [])
+            stack = self._thread_stack(thread)
             if len(stack) >= 4096:
                 self._warn(
                     "Recorded stack exceeds 4096 frames; stack reconstruction truncated"
                 )
                 self.invalid = True
                 return
-            stack.append(
-                {key: data.get(key) for key in ("function", "file", "line", "frame")}
-            )
+            frame = {
+                key: data.get(key) for key in ("function", "file", "line", "frame")
+            }
+            if self._memory_budget is not None:
+                charge = 256 + _retained_object_size(frame)
+                self._charge(charge, "stack frames")
+                self._frame_charges[thread].append(charge)
+            stack.append(frame)
         elif kind in {"return", "yield", "unwind"}:
-            stack = self.stack_map.setdefault(thread, [])
+            stack = self._thread_stack(thread)
             if not stack:
                 self._warn("Return without a recorded entry; stack prefix is unknown")
             elif (
@@ -830,116 +973,45 @@ class TraceReader:
                 and stack[-1].get("frame") != data["frame"]
             ):
                 self._warn("Stack transition mismatch; stack prefix reset")
-                stack.clear()
+                self._clear_stack(thread)
             else:
                 stack.pop()
+                if self._memory_budget is not None:
+                    self._release(self._frame_charges[thread].pop(), "stack frames")
 
 
 def discover_trace(project_root, job_id, attempt=None):
-    """Resolve only explicitly registered traces inside a chosen project."""
-    root = Path(project_root).absolute()
-    index = root / ".raven" / "traces" / "index.json"
-    if not index.exists():
-        # A retained run's own index is authoritative too; automatic processes
-        # need no duplicate per-stream .raven/traces registry inside that run.
-        run_index = root / "trace/index.json"
-        if not run_index.exists():
-            return []
-        manifest = read_json(root / "run.json")
-        if (
-            manifest.get("schema") != "raven.run/v1"
-            or manifest.get("run_id") != root.name
-        ):
-            raise ValueError("Trace discovery requires a verified retained run")
-        doc = {
-            "schema": "raven.trace-index/v1",
-            "records": [
-                {
-                    "schema": "raven.trace-run/v1",
-                    "job_id": str(manifest.get("job_id", "local")),
-                    "attempt": root.name,
-                    "path": "trace/index.json",
-                }
-            ],
-        }
-    else:
-        doc = read_json(index, limit=4 << 20)
-    if (
-        not isinstance(doc, dict)
-        or doc.get("schema") != "raven.trace-index/v1"
-        or not isinstance(doc.get("records"), list)
-        or len(doc["records"]) > 4096
-    ):
-        raise ValueError("Invalid bounded trace index")
-    result = []
-    for record in doc["records"]:
-        if (
-            not isinstance(record, dict)
-            or record.get("job_id") != str(job_id)
-            or attempt is not None
-            and record.get("attempt") != str(attempt)
-        ):
-            continue
-        relative = record.get("path")
-        if not isinstance(relative, str) or len(relative) > 4096:
-            raise ValueError("Invalid trace registration path")
-        rel = Path(relative)
-        if rel.is_absolute() or any(
-            part in {".", ".."} for part in relative.split("/")
-        ):
-            raise ValueError("Trace registration escapes the project")
-        path = root / rel
-        try:
-            manifest = read_json(path)
-        except FileNotFoundError:
-            # Registrations can outlive an explicitly archived/deleted trace.
-            # Never let an absent old attempt hide another valid recording.
-            # Corrupt metadata and symlink failures remain errors.
-            continue
-        if record.get("schema") == "raven.trace-run/v1":
-            if (
-                manifest.get("schema") != "raven.trace-index/v1"
-                or not isinstance(manifest.get("sources"), list)
-                or len(manifest["sources"]) > 512
-            ):
-                raise ValueError("Invalid registered run trace index")
-            run = path.parent.parent
-            for source in manifest["sources"]:
-                if not isinstance(source, dict) or source.get("schema") != SCHEMA:
-                    continue
-                relative_source = source.get("path")
-                if (
-                    not isinstance(relative_source, str)
-                    or not relative_source
-                    or len(relative_source) > 4096
-                    or Path(relative_source).is_absolute()
-                    or any(part in {".", ".."} for part in relative_source.split("/"))
-                ):
-                    raise ValueError("Run trace registration escapes its run")
-                source_path = run / relative_source
-                try:
-                    source_manifest = read_json(source_path)
-                except FileNotFoundError:
-                    continue
-                if source_manifest.get("schema") != SCHEMA:
-                    raise ValueError("Registered run source is not a trace manifest")
-                identity = validate_identity(source_manifest.get("identity"))
-                if (
-                    identity["job_id"] != str(job_id)
-                    or identity["attempt"] != record["attempt"]
-                    or identity["stream"] != source.get("stream")
-                ):
-                    raise ValueError("Run trace identity does not match its manifest")
-                result.append(str(source_path))
-            continue
-        identity = validate_identity(manifest.get("identity"))
-        if (
-            identity["job_id"] != str(job_id)
-            or attempt is not None
-            and identity["attempt"] != str(attempt)
-        ):
-            raise ValueError("Trace registration identity does not match its manifest")
-        if identity.get("stream") != record.get("stream"):
-            raise ValueError("Trace registration stream does not match its manifest")
-        result.append(str(path))
-    return result
+    """Resolve registered sources through the shared canonical parser."""
+    from .registrations import discover_trace as discover
+
+    return discover(
+        project_root,
+        job_id,
+        attempt,
+        read_json=read_json,
+        validate_identity=validate_identity,
+    )
+
+
+def discover_trace_candidates(
+    project_root,
+    job_id,
+    attempt=None,
+    *,
+    max_sources=512,
+    cancel=None,
+    max_metadata_bytes=64 << 20,
+):
+    """Discover bounded registrations without opening individual manifests."""
+    from .registrations import discover_trace_candidates as candidates
+
+    return candidates(
+        project_root,
+        job_id,
+        attempt,
+        max_sources=max_sources,
+        cancel=cancel,
+        max_metadata_bytes=max_metadata_bytes,
+        read_json=read_json,
+        validate_identity=validate_identity,
+    )

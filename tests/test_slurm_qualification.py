@@ -22,14 +22,17 @@ def test_compatibility_candidates_and_maintained_smoke_are_pinned():
         Q.version_spec("latest; echo unsafe")
 
 
-def test_plan_contacts_no_service_and_writes_no_state(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("scenario", ["lifecycle", "trace-workspace"])
+def test_plan_contacts_no_service_and_writes_no_state(tmp_path, monkeypatch, capsys, scenario):
     def forbidden(*args, **kwargs):
         raise AssertionError("Plan must not contact Docker")
     monkeypatch.setattr(Q.subprocess, "run", forbidden)
     output = tmp_path / "new"
-    assert Q.main(["--plan", "--output", str(output)]) == 0
+    assert Q.main(["--plan", "--scenario", scenario, "--output", str(output)]) == 0
     assert not output.exists()
-    assert json.loads(capsys.readouterr().out)["production_qualified"] is False
+    result = json.loads(capsys.readouterr().out)
+    assert result["production_qualified"] is False
+    assert result["scenario"] == scenario
 
 
 def test_docker_selector_reset_preserves_credentials_and_proxy(monkeypatch):

@@ -86,6 +86,8 @@ def _drain_client(client):
 def child(args):
     sys.path.insert(0, str(args.source_root.resolve()))
     measured_files = ["raven/__init__.py", "raven/client.py"] if args.mode in {"client", "noop"} else ["raven/trace_recorder.py", "raven/trace_protocol.py"]
+    measured_files += [name for name in ("raven/tracing/capture.py", "raven/tracing/protocol.py", "raven/tracing/metrics_overlay.py")
+                       if (args.source_root / name).is_file()]
     before_hashes = {name: hashlib.sha256((args.source_root / name).read_bytes()).hexdigest()
                      for name in measured_files if (args.source_root / name).exists()}
     framework = None

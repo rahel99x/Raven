@@ -15,7 +15,7 @@ from .ui.catalog import RESEARCH_VIEWS
 
 MAX_BACK = 32
 TAB_NAMES = {"jobs": "Jobs", "cluster": "Cluster", "history": "History", "analytics": "Analytics",
-             "nodes": "Nodes", "group": "Group", "deps": "Deps", "log": "Logs", "sources": "Sources", "research": "Research"}
+             "nodes": "Nodes", "group": "Group", "deps": "Deps", "log": "Logs", "sources": "Sources", "research": "Research", "traces": "Traces"}
 WORKSPACE_INFO = {
     "experiment": "Live metrics, progress and application events",
     "arrays": "Task outcomes, failed indices and selective retries",

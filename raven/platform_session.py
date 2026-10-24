@@ -13,7 +13,6 @@ from pathlib import Path
 import shlex
 import threading
 import time
-import tempfile
 
 from . import evidence as E, site_policy as P
 from .shared_collection import ProcessQueryCache, SharedQueryCache
@@ -84,7 +83,6 @@ class GovernedBackend:
                 "reason": "Raven backend supports these read commands; controller connectivity and site permissions remain command results."})
         self._last = threading.local()
         self.collection = collection
-        self._temporary_cache = None
         self.ledger = None
         if collection is not None:
             from raven.collection.ledger import Ledger
@@ -287,6 +285,8 @@ class GovernedBackend:
             if callable(close):
                 close()
         finally:
+            if self._owns_cache and isinstance(self.cache, ProcessQueryCache):
+                self.acquisition.broker.close(wait=False)
             # Each cache owns a thread-local connection. Closing this caller's
             # idle handle preserves the on-disk observations and other worker
             # handles; their thread-local owners close when those threads end.
@@ -294,14 +294,6 @@ class GovernedBackend:
             # its close is terminal, unlike the shared cache's per-thread close.
             if self._owns_cache or not isinstance(self.cache, ProcessQueryCache):
                 self.cache.close()
-            temporary = self._temporary_cache
-            if temporary is not None:
-                self.acquisition.broker.close(wait=False)
-                # A still-running fixture producer keeps the directory alive
-                # through its loader reference; its finalizer cleans up later.
-                if not self.acquisition.stats()["active"]:
-                    temporary.cleanup()
-                    self._temporary_cache = None
 
 
 def wrap_backend(backend, cfg, scope, state_dir):
@@ -363,24 +355,21 @@ def wrap_backend(backend, cfg, scope, state_dir):
             raise
         portable = True
         host = "process-local"
-    temporary = None
-    try:
-        maximum = min(64 << 20, max(policy["limits"]["max_bytes"], 16 << 20))
-        if portable:
-            cache = ProcessQueryCache(max_bytes=maximum)
+    maximum = min(64 << 20, max(policy["limits"]["max_bytes"], 16 << 20))
+    private_simulation = simulated and collection is not None
+    if portable or private_simulation:
+        # Synthetic observations must never enter a live host's cache. Reuse
+        # the bounded memory/ledger contract without disk files that background
+        # owners could recreate while the dashboard removes its temporary root.
+        cache = ProcessQueryCache(max_bytes=maximum)
+    else:
+        if collection is not None:
+            from raven.collection.ledger import cache_directory
+            directory = cache_directory(explicit)
         else:
-            if collection is not None:
-                from raven.collection.ledger import cache_directory
-                directory = cache_directory(explicit)
-            else:
-                directory = explicit or str(Path(state_dir) / "collection-cache" / host[:24])
-            temporary = tempfile.TemporaryDirectory(prefix="raven-simulation-", dir="/tmp") if simulated and collection is not None else None
-            cache = SharedQueryCache(temporary.name if temporary else directory, max_bytes=maximum)
-        governed = GovernedBackend(backend, policy, cache, scope, interval=cfg.get("collection_interval"), collection=collection, owns_cache=True)
-        governed._temporary_cache = temporary
-        governed.cache_coordination = "process-local; host identity unavailable" if portable else "shared host-local"
-        return governed
-    except BaseException:
-        if temporary is not None:
-            temporary.cleanup()
-        raise
+            directory = explicit or str(Path(state_dir) / "collection-cache" / host[:24])
+        cache = SharedQueryCache(directory, max_bytes=maximum)
+    governed = GovernedBackend(backend, policy, cache, scope, interval=cfg.get("collection_interval"), collection=collection, owns_cache=True)
+    governed.cache_coordination = ("process-local; simulated source" if private_simulation else
+                                  "process-local; host identity unavailable" if portable else "shared host-local")
+    return governed

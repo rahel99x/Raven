@@ -195,6 +195,8 @@ def cli_admission(argv, router=None):
         ["summary"],
         ["capabilities"],
         ["cleanup-runtime"],
+        ["workspace"],
+        ["import-activity"],
     ):
         return deferred(
             "trace-cli",
@@ -240,7 +242,7 @@ def needs_job_local(argv):
         argv[0] == "report"
         and argv[1] in {"exec", "submit", "passport", "aggregate"}
         or argv[0] == "trace"
-        and argv[1] in {"run", "native"}
+        and argv[1] in {"run", "native", "profile", "sample"}
     )
 
 

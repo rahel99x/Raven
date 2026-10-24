@@ -28,17 +28,19 @@ MAX_OUTPUT = 2 << 20
 CHECK_TIMEOUT = 20
 
 
-def run(argv, *, cwd=ROOT, env=None, timeout=CHECK_TIMEOUT):
-    """Drain both pipes under one byte/time budget, reaping the owned group."""
+def run(argv, *, cwd=ROOT, env=None, timeout=CHECK_TIMEOUT, separate_streams=False):
+    """Drain both pipes under one shared budget, optionally preserving channels."""
     child = subprocess.Popen(list(map(str, argv)), cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
     output = bytearray()
+    channels = {"stdout": bytearray(), "stderr": bytearray()} if separate_streams else None
+    total = 0
     try:
         until = time.monotonic() + timeout
         with selectors.DefaultSelector() as selector:
-            for stream in (child.stdout, child.stderr):
+            for name, stream in (("stdout", child.stdout), ("stderr", child.stderr)):
                 os.set_blocking(stream.fileno(), False)
-                selector.register(stream, selectors.EVENT_READ)
+                selector.register(stream, selectors.EVENT_READ, name)
             while selector.get_map():
                 if time.monotonic() >= until:
                     raise ValueError("Command exceeded qualification deadline")
@@ -47,12 +49,21 @@ def run(argv, *, cwd=ROOT, env=None, timeout=CHECK_TIMEOUT):
                     if not block:
                         selector.unregister(key.fileobj)
                     else:
-                        output.extend(block)
-                        if len(output) > MAX_OUTPUT:
+                        total += len(block)
+                        if total > MAX_OUTPUT:
                             raise ValueError("Command exceeded qualification output budget")
+                        if channels is None:
+                            output.extend(block)
+                        else:
+                            channels[key.data].extend(block)
         code = child.wait(timeout=max(.01, until - time.monotonic()))
         if code:
-            raise ValueError(f"Command exited {code}: " + output.decode("utf-8", "replace")[-1200:])
+            detail = (output.decode("utf-8", "replace")[-1200:] if channels is None else
+                      "stdout: " + channels["stdout"].decode("utf-8", "replace")[-600:] +
+                      "\nstderr: " + channels["stderr"].decode("utf-8", "replace")[-600:])
+            raise ValueError(f"Command exited {code}: " + detail)
+        if channels is not None:
+            return {name: value.decode("utf-8", "replace") for name, value in channels.items()}
         return output.decode("utf-8", "replace")
     finally:
         try:

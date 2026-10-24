@@ -84,8 +84,8 @@ class Session:
         close_diagnostics(self.app)
         from .terminal.ui import shutdown as shutdown_terminal
         shutdown_terminal(self.app)
-        from .tracing.ui import cancel as cancel_trace
-        cancel_trace(self.app, clear=True)
+        from .tracing.ui import shutdown as shutdown_trace
+        shutdown_trace(self.app)
         from .job_logs.history_export import cancel as cancel_log_export
         cancel_log_export(self.app, close=True)
         from .data_export_ui import cancel as cancel_data_export

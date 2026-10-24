@@ -1,5 +1,9 @@
 # Trace lab: CPU, MPI, and CUDA experiments
 
+For separate single/multi thread, core, node and GPU programs, see the
+[trace topology examples](../trace-topology/README.md). They share the same
+receipt-based launch/view workflow and include optional GPU activity windows.
+
 Run a small scientific workload and inspect its Python execution in Raven.
 Choose the standard CPU example, an MPI experiment, or a CUDA workload. Each
 retains an exact launch receipt, Python trace streams, scientific measurements,
@@ -51,10 +55,16 @@ opens Raven. Follow those printed steps:
    toggles it later. For MPI, select the desired rank and PID; each rank has its
    own recording.
 
-The **Timeline** view draws recorded nested calls. Zoom, pan, select a call, or
-use `:trace find update_row` to inspect a particular function. **View in browser**
-saves and opens a private offline timeline with the same retained evidence.
-Browser snapshots are static; the terminal view follows the live recording.
+Choose **Run workspace** or enter `:trace workspace` for Live Δ, Fit, simultaneous
+threads and indexed navigation over the retained run. **More** reveals function
+statistics, call-tree/bottom-up views, counters and other analyses. Select a
+call to preserve its full name, timing and provenance; use
+`:trace workspace find update_row` to narrow the graph. Its browser button
+explicitly starts a private read-only loopback viewer with the same index.
+
+The original **Timeline** remains available for a selected process. Its
+**View in browser** button saves a private static snapshot; it is separate
+from the live workspace server. Both preserve the evidence's coverage limits.
 
 To include software CPU-placement observations on Linux, start a new run with:
 
@@ -276,7 +286,19 @@ bash examples/trace-lab/view.sh /absolute/project/path/launch.json
 
 For a standalone run, the viewer defaults to the terminal trace inspector.
 There is no scheduler job row, so Jobs/History cannot host this run's Trace
-panel. To see its scientific measurements in Raven, open `ravenl --site desktop`
+panel. Open the exact manifest printed by `view.sh --inspect` through the
+global workspace instead:
+
+```text
+:traces
+:trace workspace open /absolute/project/.raven/traces/STREAM/manifest.json
+```
+
+Use the actual manifest, replacing the illustrative path above. Explicit
+opening verifies retained evidence and declared identity; it does not infer
+live scheduler ownership. For a browser, run
+`raven trace workspace /actual/manifest.json --serve --open-browser`.
+To see scientific measurements in Raven, open `ravenl --site desktop`
 and enter the printed project/run commands. This selects the exact run in
 Research **Experiment**.
 
@@ -352,6 +374,106 @@ MPI's `--ranks` sets the requested task count. Leave time for computation,
 tracing, and startup within five minutes for every variant. Longer pauses or
 larger grids can exceed that limit. These examples are intended for small
 inspection runs; prepare a suitably resourced batch script for larger studies.
+
+## Framework activity windows
+
+`activity_window_lab.py` is a separate paced diffusion program for testing
+actual framework operator/activity reports. It defaults to 80 explicit steps
+over approximately 120 seconds. Its numerical check verifies finite,
+nonincreasing mean-squared energy; this pacing workload is not a GPU benchmark.
+
+Use this command as the application command inside an existing verified owned
+Slurm step. Select the application's activated interpreter and exact reporting
+attempt. For example, in a Raven-launched job with the repository available:
+
+```bash
+: "${SLURM_JOB_ID:?Run inside the allocated scientific job}"
+: "${RAVEN_RUN_ID:?Use this job's Raven reporting attempt}"
+: "${RAVEN_PROJECT_ROOT:?Use this job's Raven project}"
+raven trace profile --python "$(command -v python3)" \
+  --project "$RAVEN_PROJECT_ROOT" --job-id "$SLURM_JOB_ID" \
+  --attempt "$RAVEN_RUN_ID" --window-steps 5 --max-windows 16 \
+  -- examples/trace-lab/activity_window_lab.py --backend torch
+```
+
+For an array task, pass its exact `array_job_id_array_task_id` job identity
+instead of an array parent. The command assumes the working directory contains
+the example path; use its absolute path otherwise. A site's launcher and
+allocation policy still apply. Managed capture does not obtain another
+allocation or move the program to the login node.
+
+The `torch` backend requires a compatible PyTorch build in that interpreter.
+For a GPU allocation, add `--gpu` before `--` and select `--backend cuda` after
+it. That backend uses PyTorch's CUDA/HIP interface and fails if no compatible
+device is accessible; it never silently runs CPU computation and labels it GPU.
+Use `--backend python` for the standard-library numerical variant. If an
+optional profiler is unavailable, the original application still runs and the
+receipt reports that unavailable source. Add `--required` when capture is a
+workflow prerequisite.
+
+The script calls `raven.tracing.activity_capture.step()` once per step. Every
+five steps the wrapper exports a window and registers a verified journal that
+the workspace can discover before application completion. Without cooperative
+steps, generic scripts export at completion. `--max-mib`, window count and
+artifact limits bound import/retention; the framework's internal buffer and
+temporary export remain tool-dependent. No device-wide synchronization is
+inserted by the recorder. This particular workload converts energy to a scalar
+for its numerical check, which can itself wait for device work.
+
+The wrapper prints a durable activity receipt path on stderr, then its final
+receipt after normal application output. The receipt lists exact imported
+manifest paths; open one or pass the listed manifests together:
+
+```bash
+read -r -p 'Exact manifest from the capture receipt: ' raven_activity_manifest
+raven trace workspace "$raven_activity_manifest" --serve --open-browser
+```
+
+In an already bound job, refresh its Trace Workspace to discover registered
+sources for that exact attempt. By default, framework replay stacks are off;
+operator names and device activities are separate from Python call boundaries.
+`--framework-stacks` is experimental and provider-sensitive. An actual
+PyTorch 2.6.0+cpu / Python 3.12.14 exercise completed two operator windows and
+verified them through the index on one producer-session clock. A replay-stack
+assertion occurred with framework stacks enabled. No physical GPU or production
+multi-node qualification is implied by this CPU exercise.
+
+For a short check, append `--seconds 2 --steps 3 --size 64 --sweeps 2` to the
+workload arguments, and choose `--window-steps 2` for the wrapper.
+
+## Triggered incident capture
+
+`triggered_incident_lab.py` demonstrates a cooperative metadata flight recorder.
+It injects one declared model perturbation halfway through a two-minute run,
+retains the recent five seconds of explicit spans/counters, then records up to
+five seconds afterward. The scientific loop continues after capture stops.
+Before a trigger, older metadata is intentionally evicted from its bounded
+in-memory ring. A never-triggered run saves a receipt without persisting events.
+
+From the repository root, the following standalone exercise makes this checkout
+available to the standard-library application interpreter without modifying its
+installation:
+
+```bash
+raven_incident_project=$(mktemp -d "$HOME/raven-incident.XXXXXX")
+PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}" python3 -u \
+  examples/trace-lab/triggered_incident_lab.py \
+  --project "$raven_incident_project" --job-id local-incident --attempt incident-1
+```
+
+The example prints the receipt immediately and the manifest when the incident
+triggers. Open that exact manifest with the global terminal workspace or
+`raven trace workspace MANIFEST --serve`. In a Slurm application, pass the exact
+job/attempt instead. Direct SDK use requires Raven importability in that
+application interpreter; it does not attach to another process or grant a new
+allocation. `--seconds 0 --steps 8 --size 16` provides a fast functional check.
+
+To instrument an existing program, import
+`raven.tracing.activity_trigger.TriggeredCapture`, emit spans and metadata,
+then call `trigger(reason)` for the application condition of interest. See the
+[incident SDK example](../../docs/guides/trace-workspace.md#retain-a-difficult-incident)
+for all pre/post limits and failure semantics. An evicted span entry stays
+missing; no exit is fabricated at a window boundary.
 
 ## Scope and retained data
 

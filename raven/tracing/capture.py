@@ -26,20 +26,66 @@ _RECORDERS = weakref.WeakSet()
 _CAPTURES = weakref.WeakSet()
 
 
+class _InternalCallbacks:
+    """An untraced guard, including the operations before/after busy is set.
+
+    A generator context manager would enter contextlib before suppression and
+    leave it after restoration, manufacturing unmatched library boundaries in
+    scope=all. These methods live in the already excluded recorder owner.
+    """
+
+    __slots__ = ("previous",)
+
+    def __init__(self):
+        self.previous = []
+
+    def __enter__(self):
+        try:
+            # Snapshot the stdlib WeakSet's raw weakrefs using builtin iteration.
+            # WeakSet.__iter__ itself is Python code and cannot run until every
+            # active tool's current-thread recursion guard has been installed.
+            for reference in tuple(_CAPTURES.data):
+                capture = reference()
+                if capture is not None:
+                    local = capture.local
+                    self.previous.append((local, getattr(local, "busy", False)))
+                    local.busy = True
+        except BaseException:
+            self._restore()
+            raise
+        return self
+
+    def _restore(self):
+        for local, busy in self.previous:
+            # Restore the original local object, not a replacement installed by
+            # an after-fork callback in the child.
+            local.busy = busy
+        self.previous.clear()
+
+    def __exit__(self, exc_type, exc, traceback):
+        self._restore()
+        return False
+
+
+_internal_callbacks = _InternalCallbacks
+
+
 def _fork_before():
-    deadline = time.monotonic() + 0.05
-    for recorder in list(_RECORDERS):
-        recorder._fork_pause.set()
-        recorder._flush_wake.set()
-    for recorder in list(_RECORDERS):
-        if recorder._flush_thread is not None:
-            recorder._fork_quiet.wait(max(0.0, deadline - time.monotonic()))
+    with _internal_callbacks():
+        deadline = time.monotonic() + 0.05
+        for recorder in list(_RECORDERS):
+            recorder._fork_pause.set()
+            recorder._flush_wake.set()
+        for recorder in list(_RECORDERS):
+            if recorder._flush_thread is not None:
+                recorder._fork_quiet.wait(max(0.0, deadline - time.monotonic()))
 
 
 def _fork_parent():
-    for recorder in list(_RECORDERS):
-        recorder._fork_pause.clear()
-        recorder._flush_wake.set()
+    with _internal_callbacks():
+        for recorder in list(_RECORDERS):
+            recorder._fork_pause.clear()
+            recorder._flush_wake.set()
 
 
 def _fork_child():
@@ -278,6 +324,8 @@ class Recorder:
         self._emitter = threading.local()
         self._queue_lock = threading.Lock()
         self._frame_queue = deque()
+        self._accepting_frames = True
+        self._drain_owner = None
         self._deferred = deque(maxlen=128)
         self._flush_wake = threading.Event()
         self._flush_complete = threading.Event()
@@ -407,29 +455,37 @@ class Recorder:
             or os.getpid() != self._pid
         ):
             return False
-        stamp = time.monotonic_ns()
-        observation = (
-            self._cpu_placement.observe() if self._cpu_placement is not None else None
-        )
-        # The writer holds this lock only while swapping a deque, never while
-        # validating, encoding or doing I/O. Normal contention must not be
-        # mistaken for lost data or stop an otherwise healthy recording.
+        # Acceptance order is timestamp order, including a sched_getcpu call
+        # that may release the GIL. No encoding, fsync or journal I/O occurs
+        # under this lock; optional CPU observation adds serialized overhead.
+        wake = False
         self._queue_lock.acquire()
         try:
+            if not self._accepting_frames or self.state != "OPEN":
+                return False
             if len(self._frame_queue) >= 65536:
                 self.dropped += 1
                 self._buffer_failed = True
                 self.warnings.append(
                     "Trace callback buffer reached 65,536 events; recording stopped with an incomplete prefix"
                 )
-                self._flush_wake.set()
-                return False
-            self._frame_queue.append((kind, data, thread, stamp, observation))
-            if len(self._frame_queue) >= self.flush_events:
-                self._flush_wake.set()
+                wake = True
+                accepted = False
+            else:
+                stamp = time.monotonic_ns()
+                observation = (
+                    self._cpu_placement.observe()
+                    if self._cpu_placement is not None
+                    else None
+                )
+                self._frame_queue.append((kind, data, thread, stamp, observation))
+                wake = len(self._frame_queue) >= self.flush_events
+                accepted = True
         finally:
             self._queue_lock.release()
-        return True
+        if wake:
+            self._flush_wake.set()
+        return accepted
 
     def defer(self, callback):
         """Schedule optional diagnostic I/O outside an application's audit hook."""
@@ -440,37 +496,79 @@ class Recorder:
             self._flush_wake.set()
 
     def _drain_frames(self):
-        with self._queue_lock:
-            pending, self._frame_queue = self._frame_queue, deque()
+        with _internal_callbacks(), self.lock:
+            if self._drain_owner == threading.get_ident():
+                return
+            with self._queue_lock:
+                pending, self._frame_queue = self._frame_queue, deque()
+            self._drain_pending(pending)
+
+    def _drain_pending(self, pending):
+        previous, self._drain_owner = self._drain_owner, threading.get_ident()
+        try:
+            self._write_frames(pending)
+        finally:
+            self._drain_owner = previous
+
+    def _write_frames(self, pending):
         for index, (kind, data, thread, stamp, observation) in enumerate(pending):
             if self.state != "OPEN":
                 self.dropped += len(pending) - index
                 break
-            if kind in {"call", "resume", "return", "yield", "unwind"}:
-                key = (data["frame"], data["function"], data["file"], data["line"])
-                code_id = self._codes.get(key)
-                if code_id is None:
-                    size = len(protocol.encoded(data))
-                    if len(self._codes) >= 65536 or self._code_bytes + size > 16 << 20:
-                        self.dropped += len(pending) - index
-                        self._buffer_failed = True
-                        self.warnings.append(
-                            "Trace code dictionary reached its bounded capacity; recording stopped"
+            try:
+                if kind in {"call", "resume", "return", "yield", "unwind"}:
+                    key = (data["frame"], data["function"], data["file"], data["line"])
+                    code_id = self._codes.get(key)
+                    if code_id is None:
+                        size = len(protocol.encoded(data))
+                        if (
+                            len(self._codes) >= 65536
+                            or self._code_bytes + size > 16 << 20
+                        ):
+                            self.dropped += len(pending) - index
+                            self._buffer_failed = True
+                            self.warnings.append(
+                                "Trace code dictionary reached its bounded capacity; recording stopped"
+                            )
+                            break
+                        code_id = len(self._codes) + 1
+                        self._codes[key] = code_id
+                        self._code_bytes += size
+                        self.emit(
+                            "code",
+                            {"id": code_id, **data},
+                            thread=thread,
+                            mono_ns=stamp,
                         )
-                        break
-                    code_id = len(self._codes) + 1
-                    self._codes[key] = code_id
-                    self._code_bytes += size
-                    self.emit(
-                        "code", {"id": code_id, **data}, thread=thread, mono_ns=stamp
-                    )
-                data = {"code": code_id}
-            if not self.emit(
-                kind, data, thread=thread, mono_ns=stamp, _observation=observation
-            ):
-                self.dropped += len(pending) - index - 1
+                    data = {"code": code_id}
+                if not self.emit(
+                    kind, data, thread=thread, mono_ns=stamp, _observation=observation
+                ):
+                    self.dropped += len(pending) - index - 1
+                    break
+            except (
+                ValueError,
+                TypeError,
+                KeyError,
+                OverflowError,
+                RecursionError,
+            ) as error:
+                # Accepted callback metadata is an instrumentation dependency,
+                # not a direct caller argument. Its fault must not escape into
+                # a later valid scientific span that happens to drain it.
+                self.dropped += len(pending) - index
+                with self._queue_lock:
+                    self._accepting_frames = False
+                    self.dropped += len(self._frame_queue)
+                    self._frame_queue.clear()
+                self._fail(
+                    "ERROR",
+                    "Queued trace metadata failed validation: "
+                    + type(error).__name__
+                    + "; verified prefix retained",
+                )
                 break
-        if self._buffer_failed:
+        if self._buffer_failed and self.state == "OPEN":
             self.state = "LIMIT"
 
     def _after_fork(self):
@@ -479,6 +577,8 @@ class Recorder:
         self.lock = threading.RLock()
         self._queue_lock = threading.Lock()
         self._frame_queue = deque()
+        self._accepting_frames = False
+        self._drain_owner = None
         self._deferred = deque(maxlen=128)
         if self.fd is not None:
             os.close(self.fd)
@@ -534,6 +634,24 @@ class Recorder:
         )
 
     def emit(self, kind, data=None, *, thread=None, mono_ns=None, _observation=None):
+        if self._drain_owner == threading.get_ident():
+            if mono_ns is None:
+                # A caller re-entering its reservation callback cannot insert
+                # a new present-time event in the middle of an older batch.
+                return self.enqueue(
+                    kind, data or {}, thread=str(thread or threading.get_ident())
+                )
+            return self._emit_ordered(
+                kind, data, thread=thread, mono_ns=mono_ns, _observation=_observation
+            )
+        with _internal_callbacks():
+            return self._emit_ordered(
+                kind, data, thread=thread, mono_ns=mono_ns, _observation=_observation
+            )
+
+    def _emit_ordered(
+        self, kind, data=None, *, thread=None, mono_ns=None, _observation=None
+    ):
         if self._fork_disabled or os.getpid() != self._pid:
             return False
         with self.lock:
@@ -542,7 +660,7 @@ class Recorder:
             event = protocol.validate_event(
                 {
                     "kind": kind,
-                    "mono_ns": mono_ns if mono_ns is not None else time.monotonic_ns(),
+                    "mono_ns": mono_ns if mono_ns is not None else 0,
                     "thread": str(thread or threading.get_ident()),
                     "data": data or {},
                 },
@@ -552,12 +670,10 @@ class Recorder:
                 raise ValueError(
                     "cpu_observation is reserved for the local CPU placement observer"
                 )
-            if _observation is not None:
-                event["data"] = dict(event["data"], cpu_observation=_observation)
             # Historical/native-emitter events must never inherit the reader's
             # CPU. PythonCapture registers its reuse-safe identity in the
             # emitter thread itself; another thread cannot borrow that alias.
-            if (
+            observe = (
                 self._cpu_placement is not None
                 and mono_ns is None
                 and len(event["data"]) < 64
@@ -569,10 +685,25 @@ class Recorder:
                         getattr(self._emitter, "identity", None),
                     )
                 )
-            ):
-                observation = self._cpu_placement.observe()
-                if observation is not None:
-                    event["data"] = dict(event["data"], cpu_observation=observation)
+            )
+            if self._drain_owner != threading.get_ident():
+                # Atomically reserve a current event's position after every
+                # already accepted callback. Later callbacks receive later
+                # timestamps while this writer encodes the detached prefix.
+                with self._queue_lock:
+                    if mono_ns is None:
+                        event["mono_ns"] = time.monotonic_ns()
+                    observation = (
+                        self._cpu_placement.observe() if observe else _observation
+                    )
+                    pending, self._frame_queue = self._frame_queue, deque()
+                self._drain_pending(pending)
+                if self.state != "OPEN":
+                    return False
+            else:
+                observation = _observation
+            if observation is not None:
+                event["data"] = dict(event["data"], cpu_observation=observation)
             if self.journal_format == "blocks":
                 return self._emit_block_event(event)
             record = {
@@ -752,6 +883,12 @@ class Recorder:
                 pass
 
     def flush(self):
+        if self._drain_owner == threading.get_ident():
+            return self._flush_ordered()
+        with _internal_callbacks():
+            return self._flush_ordered()
+
+    def _flush_ordered(self):
         if self._fork_disabled or self.fd is None:
             return
         if (
@@ -759,6 +896,7 @@ class Recorder:
             and self._flush_thread is not None
             and self._flush_thread.is_alive()
             and threading.current_thread() is not self._flush_thread
+            and self._drain_owner != threading.get_ident()
         ):
             self._flush_complete.clear()
             self._force_flush = True
@@ -778,6 +916,10 @@ class Recorder:
             self._publish()
 
     def close(self):
+        with _internal_callbacks():
+            return self._close_ordered()
+
+    def _close_ordered(self):
         if self._fork_disabled or self.fd is None:
             return
         self._flush_stop.set()
@@ -795,10 +937,12 @@ class Recorder:
                 return
         with self.lock:
             try:
-                # Events can arrive while the final writer fsync is stalled.
-                # Drain that accepted tail while the recorder is still OPEN;
-                # switching to CLOSED first would silently discard it.
-                self._drain_frames()
+                # Close admission atomically, then drain the entire accepted
+                # prefix while OPEN. Callbacks cannot append behind stream_end.
+                with self._queue_lock:
+                    self._accepting_frames = False
+                    pending, self._frame_queue = self._frame_queue, deque()
+                self._drain_pending(pending)
                 if self.state == "OPEN":
                     self.emit("stream_end", {"reason": "clean_close"})
                     if self.state == "OPEN":
@@ -997,6 +1141,31 @@ class PythonCapture:
             self._metadata_lock.release()
         return data
 
+    def _thread_identity(self, *, queued=False):
+        """Reuse one lifetime-safe thread label across calls and metric points."""
+        ident = threading.get_ident()
+        # current_thread() can manufacture DummyThreads during teardown.
+        current = getattr(threading, "_active", {}).get(ident)
+        thread = getattr(self.local, "identity", None)
+        if thread is None:
+            thread = f"{ident}:{uuid.uuid4().hex[:12]}"
+            self.local.identity = thread
+            self.recorder._emitter.identity = thread
+        if thread not in self.threads:
+            name = getattr(current, "name", f"thread-{ident}")
+            self.threads[thread] = name
+            writer = (
+                self.recorder.enqueue
+                if queued or self.recorder._async_frames
+                else self.recorder.emit
+            )
+            writer(
+                "thread_start",
+                {"name": name, "native_id": threading.get_native_id()},
+                thread=thread,
+            )
+        return thread
+
     def _event(self, kind, code):
         if (
             getattr(self.local, "busy", False)
@@ -1014,28 +1183,7 @@ class PythonCapture:
             flush_thread = getattr(self.recorder, "_flush_thread", None)
             if flush_thread is not None and ident == flush_thread.ident:
                 return
-            # current_thread() manufactures persistent DummyThreads while
-            # CPython tears a thread down. Monitoring must not mutate that
-            # registry merely to label a callback.
-            current = getattr(threading, "_active", {}).get(ident)
-            thread = getattr(self.local, "identity", None)
-            if thread is None:
-                thread = f"{ident}:{uuid.uuid4().hex[:12]}"
-                self.local.identity = thread
-                self.recorder._emitter.identity = thread
-            if thread not in self.threads:
-                name = getattr(current, "name", f"thread-{ident}")
-                self.threads[thread] = name
-                writer = (
-                    self.recorder.enqueue
-                    if self.recorder._async_frames
-                    else self.recorder.emit
-                )
-                writer(
-                    "thread_start",
-                    {"name": name, "native_id": threading.get_native_id()},
-                    thread=thread,
-                )
+            thread = self._thread_identity()
             writer = (
                 self.recorder.enqueue
                 if self.recorder._async_frames
@@ -1135,10 +1283,34 @@ class PythonCapture:
             self.profile = profile
             threading.setprofile(profile)
             sys.setprofile(profile)
+        with _internal_callbacks():
+            try:
+                from .metrics_overlay import register
+
+                if not register(self):
+                    self.recorder.coverage["scientific_metrics"] = {
+                        "status": "unavailable",
+                        "reason": "Scientific overlay registration budget reached",
+                    }
+            except Exception:  # noqa: BLE001 - optional hook cannot invalidate scientific execution
+                # Optional metric integration cannot invalidate Python capture.
+                self.recorder.coverage["scientific_metrics"] = {
+                    "status": "unavailable",
+                    "reason": "Scientific overlay hook could not be registered",
+                }
         return self
 
     def stop(self):
         self._stopped = True
+        overlay = sys.modules.get(__package__ + ".metrics_overlay")
+        if overlay is not None:
+            try:
+                overlay.unregister(self)
+            except Exception:  # noqa: BLE001 - teardown must still free the tracing tool
+                self.recorder.coverage["scientific_metrics"] = {
+                    "status": "stopped",
+                    "reason": "Overlay cleanup failed; stopped/closed ownership is independently checked",
+                }
         if self.tool_id is not None:
             monitoring = sys.monitoring
             monitoring.set_events(self.tool_id, 0)

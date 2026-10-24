@@ -233,6 +233,7 @@ COMMANDS = (
     Command('terminaltest', 'Test terminal keys, mouse, and glyphs', owner='session_tools'),
     Command('timeline', 'Browse observed job and application events', arguments=('events', 'seek'), owner='analysis_ui'),
     Command('trace', 'Inspect or capture stacks for the selected execution attempt', owner='trace_ui'),
+    Command('traces', 'Open the live and retained run trace workspace', owner='trace_ui'),
     Command('viewpicker', 'Choose a saved table view', owner='table_tools'),
     Command('where', 'Set structured table filters', owner='table_tools'),
     Command('workbench', 'Open a task workspace or pinned tools', arguments=('run', 'investigate', 'compare', 'results', 'connect', 'pinned', 'all'), example='workbench investigate', owner='ops_ui'),

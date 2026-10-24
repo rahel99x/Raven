@@ -59,9 +59,15 @@ def arguments(draft):
         argv.extend(
             "--sbatch=--" + key + "=" + str(value) for key, value in defaults.items()
         )
-    for field, flag in (("gpu", "gpu"), ("cpu_memory", "cpu-memory")):
+    for field, flag in (
+        ("gpu", "gpu"),
+        ("cpu_memory", "cpu-memory"),
+        ("trace", "trace"),
+    ):
         if draft.get(field) is not None:
             argv.append("--" + ("" if draft[field] else "no-") + flag)
+    if draft.get("trace_profile"):
+        argv.extend(("--trace-profile", draft["trace_profile"]))
     if draft.get("basic_research"):
         argv.extend(("--research", "experiment", "evidence"))
     if draft.get("arguments", ""):

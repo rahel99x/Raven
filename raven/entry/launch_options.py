@@ -83,6 +83,11 @@ def parser():
             help="Explicitly disable " + name + " recording",
         )
     ap.add_argument(
+        "--trace-profile",
+        choices=("project", "topology", "pilot"),
+        help="Enable a bounded recording preset; explicit trace options override it. Pilot uses 4 MiB/process, 32 MiB/run and 16 processes.",
+    )
+    ap.add_argument(
         "--trace-adapter",
         choices=(
             "python-monitoring",
