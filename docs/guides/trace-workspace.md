@@ -33,6 +33,10 @@ A complete example is available from the repository:
 bash examples/trace-lab/run.sh --slurm --cpu-placement
 ```
 
+The [trace topology examples](../../examples/trace-topology/README.md) provide
+separate single/multi thread, core, node and GPU programs with matched launch
+resources, two-minute pacing and exact-receipt viewing instructions.
+
 For a workstation without Slurm, use `--local`. The helper prints an exact launch receipt. Open it with the existing `examples/trace-lab/view.sh` workflow, bind the printed project/run, and select that job in Jobs, Recents or History. Do not choose a recording solely because it has the same numeric job ID.
 
 ## Open the workspace

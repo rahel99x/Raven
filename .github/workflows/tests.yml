@@ -73,6 +73,13 @@ jobs:
                                "scripts/qualify_trace_workspace.py", "examples/trace-lab/activity_window_lab.py",
                                "examples/trace-lab/triggered_incident_lab.py", "docs/guides/trace-workspace.md"):
                   assert (source / relative).is_file(), "Missing trace workspace distribution member: " + relative
+              topology = source / "examples/trace-topology"
+              for name in ("single_thread", "multi_thread", "single_core", "multi_core",
+                           "single_node", "multi_node", "single_gpu", "multi_gpu"):
+                  assert (topology / (name + ".py")).is_file(), "Missing topology program: " + name
+              for name in ("common.py", "cpu_workload.py", "node_workload.py", "gpu_workload.py",
+                           "launch.py", "view.py", "profile_runner.py", "job.sh", "run.sh", "view.sh", "README.md"):
+                  assert (topology / name).is_file(), "Missing topology support: " + name
               subprocess.run([sys.executable, "-c",
                   "import pathlib,raven; assert pathlib.Path(raven.__file__).resolve().is_relative_to(pathlib.Path.cwd())"],
                   cwd=source, check=True)
@@ -80,7 +87,10 @@ jobs:
                   "tests/test_slurm_json.py", "tests/test_slurm_qualification.py",
                   "tests/test_completed_series_identity.py", "tests/test_trace_lab_example.py",
                   "tests/test_trace_lab_accelerators.py", "tests/test_forecast_scenarios.py",
-                  "tests/test_slurm_simulator.py", "tests/test_review_environment.py"], cwd=source, check=True)
+                  "tests/test_slurm_simulator.py", "tests/test_review_environment.py",
+                  "tests/test_trace_topology_cpu.py", "tests/test_trace_topology_mpi.py",
+                  "tests/test_trace_topology_gpu.py", "tests/test_trace_topology_launcher.py",
+                  "tests/test_trace_topology_profile.py", "tests/test_trace_topology_view.py"], cwd=source, check=True)
               subprocess.run([sys.executable, str(source / "scripts/qualify_trace_workspace.py"),
                   "--output", "/tmp/raven-trace-sdist.json"], cwd=source, check=True)
           PY

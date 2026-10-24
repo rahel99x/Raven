@@ -216,8 +216,12 @@ def trace_sources(run, receipt):
         status = safe_text(entry.get("status", "unknown"))
         document = read_json(manifest)
         identity = document.get("identity", {})
-        expected = {"attempt": receipt["run_id"], "run_id": receipt["run_id"], "pid": process["pid"],
+        expected = {"attempt": receipt["run_id"], "pid": process["pid"],
                     "stream": safe_text(entry.get("stream")), "job_id": str(receipt.get("job_id", "local"))}
+        # Imported activity windows omit the redundant run_id == attempt alias.
+        # A supplied different run ID is still a conflicting run identity.
+        if isinstance(identity, dict) and identity.get("run_id", receipt["run_id"]) != receipt["run_id"]:
+            raise ValueError("Trace manifest names another run attempt")
         if document.get("schema") != "raven.trace/v1" or not isinstance(identity, dict) or any(identity.get(key) != value for key, value in expected.items()):
             raise ValueError("Trace manifest identity differs from the exact receipt and process index")
         rank = process.get("rank")

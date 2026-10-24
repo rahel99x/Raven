@@ -590,5 +590,59 @@ result without creating a circular documentation-only commit after every run.
 Q04/Q05 and the external matrix retain the actual hardware/site blockers.
 The corrected runtime was rebuilt and reinstalled before the final CI rerun. All source/wheel HTTP, terminal, import and actual Heavy cleanup probes, extracted-SDist regression, flagship, terminal engine, experimental extraction and release inventory passed again. The raw candidate driver retains an orchestration filename typo at its inventory step; the separately recorded corrected `release_inventory.py` create/verify/policy commands all passed. This is not counted as a product failure or hidden as a successful driver run.
 
-Main has not been merged. The PR remains a review artifact stacked on the
-independently verified Heavy-startup fix until that dependency is reconciled.
+At the initial review delivery, main was unchanged and the draft was stacked on
+the independently verified Heavy-startup fix. The subsequent explicit user
+instruction authorizes merging that dependency and this implementation into
+main after the expanded example checks pass. Final merge/check state is recorded
+on PR #7; earlier historical approvals are not used as authorization.
+
+
+## Topology example extension and merge qualification
+
+The subsequent merge request adds eight separate runnable programs in
+`examples/trace-topology`: single/multi thread, CPU core, node and GPU. Shared
+numerics preserve a checked periodic diffusion result; distinct entry points
+and matched launch reservations keep the demonstrated topology explicit.
+Default pacing is 120 seconds, with a bounded quick mode. This extension changes
+examples, their receipt helper, documentation and packaging checks; the tracing
+library's measured algorithms remain unchanged.
+
+- Actual local Raven launches qualified all four CPU variants: one main science
+  thread, overlapping worker threads, two threads pinned to one allowed logical
+  CPU, and two spawned workers pinned to distinct kernel-reported physical
+  cores. Each produced complete verified recordings, checked results and exact
+  receipt viewing. Evidence: `/workspace/raven-topology-cpu-qualification/qualification.json`.
+- Actual Open MPI 5.0.7 / mpi4py / Python 3.13.5 qualified two real ranks on one
+  host, matching serial results, root-only measurements, two complete rank
+  journals and 1,373 indexed intervals with rank filtering. Two local ranks are
+  rejected by the multi-node program. Evidence:
+  `/workspace/trace-topology-mpi-qualification/qualification.json`.
+- The frozen-job activity wrapper was exercised with actual Torch 2.6.0+cpu.
+  Two activity windows and the Python source were discovered in one exact
+  attempt and indexed as 1,135 intervals. Windows register in the project index,
+  so `view.sh --browser` / `--workspace` follows late imports. Evidence:
+  `/workspace/raven-topology-activity-project-qualification/qualification.json`.
+- GPU programs enqueue all devices' work from one host thread before numerical
+  readbacks, keeping launch operators visible to the framework profiler. They
+  require actual accessible CUDA/ROCm devices and preserve device/partition
+  identity; no CPU fallback or measured overlap claim is used. CPU tensor math
+  independently matched the closed-form stencil within 6.66e-16. Physical GPU
+  and multi-node execution remain unqualified on this host.
+- Focused tests cover numerical equivalence, affinities/SMT boundaries, MPI
+  collective failure, literal arguments, resource reservations, exclusive
+  artifacts, frozen ownership, scientific exceptions and exact receipt views.
+  Maintainer review found and corrected `single_core --workers 1` being accepted
+  before its guaranteed application-side rejection; invalid counts now fail
+  before project creation or submission.
+- Source distributions explicitly include every entry point and shared helper.
+  The extracted-SDist CI runs their tests as well as the established trace lab
+  regressions. The original trace-lab viewer accepts an omitted redundant
+  `run_id == attempt` alias while retaining strict conflicting attempt/run/PID/
+  stream/configuration rejection, including malformed identity objects.
+
+For launch commands, billing-account examples, dependency requirements, live
+browser/history viewing and qualification boundaries, see the
+[topology example guide](../../examples/trace-topology/README.md). Final full
+regression, packaging and supported-Python checks are attached to the current
+PR HEAD before merge; source fixtures are not presented as physical hardware
+qualification.

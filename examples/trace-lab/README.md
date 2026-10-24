@@ -1,5 +1,9 @@
 # Trace lab: CPU, MPI, and CUDA experiments
 
+For separate single/multi thread, core, node and GPU programs, see the
+[trace topology examples](../trace-topology/README.md). They share the same
+receipt-based launch/view workflow and include optional GPU activity windows.
+
 Run a small scientific workload and inspect its Python execution in Raven.
 Choose the standard CPU example, an MPI experiment, or a CUDA workload. Each
 retains an exact launch receipt, Python trace streams, scientific measurements,

@@ -471,7 +471,7 @@ def test_view_helper_refuses_changed_identity_or_connection_before_opening(tmp_p
     assert capture.read_bytes() == before
 
 
-@pytest.mark.parametrize("field", ["index_run_id", "attempt", "run_id", "stream", "pid", "job_id"])
+@pytest.mark.parametrize("field", ["index_run_id", "attempt", "run_id", "stream", "pid", "job_id", "identity_object"])
 def test_view_helper_requires_matching_attempt_process_and_stream_evidence(tmp_path, field):
     environment, capture, receipt = _fake_receipt(tmp_path)
     run = Path(json.loads(receipt.read_text())["run_dir"])
@@ -483,7 +483,10 @@ def test_view_helper_requires_matching_attempt_process_and_stream_evidence(tmp_p
     else:
         path = run / index["sources"][0]["path"]
         manifest = json.loads(path.read_text())
-        manifest["identity"][field] = 999 if field == "pid" else "different-identity"
+        if field == "identity_object":
+            manifest["identity"] = []
+        else:
+            manifest["identity"][field] = 999 if field == "pid" else "different-identity"
         path.write_text(json.dumps(manifest))
     before = capture.read_bytes()
     result = _run(["bash", str(EXAMPLE / "view.sh"), str(receipt), "--inspect"],
@@ -491,6 +494,21 @@ def test_view_helper_requires_matching_attempt_process_and_stream_evidence(tmp_p
     assert result.returncode == 2, (result.stdout, result.stderr)
     assert "another run attempt" in result.stderr or "identity differs" in result.stderr
     assert capture.read_bytes() == before
+
+
+def test_view_helper_accepts_same_attempt_activity_without_redundant_run_alias(tmp_path):
+    environment, capture, receipt = _fake_receipt(tmp_path)
+    run = Path(json.loads(receipt.read_text())["run_dir"])
+    index = json.loads((run / "trace/index.json").read_text())
+    path = run / index["sources"][0]["path"]
+    document = json.loads(path.read_text())
+    del document["identity"]["run_id"]
+    path.write_text(json.dumps(document))
+    result = _run(["bash", str(EXAMPLE / "view.sh"), str(receipt), "--no-open"],
+                  cwd=tmp_path, environment=environment)
+    assert result.returncode == 0, result.stderr
+    assert ":run select " + run.name in result.stdout
+    assert len(capture.read_text().splitlines()) == 1
 
 
 @pytest.mark.parametrize("kind", ["oversized", "fifo", "non_object"])

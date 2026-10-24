@@ -275,6 +275,12 @@ GPU. Select them with `--variant mpi` or `--variant cuda`; CUDA traces cover
 Python host calls. Add `--history` to the viewer after completion, or use
 `run.sh --local` and the retained CLI inspector without Slurm.
 
+For separate **single/multi thread, CPU core, node and GPU** programs, use the
+[trace topology examples](examples/trace-topology/README.md). Their launcher
+matches each workload's resources, checks actual placement and prints the exact
+receipt for live or completed viewing. GPU examples optionally record framework
+activities for device timelines; physical-device availability remains explicit.
+
 Use the [reporting V2 guide](docs/PROJECT_REPORTING_V2.md) to connect an
 existing application using a portable Bash launcher. It covers Linux, CARC,
 UCI HPC3, student and lab allocations, exact file formats, and every Research
