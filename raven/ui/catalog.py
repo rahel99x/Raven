@@ -13,6 +13,7 @@ TABS = [
     ("log", "Log"),
     ("sources", "Sources"),
     ("research", "Research"),
+    ("traces", "Traces"),
 ]
 
 ANALYTICS_VIEWS = [
@@ -34,6 +35,7 @@ SORTS = {
     "sources": ["name"],
     "group": ["user", "state", "name", "id", "time", "priority"],
     "deps": ["name"],
+    "traces": ["name"],
 }
 
 RESEARCH_VIEWS = (

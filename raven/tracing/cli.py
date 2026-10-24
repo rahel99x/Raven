@@ -20,6 +20,10 @@ def main(argv=None):
     if blocked is not None:
         print(json.dumps(blocked, indent=2))
         return 3
+    if argv[:1] and argv[0] in {"workspace", "import-activity", "profile", "sample"}:
+        from .workspace_cli import main as workspace_main
+
+        return workspace_main(argv)
     if argv[:1] == ["cleanup-runtime"]:
         from ..runtime_cleanup import main as cleanup_main
 
@@ -46,6 +50,22 @@ def main(argv=None):
         epilog="Use raven trace capabilities [--json] to inspect supported capture features and platform limits.",
     )
     sub = parser.add_subparsers(dest="action", required=True)
+    sub.add_parser(
+        "workspace",
+        help="Explore an indexed whole retained run or open its private live browser",
+    )
+    sub.add_parser(
+        "import-activity",
+        help="Import bounded device/CPU activities from Chrome/Perfetto JSON",
+    )
+    sub.add_parser(
+        "profile",
+        help="Explicit optional profiling in the application Python environment",
+    )
+    sub.add_parser(
+        "sample",
+        help="Sample stacks of a newly owned program on supported perf systems",
+    )
     launch = sub.add_parser(
         "run", help="Record Python execution in a new process-owned journal"
     )

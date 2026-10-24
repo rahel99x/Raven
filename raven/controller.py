@@ -263,13 +263,13 @@ class App:
             jid = (self.detail_id if detail_mode else
                    (self.log_job or self.selected_id) if self.tab == "log" else
                    (self.research_job_id or self.selected_id) if self.tab == "research" else
-                   self.selected_id if self.tab in ("jobs", "history") else None)
+                   self.selected_id if self.tab in ("jobs", "history", "traces") else None)
             self.sampler.select(jid)
             self.sampler.gpu_sampling = self.gpu
             self.sampler.marks = set(self.marks)
             fin_target = self.detail_id if detail_mode else (
-                self.selected_id if self.tab in ("jobs", "history") and self.mode == "main"
-                and getattr(self, "job_panel_state", {}).get("mode") != "off" else None)
+                self.selected_id if self.tab in ("jobs", "history", "traces") and self.mode == "main"
+                and (self.tab == "traces" or getattr(self, "job_panel_state", {}).get("mode") != "off") else None)
             self.sampler.select_fin(fin_target if fin_target and not self.store.job(fin_target) else None)
             panel = getattr(self, "job_panel_state", {})
             inline_trace = (self.tab in ("jobs", "history") and self.mode == "main" and panel.get("mode") == "analytics"

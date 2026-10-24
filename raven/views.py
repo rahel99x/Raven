@@ -550,6 +550,11 @@ class Views:
             x += vlen(label) + 1
         return L.clip_row(tabs, width), hits
 
+    def trace_workspace_tab(self, snap, app, width, height):
+        from .tracing.ui import render_global
+
+        return render_global(self, snap, app, width, height)
+
     def page_metrics(self, snap: dict, app, width: int) -> Row:
         """The top ribbon answers the most useful questions for the current page, without extra rows."""
         jobs, finished = snap["jobs"], snap.get("finished", [])
@@ -2908,7 +2913,8 @@ class Views:
                   "log": lambda: self.log_tab(snap, app, panel_width, panel_height), "sources": lambda: self.sources_tab(snap, app, panel_width, panel_height),
                   "analytics": lambda: self.analytics_tab(snap, app, panel_width, panel_height), "group": lambda: self.group_tab(snap, app, panel_width, panel_height),
                   "deps": lambda: self.deps_tab(snap, app, panel_width, panel_height),
-                  "research": lambda: self.research_tab(snap, app, panel_width, panel_height)}.get(app.tab)
+                  "research": lambda: self.research_tab(snap, app, panel_width, panel_height),
+                  "traces": lambda: self.trace_workspace_tab(snap, app, panel_width, panel_height)}.get(app.tab)
             return (self.plugin_tab(snap, app, panel_width, panel_height), []) if fn is None else fn()
         from .workspace_layout import render_body
         from .history_browser import wrap_render

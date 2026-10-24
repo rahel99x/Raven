@@ -69,7 +69,7 @@ def visible_tabs(app):
     selected.add(getattr(app, "tab", "jobs"))
     # Plugin tabs remain discoverable without requiring a previously saved pin.
     selected.update(key for key, _ in TABS if key not in
-                    ("jobs", "history", "analytics", "research", "log", "cluster", "nodes", "group", "deps", "sources"))
+                    ("jobs", "history", "analytics", "research", "log", "cluster", "nodes", "group", "deps", "sources", "traces"))
     names = dict(TABS)
     order = list(dict.fromkeys(PRIMARY_TABS + tuple(key for key, _ in TABS if key in selected)))
     return [(key, names[key]) for key in order if key in names]
