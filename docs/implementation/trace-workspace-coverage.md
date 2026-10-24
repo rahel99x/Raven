@@ -8,7 +8,7 @@ This ledger reconciles the accepted twelve-section [design contract](trace-works
 - Base: `8b317a085ed95cf041df318ac45370a7479a84b4`, retaining the independently verified Heavy-startup fix. The original checkout and other tasks' worktrees were preserved.
 - Planning audit: fetched `origin/main` at `2bfe5795290575de0e1c4390f2166e89897902f6`; the audited `288a680` checkout had an identical tracked tree. Implementation uses current source, rather than assuming the planning snapshot contains subsequent changes.
 - Existing baseline: 77 timeline/workflow/browser/CPU-timeline tests passed in 2.46 seconds before implementation. This is regression evidence, not qualification of new features.
-- Frozen delivered runtime: `824a83423f7e1069c61b698764fb3e808e6b1284`. The remaining changes are documentation only. The preceding `3b8558d` runtime passed the full local suite; the final ASCII heading and qualification-runner corrections received the additional focused and installed checks below. Final PR CI checks cover the integrated documentation commit.
+- Frozen delivered runtime after hosted-CI corrections: `b8754733665a39bf34c4de00ec5c9063e3161031`. The final evidence commit changes documentation only. Earlier full-suite, performance and package measurements retain their exact revisions below; they are not silently relabeled. The final PR checks cover the complete integrated HEAD.
 - Frozen-runtime full regression: **20,066 passed, 24 skipped, 4 warnings in 413.70 seconds**, `python -m pytest -q -n 2`, log `/workspace/trace-workspace-full-final.log`. Packaging, installed commands, controlled measurements and hosted CI are recorded separately below.
 - Review dependency: [Heavy startup PR #6](https://github.com/rahel99x/Raven/pull/6). The trace draft is stacked on that fix; merging it into main is not part of this implementation authorization. [Branch CI runs](https://github.com/rahel99x/Raven/actions?query=branch%3Acodex%2Ftrace-workspace) identify the exact delivered HEAD.
 - Raw logs/JSON remain outside `docs/implementation`, which intentionally contains Markdown only. Final reports should retain their artifacts and checksums with the reviewed revision.
@@ -49,6 +49,7 @@ References in the tables identify these concrete source/test owners. Test presen
 | E17 | Existing `capture.py` ordering/teardown corrections; `test_trace_workspace_capture_order.py`. Real CPU observer interleaving, detached batches/direct spans, no encoding/fsync under the callback queue lock, original timestamps preserved, bounded writer failure containment and a final real Slurm two-thread workload. |
 | E18 | Baseline `evidence_index.py` cancellation publication guard; `test_evidence_index.py` / `test_mcp_evidence.py`. Cancellation is rechecked after child communication and reply decoding, with actual active-VM barrier, nonempty original child result and reaped-child assertions. The race was reproduced on base `8b317a0`, not excused as a flaky test. |
 | E19 | Session `_functions_many`; `test_trace_workspace_function_batch.py`. All clock-domain function tables share aggregate 1-second SQL work and 8 MiB encoded-row budgets; cancellation, actual retained-byte counts, truncation and queried/unqueried ranges remain explicit. |
+| E20 | `activity_trigger.py`, `workspace_browser.py`; deterministic close/receipt publication barriers, final storage/error states, strict empty/nonempty query compatibility and exact stdlib file/line/code-name boundaries. Hosted failures were reproduced, preserved and corrected; activity/import/trigger packages pass on every supported Python interpreter. |
 | E12 | README links, `docs/guides/trace-workspace.md`, `stack-tracing.md`, `trace-capabilities.md`, `examples/trace-lab/README.md`, `activity_window_lab.py`, `triggered_incident_lab.py`; exact commands, formats, headless workflow, qualification limits and runnable examples. |
 
 Focused results already recorded:
@@ -74,7 +75,7 @@ Focused results already recorded:
 
 | ID | Requirement and acceptance disposition | Evidence | Status |
 |---|---|---|---|
-| S01 | Source/instructions/pending fixes were reconciled on an isolated branch and the independently verified Heavy fix retained. Runtime is frozen at 824a83423f7e1069c61b698764fb3e808e6b1284; integrated release and PR evidence is recorded under Q06/Q08. | Source boundary above; E3; final review below | Implemented; release evidence below |
+| S01 | Source/instructions/pending fixes were reconciled on an isolated branch and the independently verified Heavy fix retained. Runtime is frozen at b8754733665a39bf34c4de00ec5c9063e3161031; integrated release and PR evidence is recorded under Q06/Q08. | Source boundary above; E3; final review below | Implemented; release evidence below |
 | S02 | Reuse authoritative v1 journals/hash-chain verification, bounded readers, existing timeline/export/summary paths and application background/cancellation brokers. No second unverified event reader. | E0, E1, E3; legacy assertions retained | Reused / focused |
 | S03 | Exact cluster/job-attempt/run/node/boot/process-start/stream scope is preserved. Validated Slurm restart count creates distinct reporting attempts; contradictory supplied submit/start anchors veto run-alias association. Redundant run_id==attempt normalization changes only the common cohort key, never raw identities or explicit expected constraints. Distinct run IDs and unrequested cached peers cannot join silently. | E1/E2 identity; E6 reports; E16 actual start/restart and workspace cohort cases; 43 focused review checks | Implemented / focused |
 | S04 | Physical thread reuse has existing per-thread UUIDs and explicit index lifetime/reset handling; fork children cannot append to parent streams. Declared logical-task identity/generation has separate model lanes and pre-limit filters. Automatic asyncio task lifecycle/causal capture is not implemented or advertised; missing legacy metadata stays unknown. | E0 thread/fork tests; E1 explicit generation/boundary/facet tests; E2 logical-task/process reuse | Implemented declared metadata; automatic async adapter not implied |
@@ -167,10 +168,10 @@ Focused results already recorded:
 | Q01 | Process-isolated equivalent-fixture benchmark separates CPU/wall/I/O/RSS from Python allocations and refuses false legacy whole-run comparisons. Controlled integrated runs and regressions are recorded below. Application slowdown/event rate/storage/scheduler/device qualification require separate measured fixtures. | E11 and interpretation below | Measured locally; external limits explicit |
 | Q02 | Actual local browser p95 input/selection and committed-to-visible goals measured on the documented small healthy fixture; terminal/large/remote/GPU UX are not inferred. | E11 actual Chromium; numbers below | Local targets met on the frozen runtime fixture |
 | Q03 | Actual local CPU framework report → integrity journal → index/projection exercised independently from generated fixtures; original Python recorder has existing real-interpreter tests. | Actual CPU evidence below; E0/E6/E7 | CPU framework path qualified for recorded versions only |
-| Q04 | Actual disposable one-node Slurm 26.05.5 / Python 3.11.2 qualification passed 16/16 recorded checks on the runtime fingerprint below. It covers lab billing vs login, two-thread live/completed tracing, CPU points, selection continuity and owned Heavy placement startup. Multi-node/MPI, production SSH/site policy, cgroup enforcement and full Heavy readiness/analysis remain unqualified. | r10 manifest/execution context below; E17 deterministic ordering regressions | Single-node recorded checks qualified; remaining external gates explicit |
+| Q04 | Actual disposable one-node Slurm 26.05.5 / Python 3.11.2 qualification passed 16/16 recorded checks on the runtime fingerprint below. It covers lab billing vs login, two-thread live/completed tracing, CPU points, selection continuity and owned Heavy placement startup. Multi-node/MPI, production SSH/site policy, cgroup enforcement and full Heavy readiness/analysis remain unqualified. | r11 manifest/execution context below; E17 deterministic ordering regressions | Single-node recorded checks qualified; remaining external gates explicit |
 | Q05 | Actual NVIDIA/AMD/Intel/Apple device capture/counters need physical device/tool/version and permitted representative workload. Import fixtures and CPU Torch do not qualify these. | E6 software fixtures; external matrix | Blocked qualification: physical devices, producers and permissions |
 | Q06 | Required full regression, quality/architecture, schema, packaging, installed commands, compatibility and CI must cover final integrated revision; current focused tests cannot substitute. | Final gate section below | Local gates passed; final hosted checks tracked on PR |
-| Q07 | Every identified software integration/review finding is resolved in the frozen runtime: filter/range/baseline/stale effects, helper-only metrics, resource admission, cohorts/follow/completion, original timestamp ordering, requeue association and baseline SQL cancellation publication. Behavioral assertions are preserved with complete fixture context. Final full-suite/diff/release binding is Q06. | E3/E13/E15–E19; real Slurm; final skeptical review below | Software review closed; local gates passed; hosted checks under Q06 |
+| Q07 | Every identified software integration/review finding is resolved in the frozen runtime: filter/range/baseline/stale effects, helper-only metrics, resource admission, cohorts/follow/completion, original timestamp ordering, requeue association, baseline SQL cancellation publication, durable triggered completion and Python 3.10 query/fidelity compatibility. Behavioral assertions are preserved with complete fixture context. Final full-suite/diff/release binding is Q06. | E3/E13/E15–E20; real Slurm; final skeptical review below | Software review closed; local gates passed; hosted checks under Q06 |
 | Q08 | Reviewed-branch installation below uses the existing no-sudo/no-pipx installer and a separate clean checkout to preserve local edits/config/state. Final PR/publication is tracked by Q06; installed-package evidence is recorded below. Historical main approvals do not authorize merging this implementation. | E12; installation guidance below; integration lead | Guidance and local package gates passed; publication tracked by PR |
 
 ## Accepted-contract traceability and milestone sequence
@@ -262,18 +263,18 @@ checks; controlled instrumentation measurements below retain equal event fidelit
 
 Evidence:
 
-- `/workspace/trace-workspace-slurm-qualification-r10/run-artifacts/results/manifest.json`:
+- `/workspace/trace-workspace-slurm-qualification-r11/run-artifacts/results/manifest.json`:
   status `passed-for-recorded-checks`; actual commands, stdout/stderr hashes,
   live/completed query artifacts and copied runtime source hashes.
 - Runtime aggregate SHA-256:
-  `56aa47d1c8ad754b137fdaad37ab60d9d9e93ca50e60890960f9c5e1d0bcf365`.
+  `56a0ac7206885c4ffe34c79c70c727708d6a04f4b85cf2f9d59ad1fa2c507aac`.
 - Qualified `capture.py` SHA-256:
   `740ac3faefe6383093d6d38c94a92bd628deb6bef7228d694adf3a9a82d98c2f`.
-- `/workspace/trace-workspace-slurm-qualification-r10/execution-context.json`:
+- `/workspace/trace-workspace-slurm-qualification-r11/execution-context.json`:
   the copied runtime matches frozen commit
-  `824a83423f7e1069c61b698764fb3e808e6b1284` by its recorded per-file hashes.
-  Documentation-only working-tree edits are outside that runtime qualification. Package checks ran concurrently: **14.538 seconds**
-  qualification elapsed and **8.035 seconds** scientific elapsed (two threads,
+  `b8754733665a39bf34c4de00ec5c9063e3161031` by its recorded per-file hashes.
+  Documentation-only working-tree edits are outside that runtime qualification. Package checks ran concurrently: **14.494 seconds**
+  qualification elapsed and **8.033 seconds** scientific elapsed (two threads,
   100 iterations each) are correctness timings, not controlled benchmarks.
 
 This qualifies the recorded one-node path on that exact runtime commit/fingerprint,
@@ -308,7 +309,7 @@ This fixture met the initial local p95 targets of 100 ms input and 2 seconds fre
 | AMD activities/counters | Shared JSON importer and optional Torch HIP collector; no dedicated decoder | Physical AMD capture unqualified | Physical device, supported ROCm profiler/runtime/export and permitted pilot |
 | Intel GPU activities/counters | Shared standard JSON only; no Level Zero binary decoder/native device-stack collector | Physical Intel capture unqualified | Supported actual producer/schema, device, permissions; implement a dedicated adapter if nonstandard export is required |
 | Apple CPU/GPU platform capture | Portable imported viewing; no Instruments binary decoder, no automatic Metal/device-stack collector | Apple host/tool capture unqualified | Supported host, real export/schema and permissions; implement missing native adapter before claiming it |
-| Real Slurm/MPI federation | One-node real Slurm r10 passed recorded checks; exact-attempt clocks/topology and selected-MPI links have software coverage | One-node 26.05.5/Python 3.11.2 qualified only for recorded checks; no live multi-node/MPI/production-site qualification | At least two actual nodes, site account/credentials, permitted MPI launch/transport/shared storage and propagated runtime; cgroup/Heavy readiness need independent enforcement/analysis checks |
+| Real Slurm/MPI federation | One-node real Slurm r11 passed recorded checks; exact-attempt clocks/topology and selected-MPI links have software coverage | One-node 26.05.5/Python 3.11.2 qualified only for recorded checks; no live multi-node/MPI/production-site qualification | At least two actual nodes, site account/credentials, permitted MPI launch/transport/shared storage and propagated runtime; cgroup/Heavy readiness need independent enforcement/analysis checks |
 | Hardware instruction/device-stack tracing | No Intel PT/CoreSight/IBS/device-stack decoder implied by portable viewer | Unimplemented adapters, not merely missing hardware | Implement bounded decoder/capture adapter, then qualify actual tools, access, symbols and representative hardware |
 
 ## Design decisions and rejected simpler alternatives
@@ -333,7 +334,7 @@ This fixture met the initial local p95 targets of 100 ms input and 2 seconds fre
 ## Final skeptical review of the frozen runtime
 
 Runtime changes are committed at
-`824a83423f7e1069c61b698764fb3e808e6b1284`; the final evidence commit changes documentation only.
+`b8754733665a39bf34c4de00ec5c9063e3161031`; the final evidence commit changes documentation only.
 No accepted software requirement remains an unimplemented hidden helper or an
 unresolved **Software pending** row. Explicitly bounded alternatives and
 unimplemented optional hardware/vendor adapters remain stated in their rows;
@@ -370,6 +371,39 @@ The final source review closed these additional findings:
   forward/back cycle including the new Traces destination. Existing selected-ID
   assertions remain intact; source-association fixtures supply complete
   scheduler context rather than weakening the new contradictory-anchor veto.
+
+The first hosted matrix on `b4a1702` caught a genuine triggered-capture race
+that the earlier local pass did not reproduce: a public terminal receipt was
+visible before journal closure finished. A deterministic owned-close barrier
+reproduced it on the old code. The fix stages a bounded receipt snapshot,
+closes the journal, verifies its actual state, persists the receipt and only
+then updates the existing public dictionary. Existing aliases remain valid.
+A nonraising PARTIAL/LIMIT/ERROR state or a flush/receipt-write failure cannot
+report success. A second publication barrier checks both durability steps;
+scientific exceptions and descriptor cleanup remain intact. The original
+hosted assertion is unchanged. All **79 activity/import/trigger tests passed
+on Python 3.10, 3.11, 3.12, 3.13 and 3.14** (0.38–0.47 seconds per run).
+
+The same hosted run identified Python 3.10's different strict `parse_qs('')`
+behavior. Only absent/empty query fields bypass parsing now; nonempty malformed,
+duplicate, oversized and unauthorized requests retain their checks. Actual
+Python 3.10 browser/follow/qualification/guard paths passed **76 tests with two
+expected monitoring skips**; focused API/security/fidelity cases also passed
+on 3.11–3.14. Fidelity assertions now match exact stdlib file, first line and
+available code name for calls **and returns**; this accommodates 3.10's missing
+`co_qualname` while strengthening helper exclusion and preserving 2,000 call
+boundaries, stack balance, output and drop assertions. No authentication,
+origin, timestamp or fidelity assertion was relaxed to obtain a pass.
+
+These corrections do not change the indexed-query, instrumentation, framework
+capture or rendering algorithms measured at `824a834`. Those historical
+controlled measurements remain labeled with that revision; no claim about
+triggered-capture throughput or shutdown speed is inferred from them. The new
+completion path adds one bounded receipt snapshot per shutdown, rather than
+changing hot-path recording cadence. Fresh package/Slurm qualification and the
+final hosted matrix cover the corrected runtime. Failed hosted logs remain at
+`/workspace/trace-workspace-ci-py310-failure.log` through the corresponding
+`py314` files; they are not counted as successful release runs.
 
 The first full regression attempt recorded **20,051 passed, 3 failed, 24
 skipped in 426.12 seconds**. It remains a failed pre-final run, not a release
@@ -430,7 +464,7 @@ The legacy viewer cannot represent a whole source once its retained event window
 
 ### Controlled measurements on the delivered runtime
 
-All five commands ran **sequentially after tests, builds and owned Slurm
+At measurement revision `824a834`, all five commands ran **sequentially after tests, builds and owned Slurm
 containers stopped**, on Linux x86_64/glibc 2.41, Python 3.12.14, five visible
 logical CPUs (cgroup CPU quota four CPUs) and a 32 GiB memory limit. The scripts
 record source hashes, raw observations, units and environment limits. Three
@@ -526,20 +560,21 @@ preserved. They are not included as successful samples.
 | Gate | Command / evidence | Recorded result |
 |---|---|---|
 | Local full regression | `python -m pytest -q -n 2`; `/workspace/trace-workspace-full-final.log`, runtime `3b8558d` | 20,066 passed, 24 expected skips, four existing fork deprecation warnings; 413.70 seconds |
-| Final heading/runner follow-up | `pytest -q tests/test_trace_workspace_qualification.py tests/test_flagship_qualification.py tests/test_trace_workspace_integration.py`; `/workspace/trace-workspace-release-installed-regressions.log` | 42 passed, 1.54 seconds on final `824a834` |
+| Earlier heading/runner follow-up | `pytest -q tests/test_trace_workspace_qualification.py tests/test_flagship_qualification.py tests/test_trace_workspace_integration.py`; `/workspace/trace-workspace-release-installed-regressions.log` | 42 passed, 1.54 seconds on `824a834` |
 | Required actual browser | `RAVEN_REQUIRE_BROWSER=1 RAVEN_BROWSER_EXECUTABLE=/usr/bin/chromium python -m pytest -q tests/test_trace_workspace_browser.py tests/test_trace_workspace_analysis.py tests/test_trace_workspace_follow.py` | 84 passed, 29.99 seconds; no silent browser skips |
 | Python 3.11 compatibility | `/workspace/raven-compat/py3.11/bin/python -m pytest -q` with reader/cohort/identity/index/functions/follow/discovery/import/integration/guard/evidence packages | 185 passed, two expected monitoring skips; 19.26 seconds |
-| Quality and dependency contracts | `python scripts/check_quality.py`; `/workspace/trace-workspace-release-quality.log` | Passed; 676 modules, zero import cycles, seven contracts kept, Ruff, formatting and typed boundaries passed |
+| Quality and dependency contracts | `python scripts/check_quality.py`; `/workspace/trace-workspace-candidate-quality.log` | Passed; 676 modules, zero import cycles, seven contracts kept, Ruff, formatting and typed boundaries passed |
 | Generated documentation/schemas | `generate_operation_reference.py --check`, `generate_capability_reference.py --check`, `validate_operation_schemas.py` | All passed |
 | Offline onboarding | `python scripts/setup.py --mode demo --venv /workspace/trace-workspace-demo-venv --report /workspace/trace-workspace-demo.txt` | Passed; no live-cluster qualification implied |
-| Distribution build | `python -m build`; `/workspace/trace-workspace-gate-build-release.log` | Wheel and SDist built successfully |
-| Extracted source distribution | Existing workflow's eight-file regression set, member/fixture checks and source trace qualifier | 143 passed, seven expected skips; 9.64 seconds; new source modules/examples/guide present; historical implementation evidence excluded |
-| Installed package outside checkout | `/workspace/trace-workspace-package-gates-release.json`, `/workspace/trace-workspace-installed-release-qualification.json` | All 19 general command smokes, 12 trace helps, three retained CLI queries, activity import, global ASCII rendering, real readonly HTTP/index/terminal probes passed |
+| Distribution build | `python -m build`; `/workspace/trace-workspace-gate-build-candidate.log` | Wheel and SDist built successfully |
+| Extracted source distribution | Existing workflow's eight-file regression set, member/fixture checks and source trace qualifier | 143 passed, seven expected skips; 10.46 seconds; new source modules/examples/guide present; historical implementation evidence excluded |
+| Installed package outside checkout | `/workspace/trace-workspace-installed-candidate-qualification.json` and individual candidate gate logs | All 19 general command smokes, 12 trace helps, three retained CLI queries, activity import, global ASCII rendering, real readonly HTTP/index/terminal probes passed |
 | Heavy command semantics/cleanup | Actual `ravenh --site desktop trace workspace ...`, private receipt plus exact helper-lifetime check | Owned standalone worker completes and cleans up; no surviving claim/helper, `cleanup_uncertain=false`; zero scheduler attempts. Default Slurm Heavy admission remains unchanged |
 | Flagship/terminal/prototype | `qualify_flagship.py --wheel ...`, installed `raven terminal selftest --json`, `distribution_prototype.py` | All passed; extraction remains experimental |
-| Release inventory | `release_inventory.py create`, `verify`, `policy` on the built artifacts | All passed; no artifact-attestation claim |
-| Actual one-node Slurm | Final r10 receipt and source hashes above | 16/16 passed on exact `824a834` runtime; owned cleanup verified |
+| Release inventory | `release_inventory.py create`, `verify`, `policy`; `/workspace/trace-workspace-candidate-inventory-gates.json` | All passed on the rebuilt `b875473` artifacts; no artifact-attestation claim |
+| Actual one-node Slurm | Final r11 receipt and source hashes above | 16/16 passed on exact `b875473` runtime; owned cleanup verified |
 | Controlled performance | Five sequential commands above | All passed, exact fidelity/equivalence checks retained; gains and regressions disclosed |
+| Hosted compatibility follow-up | Actual Python 3.10–3.14 interpreters; E20 deterministic regressions and strict HTTP tests | 79 activity/import/trigger checks passed on each version; 3.10 full browser/follow/qualification/guard 76 passed, two expected skips; focused security/fidelity also passed on all versions |
 | Final hosted CI | Review PR checks for the delivered HEAD: Python 3.10–3.14, strict Chromium and actual Slurm workflow | Check the exact HEAD/run links in the PR; local results are not substituted for hosted CI |
 
 The qualification runner preserves stdout and stderr separately while enforcing
@@ -553,5 +588,7 @@ Q06's local software/release gates are complete. Hosted CI must cover the final
 PR HEAD, including documentation; its live check links provide the authoritative
 result without creating a circular documentation-only commit after every run.
 Q04/Q05 and the external matrix retain the actual hardware/site blockers.
+The corrected runtime was rebuilt and reinstalled before the final CI rerun. All source/wheel HTTP, terminal, import and actual Heavy cleanup probes, extracted-SDist regression, flagship, terminal engine, experimental extraction and release inventory passed again. The raw candidate driver retains an orchestration filename typo at its inventory step; the separately recorded corrected `release_inventory.py` create/verify/policy commands all passed. This is not counted as a product failure or hidden as a successful driver run.
+
 Main has not been merged. The PR remains a review artifact stacked on the
 independently verified Heavy-startup fix until that dependency is reconciled.
