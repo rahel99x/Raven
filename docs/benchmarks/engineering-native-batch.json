@@ -1,0 +1,95 @@
+{
+  "schema": "raven.native-batch-benchmark/v1",
+  "results": [
+    {
+      "scheduler": "openpbs",
+      "records": 1000,
+      "fixture_bytes": 320984,
+      "repeats": 5,
+      "json_decode_cpu_median_ms": 1.409943,
+      "normalize_cpu_median_ms": 98.755107,
+      "normalize_wall_median_ms": 98.751324,
+      "python_allocations": {
+        "retained_bytes": 5504,
+        "peak_bytes": 3687552
+      },
+      "scheduler_requests": 0
+    },
+    {
+      "scheduler": "pbspro",
+      "records": 1000,
+      "fixture_bytes": 320984,
+      "repeats": 5,
+      "json_decode_cpu_median_ms": 1.367921,
+      "normalize_cpu_median_ms": 97.762196,
+      "normalize_wall_median_ms": 98.000359,
+      "python_allocations": {
+        "retained_bytes": 5504,
+        "peak_bytes": 3687552
+      },
+      "scheduler_requests": 0
+    },
+    {
+      "scheduler": "htcondor",
+      "records": 1000,
+      "fixture_bytes": 272780,
+      "repeats": 5,
+      "json_decode_cpu_median_ms": 0.927864,
+      "normalize_cpu_median_ms": 87.075316,
+      "normalize_wall_median_ms": 87.07431,
+      "python_allocations": {
+        "retained_bytes": 18304,
+        "peak_bytes": 3039468
+      },
+      "scheduler_requests": 0
+    },
+    {
+      "scheduler": "lsf",
+      "records": 1000,
+      "fixture_bytes": 218937,
+      "repeats": 5,
+      "json_decode_cpu_median_ms": 0.664902,
+      "normalize_cpu_median_ms": 73.796801,
+      "normalize_wall_median_ms": 73.833704,
+      "python_allocations": {
+        "retained_bytes": 20328,
+        "peak_bytes": 2628750
+      },
+      "scheduler_requests": 0
+    },
+    {
+      "scheduler": "flux",
+      "records": 1000,
+      "fixture_bytes": 241903,
+      "repeats": 5,
+      "json_decode_cpu_median_ms": 1.129305,
+      "normalize_cpu_median_ms": 89.787175,
+      "normalize_wall_median_ms": 89.975124,
+      "python_allocations": {
+        "retained_bytes": 21368,
+        "peak_bytes": 3397571
+      },
+      "scheduler_requests": 0
+    }
+  ],
+  "source_sha256": {
+    "raven/schedulers/core.py": "705966508608178fcb0dd078edc400144996480340848fcc381cd647bcf0a42a",
+    "raven/schedulers/batch_common.py": "593c35f68831e2962d67b948d579edac35bacb90537f1b573f7cd0673dac42f6",
+    "raven/schedulers/pbs.py": "bb3d7faa1140af73cadb680f4a3a28efcd9dd6b63bf66d09122f0b734fbacf4a",
+    "raven/schedulers/lsf.py": "7833ad3c47563f6312c7e6d9936c7989e5b371b2b6b815f84cdd3da926e938d4",
+    "raven/schedulers/htcondor.py": "aa145c38da483bf5c08a316925bd9b26867d27c495f917b7a8fb86abd0847cb9",
+    "raven/schedulers/flux.py": "26f9307b28a5331b95204826e014426164f4879a82a97b9a7c2fe136652ce393"
+  },
+  "environment": {
+    "python": "3.13.16",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41"
+  },
+  "process_peak_rss_bytes": 37863424,
+  "limitations": [
+    "No equivalent native adapter existed before this change; no before/after gain is claimed.",
+    "JSON decode is a reference cost, not equivalent previous behavior.",
+    "Equivalent in-memory fixtures; timed regions contain no scheduler or disk I/O.",
+    "Python allocation tracing is a separate untimed pass; process peak RSS includes all adapters, fixtures, and imports.",
+    "Single shared cloud host; native fixture cost does not qualify live scheduler latency or production load."
+  ]
+}

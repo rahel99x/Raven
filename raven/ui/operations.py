@@ -781,7 +781,7 @@ def run_command(app, args):
 
             if args[2] not in ("all", "pinned") and task(args[2]) is None:
                 raise ValueError(
-                    "Choose workbench [run|investigate|compare|results|connect|pinned|all]."
+                    "Choose workbench [run|investigate|compare|results|connect|engineering|pinned|all]."
                 )
             _open(app)
             state.update(

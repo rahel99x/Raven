@@ -21,6 +21,7 @@ See [review and recovery rules](../guides/operations.md#review-background-work-a
 
 | Task | Command | Purpose |
 | --- | --- | --- |
+| Engineering | <code>:workbench engineering</code> | Connect native schedulers, follow experiments, qualify compute, and review the next action. |
 | Run | <code>:workbench run</code> | Prepare, inspect and control an exact execution attempt. |
 | Investigate | <code>:workbench investigate</code> | Follow a failure or delay to its supporting evidence. |
 | Compare | <code>:workbench compare</code> | Test a performance or scientific hypothesis with a bounded experiment. |
@@ -29,7 +30,7 @@ See [review and recovery rules](../guides/operations.md#review-background-work-a
 | Pinned | `:workbench pinned` | Show saved operation shortcuts with current selection context. |
 | All | `:workbench all` | Show the complete operation catalog. |
 
-## Operations (67)
+## Operations (79)
 
 Required fields are required by the form. A blank default means an empty input;
 the operation can require further values for a selected action. Choices are
@@ -244,6 +245,155 @@ Review a declared transfer manifest, verify every file, and retain resumable rec
 | --- | --- | --- | --- | --- |
 | <code>manifest</code> | Staging manifest JSON | Yes | (blank) | — |
 | <code>direction</code> | Transfer direction | No | <code>all</code> | <code>all</code>, <code>input</code>, <code>output</code> |
+
+### Reproducible execution package
+
+Command: <code>:ops engineering-capsules</code>. Group: Engineering.
+
+Capture a bounded script, code provenance and explicit input references.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>capture</code> | <code>capture</code>, <code>verify</code>, <code>compare</code>, <code>relaunch_draft</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+| <code>root</code> | Project root (current project by default) | No | (blank) | — |
+| <code>run_id</code> | Existing Raven run identity | No | (blank) | — |
+| <code>destination</code> | New package directory | No | (blank) | — |
+
+### Next diagnostic measurement
+
+Command: <code>:ops engineering-diagnosis</code>. Group: Engineering.
+
+Separate observed facts from hypotheses and propose a bounded next test.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>propose</code> | <code>propose</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+
+### Experiment lineage
+
+Command: <code>:ops engineering-experiments</code>. Group: Engineering.
+
+Link verified attempts and report total resource use, including failed attempts.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>create</code> | <code>create</code>, <code>connect</code>, <code>link</code>, <code>load</code>, <code>summarize</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+| <code>root</code> | Project root (current project by default) | No | (blank) | — |
+| <code>experiment_id</code> | Experiment identity | No | (blank) | — |
+| <code>run_id</code> | Existing Raven run (for link) | No | (blank) | — |
+| <code>title</code> | Experiment title (for create) | No | (blank) | — |
+
+### Incident evidence recorder
+
+Command: <code>:ops engineering-incidents</code>. Group: Engineering.
+
+Retain bounded scheduler, log, sample and trace evidence around a declared trigger.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>capture</code> | <code>capture</code>, <code>load</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+
+### Sites and lab workspace
+
+Command: <code>:ops engineering-labs</code>. Group: Engineering.
+
+Keep login, workload billing and Heavy resources distinct across sites.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>load</code> | <code>load</code>, <code>save</code>, <code>defaults</code>, <code>defaults_for_workspace</code>, <code>inventory_from_workspace</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+| <code>root</code> | Project root (current project by default) | No | (blank) | — |
+
+### Controlled resource trials
+
+Command: <code>:ops engineering-optimization</code>. Group: Engineering.
+
+Review finite repeated trials; compare measured runtime, queue time and resource use.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>prepare</code> | <code>prepare</code>, <code>analyze</code>, <code>apply</code>, <code>status</code>, <code>reconcile</code>, <code>review_cancel</code>, <code>cancel</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+| <code>root</code> | Project root (current project by default) | No | (blank) | — |
+| <code>experiment_id</code> | Experiment identity | No | (blank) | — |
+
+### Distributed performance evidence
+
+Command: <code>:ops engineering-performance</code>. Group: Engineering.
+
+Explain retained elapsed spans, measured waits, gaps and clock uncertainty.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>analyze</code> | <code>analyze</code>, <code>read_recordings</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+
+### Research output provenance
+
+Command: <code>:ops engineering-provenance</code>. Group: Engineering.
+
+Retain source data, units, calculations, filters and coverage with each result.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>build</code> | <code>build</code>, <code>write</code>, <code>load</code>, <code>compare</code>, <code>from_export</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+| <code>root</code> | Project root (current project by default) | No | (blank) | — |
+
+### Qualify a compute site
+
+Command: <code>:ops engineering-qualification</code>. Group: Engineering.
+
+Review a tiny native compute test and verify its attempt-bound results.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>prepare</code> | <code>prepare</code>, <code>load</code>, <code>collect</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+
+### Reviewed workflow recovery
+
+Command: <code>:ops engineering-recovery</code>. Group: Engineering.
+
+Verify failure evidence, checkpoint lineage and outputs before a reviewed retry.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>prepare</code> | <code>prepare</code>, <code>apply</code>, <code>status</code>, <code>workflow</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+| <code>root</code> | Project root (current project by default) | No | (blank) | — |
+
+### Reliability release budgets
+
+Command: <code>:ops engineering-reliability</code>. Group: Engineering.
+
+Compare observed latency, freshness, scheduler requests and memory with explicit budgets.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>action</code> | Task | No | <code>evaluate</code> | <code>evaluate</code> |
+| <code>request</code> | Arguments JSON (advanced; see engineering guide) | No | (blank) | — |
+
+### Native scheduler connection
+
+Command: <code>:ops native-scheduler</code>. Group: Engineering.
+
+Inspect native jobs and capabilities or review a submission/action on a supported scheduler.
+
+| Field | Label | Required | Default | Choices |
+| --- | --- | --- | --- | --- |
+| <code>scheduler</code> | Scheduler | No | <code>slurm</code> | <code>slurm</code>, <code>kubernetes</code>, <code>lsf</code>, <code>openpbs</code>, <code>pbspro</code>, <code>htcondor</code>, <code>flux</code> |
+| <code>action</code> | Task | No | <code>capabilities</code> | <code>capabilities</code>, <code>queue</code>, <code>history</code>, <code>detail</code>, <code>submit</code>, <code>cancel</code>, <code>hold</code>, <code>release</code> |
+| <code>scope</code> | Connection scope JSON (optional) | No | (blank) | — |
+| <code>host</code> | SSH host alias (optional; otherwise local) | No | (blank) | — |
+| <code>ssh_user</code> | SSH login (optional) | No | (blank) | — |
+| <code>identity</code> | Exact observed job identity JSON (for a job action) | No | (blank) | — |
+| <code>submission</code> | Native submission JSON (for submit) | No | (blank) | — |
 
 ### Run diagnostic campaign
 

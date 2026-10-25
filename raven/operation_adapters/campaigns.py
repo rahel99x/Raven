@@ -139,25 +139,7 @@ def _script(recipe, base):
     return plan, raw
 
 
-def _with_environment(script, values, guard=""):
-    """Insert literal environment values after leading Slurm directives."""
-    lines = script.splitlines(keepends=True)
-    end = next(
-        (
-            i
-            for i, line in enumerate(lines)
-            if line.strip() and not line.lstrip().startswith("#")
-        ),
-        len(lines),
-    )
-    prefix = "".join(lines[:end])
-    if prefix and not prefix.endswith("\n"):
-        prefix += "\n"
-    exports = "".join(
-        "export " + key + "=" + shlex.quote(value) + "\n"
-        for key, value in values.items()
-    )
-    return prefix + exports + guard + "".join(lines[end:])
+from ..shell_environment import with_environment as _with_environment
 
 
 def _evidence(path, recipe):

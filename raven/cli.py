@@ -640,6 +640,12 @@ def _managed_main(argv, *, raven, raven_allocation=None):
 
 def _dispatch_main(argv=None, *, raven=None, raven_allocation=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] in (["scheduler"], ["engineering"]):
+        if argv[0] == "scheduler":
+            from .scheduler_cli import main as task_main
+        else:
+            from .engineering.cli import main as task_main
+        return task_main(argv[1:])
     if argv[:1] == ["trust"]:
         from .path_trust_cli import main as trust_main
         return trust_main(argv[1:])

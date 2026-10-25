@@ -343,6 +343,37 @@ def _activate(app, action):
             from .ui.navigation_ports import forms
 
             forms(app).relaunch(app, run_home.relaunch_draft(state["result"]["report"]))
+        elif action in ("capsule", "lineage"):
+            if state["scope"] != _scope(app) or not state["binding"] or state["error"]:
+                raise ValueError(
+                    "Reconnect and verify this retained run before opening its engineering tools."
+                )
+            from .ui import operations as tools
+
+            feature = (
+                "engineering-capsules"
+                if action == "capsule"
+                else "engineering-experiments"
+            )
+            binding = copy.deepcopy(state["binding"])
+            tools.run_command(app, ["ops", "open", feature])
+            values = tools.initialize(app)["values"]
+            values["root"] = binding["project_root"]
+            if action == "capsule":
+                values["run_id"] = binding["run_id"]
+            else:
+                from .engineering._storage import name
+
+                values["run_id"] = binding["run_id"]
+                values["action"] = "connect"
+                label = binding.get("experiment_id") or ""
+                values["title"] = label
+                try:
+                    name(label)
+                    values["experiment_id"] = label
+                except ValueError:
+                    # Scientific labels need not be valid persisted index IDs.
+                    values["experiment_id"] = ""
         elif action in ("logs", "analytics", "research", "outputs", "export"):
             _bind(app)
             if action == "logs":
@@ -425,6 +456,8 @@ def _document(app):
         ("Reconnect this run / refresh evidence", "recover"),
         ("Choose original connection", "connections"),
         ("Inspect historical observations (read-only)", "historical"),
+        ("Experiment lineage and total resource use", "lineage"),
+        ("Capture reproducible execution package", "capsule"),
     ]
     result = state["result"]
     if not result:

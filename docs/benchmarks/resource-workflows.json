@@ -1,0 +1,26 @@
+{
+  "fixture": {
+    "distinct_sources": 1,
+    "repetitions": 40,
+    "source_bytes": 65527,
+    "variants": 8
+  },
+  "naive": {
+    "cpu_median_ms": 2.4526934999999987,
+    "python_allocation_peak_bytes": 1053890,
+    "source_bytes": 1572648,
+    "source_opens": 24,
+    "wall_median_ms": 2.4526344932382926
+  },
+  "process_rss_highwater_native_units": 15284,
+  "qualification": "Warm-cache local source inspection only; equivalent resource/source results asserted. No scheduler, SSH, application, billing, concurrency or hardware efficacy measurement.",
+  "rss_unit": "KiB on Linux; bytes on macOS; aggregate process high-water mark, not per algorithm",
+  "schema": "raven.resource-workflow-benchmark/v1",
+  "shared": {
+    "cpu_median_ms": 1.610591999999994,
+    "python_allocation_peak_bytes": 1049431,
+    "source_bytes": 65527,
+    "source_opens": 1,
+    "wall_median_ms": 1.6104605019791052
+  }
+}

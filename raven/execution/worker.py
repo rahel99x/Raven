@@ -141,6 +141,17 @@ def _execute_operation(
             result = O._registry()[inputs["operation"]][0].apply(
                 inputs["operation"], inputs["plan"], ctx
             )
+    elif operation == "engineering-analysis":
+        from ..engineering import service
+
+        if (
+            set(inputs) != {"domain", "action", "arguments"}
+            or (inputs["domain"], inputs["action"]) not in service.COMPUTE_ACTIONS
+        ):
+            raise ValueError("Unknown bounded engineering analysis")
+        result = service.execute(
+            inputs["domain"], inputs["action"], inputs["arguments"], cancel=cancel
+        )
     elif operation in FILE_OPERATIONS or operation in {
         "simulation-review",
         "scientific-inspection",

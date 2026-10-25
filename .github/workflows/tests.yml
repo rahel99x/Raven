@@ -42,6 +42,19 @@ jobs:
         run: python scripts/generate_capability_reference.py --check
       - name: Validate reporting schemas and published examples
         run: python scripts/validate_operation_schemas.py
+      - name: Qualify the actual Kubernetes client against an isolated fixture
+        if: matrix.python == '3.12'
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -fsSL \
+            https://dl.k8s.io/release/v1.32.0/bin/linux/amd64/kubectl \
+            -o /tmp/raven-qualified-kubectl
+          printf '%s  %s\n' \
+            646d58f6d98ee670a71d9cdffbf6625aeea2849d567f214bc43a35f8ccb7bf70 \
+            /tmp/raven-qualified-kubectl | sha256sum --check --strict
+          chmod 700 /tmp/raven-qualified-kubectl
+          RAVEN_KUBECTL=/tmp/raven-qualified-kubectl python -m pytest -q tests/test_kubernetes_client_wire.py
       - name: Check instrumentation fidelity and record bounded benchmark samples
         if: matrix.python == '3.12'
         run: python scripts/benchmark_auto_instrumentation.py --cases calls,noop,metrics,metric-threads --repeats 1 --timeout 60 --output /tmp/raven-instrumentation-benchmark.json
@@ -114,6 +127,12 @@ jobs:
           /tmp/raven-wheel-venv/bin/raven trust --help
           /tmp/raven-wheel-venv/bin/ravenl trust --help
           /tmp/raven-wheel-venv/bin/ravenh trust --help
+          /tmp/raven-wheel-venv/bin/raven scheduler catalog
+          /tmp/raven-wheel-venv/bin/ravenl scheduler --help
+          /tmp/raven-wheel-venv/bin/ravenh scheduler catalog
+          /tmp/raven-wheel-venv/bin/raven engineering catalog
+          /tmp/raven-wheel-venv/bin/ravenl engineering --help
+          /tmp/raven-wheel-venv/bin/ravenh engineering catalog
           /tmp/raven-wheel-venv/bin/raven trace cleanup-runtime --help
           /tmp/raven-wheel-venv/bin/raven trace capabilities --json
           /tmp/raven-wheel-venv/bin/ravenl qualify --offline > /tmp/raven-offline-qualification.json

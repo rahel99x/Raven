@@ -1,0 +1,12 @@
+{
+  "arguments": {
+    "bundle": "/home/alice/raven-exports/run-a1",
+    "relative_csv": "application/loss.csv",
+    "identity": {"scheduler": "slurm", "scope": "replace-with-observed-native-scope", "native_id": "123", "attempt": "replace-with-observed-native-attempt"},
+    "title": "Training loss",
+    "fields": ["timestamp", "value"],
+    "units": {"timestamp": "s", "value": "ratio"},
+    "calculation": {"name": "reported values", "version": "1", "parameters": {}},
+    "filters": [{"field": "metric", "operator": "eq", "value": "loss"}]
+  }
+}

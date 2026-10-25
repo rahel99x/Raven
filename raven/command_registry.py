@@ -250,6 +250,8 @@ FEATURE_NAMES = tuple(sorted(item.name for item in COMMANDS if item.owner != "co
 PATH_FLAGS = frozenset(['--contract', '--file', '--output', '--passport-dir', '--root', '--script', '--workdir'])
 
 TASKS = (
+    Task('engineering', 'Engineering', 'Connect native schedulers, follow experiments, qualify compute, and review the next action.',
+         ('native-scheduler', 'engineering-experiments', 'engineering-qualification', 'engineering-capsules', 'engineering-labs', 'engineering-provenance', 'engineering-performance', 'engineering-incidents', 'engineering-optimization', 'engineering-recovery', 'engineering-diagnosis', 'engineering-reliability')),
     Task('run', 'Run', 'Prepare, inspect and control an exact execution attempt.',
          ('pending-edit', 'rerun-job', 'array-throttle', 'allocation-shell', 'placement', 'batch-script', 'trace-capture', 'runtime-steering', 'io-coordination', 'diagnostic-recipe')),
     Task('investigate', 'Investigate', 'Follow a failure or delay to its supporting evidence.',
@@ -267,6 +269,7 @@ TOOLBAR_CONTROLS = MappingProxyType({
         Control('launch-job', 'Launch job...', 'launchjob'),
         Control('project', 'Open project...', 'project ', True, description='Discover a standard project and its run inventory.'),
         Control('workbench', 'Task workbench', 'workbench'),
+        Control('engineering', 'Engineering workflows', 'workbench engineering'),
         Control('project-guide', 'Connect and validate a project', 'projectguide'),
         Control('operations', 'Research and cluster operations', 'ops'),
         Control('runs', 'Project runs and attempts', 'runs', context='project'),

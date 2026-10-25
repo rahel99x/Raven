@@ -1,0 +1,206 @@
+{
+  "checks": {
+    "actual_kubectl": true,
+    "detail_uid_preserved": true,
+    "explicit_context_overrode_ambient": true,
+    "explicit_server_overrode_kubeconfig": true,
+    "namespace_and_owner_scoped_queue": true,
+    "native_requests_limits_preserved": true,
+    "replacement_preserved": true,
+    "replacement_uid_rejected_by_server": true,
+    "reviewed_create_body_and_response": true,
+    "uid_delete_body_on_wire": true,
+    "uncertain_mutation_not_replayed": true
+  },
+  "client_sha256": "646d58f6d98ee670a71d9cdffbf6625aeea2849d567f214bc43a35f8ccb7bf70",
+  "client_version": "v1.32.0",
+  "comparison": {
+    "baseline": "docs/benchmarks/kubernetes-client-wire-before-raw.json",
+    "baseline_http_requests": 38,
+    "delivered_http_requests": 10,
+    "scope": "Equivalent queue/history/detail/create/delete/replacement/replay fixture; discovery caching in a real deployment may differ."
+  },
+  "download_provenance": {
+    "bytes": 57323672,
+    "checksum_source": "https://dl.k8s.io/release/v1.32.0/bin/linux/amd64/kubectl.sha256",
+    "sha256": "646d58f6d98ee670a71d9cdffbf6625aeea2849d567f214bc43a35f8ccb7bf70",
+    "source": "https://dl.k8s.io/release/v1.32.0/bin/linux/amd64/kubectl",
+    "version": "v1.32.0"
+  },
+  "http_requests": [
+    {
+      "body": null,
+      "content_type": null,
+      "method": "GET",
+      "path": "/apis/batch/v1/namespaces/lab/jobs",
+      "query": {
+        "labelSelector": [
+          "raven.dev/login=d2581cd7764f2009c9189708455787e8"
+        ],
+        "limit": [
+          "10000"
+        ],
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": null,
+      "content_type": null,
+      "method": "GET",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": {
+        "apiVersion": "batch/v1",
+        "kind": "Job",
+        "metadata": {
+          "annotations": {
+            "raven.dev/owner": "wire-researcher"
+          },
+          "labels": {
+            "raven.dev/login": "d2581cd7764f2009c9189708455787e8"
+          },
+          "name": "created",
+          "namespace": "lab"
+        },
+        "spec": {
+          "parallelism": 1,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "example.invalid/fixture:v1",
+                  "name": "main",
+                  "resources": {
+                    "limits": {
+                      "cpu": "1",
+                      "memory": "512Mi"
+                    },
+                    "requests": {
+                      "cpu": "500m",
+                      "memory": "256Mi"
+                    }
+                  }
+                }
+              ],
+              "restartPolicy": "Never"
+            }
+          }
+        }
+      },
+      "content_type": null,
+      "method": "POST",
+      "path": "/apis/batch/v1/namespaces/lab/jobs",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": null,
+      "content_type": null,
+      "method": "GET",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": null,
+      "content_type": null,
+      "method": "GET",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": {
+        "apiVersion": "v1",
+        "kind": "DeleteOptions",
+        "preconditions": {
+          "uid": "uid-original"
+        },
+        "propagationPolicy": "Background"
+      },
+      "content_type": null,
+      "method": "DELETE",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": null,
+      "content_type": null,
+      "method": "GET",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": null,
+      "content_type": null,
+      "method": "GET",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": {
+        "apiVersion": "v1",
+        "kind": "DeleteOptions",
+        "preconditions": {
+          "uid": "uid-original"
+        },
+        "propagationPolicy": "Background"
+      },
+      "content_type": null,
+      "method": "DELETE",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    },
+    {
+      "body": null,
+      "content_type": null,
+      "method": "GET",
+      "path": "/apis/batch/v1/namespaces/lab/jobs/experiment",
+      "query": {
+        "timeout": [
+          "8s"
+        ]
+      }
+    }
+  ],
+  "qualification": "Actual kubectl against loopback HTTP fixture only; no live Kubernetes scheduler, RBAC, credentials, admission, compute, GPU or remote-site qualification.",
+  "schema": "raven.kubernetes-client-wire-qualification/v1",
+  "source_hashes": {
+    "raven/schedulers/core.py": "c5d40cfa806c30595d831a427a64b6c429ef543578139899faa0c759e2c3aae2",
+    "raven/schedulers/kubernetes.py": "e7733b956dcce60f990987d142200f404ac60f0427cd9aa31f5406950c9c1536",
+    "scripts/qualify_kubernetes_client.py": "15ab1dad046d3c2f0caec78e5ade86de3832e961d6b0c7636f3203a430007d60"
+  }
+}

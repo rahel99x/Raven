@@ -1,0 +1,156 @@
+{
+  "schema": "raven.engineering-package-coverage/v1",
+  "package": "Lab workspaces, compute qualification, and research provenance",
+  "base_revision": "90a2e65894d65877bfc7890b0467afe163e10554",
+  "delivery_revision": "Working tree; central integration ledger records the final committed revision",
+  "accepted_proposals": [7, 8, 9],
+  "implementation": [
+    "raven/engineering/labs.py",
+    "raven/engineering/qualification.py",
+    "raven/engineering/provenance.py"
+  ],
+  "frozen_source_sha256": {
+    "raven/engineering/labs.py": "a4da38dea52efab9d28c9f986a86106cd2182f4038c00681f31ec1bc61c470a7",
+    "raven/engineering/qualification.py": "41eb239e25c66c1f3b3a36458e8a41ef75163c4d486feffe5d4e5d63cff810af",
+    "raven/engineering/provenance.py": "cadb08950f35c66332b08b5ce56de2f8da5e775a88f6ffcb29bdbacc348cfefc"
+  },
+  "documentation": [
+    "docs/guides/engineering-labs-and-evidence.md",
+    "docs/examples/engineering-lab-save.json",
+    "docs/examples/engineering-site-probe.json",
+    "docs/examples/engineering-export-provenance.json"
+  ],
+  "verification": {
+    "command": "/workspace/raven-compat/py3.13/bin/python -m pytest -q tests/test_engineering_labs_qualification_provenance.py",
+    "passed": 52,
+    "elapsed_seconds": 0.42,
+    "scope": "Focused regression duration, not an application performance benchmark",
+    "real_local_process_checks": [
+      "Actual scratch read-after-write",
+      "Actual numeric metric write and validated read",
+      "Actual retained trace write/read with a synthetic Slurm environment identity",
+      "Actual bounded local script snapshot transport during native submission review"
+    ],
+    "scheduler_commands_executed": 0,
+    "live_site_qualification": false,
+    "physical_gpu_qualification": false
+  },
+  "independent_review": {
+    "command": "/workspace/raven-compat/py3.13/bin/python -m pytest -q tests/test_engineering_labs_qualification_provenance.py tests/test_engineering_provenance_review.py",
+    "passed": 58,
+    "elapsed_seconds": 1.16,
+    "conclusion": "No remaining P1/P2 findings in reviewed package scope",
+    "resolved_findings": [
+      "Fresh native ownership and complete compute-observed submission/restart identity are required; numeric IDs alone remain unverified",
+      "Kubernetes Job UID is separate from Pod UID, automatic retries are disabled, and nonterminal/failed native outcomes remain visible",
+      "Result reads and writes use fully anchored no-follow private state directories",
+      "Persistent experiment bridges compare the full shared retained identity including restart generation; contradictory source cluster, submit epoch and script hash are rejected",
+      "Legacy source and caller-selected scheduler identity remain distinct in partial association metadata",
+      "Lexical integer cells remain exact, numeric filters use Decimal comparisons, incompatible ranges fail with diagnostics, and source units are not silently relabelled",
+      "Lab inventory refuses a different scheduler even when connection scope digests match"
+    ]
+  },
+  "coverage": [
+    {
+      "proposal": 7,
+      "requirement": "Reusable named lab/site workspace across Slurm, Kubernetes, IBM Spectrum LSF, OpenPBS, PBS Professional, HTCondor, and Flux",
+      "status": "implemented-service",
+      "evidence": "labs.validate/save/load and private atomic project storage; all seven native scheduler identifiers accepted",
+      "limits": "This indexes explicit native connections and existing profile references; it does not replace the established Slurm profile configuration model"
+    },
+    {
+      "proposal": 7,
+      "requirement": "System login, billing account, scientific-job resources, and Heavy resources remain distinct",
+      "status": "implemented-service",
+      "evidence": "labs.defaults/defaults_for_workspace; account must belong to an explicit source-labelled association; independent job_defaults/heavy_defaults",
+      "limits": "A visible or declared association is not spending authority, available allocation, a personal-account classification, or unlimited workstation resources"
+    },
+    {
+      "proposal": 7,
+      "requirement": "Bounded explicit cross-site pending-work inventory with connection scope and recovery feedback",
+      "status": "implemented-service",
+      "evidence": "labs.inventory and inventory_from_workspace; selected clients only; full authority digest match; disconnected/deferred/failed/blocked states; cancellation; finally closes transports",
+      "limits": "Eight sites, 10000 retained rows, 30-second outer default budget; native commands retain their own timeout/output bounds; no global atomic snapshot or automatic background polling"
+    },
+    {
+      "proposal": 7,
+      "requirement": "Discovered account associations and allocation balances for every native scheduler",
+      "status": "partially-satisfied-existing-capability",
+      "evidence": "Existing governed Slurm Setup discovers actual sacctmgr memberships; lab requests preserve discovery or declaration source; inventory reports allocation limits unknown",
+      "block": "Native account/credit/accounting APIs differ and are not implemented by this package for all schedulers",
+      "unblock": "Implement and qualify explicit read-only association/balance adapters with site semantics and independent capability reporting; credentials alone do not fill this code gap"
+    },
+    {
+      "proposal": 8,
+      "requirement": "Optional reviewed tiny compute jobs test Python/imports, writable filesystem, recordings, worker startup and counters",
+      "status": "implemented-service-with-explicit-capability-limits",
+      "evidence": "qualification.prepare emits private immutable native-reviewed script; execute checks a real compute process; explicit native self-job lookup captures full attempt and owner on compute; collect uses fresh native detail and compares full identity, owner, nonce, required checks and actual errors",
+      "limits": "Imports execute only when the user explicitly applies the generated native review. Every check reports passed/failed/unavailable independently. Process counters do not qualify scheduler accounting or per-job GPU attribution"
+    },
+    {
+      "proposal": 8,
+      "requirement": "Native qualification submission formats and bounded scheduler charges",
+      "status": "implemented-service-with-native-limits",
+      "evidence": "Slurm srun step in reviewed sbatch script with pinned working/output directories; native PBS/LSF/Flux scripts; proper HTCondor submit description with queue1 and periodic_remove; explicit Kubernetes image, mounted output, one container, no automatic retry/restart and bounded requests/limits/deadline",
+      "limits": "LSF and Flux portable memory requests are not expressible by the current generic adapters and remain visibly unverified before apply and in later receipts; full qualification stays partial until site limits are reviewed"
+    },
+    {
+      "proposal": 8,
+      "requirement": "Qualification identity is attempt-safe on Kubernetes and batch systems",
+      "status": "implemented-service",
+      "evidence": "Exact compute-observed native attempt and owner must match fresh collection detail and authority digest; Kubernetes DownwardAPI namespace, Job controller UID, distinct Pod UID; matching name or numeric ID alone is insufficient; Flux F58 IDs normalize to lossless decimal; HTCondor runtime macro yields exact Cluster.Proc",
+      "limits": "Absent compute native tools/permissions or runtime linkage returns unverified. Hashes/nonces provide integrity and accidental mismatch detection, not remote attestation. Immutable per-state receipts support nonterminal-to-terminal recovery without overwriting evidence"
+    },
+    {
+      "proposal": 8,
+      "requirement": "Heavy compute ownership and retained native trace identity across every scheduler",
+      "status": "blocked-implementation-gate",
+      "evidence": "Probe reports non-Slurm worker-startup and retained trace readiness unavailable; it never bypasses Slurm's placement/ownership verifier",
+      "block": "Heavy ownership verification and retained recording protocol currently use Slurm native identities",
+      "unblock": "Implement scheduler-specific verified allocation/container ownership, revocation/reconnect lifecycle, and versioned recording identity migration before enabling those capabilities; then qualify actual sites"
+    },
+    {
+      "proposal": 8,
+      "requirement": "Production SSH, live scheduler, GPU-family and multi-node qualification",
+      "status": "blocked-external-qualification",
+      "evidence": "The package's tests intentionally execute no scheduler jobs and use no physical GPU",
+      "block": "No credentials/representative scheduler and accelerator hardware were supplied for these production sites",
+      "unblock": "Explicitly apply reviewed probe jobs at each target site and retain identity-bound receipts; qualify driver/provider and multi-node conditions separately"
+    },
+    {
+      "proposal": 9,
+      "requirement": "Research output companions retain underlying data, units, filters, calculations, exact native identity, source coverage and uncertainty",
+      "status": "implemented-opt-in-service",
+      "evidence": "provenance.build/write/load; immutable private companions; unknown numeric data remains null; finite/bounded rows; exact declaration and native evidence scope checks",
+      "limits": "A companion digest does not validate the scientific calculation or establish source truth"
+    },
+    {
+      "proposal": 9,
+      "requirement": "Use existing immutable exports instead of duplicating or rewriting raw evidence",
+      "status": "implemented-opt-in-service",
+      "evidence": "provenance.from_export verifies COMPLETE marker, manifest hash, CSV hash, exact single exported run/attempt, job ID, source units; applies typed exact-decimal filters; preserves integer cells beyond 2^53; retains every selected row; leaves original bundle unchanged",
+      "limits": "2 MiB input CSV and 20000 scanned rows; requests a smaller explicit range instead of silent sampling. Original legacy identity and caller-selected native identity remain separate under a typed unverified association with status partial. An exact persisted experiment link can be resolved as recorded-link but does not become independent scheduler attestation"
+    },
+    {
+      "proposal": 9,
+      "requirement": "Comparison compatibility and native profiler semantics",
+      "status": "implemented-service-reusing-existing-imports",
+      "evidence": "provenance.compare blocks mismatched units/calculation/filters, reports differing identities/sources/coverage/clocks, refuses verified legacy-native lineage claims and warns on unknown clock alignment; existing evidence/evidence_formats receipts preserve native imports",
+      "limits": "Compatible metadata is not scientific equivalence; sampled traces are not hardware ground truth; imported Slurm receipts additionally require matching connection scope"
+    },
+    {
+      "proposal": 9,
+      "requirement": "Automatic provenance companion creation for every existing UI chart/export destination",
+      "status": "integration-gate",
+      "evidence": "Existing data_export already preserves CSV/units/source watermarks/hashes/attempt metadata; new companion services are explicit user actions in the shared Engineering CLI/TUI registry",
+      "block": "The new opt-in helper does not automatically attach a calculation/selection companion to every legacy UI chart",
+      "unblock": "Thread exact chart selection and calculation context through each chart export producer and preserve behavioral tests; this is an integration/code requirement, not an external hardware prerequisite"
+    }
+  ],
+  "design_tradeoffs": [
+    "Reused anchored project storage and bounded native transports rather than a new database, credential manager or background polling daemon; CAS protects concurrent preference edits",
+    "An explicit workspace and selected-site reads are simpler and cheaper than continuous cross-cluster discovery; per-site freshness and unavailable balances remain visible",
+    "Tiny reviewed compute probes provide stronger readiness evidence than executable presence while retaining a separate review/apply boundary and bounded resource cost",
+    "Original immutable exports and native receipts remain the authoritative evidence; provenance companions add bounded selected data and semantics without mutating source bundles"
+  ]
+}

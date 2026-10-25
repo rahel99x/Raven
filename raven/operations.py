@@ -54,12 +54,17 @@ MODULES = (
     "ops_queue_models",
     "ops_signal_analysis",
     "ops_campaign_policy",
+    "ops_engineering",
 )
 
 
 def _modules():
     """Finite adapter composition; absent optional distributions stay explicit."""
     modules = []
+    if not absent("raven.operation_adapters.engineering"):
+        from .operation_adapters import engineering as ops_engineering
+
+        modules.append(ops_engineering)
     if not absent("raven.operation_adapters.cluster"):
         from .operation_adapters import cluster as ops_cluster
 

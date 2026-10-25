@@ -13,6 +13,7 @@ ADAPTERS = (
     "campaign_policy",
     "campaigns",
     "cluster",
+    "engineering",
     "evidence_queries",
     "health",
     "investigation",
