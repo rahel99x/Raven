@@ -186,5 +186,9 @@ private result file and refuses to overwrite an existing file.
 Reliability evaluation accepts observed measurements and explicit budgets. It
 reports missing measurements, latency regressions, freshness, scheduler load,
 process RSS and Python allocations separately. Budget defaults are targets,
-not measured guarantees. Review the [coverage ledger](../implementation/engineering-platform.md)
+not measured guarantees. Review the [coverage ledger](https://github.com/rahel99x/Raven/blob/main/docs/implementation/engineering-platform.md)
 for actual test evidence and external qualification gates.
+
+For reproducible protocol and scheduler checks, see the
+[Kubernetes client wire guide](kubernetes-client-qualification.md) and
+[disposable Slurm qualification guide](native-slurm-qualification.md).

@@ -1,6 +1,6 @@
 # Raven
 
-Raven is a terminal workbench for Slurm-based research. It combines job
+Raven is a terminal workbench for computational research. It combines job
 monitoring, resource graphs, logs, project evidence, and an embedded shell with
 governed data collection and explicit ownership of analysis compute.
 

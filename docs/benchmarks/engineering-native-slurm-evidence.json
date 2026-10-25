@@ -1,0 +1,697 @@
+{
+  "schema": "raven.native-slurm-qualification-matrix-evidence/v1",
+  "status": "passed-for-recorded-checks",
+  "base_revision": "1f1e7acb681bc3ea2904c6ad56f9e66f8e561f9c",
+  "working_tree_validation": true,
+  "source_files": 712,
+  "source_tree_sha256": "5abc307fe6150bfdffca447f91ef0a5f2aaa567ce971b8cfb93589a948f291c0",
+  "source_sha256": {
+    "raven/schedulers/core.py": "5abdb4297ddc40bd215fd1912fba1bb4b1b73ccce125dae48d87eaec131c0c92",
+    "raven/schedulers/slurm.py": "2a8e91f4415026cd518dc492de1d59a7e8812f62f3e9d66753ce442233a41f31",
+    "raven/engineering/experiments.py": "ca3205614dfe8f10513a06899c4fac3cf08cd9bf84699d0deffd2329db65b0f7",
+    "raven/engineering/qualification.py": "41eb239e25c66c1f3b3a36458e8a41ef75163c4d486feffe5d4e5d63cff810af",
+    "raven/science_files.py": "fd359e1eb28ef2f6fd0dd69fcf64e938845253aba29f2c50b9fa616bde12e687",
+    "scripts/slurm/native_scheduler.py": "3ec589dc9145185122fa4582e21c4e23ba7f6c0e540f50548b7fb26a3f0f7ccc",
+    "scripts/slurm/entrypoint.sh": "54174b40f9e8bcb176a83869c0d18076f3e7ac67d4c7a16e585c9fa3a177972d"
+  },
+  "exact_source_match": true,
+  "environment": "five sequential owned disposable one-node Slurm services; unprivileged raven login; actual controller, node, and accounting daemon",
+  "resources": {
+    "container_cpus": 2,
+    "container_memory_bytes": 2147483648,
+    "scientific_job_cpus": 1,
+    "scientific_job_memory_mib": 64,
+    "scientific_job_wall_seconds": 90,
+    "probe_cpus": 1,
+    "probe_memory_mib": 512,
+    "probe_wall_seconds": 120
+  },
+  "production_qualified": false,
+  "timing_limits": "Elapsed durations include fixture contention and are qualification diagnostics, not performance comparisons.",
+  "unqualified": [
+    "production site policy and deployment",
+    "SSH",
+    "multi-node",
+    "physical GPU",
+    "Slurm task/cgroup enforcement",
+    "non-Slurm schedulers"
+  ],
+  "runs": [
+    {
+      "version": "23.02.8",
+      "status": "passed-for-recorded-checks",
+      "checks": 21,
+      "all_checks_pass": true,
+      "compute_status": "passed",
+      "identity_verified": true,
+      "compute_checks": 6,
+      "read_stats": {
+        "bytes": 161960,
+        "cache_hits": 0,
+        "failed_requests": 0,
+        "last_read": 1792937355.6197474,
+        "requests": 31
+      },
+      "seconds": 6.849307760014199,
+      "checks_detail": [
+        {
+          "name": "native initial inventory is user scoped",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "submitted job appears in native queue",
+          "passed": true
+        },
+        {
+          "name": "selected native detail preserves identity",
+          "passed": true
+        },
+        {
+          "name": "changed attempt cannot be reviewed",
+          "passed": true
+        },
+        {
+          "name": "cancel exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "cancelled job retains exact native attempt",
+          "passed": true
+        },
+        {
+          "name": "completed detail reconciles queued identity",
+          "passed": true
+        },
+        {
+          "name": "durable action cannot be replayed",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "native script hold directive preserved",
+          "passed": true
+        },
+        {
+          "name": "hold exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "release exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "held then released job completes",
+          "passed": true
+        },
+        {
+          "name": "bounded native accounting includes owned attempts",
+          "passed": true
+        },
+        {
+          "name": "real native attempts link once without manufactured accounting",
+          "passed": true
+        },
+        {
+          "name": "compute probe submitted through reviewed native adapter",
+          "passed": true
+        },
+        {
+          "name": "compute probe exact attempt verified",
+          "passed": true
+        },
+        {
+          "name": "compute imports filesystem and recording passed",
+          "passed": true
+        }
+      ],
+      "compute_checks_detail": [
+        {
+          "name": "import:raven",
+          "status": "passed"
+        },
+        {
+          "name": "filesystem",
+          "status": "passed"
+        },
+        {
+          "name": "metrics-recording",
+          "status": "passed"
+        },
+        {
+          "name": "trace-recording",
+          "status": "passed"
+        },
+        {
+          "name": "worker-startup",
+          "status": "passed"
+        },
+        {
+          "name": "process-counters",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "version": "23.11.11",
+      "status": "passed-for-recorded-checks",
+      "checks": 21,
+      "all_checks_pass": true,
+      "compute_status": "passed",
+      "identity_verified": true,
+      "compute_checks": 6,
+      "read_stats": {
+        "bytes": 252196,
+        "cache_hits": 0,
+        "failed_requests": 0,
+        "last_read": 1792937372.2157462,
+        "requests": 37
+      },
+      "seconds": 11.462196271982975,
+      "checks_detail": [
+        {
+          "name": "native initial inventory is user scoped",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "submitted job appears in native queue",
+          "passed": true
+        },
+        {
+          "name": "selected native detail preserves identity",
+          "passed": true
+        },
+        {
+          "name": "changed attempt cannot be reviewed",
+          "passed": true
+        },
+        {
+          "name": "cancel exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "cancelled job retains exact native attempt",
+          "passed": true
+        },
+        {
+          "name": "completed detail reconciles queued identity",
+          "passed": true
+        },
+        {
+          "name": "durable action cannot be replayed",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "native script hold directive preserved",
+          "passed": true
+        },
+        {
+          "name": "hold exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "release exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "held then released job completes",
+          "passed": true
+        },
+        {
+          "name": "bounded native accounting includes owned attempts",
+          "passed": true
+        },
+        {
+          "name": "real native attempts link once without manufactured accounting",
+          "passed": true
+        },
+        {
+          "name": "compute probe submitted through reviewed native adapter",
+          "passed": true
+        },
+        {
+          "name": "compute probe exact attempt verified",
+          "passed": true
+        },
+        {
+          "name": "compute imports filesystem and recording passed",
+          "passed": true
+        }
+      ],
+      "compute_checks_detail": [
+        {
+          "name": "import:raven",
+          "status": "passed"
+        },
+        {
+          "name": "filesystem",
+          "status": "passed"
+        },
+        {
+          "name": "metrics-recording",
+          "status": "passed"
+        },
+        {
+          "name": "trace-recording",
+          "status": "passed"
+        },
+        {
+          "name": "worker-startup",
+          "status": "passed"
+        },
+        {
+          "name": "process-counters",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "version": "24.05.8",
+      "status": "passed-for-recorded-checks",
+      "checks": 21,
+      "all_checks_pass": true,
+      "compute_status": "passed",
+      "identity_verified": true,
+      "compute_checks": 6,
+      "read_stats": {
+        "bytes": 265510,
+        "cache_hits": 0,
+        "failed_requests": 0,
+        "last_read": 1792937383.4889445,
+        "requests": 38
+      },
+      "seconds": 5.908563293982297,
+      "checks_detail": [
+        {
+          "name": "native initial inventory is user scoped",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "submitted job appears in native queue",
+          "passed": true
+        },
+        {
+          "name": "selected native detail preserves identity",
+          "passed": true
+        },
+        {
+          "name": "changed attempt cannot be reviewed",
+          "passed": true
+        },
+        {
+          "name": "cancel exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "cancelled job retains exact native attempt",
+          "passed": true
+        },
+        {
+          "name": "completed detail reconciles queued identity",
+          "passed": true
+        },
+        {
+          "name": "durable action cannot be replayed",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "native script hold directive preserved",
+          "passed": true
+        },
+        {
+          "name": "hold exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "release exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "held then released job completes",
+          "passed": true
+        },
+        {
+          "name": "bounded native accounting includes owned attempts",
+          "passed": true
+        },
+        {
+          "name": "real native attempts link once without manufactured accounting",
+          "passed": true
+        },
+        {
+          "name": "compute probe submitted through reviewed native adapter",
+          "passed": true
+        },
+        {
+          "name": "compute probe exact attempt verified",
+          "passed": true
+        },
+        {
+          "name": "compute imports filesystem and recording passed",
+          "passed": true
+        }
+      ],
+      "compute_checks_detail": [
+        {
+          "name": "import:raven",
+          "status": "passed"
+        },
+        {
+          "name": "filesystem",
+          "status": "passed"
+        },
+        {
+          "name": "metrics-recording",
+          "status": "passed"
+        },
+        {
+          "name": "trace-recording",
+          "status": "passed"
+        },
+        {
+          "name": "worker-startup",
+          "status": "passed"
+        },
+        {
+          "name": "process-counters",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "version": "24.11.7",
+      "status": "passed-for-recorded-checks",
+      "checks": 21,
+      "all_checks_pass": true,
+      "compute_status": "passed",
+      "identity_verified": true,
+      "compute_checks": 6,
+      "read_stats": {
+        "bytes": 256553,
+        "cache_hits": 0,
+        "failed_requests": 0,
+        "last_read": 1792937393.6739087,
+        "requests": 37
+      },
+      "seconds": 5.322216759028379,
+      "checks_detail": [
+        {
+          "name": "native initial inventory is user scoped",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "submitted job appears in native queue",
+          "passed": true
+        },
+        {
+          "name": "selected native detail preserves identity",
+          "passed": true
+        },
+        {
+          "name": "changed attempt cannot be reviewed",
+          "passed": true
+        },
+        {
+          "name": "cancel exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "cancelled job retains exact native attempt",
+          "passed": true
+        },
+        {
+          "name": "completed detail reconciles queued identity",
+          "passed": true
+        },
+        {
+          "name": "durable action cannot be replayed",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "native script hold directive preserved",
+          "passed": true
+        },
+        {
+          "name": "hold exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "release exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "held then released job completes",
+          "passed": true
+        },
+        {
+          "name": "bounded native accounting includes owned attempts",
+          "passed": true
+        },
+        {
+          "name": "real native attempts link once without manufactured accounting",
+          "passed": true
+        },
+        {
+          "name": "compute probe submitted through reviewed native adapter",
+          "passed": true
+        },
+        {
+          "name": "compute probe exact attempt verified",
+          "passed": true
+        },
+        {
+          "name": "compute imports filesystem and recording passed",
+          "passed": true
+        }
+      ],
+      "compute_checks_detail": [
+        {
+          "name": "import:raven",
+          "status": "passed"
+        },
+        {
+          "name": "filesystem",
+          "status": "passed"
+        },
+        {
+          "name": "metrics-recording",
+          "status": "passed"
+        },
+        {
+          "name": "trace-recording",
+          "status": "passed"
+        },
+        {
+          "name": "worker-startup",
+          "status": "passed"
+        },
+        {
+          "name": "process-counters",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "version": "26.05.5",
+      "status": "passed-for-recorded-checks",
+      "checks": 21,
+      "all_checks_pass": true,
+      "compute_status": "passed",
+      "identity_verified": true,
+      "compute_checks": 6,
+      "read_stats": {
+        "bytes": 298407,
+        "cache_hits": 0,
+        "failed_requests": 0,
+        "last_read": 1792937404.3336782,
+        "requests": 39
+      },
+      "seconds": 6.343270197015954,
+      "checks_detail": [
+        {
+          "name": "native initial inventory is user scoped",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-qualification exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "submitted job appears in native queue",
+          "passed": true
+        },
+        {
+          "name": "selected native detail preserves identity",
+          "passed": true
+        },
+        {
+          "name": "changed attempt cannot be reviewed",
+          "passed": true
+        },
+        {
+          "name": "cancel exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "cancelled job retains exact native attempt",
+          "passed": true
+        },
+        {
+          "name": "completed detail reconciles queued identity",
+          "passed": true
+        },
+        {
+          "name": "durable action cannot be replayed",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held native submission accepted",
+          "passed": true
+        },
+        {
+          "name": "raven-native-held exact owner/account/cluster",
+          "passed": true
+        },
+        {
+          "name": "native script hold directive preserved",
+          "passed": true
+        },
+        {
+          "name": "hold exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "release exact reviewed action accepted",
+          "passed": true
+        },
+        {
+          "name": "held then released job completes",
+          "passed": true
+        },
+        {
+          "name": "bounded native accounting includes owned attempts",
+          "passed": true
+        },
+        {
+          "name": "real native attempts link once without manufactured accounting",
+          "passed": true
+        },
+        {
+          "name": "compute probe submitted through reviewed native adapter",
+          "passed": true
+        },
+        {
+          "name": "compute probe exact attempt verified",
+          "passed": true
+        },
+        {
+          "name": "compute imports filesystem and recording passed",
+          "passed": true
+        }
+      ],
+      "compute_checks_detail": [
+        {
+          "name": "import:raven",
+          "status": "passed"
+        },
+        {
+          "name": "filesystem",
+          "status": "passed"
+        },
+        {
+          "name": "metrics-recording",
+          "status": "passed"
+        },
+        {
+          "name": "trace-recording",
+          "status": "passed"
+        },
+        {
+          "name": "worker-startup",
+          "status": "passed"
+        },
+        {
+          "name": "process-counters",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "reproduce": "python3 scripts/qualify_native_slurm.py --skip-build --version VERSION --output NEW_DIRECTORY",
+  "complete_local_evidence": "/workspace/raven-native-slurm-privacy-fd-final-proof.json",
+  "prior_diagnostics": "Earlier prefix-format, harness working-directory, and accounting publication timing failures are retained separately and excluded from the successful qualification result.",
+  "privacy_fix_requalification": {
+    "changed_source": "raven/science_files.py",
+    "scope": "Requalified all five native Slurm scenarios after publication metadata mode0600 enforcement and guaranteed raw descriptor closure on fdopen failure. Privacy and descriptor-fault subprocess regressions are reported separately in the integrated ledger.",
+    "prior_evidence": [
+      "/workspace/raven-native-slurm-delivered-proof.json (pre-privacy-fix; retained, superseded)",
+      "/workspace/raven-native-slurm-privacy-final-proof.json (mode fix before descriptor-fault fix; retained, superseded)"
+    ]
+  }
+}
