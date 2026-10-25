@@ -196,6 +196,17 @@ umask/failure-injection regressions, and 294 shared-file/campaign regressions
 cover the correction. The final CI run must pass; the earlier failures are
 preserved as evidence, not relabeled as qualification.
 
+The next compatibility run passed the privacy assertions on every version but
+exposed a concurrency-test assumption on Python 3.10: a client performing 16
+durable updates in four threads did not handle the storage API's documented
+250 ms busy rejection. The final test client retries only that exact rejection
+within a bounded test deadline. Production admission timing is unchanged. All
+16 identities, revision 17 and every accepted revision remain asserted; a new
+held-lock regression proves rejected writes change nothing and an explicit retry
+commits exactly once. Independent review and Python 3.10/3.13 focused checks
+passed. This is a qualification correction, not a claim that busy writes always
+succeed immediately or that native mutations may be replayed.
+
 ```bash
 python -m pytest -q -n 2
 python scripts/check_quality.py

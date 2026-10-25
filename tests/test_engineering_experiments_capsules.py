@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import stat
 import subprocess
+import threading
 import time
 
 import pytest
@@ -105,13 +106,53 @@ def test_experiment_ancestry_stale_revisions_and_identity_rebinding_refused(tmp_
     assert X.load(tmp_path, "science") == one
 
 
+def link_when_admitted(project, job, busy=None):
+    """Retry only the documented rejection before a state transaction begins.
+
+    This is a metadata test client, never a scheduler mutation retry. Keep the
+    production 250 ms admission bound and expose unexpected timeout failures.
+    """
+    deadline = time.monotonic() + 20
+    while True:
+        try:
+            return X.link(project, "science", scheduler_identity=native(str(job)))
+        except TimeoutError as exc:
+            if str(exc) != "Engineering state is busy; retry later" or time.monotonic() >= deadline:
+                raise
+            if busy is not None:
+                busy.set()
+            time.sleep(0.005)
+
+
 def test_parallel_links_serialize_without_losing_attempts(tmp_path):
     X.create(tmp_path, "science")
     with ThreadPoolExecutor(max_workers=4) as pool:
-        list(pool.map(lambda i: X.link(tmp_path, "science", scheduler_identity=native(str(i))), range(16)))
+        accepted = list(pool.map(lambda i: link_when_admitted(tmp_path, i), range(16)))
     result = X.load(tmp_path, "science")
     assert result["revision"] == 17
     assert len(result["attempts"]) == 16
+    assert {row["scheduler_identity"]["native_id"] for row in result["attempts"]} == {str(i) for i in range(16)}
+    assert {row["revision"] for row in accepted} == set(range(2, 18))
+
+
+def test_busy_state_rejects_without_writes_then_explicit_client_retry_succeeds(tmp_path):
+    X.create(tmp_path, "science")
+    before = X.load(tmp_path, "science")
+    busy = threading.Event()
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with S.locked(tmp_path, "experiments"):
+            rejected = pool.submit(X.link, tmp_path, "science", scheduler_identity=native("held"))
+            with pytest.raises(TimeoutError, match="Engineering state is busy; retry later"):
+                rejected.result(timeout=5)
+            assert X.load(tmp_path, "science") == before
+            retrying = pool.submit(link_when_admitted, tmp_path, "held", busy)
+            assert busy.wait(5), "The client must observe a real busy rejection before retrying"
+            assert X.load(tmp_path, "science") == before
+        accepted = retrying.result(timeout=20)
+    assert accepted["revision"] == 2
+    assert len(accepted["attempts"]) == 1
+    assert accepted["attempts"][0]["scheduler_identity"]["native_id"] == "held"
+    assert X.load(tmp_path, "science") == accepted
 
 
 def test_read_no_creation_and_private_anchored_storage(tmp_path):
