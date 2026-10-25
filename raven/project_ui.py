@@ -588,7 +588,7 @@ def _select(app, run_id, *, home=False):
 
 
 def _target_job(app):
-    if getattr(app, "tab", "") in ("jobs", "history"):
+    if getattr(app, "tab", "") in ("jobs", "history", "traces"):
         return getattr(app, "selected_id", None)
     if getattr(app, "tab", "") in ("log", "logs") and getattr(app, "log_job", None):
         return app.log_job

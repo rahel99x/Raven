@@ -682,3 +682,62 @@ record budgets, portable-cache fallback and runtime cleanup. Required quality
 and dependency checks passed. The corrected final
 HEAD must pass the complete hosted release, Chromium and actual Slurm gates;
 PR #7 records those exact revision/run results before merge.
+
+## Trace discovery and terminal catch-up follow-up
+
+The reported desktop example completed and retained a closed, warning-free
+producer manifest declaring 18,767 events. Its run used a launch UUID and no
+optional Slurm submit/start anchors. Selecting the existing project and exact
+run inside Raven made the trace visible; the user confirmed this recovery.
+This establishes readable captured data and an absent UI association, rather
+than failed application execution. It does not establish which initial
+discovery condition occurred on that desktop.
+
+Review against main a83b05d reproduced two published-metadata bugs: Trace ignored
+the queue/History record's working directory until selected details arrived,
+and global Traces could ask automatic project discovery for a stale Research
+selection instead of its own selected job. Both now reuse the selected
+scheduler context. A healthy existing automatic project binding remains the
+association authority; numeric job IDs alone do not authorize a source.
+Contradictory cluster, restart and scheduler-anchor evidence remains rejected.
+
+Missing, unassociated and unreadable metadata now have distinct feedback.
+Rejection reasons and actual read errors survive cached refreshes; diagnostics
+remain bounded and sanitized, including 80-column terminal wrapping. Rejected
+metadata is excluded from selectable verified sources. No filesystem or
+scheduler acquisition was added to painting or context construction.
+
+A separate retained-source review found orphan returns from Raven's startup
+frames, entered before automatic recording began. Its immutable runtime lived
+under the project root and was mistaken for scientific code. Automatic capture
+now excludes its exact loaded instrumentation package and its owned,
+receipt/hash-verified generated startup file. This is an opt-in capture boundary;
+manual/self-tracing defaults and ordinary application files named raven.py or
+sitecustomize.py remain observable. Scientific entry/exit pairs, metrics,
+in-trace counters and all-scope application stdlib calls remain covered.
+Existing recordings retain their original observed boundaries.
+
+Controlled journals with exactly 18,767 events and a separate run with 9,000
+matched calls verified that bounded reader/index ingestion reaches every
+committed sequence and removes the temporary reader-backlog message. A broad
+Fit query can still reach its 2,000-result bound. Search or zoom recovers exact
+late calls, while independent full-index function statistics retain all indexed
+calls and raw manifest/journal hashes remain unchanged. A genuine unknown-entry
+warning remains present after catch-up. These are software fixtures, not a
+replay or hardware qualification of the user's desktop recording.
+
+The terminal deadline review also found that the existing reader's 20/50 ms
+catch-up request was absent from frame-cache housekeeping decisions; quiet
+Jobs/History could instead wait up to one second. The correction uses the
+existing UI maintenance/notification owners, preserving shared-worker bounds
+and idle behavior; its final command and regression evidence accompany the PR.
+
+Focused acceptance packages are test_trace_dashboard_context.py,
+test_trace_dashboard_integration.py, test_trace_discovery_feedback.py,
+test_trace_reader_backlog.py, test_auto_trace_runtime_scope.py and
+test_trace_screen_cadence.py. They cover fresh asynchronous Jobs/completed
+History/global Traces, managed Light and legacy operation, automatic binding
+without receipt shortcuts, foreign/restarted attempts, exact retained queries,
+capture boundary fidelity and terminal deadlines. Final integrated test,
+packaging and compatibility results refer to the delivered PR revision;
+earlier qualification counts above remain historical evidence.

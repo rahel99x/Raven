@@ -551,6 +551,59 @@ when starting the session, never arbitrary filesystem paths from a web request.
 
 Check the source list for adapter, read/committed counts, fidelity, warnings and actual read errors. A gap, missing exit, stopped capture quota or unknown tail remains visible. Fit cannot reconstruct observations that were never recorded or retained.
 
+### A launched job has no visible trace
+
+An application exit code of zero does not prove recording availability. Check
+the exact run's `run.json` warnings and `.raven/traces/*/manifest.json` files.
+`committed_seq` is the producer's retained-event count; journal integrity is
+verified separately when Raven reads the source. A closed manifest with events
+can still be unavailable to a selected scheduler row when its run association
+has not been established.
+
+The Trace views distinguish missing recordings, unassociated recording metadata
+and unreadable metadata. Automatic discovery uses the selected job's published
+working directory and the project's exact attempt inventory. It does not attach
+a recording by numeric job ID alone or ignore conflicting scheduler identities.
+
+To select an existing run manually, open Raven and use its `:` command bar:
+
+```text
+:project /absolute/project
+:run select EXACT_RUN_ID
+```
+
+Enter these inside Raven, one at a time after each read completes. For direct
+inspection from a shell, use the exact manifest path:
+
+```bash
+raven trace workspace /absolute/project/runs/EXACT_RUN_ID/.raven/traces/STREAM/manifest.json \
+  --serve --open-browser
+```
+
+Explicit retained-file inspection does not establish scheduler ownership or
+prove that the file belongs to another currently selected job. Preserve the
+original recordings while resolving project, cluster or attempt mismatches.
+
+### Range limits, catch-up and unknown stack prefixes
+
+- **Range query reached its event bound:** the current exact-event query is
+  truncated. Zoom in or filter by function, thread, process or device. Fit can
+  cover the full time axis while its bounded event query remains partial. The
+  retained journal and independent full-index function statistics are not
+  reduced by this display limit.
+- **More committed records remain:** the reader is still ingesting a committed
+  prefix within its time/event budget. Watch the read/committed counts; this
+  message clears when ingestion catches up. A visible terminal Trace view uses
+  its catch-up deadline independently of scheduler polling. If counts stop
+  advancing, inspect the source's actual read error and index/storage status.
+- **Return without a recorded entry:** the observed stream lacks an entry for
+  that return, so the preceding stack cannot be reconstructed. Recording begun
+  inside an existing frame or a capture gap can cause this. Automatic capture
+  excludes the loaded Raven instrumentation runtime and its verified generated
+  startup file; it preserves application code, including ordinary files named
+  `raven.py` or `sitecustomize.py`. Existing recordings retain their original
+  boundaries and warnings.
+
 If an index is damaged, choose a fresh private index path or reopen through the normal workspace workflow and let it rebuild from retained journals. Preserve the raw journals while diagnosing source integrity. User-selected quotas and slow shared storage can limit ingestion independently of application recording.
 
 Hardware capture availability is described by `raven trace capabilities` on the execution host. A detected tool or runtime is a prerequisite, not proof of a live-qualified capture. See [capture capabilities](trace-capabilities.md) and the [implementation/qualification ledger](../implementation/trace-workspace-coverage.md) for scope and evidence.

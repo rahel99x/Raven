@@ -980,7 +980,16 @@ class Recorder:
 class PythonCapture:
     """CPython monitoring, with an explicitly less capable legacy profile mode."""
 
-    def __init__(self, recorder, *, legacy=False, scope="all", roots=()):
+    def __init__(
+        self,
+        recorder,
+        *,
+        legacy=False,
+        scope="all",
+        roots=(),
+        internal_roots=(),
+        internal_files=(),
+    ):
         if scope not in {"project", "all"}:
             raise ValueError("Python trace scope must be project or all")
         self.recorder = recorder
@@ -989,6 +998,15 @@ class PythonCapture:
         self.roots = tuple(
             str(Path(root).resolve()) + os.sep
             for root in (roots or (recorder.project,))
+        )
+        # Automatic attachment knows its exact instrumentation owners. Keep
+        # these opt-in so ordinary capture can still inspect Raven itself.
+        # Lexical absolute paths also cover code loaded from an owned ZIP.
+        self.internal_roots = tuple(
+            os.path.abspath(root) + os.sep for root in internal_roots
+        )
+        self.internal_files = frozenset(
+            os.path.abspath(path) for path in internal_files
         )
         self._scope_cache = {}
         self.local = threading.local()
@@ -1072,6 +1090,11 @@ class PythonCapture:
             return cached[1]
         filename = code.co_filename
         allowed = filename not in self.excluded
+        if allowed and (self.internal_roots or self.internal_files):
+            path = os.path.abspath(filename)
+            allowed = path not in self.internal_files and not path.startswith(
+                self.internal_roots
+            )
         if allowed and self.scope == "project":
             if filename.startswith("<"):
                 allowed = filename in {"<string>", "<stdin>"}

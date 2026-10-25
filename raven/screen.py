@@ -2011,6 +2011,55 @@ def _quiet_jobs_token(app, *, publication=_UNREAD_PUBLICATION):
     )
 
 
+def _trace_read_deadline(app):
+    """Read the visible subscription's deadline without starting work or I/O."""
+    state = getattr(app, "trace_panel_state", None)
+    hub = getattr(app, "research", None)
+    if (
+        not isinstance(state, dict)
+        or not isinstance(state.get("context"), dict)
+        or state.get("paused")
+        or state.get("callback") is not None
+        or hub is None
+        or getattr(app, "mode", None) != "main"
+        or not (
+            getattr(app, "tab", None) == "traces"
+            or getattr(app, "tab", None) in {"jobs", "history"}
+            and getattr(app, "job_panel_state", {}).get("mode") == "trace"
+        )
+    ):
+        return float("inf")
+    deadline = state.get("next_read")
+    if type(deadline) not in (int, float) or not math.isfinite(deadline):
+        return float("inf")
+    from .model import Store
+    from .tracing.ui import _context
+
+    store = getattr(app, "store", None)
+    if type(store) is not Store or not store.lock.acquire(blocking=False):
+        return float("inf")
+    try:
+        current = _context(app)
+    finally:
+        store.lock.release()
+    if current is None or current["key"] != state["context"].get("key"):
+        return float("inf")
+    lock = getattr(hub, "lock", None)
+    if lock is None or not lock.acquire(blocking=False):
+        return float("inf")
+    try:
+        if (
+            hub.closed
+            or hub.pending is not None
+            or hub.future is not None
+            and not hub.future.done()
+        ):
+            return float("inf")
+    finally:
+        lock.release()
+    return deadline
+
+
 class _FrameCache:
     """Retain a published document while cosmetic pointer feedback changes.
 
@@ -2034,6 +2083,8 @@ class _FrameCache:
         self.live_revision = 0
         self.preview_ready = 0.0
         self.next_preview = float("inf")
+        self.next_trace = float("inf")
+        self._trace_retry = None
         self.toolbar_token = None
         self.group_menu_token = None
         self.clock_changed = False
@@ -2066,11 +2117,14 @@ class _FrameCache:
     def maintain(self, app, width, height, now=None):
         """Refresh published workspace clocks and due housekeeping independently."""
         now = time.monotonic() if now is None else now
-        if (
-            self.dirty
-            or self.geometry != (width, height)
-            or self.document_token is None
-        ):
+        self._trace_deadline(app, now)
+        if self.dirty or self.geometry != (width, height):
+            return False
+        trace_due = now >= self.next_trace
+        if self.document_token is None:
+            if trace_due:
+                self._maintain_app(app)
+                return True
             return False
         current = _quiet_jobs_token(app)
         if current is None:
@@ -2078,12 +2132,16 @@ class _FrameCache:
             # pending callback) resumes normal composition immediately.
             self.dirty = True
             return False
-        if now < self.next_maintenance and current == self.document_token:
+        if (
+            now < self.next_maintenance
+            and current == self.document_token
+            and not trace_due
+        ):
             if now >= self.next_document:
                 self._patch_clock(app)
                 return True
             return False
-        _timed_ui(app, "maintenance", app.tick)
+        self._maintain_app(app)
         self.next_maintenance = (
             math.floor(now / MAINTENANCE_SECONDS) + 1
         ) * MAINTENANCE_SECONDS
@@ -2093,6 +2151,29 @@ class _FrameCache:
         elif now >= self.next_document:
             self._patch_clock(app)
         return True
+
+    def _maintain_app(self, app):
+        deadline = _trace_read_deadline(app)
+        attempted = time.monotonic() >= deadline
+        _timed_ui(app, "maintenance", app.tick)
+        self._trace_deadline(app, time.monotonic(), attempted=attempted)
+
+    def _trace_deadline(self, app, now, *, attempted=False):
+        deadline = _trace_read_deadline(app)
+        state = getattr(app, "trace_panel_state", None)
+        state = state if isinstance(state, dict) else {}
+        key = (id(getattr(app, "research", None)), id(state.get("context")), deadline)
+        if attempted and deadline <= now:
+            # A closed/rejected reader lane can leave an unchanged due request.
+            # Retain the ordinary maintenance retry rather than a 1 ms loop.
+            self._trace_retry = key, now + FALLBACK_MAINTENANCE_SECONDS
+        elif self._trace_retry is not None and self._trace_retry[0] != key:
+            self._trace_retry = None
+        self.next_trace = (
+            max(deadline, self._trace_retry[1])
+            if self._trace_retry is not None
+            else deadline
+        )
 
     def _patch_clock(self, app):
         """Refresh visible clock cells without sorting or preparing source rows."""
@@ -2144,7 +2225,7 @@ class _FrameCache:
         from .interaction import publish
 
         if not maintained:
-            _timed_ui(app, "maintenance", app.tick)
+            self._maintain_app(app)
         snap = _timed_ui(
             app, "snapshot", getattr(store, "render_snapshot", store.snapshot)
         )
@@ -2294,6 +2375,7 @@ class _FrameCache:
         # Release commits immediately through the ordinary revision path.
         self.preview_ready = now + 0.05
         self.next_preview = float("inf")
+        self._trace_deadline(app, now)
         self.dirty = False
 
     def feedback(self, app, views):
@@ -2429,6 +2511,7 @@ class _FrameCache:
                             self.next_feedback,
                             self.next_preview,
                             self.next_document,
+                            self.next_trace,
                         )
                         - now
                     )
