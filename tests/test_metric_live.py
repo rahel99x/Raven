@@ -1033,7 +1033,7 @@ def test_feedback_and_actual_interval_labels_preserve_geometry_during_rate_chang
 
 
 @pytest.mark.parametrize("ascii_", [False, True])
-@pytest.mark.parametrize("width", [24, 36, 64, 68, 120])
+@pytest.mark.parametrize("width", [24, 36, 64, 68, 69, 70, 120])
 def test_requested_polling_remains_readable_when_effective_cadence_is_shared(app, ascii_, width):
     from raven.metric_sampling import format_interval
     from raven.refresh_rate import poll_interval
@@ -1047,7 +1047,7 @@ def test_requested_polling_remains_readable_when_effective_cadence_is_shared(app
         text = L.row_text(output)
         requested = format_interval(poll_interval(rate, maximum=100), ascii_=ascii_)
         assert "500ms" in text and requested in text
-        assert ("Set " if width >= 68 else "S" + requested) in text
+        assert ("Set " if width >= 70 else "S" + requested) in text
         assert L.vlen(text) == width
         assert not ascii_ or text.isascii()
 
