@@ -389,6 +389,11 @@ def _primary_controls(app):
 
 
 def _dialog_action(app, kind):
+    pointer = getattr(app, "interaction_state", {})
+    if not pointer.get("routing"):
+        # A mouse activation owns this action even while F8 focuses another
+        # control. Do not reinterpret Enter/Escape as that control's key.
+        pointer.update(active=False, focused=None, frame_required=True)
     if kind == "dialog-close":
         app.handle("esc")
     elif kind in ("dialog-up", "dialog-down"):

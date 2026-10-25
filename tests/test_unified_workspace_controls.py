@@ -173,3 +173,23 @@ def test_legacy_details_close_rejects_stale_job_identity_and_supports_f8():
     app.handle("enter")
     assert app.mode == "main" and app.selected_id == "701"
 
+
+@pytest.mark.parametrize("mode,kind", [("details", "dialog-close"), ("filter", "filter-apply"),
+                                       ("filter", "filter-clear")])
+def test_legacy_mouse_action_owns_activation_when_f8_focuses_quit(mode, kind):
+    app, views = dashboard()
+    app.store.apply_jobs([Job("701", "train", "local", "RUNNING")])
+    paint(app, views)
+    app.open_details() if mode == "details" else app.handle("/")
+    if mode == "filter":
+        app.filter_edit = "train"
+    paint(app, views)
+    app.handle("f8")
+    app.interaction_state.update(active=True, focused="toolbar:quit:None")
+    target = next(hit for hit in app.toolbar_state["hits"] if hit[3] == kind)
+    native(app, target[0], target[1], curses.BUTTON1_PRESSED)
+    native(app, target[0], target[1], curses.BUTTON1_RELEASED)
+    assert app.mode == "main" and not app.quit
+    if mode == "filter":
+        assert app.filter == ("train" if kind == "filter-apply" else "")
+
