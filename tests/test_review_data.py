@@ -268,6 +268,60 @@ def test_tag_and_uniform_pin_use_one_shared_background_publication(tmp_path,monk
     store.close()
 
 
+def test_restart_barrier_drains_new_tags_pins_and_notes_after_a_paused_old_snapshot(tmp_path, monkeypatch):
+    from raven import ui_state
+
+    store = Store(str(tmp_path))
+    store.tag('7', 'urgent', 'paper')
+    entered, release, waited = threading.Event(), threading.Event(), threading.Event()
+    actual_atomic = ui_state._atomic
+    held = False
+
+    def paused_atomic(path, payload):
+        nonlocal held
+        if str(path) == str(tmp_path / 'tags.json') and not held:
+            held = True
+            assert json.loads(payload)['7']['tags'] == ['urgent', 'paper']
+            entered.set()
+            assert release.wait(10)
+        return actual_atomic(path, payload)
+
+    monkeypatch.setattr(ui_state, '_atomic', paused_atomic)
+    reader = None
+    with ThreadPoolExecutor(max_workers=1) as writer, ThreadPoolExecutor(max_workers=1) as shutdown:
+        try:
+            store.configure_persistence_writer(writer.submit)
+            store.note('7', 'old note')
+            assert entered.wait(5)
+            store.tag('7', 'urgent', remove=True)
+            store.note('7', 'latest note')
+            store.pin('8', True)
+            pending = store._persist_writer_future
+            actual_result = pending.result
+
+            def observed_wait(*args, **kwargs):
+                waited.set()
+                return actual_result(*args, **kwargs)
+
+            monkeypatch.setattr(pending, 'result', observed_wait)
+            drained = shutdown.submit(store.configure_persistence_writer, None)
+            assert waited.wait(5)
+            assert not drained.done(), 'Shutdown must wait for the paused older publication'
+            assert store.tags_of('7') == ['paper'] and store.pinned('8')
+            release.set()
+            drained.result(timeout=10)
+            reader = Store(str(tmp_path))
+            assert reader.tags_of('7') == ['paper']
+            assert reader.tags['7']['note'] == 'latest note'
+            assert reader.pinned('8')
+            assert not store._tags_dirty
+        finally:
+            release.set()
+            store.close()
+            if reader is not None:
+                reader.close()
+
+
 def test_started_sequence_outlives_bounded_event_deque():
     store=Store(persist=False,max_events=2)
     for number in range(5):store.event('started','job '+str(number))

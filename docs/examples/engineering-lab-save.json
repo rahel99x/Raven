@@ -1,0 +1,33 @@
+{
+  "arguments": {
+    "document": {
+      "schema": "raven.lab-workspace/v1",
+      "name": "LabX experiments",
+      "guidelines": "Review the billing account before submitting. Scientific resources and Raven Heavy resources have independent budgets.",
+      "sites": [
+        {
+          "id": "workstation",
+          "scheduler": "slurm",
+          "login": "alice",
+          "scope": {"cluster": "local", "user": "alice"},
+          "accounts": [],
+          "job_defaults": {"cpus": 4, "memory_mib": 8192},
+          "heavy_defaults": {"cpus": 1, "memory_mib": 512}
+        },
+        {
+          "id": "lab-cluster",
+          "scheduler": "slurm",
+          "login": "alice",
+          "scope": {"cluster": "research-cluster", "user": "alice", "host": "research-login"},
+          "connection": {"host": "research-login", "ssh_user": "alice"},
+          "profile": "LabX GPU experiments",
+          "lab": "LabX",
+          "accounts": ["lab-x", "alice-personal"],
+          "association_source": "Example user declarations; replace with actual memberships shown by Setup / Connections and accounts",
+          "job_defaults": {"account": "lab-x", "partition": "gpu", "cpus": 8, "memory_mib": 32768, "gpus": 1},
+          "heavy_defaults": {"account": "alice-personal", "partition": "main", "cpus": 1, "memory_mib": 512}
+        }
+      ]
+    }
+  }
+}

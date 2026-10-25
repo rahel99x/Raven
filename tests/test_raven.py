@@ -1282,6 +1282,9 @@ def test_tags_pins_notes_filter_and_compare(tmp_path):
     assert "old" in next(L.row_text(r) for r in rows if "12476001" in L.row_text(r))
     app.run_command("filter #old"); views.compose(store.snapshot(), app, W, H, actions)
     app.run_command("filter")
+    # A restart includes the shutdown publication barrier. The interactive
+    # writer is asynchronous; keep this Store for the later comparison checks.
+    store.configure_persistence_writer(None)
     st2 = Store(state_dir=str(tmp_path / "state"))                                                    # tags survive a restart
     assert st2.tags_of("12480001") == ["paper"] and st2.pinned("12480003") and st2.tags["12480001"]["note"] == "rerun with 32 cores"
     from raven.expr import Expr, cluster_ns

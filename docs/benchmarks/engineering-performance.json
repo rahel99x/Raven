@@ -1,0 +1,61 @@
+{
+  "base_revision": "90a2e65894d65877bfc7890b0467afe163e10554",
+  "commands": [
+    "python scripts/benchmark_engineering_performance.py baseline --iterations 30 --calls 1000",
+    "python scripts/benchmark_engineering_performance.py duplicate-validation --iterations 30 --calls 1000",
+    "python scripts/benchmark_engineering_performance.py service --iterations 30 --calls 1000"
+  ],
+  "interpretation": "Baseline is the five existing analysis blocks only. Duplicate-validation reproduces redundant input serialization in the first composed implementation. Service retains identical legacy analyses and adds binding/coverage/envelopes/digest. No speedup over the smaller baseline is claimed.",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "python": "3.13.16",
+  "qualification": "Local synthetic format fixture; no scheduler, GPU, remote, multi-node or capture overhead qualification.",
+  "results": [
+    {
+      "cpu_mean_ms": 21.0041034,
+      "fidelity": "all five pre-existing analysis blocks identical",
+      "fixture_calls": 1000,
+      "fixture_events": 2000,
+      "iterations": 30,
+      "limits": "Local synthetic observations, no live cluster, terminal rendering, device or remote I/O; RSS includes imports, fixture and fidelity checks; tracemalloc peak measured separately from timing.",
+      "mode": "baseline",
+      "process_high_water_rss_mib": 14.5,
+      "python_peak_allocated_mib": 0.12982463836669922,
+      "scheduler_commands": 0,
+      "wall_median_ms": 20.813776005525142,
+      "wall_p95_ms": 22.353981010382995
+    },
+    {
+      "cpu_mean_ms": 63.3030958,
+      "fidelity": "all five pre-existing analysis blocks identical",
+      "fixture_calls": 1000,
+      "fixture_events": 2000,
+      "iterations": 30,
+      "limits": "Local synthetic observations, no live cluster, terminal rendering, device or remote I/O; RSS includes imports, fixture and fidelity checks; tracemalloc peak measured separately from timing.",
+      "mode": "duplicate-validation",
+      "process_high_water_rss_mib": 14.60546875,
+      "python_peak_allocated_mib": 0.7334346771240234,
+      "scheduler_commands": 0,
+      "wall_median_ms": 60.479523992398754,
+      "wall_p95_ms": 81.0904579993803
+    },
+    {
+      "cpu_mean_ms": 41.514382299999994,
+      "fidelity": "all five pre-existing analysis blocks identical",
+      "fixture_calls": 1000,
+      "fixture_events": 2000,
+      "iterations": 30,
+      "limits": "Local synthetic observations, no live cluster, terminal rendering, device or remote I/O; RSS includes imports, fixture and fidelity checks; tracemalloc peak measured separately from timing.",
+      "mode": "service",
+      "process_high_water_rss_mib": 14.5,
+      "python_peak_allocated_mib": 0.7332210540771484,
+      "scheduler_commands": 0,
+      "wall_median_ms": 41.168207506416366,
+      "wall_p95_ms": 44.2255079979077
+    }
+  ],
+  "schema": "raven.engineering-performance-benchmark/v1",
+  "source_hashes": {
+    "raven/engineering/performance.py": "81b74628c1c5f2496c20dd86ed10fb18956ab69880c7d23cf4a9581a8c8303fa",
+    "scripts/benchmark_engineering_performance.py": "b928088e176a9def4c4bc3f8fa03cbf0801d9eae552b7703a3699b8cd707e8f1"
+  }
+}

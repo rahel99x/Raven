@@ -1,0 +1,13 @@
+{
+  "scheduler": {"name": "slurm", "scope": {"cluster": "local", "user": "alice"}},
+  "arguments": {
+    "config": {
+      "scratch": "/tmp",
+      "imports": ["raven"],
+      "worker": true,
+      "trace": true,
+      "gpu": false,
+      "resources": {"cpus": 1, "memory_mib": 512, "wall_seconds": 120}
+    }
+  }
+}

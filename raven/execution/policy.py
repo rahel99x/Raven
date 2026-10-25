@@ -121,6 +121,10 @@ OPERATIONS["trace-file"]["budget"]["input_bytes"] = 8 << 20
 OPERATIONS["trace-file"]["budget"]["max_records"] = 20000
 OPERATIONS["log-search-files"]["budget"]["input_bytes"] = 8 << 20
 OPERATIONS["scientific-inspection"]["budget"]["input_bytes"] = 8 << 20
+OPERATIONS["engineering-analysis"] = _contract("engineering-analysis")
+OPERATIONS["engineering-analysis"]["budget"].update(
+    input_bytes=2 << 20, output_bytes=4 << 20, wall_seconds=15, cpu_seconds=10
+)
 
 # These existing named inspections run unchanged in a resource-limited task
 # child. They may read explicit artifacts, but cannot acquire a Slurm transport.
@@ -156,6 +160,7 @@ FILE_OPERATIONS = frozenset(
         "phase-alignment",
         "queue-model",
         "campaign-policy",
+        "engineering-performance",
     }
 )
 from ..distribution_profile import missing_operation as _extension_operation_absent
@@ -275,6 +280,17 @@ LIGHT_OPERATIONS = frozenset(
         "supervisor",
         "clusters",
         "site-telemetry",
+        "native-scheduler",
+        "engineering-experiments",
+        "engineering-qualification",
+        "engineering-capsules",
+        "engineering-labs",
+        "engineering-provenance",
+        "engineering-incidents",
+        "engineering-optimization",
+        "engineering-recovery",
+        "engineering-diagnosis",
+        "engineering-reliability",
     }
 )
 HEAVY_OPERATIONS = frozenset(

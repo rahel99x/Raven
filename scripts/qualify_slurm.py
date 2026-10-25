@@ -39,7 +39,7 @@ def main(argv=None):
     parser.add_argument("--version", default="26.05.5")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--skip-build", action="store_true")
-    parser.add_argument("--scenario", choices=("lifecycle", "queue-observations", "allocation-recovery", "forecast-observations", "trace-workspace"), default="lifecycle")
+    parser.add_argument("--scenario", choices=("lifecycle", "queue-observations", "allocation-recovery", "forecast-observations", "trace-workspace", "native-scheduler"), default="lifecycle")
     parser.add_argument("--plan", action="store_true", help="Print scope without contacting Docker")
     args = parser.parse_args(argv)
     spec = version_spec(args.version)

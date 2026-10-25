@@ -1,0 +1,31 @@
+{
+  "schema": "raven.engineering-lineage-benchmark/v1",
+  "fixture": {
+    "attempts": 1000,
+    "json_bytes": 483027,
+    "repeats": 15,
+    "known_cpu_seconds": 12000
+  },
+  "summary_ms": {
+    "median": 27.559085021493956,
+    "minimum": 26.790572999743745,
+    "maximum": 38.974111987045035
+  },
+  "total_process_cpu_seconds": 0.426534028,
+  "python_allocations": {
+    "retained_bytes": 60776,
+    "peak_bytes": 1196919
+  },
+  "process_peak_rss_bytes": 17727488,
+  "environment": {
+    "python": "3.13.16",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41"
+  },
+  "scheduler_requests": 0,
+  "limitations": [
+    "New capability: no equivalent previous implementation; no before/after gain claimed.",
+    "Warm in-process validated summary; no disk or scheduler latency.",
+    "Process peak RSS includes interpreter/imports/fixture and is separate from Python allocation peak.",
+    "Single cloud host; not interactive-terminal or production-cluster qualification."
+  ]
+}

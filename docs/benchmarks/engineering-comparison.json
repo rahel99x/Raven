@@ -1,0 +1,716 @@
+{
+  "schema": "raven.engineering-comparison/v1",
+  "implementation_revision": "1f1e7acb681bc3ea2904c6ad56f9e66f8e561f9c",
+  "baseline_revision": "90a2e65894d65877bfc7890b0467afe163e10554",
+  "ui": {
+    "ui-before": {
+      "metadata": {
+        "label": "baseline-90a2e65",
+        "source_root": "/workspace/Raven-unified-ui",
+        "version": "7.0.0",
+        "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+        "interactive": true,
+        "headless": false,
+        "timestamp": "2026-10-25T13:51:08.050027+00:00",
+        "measurement": "CPU with a counting paint sink; excludes terminal transport and wait times",
+        "sources": "synthetic memory fixtures; scheduler, filesystem and worker I/O are forbidden during measured frames"
+      },
+      "results": [
+        {
+          "scenario": "jobs",
+          "gesture": "render",
+          "jobs": 100,
+          "history": 500,
+          "metrics": 8,
+          "points": 1000,
+          "width": 80,
+          "height": 30,
+          "glyphs": "unicode",
+          "pipeline": "cached screen",
+          "repeats": 40,
+          "pointer_targets": {
+            "graphs": 0,
+            "controls": 0
+          },
+          "phases_ms": {
+            "compose": {
+              "median": 3.12246399698779,
+              "p95": 3.197807993274182,
+              "max": 3.5373510036151856
+            },
+            "decorate": {
+              "median": 0.042418992961756885,
+              "p95": 0.04399698809720576,
+              "max": 0.058909994550049305
+            },
+            "document_rebuild": {
+              "median": 3.9454684883821756,
+              "p95": 4.044548026286066,
+              "max": 4.358102974947542
+            },
+            "feedback": {
+              "median": 0.13124849647283554,
+              "p95": 0.15195997548289597,
+              "max": 0.21402401034720242
+            },
+            "frame": {
+              "median": 4.1055905021494254,
+              "p95": 4.2195640271529555,
+              "max": 4.5212089898996055
+            },
+            "graph": {
+              "median": 0.5241329927230254,
+              "p95": 0.6161120254546404,
+              "max": 0.6360919796861708
+            },
+            "overlay": {
+              "median": 0.03256399941165,
+              "p95": 0.03928999649360776,
+              "max": 0.05557501572184265
+            },
+            "paint": {
+              "median": 0.02180799492634833,
+              "p95": 0.02267397940158844,
+              "max": 0.05630499799735844
+            },
+            "snapshot": {
+              "median": 0.006920497980900109,
+              "p95": 0.007571012247353792,
+              "max": 0.007862021448090672
+            },
+            "tick": {
+              "median": 0.04726201586890966,
+              "p95": 0.056294986279681325,
+              "max": 0.06913498509675264
+            }
+          },
+          "counts_per_frame": {
+            "advisor_aggregations": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_cards": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_rasters": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "compose_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "erase_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "graph_publications": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "overlay_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "paint_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 1
+            },
+            "paint_cells": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 1
+            },
+            "paint_rows": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 1
+            },
+            "prepared_job_rows": {
+              "median": 100.0,
+              "p95": 100,
+              "max": 100
+            },
+            "running_advice": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "snapshot_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "tick_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            }
+          },
+          "io_attempts": {},
+          "ui_trace": false,
+          "trace_timeline": null
+        }
+      ]
+    },
+    "ui-after": {
+      "metadata": {
+        "label": "1f1e7ac",
+        "source_root": "/workspace/Raven-engineering-platform",
+        "version": "7.0.0",
+        "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+        "interactive": true,
+        "headless": false,
+        "timestamp": "2026-10-25T13:51:08.418121+00:00",
+        "measurement": "CPU with a counting paint sink; excludes terminal transport and wait times",
+        "sources": "synthetic memory fixtures; scheduler, filesystem and worker I/O are forbidden during measured frames"
+      },
+      "results": [
+        {
+          "scenario": "jobs",
+          "gesture": "render",
+          "jobs": 100,
+          "history": 500,
+          "metrics": 8,
+          "points": 1000,
+          "width": 80,
+          "height": 30,
+          "glyphs": "unicode",
+          "pipeline": "cached screen",
+          "repeats": 40,
+          "pointer_targets": {
+            "graphs": 0,
+            "controls": 0
+          },
+          "phases_ms": {
+            "compose": {
+              "median": 3.1537309987470508,
+              "p95": 3.2334820134565234,
+              "max": 3.2946639985311776
+            },
+            "decorate": {
+              "median": 0.04292049561627209,
+              "p95": 0.059120007790625095,
+              "max": 0.064307008869946
+            },
+            "document_rebuild": {
+              "median": 3.979234999860637,
+              "p95": 4.13698802003637,
+              "max": 5.441190995043144
+            },
+            "feedback": {
+              "median": 0.13160899106878787,
+              "p95": 0.15102798352018,
+              "max": 0.15469398931600153
+            },
+            "frame": {
+              "median": 4.142576493904926,
+              "p95": 4.303801018977538,
+              "max": 5.605658981949091
+            },
+            "graph": {
+              "median": 0.5303119978634641,
+              "p95": 0.642911996692419,
+              "max": 2.008648996707052
+            },
+            "overlay": {
+              "median": 0.032584008295089006,
+              "p95": 0.03927000216208398,
+              "max": 0.04972500028088689
+            },
+            "paint": {
+              "median": 0.021908010239712894,
+              "p95": 0.022463995264843106,
+              "max": 0.03829799243248999
+            },
+            "snapshot": {
+              "median": 0.007401002221740782,
+              "p95": 0.008372007869184017,
+              "max": 0.010285002645105124
+            },
+            "tick": {
+              "median": 0.04730198998004198,
+              "p95": 0.06134301656857133,
+              "max": 0.07243998697958887
+            }
+          },
+          "counts_per_frame": {
+            "advisor_aggregations": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_cards": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_rasters": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "compose_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "erase_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "graph_publications": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "overlay_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "paint_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "paint_cells": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "paint_rows": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "prepared_job_rows": {
+              "median": 100.0,
+              "p95": 100,
+              "max": 100
+            },
+            "running_advice": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "snapshot_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "tick_calls": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            }
+          },
+          "io_attempts": {},
+          "ui_trace": false,
+          "trace_timeline": null
+        }
+      ]
+    },
+    "hover-before": {
+      "metadata": {
+        "label": "baseline-90a2e65",
+        "source_root": "/workspace/Raven-unified-ui",
+        "version": "7.0.0",
+        "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+        "interactive": true,
+        "headless": false,
+        "timestamp": "2026-10-25T13:51:08.653360+00:00",
+        "measurement": "CPU with a counting paint sink; excludes terminal transport and wait times",
+        "sources": "synthetic memory fixtures; scheduler, filesystem and worker I/O are forbidden during measured frames"
+      },
+      "results": [
+        {
+          "scenario": "jobs",
+          "gesture": "hover",
+          "jobs": 100,
+          "history": 500,
+          "metrics": 8,
+          "points": 1000,
+          "width": 80,
+          "height": 30,
+          "glyphs": "unicode",
+          "pipeline": "cached screen",
+          "repeats": 150,
+          "pointer_targets": {
+            "graphs": 0,
+            "controls": 150
+          },
+          "phases_ms": {
+            "decorate": {
+              "median": 0.058198507758788764,
+              "p95": 0.08103300933726132,
+              "max": 0.16736300312913954
+            },
+            "feedback": {
+              "median": 0.1263209996977821,
+              "p95": 0.1518299977760762,
+              "max": 0.24480000138282776
+            },
+            "frame": {
+              "median": 0.25989848654717207,
+              "p95": 0.32137599191628397,
+              "max": 0.40299000102095306
+            },
+            "input": {
+              "median": 0.04409649409353733,
+              "p95": 0.062014005379751325,
+              "max": 0.08186299237422645
+            },
+            "paint": {
+              "median": 0.04849350079894066,
+              "p95": 0.0975669827312231,
+              "max": 0.12030199286527932
+            }
+          },
+          "counts_per_frame": {
+            "advisor_aggregations": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_cards": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_rasters": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "compose_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "control_hover_events": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "erase_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "graph_publications": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "overlay_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "paint_calls": {
+              "median": 2.0,
+              "p95": 3,
+              "max": 4
+            },
+            "paint_cells": {
+              "median": 16.5,
+              "p95": 122,
+              "max": 122
+            },
+            "paint_rows": {
+              "median": 1.0,
+              "p95": 2,
+              "max": 2
+            },
+            "prepared_job_rows": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "running_advice": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "snapshot_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "tick_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            }
+          },
+          "io_attempts": {},
+          "ui_trace": false,
+          "trace_timeline": null
+        }
+      ]
+    },
+    "hover-after": {
+      "metadata": {
+        "label": "1f1e7ac",
+        "source_root": "/workspace/Raven-engineering-platform",
+        "version": "7.0.0",
+        "python": "3.13.16 (main, Oct  3 2026, 01:06:22) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+        "interactive": true,
+        "headless": false,
+        "timestamp": "2026-10-25T13:51:08.893566+00:00",
+        "measurement": "CPU with a counting paint sink; excludes terminal transport and wait times",
+        "sources": "synthetic memory fixtures; scheduler, filesystem and worker I/O are forbidden during measured frames"
+      },
+      "results": [
+        {
+          "scenario": "jobs",
+          "gesture": "hover",
+          "jobs": 100,
+          "history": 500,
+          "metrics": 8,
+          "points": 1000,
+          "width": 80,
+          "height": 30,
+          "glyphs": "unicode",
+          "pipeline": "cached screen",
+          "repeats": 150,
+          "pointer_targets": {
+            "graphs": 0,
+            "controls": 150
+          },
+          "phases_ms": {
+            "decorate": {
+              "median": 0.0589185074204579,
+              "p95": 0.08253499981947243,
+              "max": 0.14564101002179086
+            },
+            "feedback": {
+              "median": 0.12813901412300766,
+              "p95": 0.16056300955824554,
+              "max": 0.22409899975173175
+            },
+            "frame": {
+              "median": 0.26306799554731697,
+              "p95": 0.32356998417526484,
+              "max": 1.0973699972964823
+            },
+            "input": {
+              "median": 0.044222004362381995,
+              "p95": 0.06299500819295645,
+              "max": 0.08178400457836688
+            },
+            "paint": {
+              "median": 0.049013993702828884,
+              "p95": 0.09678601054474711,
+              "max": 0.8916590013541281
+            }
+          },
+          "counts_per_frame": {
+            "advisor_aggregations": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_cards": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "chart_rasters": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "compose_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "control_hover_events": {
+              "median": 1.0,
+              "p95": 1,
+              "max": 1
+            },
+            "erase_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "graph_publications": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "overlay_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "paint_calls": {
+              "median": 2.0,
+              "p95": 3,
+              "max": 4
+            },
+            "paint_cells": {
+              "median": 16.5,
+              "p95": 122,
+              "max": 122
+            },
+            "paint_rows": {
+              "median": 1.0,
+              "p95": 2,
+              "max": 2
+            },
+            "prepared_job_rows": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "running_advice": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "snapshot_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            },
+            "tick_calls": {
+              "median": 0.0,
+              "p95": 0,
+              "max": 0
+            }
+          },
+          "io_attempts": {},
+          "ui_trace": false,
+          "trace_timeline": null
+        }
+      ]
+    }
+  },
+  "analysis": {
+    "baseline": {
+      "cpu_mean_ms": 20.841280233333336,
+      "fidelity": "all five pre-existing analysis blocks identical",
+      "fixture_calls": 1000,
+      "fixture_events": 2000,
+      "iterations": 30,
+      "limits": "Local synthetic observations, no live cluster, terminal rendering, device or remote I/O; RSS includes imports, fixture and fidelity checks; tracemalloc peak measured separately from timing.",
+      "mode": "baseline",
+      "process_high_water_rss_mib": 14.5,
+      "python_peak_allocated_mib": 0.12982463836669922,
+      "scheduler_commands": 0,
+      "wall_median_ms": 20.869576503173448,
+      "wall_p95_ms": 21.23002801090479
+    },
+    "duplicate": {
+      "cpu_mean_ms": 58.3904105,
+      "fidelity": "all five pre-existing analysis blocks identical",
+      "fixture_calls": 1000,
+      "fixture_events": 2000,
+      "iterations": 30,
+      "limits": "Local synthetic observations, no live cluster, terminal rendering, device or remote I/O; RSS includes imports, fixture and fidelity checks; tracemalloc peak measured separately from timing.",
+      "mode": "duplicate-validation",
+      "process_high_water_rss_mib": 14.609375,
+      "python_peak_allocated_mib": 0.7334346771240234,
+      "scheduler_commands": 0,
+      "wall_median_ms": 57.962709994171746,
+      "wall_p95_ms": 61.71265899320133
+    },
+    "service": {
+      "cpu_mean_ms": 41.70839936666667,
+      "fidelity": "all five pre-existing analysis blocks identical",
+      "fixture_calls": 1000,
+      "fixture_events": 2000,
+      "iterations": 30,
+      "limits": "Local synthetic observations, no live cluster, terminal rendering, device or remote I/O; RSS includes imports, fixture and fidelity checks; tracemalloc peak measured separately from timing.",
+      "mode": "service",
+      "process_high_water_rss_mib": 14.6796875,
+      "python_peak_allocated_mib": 0.7332210540771484,
+      "scheduler_commands": 0,
+      "wall_median_ms": 41.310850996524096,
+      "wall_p95_ms": 44.666238012723625
+    }
+  },
+  "lineage": {
+    "schema": "raven.engineering-lineage-benchmark/v1",
+    "fixture": {
+      "attempts": 1000,
+      "json_bytes": 483027,
+      "repeats": 15,
+      "known_cpu_seconds": 12000
+    },
+    "summary_ms": {
+      "median": 27.559085021493956,
+      "minimum": 26.790572999743745,
+      "maximum": 38.974111987045035
+    },
+    "total_process_cpu_seconds": 0.426534028,
+    "python_allocations": {
+      "retained_bytes": 60776,
+      "peak_bytes": 1196919
+    },
+    "process_peak_rss_bytes": 17727488,
+    "environment": {
+      "python": "3.13.16",
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.41"
+    },
+    "scheduler_requests": 0,
+    "limitations": [
+      "New capability: no equivalent previous implementation; no before/after gain claimed.",
+      "Warm in-process validated summary; no disk or scheduler latency.",
+      "Process peak RSS includes interpreter/imports/fixture and is separate from Python allocation peak.",
+      "Single cloud host; not interactive-terminal or production-cluster qualification."
+    ]
+  },
+  "resource_workflows": {
+    "fixture": {
+      "distinct_sources": 1,
+      "repetitions": 20,
+      "source_bytes": 65527,
+      "variants": 8
+    },
+    "naive": {
+      "cpu_median_ms": 2.512537499999995,
+      "python_allocation_peak_bytes": 1053890,
+      "source_bytes": 1572648,
+      "source_opens": 24,
+      "wall_median_ms": 2.512222999939695
+    },
+    "process_rss_highwater_native_units": 51080,
+    "qualification": "Warm-cache local source inspection only; equivalent resource/source results asserted. No scheduler, SSH, application, billing, concurrency or hardware efficacy measurement.",
+    "rss_unit": "KiB on Linux; bytes on macOS; aggregate process high-water mark, not per algorithm",
+    "schema": "raven.resource-workflow-benchmark/v1",
+    "shared": {
+      "cpu_median_ms": 1.6677075000000041,
+      "python_allocation_peak_bytes": 1049431,
+      "source_bytes": 65527,
+      "source_opens": 1,
+      "wall_median_ms": 1.670360506977886
+    }
+  },
+  "limits": [
+    "Controlled sequential local fixtures; no competing local heavy test or owned container ran in the measured windows.",
+    "UI metrics exclude terminal rendering/SSH and do not measure process RSS or Python allocations.",
+    "Analysis baseline has fewer binding/coverage responsibilities than the delivered service; duplicate-validation is the equivalent initial composition.",
+    "Process high-water RSS includes imports and fixtures; Python allocation samples are separate untimed passes.",
+    "No live scheduler, hardware, billing, capture-overhead percentage, scientific efficacy or user-study performance is inferred."
+  ],
+  "runtime_source_tree_sha256": "9715f610c9dcc4f547e6c70d1bcbddda40fb83c290213d4d7a20af63b9070d17"
+}

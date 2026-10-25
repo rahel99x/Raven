@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - 'raven/slurm*.py'
+      - 'raven/schedulers/**'
+      - 'raven/engineering/**'
+      - 'raven/scheduler_cli.py'
       - 'raven/raven_resources.py'
       - 'tests/fixtures/slurm/**'
       - 'raven/raven_allocation*.py'
@@ -29,6 +32,7 @@ on:
       - 'tests/fixtures/slurm-native/**'
       - 'scripts/slurm/**'
       - 'scripts/qualify_slurm.py'
+      - 'scripts/qualify_native_slurm.py'
       - '.github/workflows/slurm.yml'
 
 permissions:
@@ -69,11 +73,19 @@ jobs:
       - name: Live and retained Trace Workspace on real Slurm
         if: matrix.version == '26.05.5'
         run: python3 scripts/qualify_slurm.py --skip-build --version '${{ matrix.version }}' --scenario trace-workspace --output '/tmp/slurm-trace-workspace-${{ matrix.version }}'
+      - name: Native adapter and compute qualification on real Slurm
+        run: python3 scripts/qualify_native_slurm.py --skip-build --version '${{ matrix.version }}' --output '/tmp/slurm-native-${{ matrix.version }}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: slurm-${{ matrix.version }}-${{ github.sha }}
           path: /tmp/slurm-${{ matrix.version }}
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: slurm-native-${{ matrix.version }}-${{ github.sha }}
+          path: /tmp/slurm-native-${{ matrix.version }}
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always() && matrix.version == '26.05.5'

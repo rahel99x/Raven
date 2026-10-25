@@ -62,6 +62,7 @@ def _background_dashboard(arguments, *, json_mode=False):
         "query",
         "series",
         "mcp",
+        "engineering",
     }:
         return False
     from ..entry.grammar import parse
@@ -186,6 +187,8 @@ def _main_impl(argv=None, *, heavy=False):
         "update",
         "revert",
         "trust",
+        "scheduler",
+        "engineering",
     }
     # Global options stop at the subcommand. A nested --help/--config belongs
     # to that command, even when a global --site precedes it. Skip option values
@@ -256,6 +259,41 @@ def _main_impl(argv=None, *, heavy=False):
         from ..path_trust_cli import main as trust_main
 
         return trust_main(remaining[1:])
+    if remaining[:1] in (["scheduler"], ["engineering"]):
+        # These task commands bind their own explicit native connection and do
+        # not request Slurm Heavy merely because ravenh is the entry point.
+        from ..engineering.service import COMPUTE_ACTIONS
+
+        compute = (
+            remaining[:1] == ["engineering"]
+            and tuple(remaining[1:3]) in COMPUTE_ACTIONS
+        )
+        if not compute and any(
+            (
+                options.site,
+                options.profile,
+                options.host,
+                options.ssh_user,
+                options.account is not None,
+                options.site_policy,
+                options.allocation,
+                options.plan,
+                options.write_config is not None,
+                options.config,
+                options.interface != "local",
+            )
+        ):
+            print(
+                "Raven: put the native connection in the scheduler/engineering request; dashboard overrides do not apply.",
+                file=sys.stderr,
+            )
+            return 2
+        if not compute:
+            if remaining[0] == "scheduler":
+                from ..scheduler_cli import main as task_main
+            else:
+                from ..engineering.cli import main as task_main
+            return task_main(remaining[1:])
     if options.interface == "compute":
         print(
             "Raven: allocation-first full-interface transfer is unavailable; use the persistent Light interface with an admitted worker.",

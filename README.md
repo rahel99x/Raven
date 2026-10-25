@@ -1,8 +1,17 @@
 # Raven
 
-Raven is a terminal workbench for Slurm-based research. It combines job
+Raven is a terminal workbench for computational research. It combines job
 monitoring, resource graphs, logs, project evidence, and an embedded shell with
 governed data collection and explicit ownership of analysis compute.
+
+The [engineering workflow guide](docs/guides/engineering-platform.md) connects
+experiments, reproducible packages, site qualification, performance evidence,
+incident recording, controlled trials, and reviewed recovery. Native adapters
+also support explicit job inspection and reviewed actions for Kubernetes, IBM
+Spectrum LSF, OpenPBS, PBS Professional, HTCondor, and Flux. These adapters retain
+native resource semantics; they do not imply Slurm Heavy or telemetry parity on
+another scheduler. Live site qualification is reported separately from format
+tests. Open **File → Engineering workflows** for the shared task workbench.
 
 ## Install
 
@@ -50,6 +59,8 @@ sidebar, saved Favorites, mouse job actions, and the Themes menu.
 | `raven revert BACKUP_DIRECTORY` | Restores an updater backup while preserving current configuration and state. |
 | `raven launch SCRIPT` | Submits an existing shell script with retained run evidence; use `--local` for explicit workstation execution. |
 | `raven export-data` | Exports selected retained measurements without opening the dashboard. |
+| `raven scheduler catalog` | Lists native adapters; use `capabilities --scheduler NAME` to inspect supported operations and connection requirements. |
+| `raven engineering catalog` | Lists bounded project workflows and their available actions. |
 
 The Python distribution and import namespace are **`raven`**. Current evidence
 schemas use the `raven.*` namespace. Install from this repository or a wheel

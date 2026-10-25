@@ -1,6 +1,7 @@
 """Stable local file snapshots and no-clobber publication for science operations."""
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -111,6 +112,23 @@ def relative_target(value):
     return str(target)
 
 
+@contextmanager
+def _private_metadata(path):
+    """Own the descriptor even if constructing its text stream fails."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        stream = os.fdopen(fd, "w", encoding="utf-8")
+    except BaseException:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        raise
+    with stream:
+        os.fchmod(stream.fileno(), 0o600)
+        yield stream
+
+
 def publish(path, *, files=(), copies=(), receipt=None, cancel=None, final_check=None):
     """Exclusively reserve a directory. A receipt is written last; interrupted copies cannot pass verification."""
     path = destination(path)
@@ -120,7 +138,8 @@ def publish(path, *, files=(), copies=(), receipt=None, cancel=None, final_check
     # Only remove the directory we just created if a synchronous failure occurs.
     identity = (root.stat().st_dev, root.stat().st_ino)
     try:
-        (root/".raven-incomplete").write_text("Operation incomplete. Do not reuse.\n", encoding="utf-8")
+        with _private_metadata(root / ".raven-incomplete") as stream:
+            stream.write("Operation incomplete. Do not reuse.\n")
         for target, content, executable in files:
             cancelled(cancel)
             output = root/relative_target(target)
@@ -161,7 +180,7 @@ def publish(path, *, files=(), copies=(), receipt=None, cancel=None, final_check
         cancelled(cancel)
         if final_check is not None:
             final_check()
-        with (root/".raven-receipt.json").open("x", encoding="utf-8") as stream:
+        with _private_metadata(root / ".raven-receipt.json") as stream:
             json.dump(receipt or {}, stream, indent=2, sort_keys=True, allow_nan=False)
             stream.write("\n")
             stream.flush()
