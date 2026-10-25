@@ -6,6 +6,8 @@ performs a local presentation action. Hit rectangles come from the last paint.
 """
 from __future__ import annotations
 
+import time
+
 from .ui.catalog import ANALYTICS_VIEWS, RESEARCH_VIEWS, TABS
 from . import layout as L
 from .command_registry import Control as Item, toolbar_controls
@@ -372,6 +374,29 @@ def _refresh_summary(app, ascii_=False):
     return summary(app, ascii_=ascii_)
 
 
+def _dialog_context(app):
+    mode = getattr(app, "mode", "main")
+    return (mode, getattr(app, "detail_id", None) if mode == "details" else None,
+            getattr(app, "tab", ""), getattr(app, "width", None), getattr(app, "height", None))
+
+
+def _primary_controls(app):
+    if getattr(app, "mode", "main") == "details":
+        return (("[Close] ", "dialog-close"), ("[Up] ", "dialog-up"), ("[Down] ", "dialog-down"))
+    if getattr(app, "mode", "main") == "filter":
+        return (("[Apply] ", "filter-apply"), ("[Clear] ", "filter-clear"))
+    return (("[Launch] ", "launch-job"),)
+
+
+def _dialog_action(app, kind):
+    if kind == "dialog-close":
+        app.handle("esc")
+    elif kind in ("dialog-up", "dialog-down"):
+        app.scroll = max(0, getattr(app, "scroll", 0) + (-1 if kind == "dialog-up" else 1))
+    elif kind in ("filter-apply", "filter-clear"):
+        app.handle("enter" if kind == "filter-apply" else "esc")
+
+
 def render_bar(views, app, width, y=0):
     """One 80-column-first row: menus, launch, compute status, refresh summary."""
     from .ui import allocation as raven_ui
@@ -381,6 +406,7 @@ def render_bar(views, app, width, y=0):
         state.update(menu_hits=[], menu_token=None, menu_rect=None, menu_disabled={})
     state.update(width=width, bar_y=y, hits=[], ascii=bool(views.g.ascii),
                  frame_context=_frame_context(app), dragging=False, drag_width=None)
+    state["dialog_context"] = _dialog_context(app)
     if not width:
         return []
     row, x = [], 0
@@ -410,15 +436,18 @@ def render_bar(views, app, width, y=0):
     # Named menus and Launch take precedence; Heavy remains visible at 80 cols.
     forms = [("x ", [name + " " for name in MENUS]),
              ("x ", [name[0] + " " for name in MENUS]), ("x ", ["Menu "])]
-    reserve = (9 if width >= 24 else 0) + (compute_width if width >= 60 else 0)
+    primary = _primary_controls(app)
+    reserve = (sum(L.vlen(text) for text, _ in primary) if width >= 24 else 0) + (compute_width if width >= 60 else 0)
     quit_label, labels = next((form for form in forms
         if L.vlen(form[0] + "".join(form[1])) + reserve + 4 <= width), forms[-1])
     append(quit_label, "danger+bold+bg:surface-raised", "quit")
     for index, label in enumerate(labels):
         selected = state["menu"] == index if len(labels) == len(MENUS) else state["menu"] is not None
         append(label, "accent+bold+bg:surface-sunken" if selected else BAR_STYLE, "menu", index)
-    if width >= 24 and width-x >= 9:
-        append("[Launch] ", "accent+bold+bg:surface-raised", "launch-job")
+    if width >= 24:
+        for text, kind in primary:
+            if width-x >= L.vlen(text):
+                append(text, "accent+bold+bg:surface-raised", kind)
     if compute and width >= 60 and width-x >= compute_width+4:
         append(*compute, "raven")
     space = width-x
@@ -512,6 +541,9 @@ def handle_mouse(app, y, x, button="left", shift=False):
         cancelled = state.get("discard_release", False)
         state["discard_release"] = False
         consumed = state["dragging"] or state["pressed"] or cancelled
+        if state.pop("dialog_release", False):
+            from .ui.modal_pointer import initialize as pointer_state
+            pointer_state(app)["aggregate"] = (time.monotonic() + 0.5, y, x)
         state.update(dragging=False, pressed=False, drag_width=None)
         return bool(consumed)
     hit = next((hit for hit in state["hits"] if hit[0] == y and hit[1] <= x < hit[2]), None)
@@ -543,6 +575,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
         return False
     if button == "press":
         state["pressed"] = bool(hit or state["menu"] is not None or state["panel"])
+        state["dialog_release"] = False
     if hit:
         kind, key = hit[3:]
         if button in ("wheel-up", "wheel-down"):
@@ -570,6 +603,14 @@ def handle_mouse(app, y, x, button="left", shift=False):
             _close(app)
             from .launching.wizard_ui import open_launch
             open_launch(app)
+        elif kind in ("dialog-close", "dialog-up", "dialog-down", "filter-apply", "filter-clear"):
+            if button == "press":
+                state["dialog_release"] = True
+                from .ui.modal_pointer import initialize as pointer_state
+                pointer_state(app)["aggregate"] = (time.monotonic() + 0.5, y, x)
+            if state.get("dialog_context") == _dialog_context(app):
+                _close(app)
+                _dialog_action(app, kind)
         elif kind == "copy-mode":
             from .editor_yank import toggle
             toggle(app)
@@ -614,6 +655,9 @@ def control_descriptors(app):
     state = initialize(app)
     controls = []
     labels = {"quit": "Quit", "launch-job": "Launch job",
+              "dialog-close": "Close details", "dialog-up": "Scroll details up",
+              "dialog-down": "Scroll details down", "filter-apply": "Apply filter",
+              "filter-clear": "Clear filter and close editor",
               "refresh-settings": "Refresh settings: " + _refresh_summary(app)}
     if any(hit[3] == 'raven' for hit in state['hits']):
         from .ui.allocation import summary

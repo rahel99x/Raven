@@ -34,6 +34,11 @@ Press **F10** for the menu bar. Menus and confirmation screens accept mouse
 clicks as well as keyboard input. Editable values still accept typed text;
 their visible keep/cancel actions avoid requiring an editing shortcut.
 
+The legacy Details dialog exposes **Close**, **Up**, and **Down** in the primary
+toolbar position. The footer filter editor exposes **Apply** and **Clear**;
+Clear uses the existing Esc behavior and removes the current filter. Closing
+either view preserves the selected job and leaves scientific jobs running.
+
 Right-click a job to open actions for that exact job. Right-click a marked job
 to act on the marked selection in that list. **Hold**, **Release**, and
 **Cancel jobs** appear when applicable, alongside grouping actions. Completed

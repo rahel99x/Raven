@@ -71,6 +71,10 @@ the task and file path. Unpainted/streamed navigation cannot claim document
 cells. Disabled controls explain their reason without dispatching an action.
 Compact menus keep their selected content visible, and expanded metric sliders
 reserve at least three track cells.
+Legacy Details and footer-filter modes use contextual toolbar controls for
+Close/scroll and Apply/Clear. These delegate to the existing edit semantics,
+dismiss an overlaid menu first, and guard duplicate clicks from activating
+Launch after the dialog closes.
 
 ## Performance evidence and limits
 
