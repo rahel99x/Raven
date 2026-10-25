@@ -192,7 +192,7 @@ def test_proven_unheld_hover_finishes_lost_release_without_changing_page_or_mark
     app, cache, _ = graph_dashboard
     if owner == "jobs":
         y, _, _ = next(hit for hit in cache.hits if hit[1] == "job")
-        app.click(y, 2, cache.hits, button="press")
+        app.click(y, app.workspace_main_rect.x + 2, cache.hits, button="press")
         assert app.job_selection_state["capture"]
     elif owner == "chart":
         plot = next(plot for plot in app.chart_interaction_state["plots"] if plot.key[0] == "resource-series")
@@ -250,8 +250,9 @@ def test_coalescing_retains_final_held_job_endpoint_before_unheld_report(graph_d
     job_rows = [hit for hit in cache.hits if hit[1] == "job"]
     first_y, _, first_id = job_rows[0]
     last_y, _, last_id = job_rows[1]
-    app.click(first_y, 2, cache.hits, button="press")
-    held = screen.MouseReport((0, 2, last_y, 0, curses.REPORT_MOUSE_POSITION | curses.BUTTON1_PRESSED), held=True)
+    x = app.workspace_main_rect.x + 2
+    app.click(first_y, x, cache.hits, button="press")
+    held = screen.MouseReport((0, x, last_y, 0, curses.REPORT_MOUSE_POSITION | curses.BUTTON1_PRESSED), held=True)
     window = Window(report("sgr", 35))
     pending = screen._consume_input_batch(app, window, curses, cache.hits, ("mouse", held))
     if pending is not None:
@@ -264,7 +265,7 @@ def test_coalescing_retains_final_held_job_endpoint_before_unheld_report(graph_d
 def test_double_click_cannot_bypass_rejected_row_activation(graph_dashboard, invalid, monkeypatch):
     app, cache, _ = graph_dashboard
     y, _, key = next(hit for hit in cache.hits if hit[1] == "job")
-    x, hits = 2, cache.hits
+    x, hits = app.workspace_main_rect.x + 2, cache.hits
     if invalid == "negative-x":
         x = -1
     elif invalid == "outside-x":

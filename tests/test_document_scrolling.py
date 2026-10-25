@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from raven import analysis_ui, clipboard, layout as L, screen, scrolling
+from raven import analysis_ui, chart_interaction, clipboard, layout as L, screen, scrolling
 from raven.config import Config
 from raven.controller import App
 from raven.metrics import MetricReader
@@ -58,7 +58,9 @@ def log_document(tmp_path, clock):
 
 def wheel(app, direction, count=1):
     flag = curses.BUTTON4_PRESSED if direction < 0 else curses.BUTTON5_PRESSED
-    event = ("mouse", (0, 4, app.body_origin + 4, 0, flag))
+    content = app.workspace_main_rect
+    event = ("mouse", (0, content.x + min(4, content.width - 1),
+                       content.y + min(4, content.height - 1), 0, flag))
     for _ in range(count):
         screen._apply_input(app, event, app.last_hits, curses)
 
@@ -216,7 +218,16 @@ def test_virtualized_experiment_rasterizes_only_painted_cards_during_wheel_motio
     assert 0 < painted < target and scrolling.active(app)
     assert app.research_scroll == target
     assert len(rasterized) <= (height + 8) // 9 + 1
-    assert rasterized and "metric_" in text(rows)
+    assert rasterized
+    # A small viewport can show a card's measured curve after its title has
+    # scrolled above the window. Verify that exact source and visible ink,
+    # without requiring the offscreen title to be painted a second time.
+    visible_plots = [plot for plot in chart_interaction.initialize(app)["plots"]
+                     if plot.key[0] == "reported-metric" and plot.key[1] == "7" and plot.key[2] in rasterized]
+    assert visible_plots
+    assert all(any(char not in " ·" for y in range(plot.visible.top, plot.visible.bottom)
+                   for char in L.row_text(rows[y])[plot.visible.left:plot.visible.right])
+               for plot in visible_plots)
     assert_metric_hit_alignment(rows, hits)
     # Visible content must be the nearby painted cards, not placeholder rows
     # reserved for the future target's offscreen cards.

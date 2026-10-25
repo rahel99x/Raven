@@ -85,7 +85,7 @@ def test_theme_completion_validation_execution_and_menu_agree(app, theme):
     assert not status
     app.run_command("theme " + theme)
     assert app.command_ok
-    menu_commands = {item.command for item in toolbar.submenu_items(app, "advanced")}
+    menu_commands = {item.command for item in toolbar.menu_items(app, "Themes")}
     assert "theme " + app.theme in menu_commands
 
 

@@ -29,7 +29,7 @@ def render(app, views, width=100, height=24):
 
 
 def checkbox(app, key):
-    return next(hit for hit in app.table_state["control_hits"] if hit[2]["column"][1] == key)
+    return next(hit for hit in app.table_state["control_hits"] if hit[2].get("column", (None, None))[1] == key)
 
 
 def test_actual_app_click_toggles_exact_column_and_preserves_sort_and_widths(dashboard, monkeypatch):
@@ -60,7 +60,7 @@ def test_all_table_column_checkboxes_toggle_using_stable_keys(dashboard, table):
     app, views = dashboard
     app.run_command("columns " + table)
     render(app, views)
-    available = [hit for hit in app.table_state["control_hits"] if hit[2]["enabled"]]
+    available = [hit for hit in app.table_state["control_hits"] if "column" in hit[2] and hit[2]["enabled"]]
     assert available
     y, _, value = available[-1]
     key = value["column"][1]
@@ -104,9 +104,9 @@ def test_targets_follow_actual_box_clipping_and_never_activate_borders(dashboard
     if height >= 7 and width >= 8:
         cols = table_ui.ordered_definitions(app, "jobs")
         selected = cols[app.table_state["cursor"]].key
-        assert any(hit[2]["column"][1] == selected for hit in app.table_state["control_hits"])
+        assert any(hit[2].get("column", (None, None))[1] == selected for hit in app.table_state["control_hits"])
     else:
-        assert not app.table_state["control_hits"]
+        assert not any("column" in hit[2] for hit in app.table_state["control_hits"])
 
 
 def test_scrolled_checkbox_maps_selected_end_column_not_old_absolute_index(dashboard):
@@ -115,7 +115,7 @@ def test_scrolled_checkbox_maps_selected_end_column_not_old_absolute_index(dashb
     render(app, views, width=55, height=9)
     selected = table_ui.ordered_definitions(app, "jobs")[app.table_state["cursor"]]
     y, _, value = checkbox(app, selected.key)
-    assert len(app.table_state["control_hits"]) <= 3
+    assert len([hit for hit in app.table_state["control_hits"] if "column" in hit[2]]) <= 3
     app.click(y, value["left"], app.last_hits)
     if selected.key not in table_ui.REQUIRED:
         assert app.table_state["hidden"]["jobs"] == [selected.key]

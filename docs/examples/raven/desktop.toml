@@ -121,7 +121,7 @@ coordination_dir = "auto-host-local"
 durable_results = "~/raven-results"
 
 [ui]
-theme = "terminal"
+theme = "gruvbox-dark"
 show_execution_target = true
 show_observation_age = true
 ascii = false

@@ -84,18 +84,24 @@ truecolor when ncurses and the terminal description expose direct colors, with
 when `COLORTERM` is `truecolor` or `24bit`, or `$TERM` names a direct-color terminal;
 otherwise it selects 256 or basic colors. Labels, axis values, and state names convey
 the metrics without relying on color alone. `--no-color` and a nonempty
-`NO_COLOR` environment variable suppress colors. `T` or `:theme NAME` selects
-`default`, `dark`, `light`, `terminal`, `mono`, `high`, `cb`, `reader`,
-`darcula`, `modnokai`, or `gruvbox-dark`:
-`dark` and `light` provide matching surfaces and readable semantic colors;
-`terminal` retains the terminal's background. `mono` retains the graphics without
-colors; `cb` uses the color-blind palette; `reader` forces plain ASCII text.
-`monokai` is an alias for `modnokai`; `gruvbox` is an alias for `gruvbox-dark`.
-Quoted `"Gruvbox Dark"` and `gruvbox_dark` normalize to `gruvbox-dark`.
+`NO_COLOR` environment variable suppress colors. **Themes** in the top toolbar,
+`T`, or `:theme NAME` selects `gruvbox-dark` (the default), `modnokai`, `darcula`,
+`catppuccin-mocha`, `nord`, `tokyo-night`, `rose-pine-dawn`, or `system`.
 Runtime changes repaint the canvas, blank cells, text, menus, information strips,
-chart colours, and all interface symbols with the active palette. Status symbols retain their semantic colors.
-Terminal, mono, and reader keep the
-terminal's default background. Colour capacity determines the available approximation.
+charts, and interface symbols, and save the selected theme automatically.
+System inherits the terminal's default text/background and native ANSI palette;
+it does not infer a desktop palette or issue terminal queries. Direct-colour
+curses terminals retain default text/background with emphasis because their
+indices represent packed RGB. Explicit custom RGB and child-terminal colours
+remain exact. Selection uses reverse video on inherited backgrounds.
+
+`monokai` aliases `modnokai`; `gruvbox`, quoted `"Gruvbox Dark"`, and
+`gruvbox_dark` normalize to `gruvbox-dark`. Retired `default`/`dark` selections
+migrate to Gruvbox, `light` to Rosé Pine Dawn, and `terminal` to System.
+Compatibility accessibility modes remain available through `:theme mono`,
+`high`, `cb`, and `reader`; reader forces plain ASCII and static feedback. They
+are omitted from the curated theme menu and cycle. See
+[terminal palettes](guides/pointer-navigation.md#change-the-terminal-palette).
 
 Charts use collected measurements. Unavailable metrics and gaps remain unknown,
 and time-series detail grows as samples arrive. ASCII `--report` exports remain
@@ -416,7 +422,7 @@ for the exact rerun requirements and limits.
 | F8 | Toggle directional focus for visible buttons and links; arrows select, Enter/Space activates, Esc returns to content |
 | `E` `C` `J` | export the tab as text; its table as CSV; the marked or selected jobs with their recorded series as JSON |
 | `:` | the command palette (Tab completes): `cancel 123 456`, `hold marked`, `filter rb2`, `sort name`, `days 7`, `tab history`, `view timeline`, `export csv`, `copy 5 12`, `gpu off`, `source sinfo off`, `theme mono`, `log 123`, `profile carc`, `eval n_pending`, and every plugin command |
-| `T` | cycle the theme: default, mono, high contrast, cb (colour-blind safe: blue / orange / magenta for green / red / yellow), reader (plain text), dark, light, terminal, darcula, modnokai, gruvbox-dark |
+| `T` | cycle the curated themes: Gruvbox, Modnokai, Darcula, Catppuccin Mocha, Nord, Tokyo Night, Rosé Pine Dawn, System |
 | `?` `q` | help; quit (Esc closes an overlay, cancels a selection, clears the filter or the marks) |
 
 ### Job annotations
@@ -1102,7 +1108,8 @@ raven/
   job_selection.py exact job-ID range capture for existing marked-job actions and confirmation
   scrolling.py   bounded PID viewport motion, immediate selection, and saved smooth-scroll preferences
   startup.py     short interruptible Unicode welcome and static ASCII fallback
-  toolbar.py     persistent mouse menus, editable command entry, captured update-slider dragging, and interval-control reset routing
+  toolbar.py     persistent mouse menus, theme choices, launch and refresh entry points
+  sidebar.py     shared destinations, disclosure, favorites and saved navigation order
   controller.py  the application state and every key, mouse click and confirmation; no curses, so tests drive it;
                  the line selection, the command palette, exports and the clipboard
   charts.py      continuous Braille curves, eight-level area bars, axes, histograms, heatmaps, and Gantt rows

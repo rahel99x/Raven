@@ -209,7 +209,7 @@ def test_global_tabs_remain_usable_after_job_selection_without_a_content_repaint
     app = dashboard.app
     _, hits = dashboard.draw()
     y = next(y for y, kind, value in hits if kind == "job" and value == "8")
-    app.click(y, 4, hits)
+    app.click(y, app.workspace_main_rect.x + 4, hits)
     assert app.selected_id == "8"
     y, left, _, _ = next(hit for hit in app.tab_hits if hit[3] == "history")
     app.click(y, left + 1, hits)

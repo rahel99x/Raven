@@ -40,7 +40,7 @@ def recent_hits(hits):
 def select(app, hits, jid):
     y = next(y for y, kind, key in hits if kind in ("job", "recent", "fin") and key == jid)
     rect = recent_history.initialize(app).rect
-    x = rect.x + 3 if rect is not None and jid in app.recent_ids else 4
+    x = rect.x + 3 if rect is not None and jid in app.recent_ids else app.workspace_main_rect.x + 4
     app.click(y, x, hits)
 
 

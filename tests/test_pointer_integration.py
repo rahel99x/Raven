@@ -63,7 +63,7 @@ def dashboard(tmp_path):
     def point(identifier):
         y, kind, value = next(hit for hit in app.last_hits
                               if hit[1] in ("job", "recent", "fin", "group", "dep") and hit[2] == identifier)
-        return y, 4
+        return y, app.workspace_main_rect.x + 4
 
     def mouse(y, x, bits, *, shift=False):
         if shift:
@@ -338,8 +338,10 @@ def test_each_wrapped_inline_link_fragment_is_mouse_hoverable_and_native_clickab
     source_hits = [(0, "job_panel_action", (("inline_log", citation), 0, 28))]
     fitted, mapped = _reflow(source, source_hits, 28)
     assert len(fitted) >= 2 and len(mapped) == len(fitted)
-    rows = [[("", "")]] * 8 + fitted
-    hits = [(row + 8, kind, value) for row, kind, value in mapped]
+    origin = app.content_origin_x
+    rows = [[("", "")]] * 8 + [[(" " * origin, "")] + row for row in fitted]
+    hits = [(row + 8, kind, (value[0], value[1] + origin, value[2] + origin))
+            for row, kind, value in mapped]
     app.last_hits = hits
     graph = interaction.publish(app, rows, hits, 160, 48)
     controls = [control for control in graph.controls if control.id.startswith("job_panel_action:inline_log:long-path")]

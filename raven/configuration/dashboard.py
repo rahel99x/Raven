@@ -97,7 +97,7 @@ DEFAULTS: Dict[str, Any] = {
         "planning_file": "",
         "interval": 5.0,
     },
-    "theme": "default",  # named colour palettes; mono | high | cb | reader accessibility modes
+    "theme": "gruvbox-dark",  # curated palettes; System inherits the terminal's palette and canvas
     "host": "",  # remote mode: run every Slurm command on this login node over ssh (ControlMaster reused)
     "ssh_user": "",  # the login on that host (empty: the same as here)
     "ssh_opts": [],  # extra ssh options, e.g. ["-J", "bastion"]
@@ -213,7 +213,8 @@ gpu_types = ["a100", "a40", "a30", "v100", "l40s", "p100"]
 
 series_keep = 4000              # samples kept per verified attempt; native files use state/series/v2-<job-id-hex>-<identity-digest>.jsonl
 analytics_days = [1, 2, 7, 14, 30]
-theme = "default"               # default | dark | light | darcula | modnokai | gruvbox-dark | terminal | mono | high | cb | reader
+theme = "gruvbox-dark"          # gruvbox-dark | modnokai | darcula | catppuccin-mocha | nord | tokyo-night | rose-pine-dawn | system
+# Compatibility accessibility modes remain available: mono | high | cb | reader.
 
 # host = "login.example.edu"    # remote mode: every Slurm command runs there over ssh (a ControlMaster connection is reused)
 # ssh_user = "me"

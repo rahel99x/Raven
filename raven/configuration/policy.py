@@ -164,7 +164,7 @@ DEFAULTS = {
     },
     "telemetry": copy.deepcopy(TELEMETRY_DEFAULTS),
     "ui": {
-        "theme": "terminal",
+        "theme": "gruvbox-dark",
         "show_execution_target": True,
         "show_observation_age": True,
         "ascii": False,

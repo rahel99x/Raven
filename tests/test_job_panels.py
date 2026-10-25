@@ -492,8 +492,11 @@ def test_inline_research_detaches_mismatched_run_files_and_never_exposes_manual_
     dashboard, app = published_workspaces, published_workspaces.app
     app.research_job_id = "700"
     J.run_command(app, ["jobpanel", "research", "experiment"])
-    text, _, _ = dashboard.render(180, 60)
-    assert "another run's files remain detached" in text
+    text, rows, _ = dashboard.render(180, 60)
+    rect = app.job_panel_rect
+    details = " ".join(" ".join(L.row_text(row)[rect.x:rect.x + rect.width].split())
+                       for row in rows[rect.y:rect.y + rect.height])
+    assert "another run's files remain detached" in details
     assert not dashboard.requests
     app.research_job_id = "900"
     app.research.plan = {"valid": True, "command": "MUST_NOT_APPEAR"}
@@ -585,10 +588,13 @@ def test_inline_narrow_compare_preserves_exact_identity_and_measured_values(publ
     app.store.series["900"].append({"t": 2, "k": "live", "cpu": .87, "rss": 3.5 * 1024 ** 3})
     app.compare_ids = ["700"]
     J.run_command(app, ["jobpanel", "analytics", "compare"])
-    text, _, _ = dashboard.render(40, 150)
+    text, rows, _ = dashboard.render(40, 150)
     assert "Job 900 / active-only" in text and "Job 700 / failed-only" in text
     assert "mean 80% / max 87%" in text
-    assert "Peak memory 3.5 GB / 88% of request" in text
+    rect = app.job_panel_rect
+    details = " ".join(" ".join(L.row_text(row)[rect.x:rect.x + rect.width].split())
+                       for row in rows[rect.y:rect.y + rect.height])
+    assert "Peak memory 3.5 GB / 88% of request" in details
     assert app.compare_ids == ["700"]
 
 
@@ -792,7 +798,7 @@ def test_narrow_history_retains_tag_badge_without_duplicate_mark_columns(dashboa
     dashboard.store.finished[0].state = "OUT_OF_MEMORY"
     text, rows, hits = dashboard.render(190, 45)
     y = next(y for y, kind, value in hits if kind == "fin" and value == "700")
-    table_row = L.row_text(rows[y])[:app.workspace_main_rect.width]
+    table_row = L.row_text(rows[y])[app.workspace_main_rect.x:app.workspace_main_rect.x + app.workspace_main_rect.width]
     assert "old" in table_row and "Keep this run for comparison" in text
     assert table_row.index("700") == 4
 

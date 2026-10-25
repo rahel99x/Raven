@@ -370,6 +370,17 @@ def test_sampling_drag_reports_requested_and_shared_cadence_without_document_wor
     assert not metric_live.active(app)
 
 
+@pytest.mark.parametrize("width", [68, 69, 70])
+def test_sampling_responsive_labels_leave_distinct_slider_positions(dashboard, width):
+    d, app = dashboard, dashboard.app
+    d.draw("analytics")
+    control = controls(app)[0]
+    row, spans = metric_live._row(d.views.g, entry(app, control), width, app=app, identity=control.key)
+    assert spans[3] - spans[2] >= 3
+    assert spans[5] - spans[4] >= 3
+    assert layout.vlen(layout.row_text(row)) == width
+
+
 @pytest.mark.parametrize("remote,floor", [(False, .5), (True, 1.5)])
 def test_reported_metric_demand_changes_reader_cadence_without_rewriting_producer(dashboard, tmp_path, remote, floor):
     d, app = dashboard, dashboard.app

@@ -153,13 +153,13 @@ def test_leading_job_cells_keep_row_selection_priority_above_recent_divider(nati
     last = [item for item in frame.controls if item.group == "job"][-1]
     divider = app.pane_drag_state["dividers"]["recent:jobs"]
     assert last.rect.top == divider.y - 1
-    assert frame.at(last.rect.top, 5).id == last.id
-    app.click(last.rect.top, 5, app.last_hits)
+    assert frame.at(last.rect.top, app.workspace_main_rect.x + 5).id == last.id
+    app.click(last.rect.top, app.workspace_main_rect.x + 5, app.last_hits)
     assert app.cursor["jobs"] == app.visible_ids.index(last.label)
     assert not app.pane_drag_state["capture"]
     assert app.pane_drag_state["focus"] != "recent:jobs"
     # The structural outer margin remains the generous resize target.
-    assert frame.at(last.rect.top, 0) is None
+    assert frame.at(last.rect.top, app.workspace_main_rect.x) is None
 
 
 def test_native_new_completion_preserves_scrolled_focus_and_exact_details_job(native):

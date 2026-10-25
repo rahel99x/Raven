@@ -192,13 +192,22 @@ def _persist(app, table=None):
 
 def _open(app, modal, tab=None):
     _state(app).update(
-        modal=modal, cursor=0, tab=tab or app.tab, edit=None, hits=[], item_ids=[]
+        modal=modal,
+        cursor=0,
+        tab=tab or app.tab,
+        edit=None,
+        hits=[],
+        item_ids=[],
+        control_hits=[],
+        menu_painted=None,
     )
     app.mode = "table_tools"
 
 
 def _close(app):
-    _state(app).update(modal="", edit=None, header=None, hits=[])
+    _state(app).update(
+        modal="", edit=None, header=None, hits=[], control_hits=[], menu_painted=None
+    )
     app.mode = "main"
 
 
@@ -553,15 +562,7 @@ def _selection(app, snap=None):
     snap = snapshot(app, app.store.snapshot()) if snap is None else snap
     items = _items(app, snap)
     modal = state["modal"]
-    identities = (
-        [item[0] for item in items]
-        if modal in ("marks", "sort", "actions")
-        else [item.id for item in items]
-        if modal == "node"
-        else [item.key for item in items]
-        if modal == "headers"
-        else list(items)
-    )
+    identities = _item_identities(modal, items)
     previous = state.get("item_ids", [])
     cursor = state["cursor"]
     chosen = previous[cursor] if 0 <= cursor < len(previous) else None
@@ -570,6 +571,18 @@ def _selection(app, snap=None):
     state["item_ids"] = identities
     state["cursor"] = max(0, min(state["cursor"], max(0, len(items) - 1)))
     return items, items[state["cursor"]] if items else None
+
+
+def _item_identities(modal, items):
+    return (
+        [item[0] for item in items]
+        if modal in ("marks", "sort", "actions")
+        else [item.id for item in items]
+        if modal == "node"
+        else [item.key for item in items]
+        if modal == "headers"
+        else list(items)
+    )
 
 
 def _open_record(app, jid, action):
@@ -633,6 +646,7 @@ def handle_key(app, key):
     if app.mode != "table_tools":
         return False
     state, modal = _state(app), _state(app)["modal"]
+    state.update(hits=[], control_hits=[], menu_painted=None)
     items, selected = _selection(app)
     if state["edit"] is not None:
         if key == "esc":
@@ -706,6 +720,10 @@ def handle_key(app, key):
     elif modal == "filter" and key == "c":
         app.table_state["facets"][state["tab"]], state["numeric"][state["tab"]] = {}, []
         _persist(app, state["tab"])
+    elif modal == "views" and key == "S":
+        from .command_ui import open_palette
+
+        open_palette(app, "savedview " + state["tab"] + " save ")
     elif modal == "views" and selected and key == "enter":
         _close(app)
         from .ui.owner_ports import lists
@@ -771,6 +789,74 @@ def handle_click_hit(app, y, x, hits, button="left", shift=False):
     return False
 
 
+def _menu_frame(app, items=None):
+    state = _state(app)
+    if items is None:
+        items, _ = _selection(app)
+    return (
+        app.mode,
+        getattr(app, "width", None),
+        getattr(app, "height", None),
+        state["modal"],
+        state["tab"],
+        state["cursor"],
+        state["mark_scope"],
+        state.get("node"),
+        state.get("action_job"),
+        tuple(_item_identities(state["modal"], items)),
+        tuple(items) if state["modal"] == "sort" else None,
+        tuple(sorted(state["edit"].items())) if state["edit"] else None,
+        getattr(app.store, "_ui_revision", None),
+    )
+
+
+def _action_choices(state):
+    if state["edit"] is not None:
+        return [
+            (key, label, ("key", key))
+            for key, label in (
+                ("esc", "Cancel edit"),
+                ("enter", "Apply field"),
+                ("ctrl-u", "Clear field"),
+            )
+        ]
+    actions = {
+        "sort": (
+            ("a", "Add column"),
+            ("space", "Change direction"),
+            ("left", "Earlier"),
+            ("right", "Later"),
+            ("d", "Remove"),
+        ),
+        "headers": (
+            ("enter", "Cycle order"),
+            ("left", "Ascending"),
+            ("right", "Descending"),
+        ),
+        "filter": (("enter", "Edit field"), ("c", "Clear filters")),
+        "views": (("enter", "Load view"), ("d", "Delete view")),
+        "marks": (
+            ("enter", "Details"),
+            ("l", "Logs"),
+            ("s", "Change subset"),
+            ("d", "Unmark"),
+            ("c", "Clear subset"),
+        ),
+        "actions": (("enter", "Open selected action"),),
+        "node": (("enter", "Details"), ("l", "Logs")),
+    }
+    choices = [
+        (key, label, ("key", key))
+        for key, label in (
+            ("esc", "Done"),
+            *actions[state["modal"]],
+        )
+    ]
+    if state["modal"] == "views":
+        choices.append(("save", "Save current view…", ("key", "S")))
+    return choices
+
+
 def handle_mouse(app, y, x, button="left", shift=False):
     if button != "left" or shift:
         return app.mode == "table_tools"
@@ -791,6 +877,13 @@ def handle_mouse(app, y, x, button="left", shift=False):
                 return True
     if app.mode != "table_tools":
         return False
+    state = _state(app)
+    if state.get("menu_painted") != _menu_frame(app):
+        return True
+    for hy, _, value in state.get("control_hits", []):
+        if y == hy and value["left"] <= x < value["right"]:
+            handle_key(app, value["action"][1])
+            return True
     for hy, left, right, index in _state(app).get("hits", []):
         if y == hy and left <= x < right:
             _state(app)["cursor"] = index
@@ -915,7 +1008,16 @@ def overlay(views, snap, app, width, height):
         "actions": "Arrows select | Enter run | scheduler changes keep confirmation | Esc back",
         "node": "Arrows select job | Enter details | l logs | Esc back",
     }
-    rows = [[(f" {tab.title()} | {instructions[modal]}", "dim")]]
+    from .control_rows import buttons, place_hits
+
+    action_rows, action_hits = buttons(
+        views.g,
+        max(1, width - 8),
+        _action_choices(state),
+        group="table-tools",
+        prefix="table-tools-action:",
+    )
+    rows = action_rows + [[(f" {tab.title()} | {instructions[modal]}", "dim")]]
     if modal == "filter":
         count, suffix = _filter_preview(app, snap, tab)
         rows.append([(f" {count} cached records match filters{suffix}", "cyan")])
@@ -1121,7 +1223,8 @@ def overlay(views, snap, app, width, height):
             ]
         )
     result = L.box(views.g, rows, width, height, titles[modal])
-    placements = result[1:]
+    state["control_hits"] = place_hits(action_hits, result[1:-1])
+    placements = result[1:-1]
     state["hits"] = [
         (
             placements[row_index][0],
@@ -1137,6 +1240,7 @@ def overlay(views, snap, app, width, height):
     ]
     if modal == "headers" and selected:
         state["header"] = {"table": tab, "column": selected.key}
+    state["menu_painted"] = _menu_frame(app, items)
     return B.boxed(
         app,
         "modal:table-tools",

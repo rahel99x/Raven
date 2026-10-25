@@ -54,11 +54,15 @@ def choose(app, action, group_id=None):
     assert M.handle_key(app, "enter")
 
 
-def test_only_pointed_marked_or_active_row_opens_and_retains_unrelated_marks(dashboard):
+def test_only_published_rows_open_and_pointed_row_retains_unrelated_marks(dashboard):
     app, store = dashboard
     app.marks = {"1", "2", "other-list"}
-    assert not M.open_menu(app, source(app, store, pointed="3"))
+    assert not M.open_menu(app, source(app, store, pointed="not-published"))
     assert app.mode == "main" and app.marks == {"1", "2", "other-list"}
+    assert M.open_menu(app, source(app, store, pointed="3"))
+    assert M.initialize(app)["context"]["targets"] == ("3",)
+    assert app.marks == {"1", "2", "other-list"}
+    M.close(app)
     assert M.open_menu(app, source(app, store))
     assert M.initialize(app)["context"]["targets"] == ("1", "2")
     assert [item["action"] for item in M.initialize(app)["items"]] == ["create", "cancel"]

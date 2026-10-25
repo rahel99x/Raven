@@ -270,6 +270,12 @@ def _context(app):
         getattr(app, "analytics_job", None),
         getattr(app, "research_job_id", None),
         getattr(app, "log_job", None),
+        getattr(app, "content_origin_x", 0),
+        tuple(_state(app, "toolbar_state").get("favorites", ())),
+        tuple(
+            _state(app, "sidebar_state").get(key)
+            for key in ("revision", "top", "order")
+        ),
         tuple(
             binding.get(name)
             for name in ("project_root", "run_id", "job_id", "attempt")
@@ -323,6 +329,26 @@ def _notification_context(app):
 
 def _guided_context(app):
     """Scope new workflow controls to the exact painted page and revision."""
+    mode = getattr(app, "mode", "")
+    if mode == "workspace_picker":
+        state = _state(app, "navigation_state")
+        return tuple(state.get(key) for key in ("query", "picker_top"))
+    if mode in (
+        "jump_picker",
+        "locations_picker",
+        "settings_editor",
+        "bindings_editor",
+        "value_peek",
+        "field_explanation",
+    ):
+        state = _state(app, "navigation_tools_state")
+        return tuple(
+            state.get(key)
+            for key in ("query", "top", "editing", "test", "field", "index_at")
+        )
+    if mode in ("sidebar", "sidebar_menu"):
+        state = _state(app, "sidebar_state")
+        return state.get("revision"), state.get("top"), state.get("menu")
     name = {
         "connect_data": "connect_data_state",
         "run_home": "run_home_state",
@@ -394,7 +420,10 @@ def _regions(app, width, height):
         else None
     )
     body = body or Rect(
-        max(0, getattr(app, "body_origin", 0)), 0, max(0, height - 1), width
+        max(0, getattr(app, "body_origin", 0)),
+        max(0, getattr(app, "content_origin_x", 0)),
+        max(0, height - 1),
+        width,
     )
     regions = []
     if browsing:

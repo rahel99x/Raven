@@ -58,7 +58,8 @@ def test_cached_gradient_cells_and_legacy_colours_resolve_in_the_current_theme(t
     row = L.gradient_bar(L.Glyphs(False), .7, 15)
     tokens = P.theme_tokens(theme)
     assert P.resolve(row[0][1], theme).foreground == P.rgb(tokens["cyan"])
-    assert P.resolve(row[0][1]).foreground != P.resolve(row[0][1], theme).foreground
+    other = "nord" if P.canonical_theme(theme) == "darcula" else "darcula"
+    assert P.resolve(row[0][1], other).foreground != P.resolve(row[0][1], theme).foreground
     assert P.resolve(row[-1][1], theme).foreground == P.rgb(tokens["track"])
     assert P.resolve("fg:#fb923c+bold", theme).foreground == P.rgb(tokens["orange"])
     assert P.resolve("bg:#92400e+fg:#fff7ed", theme).background == P.rgb(tokens["notice"])

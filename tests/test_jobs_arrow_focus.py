@@ -45,7 +45,9 @@ def mouse(dashboard, y, x, button="click"):
 
 
 def row(dashboard, identifier):
-    return next((y, 3) for y, kind, value in dashboard.hits if kind in ("job", "recent") and value == identifier)
+    return next((y, dashboard.app.workspace_main_rect.x + 3)
+                for y, kind, value in dashboard.hits
+                if kind in ("job", "recent") and value == identifier)
 
 
 def details_button(dashboard, mode="inspector"):

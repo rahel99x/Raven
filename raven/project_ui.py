@@ -1281,6 +1281,11 @@ def handle_key(app, key):
         return True
     if key == "esc":
         state["home_intent"] = None
+        if state["busy"]:
+            # Closing a read workspace invalidates its eventual publication;
+            # an already running file read may finish without reopening it.
+            state["generation"] += 1
+            state["busy"] = False
         if app.mode == "project_preview":
             app.mode = "project_outputs"
         else:
@@ -1411,6 +1416,50 @@ def _window(state, key, top_key, count, page):
     return cursor, top
 
 
+def _control_context(app):
+    state = initialize(app)
+    binding = selected_binding(app) or {}
+    preview = state["preview"] or {}
+    return (
+        app.mode,
+        getattr(app, "width", None),
+        getattr(app, "height", None),
+        state.get("control_screen"),
+        state["root"],
+        state["generation"],
+        state["busy"],
+        state["filter"],
+        state["filtering"],
+        state["notices_open"],
+        state["run_cursor"],
+        state["output_cursor"],
+        state["preview_scroll"],
+        state["preview_column"],
+        state["preview_page"],
+        id(state["runs"]),
+        id(state["tree"]),
+        id(state["preview"]),
+        id(preview.get("nodes")),
+        id(preview.get("lines")),
+        tuple(state["preview_collapsed"]),
+        binding.get("run_id"),
+        binding.get("attempt"),
+        tuple(state["collapsed"]),
+    )
+
+
+def _place_controls(button_hits, rendered):
+    from .control_rows import place_hits
+
+    hits = place_hits(button_hits, rendered[1:-1])
+    for y, _, control in hits:
+        # Keyboard focus follows this owner's exact stale-context check too;
+        # it must not dispatch a formerly painted key against a newer file.
+        control["dispatch_action"] = control["action"]
+        control["action"] = ("click", y, control["left"])
+    return hits
+
+
 def overlay(views, snap, app, width, height):
     if app.mode not in MODES:
         return None
@@ -1418,6 +1467,8 @@ def overlay(views, snap, app, width, height):
     from . import modal_scrollbars as B
 
     state["control_hits"] = []
+    state["control_token"] = None
+    state["control_screen"] = (width, height)
     button_hits = []
     g = views.g
     row = lambda text, style="": [
@@ -1431,6 +1482,58 @@ def overlay(views, snap, app, width, height):
     ]
     if state["busy"]:
         lines.append(row(" Background read in progress...", "yellow"))
+    from .control_rows import buttons
+
+    def actions(choices):
+        controls, hits = buttons(
+            g,
+            max(0, width - 8),
+            choices,
+            group=app.mode,
+            prefix="project-action:",
+        )
+        button_hits.extend((y + len(lines), kind, value) for y, kind, value in hits)
+        lines.extend(controls)
+
+    if state["filtering"] and app.mode != "project_preview":
+        actions(
+            (
+                ("apply-filter", "[Apply filter]", ("key", "enter")),
+                ("cancel-filter", "[Cancel filter]", ("key", "esc")),
+            )
+        )
+    elif state["notices_open"] and app.mode == "project_runs":
+        actions((("back", "[Back to runs]", ("key", "esc")),))
+    elif app.mode in ("project_runs", "project_outputs"):
+        choices = [("back", "[Back]", ("key", "esc"))]
+        if not state["busy"]:
+            choices.extend(
+                (
+                    ("filter", "[Filter]", ("key", "/")),
+                    ("refresh", "[Refresh]", ("key", "r")),
+                )
+            )
+            if app.mode == "project_runs":
+                choices.append(("notices", "[Notices]", ("key", "!")))
+            else:
+                choices.extend(
+                    (
+                        ("open", "[Open selected]", ("key", "enter")),
+                        ("collapse", "[Collapse selected]", ("key", "left")),
+                    )
+                )
+        actions(choices)
+    else:
+        choices = [("back", "[Back to outputs]", ("key", "esc"))]
+        if not state["busy"]:
+            choices.extend(
+                (
+                    ("previous", "[Previous page]", ("key", "[")),
+                    ("next", "[Next page]", ("key", "]")),
+                    ("refresh", "[Refresh]", ("command", "artifact refresh")),
+                )
+            )
+        actions(choices)
     if app.mode == "project_runs":
         if state["notices_open"]:
             lines.append(
@@ -1447,16 +1550,19 @@ def overlay(views, snap, app, width, height):
                 app, "modal:project-notices", start, len(notices), page, context=context
             )
             state["notices_scroll"] = logical
+            data_start = len(lines)
             for notice in notices[start : start + page]:
                 lines.append(row(" " + notice, "yellow"))
             if not notices:
                 lines.append(row(" No binding or discovery notices", "green"))
             rendered = L.box(g, lines, width, height, "project notices")
+            state["control_hits"] = _place_controls(button_hits, rendered)
+            state["control_token"] = _control_context(app)
             return B.boxed(
                 app,
                 "modal:project-notices",
                 rendered,
-                start=3,
+                start=data_start,
                 count=len(notices),
                 page=page,
                 target=logical,
@@ -1662,6 +1768,15 @@ def overlay(views, snap, app, width, height):
             )
         )
         if preview.get("format") == "csv":
+            if not state["busy"]:
+                actions(
+                    (
+                        ("previous-column", "[Previous column]", ("key", "left")),
+                        ("next-column", "[Next column]", ("key", "right")),
+                        ("sort-column", "[Sort column]", ("key", "enter")),
+                        ("toggle-column", "[Show/hide column]", ("key", "c")),
+                    )
+                )
             header = preview.get("header", [])
             column = min(state["preview_column"], max(0, len(header) - 1))
             name = header[column] if header else "none"
@@ -1684,8 +1799,6 @@ def overlay(views, snap, app, width, height):
                         ("command", "artifact column " + str(index + 1)),
                     )
                 )
-            from .control_rows import buttons
-
             controls, hits = buttons(
                 g,
                 max(0, width - 8),
@@ -1695,9 +1808,13 @@ def overlay(views, snap, app, width, height):
                 prefix="artifact-column:",
                 gap="|",
             )
-            button_hits = [(y + len(lines), kind, value) for y, kind, value in hits]
+            button_hits.extend((y + len(lines), kind, value) for y, kind, value in hits)
             lines.extend(controls)
         elif preview.get("format") == "json":
+            if not state["busy"]:
+                actions(
+                    (("expand-json", "[Expand/collapse selected]", ("key", "enter")),)
+                )
             lines.append(
                 row(
                     " Enter expands/folds selected JSON node; :artifact json /POINTER",
@@ -1730,6 +1847,22 @@ def overlay(views, snap, app, width, height):
             selected = index == state["preview_scroll"]
             marker = ">" if g.ascii else "›"
             number = preview.get("row", 0) + index + 1
+            if preview.get("format") == "json":
+                button_hits.append(
+                    (
+                        len(lines),
+                        "control",
+                        {
+                            "id": "project-json:" + str(index),
+                            "label": "Select JSON node " + str(number),
+                            "left": 0,
+                            "right": max(0, width - 8),
+                            "group": "project_preview",
+                            "action": ("click", 0, 0),
+                            "preview_index": index,
+                        },
+                    )
+                )
             lines.append(
                 row(
                     f" {marker if selected else ' '} {number:>4}  {text}",
@@ -1738,9 +1871,8 @@ def overlay(views, snap, app, width, height):
             )
         title = "artifact preview"
     rendered = L.box(g, lines, width, height, title)
-    from .control_rows import place_hits
-
-    state["control_hits"] = place_hits(button_hits, rendered[1:-1])
+    state["control_hits"] = _place_controls(button_hits, rendered)
+    state["control_token"] = _control_context(app)
     return B.boxed(
         app,
         key,
@@ -1758,8 +1890,17 @@ def overlay(views, snap, app, width, height):
 def handle_mouse(app, y, x, button="left", shift=False):
     if getattr(app, "mode", "main") not in MODES or button != "left":
         return False
-    for row, _, value in initialize(app).get("control_hits", []):
+    state = initialize(app)
+    if state.get("control_token") != _control_context(app):
+        return True
+    for row, _, value in state.get("control_hits", []):
         if row == y and value["left"] <= x < value["right"]:
-            app.run_command(value["action"][1])
+            if "preview_index" in value:
+                state["preview_scroll"] = value["preview_index"]
+                handle_key(app, "enter")
+            elif value["dispatch_action"][0] == "key":
+                handle_key(app, value["dispatch_action"][1])
+            else:
+                app.run_command(value["dispatch_action"][1])
             return True
     return False

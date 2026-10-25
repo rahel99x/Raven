@@ -19,7 +19,7 @@ def test_editing_documented_root_settings_changes_loaded_configuration(tmp_path)
     path = tmp_path / "config.toml"
     Config.write_default(str(path))
     text = path.read_text()
-    text = text.replace('theme = "default"', 'theme = "reader"')
+    text = text.replace('theme = "gruvbox-dark"', 'theme = "reader"')
     text = text.replace("weather = true", "weather = false")
     text = text.replace("budget = true", "budget = false")
     text = text.replace('# host = "login.example.edu"', 'host = "login.example.edu"', 1)

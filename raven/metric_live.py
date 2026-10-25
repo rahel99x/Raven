@@ -29,6 +29,7 @@ MIN_DELTA = 1.0
 MAX_DELTA = 30.0
 MAX_METRICS = 128
 MIN_WIDTH = 24
+MIN_EXPANDED_WIDTH = 70  # Long labels leave at least three cells per slider.
 DOCUMENT_INTERVAL = 0.1
 CAPTURE_TIMEOUT = 15.0
 MIN_RATE = 1
@@ -606,7 +607,7 @@ def _row(g, entry, width, *, app=None, identity=None, poll_interval=_UNSET_INTER
         requested_interval(entry.get("rate", MIN_RATE), MAX_RATE), ascii_=g.ascii
     )
     fast_interval = format_interval(0.5, ascii_=g.ascii)
-    if width < 68:
+    if width < MIN_EXPANDED_WIDTH:
         toggle = (
             ("+" if entry["enabled"] else "o")
             if g.ascii
@@ -666,7 +667,7 @@ def _row(g, entry, width, *, app=None, identity=None, poll_interval=_UNSET_INTER
         ]
     )
     row.extend(slider(rate_count, rate_fraction(entry.get("rate", MIN_RATE))))
-    row.append((rate_suffix, "text-secondary" if width < 68 else "dim"))
+    row.append((rate_suffix, "text-secondary" if width < MIN_EXPANDED_WIDTH else "dim"))
     return L.clip_row(row, width), (
         0,
         L.vlen(toggle),

@@ -114,7 +114,7 @@ def test_research_palette_view_keys_array_selection_scroll_and_mouse_hits(resear
     rows, hits = session.views.compose(session.store.snapshot(), app, 120, 32, session.actions)
     hit = next((hit for hit in hits if hit[1] == "research_array"), None)
     assert hit is not None
-    app.click(hit[0], 3, hits)
+    app.click(hit[0], app.history_browser_content_rect.x + 3, hits)
     assert app.research_groups[app.cursor["research"]]["id"] == hit[2]
     app.run_command("view experiment")
     hub.request(hub.context(session.store.snapshot(), app), wait=True)

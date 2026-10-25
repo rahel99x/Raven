@@ -35,6 +35,9 @@ pipx, custom paths, and explicit replacement of local code edits.
 [Runbook](docs/raven/README.md) · [Controls](docs/CONTROLS.md) ·
 [Implementation status](docs/raven/implementation.md) · [Validation](docs/raven/validation.md)
 
+The [workspace guide](docs/guides/navigation-and-themes.md) covers the persistent
+sidebar, saved Favorites, mouse job actions, and the Themes menu.
+
 ## Commands
 
 | Command | Behavior |

@@ -44,6 +44,7 @@ FEATURES = (
     "refresh_rate",
     "worker_ui",
     "toolbar",
+    "sidebar",
     "onboarding_ui",
     "launch_wizard_ui",
     "setup_ui",
@@ -101,6 +102,7 @@ def modules():
     from . import refresh_rate
     from . import worker_ui
     from . import toolbar
+    from . import sidebar
     from . import onboarding_ui
     from .launching import wizard_ui as launch_wizard_ui
     from . import setup_ui
@@ -154,6 +156,7 @@ def modules():
         refresh_rate,
         worker_ui,
         toolbar,
+        sidebar,
         onboarding_ui,
         launch_wizard_ui,
         setup_ui,
@@ -202,6 +205,8 @@ MODE_FEATURES = MappingProxyType(
     {
         **INSPECTION_MODES,
         "job_group_menu": "job_group_menu",
+        "sidebar": "sidebar",
+        "sidebar_menu": "sidebar",
         "analysis": "analysis_ui",
         "workspace_picker": "navigation_ui",
         "activity": "activity_ui",
@@ -397,9 +402,18 @@ def route_modal_key(app, key):
 def route_modal_mouse(app, y, x, *, button="left", shift=False, current=True):
     stack = _focus(app)
     frame = stack.top
+    from .ui import modal_pointer
+
+    if modal_pointer.continuation(app, button) and modal_pointer.route(
+        app, frame, y, x, button=button, shift=shift, current=current
+    ):
+        return True
     if frame is None:
         return False
     if not current and button in ("left", "press"):
+        if frame.owner.name == "job_group_menu":
+            module_map()["job_group_menu"].close(app)
+            app.say("Job view changed; reopen actions to review the current targets")
         return True
     # A modal scrollbar belongs to the same foreground frame. No background
     # list, graph or job action receives input after the frame claims it.
@@ -414,6 +428,20 @@ def route_modal_mouse(app, y, x, *, button="left", shift=False, current=True):
             callback = owners()[tool].mouse
             if callback is not None and callback(app, y, x, button=button, shift=shift):
                 return True
+    if button == "right" and frame.owner.name == MODE_FEATURES.get(
+        getattr(app, "mode", "main")
+    ):
+        # Foreground documents retain their local clear/reset semantics. A
+        # toolbar above them still owns input through its separate focus frame.
+        from .jobs.selection import context_click
+
+        modal_pointer.initialize(app)["capture"] = None
+        if context_click(app, y, x, button=button, shift=shift):
+            return True
+    if modal_pointer.route(
+        app, frame, y, x, button=button, shift=shift, current=current
+    ):
+        return True
     return stack.mouse(app, y, x, button=button, shift=shift)
 
 
@@ -645,6 +673,7 @@ def bind_actions(app):
     from . import analysis_ui
     from .job_logs import history_export as history_log_export
     from . import toolbar
+    from . import sidebar
     from .jobs import group_menu as job_group_menu
     from .jobs import list_menu as job_list_menu
     from .ui import operations as ops_ui
@@ -677,6 +706,7 @@ def bind_actions(app):
     )
     app.interaction_sources = InteractionSources(
         toolbar_descriptors=lambda target: toolbar.control_descriptors(target),
+        sidebar_controls=lambda target: sidebar.controls(target),
         group_menu_active=lambda target: job_group_menu.active(target),
         group_menu_controls=lambda target: job_group_menu.controls(target),
         list_menu_active=lambda target: job_list_menu.active(target),
@@ -728,6 +758,7 @@ def bind_pointer(app):
 
     features = module_map()
     handlers = (
+        features["sidebar"].handle_mouse,
         column_resize.handle_mouse,
         features["group_queue_drag"].handle_mouse,
         features["job_group_drag"].handle_mouse,

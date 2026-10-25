@@ -233,7 +233,7 @@ def test_controller_filter_sort_tabs_overlays_and_mouse(tmp_path):
     app.handle("1")
     rows, hits = views.compose(store.snapshot(), app, W, H, actions)
     y = [h for h in hits if h[2] == "12480005"][0][0]
-    app.click(y, 5, hits)
+    app.click(y, app.workspace_main_rect.x + 5, hits)
     assert app.cursor["jobs"] == app.visible_ids.index("12480005")
     tab_y, left, _, _ = next(hit for hit in app.tab_hits if hit[3] == "history")
     app.click(tab_y, left + 1, hits)                                   # the painted tab bar
@@ -500,7 +500,7 @@ def test_selection_copy_and_exports(tmp_path, monkeypatch):
     cache.rebuild(app, views, store, actions, W, H)                    # publish the same pane ownership as the real UI
     hits = cache.hits
     y0 = next(y for y, kind, _ in hits if kind == "job")
-    app.click(y0, 3, hits)                                             # ordinary clicks select jobs
+    app.click(y0, app.workspace_main_rect.x + 3, hits)                                             # ordinary clicks select jobs
     cache.rebuild(app, views, store, actions, W, H)                    # refresh Details and the selection context
     hits = cache.hits
     pane = next(pane for pane in text_selection.initialize(app)["panes"] if pane.key == "jobs")
@@ -511,7 +511,7 @@ def test_selection_copy_and_exports(tmp_path, monkeypatch):
                        for y in range(y0, y0 + 4))
     assert "rb1-allrank" in "\n".join(L.row_text(cache.rows[y])[pane.rect.right:] for y in range(y0, y0 + 4))
     app.handle("v")                                                  # explicit text mode owns Shift-click instead of job marking
-    app.click(y0 + 2, 3, hits, shift=True)
+    app.click(y0 + 2, app.workspace_main_rect.x + 3, hits, shift=True)
     selection = text_selection.initialize(app)["selection"]
     assert selection["key"] == "jobs" and (selection["anchor"], selection["end"]) == (0, 2)
     assert app.sel_anchor is None                                    # a pane range must not become a screen-wide range
@@ -539,7 +539,7 @@ def test_selection_copy_and_exports(tmp_path, monkeypatch):
     app.handle("C"); path_c = app.message.split()[-1]
     app.handle("space"); app.handle("J"); path_j = app.message.split()[-1]
     exported = Path(path_t).read_text()
-    assert exported.splitlines()[0].split()[:7] == ["x", "File", "Edit", "View", "Setup", "Help", "[Launch]"]
+    assert exported.splitlines()[0].split()[:8] == ["x", "File", "Edit", "View", "Setup", "Help", "Themes", "[Launch]"]
     assert exported.splitlines()[1].startswith(" Raven Light/unconfigured - alex") and "-- selected" in exported
     assert Path(path_c).read_text().splitlines()[0].startswith("id,name,part") and "12477369" in Path(path_c).read_text()
     js = json.loads(Path(path_j).read_text())
@@ -603,7 +603,19 @@ def test_command_palette_and_analytics_views(tmp_path):
     app.analytics_view = "job"
     rows, _ = views.compose(store.snapshot(), app, 150, 44, actions)
     text = "\n".join(L.row_text(r) for r in rows)
-    assert "cpu per core" in text and "memory of the request" in text and "cpu samples" in text
+    assert "cpu per core" in text and "cpu samples" in text
+    # The sidebar reduces chart width, so the independently scrollable Details
+    # document can place its memory chart below CPU. Verify actual navigation
+    # reaches that measured series instead of assuming a fixed raster row.
+    cmd("focus details")
+    for _ in range(8):
+        if "memory of the request" in text:
+            break
+        app.handle("pgdn")
+        rows, _ = views.compose(store.snapshot(), app, 150, 44, actions)
+        text = "\n".join(L.row_text(r) for r in rows)
+    assert "memory of the request" in text
+    cmd("focus main")
     cmd("density compact")  # Use native series navigation rather than scrolling a chart panel.
     app.handle("home"); assert app.analytics_job == "12477369"               # series follow the scheduler feed, independently of table sorts
     app.handle("down"); assert app.analytics_job == "12480001"
@@ -1053,7 +1065,7 @@ def test_group_weather_budget_map_steps_and_trace_through_the_dashboard(tmp_path
         app.run_command("filter")
         rows, hits = views.compose(store.snapshot(), app, W, H, actions)
         y = [h for h in hits if h[2] == "12470003"][0][0]
-        app.click(y, 4, hits); assert app.group_selected() == "12470003"
+        app.click(y, app.workspace_main_rect.x + 4, hits); assert app.group_selected() == "12470003"
         app.handle("i")                                               # details of someone else's running job: scontrol in the fake answers only mine
         assert app.mode == "details" and app.detail_id == "12470003"
         app.handle("esc")
@@ -1237,7 +1249,7 @@ def test_dependency_graph_tab_and_chain_actions(tmp_path):
     app.run_command("chain fly"); assert app.message.startswith("chain <cancel|hold|release>")
     app.handle("9")
     rows, hits = views.compose(store.snapshot(), app, W, H, actions)
-    app.click(hits[0][0], 5, hits)
+    app.click(hits[0][0], app.history_browser_content_rect.x + 5, hits)
     assert app.cursor["deps"] == 0
 
 
@@ -1254,7 +1266,7 @@ def test_tags_pins_notes_filter_and_compare(tmp_path):
     rows, hits = views.compose(store.snapshot(), app, W, H, actions)
     text = "\n".join(L.row_text(r) for r in rows)
     pinned_y = next(y for y, kind, jid in hits if kind == "job" and jid == "12480003")
-    pinned_row = L.row_text(rows[pinned_y])[:app.workspace_main_rect.width]
+    pinned_row = L.row_text(rows[pinned_y])[app.workspace_main_rect.x:app.workspace_main_rect.x + app.workspace_main_rect.width]
     assert app.visible_ids[0] == "12480003" and pinned_row.lstrip().startswith("^") and "12480003" in pinned_row
     assert "urgent paper" in text and "rerun with 32 cores" in text
     app.run_command("filter #paper"); views.compose(store.snapshot(), app, W, H, actions); assert app.visible_ids == ["12480001"]

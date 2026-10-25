@@ -421,7 +421,7 @@ class Views:
         return [L.clip_row(row, width) for row in out]
 
     # ---- shared pieces ----------------------------------------------------------------------------
-    def header(self, snap: dict, app, width: int) -> List[Row]:
+    def header(self, snap: dict, app, width: int, *, toolbar_width=None, navigation_row=False) -> List[Row]:
         from .notifications import sync as sync_notifications
         sync_notifications(app, snap)
         jobs = snap["jobs"]
@@ -489,12 +489,20 @@ class Views:
             # Preserve header height and all pane coordinates while making an
             # unobserved queue distinct from a successful empty observation.
             r2=[(' '+cut(notice,max(0,width-1),self.g.ascii),'yellow')]
-        tabs, tab_hits = self.tab_bar(snap, app, width)
         from .toolbar import render_bar
-        app.tab_hits = [(4 if rp is not None else 3, x0, x1, key) for x0, x1, key in tab_hits]
-        rows = [render_bar(self, app, width), r1, r2, tabs]
+        # Main destinations live in the persistent sidebar. Keep the tab_bar
+        # renderer available for extensions, without a competing horizontal row.
+        app.tab_hits = []
+        toolbar_width = width if toolbar_width is None else toolbar_width
+        rows = [render_bar(self, app, toolbar_width), r1, r2]
         if rp is not None:
-            rows.insert(3, self.replay_bar(rp, width))
+            rows.append(self.replay_bar(rp, width))
+        if navigation_row:
+            # Streamed --once/watch output has no fixed-height side rail. A
+            # compact destination row retains the plain-output contract.
+            tabs, tab_hits = self.tab_bar(snap, app, width)
+            app.tab_hits = [(len(rows), x0, x1, key) for x0, x1, key in tab_hits]
+            rows.append(tabs)
         from .notification_ui import status_row
         notification_row = status_row(self, app, width, len(rows))
         if notification_row:
@@ -2863,6 +2871,10 @@ class Views:
         app.width = width
         if height is not None:
             app.height = height
+        from .sidebar import width as sidebar_width
+        content_x = sidebar_width(app, width) if height is not None else 0
+        content_width = max(0, width - content_x)
+        app.content_origin_x = content_x
         from .terminal import ui as terminal_ui
         from . import chart_interaction
         terminal_ui.begin_frame(app)
@@ -2889,13 +2901,19 @@ class Views:
                 publish(app, [], [], width, height)
             terminal_ui.finalize_frame(app)
             return [], []
-        head = self.header(snap, app, width)
+        head = self.header(snap, app, content_width, toolbar_width=width, navigation_row=height is None)
+        from .ui.content_geometry import shift_hit, prefix_rows, shift_header_controls
+        shift_header_controls(app, content_x)
+        # Row zero spans the whole application. The sidebar starts below it;
+        # every remaining header and document row shares one content origin.
+        head = head[:1] + prefix_rows(head[1:], content_x, content_width)
         terminal_header_hits = []
         if (terminal_ui.enabled(app) and app.tab not in ("jobs", "history")
                 and not terminal_ui.showing(app) and (height is None or height - len(head) - 1 >= 8)):
-            terminal_row, terminal_controls = terminal_ui.header(app, width, y=len(head))
-            terminal_header_hits = [(y + len(head), kind, value) for y, kind, value in terminal_controls]
-            head.append(terminal_row)
+            terminal_row, terminal_controls = terminal_ui.header(app, content_width, x=content_x, y=len(head))
+            terminal_header_hits = [shift_hit(y + len(head), kind, value, dx=content_x)
+                                    for y, kind, value in terminal_controls]
+            head.extend(prefix_rows([terminal_row], content_x, content_width))
             terminal_ui.initialize(app).geometry = (app.width, getattr(app, "height", None))
         app.body_origin = len(head)
         from .pane_drag import begin_frame
@@ -2918,20 +2936,32 @@ class Views:
             return (self.plugin_tab(snap, app, panel_width, panel_height), []) if fn is None else fn()
         from .workspace_layout import render_body
         from .history_browser import wrap_render
-        body, hits = wrap_render(self, snap, app, width, body_h,
+        body, hits = wrap_render(self, snap, app, content_width, body_h,
             lambda panel_width, panel_height: render_body(self, snap, app, panel_width, panel_height, actions, default_renderer))
         terminal_ui.finalize_frame(app)
-        chart_interaction.place_since(app, 0, dy=len(head),
-            clip=None if height is None else (len(head), 0, max(len(head), height - 1), width))
-        SB.place_since(app, 0, dy=len(head),
-            clip=None if height is None else (len(head), 0, max(len(head), height - 1), width))
-        hits = [(y + len(head), kind, key) for y, kind, key in hits] + terminal_header_hits
+        chart_interaction.place_since(app, 0, dy=len(head), dx=content_x,
+            clip=None if height is None else (len(head), content_x, max(len(head), height - 1), width))
+        SB.place_since(app, 0, dy=len(head), dx=content_x,
+            clip=None if height is None else (len(head), content_x, max(len(head), height - 1), width))
+        hits = [shift_hit(y, kind, key, dx=content_x, dy=len(head)) for y, kind, key in hits] + terminal_header_hits
+        body = prefix_rows(body, content_x, content_width)
         if height is None:
             return [L.clip_row(r, width) for r in head + body], hits
         rows = [L.clip_row(r, width) for r in head + body]   # every row fits the width, whatever the panel put in it
         while len(rows) < height - 1:
-            rows.append([("", "")])
+            rows.append([(" " * content_x, "bg:canvas")])
         rows = rows[:height - 1]
+        from .sidebar import render as render_sidebar
+        for sidebar_y, _, sidebar_row in render_sidebar(self, app, width, height):
+            if 0 <= sidebar_y < len(rows):
+                # prefix_rows reserves exactly one style segment. Replace it
+                # without expanding or scanning every document character.
+                rows[sidebar_y] = sidebar_row + rows[sidebar_y][1:]
+        # Preserve the public destination hit map for extensions and native
+        # navigation adapters; these rectangles now describe sidebar rows.
+        app.tab_hits = [(y, left, right, identity.removeprefix("tab:"))
+                        for y, left, right, kind, identity in app.sidebar_state["hits"]
+                        if kind == "destination" and identity.startswith("tab:")]
         if app.tab == "jobs":
             from . import recent_history, pane_drag
             from .ui.workspace_state import Rect
@@ -2969,10 +2999,13 @@ class Views:
         app.last_rows = [list(row) for row in rows]         # pristine content; copy excludes feedback glyphs
         if app.sel_anchor is not None:
             a, b = sorted((app.sel_anchor, min(app.sel_end, len(rows) - 1)))
+            from .terminal.ui import _slice_row
             for y in range(max(0, a), b + 1):
-                selected = [(t, "sel") for t, _ in L.clip_row(rows[y], max(0, width - 1))]
-                rows[y] = selected + [(" " * max(0, width - 1 - vlen(L.row_text(selected))), "sel"),
-                                      ("*" if self.g.ascii else "◆", "fg:#fb923c+bold")]
+                leading = _slice_row(rows[y], 0, content_x)
+                selected = [(t, "sel") for t, _ in
+                            L.clip_row(_slice_row(rows[y], content_x, width), max(0, content_width - 1))]
+                rows[y] = leading + selected + [(" " * max(0, content_width - 1 - vlen(L.row_text(selected))), "sel"),
+                                                ("*" if self.g.ascii else "◆", "fg:#fb923c+bold")]
         hits = [(y, kind, key) for y, kind, key in hits if 0 <= y < max(0, height - 1)]
         app.last_hits = hits
         from .ui.selection_state import publish as publish_selection

@@ -28,6 +28,7 @@ class CaptureOwner:
 
 
 OWNERS = (
+    CaptureOwner("sidebar", "sidebar_state"),
     CaptureOwner("column_resize", "column_resize_state"),
     CaptureOwner("group_queue_drag", "group_queue_drag_state", modifiers=True),
     CaptureOwner("job_group_drag", "job_group_drag_state", modifiers=True),

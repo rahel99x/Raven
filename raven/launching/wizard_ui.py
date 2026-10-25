@@ -1,6 +1,7 @@
 """A guided existing-script launch, separate from exports and Heavy allocation."""
 
 from __future__ import annotations
+from ..ui.form_state import edit_actions, edit_mouse, publish_edit_actions
 
 import copy
 import getpass
@@ -962,6 +963,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if not active(app):
         return False
     state = initialize(app)
+    if edit_mouse(app, state, y, x, button, _frame(app), handle_key):
+        return True
     if button in ("wheel-up", "wheel-down"):
         state["top"] = max(0, state["top"] + (-3 if button == "wheel-up" else 3))
         state["follow"] = False
@@ -1022,7 +1025,9 @@ def overlay(views, snap, app, width, height):
                 [(line, "sel+bold" if selected else "cyan" if action else "text")]
             )
         choice += bool(action)
-    capacity = max(1, height - 5)
+    editing = state["editing"] is not None
+    edit_rows, edit_hits = edit_actions(views.g, inner) if editing else ([], [])
+    capacity = max(0, height - 4 - len(edit_rows)) if editing else max(1, height - 5)
     state["visible"] = capacity
     if state["follow"]:
         if selected_row < state["top"]:
@@ -1032,7 +1037,10 @@ def overlay(views, snap, app, width, height):
         state["follow"] = False
     state["top"] = max(0, min(state["top"], max(0, len(document) - capacity)))
     rows = document[state["top"] : state["top"] + capacity]
-    if height >= 5:
+    footer_start = len(rows)
+    if editing:
+        rows.extend(edit_rows)
+    elif height >= 5:
         rows.append(
             [
                 (
@@ -1050,4 +1058,15 @@ def overlay(views, snap, app, width, height):
         hits, rendered[1:-2] if height >= 5 else rendered[1:-1], offset=state["top"]
     )
     state["painted"] = _frame(app)
+    if editing:
+        publish_edit_actions(
+            app,
+            state,
+            edit_hits,
+            rendered,
+            footer_start,
+            state["painted"],
+            width,
+            height,
+        )
     return rendered

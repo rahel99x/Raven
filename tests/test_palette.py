@@ -16,8 +16,8 @@ def terminal(monkeypatch):
 
 
 def test_ansi_depths_preserve_custom_foreground_background_and_flags(monkeypatch):
-    style = "bold+fg:#12abef+bg:#172033"
-    assert P.ansi_codes(style, 24) == "1;38;2;18;171;239;48;2;23;32;51"
+    style = "bold+fg:#12abef+bg:#132537"
+    assert P.ansi_codes(style, 24) == "1;38;2;18;171;239;48;2;19;37;55"
     assert P.ansi_codes(style, 256).startswith("1;38;5;")
     basic = P.ansi_codes(style, 8).split(";")
     assert basic[0] == "1" and 30 <= int(basic[1]) <= 37 and 40 <= int(basic[2]) <= 47
@@ -134,10 +134,10 @@ def test_curses_direct_color_uses_packed_rgb_and_handles_pair_saturation():
     curses = FakeCurses(colors=1 << 24, pairs=10, default=False)
     painter = screen.CursesPalette(curses)
     foreground = 0x12ABEF
-    background = 0x172033
-    painter.attr("fg:#12abef+bg:#172033")
+    background = 0x132537
+    painter.attr("fg:#12abef+bg:#132537")
     assert curses.initialized[-1][1:] == (foreground, background)
-    assert painter._index(None) == 0xE2E8F0
+    assert painter._index(None) == int(P.theme_tokens("gruvbox-dark")["white"][1:], 16)
     assert painter._rgb(foreground, "white") == (18, 171, 239)
     # Saturation approximates initialized RGB pairs without treating huge packed
     # values as positions in the indexed palette.

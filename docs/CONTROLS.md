@@ -224,6 +224,10 @@ in menus. The toolbar stays available above pages and overlays.
 | `:rate [N\|reset]` | Inspect the effective queue interval, select position 1–50, or restore its active base |
 | Edit → Switch to Vim/Neovim yanking / Switch to clipboard copying | Change the copy destination |
 | View → Favorites → Pin this view, or `:favorite` | Save or remove the current navigation destination |
+| Right-click a sidebar destination | Add it to Favorites or remove an existing favorite |
+| Drag a sidebar favorite | Save a new custom order; dropping outside cancels |
+| **Own / A–Z** in Favorites | Switch display order without discarding the custom sequence |
+| `:sidebar focus` | Navigate sidebar entries, expand subviews, and open the Favorites menu from the keyboard |
 | **Setup** | Open connections, launch defaults, recordings, refresh, and installation categories |
 | **Set up this view** beside Research or Analytics content | Open that view's evidence guide |
 | `:setup` | Open the compatibility setup overview |
@@ -274,19 +278,20 @@ See [Mouse and button navigation](guides/pointer-navigation.md) for procedures, 
 
 | Control | Function |
 | --- | --- |
-| `T` | Cycle the available themes |
+| **Themes**, `T` | Choose a palette or cycle the curated themes; Gruvbox is the default |
 | `:theme NAME` | Select an exact palette during the session |
 | `:theme darcula` | Select Darcula |
 | `:theme modnokai`, `:theme monokai` | Select Modnokai; Monokai is an alias |
 | `:theme gruvbox-dark`, `:theme gruvbox` | Select Gruvbox Dark |
-| `:theme terminal` | Retain the terminal's own background |
+| `:theme system` | Inherit the terminal's default text/background and ANSI palette |
 | `:theme mono`, `:theme reader` | Use colour-free output; reader also uses plain ASCII |
 
 The active theme updates the canvas, blank cells, text, menus, information strips, and chart colours.
 Theme changes preserve job selection and measured values.
 All interface symbols use the active palette, including sliders, clocks, hourglasses, arrows, diamonds, and selection markers.
 Status symbols retain their warning, error, and success meanings.
-Use `dark`, `light`, `high`, or `cb` for the other explicit display palettes.
+The **Themes** menu includes Catppuccin Mocha, Nord, Tokyo Night, and Rosé Pine Dawn.
+Compatibility modes `high` and `cb` remain available by command.
 Use `--no-color` or `NO_COLOR` to suppress colour.
 See [Terminal palettes](guides/pointer-navigation.md#change-the-terminal-palette) for controls and terminal limits.
 
@@ -599,6 +604,14 @@ See [History log exports](guides/log-view.md#export-logs-for-history-jobs) for s
 
 Use a table identifier when you need a table other than the current one.
 Identifiers include `jobs`, `recent`, `history`, `group`, `nodes`, `sources`, and `cluster`.
+
+Table dialogs expose their actions as mouse buttons. Columns provides show/hide,
+reordering, width, automatic width, reset, and Done. Sort, filters, saved views,
+marked jobs, and node details provide matching action rows, including Done;
+filter edits offer Apply field and Cancel edit. Named view saving opens a text
+prompt. Resizing or changing the selected target invalidates old mouse controls.
+Short or narrow Columns dialogs keep the selected checkbox visible and place
+additional actions under More; its arrow buttons cycle through every action.
 
 | Command | Function |
 | --- | --- |

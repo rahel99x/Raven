@@ -68,7 +68,8 @@ def open_palette(app, text="", origin=None):
     state = initialize(app)
     if app.mode != "palette":
         state["origin_mode"] = app.mode if origin is None else origin
-    state.update(paste_notice="", history_index=None)
+    state.update(paste_notice="", history_index=None, palette_pressed=None,
+                 palette_generation=state.get("palette_generation", 0) + 1)
     state["undo"].clear()
     state["redo"].clear()
     app.mode = "palette"
@@ -728,6 +729,7 @@ def _help_key(app, key):
     if key == "esc" or key in ("q", "?") and not state["help_searching"]:
         app.mode = "main"
         state["help_mode_seen"] = False
+        state.update(help_paint=None, help_pressed=None)
         return
     if key == "/":
         state["help_searching"] = True
@@ -737,6 +739,7 @@ def _help_key(app, key):
         else:
             app.mode = "main"
             state["help_mode_seen"] = False
+            state.update(help_paint=None, help_pressed=None)
     elif key == "backspace":
         state["help_query"] = state["help_query"][:-1]
         app.scroll = 0
@@ -757,8 +760,94 @@ def _confirm_state(app):
     token = id(app.confirm)
     if state["confirm_token"] != token:
         state.update(confirm_token=token, confirm_scroll=0, confirm_focus="cancel", confirm_total=None, confirm_cache=None,
-                     confirm_hits=[], confirm_controls_visible=None)
+                     confirm_hits=[], confirm_controls_visible=None, confirm_paint=None,
+                     confirm_pressed=None, confirm_hover=None,
+                     confirm_pointer_guard=app.confirm.get("pointer_guard"))
     return state
+
+
+def _confirm_paint_context(app, width=None, height=None):
+    state = _confirm_state(app)
+    return (id(app.confirm), getattr(app, "mode", None), getattr(app, "tab", None),
+            width if width is not None else getattr(app, "width", None),
+            height if height is not None else getattr(app, "height", None),
+            state["confirm_scroll"])
+
+
+def _confirm_mouse(app, y, x, button):
+    state = _confirm_state(app)
+    guard = state.get("confirm_pointer_guard")
+    if guard is not None:
+        deadline, row, left, right = guard
+        if button == "press" or time.monotonic() >= deadline:
+            state["confirm_pointer_guard"] = None
+        elif button in ("left", "double") and row == y and left <= x < right:
+            return
+    if state.get("confirm_paint") != _confirm_paint_context(app):
+        state.update(confirm_pressed=None, confirm_hover=None)
+        return
+    choice = next((choice for row, left, right, choice in state.get("confirm_hits", ())
+                   if row == y and left <= x < right), None)
+    if button in ("motion", "drag"):
+        state["confirm_hover"] = choice
+    elif button in ("wheel-up", "wheel-down", "wheel_up", "wheel_down"):
+        state["confirm_pressed"] = None
+        _confirm_key(app, "up" if button in ("wheel-up", "wheel_up") else "down")
+    elif button == "press":
+        state["confirm_pressed"] = (state["confirm_paint"], choice) if choice else None
+        if choice:
+            state["confirm_focus"] = choice
+    elif button == "release":
+        pressed, state["confirm_pressed"] = state["confirm_pressed"], None
+        if pressed is not None:
+            from .ui.modal_pointer import initialize as pointer_state
+            pointer_state(app)["aggregate"] = (time.monotonic() + 0.5, y, x)
+        if choice and pressed == (state["confirm_paint"], choice):
+            app.finish_confirm(choice == "confirm")
+    elif button in ("left", "double") and choice:
+        state["confirm_pressed"] = None
+        app.finish_confirm(choice == "confirm")
+
+
+def _palette_context(app, width=None, height=None):
+    state = initialize(app)
+    return (state.get("palette_generation", 0), app.mode, app.palette_edit,
+            state["cursor"], state["result_cursor"], state["result_top"],
+            width if width is not None else getattr(app, "width", None),
+            height if height is not None else getattr(app, "height", None))
+
+
+def _palette_mouse(app, y, x, button):
+    state = initialize(app)
+    context = _palette_context(app)
+    if state.get("palette_paint") != context:
+        state["palette_pressed"] = None
+        return
+    target = next((value["action"] for row, _kind, value in state.get("palette_control_hits", ())
+                   if row == y and value["left"] <= x < value["right"]), None)
+    if target is None:
+        target = next((("result", index) for row, left, right, index in state.get("result_spans", ())
+                       if row == y and left <= x < right), None)
+    activate = False
+    if button in ("wheel-up", "wheel-down", "wheel_up", "wheel_down"):
+        state["palette_pressed"] = None
+        _palette_key(app, "up" if button in ("wheel-up", "wheel_up") else "down")
+    elif button == "press":
+        state["palette_pressed"] = (context, target) if target else None
+    elif button == "release":
+        pressed, state["palette_pressed"] = state.get("palette_pressed"), None
+        if pressed is not None:
+            from .ui.modal_pointer import initialize as pointer_state
+            pointer_state(app)["aggregate"] = (time.monotonic() + 0.5, y, x)
+        activate = target is not None and pressed == (context, target)
+    elif button in ("left", "double"):
+        state["palette_pressed"] = None
+        activate = target is not None
+    if activate:
+        if target[0] == "key":
+            _palette_key(app, target[1])
+        else:
+            state["result_cursor"] = target[1]
 
 
 def _wrap_exact(text, width):
@@ -876,22 +965,50 @@ def handle_key(app, key):
 
 
 def handle_mouse(app, y, x, button="left", shift=False):
-    state = initialize(app)
     if app.mode not in ("help", "palette", "confirm"):
         return False
-    if button != "left":
-        return True
     if app.mode == "confirm":
-        _confirm_state(app)
-        choice = next((choice for row, start, end, choice in state.get("confirm_hits", [])
-                       if row == y and start <= x < end), None)
-        if choice is not None:
-            app.finish_confirm(choice == "confirm")
+        _confirm_mouse(app, y, x, button)
     elif app.mode == "palette":
-        index = next((index for row, index in state.get("result_hits", []) if row == y), None)
-        if index is not None:
-            state["result_cursor"] = index
+        _palette_mouse(app, y, x, button)
+    else:
+        _help_mouse(app, y, x, button)
     return True
+
+
+def _help_context(app, width=None, height=None):
+    state = initialize(app)
+    return (app.mode, app.tab, state["help_query"], state["help_searching"], app.scroll,
+            width if width is not None else getattr(app, "width", None),
+            height if height is not None else getattr(app, "height", None))
+
+
+def _help_mouse(app, y, x, button):
+    state = initialize(app)
+    if button in ("wheel-up", "wheel-down", "wheel_up", "wheel_down"):
+        state["help_pressed"] = None
+        _help_key(app, "up" if button in ("wheel-up", "wheel_up") else "down")
+        return
+    context = _help_context(app)
+    if state.get("help_paint") != context:
+        state["help_pressed"] = None
+        return
+    target = next((value["action"] for row, _, value in state.get("help_control_hits", ())
+                   if row == y and value["left"] <= x < value["right"]), None)
+    activate = False
+    if button == "press":
+        state["help_pressed"] = (context, target) if target else None
+    elif button == "release":
+        pressed, state["help_pressed"] = state.get("help_pressed"), None
+        if pressed is not None:
+            from .ui.modal_pointer import initialize as pointer_state
+            pointer_state(app)["aggregate"] = (time.monotonic() + 0.5, y, x)
+        activate = target is not None and pressed == (context, target)
+    elif button in ("left", "double"):
+        state["help_pressed"] = None
+        activate = target is not None
+    if activate:
+        _help_key(app, target[1])
 
 
 def run_command(app, args):
@@ -908,9 +1025,14 @@ def run_command(app, args):
 
 def _palette_overlay(views, app, width, height):
     from . import modal_scrollbars as B
+    from .control_rows import buttons, place_hits
     state = _sync_input(app)
     matches = suggestions(app)
-    page = max(1, height - 12)
+    action_rows, action_hits = buttons(views.g, max(1, width - 8),
+        [("complete", "Complete", ("key", "tab")),
+         ("run", "Run command", ("key", "enter")),
+         ("close", "Close", ("key", "esc"))], group="palette-actions", prefix="palette-action:")
+    page = max(1, height - 12 - len(action_rows))
     state["page"] = page
     index = max(0, min(state["result_cursor"], max(0, len(matches) - 1)))
     top = min(state["result_top"], max(0, len(matches) - page))
@@ -945,9 +1067,19 @@ def _palette_overlay(views, app, width, height):
               [(" " + clean(state["paste_notice"], views.g.ascii), "cyan")] if state["paste_notice"] else [(" Alt-B/F moves words; Alt-U/R undoes/redoes", "dim")],
               [(" Up/Down choose  Tab completes  Enter runs  Esc closes", "dim")],
               [(" Left/Right edit  PgUp/PgDn recalls history", "dim")]]
+    action_start = len(lines)
+    lines.extend(action_rows)
     result = box(views.g, lines, width, height, "Commands")
-    state["result_hits"] = [(result[index + 3][0], top + index) for index in range(min(page, len(matches) - top))
-                            if index + 3 < len(result) - 1]
+    state["result_hits"], state["result_spans"] = [], []
+    for index in range(min(page, len(matches) - top)):
+        if index + 3 >= len(result) - 1:
+            break
+        y, x, segments = result[index + 3]
+        state["result_hits"].append((y, top + index))
+        state["result_spans"].append((y, x + 1, x + vlen("".join(text for text, _ in segments)) - 1, top + index))
+    state["palette_control_hits"] = place_hits(
+        [(row + action_start, kind, value) for row, kind, value in action_hits], result[1:-1])
+    state["palette_paint"] = _palette_context(app, width, height)
     return B.boxed(app, "modal:commands", result, start=2, count=len(matches), page=page,
                    target=logical, painted=top, setter=lambda value: state.update(result_top=value),
                    context=context)
@@ -959,19 +1091,36 @@ def overlay(views, snap, app, width, height):
     if app.mode == "palette":
         return _palette_overlay(views, app, width, height)
     if app.mode == "help":
+        from .control_rows import buttons, place_hits
         content, count = _help_rows(app, width, views.g.ascii)
-        page = max(1, height - 10)
-        state["help_page"], state["help_total"] = page, len(content)
+        action_rows, action_hits = buttons(views.g, max(1, width - 8),
+            [("search", "Done filtering" if state["help_searching"] else "Search",
+              ("key", "enter" if state["help_searching"] else "/")),
+             ("close", "Close", ("key", "esc"))], group="help-actions", prefix="help-action:")
+        capacity = max(0, height - 4)
+        show_header = capacity >= len(action_rows) + 3
+        show_status = capacity >= len(action_rows) + 6
+        page = max(0, capacity - len(action_rows) - 2 * int(show_header) - 2 * int(show_status))
+        state["help_page"], state["help_total"] = max(1, page), len(content)
         app.scroll = max(0, min(app.scroll, max(0, len(content) - page)))
         query = state["help_query"]
         context = ("help", app.tab, query, width)
         app.scroll, painted = B.window(app, "modal:help", app.scroll, len(content), page, context=context)
-        lines = [[(" Search: ", "dim"), (clean(query, views.g.ascii) or "(/ to search)", "cyan")], [("", "")]]
-        lines += content[painted:painted + page] or [[(" No matching instructions. Backspace edits the search.", "yellow")]]
-        lines += [[("", "")], [(f" {count} instructions  rows {app.scroll + 1 if content else 0}-{min(len(content), app.scroll + page)}/{len(content)}", "dim")],
-                  [(" Up/Down/PgUp/PgDn scroll  / searches  Esc closes", "dim")]]
+        lines = ([[ (" Search: ", "dim"), (clean(query, views.g.ascii) or "(/ to search)", "cyan")], [("", "")]]
+                 if show_header else [])
+        data_start = len(lines)
+        if page:
+            lines += content[painted:painted + page] or [[(" No matching instructions. Backspace edits the search.", "yellow")]]
+        if show_status:
+            lines += [[(f" {count} instructions  rows {app.scroll + 1 if content else 0}-{min(len(content), app.scroll + page)}/{len(content)}", "dim")],
+                      [(" Up/Down/PgUp/PgDn scroll  / searches  Esc closes", "dim")]]
+        action_start = len(lines)
+        lines.extend(action_rows)
         result = box(views.g, lines, width, height, "Help: " + app.tab.capitalize() + " keys")
-        return B.boxed(app, "modal:help", result, start=2, count=len(content), page=page,
+        state["help_control_hits"] = place_hits(
+            [(row + action_start, kind, value) for row, kind, value in action_hits], result[1:-1])
+        state["help_paint"] = _help_context(app, width, height)
+        return B.boxed(app, "modal:help", result, start=data_start, count=len(content), page=page,
                        target=app.scroll, painted=painted, setter=lambda value: setattr(app, "scroll", value),
                        context=context)
     if app.mode == "confirm":
@@ -1012,6 +1161,7 @@ def overlay(views, snap, app, width, height):
         if not state["confirm_controls_visible"]:
             state["confirm_focus"] = "cancel"
             state["confirm_hits"] = []
+        state["confirm_paint"] = _confirm_paint_context(app, width, height)
         return B.boxed(app, "modal:confirmation", result, start=data_start, count=len(content), page=page,
                        target=logical, painted=top, setter=lambda value: state.update(confirm_scroll=value),
                        context=context, header=0 if data_start else -1)

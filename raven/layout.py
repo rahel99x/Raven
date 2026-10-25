@@ -515,7 +515,7 @@ def to_text(
             canvas
             and color_depth
             and not colors_disabled()
-            and canonical_theme(theme) not in ("terminal", "mono", "reader")
+            and canonical_theme(theme) not in ("system", "terminal", "mono", "reader")
         )
     out = []
     for row in rows:

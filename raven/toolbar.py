@@ -6,13 +6,15 @@ performs a local presentation action. Hit rectangles come from the last paint.
 """
 from __future__ import annotations
 
+import time
+
 from .ui.catalog import ANALYTICS_VIEWS, RESEARCH_VIEWS, TABS
 from . import layout as L
 from .command_registry import Control as Item, toolbar_controls
 
 from .pointer_routing import capture_handler
 
-MENUS = ("File", "Edit", "View", "Setup", "Help")
+MENUS = ("File", "Edit", "View", "Setup", "Help", "Themes")
 BAR_STYLE = "text+bg:surface-raised"
 PRIMARY_TABS = ("jobs", "history", "analytics", "research", "log")
 MAX_FAVORITES = 24
@@ -41,15 +43,13 @@ def initialize(app):
 
 
 def _destinations():
-    return {**{"tab:" + key: (title, ("tab " + key,)) for key, title in TABS},
-            **{"research:" + key: ("Research: " + title, ("workspace " + key,)) for key, title in RESEARCH_VIEWS},
-            **{"analytics:" + key: ("Analytics: " + title.title(), ("tab analytics", "view " + key)) for key, title in ANALYTICS_VIEWS}}
+    from .ui.destinations import destinations
+    return destinations()
 
 
 def _valid_favorites(values):
-    known = _destinations()
-    return list(dict.fromkeys(value for value in values[:MAX_FAVORITES]
-                             if isinstance(value, str) and value in known)) if isinstance(values, (list, tuple)) else []
+    from .ui.destinations import valid_favorites
+    return valid_favorites(values)
 
 
 def restore(app, data):
@@ -82,12 +82,8 @@ def visible_research_views(app):
 
 
 def _destination(app):
-    tab = getattr(app, "tab", "jobs")
-    if tab == "research":
-        return "research:" + getattr(app, "research_view", "experiment")
-    if tab == "analytics":
-        return "analytics:" + getattr(app, "analytics_view", "job")
-    return "tab:" + tab
+    from .ui.destinations import current
+    return current(app)
 
 
 def _toggle_favorite(app):
@@ -105,7 +101,7 @@ def _toggle_favorite(app):
         return
     else:
         pins.append(target)
-        message = "Pinned this view in View > Favorites."
+        message = "Added this view to sidebar Favorites."
     state["favorites"] = pins
     if callable(getattr(app, "save", None)):
         app.save()
@@ -154,7 +150,7 @@ def run_command(app, args):
         app.fail({"favorite": "Use favorite [toggle|list|clear].",
                   "preferences": "Use preferences without arguments.",
                   "about": "Use about without arguments.",
-                  "menu": "Use menu [File|Edit|View|Setup|Help]."}[args[0]])
+                  "menu": "Use menu [File|Edit|View|Setup|Help|Themes]."}[args[0]])
     return True
 
 
@@ -185,6 +181,13 @@ def menu_items(app, menu):
                  Item("display", "Display and navigation", local="submenu:display")])
     if menu == "Setup":
         return toolbar_controls("Setup")
+    if menu == "Themes":
+        from .palette import THEME_NAMES, THEME_LABELS
+        selected = getattr(app, "theme", "gruvbox-dark")
+        return [Item("theme-" + name,
+                     ("* " if name == selected else "  ") +
+                     (THEME_LABELS[name].replace("é", "e") if initialize(app).get("ascii") else THEME_LABELS[name]),
+                     "theme " + name) for name in THEME_NAMES]
     return toolbar_controls("Help")
 
 
@@ -214,7 +217,6 @@ def submenu_items(app, name):
         from .startup import enabled as startup_enabled
         from .scrolling import enabled as smoothscroll_enabled
         from .worker_ui import status as worker_status
-        from .palette import THEME_NAMES
         workers = worker_status(app)
         desired = workers["target"] if workers else "multi"
         toggle = "Background workers: switch to " + ("multi" if desired == "single" else "single")
@@ -225,8 +227,7 @@ def submenu_items(app, name):
             "smooth-scroll": {"label": "Disable smooth scrolling" if smoothscroll_enabled(app) else "Enable smooth scrolling"},
             "startup-toggle": {"label": "Disable startup animation" if startup_enabled(app) else "Enable startup animation"}})
         keys = {"workers-toggle", "workers-single", "workers-multi", "workers-status", "smooth-scroll", "startup-toggle", "startup-preview", "reader"}
-        return [Item("settings", "Terminal, key, and clipboard preferences", "settings")] + [item for item in controls if item.key in keys] + [
-            Item("theme-" + name, "Theme: " + name.replace("-", " ").title(), "theme " + name) for name in THEME_NAMES if name != "reader"]
+        return [Item("settings", "Terminal, key, and clipboard preferences", "settings")] + [item for item in controls if item.key in keys]
     return []
 
 
@@ -373,6 +374,34 @@ def _refresh_summary(app, ascii_=False):
     return summary(app, ascii_=ascii_)
 
 
+def _dialog_context(app):
+    mode = getattr(app, "mode", "main")
+    return (mode, getattr(app, "detail_id", None) if mode == "details" else None,
+            getattr(app, "tab", ""), getattr(app, "width", None), getattr(app, "height", None))
+
+
+def _primary_controls(app):
+    if getattr(app, "mode", "main") == "details":
+        return (("[Close] ", "dialog-close"), ("[Up] ", "dialog-up"), ("[Down] ", "dialog-down"))
+    if getattr(app, "mode", "main") == "filter":
+        return (("[Apply] ", "filter-apply"), ("[Clear] ", "filter-clear"))
+    return (("[Launch] ", "launch-job"),)
+
+
+def _dialog_action(app, kind):
+    pointer = getattr(app, "interaction_state", {})
+    if not pointer.get("routing"):
+        # A mouse activation owns this action even while F8 focuses another
+        # control. Do not reinterpret Enter/Escape as that control's key.
+        pointer.update(active=False, focused=None, frame_required=True)
+    if kind == "dialog-close":
+        app.handle("esc")
+    elif kind in ("dialog-up", "dialog-down"):
+        app.scroll = max(0, getattr(app, "scroll", 0) + (-1 if kind == "dialog-up" else 1))
+    elif kind in ("filter-apply", "filter-clear"):
+        app.handle("enter" if kind == "filter-apply" else "esc")
+
+
 def render_bar(views, app, width, y=0):
     """One 80-column-first row: menus, launch, compute status, refresh summary."""
     from .ui import allocation as raven_ui
@@ -382,6 +411,7 @@ def render_bar(views, app, width, y=0):
         state.update(menu_hits=[], menu_token=None, menu_rect=None, menu_disabled={})
     state.update(width=width, bar_y=y, hits=[], ascii=bool(views.g.ascii),
                  frame_context=_frame_context(app), dragging=False, drag_width=None)
+    state["dialog_context"] = _dialog_context(app)
     if not width:
         return []
     row, x = [], 0
@@ -411,19 +441,24 @@ def render_bar(views, app, width, y=0):
     # Named menus and Launch take precedence; Heavy remains visible at 80 cols.
     forms = [("x ", [name + " " for name in MENUS]),
              ("x ", [name[0] + " " for name in MENUS]), ("x ", ["Menu "])]
-    reserve = (9 if width >= 24 else 0) + (compute_width if width >= 60 else 0)
+    primary = _primary_controls(app)
+    reserve = (sum(L.vlen(text) for text, _ in primary) if width >= 24 else 0) + (compute_width if width >= 60 else 0)
     quit_label, labels = next((form for form in forms
         if L.vlen(form[0] + "".join(form[1])) + reserve + 4 <= width), forms[-1])
     append(quit_label, "danger+bold+bg:surface-raised", "quit")
     for index, label in enumerate(labels):
         selected = state["menu"] == index if len(labels) == len(MENUS) else state["menu"] is not None
         append(label, "accent+bold+bg:surface-sunken" if selected else BAR_STYLE, "menu", index)
-    if width >= 24 and width-x >= 9:
-        append("[Launch] ", "accent+bold+bg:surface-raised", "launch-job")
+    if width >= 24:
+        for text, kind in primary:
+            if width-x >= L.vlen(text):
+                append(text, "accent+bold+bg:surface-raised", kind)
     if compute and width >= 60 and width-x >= compute_width+4:
         append(*compute, "raven")
     space = width-x
-    refresh = summary if L.vlen(summary)+1 <= space else "Refresh" if space >= 8 else "R" if space else ""
+    compact_summary = summary.replace(": ", ":").replace(" · ", " ").replace(" | ", " ")
+    refresh = next((text for text in (summary, compact_summary) if L.vlen(text)+1 <= space),
+                   "Refresh" if space >= 8 else "R" if space else "")
     if refresh:
         append(" " * max(0, space-L.vlen(refresh)-1))
         append(refresh+" ", "accent+bg:surface-raised", "refresh-settings")
@@ -465,8 +500,8 @@ def handle_key(app, key):
     elif key in ("enter", "space"):
         entries = menu_items(app, state["menu"])
         _activate(app, entries[max(0, min(len(entries) - 1, state["cursor"]))])
-    elif len(key) == 1 and key.lower() in "fevsh":
-        _open(app, "fevsh".index(key.lower()))
+    elif len(key) == 1 and key.lower() in "fevsht":
+        _open(app, "fevsht".index(key.lower()))
     return True
 
 
@@ -511,6 +546,9 @@ def handle_mouse(app, y, x, button="left", shift=False):
         cancelled = state.get("discard_release", False)
         state["discard_release"] = False
         consumed = state["dragging"] or state["pressed"] or cancelled
+        if state.pop("dialog_release", False):
+            from .ui.modal_pointer import initialize as pointer_state
+            pointer_state(app)["aggregate"] = (time.monotonic() + 0.5, y, x)
         state.update(dragging=False, pressed=False, drag_width=None)
         return bool(consumed)
     hit = next((hit for hit in state["hits"] if hit[0] == y and hit[1] <= x < hit[2]), None)
@@ -542,6 +580,7 @@ def handle_mouse(app, y, x, button="left", shift=False):
         return False
     if button == "press":
         state["pressed"] = bool(hit or state["menu"] is not None or state["panel"])
+        state["dialog_release"] = False
     if hit:
         kind, key = hit[3:]
         if button in ("wheel-up", "wheel-down"):
@@ -569,6 +608,14 @@ def handle_mouse(app, y, x, button="left", shift=False):
             _close(app)
             from .launching.wizard_ui import open_launch
             open_launch(app)
+        elif kind in ("dialog-close", "dialog-up", "dialog-down", "filter-apply", "filter-clear"):
+            if button == "press":
+                state["dialog_release"] = True
+                from .ui.modal_pointer import initialize as pointer_state
+                pointer_state(app)["aggregate"] = (time.monotonic() + 0.5, y, x)
+            if state.get("dialog_context") == _dialog_context(app):
+                _close(app)
+                _dialog_action(app, kind)
         elif kind == "copy-mode":
             from .editor_yank import toggle
             toggle(app)
@@ -613,6 +660,9 @@ def control_descriptors(app):
     state = initialize(app)
     controls = []
     labels = {"quit": "Quit", "launch-job": "Launch job",
+              "dialog-close": "Close details", "dialog-up": "Scroll details up",
+              "dialog-down": "Scroll details down", "filter-apply": "Apply filter",
+              "filter-clear": "Clear filter and close editor",
               "refresh-settings": "Refresh settings: " + _refresh_summary(app)}
     if any(hit[3] == 'raven' for hit in state['hits']):
         from .ui.allocation import summary
@@ -701,7 +751,7 @@ def overlay(views, snap, app, width, height):
             disabled = _blocked(app, item)
             state["menu_disabled"][item.key] = disabled
             marker = (">" if ascii_ else "▸") if index == cursor else " "
-            selected_style = "sel" if getattr(app, "theme", "default") in ("terminal", "mono", "reader") else "accent+bold+bg:surface-raised"
+            selected_style = "sel" if getattr(app, "theme", "default") in ("system", "terminal", "mono", "reader") else "accent+bold+bg:surface-raised"
             style = "muted+bg:surface" if disabled else selected_style if index == cursor else "text+bg:surface"
             label = item.label + ((" >" if ascii_ else " ›") if item.local.startswith("submenu:") else "")
             content = L.fill_row([(marker + " " + L.cut(label, max(0, item_width - 2), ascii_), style)], item_width, style)

@@ -732,8 +732,8 @@ class CursesPalette:
             ):
                 parsed = P.resolve(P.cell_style(style, self.theme), self.theme)
                 self._pair(
-                    self._index(parsed.foreground),
-                    self._index(parsed.background, background=True),
+                    self._index(parsed.foreground, native=parsed.foreground_index),
+                    self._index(parsed.background, background=True, native=parsed.background_index),
                 )
             if self.limit >= 15:
                 # Preserve opaque menus, info bars and slider surfaces before
@@ -749,18 +749,27 @@ class CursesPalette:
                 ):
                     parsed = P.resolve(P.cell_style(style, self.theme), self.theme)
                     self._pair(
-                        self._index(parsed.foreground),
-                        self._index(parsed.background, background=True),
+                        self._index(parsed.foreground, native=parsed.foreground_index),
+                        self._index(parsed.background, background=True, native=parsed.background_index),
                     )
             if not self.pairs:
                 self.enabled = False
         except curses.error:
             self.enabled = False
 
-    def _index(self, color, background=False):
+    def _index(self, color, background=False, native=None):
+        if native is not None:
+            # Direct-colour terminfo treats low indices as packed RGB, not the
+            # user's ANSI palette. Retain inherited defaults there rather than
+            # paint near-black invented colours. ANSI output uses native SGR.
+            if self.count < (1 << 24):
+                return native
+            color = None
         if color is None:
             if background or self.background == -1:
                 return self.background
+            if self.theme == "system":
+                return self.curses.COLOR_WHITE
             color = P.rgb(P.theme_tokens(self.theme)["white"])
         if self.count >= (1 << 24):
             return (color[0] << 16) | (color[1] << 8) | color[2]
@@ -824,10 +833,11 @@ class CursesPalette:
             result |= flags[flag]
         if self.enabled and (
             parsed.foreground is not None or parsed.background is not None
+            or parsed.foreground_index is not None or parsed.background_index is not None
         ):
             result |= self._pair(
-                self._index(parsed.foreground),
-                self._index(parsed.background, background=True),
+                self._index(parsed.foreground, native=parsed.foreground_index),
+                self._index(parsed.background, background=True, native=parsed.background_index),
             )
             if "sel" in style.split("+"):
                 canvas = P.resolve(P.cell_style("", theme), theme)
@@ -1019,6 +1029,7 @@ def _navigation_context(app):
         toolbar.get("focus"),
         toolbar.get("cursor"),
         toolbar.get("panel"),
+        tuple(getattr(app, "sidebar_state", {}).get(key) for key in ("revision", "top", "menu")),
         panels.get("mode"),
         panels.get("focus"),
         input_identity(app),
@@ -1234,7 +1245,7 @@ def _apply_input(app, event, hits, curses):
         # Resize or divider movement changes coordinate meaning, not keyboard
         # destination. Drop only obsolete pointer frames; retain shell keys.
         return
-    if not getattr(app, "cfg", {}).get("mouse", True) and app.mode != "terminal_probe":
+    if not getattr(app, "cfg", {}).get("mouse", True) and app.mode not in ("terminal_probe", "settings_editor"):
         return
     _, mx, my, _, bstate = mouse
     _finish_unheld_pointer(app, mouse, curses)
@@ -1318,7 +1329,9 @@ def _apply_input(app, event, hits, curses):
     startup_mouse(app, my, mx, button=button, shift=shift)
     from .workbench import INSPECTION_MODES
 
-    if app.mode in INSPECTION_MODES:
+    from .workbench import MODE_FEATURES
+
+    if app.mode in INSPECTION_MODES or app.mode in MODE_FEATURES:
         # Inspection dialogs own motion, release and wheel events as well as
         # clicks. Do not run underlying pane/browser pre-dispatch handlers.
         click(my, mx, hits, button=button, shift=shift)
@@ -1331,6 +1344,30 @@ def _apply_input(app, event, hits, curses):
     from .pointer_routing import PointerEvent, route_capture
 
     if route_capture(app, PointerEvent(my, mx, button, shift, alt)):
+        return
+    from .ui.modal_pointer import consume_aggregate
+
+    if consume_aggregate(app, my, mx, button):
+        return
+    from .sidebar import width as sidebar_width
+
+    sidebar_owns = (
+        getattr(app, "mode", "main") == "main"
+        and getattr(app, "content_origin_x", 0) > 0
+        and 1 <= my < getattr(app, "height", 0) - 1
+        and 0 <= mx < sidebar_width(app, getattr(app, "width", 0))
+        and getattr(app, "toolbar_state", {}).get("menu") is None
+        and not getattr(app, "toolbar_state", {}).get("panel")
+    )
+    if sidebar_owns:
+        from .chart_interaction import cancel as cancel_chart
+        from .metric_live import cancel as cancel_live
+
+        # Keep the controller's supplied-map and frame checks for native rail
+        # clicks too; sidebar geometry never grants authority to stale input.
+        click(my, mx, hits, button=button, shift=shift)
+        cancel_chart(app)
+        cancel_live(app)
         return
     from raven.jobs.group_menu import active as group_menu_active, handle_mouse as group_menu_mouse
 
@@ -1664,6 +1701,7 @@ class _InputEffects:
         # A captured gesture must still rebuild its slider or selected rows.
         capture = (
             toolbar.get("dragging")
+            or getattr(app, "sidebar_state", {}).get("capture")
             or selection.get("capture")
             or getattr(app, "column_resize_state", {}).get("capture")
             or getattr(app, "scrollbar_state", {}).get("capture")
@@ -2007,6 +2045,9 @@ def _quiet_jobs_token(app, *, publication=_UNREAD_PUBLICATION):
         getattr(app, "inbox_unread", 0),
         getattr(app, "freeze_label", ""),
         raven_ui.token(app),
+        getattr(app, "theme", None),
+        tuple(getattr(app, "toolbar_state", {}).get("favorites", ())),
+        tuple(getattr(app, "sidebar_state", {}).get(key) for key in ("revision", "top", "order")),
         notification_revision,
     )
 

@@ -18,7 +18,7 @@ from .ui.catalog import RESEARCH_VIEWS
 from .transitions import CompletionFeedback
 from .ui.keys import KEY_LABELS, KEY_LABELS_ASCII
 
-from .palette import THEME_NAMES, canonical_theme
+from .palette import ACCEPTED_THEME_NAMES, THEME_NAMES, canonical_theme
 THEMES = list(THEME_NAMES)
 
 
@@ -70,7 +70,7 @@ class App:
         self.last_rows: list = []
         self.palette_edit = ""
         configured_theme = canonical_theme(cfg["theme"])
-        self.theme = configured_theme if configured_theme in THEMES else "default"
+        self.theme = configured_theme if configured_theme in ACCEPTED_THEME_NAMES else "gruvbox-dark"
         self.plugins = None                                # PluginAPI (set by the cli)
         self.switch_profile: Optional[str] = None          # set by :profile <name>: the cli restarts with it
         self.profile_name = getattr(cfg, "profile_name", "")
@@ -122,7 +122,7 @@ class App:
         if isinstance(ui.get("reverse"), dict):
             self.reverse.update({k: bool(v) for k, v in ui["reverse"].items() if k in SORTS})
         restored_theme = canonical_theme(ui.get("theme"))
-        if restored_theme in THEMES:
+        if restored_theme in ACCEPTED_THEME_NAMES:
             self.theme = restored_theme
         if ui.get("analytics_view") in dict(ANALYTICS_VIEWS):
             self.analytics_view = ui["analytics_view"]
@@ -151,7 +151,7 @@ class App:
 
     def set_theme(self, name: str):
         name = canonical_theme(name)
-        if name not in THEMES:
+        if name not in ACCEPTED_THEME_NAMES:
             self.fail("theme <" + "|".join(THEMES) + ">")
             return
         self.theme = name
@@ -710,6 +710,9 @@ class App:
             from .toolbar import handle_key as toolbar_key
             if toolbar_key(self, key):
                 return
+        from .sidebar import handle_key as sidebar_key
+        if sidebar_key(self, key):
+            return
         palette_contexts = {"analysis", "session_alerts", "terminal_diagnostics", "log_tools_page", "log_tools_results", "log_tools_marks",
                             "project_preview", "export_preview", "locations_picker", "value_peek", "field_explanation", "layout", "columns"}
         list_context = (self.mode == "session_inbox" and not self.session_tools_state.get("filtering")
@@ -893,7 +896,7 @@ class App:
             from .command_ui import open_palette
             open_palette(self)
         elif action == "theme":
-            self.set_theme(THEMES[(THEMES.index(self.theme) + 1) % len(THEMES)])
+            self.set_theme(THEMES[(THEMES.index(self.theme) + 1) % len(THEMES)] if self.theme in THEMES else THEMES[0])
         elif action == "mark":
             if self.tab in ("jobs", "deps") and self.selected_job():
                 if self.selected_id in self.marks:
@@ -1701,8 +1704,9 @@ class App:
             self.fail("source <" + "|".join(sorted(self.store.health)) + "> <on|off>")
 
     def _command_theme(self, args: list[str], line: str, cmd: str) -> None:
-        if args and canonical_theme(" ".join(args)) in THEMES:
+        if args and canonical_theme(" ".join(args)) in ACCEPTED_THEME_NAMES:
             self.set_theme(" ".join(args))
+            self.save()
         else:
             self.fail("theme <" + "|".join(THEMES) + ">")
 
@@ -1949,6 +1953,9 @@ class App:
         # original owner and consumes the stale continuation.
         if route_capture(self, pointer_event):
             return
+        from .ui.modal_pointer import consume_aggregate
+        if consume_aggregate(self, y, x, button):
+            return
         from .historical_ui import handle_mouse as historical_mouse
         if historical_mouse(self, y, x, button=button, shift=shift):
             return
@@ -1995,6 +2002,14 @@ class App:
         if button in ("press", "left"):
             from .scrollbars import commit_selection_gesture
             commit_selection_gesture(self)
+        from .toolbar import handle_mouse as global_toolbar_mouse
+        if y == 0 and button != "right" and global_toolbar_mouse(self, y, x, button=button, shift=shift):
+            return
+        from .sidebar import handle_mouse as sidebar_mouse
+        if sidebar_mouse(self, y, x, button=button, shift=shift):
+            from .interaction import handle_mouse as sidebar_pointer
+            sidebar_pointer(self, y, x, button="motion", shift=shift)
+            return
         if workbench.route_modal_mouse(self, y, x, button=button, shift=shift,
                                        current=content_current):
             return
@@ -2423,6 +2438,12 @@ class App:
                 current = store.job(prior.id)
                 if current is None:
                     invalid.append(f"{prior.id}: no longer in the active queue")
+                    continue
+                changed_identity = next((field for field in ("cluster", "user", "account")
+                                         if getattr(prior, field, "") and
+                                         getattr(prior, field, "") != getattr(current, field, "")), None)
+                if changed_identity is not None:
+                    invalid.append(f"{prior.id}: {changed_identity} identity changed")
                     continue
                 if not prior.pending and stamp(prior.start) is not None and prior.start != current.start:
                     invalid.append(f"{prior.id}: start time changed")

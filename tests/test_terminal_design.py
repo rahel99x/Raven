@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from raven import charts, clock, layout as L
+from raven import charts, clock, layout as L, sidebar
 from raven.actions import Actions
 from raven.config import Config
 from raven.controller import App
@@ -42,7 +42,9 @@ def test_all_pages_keep_active_navigation_metrics_and_ascii(dashboard, width, he
         assert L.row_text(rows[1]).strip(), tab
         assert "help" in L.row_text(rows[-1]) and "quit" in L.row_text(rows[-1])
         active = next(h for h in app.tab_hits if h[3] == tab)
-        assert title in L.row_text(rows[active[0]])[active[1]:active[2]]
+        painted_label = L.row_text(rows[active[0]])[active[1]:active[2]].strip().lstrip(">v ").rstrip("~")
+        assert painted_label and title.startswith(painted_label)
+        assert any(control.label == "Open " + title for control in sidebar.controls(app))
         assert all(0 <= y < height - 1 for y, _, _ in hits)
         # Visible mouse targets lead to the tab printed at that exact position.
         for y, left, right, key in app.tab_hits:
@@ -89,7 +91,9 @@ def test_sources_scroll_to_selected_row_and_use_replay_clock(dashboard, monkeypa
     selected = next(y for y, kind, name in hits if kind == "source" and name == "source49")
     assert "source49" in L.row_text(rows[selected])
     assert "1m 40s ago" in L.row_text(rows[selected])
-    assert all("sel" in style.split("+") for _, style in rows[selected])
+    from raven.terminal.ui import _slice_row
+    content = _slice_row(rows[selected], app.content_origin_x, app.width)
+    assert all("sel" in style.split("+") for _, style in content)
     assert len([hit for hit in hits if hit[1] == "source"]) <= 6
     assert all(0 <= key[2] < key[3] <= 100 for _, kind, key in hits if kind == "sort_header")
 
@@ -110,7 +114,7 @@ def test_dependency_cursor_remains_visible_when_chain_is_taller_than_screen(dash
     selected = next(y for y, kind, jid in hits if kind == "dep" and jid == "19")
     assert "stage19" in L.row_text(rows[selected])
     rect = app.history_browser_content_rect
-    assert rect.x == 0 and rect.height >= 3
+    assert rect.x == app.content_origin_x and rect.height >= 3
     assert rect.y <= selected < rect.y + rect.height
     assert len(rows) == height
     if app.history_browser_state["frame"]["dock"] == "off":
@@ -120,16 +124,20 @@ def test_dependency_cursor_remains_visible_when_chain_is_taller_than_screen(dash
         assert any(kind == "control" and value["id"].startswith("history:deps:job:")
                    for _, kind, value in hits)
     assert _view(app)["dock"] == dock
-    selected_content = L.clip_row(rows[selected], rect.width)
+    from raven.terminal.ui import _slice_row
+    selected_content = _slice_row(rows[selected], rect.x, rect.x + rect.width)
     assert all("sel" in style.split("+") for text, style in selected_content if text.strip())
 
 
 def test_replay_tab_mouse_coordinates_follow_inserted_scrub_bar(dashboard):
     store, app, views, actions = dashboard
+    views.compose(store.snapshot(), app, 160, 30, actions)
+    original_navigation = list(app.tab_hits)
     app.replay = SimpleNamespace(clock=SimpleNamespace(now=lambda: 1000, t0=900, t1=1100, frac=0.5, speed=1, paused=True, at_end=False))
     rows, hits = views.compose(store.snapshot(), app, 160, 30, actions)
     assert "replay" in L.row_text(rows[3])
-    assert all(y == 4 for y, _, _, _ in app.tab_hits)
+    assert app.tab_hits == original_navigation
+    assert all(right <= app.content_origin_x for _, _, right, _ in app.tab_hits)
     target = next(h for h in app.tab_hits if h[3] == "history")
     app.click(target[0], target[1], hits)
     assert app.tab == "history"

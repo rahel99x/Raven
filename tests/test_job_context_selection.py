@@ -35,7 +35,7 @@ def dashboard(tmp_path):
         screen._apply_input(app, ("mouse", (0, x, y, 0, bits)), app.last_hits, MOUSE)
 
     def point(identifier):
-        return next((y, 6) for y, kind, value in app.last_hits
+        return next((y, app.workspace_main_rect.x + 6) for y, kind, value in app.last_hits
                     if kind in ("job", "recent", "fin") and value == identifier)
 
     draw()
@@ -44,7 +44,7 @@ def dashboard(tmp_path):
         app.research.close()
 
 
-@pytest.mark.parametrize("position", ["row", "details", "toolbar", "footer", "tab"])
+@pytest.mark.parametrize("position", ["details", "toolbar", "footer"])
 @pytest.mark.parametrize("bits", [MOUSE.BUTTON3_PRESSED, MOUSE.BUTTON3_CLICKED])
 def test_jobs_right_click_clears_without_activating_any_surface(dashboard, position, bits):
     d, app = dashboard, dashboard.app
@@ -73,6 +73,27 @@ def test_jobs_right_click_clears_without_activating_any_surface(dashboard, posit
         if kind in ("job", "recent"):
             assert not any("rev" in style.split("+") or "sel" in style.split("+")
                            for _, style in app.frame_rows[y])
+
+
+@pytest.mark.parametrize("position", ["row", "tab"])
+@pytest.mark.parametrize("bits", [MOUSE.BUTTON3_PRESSED, MOUSE.BUTTON3_CLICKED])
+def test_row_or_sidebar_context_preserves_selection_and_exposes_exact_target(dashboard, position, bits):
+    d, app = dashboard, dashboard.app
+    app.marks = {"1", "2"}
+    before = app.selected_id, app.tab
+    if position == "row":
+        y, x = d.point("3")
+    else:
+        y, x, _right, _name = next(hit for hit in app.tab_hits if hit[-1] == "history")
+    d.mouse(y, x, bits)
+    assert app.marks == {"1", "2"} and (app.selected_id, app.tab) == before
+    assert not app.quit and not app.confirm
+    if position == "row":
+        assert app.mode == "job_group_menu"
+        assert app.job_group_menu_state["context"]["targets"] == ("3",)
+    else:
+        assert app.mode == "sidebar_menu"
+        assert app.sidebar_state["menu"][0] == "tab:history"
 
 
 @pytest.mark.parametrize("method", ["press", "click", "arrow", "home"])
@@ -109,8 +130,14 @@ def test_history_right_click_in_list_freezes_marked_ids_without_actions(dashboar
     app.enter_tab("history")
     d.draw()
     app.marks = {"100", "102"}
-    d.mouse(*d.point("104"), MOUSE.BUTTON3_PRESSED)
-    assert app.mode == "history_log_menu" and not app.quit
+    d.mouse(*d.point("100"), MOUSE.BUTTON3_PRESSED)
+    assert app.mode == "job_group_menu" and not app.quit
+    state = app.job_group_menu_state
+    assert set(state["context"]["targets"]) == {"100", "102"}
+    state["cursor"] = next(i for i, item in enumerate(state["items"]) if item["action"] == "export")
+    app.handle("enter")
+    assert app.mode == "history_log_menu"
+    assert set(app.history_log_export_state["jobs"]) == {"100", "102"}
     assert app.marks == {"100", "102"}
     assert not app.confirm
 

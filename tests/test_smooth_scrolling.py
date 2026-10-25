@@ -365,7 +365,8 @@ def test_curses_redraw_budget_only_accelerates_while_viewport_motion_is_active(m
     monkeypatch.setattr(curses, "has_colors", lambda: False)
     for name in ("raw", "curs_set", "mousemask", "mouseinterval", "doupdate", "set_escdelay"):
         monkeypatch.setattr(curses, name, lambda *args: None)
-    wheel = (0, 10, 10, 0, curses.BUTTON5_PRESSED)
+    from raven.sidebar import width as sidebar_width
+    wheel = (0, sidebar_width(app, 100) + 10, 10, 0, curses.BUTTON5_PRESSED)
 
     class Window(InputWindow):
         def __init__(self):

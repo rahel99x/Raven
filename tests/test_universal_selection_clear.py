@@ -463,7 +463,7 @@ def test_cleared_array_cohort_enter_is_inert_and_pages_scroll_content_until_rese
     if reselect == "arrow":
         app.handle("down")
     else:
-        app.click(11, 10, app.last_hits)
+        app.click(11, app.content_origin_x + 10, app.last_hits)
     assert not S.cleared(app, "research")
     app.handle("enter")
     assert not app.research_array_open and app.research_task_offset == 0

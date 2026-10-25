@@ -188,13 +188,15 @@ def test_inline_analysis_preserves_explicit_axis_preferences(dashboard):
 def test_resource_keys_survive_glyph_switch_but_change_for_requeued_attempt(dashboard):
     app, views, store = dashboard.app, dashboard.views, dashboard.store
     app.tab = "analytics"
-    draw(dashboard)
+    # Compare the same complete set of metrics: ASCII and Braille have
+    # different raster heights, so a clipped viewport may show different tails.
+    draw(dashboard, height=120)
     first = {plot.key for plot in C.initialize(app)["plots"] if plot.key[0] == "resource-series"}
     views.set_ascii(True)
-    draw(dashboard)
+    draw(dashboard, height=120)
     assert {plot.key for plot in C.initialize(app)["plots"] if plot.key[0] == "resource-series"} == first
     store.jobs[0].start = "2026-10-08T02:00:00"
-    draw(dashboard)
+    draw(dashboard, height=120)
     assert first.isdisjoint({plot.key for plot in C.initialize(app)["plots"]})
 
 
@@ -209,9 +211,11 @@ def test_live_controls_follow_exact_job_in_native_and_inline_series(dashboard, m
     rows, hits = draw(dashboard, 180, 70)
     records = metric_live.initialize(app)["records"]
     assert records and all(control.key[1] == "7" for control in records)
-    assert all(L.row_text(rows[c.toggle.top])[c.toggle.left:c.toggle.right] == "[Live off]" for c in records)
+    assert all(L.row_text(rows[c.toggle.top])[c.toggle.left:c.toggle.right] ==
+               (("o" if ascii_ else "○") if c.rect.right - c.rect.left < metric_live.MIN_EXPANDED_WIDTH else "[Live off]")
+               for c in records)
     target = next(control for control in records if control.key[2] == "cpu-rate")
-    app.click(target.toggle.top, target.toggle.left + 1, hits, button="press")
+    app.click(target.toggle.top, (target.toggle.left + target.toggle.right - 1) // 2, hits, button="press")
     rows, hits = draw(dashboard, 180, 70)
     assert metric_live.enabled(app, target.key)
     plot = next(plot for plot in C.initialize(app)["plots"] if plot.key == target.key)

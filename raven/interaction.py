@@ -141,6 +141,11 @@ def _hit_controls(app, rows, hits, width, height, *, layer=0, spans=None):
                 ):
                     right = panel.x - 1
             rect = _row_rect(rows, y, width, height, overlays=spans, main_right=right)
+            content_left = max(0, getattr(app, "content_origin_x", 0))
+            if rect and layer == 0:
+                rect = _rect(
+                    (rect.top, max(rect.left, content_left), rect.bottom, rect.right)
+                )
             if (
                 rect
                 and getattr(app, "tab", "") in ("jobs", "history")
@@ -156,7 +161,7 @@ def _hit_controls(app, rows, hits, width, height, *, layer=0, spans=None):
                     # Keep the outer structural margin free for resizing.
                     rect = Rect(
                         rect.top,
-                        min(rect.left, main.left + 1),
+                        max(content_left + 1, min(rect.left, main.left + 1)),
                         rect.bottom,
                         min(rect.right, main.right),
                     )
@@ -265,6 +270,11 @@ def _modal_controls(app, rows, width, height, spans):
         return
     state_names = {
         "analysis": "analysis_state",
+        "workspace_picker": "navigation_state",
+        "jump_picker": "navigation_tools_state",
+        "locations_picker": "navigation_tools_state",
+        "value_peek": "navigation_tools_state",
+        "field_explanation": "navigation_tools_state",
         "project_runs": "project_state",
         "project_outputs": "project_state",
         "project_preview": "project_state",
@@ -272,6 +282,20 @@ def _modal_controls(app, rows, width, height, spans):
         "log_diff": "log_workbench_state",
         "execution": "execution_state",
         "columns": "table_state",
+        "table_tools": "table_tools_state",
+        "activity": "activity_ui_state",
+        "exports": "activity_ui_state",
+        "export_preview": "activity_ui_state",
+        "session_inbox": "session_tools_state",
+        "session_alerts": "session_tools_state",
+        "terminal_diagnostics": "session_tools_state",
+        "terminal_probe": "session_tools_state",
+        "log_tools_page": "log_tools_state",
+        "log_tools_results": "log_tools_state",
+        "log_tools_marks": "log_tools_state",
+        "layout": "workspace_layout_ui_state",
+        "settings_editor": "navigation_tools_state",
+        "bindings_editor": "navigation_tools_state",
         "telemetry": "telemetry_state",
         "shell_checks": "shell_checks_state",
         "arraymap": "array_manifest_state",
@@ -343,10 +367,28 @@ def _modal_controls(app, rows, width, height, spans):
                         layer=2,
                     )
     row_registries = []
-    if mode == "palette":
+    if mode == "workspace_picker":
         row_registries.append(
-            ("palette", _state(app, "command_state").get("result_hits", ()))
+            ("workspace-picker", _state(app, "navigation_state").get("picker_hits", ()))
         )
+    if mode in ("palette", "help"):
+        for y, kind, value in _state(app, "command_state").get(
+            mode + "_control_hits", ()
+        ):
+            rect = _rect((y, value.get("left"), y + 1, value.get("right")))
+            if kind == "control" and rect:
+                yield Control(
+                    str(value["id"]),
+                    str(value.get("label", value["id"])),
+                    rect,
+                    ("click", y, rect.left),
+                    mode + "-actions",
+                    layer=2,
+                )
+        if mode == "palette":
+            row_registries.append(
+                ("palette", _state(app, "command_state").get("result_hits", ()))
+            )
     navigation = _state(app, "navigation_tools_state")
     if mode in (
         "jump_picker",
@@ -376,7 +418,7 @@ def _modal_controls(app, rows, width, height, spans):
     elif mode == "exports":
         registry = getattr(getattr(app, "activity", None), "mouse_rows", {})
         prefix = "export"
-    elif mode in ("log_tools_results", "log_tools_marks"):
+    elif mode in ("log_tools_page", "log_tools_results", "log_tools_marks"):
         registry = _state(app, "log_tools_state").get("mouse_rows", {})
         prefix = mode
     else:
@@ -433,6 +475,10 @@ def publish(app, rows, hits, width, height, overlays=None, extra_controls=()):
         for hit in islice(getattr(app, "tab_hits", ()), MAX_CONTROLS):
             if isinstance(hit, (tuple, list)) and len(hit) == 4:
                 y, left, right, key = hit
+                # Sidebar parents retain the public tab hit map for adapters,
+                # but their semantic controls already belong to the sidebar.
+                if right <= getattr(app, "content_origin_x", 0):
+                    continue
                 rect = _rect((y, left, y + 1, right))
                 if rect:
                     candidates.append(
@@ -459,6 +505,7 @@ def publish(app, rows, hits, width, height, overlays=None, extra_controls=()):
                         )
     candidates.extend(_modal_controls(app, rows, width, height, spans))
     candidates.extend(_toolbar_controls(app))
+    candidates.extend(sources(app).sidebar_controls(app))
     for descriptor in islice(extra_controls or (), MAX_CONTROLS):
         control = _descriptor(descriptor, layer=2 if spans else 0)
         if control:
@@ -765,6 +812,12 @@ def handle_key(app, key):
     ) or (
         getattr(app, "mode", "main") == "connect_data"
         and _state(app, "connect_data_state").get("editing") is not None
+        and key != "f8"
+        and not (
+            state["active"]
+            and key != "esc"
+            and str(state.get("focused", "")).startswith("field-edit:")
+        )
     ):
         # Fields and catalog search own their text keys. Returning focus to
         # the graph here would turn Home/Enter or typed shortcuts into actions.

@@ -80,11 +80,11 @@ def test_cancelled_row_context_rerun_inspects_only_that_job(dashboard, monkeypat
     applied = []
     monkeypatch.setattr(operations, "apply", lambda *args: applied.append(args))
     _, hits, _ = draw(dashboard, tab)
-    location = point(hits, "90", kind)
+    location = point(app, hits, "90", kind)
     dispatch(app, hits, location, "press", route)
     dispatch(app, hits, location, "release", route)
     _, hits, _ = draw(dashboard)
-    dispatch(app, hits, point(hits, "90", kind), "right", route)
+    dispatch(app, hits, point(app, hits, "90", kind), "right", route)
     assert app.mode == "job_group_menu"
     assert "rerun" in actions(app)
     _, hits, _ = draw(dashboard)

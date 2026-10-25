@@ -174,7 +174,7 @@ def test_native_source_copy_through_full_frame(app, monkeypatch):
     cache = _FrameCache()
     cache.rebuild(live, live.views_ref, store, None, 140, 35)
     y = next(y for y, kind, key in cache.hits if kind == "source" and key == "live")
-    live.click(y, 8, cache.hits)
+    live.click(y, live.workspace_main_rect.x + 8, cache.hits)
     cache.rebuild(live, live.views_ref, store, None, 140, 35)
     try:
         live.handle("y")

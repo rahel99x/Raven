@@ -163,7 +163,7 @@ def test_wrapped_mouse_line_selection_maps_continuation_to_one_source_line(dashb
     _, rows, hits = dashboard.render(width=80, height=20)
     fragments = [y for y, kind, index in hits if kind == "log_line" and index == "3"]
     assert len(fragments) >= 2
-    dashboard.app.click(fragments[-1], 10, hits)
+    dashboard.app.click(fragments[-1], dashboard.app.content_origin_x + 10, hits)
     dashboard.app.handle("v")
     assert dashboard.app.logs.selection_anchor == 3
     dashboard.app.handle("down")
@@ -179,8 +179,8 @@ def test_shift_click_extends_selection_using_source_lines(dashboard):
     _, _, hits = dashboard.render()
     first = next(y for y, kind, index in hits if kind == "log_line" and index == "2")
     last = next(y for y, kind, index in hits if kind == "log_line" and index == "5")
-    dashboard.app.click(first, 10, hits)
-    dashboard.app.click(last, 10, hits, shift=True)
+    dashboard.app.click(first, dashboard.app.content_origin_x + 10, hits)
+    dashboard.app.click(last, dashboard.app.content_origin_x + 10, hits, shift=True)
     dashboard.app.handle("y")
     dashboard.drain()
     assert dashboard.copies == [b"".join(dashboard.raw_lines["out"][2:6])]

@@ -136,7 +136,7 @@ def test_history_mouse_click_uses_displayed_order_not_raw_store_order(dashboard)
     assert all(job_id in row_text(rows[y]) for y, job_id in finished_hits)
     hit = next(hit for hit in hits if hit[1:] == ("fin", "701"))
     assert "701" in row_text(rows[hit[0]])
-    app.click(hit[0], 1, hits)
+    app.click(hit[0], app.history_jobs_rect.left + 1, hits)
     assert app.selected_id == "701"
     app.run_command("inspect 701")
     inspector_rows = dashboard.views.overlay(dashboard.store.snapshot(), app, 150, 45)
@@ -206,7 +206,7 @@ def test_jobs_recent_mouse_selects_and_highlights_exact_job(dashboard):
     text, rows, hits = dashboard.render()
     recent_hit = next(hit for hit in hits if hit[1:] == ("recent", "701"))
     assert "701" in row_text(rows[recent_hit[0]])
-    dashboard.app.click(recent_hit[0], 1, hits)
+    dashboard.app.click(recent_hit[0], dashboard.app.workspace_main_rect.x + 1, hits)
     _, rows, hits = dashboard.render()
     selected_hit = next(hit for hit in hits if hit[1:] == ("recent", "701"))
     selected = rows[selected_hit[0]]

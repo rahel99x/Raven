@@ -58,8 +58,20 @@ def frame(dashboard, tab=None, *, width=260, height=65):
     return rows, hits
 
 
-def point(hits, identifier, kind="job"):
-    return next((y, 12) for y, actual, value in hits if actual == kind and value == identifier)
+def point(app, hits, identifier, kind="job"):
+    """Choose a data cell from this frame's real global job rectangle."""
+    from raven.jobs import group_drag
+    y = next(y for y, actual, value in hits if actual == kind and value == identifier)
+    record = next(item for item in group_drag.initialize(app)["frame"]["rows"][y]
+                  if item["pointed"] == identifier)
+    return y, min(record["rect"][1] + 12, record["rect"][3] - 1)
+
+
+def disclosure_point(app, hits, identifier):
+    from raven.jobs import group_drag
+    y = point(app, hits, identifier)[0]
+    left, _right = group_drag.initialize(app)["frame"]["disclosures"][y][0]
+    return y, left
 
 
 def mark(app, *identifiers):
@@ -127,7 +139,7 @@ def test_marked_rows_drop_once_into_group_through_controller_and_terminal(dashbo
     _, hits = frame(dashboard)
     mark(app, "7", "8", "9")
     destination = index(dashboard).for_job("1").id
-    gesture(app, hits, point(hits, "7"), point(hits, "1"), route)
+    gesture(app, hits, point(app, hits, "7"), point(app, hits, "1"), route)
     group = index(dashboard).for_job("7")
     assert group is not None and group.id == destination
     assert group.members == ("1", "2", "3", "7", "8", "9")
@@ -135,7 +147,7 @@ def test_marked_rows_drop_once_into_group_through_controller_and_terminal(dashbo
     assert not app.marks
     # One terminal can deliver both a release and a later synthesized release.
     before = app.table_state["manual_groups"]
-    dispatch(app, hits, point(hits, "10"), "release", route)
+    dispatch(app, hits, point(app, hits, "10"), "release", route)
     assert app.table_state["manual_groups"] == before
     assert index(dashboard).for_job("7").id == destination
 
@@ -145,7 +157,7 @@ def test_selected_row_context_menu_reaches_create_action_without_deselecting(das
     app, _ = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "right", route)
+    dispatch(app, hits, point(app, hits, "4"), "right", route)
     assert app.mode == "job_group_menu"
     assert app.marks == {"4", "5"}
     assert "Create Group" in labels(app)
@@ -165,7 +177,7 @@ def test_groups_keep_numeric_order_after_late_middle_jobs_are_dropped(dashboard)
     for batch in (("7", "8", "9"), ("4", "5", "6")):
         _, hits = frame(dashboard)
         mark(app, *batch)
-        gesture(app, hits, point(hits, batch[0]), point(hits, "1"))
+        gesture(app, hits, point(app, hits, batch[0]), point(app, hits, "1"))
     group = index(dashboard).for_job("1")
     assert group.members == tuple(str(identifier) for identifier in range(1, 10))
     _, hits = frame(dashboard)
@@ -174,12 +186,13 @@ def test_groups_keep_numeric_order_after_late_middle_jobs_are_dropped(dashboard)
 
 
 @pytest.mark.parametrize("route", ["app", "sgr"])
-def test_right_click_unselected_row_keeps_universal_clear_behavior(dashboard, route):
+def test_right_click_unselected_row_opens_exact_context_and_preserves_marks(dashboard, route):
     app, _ = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "6"), "right", route)
-    assert app.mode == "main" and not app.marks and app.selected_id is None
+    dispatch(app, hits, point(app, hits, "6"), "right", route)
+    assert app.mode == "job_group_menu" and app.marks == {"4", "5"}
+    assert app.job_group_menu_state["context"]["targets"] == ("6",)
     assert index(dashboard).for_job("4") is None
 
 
@@ -187,11 +200,11 @@ def test_right_click_unselected_row_keeps_universal_clear_behavior(dashboard, ro
 def test_single_row_can_be_clicked_then_alt_dragged_without_marking_siblings(dashboard, route):
     app, _ = dashboard
     _, hits = frame(dashboard)
-    source = point(hits, "4")
+    source = point(app, hits, "4")
     dispatch(app, hits, source, "press", route)
     dispatch(app, hits, source, "release", route)
     _, hits = frame(dashboard)
-    gesture(app, hits, point(hits, "4"), point(hits, "1"), route)
+    gesture(app, hits, point(app, hits, "4"), point(app, hits, "1"), route)
     assert index(dashboard).for_job("4").members == ("1", "2", "3", "4")
     assert index(dashboard).for_job("5") is None
     assert app.tab == "jobs" and app.mode == "main"
@@ -203,7 +216,7 @@ def test_range_selection_is_preserved_when_row_was_not_armed_or_shift_is_held(da
     _, hits = frame(dashboard)
     if shift:
         mark(app, "4")
-    source, target = point(hits, "4"), point(hits, "6")
+    source, target = point(app, hits, "4"), point(app, hits, "6")
     dispatch(app, hits, source, "press", shift=shift)
     dispatch(app, hits, target, "drag", shift=shift)
     dispatch(app, hits, target, "release", shift=shift)
@@ -218,8 +231,8 @@ def test_drag_rejects_changes_to_source_destination_or_view(dashboard, reason):
     app, store = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", alt=True)
-    dispatch(app, hits, point(hits, "1"), "drag")
+    dispatch(app, hits, point(app, hits, "4"), "press", alt=True)
+    dispatch(app, hits, point(app, hits, "1"), "drag")
     assert job_group_drag.active(app)
     if reason == "resize":
         app.width -= 1
@@ -235,7 +248,7 @@ def test_drag_rejects_changes_to_source_destination_or_view(dashboard, reason):
         assert manual_job_groups.detach(app, store.snapshot(), ["2"]).changed
     else:
         job_groups.fold(app, index(dashboard).for_job("1").id, True)
-    dispatch(app, hits, point(hits, "1"), "release")
+    dispatch(app, hits, point(app, hits, "1"), "release")
     assert not job_group_drag.active(app)
     assert index(dashboard).for_job("4") is None
     assert index(dashboard).for_job("5") is None
@@ -250,17 +263,17 @@ def test_drag_pointer_hot_path_has_no_snapshot_inference_or_command_dispatch(das
     app, store = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", route, alt=True)
+    dispatch(app, hits, point(app, hits, "4"), "press", route, alt=True)
     assert job_group_drag.active(app)
     with monkeypatch.context() as guard:
         guard.setattr(store, "snapshot", lambda: pytest.fail("Drag motion copied scheduler state"))
         guard.setattr(job_groups.registry(app), "ensure", lambda *_: pytest.fail("Drag motion rebuilt grouping"))
         guard.setattr(app, "run_command", lambda *_: pytest.fail("Drag motion activated a command"))
         for _ in range(50):
-            for location in (point(hits, "1"), (0, 38), (20, 180), point(hits, "4")):
+            for location in (point(app, hits, "1"), (0, 38), (20, 180), point(app, hits, "4")):
                 dispatch(app, hits, location, "drag", route)
         assert job_group_drag.active(app)
-    dispatch(app, hits, point(hits, "1"), "release", route)
+    dispatch(app, hits, point(app, hits, "1"), "release", route)
     assert index(dashboard).for_job("4").members == ("1", "2", "3", "4", "5")
     assert app.tab == "jobs" and app.mode == "main"
 
@@ -271,12 +284,12 @@ def test_proven_unheld_sgr_report_cancels_drop_after_missing_release(dashboard):
     app, _ = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", "sgr", alt=True)
-    dispatch(app, hits, point(hits, "1"), "drag", "sgr")
+    dispatch(app, hits, point(app, hits, "4"), "press", "sgr", alt=True)
+    dispatch(app, hits, point(app, hits, "1"), "drag", "sgr")
     assert job_group_drag.active(app)
-    dispatch(app, hits, point(hits, "1"), "motion", "sgr")
+    dispatch(app, hits, point(app, hits, "1"), "motion", "sgr")
     assert not job_group_drag.active(app)
-    dispatch(app, hits, point(hits, "1"), "release", "sgr")
+    dispatch(app, hits, point(app, hits, "1"), "release", "sgr")
     assert index(dashboard).for_job("4") is None
     assert app.marks == {"4", "5"}
     assert app.tab == "jobs" and app.mode == "main"
@@ -288,10 +301,10 @@ def test_native_curses_motion_without_held_metadata_keeps_drag_compatibility(das
     app, _ = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", "native", alt=True)
-    dispatch(app, hits, point(hits, "1"), "motion", "native")
+    dispatch(app, hits, point(app, hits, "4"), "press", "native", alt=True)
+    dispatch(app, hits, point(app, hits, "1"), "motion", "native")
     assert job_group_drag.active(app)
-    dispatch(app, hits, point(hits, "1"), "release", "native")
+    dispatch(app, hits, point(app, hits, "1"), "release", "native")
     assert index(dashboard).for_job("4").members == ("1", "2", "3", "4", "5")
 
 
@@ -303,7 +316,7 @@ def test_release_over_toolbar_or_tab_never_clicks_through(dashboard, route):
     _, hits = frame(dashboard)
     mark(app, "4", "5")
     tab_row, tab_left, _tab_right, _tab_name = next(hit for hit in app.tab_hits if hit[3] == "research")
-    gesture(app, hits, point(hits, "4"), (tab_row, tab_left), route)
+    gesture(app, hits, point(app, hits, "4"), (tab_row, tab_left), route)
     assert not job_group_drag.active(app)
     assert app.tab == "jobs" and app.mode == "main" and app.marks == {"4", "5"}
     assert index(dashboard).for_job("4") is None
@@ -314,7 +327,7 @@ def test_menu_action_validates_frozen_jobs_before_mutating_groups(dashboard, cha
     app, store = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "right", "sgr")
+    dispatch(app, hits, point(app, hits, "4"), "right", "sgr")
     assert app.mode == "job_group_menu"
     _, hits = frame(dashboard)
     location = menu_point(app, "Add to ")
@@ -337,7 +350,7 @@ def test_expanded_member_context_menu_ungroups_only_selected_members(dashboard):
     app, _ = dashboard
     _, hits = frame(dashboard)
     mark(app, "1", "2")
-    dispatch(app, hits, point(hits, "1"), "right")
+    dispatch(app, hits, point(app, hits, "1"), "right")
     assert app.mode == "job_group_menu" and "Ungroup" in labels(app)
     _, hits = frame(dashboard)
     location = menu_point(app, "Ungroup")
@@ -352,7 +365,7 @@ def test_menu_hover_never_dispatches_actions_or_reads_scheduler_state(dashboard,
     app, store = dashboard
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "right", "sgr")
+    dispatch(app, hits, point(app, hits, "4"), "right", "sgr")
     assert app.mode == "job_group_menu"
     _, hits = frame(dashboard)
     locations = [(y, left) for y, left, _right, _i in app.job_group_menu_state["hits"]]
@@ -366,7 +379,7 @@ def test_menu_hover_never_dispatches_actions_or_reads_scheduler_state(dashboard,
     assert index(dashboard).for_job("4") is None
 
 
-def browser_point(hits, tab, identifier):
+def browser_point(app, hits, tab, identifier):
     return next((y, min(value["left"] + 6, value["right"] - 1))
                 for y, kind, value in hits if kind == "control"
                 and value["id"] == f"history:{tab}:job:{identifier}")
@@ -380,7 +393,7 @@ def test_group_drop_works_in_each_shared_history_browser_orientation(dashboard, 
     history_browser._view(app)["dock"] = dock
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    gesture(app, hits, browser_point(hits, tab, "4"), browser_point(hits, tab, "1"), "sgr")
+    gesture(app, hits, browser_point(app, hits, tab, "4"), browser_point(app, hits, tab, "1"), "sgr")
     assert index(dashboard).for_job("4").members == ("1", "2", "3", "4", "5")
     assert app.tab == tab and app.mode == "main"
 
@@ -398,12 +411,12 @@ def test_native_other_job_lists_allow_exact_drop_and_context_menu(dashboard, tab
         store.jobs[4].dependency = "afterok:2"
     _, hits = frame(dashboard, tab)
     mark(app, source)
-    gesture(app, hits, point(hits, source, kind), point(hits, target, kind), "sgr")
+    gesture(app, hits, point(app, hits, source, kind), point(app, hits, target, kind), "sgr")
     group = index(dashboard).for_job(source)
     assert group is not None and target in group.members
     _, hits = frame(dashboard)
     mark(app, source)
-    dispatch(app, hits, point(hits, source, kind), "right", "sgr")
+    dispatch(app, hits, point(app, hits, source, kind), "right", "sgr")
     assert app.mode == "job_group_menu" and "Ungroup" in labels(app)
     if tab == "history":
         assert "Export logs" in labels(app)
@@ -441,11 +454,11 @@ def test_dragging_marked_jobs_across_live_graph_cannot_capture_or_zoom_chart(das
     plot = next(plot for plot in app.chart_interaction_state["plots"] if plot.key[0] == "resource-series")
     graph_point = (plot.visible.top + 1, plot.visible.left + 3)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "press", route, alt=True)
+    dispatch(app, hits, point(app, hits, "4"), "press", route, alt=True)
     assert job_group_drag.active(app)
     for _ in range(25):
         dispatch(app, hits, graph_point, "drag", route)
-        dispatch(app, hits, point(hits, "1"), "drag", route)
+        dispatch(app, hits, point(app, hits, "1"), "drag", route)
     assert not chart_interaction.active(app)
     dispatch(app, hits, graph_point, "release", route)
     assert not job_group_drag.active(app) and not chart_interaction.active(app)
@@ -484,14 +497,14 @@ def test_group_chevron_accepts_context_menu_and_drop_without_folding(dashboard, 
     app, _ = dashboard
     _, hits = frame(dashboard)
     destination = index(dashboard).for_job("1")
-    location = (point(hits, "1")[0], 0)
+    location = disclosure_point(app, hits, "1")
     mark(app, "1")
     dispatch(app, hits, location, "right", route)
     assert app.mode == "job_group_menu" and "Ungroup" in labels(app)
     app.handle("esc")
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    gesture(app, hits, point(hits, "4"), (point(hits, "1")[0], 0), route)
+    gesture(app, hits, point(app, hits, "4"), disclosure_point(app, hits, "1"), route)
     assert index(dashboard).for_job("4").id == destination.id
     assert not job_groups.registry(app).is_collapsed(destination)
     assert app.mode == "main" and app.tab == "jobs"
@@ -505,7 +518,7 @@ def test_drop_on_collapsed_destination_retains_hidden_siblings_and_summary(dashb
     _, hits = frame(dashboard)
     assert not any(kind == "job" and identifier == "2" for _, kind, identifier in hits)
     mark(app, "4", "5")
-    gesture(app, hits, point(hits, "4"), point(hits, "1"), route)
+    gesture(app, hits, point(app, hits, "4"), point(app, hits, "1"), route)
     group = index(dashboard).for_job("4")
     assert group.members == ("1", "2", "3", "4", "5")
     assert job_groups.registry(app).is_collapsed(group)
@@ -522,7 +535,7 @@ def many_group_menu(dashboard, *, expanded=True):
     store.group = list(store.jobs)
     _, hits = frame(dashboard)
     mark(app, "4", "5")
-    dispatch(app, hits, point(hits, "4"), "right")
+    dispatch(app, hits, point(app, hits, "4"), "right")
     assert app.mode == "job_group_menu"
     if expanded:
         from raven import job_group_menu
@@ -561,7 +574,7 @@ def test_group_menu_modal_scrollbar_header_controls_reach_top_and_bottom(dashboa
     assert app.job_group_menu_state["top"] == pane.limit
     _, hits = frame(dashboard, height=15)
     assert app.job_group_menu_state["top"] == pane.limit
-    assert any(app.job_group_menu_state["items"][item]["label"] == "Cancel"
+    assert any(app.job_group_menu_state["items"][item]["label"] == "Close menu"
                for _row, _left, _right, item in app.job_group_menu_state["hits"])
     pane = next(pane for pane in app.scrollbar_state["panes"] if pane.key == "modal:job-groups")
     y, left, _right = pane.header

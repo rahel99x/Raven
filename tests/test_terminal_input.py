@@ -280,7 +280,7 @@ def test_mouse_resize_rejects_old_coordinates_without_dropping_shell_keys(pane_a
 
 
 def test_pty_screen_updates_use_cached_document_and_leave_jobs_unchanged(pane_app, monkeypatch):
-    from raven import terminal_ui, layout
+    from raven import terminal_ui, layout, sidebar
     from raven.config import Config
     from raven.controller import App
     from raven.model import Store, Job
@@ -298,7 +298,9 @@ def test_pty_screen_updates_use_cached_document_and_leave_jobs_unchanged(pane_ap
     views = Views(layout.Glyphs(False), cfg)
     app.views_ref = views
     cache = screen._FrameCache()
-    cache.rebuild(app, views, store, None, 160, 45)
+    # Keep the original content viewport beside the persistent navigation.
+    width = 160 + sidebar.width(app, 160)
+    cache.rebuild(app, views, store, None, width, 45)
     original = [list(row) for row in cache.rows]
     service.sessions["s"] = {**service.sessions["s"], "seq": 2,
                             "lines": [[("terminal-only-output", "terminal")]]}

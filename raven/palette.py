@@ -60,32 +60,91 @@ MODNOKAI_PALETTE = dict(PALETTE, **{
     "surface-raised": "#3e3d32", "surface-sunken": "#20211c",
     "white": "#f8f8f2", "text-secondary": "#dfdfd4", "muted": "#b0ad96",
     "faint": "#817f71", "border": "#5c5a4e", "border-strong": "#a09c88",
-    "green": "#a6e22e", "yellow": "#e6db74", "red": "#f92672",
+    "green": "#a6e22e", "yellow": "#e6db74", "red": "#ff4d83",
     "cyan": "#66d9ef", "magenta": "#ae81ff", "blue": "#78a8e8",
     "track": "#49483e", "selection": "#49483e", "orange": "#fd971f",
     "cursor": "#66d9ef", "notice": "#66401c", "notice-text": "#ffe0b2",
     "chart-1": "#66d9ef", "chart-2": "#ae81ff", "chart-3": "#a6e22e",
-    "chart-4": "#e6db74", "chart-5": "#f92672", "chart-6": "#78a8e8",
+    "chart-4": "#e6db74", "chart-5": "#ff4d83", "chart-6": "#78a8e8",
 })
 GRUVBOX_DARK_PALETTE = dict(PALETTE, **{
     "canvas": "#282828", "black": "#282828", "surface": "#32302f",
     "surface-raised": "#3c3836", "surface-sunken": "#1d2021",
     "white": "#ebdbb2", "text-secondary": "#d5c4a1", "muted": "#bdae93",
     "faint": "#928374", "border": "#665c54", "border-strong": "#a89984",
-    "green": "#b8bb26", "yellow": "#fabd2f", "red": "#fb4934",
+    "green": "#b8bb26", "yellow": "#fabd2f", "red": "#ff5c49",
     "cyan": "#8ec07c", "magenta": "#d3869b", "blue": "#83a598",
     "track": "#504945", "selection": "#504945", "orange": "#fe8019",
     "cursor": "#8ec07c", "notice": "#68441d", "notice-text": "#f9e1b2",
     "chart-1": "#8ec07c", "chart-2": "#d3869b", "chart-3": "#b8bb26",
-    "chart-4": "#fabd2f", "chart-5": "#fb4934", "chart-6": "#83a598",
+    "chart-4": "#fabd2f", "chart-5": "#ff5c49", "chart-6": "#83a598",
 })
-# Terminal inherits the emulator's canvas. The selected row uses reverse video,
-# making it legible on an unknown light or dark default terminal background.
-THEME_NAMES = ("default", "mono", "high", "cb", "reader", "dark", "light", "terminal",
-               "darcula", "modnokai", "gruvbox-dark")
-THEME_ALIASES = {"monokai": "modnokai", "gruvbox": "gruvbox-dark"}
-_THEME_PALETTES = {"light": LIGHT_PALETTE, "darcula": DARCULA_PALETTE,
-                   "modnokai": MODNOKAI_PALETTE, "gruvbox-dark": GRUVBOX_DARK_PALETTE}
+CATPPUCCIN_MOCHA_PALETTE = dict(PALETTE, **{
+    "canvas": "#1e1e2e", "black": "#1e1e2e", "surface": "#242436",
+    "surface-raised": "#313244", "surface-sunken": "#181825",
+    "white": "#cdd6f4", "text-secondary": "#bac2de", "muted": "#a6adc8",
+    "faint": "#7f849c", "border": "#585b70", "border-strong": "#9399b2",
+    "green": "#a6e3a1", "yellow": "#f9e2af", "red": "#f38ba8",
+    "cyan": "#89dceb", "magenta": "#cba6f7", "blue": "#89b4fa",
+    "track": "#45475a", "selection": "#45475a", "orange": "#fab387",
+    "cursor": "#89dceb", "notice": "#5c473d", "notice-text": "#f9e2af",
+    "chart-1": "#89dceb", "chart-2": "#cba6f7", "chart-3": "#a6e3a1",
+    "chart-4": "#f9e2af", "chart-5": "#f38ba8", "chart-6": "#89b4fa",
+})
+NORD_PALETTE = dict(PALETTE, **{
+    "canvas": "#2e3440", "black": "#2e3440", "surface": "#343b49",
+    "surface-raised": "#3b4252", "surface-sunken": "#272c36",
+    "white": "#eceff4", "text-secondary": "#e5e9f0", "muted": "#c0c8d5",
+    "faint": "#8894a8", "border": "#65738b", "border-strong": "#a8b4c8",
+    "green": "#a3be8c", "yellow": "#ebcb8b", "red": "#e58c95",
+    "cyan": "#8fbcbb", "magenta": "#b991b2", "blue": "#81a1c1",
+    "track": "#4c566a", "selection": "#4c566a", "orange": "#dba484",
+    "cursor": "#8fbcbb", "notice": "#614d3e", "notice-text": "#ebcb8b",
+    "chart-1": "#8fbcbb", "chart-2": "#b991b2", "chart-3": "#a3be8c",
+    "chart-4": "#ebcb8b", "chart-5": "#e58c95", "chart-6": "#81a1c1",
+})
+TOKYO_NIGHT_PALETTE = dict(PALETTE, **{
+    "canvas": "#1a1b26", "black": "#1a1b26", "surface": "#202231",
+    "surface-raised": "#292e42", "surface-sunken": "#16161e",
+    "white": "#c0caf5", "text-secondary": "#a9b1d6", "muted": "#949fc9",
+    "faint": "#737da5", "border": "#4f597e", "border-strong": "#909bc4",
+    "green": "#9ece6a", "yellow": "#e0af68", "red": "#f7768e",
+    "cyan": "#7dcfff", "magenta": "#bb9af7", "blue": "#7aa2f7",
+    "track": "#394b70", "selection": "#283457", "orange": "#ff9e64",
+    "cursor": "#7dcfff", "notice": "#64432d", "notice-text": "#ffce9e",
+    "chart-1": "#7dcfff", "chart-2": "#bb9af7", "chart-3": "#9ece6a",
+    "chart-4": "#e0af68", "chart-5": "#f7768e", "chart-6": "#7aa2f7",
+})
+ROSE_PINE_DAWN_PALETTE = dict(LIGHT_PALETTE, **{
+    "canvas": "#faf4ed", "black": "#faf4ed", "surface": "#fffaf3",
+    "surface-raised": "#f2e9e1", "surface-sunken": "#f2e9de",
+    "white": "#575279", "text-secondary": "#625c7e", "muted": "#746c87",
+    "faint": "#82788f", "border": "#b5a9b4", "border-strong": "#8b7d92",
+    "green": "#426b65", "yellow": "#865f1d", "red": "#b43859",
+    "cyan": "#286983", "magenta": "#82559a", "blue": "#465e9b",
+    "track": "#d9cbd3", "selection": "#e4d8e3", "orange": "#9d542b",
+    "cursor": "#286983", "notice": "#f5dfc5", "notice-text": "#754622",
+    "chart-1": "#286983", "chart-2": "#82559a", "chart-3": "#426b65",
+    "chart-4": "#865f1d", "chart-5": "#b43859", "chart-6": "#465e9b",
+})
+# Public offerings are intentionally distinct from compatibility modes. Old
+# configs retain reader/monochrome/colour-blind support without cluttering the
+# theme menu or the cycle shortcut. Retired colour schemes migrate on read.
+THEME_NAMES = ("gruvbox-dark", "modnokai", "darcula", "catppuccin-mocha", "nord",
+               "tokyo-night", "rose-pine-dawn", "system")
+LEGACY_THEME_NAMES = ("mono", "high", "cb", "reader")
+ACCEPTED_THEME_NAMES = THEME_NAMES + LEGACY_THEME_NAMES
+THEME_LABELS = {"gruvbox-dark": "Gruvbox", "modnokai": "Modnokai", "darcula": "Darcula",
+                "catppuccin-mocha": "Catppuccin Mocha", "nord": "Nord",
+                "tokyo-night": "Tokyo Night", "rose-pine-dawn": "Rosé Pine Dawn", "system": "System"}
+THEME_ALIASES = {"monokai": "modnokai", "gruvbox": "gruvbox-dark",
+                 "default": "gruvbox-dark", "dark": "gruvbox-dark", "light": "rose-pine-dawn",
+                 "terminal": "system", "rose-pine": "rose-pine-dawn", "rosé-pine-dawn": "rose-pine-dawn",
+                 "catppuccin": "catppuccin-mocha", "tokyonight": "tokyo-night"}
+_THEME_PALETTES = {"darcula": DARCULA_PALETTE, "modnokai": MODNOKAI_PALETTE,
+                   "gruvbox-dark": GRUVBOX_DARK_PALETTE, "catppuccin-mocha": CATPPUCCIN_MOCHA_PALETTE,
+                   "nord": NORD_PALETTE, "tokyo-night": TOKYO_NIGHT_PALETTE,
+                   "rose-pine-dawn": ROSE_PINE_DAWN_PALETTE}
 # Compatibility for fixed styles in older views. Only known application colours
 # are translated; an unrelated custom RGB value retains its exact meaning.
 _LEGACY_COLORS = {value: key for key, value in reversed(tuple(PALETTE.items()))}
@@ -113,6 +172,10 @@ BRIGHT: tuple[RGB, ...] = ((127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255,
                            (92, 92, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255))
 _LEVELS = (0, 95, 135, 175, 215, 255)
 INDEXED: tuple[RGB, ...] = BASIC + BRIGHT + tuple((r, g, b) for r in _LEVELS for g in _LEVELS for b in _LEVELS) + tuple((v, v, v) for v in range(8, 239, 10))
+_BASIC_SEMANTIC = {tuple(int(palette[role][i:i + 2], 16) for i in (1, 3, 5)): index
+                   for palette in (PALETTE, *_THEME_PALETTES.values())
+                   for role, index in (("red", 1), ("green", 2), ("yellow", 3),
+                                       ("blue", 4), ("magenta", 5), ("cyan", 6), ("orange", 3))}
 
 
 def rgb(value: str) -> RGB:
@@ -143,7 +206,7 @@ def cell_style(style: str = "", theme: str = "default", surface: str = "canvas")
     Styled coloured output paints whitespace too, including short and empty rows.
     """
     theme = canonical_theme(theme)
-    if theme in ("terminal", "mono", "reader"):
+    if theme in ("system", "mono", "reader"):
         return style
     return "+".join(part for part in ("text", "bg:" + surface, style) if part)
 
@@ -189,6 +252,8 @@ color_depth = detect_color_depth
 def color_index(value: RGB, count: int = 256, background: bool = False) -> int:
     """Quantise colours, keeping semantic hues in the eight-colour fallback."""
     if count < 256:
+        if not background and value in _BASIC_SEMANTIC:
+            return _BASIC_SEMANTIC[value]
         # Eight-colour backgrounds need a stable dark or light canvas. A dark
         # navy RGB must not become the terminal's saturated blue background.
         if background and max(value) < 128:
@@ -218,10 +283,17 @@ class Style:
     flags: tuple[str, ...] = ()
     foreground: Optional[RGB] = None
     background: Optional[RGB] = None
+    # System colours are terminal palette slots, not guessed RGB values.
+    foreground_index: Optional[int] = None
+    background_index: Optional[int] = None
 
 
 def theme_tokens(theme: str = "default") -> dict[str, str]:
-    """A fresh semantic token map; callers cannot mutate the global palette."""
+    """A fresh reference map; System's actual terminal RGB values are unknown.
+
+    The System painter resolves these historical application colours to native
+    palette slots. This map describes no observed terminal or desktop settings.
+    """
     tokens = dict(_tokens(theme))
     tokens["cursor"] = tokens[_alias("cursor")]
     return tokens
@@ -242,10 +314,90 @@ def _alias(token: str) -> str:
     return token
 
 
+_SYSTEM_INDEX = {"black": 0, "red": 1, "green": 2, "yellow": 3, "blue": 4,
+                 "magenta": 5, "cyan": 6, "orange": 3, "notice": 3,
+                 "chart-1": 6, "chart-2": 5, "chart-3": 2, "chart-4": 3,
+                 "chart-5": 1, "chart-6": 4, "selection": 4}
+_SYSTEM_DEFAULTS = frozenset(("white", "text-secondary", "muted", "faint", "canvas",
+                              "surface", "surface-raised", "surface-sunken", "border",
+                              "border-strong", "track", "notice-text"))
+
+
+def _system_style(style: str) -> Style:
+    """Use native ANSI slots and default paper, without querying the terminal.
+
+    Exact colours from an embedded terminal or an explicit custom RGB stay
+    exact. Raven's semantic colours and historical fixed application colours
+    use the user's terminal palette. Gradient charts use its eight native hues.
+    """
+    flags: list[str] = []
+    foreground = background = None
+    foreground_index = background_index = None
+    terminal_colors = "terminal" in style.split("+")
+    for token in style.split("+"):
+        if token == "terminal":
+            continue
+        if token in FLAGS:
+            flags.append(token)
+            continue
+        if token == "sel":
+            flags.extend(("bold", "rev"))
+            continue
+        if token.startswith("bg-raw:"):
+            try:
+                background = rgb(token[7:])
+                background_index = None
+            except ValueError:
+                pass
+            continue
+        if token.startswith("gradient:"):
+            try:
+                _, start, end, fraction = token.split(":")
+                amount = float(fraction)
+                if not math.isfinite(amount):
+                    continue
+                a, b = _color(start, "system", PALETTE), _color(end, "system", PALETTE)
+                amount = max(0.0, min(1.0, amount))
+                value_rgb = tuple(round(x + (y - x) * amount) for x, y in zip(a, b))
+                foreground_index = color_index(value_rgb, 8)
+                foreground = None
+            except (TypeError, ValueError):
+                pass
+            continue
+        is_background = token.startswith("bg:")
+        value = token[3:] if token.startswith(("fg:", "bg:")) else token
+        value = _alias(value)
+        if not terminal_colors:
+            if is_background and value.lower() == PALETTE["canvas"]:
+                value = "canvas"
+            value = _alias(_LEGACY_COLORS.get(value.lower(), value))
+        color = index = None
+        if value in _SYSTEM_DEFAULTS:
+            if not is_background and value in ("muted", "faint", "border", "track"):
+                flags.append("dim")
+        elif value in _SYSTEM_INDEX:
+            index = _SYSTEM_INDEX[value]
+            if not is_background and value in ("red", "yellow", "orange"):
+                flags.append("bold")
+        else:
+            try:
+                color = rgb(value)
+            except ValueError:
+                continue
+        if is_background:
+            background, background_index = color, index
+        else:
+            foreground, foreground_index = color, index
+    return Style(tuple(dict.fromkeys(flags)), foreground, background,
+                 foreground_index, background_index)
+
+
 @lru_cache(maxsize=4096)
 def resolve(style: str, theme: str = "default") -> Style:
     """Resolve semantic, custom and accessibility styles once for both painters."""
     theme = canonical_theme(theme)
+    if theme == "system":
+        return _system_style(style)
     flags: list[str] = []
     foreground = background = None
     plain = theme in ("mono", "reader")
@@ -351,7 +503,11 @@ def _ansi_codes(style: str, depth: int, theme: str) -> str:
         if canvas is not None and color_index(parsed.background, 8, background=True) == color_index(canvas, 8, background=True):
             if "7" not in codes:
                 codes.append("7")
-    for value, foreground in ((parsed.foreground, True), (parsed.background, False)):
+    for value, index, foreground in ((parsed.foreground, parsed.foreground_index, True),
+                                     (parsed.background, parsed.background_index, False)):
+        if index is not None:
+            codes.append(str((30 if foreground else 40) + index))
+            continue
         if value is None:
             continue
         if depth == 24:

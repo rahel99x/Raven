@@ -6,6 +6,7 @@ sampling until the user applies it, even while its intensity colour updates.
 """
 
 from __future__ import annotations
+from .ui.form_state import edit_actions, edit_mouse, publish_edit_actions
 
 import math
 import time
@@ -617,6 +618,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if getattr(app, "mode", "") != MODE:
         return False
     state = initialize(app)
+    if edit_mouse(app, state, y, x, button, _frame(app), handle_key):
+        return True
     if button in ("wheel-up", "wheel-down"):
         state["top"] = max(0, state["top"] + (-3 if button == "wheel-up" else 3))
         state["follow_cursor"] = False
@@ -920,7 +923,9 @@ def overlay(views, snap, app, width, height):
         "Slurm accounting and job-owned trace writers control when new measurements exist. Faster polling cannot create missing samples.",
         "muted",
     )
-    capacity = max(0, height - 5)
+    editing = state["editing"] is not None
+    edit_rows, edit_hits = edit_actions(views.g, inner) if editing else ([], [])
+    capacity = max(0, height - 4 - len(edit_rows)) if editing else max(0, height - 5)
     state["visible"] = max(1, capacity)
     selected_row = next(
         (row for row, _, item in hits if item["action"] == ("command", selected)), 0
@@ -949,7 +954,10 @@ def overlay(views, snap, app, width, height):
         f"{min(state['top'] + 1, len(document))}-{min(len(document), state['top'] + capacity)}/{len(document)} "
         + footer
     )
-    if height >= 5:
+    footer_start = len(rows)
+    if editing:
+        rows.extend(edit_rows)
+    elif height >= 5:
         rows.append([(L.cut(footer, inner, views.g.ascii), "muted")])
     title = (
         "Refresh settings / Custom" if state["page"] == "custom" else "Refresh settings"
@@ -959,4 +967,7 @@ def overlay(views, snap, app, width, height):
         hits, rendered[1:-2] if height >= 5 else rendered[1:-1], offset=state["top"]
     )
     state["painted"] = _frame(app)
+    if editing:
+        publish_edit_actions(app, state, edit_hits, rendered, footer_start,
+                             state["painted"], width, height)
     return rendered

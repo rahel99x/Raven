@@ -93,7 +93,7 @@ def test_clicking_normal_cohort_text_still_selects_without_toggling(dashboard):
     app = dashboard.app
     _, hits = dashboard.render()
     y, _, _, _ = button(hits, "63")
-    app.click(y, 8, hits)
+    app.click(y, app.history_browser_content_rect.x + 8, hits)
     assert app.research_groups[app.cursor["research"]]["id"] == "63"
     assert not app.research_array_open
 
@@ -151,7 +151,7 @@ def test_cluster_qualified_buttons_and_rows_select_the_exact_duplicate_id(dashbo
     _, hits = dashboard.render()
     targets = [(y, target) for y, kind, target in hits if kind == "research_array"]
     assert [target for _, target in targets] == [(base["id"], "alpha"), (base["id"], "beta")]
-    app.click(targets[1][0], 8, hits)
+    app.click(targets[1][0], app.history_browser_content_rect.x + 8, hits)
     assert app.cursor["research"] == 1
     app.run_command("array open " + base["id"])
     assert not app.command_ok and not app.research_array_open
