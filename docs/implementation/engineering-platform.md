@@ -207,6 +207,15 @@ commits exactly once. Independent review and Python 3.10/3.13 focused checks
 passed. This is a qualification correction, not a claim that busy writes always
 succeed immediately or that native mutations may be replayed.
 
+A later Python 3.13 run exposed a legacy restart-test race: it constructed a
+second Store before the interactive asynchronous publisher had drained. The
+test now invokes the same explicit publication barrier used by `Store.close()`
+before checking disk state; all tags, pin, note, filter and comparison assertions
+remain. A deterministic regression pauses an older serialized payload, applies
+newer tag removal/note/pin edits, proves the barrier waits, and verifies a fresh
+reader sees the latest complete state. This preserves asynchronous production
+writes and tests the real shutdown contract instead of relying on elapsed time.
+
 ```bash
 python -m pytest -q -n 2
 python scripts/check_quality.py
