@@ -292,24 +292,36 @@ Static operation is useful when a terminal connection has limited display throug
 
 ## Change the terminal palette
 
-Press `T` to cycle the available themes, or enter `:theme NAME` for an exact choice.
-The active palette updates the canvas, text, menus, information strips, and charts during the session.
-Blank areas use the same canvas as the page.
-Theme changes preserve the selected job and measured values.
+Open **Themes** in the top toolbar to preview a palette immediately. Press `T` to
+cycle the curated themes, or enter `:theme NAME` for an exact choice. Gruvbox is
+the default. Changes preserve the selected job and measurements, repaint the
+whole workspace, and save automatically for the active profile and connection.
 
 | Theme | Palette |
 | --- | --- |
+| `gruvbox-dark` | Warm neutral canvas and earthy accents; `gruvbox` is an alias |
+| `modnokai` | Dark olive canvas and vivid accents; `monokai` is an alias |
 | `darcula` | Grey canvas with blue and warm accents |
-| `modnokai` | Dark olive canvas with vivid accents; `monokai` is an alias |
-| `gruvbox-dark` | Dark neutral canvas with warm accents; `gruvbox` is an alias |
-| `dark`, `light` | Explicit dark or light canvas and matching text |
-| `terminal` | The terminal's own background |
-| `mono`, `reader` | Colour-free output on the terminal's background |
+| `catppuccin-mocha` | Soft dark canvas and pastel accents |
+| `nord` | Cool slate surfaces and restrained frost accents |
+| `tokyo-night` | Deep blue canvas with clear blue, violet, and coral accents |
+| `rose-pine-dawn` | Warm light canvas with dark, readable accents |
+| `system` | Your terminal's default text, background, and ANSI palette |
 
-Use `high` for high contrast or `cb` for the colour-blind palette.
-The reader theme also uses plain ASCII text and static notices.
-`--no-color` and `NO_COLOR` suppress colour even when a named theme is selected.
-The terminal's colour capacity determines the available approximation.
+System inherits the terminal emulator's configured palette; it does not inspect
+desktop settings or query the terminal. Semantic status and chart colours use
+native ANSI slots. Selection uses reverse video so it works on light and dark
+backgrounds. On direct-colour curses terminals, whose low indices represent RGB
+rather than palette slots, System retains default text and background with
+attribute emphasis instead of guessing the palette. Explicit custom colours and
+embedded terminal application colours retain their requested values.
+
+Retired `default` and `dark` selections migrate to Gruvbox; `light` migrates to
+Rosé Pine Dawn and `terminal` to System. Existing `mono`, `high`, `cb`, and `reader`
+commands/configurations remain available as accessibility compatibility modes,
+without appearing in the curated theme menu. Reader also uses ASCII and static
+notices. `--no-color`, `NO_COLOR`, and `TERM=dumb` suppress colours regardless of
+theme. Terminal colour capacity determines the available approximation.
 
 ## Control the startup display
 

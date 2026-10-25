@@ -40,6 +40,7 @@ class InteractionSources(_Callbacks):
     history_export_active: Callback
     history_export_controls: Callback
     pin_focused: Callback
+    sidebar_controls: Callback = lambda target: ()
 
 
 @dataclass(frozen=True)

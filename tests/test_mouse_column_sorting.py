@@ -205,7 +205,7 @@ def test_double_click_activates_only_job_rows(dashboard, table, target):
         x = payload[2]
     elif target == "row":
         y, _, identity = next(hit for hit in hits if hit[1] == ("job" if table == "jobs" else "fin"))
-        x = 2
+        x = app.content_origin_x + 2
     else:
         y, x = 49, 159
     _apply_input(app, ("mouse", (0, x, y, 0, curses.BUTTON1_DOUBLE_CLICKED)), hits, curses)

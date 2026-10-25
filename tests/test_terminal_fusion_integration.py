@@ -195,7 +195,9 @@ def test_preview_and_dialog_input_cannot_execute_in_real_shell(raven):
     assert not (tmp_path / "marker-file").exists()
 
 
-@pytest.mark.parametrize("width,height", [(1, 1), (20, 6), (80, 10)])
+# Removing the old horizontal tab strip releases one content row. Keep the
+# last fixture genuinely too short for terminal content after that change.
+@pytest.mark.parametrize("width,height", [(1, 1), (20, 6), (80, 9)])
 def test_invisible_terminal_loses_keyboard_lease_and_rejects_queued_input(raven, width, height):
     app, views, store, cache, _ = raven
     sid = shell(raven)

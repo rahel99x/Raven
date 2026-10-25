@@ -72,6 +72,7 @@ class Activity:
 
 def initialize(app):
     app.activity = Activity()
+    app.activity_ui_state = {"control_hits": [], "control_token": None}
     from .notifications import initialize as initialize_notifications
     initialize_notifications(app)
 
@@ -368,16 +369,23 @@ def overlay(views, snap, app, width, height):
     activity = app.activity
     activity.mouse_rows = {}
     activity.mouse_mode = app.mode
+    ui = app.activity_ui_state
+    ui["control_hits"] = []
+    from .control_rows import buttons
+    choices = _mouse_choices(app)
+    action_rows, action_hits = buttons(views.g, max(1, width - 8), choices,
+        group="activity-actions", prefix="activity-action:")
+    action_height = len(action_rows)
     if app.mode == "export_preview":
         preview = activity.export_preview or {"lines": [], "scroll": 0, "label": ""}
-        page = max(1, height - 7)
+        page = max(1, height - 7 - action_height)
         context = ("export_preview", activity.export_generation, preview.get("path"), width)
         logical, painted = B.window(app, "modal:export-preview", preview["scroll"], len(preview["lines"]), page, context=context)
         preview["scroll"] = logical
         rows = [[(" " + clean(preview["label"], views.g.ascii), "accent+bold")], [(" " + clean(preview.get("path", ""), views.g.ascii), "dim")]]
         rows += [[(L.cut(clean(line, views.g.ascii), max(1, width - 8), views.g.ascii), "")] for line in preview["lines"][painted:painted + page]]
         rows.append([(" Preview: at most 64 KiB / 256 lines | arrows/pages scroll | y copy path | Esc exports", "dim")])
-        rendered = L.box(views.g, rows, width, height, "Export preview")
+        rendered = _mouse_box(views, app, rows, width, height, "Export preview", action_rows, action_hits)
         return B.boxed(app, "modal:export-preview", rendered, start=2, count=len(preview["lines"]), page=page,
                        target=logical, painted=painted, setter=lambda value: preview.update(scroll=value), context=context)
     if app.mode == "exports":
@@ -386,7 +394,7 @@ def overlay(views, snap, app, width, height):
         logical_hits = {}
         rows = [[(f" {len(entries)} export records | filter: {clean(activity.export_query, views.g.ascii) or 'none'}", "accent")]]
         cursor = min(activity.export_cursor, max(0, len(entries) - 1))
-        page = max(1, height - 7)
+        page = max(1, height - 7 - action_height)
         start = max(0, cursor - page // 2)
         context = ("exports", activity.export_query)
         logical, start = B.window(app, "modal:exports", start, len(entries), page, context=context, focus=cursor)
@@ -396,7 +404,7 @@ def overlay(views, snap, app, width, height):
         if not entries:
             rows.append([(" No export records match. Copy or export a file to register its path.", "dim")])
         rows.append([(" / filter | arrows/pages browse | Enter preview | y copy path | d forget record | Esc back", "dim")])
-        rendered = L.box(views.g, rows, width, height, "Exports")
+        rendered = _mouse_box(views, app, rows, width, height, "Exports", action_rows, action_hits)
         for row_index, identity in logical_hits.items():
             if row_index + 1 < len(rendered) - 1:
                 y, x, row = rendered[row_index + 1]
@@ -420,14 +428,16 @@ def overlay(views, snap, app, width, height):
     ordered = _ordered(app)
     rows.append([(f" Filter: {clean(activity.query, views.g.ascii) or 'none'} | {len(ordered)} matching notices", "dim")])
     cursor = min(app.activity.cursor, max(0, len(ordered) - 1))
-    available = max(1, height - len(rows) - 6)
+    available = max(1, height - len(rows) - 6 - action_height)
     start = max(0, cursor - available // 2)
     context = ("activity", activity.query, bool(activity.expanded), width)
     logical, start = B.window(app, "modal:activity", start, len(ordered), available, context=context, focus=cursor)
     data_start = len(rows)
+    logical_hits = {}
     for index, notice in enumerate(ordered[start:start + available], start):
         timestamp = time.strftime("%H:%M:%S", time.localtime(notice["time"]))
         style = "sel" if index == cursor else {"error": "red", "warning": "yellow"}.get(notice["level"], "")
+        logical_hits[len(rows)] = _notice_identity(notice)
         rows.append([(L.cut(clean(f" {timestamp} {notice['level'].upper():7} {notice['text']}", views.g.ascii), max(0, width - 8), views.g.ascii), style)])
     if not ordered:
         rows.append([(" No notices yet. Copy and export results remain here during this session.", "dim")])
@@ -443,20 +453,96 @@ def overlay(views, snap, app, width, height):
     else:
         key, total = "modal:activity", len(ordered)
     rows.append([(" / filter | f clear filter | e exports | arrows/pages browse | Enter expand | y copy | c cancel | Esc back", "dim")])
-    rendered = L.box(views.g, rows, width, height, "Activity")
+    rendered = _mouse_box(views, app, rows, width, height, "Activity", action_rows, action_hits)
+    if not activity.expanded:
+        for row_index, identity in logical_hits.items():
+            if row_index + 1 < len(rendered) - 1:
+                y, x, row = rendered[row_index + 1]
+                right = x + L.vlen(L.row_text(row)) - 1
+                activity.mouse_rows[y] = (identity, x + 1, right)
+                app.activity_ui_state["control_hits"].append((y, "control", {
+                    "id": "activity-row:" + str(identity[0]) + ":" + str(row_index), "label": "Select notice",
+                    "left": x + 1, "right": right, "button": False, "group": "activity-rows",
+                    "action": ("click", y, x + 1)}))
     return B.boxed(app, key, rendered, start=data_start, count=total, page=available,
                    target=logical, painted=start, setter=lambda value: None, context=context)
 
 
+def _notice_identity(notice):
+    """Keep each painted notice bound to its complete action-bearing context."""
+    return tuple(notice.get(key, "") for key in ("time", "text", "job", "path", "task", "level"))
+
+
+def _mouse_context(app):
+    activity = app.activity
+    notices, task = activity.snapshot()
+    return (app.mode, activity.mouse_mode, activity.query, activity.export_query,
+            activity.filtering, activity.cursor, activity.expanded,
+            activity.export_selected, activity.export_generation,
+            len(notices), notices[-1]["time"] if notices else None,
+            id(task.get("cancel")) if task else None, task.get("status") if task else None)
+
+
+def _mouse_choices(app):
+    activity = app.activity
+    if app.mode not in ("activity", "exports", "export_preview"):
+        return []
+    if activity.filtering and app.mode != "export_preview":
+        choices = [("done-filter", "Done filtering", "enter")]
+    elif app.mode == "activity":
+        choices = [("close", "Close", "esc"), ("expand", "Collapse" if activity.expanded else "Expand", "enter"),
+                   ("exports", "Exports", "e"), ("copy", "Copy", "y"), ("filter", "Filter", "/"),
+                   ("clear-filter", "Clear filter", "f")]
+        _, task = activity.snapshot()
+        if task and task["status"] == "running":
+            choices.append(("cancel-task", "Cancel task", "c"))
+    elif app.mode == "exports":
+        choices = [("close", "Close", "esc"), ("preview", "Preview", "enter"),
+                   ("copy-path", "Copy path", "y"), ("forget", "Forget record", "d"), ("filter", "Filter", "/")]
+    else:
+        choices = [("back", "Back to exports", "esc"), ("copy-path", "Copy path", "y")]
+    return [(identifier, label, ("key", key)) for identifier, label, key in choices]
+
+
+def _mouse_box(views, app, rows, width, height, title, action_rows, action_hits):
+    from .control_rows import place_hits
+    offset = max(0, len(rows) - 1)
+    rows = rows[:offset] + action_rows + rows[offset:]
+    rendered = L.box(views.g, rows, width, height, title)
+    state = app.activity_ui_state
+    state["control_hits"] = place_hits([(row + offset, kind, value) for row, kind, value in action_hits], rendered[1:-1])
+    state["control_token"] = _mouse_context(app)
+    return rendered
+
+
 def handle_mouse(app, y, x, button="left", shift=False):
     activity = app.activity
-    if app.mode != "exports" or activity.mouse_mode != "exports":
+    if app.mode not in ("activity", "exports", "export_preview"):
         return False
+    state = app.activity_ui_state
+    if button not in ("left", "double"):
+        return True
+    for row, _, value in state["control_hits"]:
+        if row == y and value["left"] <= x < value["right"] and value["action"][0] == "key":
+            if state.get("control_token") == _mouse_context(app):
+                handle_key(app, value["action"][1])
+            return True
+    if state.get("control_token", ())[:5] != _mouse_context(app)[:5]:
+        return True
     hit = activity.mouse_rows.get(y)
-    if hit and hit[1] <= x < hit[2] and button in ("left", "double"):
+    if not hit or not hit[1] <= x < hit[2]:
+        return True
+    if app.mode == "exports":
         entries = export_items(app)
         index = next((i for i, item in enumerate(entries) if item["id"] == hit[0]), None)
         if index is not None:
             activity.export_cursor, activity.export_selected = index, hit[0]
-            if button == "double": _preview_export(app, entries[index])
+            if button == "double":
+                _preview_export(app, entries[index])
+    elif app.mode == "activity":
+        notices = _ordered(app)
+        index = next((i for i, item in enumerate(notices)
+                      if _notice_identity(item) == hit[0]), None)
+        if index is not None:
+            activity.cursor = index
     return True

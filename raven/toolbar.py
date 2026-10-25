@@ -12,7 +12,7 @@ from .command_registry import Control as Item, toolbar_controls
 
 from .pointer_routing import capture_handler
 
-MENUS = ("File", "Edit", "View", "Setup", "Help")
+MENUS = ("File", "Edit", "View", "Setup", "Help", "Themes")
 BAR_STYLE = "text+bg:surface-raised"
 PRIMARY_TABS = ("jobs", "history", "analytics", "research", "log")
 MAX_FAVORITES = 24
@@ -41,15 +41,13 @@ def initialize(app):
 
 
 def _destinations():
-    return {**{"tab:" + key: (title, ("tab " + key,)) for key, title in TABS},
-            **{"research:" + key: ("Research: " + title, ("workspace " + key,)) for key, title in RESEARCH_VIEWS},
-            **{"analytics:" + key: ("Analytics: " + title.title(), ("tab analytics", "view " + key)) for key, title in ANALYTICS_VIEWS}}
+    from .ui.destinations import destinations
+    return destinations()
 
 
 def _valid_favorites(values):
-    known = _destinations()
-    return list(dict.fromkeys(value for value in values[:MAX_FAVORITES]
-                             if isinstance(value, str) and value in known)) if isinstance(values, (list, tuple)) else []
+    from .ui.destinations import valid_favorites
+    return valid_favorites(values)
 
 
 def restore(app, data):
@@ -82,12 +80,8 @@ def visible_research_views(app):
 
 
 def _destination(app):
-    tab = getattr(app, "tab", "jobs")
-    if tab == "research":
-        return "research:" + getattr(app, "research_view", "experiment")
-    if tab == "analytics":
-        return "analytics:" + getattr(app, "analytics_view", "job")
-    return "tab:" + tab
+    from .ui.destinations import current
+    return current(app)
 
 
 def _toggle_favorite(app):
@@ -105,7 +99,7 @@ def _toggle_favorite(app):
         return
     else:
         pins.append(target)
-        message = "Pinned this view in View > Favorites."
+        message = "Added this view to sidebar Favorites."
     state["favorites"] = pins
     if callable(getattr(app, "save", None)):
         app.save()
@@ -154,7 +148,7 @@ def run_command(app, args):
         app.fail({"favorite": "Use favorite [toggle|list|clear].",
                   "preferences": "Use preferences without arguments.",
                   "about": "Use about without arguments.",
-                  "menu": "Use menu [File|Edit|View|Setup|Help]."}[args[0]])
+                  "menu": "Use menu [File|Edit|View|Setup|Help|Themes]."}[args[0]])
     return True
 
 
@@ -185,6 +179,13 @@ def menu_items(app, menu):
                  Item("display", "Display and navigation", local="submenu:display")])
     if menu == "Setup":
         return toolbar_controls("Setup")
+    if menu == "Themes":
+        from .palette import THEME_NAMES, THEME_LABELS
+        selected = getattr(app, "theme", "gruvbox-dark")
+        return [Item("theme-" + name,
+                     ("* " if name == selected else "  ") +
+                     (THEME_LABELS[name].replace("é", "e") if initialize(app).get("ascii") else THEME_LABELS[name]),
+                     "theme " + name) for name in THEME_NAMES]
     return toolbar_controls("Help")
 
 
@@ -214,7 +215,6 @@ def submenu_items(app, name):
         from .startup import enabled as startup_enabled
         from .scrolling import enabled as smoothscroll_enabled
         from .worker_ui import status as worker_status
-        from .palette import THEME_NAMES
         workers = worker_status(app)
         desired = workers["target"] if workers else "multi"
         toggle = "Background workers: switch to " + ("multi" if desired == "single" else "single")
@@ -225,8 +225,7 @@ def submenu_items(app, name):
             "smooth-scroll": {"label": "Disable smooth scrolling" if smoothscroll_enabled(app) else "Enable smooth scrolling"},
             "startup-toggle": {"label": "Disable startup animation" if startup_enabled(app) else "Enable startup animation"}})
         keys = {"workers-toggle", "workers-single", "workers-multi", "workers-status", "smooth-scroll", "startup-toggle", "startup-preview", "reader"}
-        return [Item("settings", "Terminal, key, and clipboard preferences", "settings")] + [item for item in controls if item.key in keys] + [
-            Item("theme-" + name, "Theme: " + name.replace("-", " ").title(), "theme " + name) for name in THEME_NAMES if name != "reader"]
+        return [Item("settings", "Terminal, key, and clipboard preferences", "settings")] + [item for item in controls if item.key in keys]
     return []
 
 
@@ -423,7 +422,9 @@ def render_bar(views, app, width, y=0):
     if compute and width >= 60 and width-x >= compute_width+4:
         append(*compute, "raven")
     space = width-x
-    refresh = summary if L.vlen(summary)+1 <= space else "Refresh" if space >= 8 else "R" if space else ""
+    compact_summary = summary.replace(": ", ":").replace(" · ", " ").replace(" | ", " ")
+    refresh = next((text for text in (summary, compact_summary) if L.vlen(text)+1 <= space),
+                   "Refresh" if space >= 8 else "R" if space else "")
     if refresh:
         append(" " * max(0, space-L.vlen(refresh)-1))
         append(refresh+" ", "accent+bg:surface-raised", "refresh-settings")
@@ -465,8 +466,8 @@ def handle_key(app, key):
     elif key in ("enter", "space"):
         entries = menu_items(app, state["menu"])
         _activate(app, entries[max(0, min(len(entries) - 1, state["cursor"]))])
-    elif len(key) == 1 and key.lower() in "fevsh":
-        _open(app, "fevsh".index(key.lower()))
+    elif len(key) == 1 and key.lower() in "fevsht":
+        _open(app, "fevsht".index(key.lower()))
     return True
 
 
@@ -701,7 +702,7 @@ def overlay(views, snap, app, width, height):
             disabled = _blocked(app, item)
             state["menu_disabled"][item.key] = disabled
             marker = (">" if ascii_ else "▸") if index == cursor else " "
-            selected_style = "sel" if getattr(app, "theme", "default") in ("terminal", "mono", "reader") else "accent+bold+bg:surface-raised"
+            selected_style = "sel" if getattr(app, "theme", "default") in ("system", "terminal", "mono", "reader") else "accent+bold+bg:surface-raised"
             style = "muted+bg:surface" if disabled else selected_style if index == cursor else "text+bg:surface"
             label = item.label + ((" >" if ascii_ else " ›") if item.local.startswith("submenu:") else "")
             content = L.fill_row([(marker + " " + L.cut(label, max(0, item_width - 2), ascii_), style)], item_width, style)

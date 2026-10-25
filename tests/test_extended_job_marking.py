@@ -125,13 +125,13 @@ def test_snapshot_attempt_change_cancels_capture_even_when_ids_are_unchanged(das
     views.compose(store.snapshot(), app, app.width, app.height)
     identifier = app.visible_ids[0]
     y = next(y for y, kind, value in app.last_hits if kind == "job" and value == identifier)
-    assert S.handle_mouse(app, y, 8, "press")
+    assert S.handle_mouse(app, y, app.workspace_main_rect.x + 8, "press")
     next(record for record in store.jobs if record.id == identifier).submit = "2026-01-02T00:00:00"
     views.compose(store.snapshot(), app, app.width, app.height)
     assert not S.active(app)
     # The invalidated gesture owns its late release so another control cannot
     # interpret it as the completion of an unrelated operation.
-    assert S.handle_mouse(app, y + 1, 8, "release")
+    assert S.handle_mouse(app, y + 1, app.workspace_main_rect.x + 8, "release")
     assert not app.marks
 
 
@@ -190,15 +190,22 @@ def test_advisor_direct_click_selects_a_job_and_keeps_document_view(dashboard):
 
 def test_advisor_rows_cannot_claim_controls_in_an_adjacent_pane(dashboard):
     app, store, views = dashboard
+    # Populate the browser through the Advisor data rows, which follow a
+    # taller explanatory header in the narrower sidebar workspace.
+    store.jobs.extend(Job(str(i), "task " + str(i), "cpu", "RUNNING",
+                          submit="2026-01-01T00:00:00") for i in range(25, 65))
     app.tab, app.analytics_view = "analytics", "advisor"
+    H._view(app).update(dock="right", ratio=40)
     _, hits = views.compose(store.snapshot(), app, app.width, app.height)
     y, _, advisor = next(hit for hit in hits if hit[1] == "control" and hit[2]["id"].startswith("advisor-job:"))
     assert advisor["left"] > 10  # default adaptive Details column
     # Navigation and diagnostic buttons wrap independently from Advisor rows.
     # Assert ownership against the controls actually adjacent in this frame,
     # including the docked job browser, rather than fixing one header's y.
-    adjacent = [value for row, kind, value in hits if row == y and kind == "control"
-                and (value["right"] <= advisor["left"] or value["left"] >= advisor["right"])]
+    adjacent = [{"left": control.rect.left, "right": control.rect.right}
+                for control in app.interaction_state["graph"].controls
+                if control.rect.top <= y < control.rect.bottom and
+                (control.rect.right <= advisor["left"] or control.rect.left >= advisor["right"])]
     assert adjacent
     for control in adjacent:
         assert not S.advisor_pointer(app, y, control["left"])

@@ -78,7 +78,7 @@ def test_header_opens_without_selection_for_exact_projected_members(dashboard, s
 def test_unselected_header_body_and_chevron_target_whole_projected_group(dashboard, collapsed, location):
     app, _ = dashboard
     gid, hits = prepare(dashboard, "jobs", "manual", collapsed)
-    position = header_point(hits, "jobs", gid) if location == "chevron" else point(hits, "1")
+    position = header_point(hits, "jobs", gid) if location == "chevron" else point(app, hits, "1")
     job_selection.clear(app)
     dispatch(app, hits, position, "right", "sgr")
     assert set(app.job_group_menu_state["context"]["targets"]) == {"1", "2", "3"}
@@ -88,7 +88,7 @@ def test_expanded_marked_top_row_retains_members_but_chevron_targets_group(dashb
     app, _ = dashboard
     gid, hits = prepare(dashboard, "jobs", "manual", False)
     mark(app, "1", "2")
-    dispatch(app, hits, point(hits, "1"), "right")
+    dispatch(app, hits, point(app, hits, "1"), "right")
     assert app.job_group_menu_state["context"]["targets"] == ("1", "2")
     assert "source_group" not in app.job_group_menu_state["context"]
     app.handle("esc")

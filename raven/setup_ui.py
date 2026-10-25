@@ -5,6 +5,7 @@ writes run in the shared background lane. Saving never requests an allocation.
 """
 
 from __future__ import annotations
+from .ui.form_state import edit_actions, edit_mouse, publish_edit_actions
 from .ui.form_state import _wrap as _wrap, _pending_review as _pending_review
 
 import copy
@@ -722,6 +723,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if getattr(app, "mode", "") != "setup":
         return False
     state = initialize(app)
+    if edit_mouse(app, state, y, x, button, _frame(app), handle_key):
+        return True
     if button in ("wheel-up", "wheel-down"):
         state["top"] = max(0, state["top"] + (-3 if button == "wheel-up" else 3))
         state["follow_cursor"] = False
@@ -780,7 +783,9 @@ def overlay(views, snap, app, width, height):
             choice += 1
         else:
             document.extend([(line, "text")] for line in _wrap(text, inner))
-    capacity = max(0, height - 5)
+    editing = state["editing"] is not None
+    edit_rows, edit_hits = edit_actions(views.g, inner) if editing else ([], [])
+    capacity = max(0, height - 4 - len(edit_rows)) if editing else max(0, height - 5)
     state["visible"] = max(1, capacity)
     if state.pop("follow_cursor", False):
         if selected_row < state["top"]:
@@ -795,11 +800,17 @@ def overlay(views, snap, app, width, height):
         else f"{state['top'] + 1}-{min(len(document), state['top'] + capacity)}/{len(document)}  "
         "Tab: choose | Enter: open | PgUp/PgDn: scroll | Esc: back"
     )
-    if height >= 5:
+    footer_start = len(rows)
+    if editing:
+        rows.extend(edit_rows)
+    elif height >= 5:
         rows.append([(L.cut(footer, inner, views.g.ascii), "muted")])
     rendered = L.box(views.g, rows, width, height, "Setup: " + title, min_width=20)
     state["control_hits"] = place_hits(
         hits, rendered[1:-2] if height >= 5 else rendered[1:-1], offset=state["top"]
     )
     state["painted"] = _frame(app)
+    if editing:
+        publish_edit_actions(app, state, edit_hits, rendered, footer_start,
+                             state["painted"], width, height)
     return rendered

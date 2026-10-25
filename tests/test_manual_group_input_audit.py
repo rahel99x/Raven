@@ -40,8 +40,10 @@ def frame(dashboard, tab=None, *, width=280, height=60):
     return views.compose(store.snapshot(), app, width, height)
 
 
-def table_point(hits, kind, jid):
-    return next((y, 12) for y, actual, value in hits if actual == kind and value == jid)
+def table_point(app, hits, kind, jid):
+    from test_job_group_mouse_integration import point
+
+    return point(app, hits, jid, kind)
 
 
 def click(app, point, hits):
@@ -74,7 +76,7 @@ def test_drag_group_and_ungroup_collapsed_summary_retains_real_allocations(dashb
     if tab == "deps":
         store.jobs[1].dependency = "afterok:600_1"
     _, hits = frame(dashboard, tab)
-    drag(app, table_point(hits, kind, first), table_point(hits, kind, last), hits)
+    drag(app, table_point(app, hits, kind, first), table_point(app, hits, kind, last), hits)
     selected = set(app.marks)
     assert selected == {first, last}
     original_records = tuple(store.jobs) + tuple(store.finished)
@@ -98,10 +100,10 @@ def test_ungroup_expanded_members_keeps_unselected_siblings_grouped(dashboard, m
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
     if multiple:
-        drag(app, table_point(hits, "job", "600_2"), table_point(hits, "job", "600_3"), hits)
+        drag(app, table_point(app, hits, "job", "600_2"), table_point(app, hits, "job", "600_3"), hits)
         removed = {"600_2", "600_3"}
     else:
-        click(app, table_point(hits, "job", "600_2"), hits)
+        click(app, table_point(app, hits, "job", "600_2"), hits)
         removed = {"600_2"}
     app.handle("u")
     registry = index(dashboard)
@@ -120,7 +122,7 @@ def test_grouping_a_marked_collapsed_representative_never_adds_hidden_siblings(d
     frame(dashboard, "jobs")
     assert job_groups.fold(app, "array:600", True)
     _, hits = frame(dashboard)
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "900"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "900"), hits)
     assert app.marks == {"600_1", "900"}
     app.handle("g")
     groups = index(dashboard)
@@ -131,14 +133,14 @@ def test_grouping_a_marked_collapsed_representative_never_adds_hidden_siblings(d
 def test_keyboard_group_finishes_capture_before_an_orphan_release_can_extend_it(dashboard):
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits, release=False)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits, release=False)
     assert job_selection.active(app)
     app.handle("g")
     group = index(dashboard).for_job("600_1")
     assert group is not None and set(group.members) == {"600_1", "600_2"}
     assert not job_selection.active(app)
     before = (app.tab, app.selected_id, set(app.marks))
-    app.click(*table_point(hits, "job", "600_4"), hits, button="release")
+    app.click(*table_point(app, hits, "job", "600_4"), hits, button="release")
     assert (app.tab, app.selected_id, app.marks) == before
     assert set(index(dashboard).for_job("600_1").members) == {"600_1", "600_2"}
 
@@ -162,7 +164,7 @@ def test_modal_and_text_input_do_not_mutate_groups_or_steal_typed_characters(das
 def test_universal_right_click_clear_makes_group_keys_inert(dashboard, key):
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     app.click(0, 100, hits, button="right")
     assert not app.marks and app.selected_id is None
     before = index(dashboard)
@@ -190,6 +192,8 @@ def test_mouse_coordinate_bytes_never_replay_group_or_tab_shortcuts(dashboard, b
 def test_stale_job_drag_map_cannot_start_selection_or_mutate_manual_group(dashboard, stale):
     app, _, _ = dashboard
     _, old_hits = frame(dashboard, "jobs")
+    old_first = table_point(app, old_hits, "job", "600_1")
+    old_last = table_point(app, old_hits, "job", "600_4")
     app.marks = {"600_1", "600_2"}
     app.handle("g")
     frame(dashboard)
@@ -198,7 +202,7 @@ def test_stale_job_drag_map_cannot_start_selection_or_mutate_manual_group(dashbo
     elif stale == "tab":
         frame(dashboard, "history")
     before = (app.tab, app.selected_id, set(app.marks), index(dashboard))
-    drag(app, table_point(old_hits, "job", "600_1"), table_point(old_hits, "job", "600_4"), old_hits)
+    drag(app, old_first, old_last, old_hits)
     assert (app.tab, app.selected_id, app.marks, index(dashboard)) == before
     assert not job_selection.active(app)
 
@@ -240,10 +244,10 @@ def test_group_command_does_not_consume_marks_owned_by_another_job_list(dashboar
                     Job("700_2", "colleague run", "cpu", "RUNNING"),
                     Job("700_3", "colleague run", "cpu", "RUNNING")]
     _, hits = frame(dashboard, "group")
-    drag(app, table_point(hits, "group", "700_1"), table_point(hits, "group", "700_2"), hits)
+    drag(app, table_point(app, hits, "group", "700_1"), table_point(app, hits, "group", "700_2"), hits)
     foreign = set(app.marks)
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     app.marks.update(foreign)
     app.handle("g")
     groups = index(dashboard)
@@ -257,7 +261,7 @@ def test_details_focus_cannot_act_on_marks_left_in_jobs(dashboard, key):
     from raven import job_panels
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     job_panels._activate(app, "analytics", view="job")
     app.job_panel_state["focus"] = "content"
     app.layout_state.focus = "details"
@@ -272,7 +276,7 @@ def test_details_focus_cannot_act_on_marks_left_in_jobs(dashboard, key):
 def test_uppercase_u_clears_marks_without_detaching_grouped_jobs(dashboard):
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     before = index(dashboard)
     app.handle("U")
     assert not app.marks and index(dashboard) == before
@@ -283,7 +287,7 @@ def test_explicit_rendered_line_selection_keeps_group_shortcuts_out(dashboard, k
     from raven import text_selection
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     frame(dashboard)
     app.handle("v")
     assert text_selection.selected(app) or app.sel_anchor is not None
@@ -297,7 +301,7 @@ def test_explicit_rendered_line_selection_keeps_group_shortcuts_out(dashboard, k
 def test_open_toolbar_menu_keeps_group_shortcuts_out(dashboard, key):
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     before = index(dashboard)
     app.handle("f10")
     assert app.toolbar_state["menu"] is not None
@@ -326,7 +330,7 @@ def test_advisor_drag_marks_only_the_exact_allocations_covered(dashboard):
 def test_queued_group_then_ungroup_before_repaint_uses_original_exact_members(dashboard):
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_2"), table_point(hits, "job", "600_3"), hits)
+    drag(app, table_point(app, hits, "job", "600_2"), table_point(app, hits, "job", "600_3"), hits)
     app.handle("g")
     created = index(dashboard).for_job("600_2")
     assert created is not None and set(created.members) == {"600_2", "600_3"}
@@ -342,7 +346,7 @@ def test_queued_group_then_ungroup_before_repaint_uses_original_exact_members(da
 def test_disappeared_mark_before_group_key_does_not_create_a_partial_manual_group(dashboard):
     app, _, store = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     store.jobs = [job for job in store.jobs if job.id != "600_2"]
     store.group = list(store.jobs)
     app.handle("g")
@@ -355,26 +359,26 @@ def test_disappeared_mark_before_group_key_does_not_create_a_partial_manual_grou
 def test_rejected_group_key_still_finishes_old_drag_before_late_release(dashboard):
     app, _, store = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits, release=False)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits, release=False)
     assert job_selection.active(app)
     store.jobs = [job for job in store.jobs if job.id != "600_2"]
     store.group = list(store.jobs)
     app.handle("g")
     assert not job_selection.active(app)
     before = set(app.marks)
-    app.click(*table_point(hits, "job", "600_4"), hits, button="release")
+    app.click(*table_point(app, hits, "job", "600_4"), hits, button="release")
     assert app.marks == before
 
 
 def test_collapsed_summary_ungroup_removes_members_hidden_by_current_filter(dashboard):
     app, _, _ = dashboard
     _, hits = frame(dashboard, "jobs")
-    drag(app, table_point(hits, "job", "600_1"), table_point(hits, "job", "600_2"), hits)
+    drag(app, table_point(app, hits, "job", "600_1"), table_point(app, hits, "job", "600_2"), hits)
     app.handle("g")
     app.filter = "600_1"
     _, hits = frame(dashboard)
     assert app.visible_ids == ["600_1"]
-    click(app, table_point(hits, "job", "600_1"), hits)
+    click(app, table_point(app, hits, "job", "600_1"), hits)
     app.handle("u")
     groups = index(dashboard)
     assert groups.for_job("600_1") is groups.for_job("600_2") is None

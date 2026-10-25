@@ -18,7 +18,8 @@ def initialize(app):
     if not isinstance(getattr(app, "session_tools_state", None), dict):
         app.session_tools_state = {"reviewed": [], "records": {}, "cursor": 0, "query": "", "filtering": False,
             "inbox_filter": "unread", "selected": "", "diagnostics": [], "diagnostic_cursor": 0,
-            "probe_events": [], "alert_cursor": 0, "alert_draft": {}, "mouse_rows": {}, "mouse_mode": ""}
+            "probe_events": [], "alert_cursor": 0, "alert_draft": {}, "mouse_rows": {}, "mouse_mode": "",
+            "alert_details": False, "control_hits": [], "control_token": None}
     return app.session_tools_state
 
 
@@ -180,6 +181,7 @@ def run_command(app, args):
         try:
             if not values or values == ["show"]:
                 app.mode = "session_alerts"
+                state["alert_details"] = False
             elif values[0] == "snooze" and len(values) in (3, 4):
                 engine.snooze(values[1], float(values[2]), values[3] if len(values) == 4 else "*")
                 app.say("Alert notifications snoozed. Conditions and events remain visible.")
@@ -272,7 +274,12 @@ def handle_key(app, key):
     if app.mode == "session_alerts":
         engine = app.store.alerts
         if key in ("esc", "q"):
-            app.mode = "main"
+            if state.get("alert_details"):
+                state["alert_details"] = False
+            else:
+                app.mode = "main"
+        elif key == "enter":
+            state["alert_details"] = not state.get("alert_details", False)
         elif engine:
             if key in ("up", "down"):
                 state["alert_cursor"] = max(0, min(max(0, len(engine.rules) - 1), state["alert_cursor"] + (1 if key == "down" else -1)))
@@ -304,6 +311,22 @@ def handle_key(app, key):
 
 
 def handle_mouse(app, y, x, button="left", shift=False):
+    state = initialize(app)
+    if app.mode in ("session_inbox", "session_alerts", "terminal_diagnostics", "terminal_probe"):
+        if button in ("left", "double"):
+            for row, _, value in state.get("control_hits", ()):
+                if row == y and value["left"] <= x < value["right"] and value["action"][0] in ("key", "command"):
+                    if state.get("control_token") == _mouse_context(app):
+                        action, argument = value["action"]
+                        handle_key(app, argument) if action == "key" else app.run_command(argument)
+                    return True
+            if app.mode in ("session_alerts", "terminal_diagnostics"):
+                if state.get("control_token") != _mouse_context(app):
+                    return True
+                hit = state["mouse_rows"].get(y)
+                if hit and hit[1] <= x < hit[2]:
+                    state["alert_cursor" if app.mode == "session_alerts" else "diagnostic_cursor"] = hit[0]
+                return True
     if app.mode == "terminal_probe":
         state = initialize(app)
         event = f"Mouse: {button} x={x}, y={y}" + (" shift" if shift else "")
@@ -327,6 +350,11 @@ def overlay(views, snap, app, width, height):
     state = initialize(app)
     rows = []
     state["mouse_rows"], state["mouse_mode"] = {}, app.mode
+    state["control_hits"] = []
+    from .control_rows import buttons
+    action_rows, action_hits = buttons(views.g, max(1, width - 8), _mouse_choices(app),
+        group="session-actions", prefix="session-action:")
+    action_height = len(action_rows)
     if app.mode == "session_inbox":
         logical_hits = {}
         observe(app, snap)
@@ -341,7 +369,7 @@ def overlay(views, snap, app, width, height):
         state["selected"] = items[cursor]["key"] if items else ""
         rows = [[(f" {unread_count(app)} unreviewed | {state['inbox_filter']} | latest {LIMIT} retained completions", "accent+bold")],
                 [(" Filter: " + (clean(state["query"], views.g.ascii) or "none"), "dim")]]
-        page = max(1, height - 8)
+        page = max(1, height - 8 - action_height)
         start = max(0, cursor - page // 2)
         context = ("session_inbox", state["inbox_filter"], state["query"])
         logical, start = B.window(app, "modal:inbox", start, len(items), page, context=context, focus=cursor)
@@ -355,7 +383,7 @@ def overlay(views, snap, app, width, height):
         if not items:
             rows.append([(" No completions match. a shows all known completions.", "dim")])
         rows.append([(" u unread | f failures | a all | / filter | Enter History | l logs | r reviewed | A review list | Esc back", "dim")])
-        rendered = L.box(views.g, rows, width, height, "Completion inbox")
+        rendered = _mouse_box(views, app, rows, width, height, "Completion inbox", action_rows, action_hits)
         for row_index, identity in logical_hits.items():
             if row_index + 1 < len(rendered) - 1:
                 y, x, row = rendered[row_index + 1]
@@ -371,7 +399,22 @@ def overlay(views, snap, app, width, height):
             rows.append([(" Quiet hours: " + text, "accent")])
             rules = engine.rules
             cursor = min(state["alert_cursor"], max(0, len(rules) - 1))
-            page = max(1, (height - 7) // 2)
+            state["alert_cursor"] = cursor
+            if state.get("alert_details") and rules:
+                rule = rules[cursor]
+                from .command_ui import _wrap_exact
+                detail = _wrap_exact(clean(rule.when, views.g.ascii, limit=65536), max(1, width - 10))
+                rows += [[(clean(rule.name, views.g.ascii), "accent+bold")]]
+                page = max(1, height - 8 - action_height)
+                context = ("alert-condition", id(rule), rule.name, rule.when, width)
+                logical, start = B.window(app, "modal:alert-condition", 0, len(detail), page, context=context)
+                rows += [[(" " + line, "")] for line in detail[start:start + page]]
+                rows.append([(" Exact configured condition; active status remains observational.", "dim")])
+                rendered = _mouse_box(views, app, rows, width, height, "Alert condition", action_rows, action_hits)
+                return B.boxed(app, "modal:alert-condition", rendered, start=2, count=len(detail), page=page,
+                               target=logical, painted=start, setter=lambda value: None, context=context)
+            logical_hits = {}
+            page = max(1, (height - 7 - action_height) // 2)
             start = 2 * max(0, cursor - page // 2)
             page *= 2
             context = ("session_alerts", id(engine), bool(views.g.ascii))
@@ -382,35 +425,44 @@ def overlay(views, snap, app, width, height):
                 muted = engine.notification_muted(rule.name)
                 card = [[(clean(f" {rule.name} | {len(active)} active | {'notifications muted' if muted else 'notifications enabled'}", views.g.ascii), "sel" if index == cursor else "")],
                         [("  " + clean(rule.when, views.g.ascii), "dim")]]
-                rows.extend(card[max(0, start - index * 2):min(2, start + page - index * 2)])
+                first = len(rows)
+                visible_card = card[max(0, start - index * 2):min(2, start + page - index * 2)]
+                for offset in range(len(visible_card)):
+                    logical_hits[first + offset] = index
+                rows.extend(visible_card)
             for entry in controls["snoozes"][:max(0, height - len(rows) - 6)]:
                 rows.append([(clean(f" Snooze {entry['rule']} job={entry['job']} {max(0, entry['until'] - time.time()):.0f}s remaining", views.g.ascii), "yellow")])
             if not rules:
                 rows.append([(" No alert rules are configured. Add rules in your Raven configuration.", "dim")])
         rows.append([(" Arrows choose rule | s snooze 30m | u resume rule | Q quiet off | :alerts for custom controls | Esc back", "dim")])
-        rendered = L.box(views.g, rows, width, height, "Alert controls")
+        rendered = _mouse_box(views, app, rows, width, height, "Alert controls", action_rows, action_hits, logical_hits if engine else {})
         if engine:
             return B.boxed(app, "modal:alerts", rendered, start=1, count=2 * len(rules), page=page,
                            target=logical, painted=start, setter=lambda value: None, context=context)
         return rendered
     if app.mode == "terminal_diagnostics":
-        page = 3 * max(1, (height - 6) // 3)
+        page = 3 * max(1, (height - 6 - action_height) // 3)
         context = ("terminal_diagnostics", id(state["diagnostics"]), width, bool(views.g.ascii))
         offsets = _diagnostic_offsets(state, width, views.g.ascii)
         target = offsets[min(state["diagnostic_cursor"], max(0, len(offsets) - 2))]
         logical, start = B.window(app, "modal:diagnostics", target, offsets[-1], page,
                                   context=context, focus=state["diagnostic_cursor"])
         index = max(0, bisect_right(offsets, start) - 1)
+        logical_hits = {}
         while index < len(state["diagnostics"]) and offsets[index] < start + page:
             item = state["diagnostics"][index]
             card = [[(f" {item['status'].upper()} {item['name']}", "cyan" if item["status"] == "ok" else "yellow")]]
             detail = clean(item["detail"], views.g.ascii)
             available = max(1, width - 10)
             card += [[("  " + detail[i:i + available], "")] for i in range(0, min(len(detail), available * 2), available)]
-            rows.extend(card[max(0, start - offsets[index]):max(0, min(len(card), start + page - offsets[index]))])
+            first = len(rows)
+            visible_card = card[max(0, start - offsets[index]):max(0, min(len(card), start + page - offsets[index]))]
+            for offset in range(len(visible_card)):
+                logical_hits[first + offset] = index
+            rows.extend(visible_card)
             index += 1
         rows.append([(" Read-only evidence | arrows/pages browse | t interactive tests | r refresh | Esc back", "dim")])
-        rendered = L.box(views.g, rows, width, height, "Terminal diagnostics")
+        rendered = _mouse_box(views, app, rows, width, height, "Terminal diagnostics", action_rows, action_hits, logical_hits)
         return B.boxed(app, "modal:diagnostics", rendered, start=0, count=offsets[-1], page=page,
                        target=logical, painted=start, setter=lambda value: None, context=context, header=-1)
     if app.mode == "terminal_probe":
@@ -423,9 +475,9 @@ def overlay(views, snap, app, width, height):
         if sync is not None:
             status = sync.snapshot()
             rows.append([(" " + L.cut("Frame synchronization: " + status["reason"], max(1, width - 8), views.g.ascii), "dim")])
-        rows += [[(" " + clean(event, views.g.ascii), "")] for event in state["probe_events"][-max(1, height - 10 - int(sync is not None)):]]
+        rows += [[(" " + clean(event, views.g.ascii), "")] for event in state["probe_events"][-max(1, height - 10 - int(sync is not None) - action_height):]]
         rows.append([(" Esc closes | :terminaltest clipboard requests a copy test outside this probe", "dim")])
-        return L.box(views.g, rows, width, height, "Terminal input test")
+        return _mouse_box(views, app, rows, width, height, "Terminal input test", action_rows, action_hits)
     return None
 
 
@@ -443,3 +495,52 @@ def _diagnostic_offsets(state, width, ascii_):
         offsets.append(offsets[-1] + 1 + (length + available - 1) // available)
     state["diagnostic_row_index"] = {"source": source, "identity": identity, "offsets": offsets}
     return offsets
+
+
+
+def _mouse_context(app):
+    state = initialize(app)
+    engine = app.store.alerts
+    rules = tuple((id(rule), rule.name) for rule in engine.rules) if engine else ()
+    return (app.mode, state["mouse_mode"], state["query"], state["filtering"],
+            state["inbox_filter"], state["selected"], state["alert_cursor"], state.get("alert_details"),
+            id(engine), rules, id(state["diagnostics"]), state["diagnostic_cursor"])
+
+
+def _mouse_choices(app):
+    state = initialize(app)
+    if app.mode == "session_inbox":
+        choices = (("done-filter", "Done filtering", "enter"),) if state["filtering"] else (
+            ("close", "Close", "esc"), ("open", "Open History", "enter"), ("logs", "Logs", "l"),
+            ("reviewed", "Mark reviewed", "r"), ("all", "All", "a"), ("unread", "Unread", "u"),
+            ("failed", "Failures", "f"), ("filter", "Filter", "/"))
+    elif app.mode == "session_alerts":
+        choices = (("close", "Back" if state.get("alert_details") else "Close", "esc"),
+                   ("details", "Rule details", "enter"), ("snooze", "Snooze 30 min", "s"),
+                   ("resume", "Resume rule", "u"), ("quiet-off", "Quiet hours off", "Q"))
+    elif app.mode == "terminal_diagnostics":
+        choices = (("close", "Close", "esc"), ("refresh", "Refresh", "r"), ("input-test", "Input test", "t"))
+    elif app.mode == "terminal_probe":
+        return [("close", "Close", ("key", "esc")), ("clipboard", "Test clipboard", ("command", "terminaltest clipboard"))]
+    else:
+        return []
+    return [(identifier, label, ("key", key)) for identifier, label, key in choices]
+
+
+def _mouse_box(views, app, rows, width, height, title, action_rows, action_hits, logical_hits=None):
+    from .control_rows import place_hits
+    offset = max(0, len(rows) - 1)
+    rows = rows[:offset] + action_rows + rows[offset:]
+    rendered = L.box(views.g, rows, width, height, title)
+    state = initialize(app)
+    state["control_hits"] = place_hits([(row + offset, kind, value) for row, kind, value in action_hits], rendered[1:-1])
+    for row_index, identity in (logical_hits or {}).items():
+        if row_index + 1 < len(rendered) - 1:
+            y, x, row = rendered[row_index + 1]
+            right = x + L.vlen(L.row_text(row)) - 1
+            state["mouse_rows"][y] = (identity, x + 1, right)
+            state["control_hits"].append((y, "control", {"id": "session-row:" + str(identity) + ":" + str(y),
+                "label": "Select " + str(identity), "left": x + 1, "right": right,
+                "group": "session-rows", "button": False, "action": ("click", y, x + 1)}))
+    state["control_token"] = _mouse_context(app)
+    return rendered

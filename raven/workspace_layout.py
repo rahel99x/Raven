@@ -100,7 +100,7 @@ def save(app) -> dict:
 
 
 def command_names() -> list[str]:
-    return ["density", "focus", "maximize", "layout", "panel-scroll"]
+    return ["density", "focus", "maximize", "layout", "panel-scroll", "layout-menu"]
 
 
 def _say(app, message: str, failure: bool = False) -> None:
@@ -126,6 +126,10 @@ from .ui.workspace_actions import _scroll as _scroll
 
 def handle_key(app, key: str) -> bool:
     if getattr(app, "mode", "main") == "layout":
+        from .interaction import handle_key as focus_key
+
+        if focus_key(app, key):
+            return True
         state = initialize(app)
         if key in ("esc", "q", "enter"):
             app.mode = "main"
@@ -204,6 +208,27 @@ def run_command(app, args: list[str]) -> bool:
         return False
     state = initialize(app)
     command, rest = args[0], args[1:]
+    if command == "layout-menu":
+        if getattr(app, "mode", "main") != "layout":
+            return True
+        menu = _menu_state(app)
+        if (
+            len(rest) == 3
+            and rest[0] == "choose"
+            and rest[1] == str(menu.get("revision", 0))
+            and rest[2].isdigit()
+            and menu["token"] == _menu_token(app)
+        ):
+            index = int(rest[2])
+            if 0 <= index < len(menu.get("actions", ())):
+                app.run_command(menu["actions"][index])
+        elif rest == ["close"]:
+            app.mode = "main"
+        elif rest == ["save"]:
+            from .command_ui import open_palette
+
+            open_palette(app, "layout save ")
+        return True
     if command == "density":
         if len(rest) == 1 and rest[0] in DENSITIES:
             state.density = rest[0]
@@ -346,7 +371,7 @@ def _content_origin(app, width, height):
         and getattr(rect, "height", None) == height
     ):
         return rect.x, rect.y
-    return 0, getattr(app, "body_origin", 0)
+    return getattr(app, "content_origin_x", 0), getattr(app, "body_origin", 0)
 
 
 def _main_geometry(app, rects):
@@ -1287,7 +1312,10 @@ def transform_body(
         rect = rects.get("details")
         app.job_panel_rect = (
             Rect(
-                rect.x, rect.y + getattr(app, "body_origin", 0), rect.width, rect.height
+                rect.x + _content_origin(app, width, height)[0],
+                rect.y + _content_origin(app, width, height)[1],
+                rect.width,
+                rect.height,
             )
             if rect
             else None
@@ -1306,6 +1334,11 @@ def render_body(
 ):
     from .terminal import ui as terminal_ui
 
+    if height is not None:
+        # Native renderers that bypass adaptive splitting still own a bounded
+        # document area. Never inherit the previous page's Jobs/Details bounds.
+        _main_geometry(app, {"main": Rect(0, 0, max(0, width), max(0, height))})
+        app.job_panel_rect = None
     if terminal_ui.enabled(app) and getattr(app, "tab", "") not in ("jobs", "history"):
         return terminal_ui.wrap_workspace(
             app,
@@ -1566,52 +1599,198 @@ def _render_body(
     )
 
 
+def _menu_state(app):
+    state = getattr(app, "workspace_layout_ui_state", None)
+    if not isinstance(state, dict):
+        state = app.workspace_layout_ui_state = {
+            "control_hits": [],
+            "token": None,
+            "revision": 0,
+            "actions": (),
+        }
+    return state
+
+
+def _menu_token(app):
+    state = initialize(app)
+    return (
+        getattr(app, "mode", "main"),
+        getattr(app, "width", None),
+        getattr(app, "height", None),
+        tuple(_settings(state).items()),
+        tuple(
+            (name, tuple(value.items())) for name, value in sorted(state.named.items())
+        ),
+        state.overlay_top,
+    )
+
+
+def handle_mouse(app, y, x, button="left", shift=False):
+    """Use the shared modal gesture adapter; dispatch painted actions only."""
+    if getattr(app, "mode", "main") != "layout":
+        return False
+    if button in ("wheel-up", "wheel-down"):
+        layout = initialize(app)
+        layout.overlay_top = max(
+            0,
+            min(
+                max(0, layout.overlay_count - layout.overlay_page),
+                layout.overlay_top + (-1 if button == "wheel-up" else 1),
+            ),
+        )
+    elif button == "left":
+        state = _menu_state(app)
+        if state["token"] == _menu_token(app):
+            for row, _, value in state["control_hits"]:
+                if y == row and value["left"] <= x < value["right"]:
+                    app.run_command(value["action"][1])
+                    break
+    return True
+
+
 def overlay(views, snap, app, width: int, height: int):
     if getattr(app, "mode", "main") != "layout":
         return None
-    state = initialize(app)
+    from .control_rows import buttons, place_hits
+
+    state, menu = initialize(app), _menu_state(app)
+    previous_token = menu["token"]
+    menu.update(control_hits=[], token=None)
+    inner = max(1, width - 4)
+    sticky, sticky_hits = buttons(
+        views.g,
+        inner,
+        [
+            ("close", "Close", ("command", "layout-menu close")),
+            ("save", "Save current...", ("command", "layout-menu save")),
+        ],
+        group="workspace-layout",
+        prefix="layout:",
+    )
     lines = [
         [
             (
                 f" Density: {state.density}   Focus: {state.focus}   Split: {state.ratio}% Main",
                 "bold",
             )
-        ],
-        [(" :density comfortable|compact|focused", "secondary")],
-        [(" :focus main|details   :maximize   :layout split 20..80", "secondary")],
-        [(" Ctrl-W: change panel; arrows: scroll Details; z: maximize", "dim")],
-        [(" Saved layouts", "heading+bold")],
+        ]
     ]
-    lines.extend(
+    hits = []
+
+    def append(choices, selected=None):
+        rows, controls = buttons(
+            views.g,
+            inner,
+            choices,
+            selected=selected,
+            group="workspace-layout",
+            prefix="layout:",
+        )
+        hits.extend((y + len(lines), kind, value) for y, kind, value in controls)
+        lines.extend(rows)
+
+    append(
+        [(name, name.title(), ("command", "density " + name)) for name in DENSITIES],
+        state.density,
+    )
+    append(
+        [
+            (name, "Focus " + name.title(), ("command", "focus " + name))
+            for name in PANELS
+        ],
+        state.focus,
+    )
+    append(
         [
             (
-                f" {name:<20} {value['density']} / {value['focus']} / {value['split']}%",
-                "text",
-            )
+                "maximize",
+                "Restore panes" if state.maximized else "Maximize pane",
+                ("command", "maximize"),
+            ),
+            (
+                "less",
+                "Main -5%",
+                ("command", "layout split " + str(max(20, state.ratio - 5))),
+            ),
+            (
+                "more",
+                "Main +5%",
+                ("command", "layout split " + str(min(80, state.ratio + 5))),
+            ),
         ]
-        for name, value in sorted(state.named.items())
     )
+    lines.append([(" Saved layouts", "heading+bold")])
+    for name, value in sorted(state.named.items()):
+        lines.append(
+            [
+                (
+                    f" {name}: {value['density']} / {value['focus']} / {value['split']}%",
+                    "text",
+                )
+            ]
+        )
+        append(
+            [
+                ("load:" + name, "Load " + name, ("command", "layout load " + name)),
+                (
+                    "delete:" + name,
+                    "Delete " + name,
+                    ("command", "layout delete " + name),
+                ),
+            ]
+        )
     if not state.named:
-        lines.append([(" Save your current workspace with :layout save <name>", "dim")])
-    lines.append(
-        [(" Esc: close   :layout load <name>   :layout delete <name>", "muted")]
-    )
+        lines.append([(" Save current to reuse your layout on later launches.", "dim")])
     state.overlay_count = len(lines)
-    state.overlay_page = max(1, height - 5)
+    state.overlay_page = max(1, height - len(sticky) - 5)
     state.overlay_top = max(
         0, min(state.overlay_top, max(0, len(lines) - state.overlay_page))
     )
-    visible = lines[state.overlay_top : state.overlay_top + state.overlay_page]
-    if len(lines) > state.overlay_page:
+    top, page = state.overlay_top, state.overlay_page
+    visible = sticky + lines[top : top + page]
+    visible_hits = sticky_hits + [
+        (y - top + len(sticky), kind, value)
+        for y, kind, value in hits
+        if top <= y < top + page
+    ]
+    if len(lines) > page:
         visible.append(
             [
                 (
-                    f" {state.overlay_top + 1}-{min(len(lines), state.overlay_top + state.overlay_page)}/{len(lines)}  Up/Down/PgUp/PgDn scroll",
+                    f" {top + 1}-{min(len(lines), top + page)}/{len(lines)}  Scroll: Up/Down or mouse wheel",
                     "muted",
                 )
             ]
         )
-    return L.box(views.g, visible, width, height, "Workspace layouts", min_width=52)
+    stable_width = max(
+        52, max((L.vlen(L.row_text(row)) + 4 for row in sticky + lines), default=0)
+    )
+    result = L.box(
+        views.g, visible, width, height, "Workspace layouts", min_width=stable_width
+    )
+    token = _menu_token(app)
+    if previous_token != token:
+        menu["revision"] += 1
+    controls = place_hits(visible_hits, result[1:-1])
+    menu["actions"] = tuple(value["action"][1] for _, _, value in controls)
+    menu.update(
+        control_hits=[
+            (
+                y,
+                kind,
+                dict(
+                    value,
+                    action=(
+                        "command",
+                        f"layout-menu choose {menu['revision']} {index}",
+                    ),
+                ),
+            )
+            for index, (y, kind, value) in enumerate(controls)
+        ],
+        token=token,
+    )
+    return result
 
 
 def wrap_terminal_workspace(app, width, height, renderer, *, ascii_=False):

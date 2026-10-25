@@ -254,7 +254,10 @@ def test_mouse_click_selects_exact_catalog_entry_and_enter_opens_it(browser):
     hit = next(hit for hit in hits if hit[1:] == ("log_file", entry["id"]))
     assert entry["label"] in row_text(rows[hit[0]])
     previous = browser.app.logs.path
-    browser.app.click(hit[0], 1, hits)
+    from raven.interaction import controls
+    target = next(control for control in controls(browser.app)
+                  if control.id == "log_file:" + entry["id"])
+    browser.app.click(hit[0], target.rect.left, hits)
     assert browser.app.logs.entries[browser.app.logs.browser_cursor]["id"] == entry["id"]
     assert browser.app.logs.browser
     assert browser.app.logs.path == previous

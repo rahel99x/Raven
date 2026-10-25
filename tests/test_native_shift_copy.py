@@ -25,9 +25,10 @@ def test_source_shift_click_uses_rendered_range_instead_of_legacy_screen_rows(mo
     draw()
     rows = [y for y, kind, _ in app.last_hits if kind == "source"]
     start, end = (rows[-1], rows[0]) if reverse else (rows[0], rows[-1])
-    app.click(start, 8, app.last_hits)
+    pane = next(pane for pane in T.initialize(app)["panes"] if pane.key == "sources")
+    app.click(start, pane.rect.left + 8, app.last_hits)
     draw()
-    app.click(end, 8, app.last_hits, shift=True)
+    app.click(end, pane.rect.left + 8, app.last_hits, shift=True)
     assert app.sel_anchor is None
     assert T.initialize(app)["selection"]["key"] == "sources"
     expected = T.selection_text(app)
@@ -51,9 +52,10 @@ def test_log_catalog_shift_range_excludes_the_adjacent_job_history(tmp_path, mon
         draw()
         rows = [y for y, kind, _ in app.last_hits if kind == "log_file"]
         start, end = (rows[-1], rows[0]) if reverse else (rows[0], rows[-1])
-        app.click(start, 8, app.last_hits)
+        pane = next(pane for pane in T.initialize(app)["panes"] if pane.key == "logs:catalog")
+        app.click(start, pane.rect.left + 8, app.last_hits)
         draw()
-        app.click(end, 8, app.last_hits, shift=True)
+        app.click(end, pane.rect.left + 8, app.last_hits, shift=True)
         assert app.sel_anchor is None
         assert T.initialize(app)["selection"]["key"] == "logs:catalog"
         expected = T.selection_text(app)

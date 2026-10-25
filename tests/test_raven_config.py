@@ -180,7 +180,7 @@ def test_missing_raven_config_does_not_discover_other_user_directories(tmp_path)
     original=old.read_bytes()
     result=C.resolve(env=env,system_policy_paths=[])
     assert not result.source and not result.legacy_source
-    assert result.data['connection']['host']=='' and result.data['ui']['theme']=='terminal'
+    assert result.data['connection']['host']=='' and result.data['ui']['theme']=='gruvbox-dark'
     assert old.read_bytes()==original and not Path(env['XDG_STATE_HOME']).exists()
 
 

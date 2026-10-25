@@ -169,6 +169,8 @@ def test_welcome_expires_during_normal_frames_without_input_or_restart(terminal)
 
 
 def test_preview_paints_below_open_dropdown_without_closing_it(terminal, monkeypatch):
+    # This fixture deliberately overlaps the left-anchored menu and welcome.
+    terminal.window.width, terminal.window.height = 100, 24
     startup.restore(terminal.app, {"enabled": False})
     toolbar.run_command(terminal.app, ["preferences"])
     items = toolbar.menu_items(terminal.app, "Setup")

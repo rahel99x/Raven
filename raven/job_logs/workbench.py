@@ -1262,6 +1262,21 @@ def overlay(views, snap, app, width, height):
     label = status_label(app)
     if label:
         rows.insert(0, [(" " + label, "yellow+bold")])
+    # Recovery stays visible even when this optional presentation has no data.
+    from ..control_rows import buttons
+
+    choices = [("original", "Original", ("key", "esc"))]
+    available_sources = (data or {}).get("sources", [])
+    if state["view"] in ("split", "diff") and len(available_sources) == 2:
+        choices += [
+            ("left", "Copy source: left", ("key", "[")),
+            ("right", "Copy source: right", ("key", "]")),
+        ]
+    controls, control_hits = buttons(
+        views.g, max(0, width - 8), choices, group="log_sources", prefix="log-source:"
+    )
+    button_hits = [(y + len(rows), kind, value) for y, kind, value in control_hits]
+    rows.extend(controls)
     if data is None:
         rows.append([(" Waiting for the shared background reader.", "dim")])
     elif data.get("error"):
@@ -1278,24 +1293,6 @@ def overlay(views, snap, app, width, height):
                 ]
             )
         else:
-            if state["view"] in ("split", "diff"):
-                from ..control_rows import buttons
-
-                choices = [("original", "Original", ("key", "esc"))]
-                if len(sources) == 2:
-                    choices += [
-                        ("left", "Copy source: left", ("key", "[")),
-                        ("right", "Copy source: right", ("key", "]")),
-                    ]
-                controls, hits = buttons(
-                    views.g,
-                    max(0, width - 8),
-                    choices,
-                    group="log_sources",
-                    prefix="log-source:",
-                )
-                button_hits = [(y + len(rows), kind, value) for y, kind, value in hits]
-                rows.extend(controls)
             if state["view"] == "divergence":
                 rows.append(
                     [

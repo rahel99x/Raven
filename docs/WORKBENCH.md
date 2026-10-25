@@ -56,7 +56,7 @@ for its keys and the [reference](reference.md) for scripted commands.
 
 | Improvement | How to use it | Behavior and limits |
 | --- | --- | --- |
-| 1. Shared visual design | `:theme dark`, `light`, or `terminal`; `T` cycles themes | Consistent semantic colors and surfaces. `terminal` retains your terminal background; `mono`, `high`, `cb`, and `reader` remain available. |
+| 1. Shared visual design | Open **Themes**; `T` cycles curated palettes; `:theme system` inherits terminal colours | Gruvbox is the default. Named palettes cover all surfaces and charts; compatibility accessibility modes remain available by command. |
 | 2. Focusable, expandable panels | `Ctrl-W` / F6, `z`; `:focus details`, `:maximize on` | Main and Details have independent scroll positions where a page provides both. `:panel-scroll page-down` supplies a command alternative. |
 | 3. Information density and saved layouts | `:density comfortable`, `compact`, or `focused`; `:layout split 55`; `:layout save work` | Split is Main's percentage, from 20 to 80. Up to 16 named layouts; `load`, `delete`, and `list` manage them. Narrow screens use a vertical layout. |
 | 4. Configurable metric dashboards | `:dashboard`, `:dashboard pin loss`, `:dashboard hide debug_value` | Arrange up to 64 reported metrics, with saved pins, visibility, order, card expansion, and colors. |

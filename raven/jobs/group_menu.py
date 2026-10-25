@@ -8,7 +8,7 @@ from __future__ import annotations
 from raven.table_sort import _natural
 from raven.ui.control_graph import Control, Rect
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import re
 import time
 
@@ -102,6 +102,89 @@ def _menu_items(prefix, destinations, suffix, *, expanded=False):
     return (*prefix, *destinations[:RECENT_GROUPS], more, *suffix)
 
 
+def _scheduler_items(app, snap, targets):
+    """Freeze the applicable subset at menu-open time, without scheduler I/O.
+
+    A group may contain both finished and active members. Counts make that
+    distinction explicit; choosing an item never silently acquires new jobs.
+    """
+    actions = getattr(app, "actions", None)
+    if actions is None or getattr(app, "replay", None):
+        return ()
+    from raven.historical_ui import active as historical_active
+
+    if historical_active(app):
+        return ()
+    records = {job.id: job for job in snap.get("jobs", ())}
+    result = []
+    for verb, title in (
+        ("hold", "Hold pending"),
+        ("release", "Release held"),
+        ("cancel", "Cancel active"),
+    ):
+        ids = tuple(
+            jid
+            for jid in targets
+            if jid in records and actions.applicable(verb, records[jid])[0]
+        )
+        if not ids:
+            continue
+        count = (
+            str(len(ids))
+            if len(ids) == len(targets)
+            else f"{len(ids)} of {len(targets)}"
+        )
+        result.append(
+            dict(
+                label=f"{title} jobs ({count})…",
+                action="scheduler:" + verb,
+                targets=ids,
+            )
+        )
+    return tuple(result)
+
+
+def _review_scheduler(app, frozen, item, pointer_guard=None):
+    """Prepare the existing one-shot review for the exact frozen active jobs."""
+    from raven.jobs import group_actions as A
+
+    snap = A.validate(app, frozen)
+    if snap is None:
+        return
+    if frozen.get("action_scope") != app._action_scope():
+        _feedback(app, "Connection changed; select the current jobs and review again")
+        return
+    verb = item["action"].split(":", 1)[1]
+    jobs = {job.id: job for job in snap.get("jobs", ())}
+    ids = item["targets"]
+    if any(
+        jid not in jobs or not app.actions.applicable(verb, jobs[jid])[0] for jid in ids
+    ):
+        _feedback(
+            app,
+            "Selected jobs changed; review the current jobs before applying " + verb,
+        )
+        return
+    # Store publication objects may be replaced or updated while the review is
+    # open. Preserve the reviewed attempt fields for finish_confirm's recheck.
+    review = dict(
+        action=verb,
+        jobs=[replace(jobs[jid]) for jid in ids],
+        action_scope=frozen["action_scope"],
+    )
+    if len(ids) != len(frozen["targets"]):
+        excluded = len(frozen["targets"]) - len(ids)
+        review["review"] = [
+            f"Only the {len(ids)} applicable active job{'s' if len(ids) != 1 else ''} "
+            f"listed above {'are' if len(ids) != 1 else 'is'} targeted; "
+            f"{excluded} other selected job{'s' if excluded != 1 else ''} "
+            f"{'are' if excluded != 1 else 'is'} excluded."
+        ]
+    if pointer_guard is not None:
+        review["pointer_guard"] = pointer_guard
+    app.confirm, app.mode = review, "confirm"
+
+
 def _expand(app):
     state = initialize(app)
     state.update(
@@ -124,9 +207,9 @@ def _expand(app):
 
 
 def open_menu(app, context=None):
-    """Open for a projected group header, marked row, or active single row.
+    """Open for a projected group header, marked row, or pointed single row.
 
-    An unmarked active row is an exact single-job context even when another
+    An unmarked pointed row is an exact single-job context even when another
     list retains marks. Unrelated marks must never broaden its actions.
     """
     if getattr(app, "mode", "main") != "main" or not isinstance(context, dict):
@@ -138,7 +221,7 @@ def open_menu(app, context=None):
         targets = context.get("ids", ())
     elif pointed in marks:
         targets = tuple(jid for jid in context.get("ids", ()) if jid in marks)
-    elif pointed and pointed == context.get("selected"):
+    elif pointed and pointed in context.get("ids", ()):
         targets = (pointed,)
     else:
         return False
@@ -176,6 +259,10 @@ def open_menu(app, context=None):
     evidence = M.target_evidences(app, snap, required, index=index, all_groups=True)
     frozen["ungroup_groups"] = {gid: evidence.get(gid) for gid in collapsed}
     prefix, destination_items, suffix = [], [], []
+    scheduler_items = _scheduler_items(app, snap, targets)
+    if scheduler_items:
+        frozen["action_scope"] = app._action_scope()
+        prefix.extend(scheduler_items)
     if len(targets) >= 2:
         prefix.append(dict(label="Create Group", action="create"))
     if grouped:
@@ -227,7 +314,7 @@ def open_menu(app, context=None):
         ):
             frozen["rerun_source"] = asdict(records[0])
             suffix.append(dict(label="Rerun cancelled job", action="rerun"))
-    suffix.append(dict(label="Cancel", action="cancel"))
+    suffix.append(dict(label="Close menu", action="cancel"))
     prefix, destination_items, suffix = (
         tuple(prefix),
         tuple(destination_items),
@@ -302,9 +389,24 @@ def _activate(app, index, *, pointer=False):
                 *previous_hit,
             )
         return
+    pointer_guard = None
+    if pointer:
+        hit = next(
+            (
+                (row, left, right)
+                for row, left, right, actual in state["hits"]
+                if actual == index
+            ),
+            None,
+        )
+        if hit is not None:
+            pointer_guard = (time.monotonic() + AGGREGATE_GUARD_SECONDS, *hit)
     close(app)
     action = item["action"]
     if action == "cancel":
+        return
+    if action.startswith("scheduler:"):
+        _review_scheduler(app, frozen, item, pointer_guard)
         return
     from raven.jobs import group_actions as A
 

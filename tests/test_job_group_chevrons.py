@@ -156,8 +156,12 @@ def test_clicking_an_ordinary_job_cell_selects_exact_job_without_folding(raven, 
     app, _, _ = raven
     _, hits = frame(raven, context)
     y = next(y for y, actual_kind, value in hits if actual_kind == kind and value == jid)
-    app.click(y, 12, hits, button="press")
-    app.click(y, 12, hits, button="release")
+    from raven.interaction import controls
+    row = next(control for control in controls(app)
+               if control.id == f"{kind}:{jid}")
+    x = min(row.rect.right - 1, row.rect.left + 10)
+    app.click(y, x, hits, button="press")
+    app.click(y, x, hits, button="release")
     assert app.selected_id == jid
     assert not is_closed(app, "array:500" if jid.startswith("500") else "array:600")
     assert not app.marks

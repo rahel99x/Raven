@@ -599,6 +599,7 @@ def wrap_render(views, snap, app, width, height, content_renderer):
         state["focused"] = False
     width, height = max(0, width), max(0, height)
     origin = int(getattr(app, "body_origin", 0))
+    origin_x = int(getattr(app, "content_origin_x", 0))
     if not width or not height:
         state["frame"] = None
         app.history_browser_content_rect = None
@@ -679,6 +680,7 @@ def wrap_render(views, snap, app, width, height, content_renderer):
         "width": width,
         "height": height,
         "origin": origin,
+        "origin_x": origin_x,
         "browser": browser,
         "content": content,
         "divider": divider,
@@ -690,10 +692,10 @@ def wrap_render(views, snap, app, width, height, content_renderer):
         "preference": (view["dock"], view["enabled"], view["ratio"]),
     }
     app.history_browser_content_rect = Rect(
-        content.x, content.y + origin, content.width, content.height
+        content.x + origin_x, content.y + origin, content.width, content.height
     )
     app.history_browser_rect = Rect(
-        browser.x, browser.y + origin, browser.width, browser.height
+        browser.x + origin_x, browser.y + origin, browser.width, browser.height
     )
     chart_mark = len(plot_state(app)["pending"])
     scroll_mark = scrollbars.mark(app)
@@ -759,11 +761,27 @@ def wrap_render(views, snap, app, width, height, content_renderer):
         from .ui import divider_registry
 
         divider_registry.paint(
-            canvas, app, "history:" + app.tab, origin_y=origin, ascii_=views.g.ascii
+            canvas,
+            app,
+            "history:" + app.tab,
+            origin_x=origin_x,
+            origin_y=origin,
+            ascii_=views.g.ascii,
         )
         hit = divider_registry.control_hit(app, "history:" + app.tab, origin_y=origin)
         if hit:
-            result_hits.append(hit)
+            y, kind, value = hit
+            result_hits.append(
+                (
+                    y,
+                    kind,
+                    dict(
+                        value,
+                        left=value["left"] - origin_x,
+                        right=value["right"] - origin_x,
+                    ),
+                )
+            )
     drag = state.get("drag")
     if drag and not _drag_valid(app, drag):
         _cancel_drag(state)
@@ -807,11 +825,11 @@ def _register_divider(app):
         app,
         "history:" + app.tab,
         "vertical" if vertical else "horizontal",
-        divider.x,
+        frame.get("origin_x", 0) + divider.x,
         frame["origin"] + divider.y,
         divider.width,
         divider.height,
-        0 if vertical else frame["origin"],
+        frame.get("origin_x", 0) if vertical else frame["origin"],
         (frame["width"] if vertical else frame["height"]) - 1,
         view["ratio"] if first else 100 - view["ratio"],
         resize,
@@ -834,7 +852,12 @@ def offset_hits(app, body_origin):
         setattr(
             app,
             "history_browser_" + ("content_rect" if name == "content" else "rect"),
-            Rect(rect.x, rect.y + body_origin, rect.width, rect.height),
+            Rect(
+                rect.x + frame.get("origin_x", 0),
+                rect.y + body_origin,
+                rect.width,
+                rect.height,
+            ),
         )
     _register_divider(app)
 
@@ -862,6 +885,7 @@ def tick(app):
 
 def _drop(frame, y, x):
     y -= frame["origin"]
+    x -= frame.get("origin_x", 0)
     if not 0 <= x < frame["width"] or not 0 <= y < frame["height"]:
         return None
     distances = {

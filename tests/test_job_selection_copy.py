@@ -25,10 +25,10 @@ def copied_ids(copied):
 def test_pointer_single_and_drag_selection_copies_only_selected_jobs(dashboard, copied, route, count):
     app, _store = dashboard
     _, hits = frame(dashboard)
-    dispatch(app, hits, point(hits, "4"), "press", route)
+    dispatch(app, hits, point(app, hits, "4"), "press", route)
     if count > 1:
-        dispatch(app, hits, point(hits, str(3 + count)), "drag", route)
-    dispatch(app, hits, point(hits, str(3 + count)), "release", route)
+        dispatch(app, hits, point(app, hits, str(3 + count)), "drag", route)
+    dispatch(app, hits, point(app, hits, str(3 + count)), "release", route)
     app.handle("y")
     assert copied_ids(copied) == [str(i) for i in range(4, 4 + count)]
     assert all(len(line.split("\t")) == 8 for line in copied[0].splitlines())
@@ -46,8 +46,8 @@ def test_each_native_job_pane_copies_exact_scope(dashboard, copied, tab, kind, i
         store.jobs[3].dependency = "afterok:1"
         store.jobs[4].dependency = "afterok:2"
     _, hits = frame(dashboard, tab)
-    dispatch(app, hits, point(hits, identifiers[0], kind), "press", "sgr")
-    dispatch(app, hits, point(hits, identifiers[0], kind), "release", "sgr")
+    dispatch(app, hits, point(app, hits, identifiers[0], kind), "press", "sgr")
+    dispatch(app, hits, point(app, hits, identifiers[0], kind), "release", "sgr")
     mark(app, *identifiers)
     assert job_copy.copy_selection(app)
     order = job_selection.context(app)["ids"]
@@ -123,8 +123,8 @@ def test_collapsed_group_copy_preserves_exact_representative_and_does_not_includ
     group = job_groups.registry(app).index.for_job("1")
     job_groups.fold(app, group.id, True)
     _, hits = frame(dashboard)
-    dispatch(app, hits, point(hits, "1"), "press", "sgr")
-    dispatch(app, hits, point(hits, "1"), "release", "sgr")
+    dispatch(app, hits, point(app, hits, "1"), "press", "sgr")
+    dispatch(app, hits, point(app, hits, "1"), "release", "sgr")
     assert job_copy.copy_selection(app)
     assert copied_ids(copied) == ["1"]
 
@@ -154,8 +154,8 @@ def test_other_pane_healthy_marks_never_replace_focused_single_job(dashboard, co
     frame(dashboard)
     mark(app, "4")
     _, hits = frame(dashboard, "history")
-    dispatch(app, hits, point(hits, "24", "fin"), "press", "sgr")
-    dispatch(app, hits, point(hits, "24", "fin"), "release", "sgr")
+    dispatch(app, hits, point(app, hits, "24", "fin"), "press", "sgr")
+    dispatch(app, hits, point(app, hits, "24", "fin"), "release", "sgr")
     app.handle("y")
     assert copied_ids(copied) == ["24"]
 
@@ -178,8 +178,8 @@ def test_cancelled_drag_restores_mark_scope_for_later_filtered_copy_guard(dashbo
     _, hits = frame(dashboard)
     mark(app, "4")
     before = dict(app.job_selection_state["mark_scopes"])
-    dispatch(app, hits, point(hits, "6"), "press", "sgr")
-    dispatch(app, hits, point(hits, "8"), "drag", "sgr")
+    dispatch(app, hits, point(app, hits, "6"), "press", "sgr")
+    dispatch(app, hits, point(app, hits, "8"), "drag", "sgr")
     assert job_selection.handle_key(app, "esc")
     assert app.marks == {"4"}
     assert app.job_selection_state["mark_scopes"] == before

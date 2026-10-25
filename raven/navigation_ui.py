@@ -459,6 +459,10 @@ def handle_mouse(app, y, x, button="left", shift=False):
         return False
     state = initialize(app)
     if button == "left":
+        for row, _, value in state.get("control_hits", ()):
+            if row == y and value["left"] <= x < value["right"]:
+                handle_key(app, value["action"][1])
+                return True
         index = next((index for row, index in state.get("picker_hits", []) if row == y), None)
         if index is not None:
             state["picker_cursor"] = index
@@ -469,8 +473,12 @@ def overlay(views, snap, app, width, height):
     if app.mode != "workspace_picker":
         return None
     state = initialize(app)
+    from .control_rows import buttons, place_hits
+    action_rows, action_hits = buttons(views.g, max(1, width - 8),
+        [("open", "Open workspace", ("key", "enter")), ("close", "Close", ("key", "esc"))],
+        group="workspace-actions", prefix="workspace-action:")
     entries = _workspaces(app)
-    page = max(1, height - 9)
+    page = max(1, height - 9 - len(action_rows))
     state["picker_page"] = page
     cur = max(0, min(state["picker_cursor"], max(0, len(entries) - 1)))
     top = min(state["picker_top"], max(0, len(entries) - page))
@@ -491,8 +499,10 @@ def overlay(views, snap, app, width, height):
                       (cut(desc, max(0, width - len(label) - 15), views.g.ascii), style or "dim")])
     if not entries:
         lines.append([(" No workspace matches. Backspace clears the search.", "yellow")])
-    lines += [[("", "")], [(f" {len(entries)} workspaces  Up/Down choose  Enter opens  Esc closes", "dim")]]
+    action_offset = len(lines)
+    lines += action_rows + [[("", "")], [(f" {len(entries)} workspaces  Up/Down choose  Enter opens  Esc closes", "dim")]]
     result = box(views.g, lines, width, height, "Research workspaces")
+    state["control_hits"] = place_hits([(row + action_offset, kind, value) for row, kind, value in action_hits], result[1:-1])
     state["picker_hits"] = [(result[index + 3][0], top + index) for index in range(min(page, len(entries) - top))
                             if index + 3 < len(result) - 1]
     return B.boxed(app, "modal:workspaces", result, start=2, count=len(entries), page=page,

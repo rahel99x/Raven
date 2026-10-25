@@ -1676,6 +1676,27 @@ def _job_diff_rows(g, snap, app, width):
     return rows
 
 
+def _footer_controls(g, app, width):
+    """Keep local navigation available beside every analysis document."""
+    from .control_rows import buttons
+
+    state = initialize(app)
+    modal = state.get("modal", "")
+    choices = [("back", "Back" if state.get("modal_back") or modal == "chart_events" else "Close", ("key", "esc"))]
+    if modal == "inspect":
+        choices += [("logs", "Open logs", ("key", "l")), ("evidence", "Evidence", ("key", "e"))]
+    elif modal == "chart":
+        choices += [("previous", "Previous metric", ("key", "btab")), ("next", "Next metric", ("key", "tab"))]
+    elif modal in ("timeline", "chart_events"):
+        choices.append(("open", "Open selected", ("key", "enter")))
+        if modal == "timeline" and getattr(app, "replay", None) is not None:
+            choices.append(("seek", "Seek replay", ("key", "s")))
+    elif modal == "diff":
+        choices += [("unchanged", "Hide unchanged" if state.get("unchanged") else "Show unchanged", ("key", "u")),
+                    ("scales", "Independent axes" if state.get("shared_scale") else "Shared axes", ("key", "s"))]
+    return buttons(g, width, choices, group="analysis-navigation", prefix="analysis-navigation:")
+
+
 def overlay(views, snap, app, width, height):
     state = initialize(app)
     state["control_hits"] = []
@@ -1686,7 +1707,8 @@ def overlay(views, snap, app, width, height):
     scroll_context = (modal, state.get("job"), state.get("chart_job"), state.get("section"),
                       state.get("metric"), state.get("diff_kind"), tuple(state.get("diff_ids", ())), width)
     inner = max(1, min(160, width - 8))
-    page = max(1, height - 6)
+    navigation, navigation_hits = _footer_controls(g, app, inner)
+    page = max(1, height - 6 - len(navigation))
     state["chart_page"] = page
     row = lambda text, style="": [(clean(text, g.ascii), style)]
     button_hits = []
@@ -1809,22 +1831,26 @@ def overlay(views, snap, app, width, height):
     from .scrolling import viewport
     count = len(rows)
     painted = viewport(app, "analysis:document", offset, count, page, context=scroll_context)
-    rows = [L.clip_row(line, inner) for line in rows[painted:painted + page]] + [L.clip_row(footer, inner)]
+    visible_count = len(rows[painted:painted + page])
+    rows = [L.clip_row(line, inner) for line in rows[painted:painted + page]] + navigation + [L.clip_row(footer, inner)]
     rendered = L.box(g, rows, width, height, "   " + title, min_width=min(max(1, inner), 100))
     if modal in ("chart", "diff") and len(rendered) > 2:
         first_y, first_x, first_row = rendered[1]
         chart_interaction.place_since(app, chart_mark, dy=first_y - painted, dx=first_x + 1,
-                                     clip=(first_y, first_x + 1, rendered[-1][0],
+                                     clip=(first_y, first_x + 1, min(rendered[-1][0], first_y + visible_count),
                                            first_x + L.vlen(L.row_text(first_row)) - 1))
     from .control_rows import place_hits
-    state["control_hits"] = place_hits(button_hits, rendered[1:-1], offset=painted)
+    state["control_hits"] = place_hits([hit for hit in button_hits if painted <= hit[0] < painted + visible_count],
+                                       rendered[1:-1], offset=painted)
+    state["control_hits"].extend(place_hits([(y + visible_count, kind, value)
+                                           for y, kind, value in navigation_hits], rendered[1:-1]))
     for y, _, value in state["control_hits"]:
         if "event" in value:
             value["action"] = ("click", y, value["left"])
     if count > 0 and len(rendered) >= 3:
         top, left, first = rendered[1]
         right = left + L.vlen(L.row_text(first))
-        bottom = min(rendered[-1][0], top + page)
+        bottom = min(rendered[-1][0], top + visible_count)
         S.register(app, "analysis:document", (top, left + 1, bottom, right),
                    count, page, offset, painted,
                    lambda value: state.__setitem__("scroll", value),

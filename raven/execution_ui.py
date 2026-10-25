@@ -1,4 +1,4 @@
-"""Keyboard preflight forms and deliberately reviewed execution workspaces."""
+"""Mouse and keyboard preflight forms with deliberately reviewed execution."""
 from __future__ import annotations
 
 
@@ -10,6 +10,7 @@ import time
 from . import orchestrator, submission
 from .layout import box, vlen
 from .research_text import clean
+from .control_rows import buttons, place_hits
 
 _FIELDS = (("script", "Batch script"), ("workdir", "Working directory"), ("cpus", "CPUs / task"),
            ("mem", "Memory"), ("time", "Wall time"), ("partition", "Partition"), ("gres", "GPU / GRES"))
@@ -411,6 +412,35 @@ def handle_key(app, key):
 from .ui.script_text import _wrap as _wrap
 
 
+def _control_context(app, state):
+    """Bound painted controls to the exact editor, review and terminal geometry."""
+    geometry = state.get("confirm_screen") or (None, None)
+    return (getattr(app, "mode", None), getattr(app, "width", geometry[0]),
+            getattr(app, "height", geometry[1]), state["view"],
+            id(state["plan"]), id(state["review"]), id(state["pending_action"]),
+            state["running"], state["detail"], state["editing"], state["field"],
+            state["index"], state["top"], state["detail_scroll"], state["edit"])
+
+
+def _button_rows(views, lines, hits, width, choices):
+    """Publish local actions only; the owning keyboard handler keeps its guards."""
+    rows, controls = buttons(views.g, width,
+        [(name, label, ("key", key)) for name, label, key in choices],
+        group="execution_form", prefix="execution:")
+    offset = len(lines)
+    for y, kind, value in controls:
+        value["choice"] = "key:" + value["action"][1]
+        hits.append((offset + y, kind, value))
+    lines.extend(rows)
+
+
+def _row_control(hits, row, width, identity, label, choice):
+    if width > 0:
+        hits.append((row, "control", {"id": "execution:" + identity,
+            "label": label, "left": 0, "right": width,
+            "action": ("click", 0, 0), "choice": choice, "group": "execution_form"}))
+
+
 def overlay(views, snap, app, width, height):
     if getattr(app, "mode", None) != "execution":
         return None
@@ -430,18 +460,32 @@ def overlay(views, snap, app, width, height):
     usable = max(1, height - 6)
     inner = max(1, width - 8)
     lines = []
+    local_hits = []
+    control_offset = 0
     if state["running"]:
         elapsed = max(0, time.monotonic() - state["started"])
         lines.append([(f" Working {elapsed:.1f}s  {state['progress_text']}  c requests cancellation", "yellow")])
     if state["view"] == "form":
         title = "Resource and submission workbench"
+        if state["running"]:
+            _button_rows(views, lines, local_hits, inner,
+                         [("stop", "Cancel remaining", "c"), ("back", "Back", "esc")])
         for index, (name, label) in enumerate(_FIELDS):
             value = state["edit"] if state["editing"] and index == state["field"] else state["values"].get(name, "")
             prefix = views.g.cursor if index == state["field"] else " "
+            if not state["editing"] and not state["running"]:
+                _row_control(local_hits, len(lines), inner, "field:" + name,
+                             "Edit " + label, "field:" + str(index))
             lines.append([(f" {prefix} {label:<18} ", "cyan+bold" if index == state["field"] else "dim"),
                           (clean(value) or "(inherit)", "rev" if index == state["field"] else "")])
         plan = state["plan"]
-        lines.append([(" [Shell checks] ", "accent"), ("h   Enter edit   p validate   d command/errors   s review submit   Esc back", "dim")])
+        if not state["running"]:
+            choices = ([("apply", "Apply edit", "enter"), ("discard", "Discard edit", "esc")]
+                if state["editing"] else
+                [("back", "Back", "esc"), ("edit", "Edit selected", "enter"),
+                 ("validate", "Validate", "p"), ("details", "Command/errors", "d"),
+                 ("review", "Review submit", "s"), ("shell-checks", "Shell checks", "h")])
+            _button_rows(views, lines, local_hits, inner, choices)
         lines.append([(" LOCAL PREFLIGHT: " + ("VALID" if plan and plan["valid"] else "ERRORS" if plan else "NEEDS VALIDATION"),
                        "green+bold" if plan and plan["valid"] else "yellow+bold")])
         if plan:
@@ -449,6 +493,7 @@ def overlay(views, snap, app, width, height):
             for issue in plan["issues"][:max(0, usable - len(lines))]:
                 lines.append([(" " + clean(issue["message"]), "red" if issue["level"] == "error" else "yellow")])
         if state["detail"]:
+            local_hits = []
             detail_lines = [[(" Exact local command and validation messages", "cyan+bold")]]
             if plan:
                 detail_lines += [[(" " + part, "cyan")] for part in _wrap(plan["command"], inner, ascii_=views.g.ascii)]
@@ -465,7 +510,9 @@ def overlay(views, snap, app, width, height):
             lines = detail_lines[painted:painted + page]
             scroll_spec = ("modal:execution-details", 0, len(detail_lines), page, target, painted,
                            lambda value: state.update(detail_scroll=value), context)
-            lines.append([(" Arrows/PgDn scroll; Esc returns to fields; p validates; s reviews submission", "dim")])
+            _button_rows(views, lines, local_hits, inner,
+                         ([("stop", "Cancel remaining", "c")] if state["running"] else [])
+                         + [("back", "Back to fields", "esc")])
         # Keep the selected form field visible in very short terminals.
         elif len(lines) > usable:
             top = max(0, min(state["field"] - usable + 1, len(_FIELDS) - 1))
@@ -473,6 +520,7 @@ def overlay(views, snap, app, width, height):
             target, painted = B.window(app, "modal:execution-form", top, len(lines), usable,
                                        context=context, focus=state["field"])
             scroll_spec = ("modal:execution-form", 0, len(lines), usable, target, painted, lambda value: None, context)
+            control_offset = painted
             lines = lines[painted:painted + usable]
     else:
         review = state["review"] or {}
@@ -546,12 +594,23 @@ def overlay(views, snap, app, width, height):
             lines = [[(" " + line, "")] for line in content[painted:painted + page]]
             scroll_spec = ("modal:execution-details", 0, len(content), page, target, painted,
                            lambda value: state.update(detail_scroll=value), context)
-            lines.append([(" Esc returns; arrows scroll. Tab shows action controls", "dim")])
+            _button_rows(views, lines, local_hits, inner,
+                         ([("stop", "Cancel remaining", "c")] if state["running"] else [])
+                         + [("back", "Back to nodes", "esc")])
         else:
             # At compact sizes omit the generic header and help before any target
             # or control. Every visible node still has Enter details and arrows.
             if state["running"] and available:
                 body.append([(f" Working {max(0, time.monotonic() - state['started']):.1f}s  {state['progress_text']}  c cancels later submissions", "yellow")])
+            choices = ([("stop", "Cancel remaining", "c"), ("back", "Back", "esc")]
+                if state["running"] else
+                ([("back", "Back", "esc")] if not action else [])
+                + ([("details", "Node details", "d")] if nodes else [])
+                + ([("collect", "Collect observations", "c")]
+                   if state["receipt_path"] and not action else []))
+            _button_rows(views, body, local_hits, inner, choices)
+            if len(body) > available:
+                body = body[:available]
             if available - len(body) >= 3:
                 body.append(header)
             page = max(0, available - len(body) - (1 if available - len(body) >= 2 else 0))
@@ -571,12 +630,15 @@ def overlay(views, snap, app, width, height):
                 node = nodes[index]
                 current = current_by_id.get(node["id"], {})
                 prefix = views.g.cursor if index == state["index"] else " "
+                _row_control(local_hits, len(body), inner, "node:" + node["id"],
+                             "Details for " + node["id"], "node:" + str(index))
                 body.append([(f" {prefix} {node['id']:<20} {current.get('state', 'planned'):<14} job {current.get('job_id') or '-'}", "rev" if index == state["index"] else ""),
                              ("  <- " + ",".join(node["depends_on"]) if node["depends_on"] else "", "dim")])
             if len(body) < available:
                 body.append([(" Arrows select; Enter details; Tab buttons; : execution; c collect", "dim")])
             if action and available >= 5 and len(body) < available:
                 body.append([(" Adds concrete upstream dependencies and unique --comment receipt identities.", "dim")])
+            local_hits = [hit for hit in local_hits if hit[0] < min(len(body), available)]
             lines = body[:available] + footer
             state["confirm_visible"] = can_confirm
     presentation = [[(clean(text, ascii_=views.g.ascii, limit=128 << 10), style) for text, style in row] for row in lines[:usable]]
@@ -585,16 +647,11 @@ def overlay(views, snap, app, width, height):
         key, start, count, page, target, painted, setter, context = scroll_spec
         rendered = B.boxed(app, key, rendered, start=start, count=count, page=page, target=target,
                            painted=painted, setter=setter, context=context, header=-1)
-    if state["view"] == "form" and not state["detail"] and not state["running"]:
-        for y, x, row in rendered:
-            text = "".join(segment for segment, _ in row)
-            position = text.find("[Shell checks]")
-            if position >= 0:
-                left = x + vlen(text[:position])
-                state["control_hits"].append((y, "control", {
-                    "id": "execution:shell-checks", "label": "Shell checks", "left": left,
-                    "right": left + len("[Shell checks]"), "group": "execution_form",
-                    "action": ("click", y, left), "choice": "shell-checks"}))
+    state["control_hits"] = place_hits(local_hits, rendered[1:-1], offset=control_offset)
+    for y, _, value in state["control_hits"]:
+        # Keyboard focus and pointer clicks share the same fresh-editor guard.
+        # A stale F8 action must not bypass it by dispatching a raw key.
+        value["action"] = ("click", y, value["left"])
     if state["pending_action"] and not state["detail"] and presentation:
         index = len(presentation) - 1
         if index < len(rendered) - 2:
@@ -609,7 +666,7 @@ def overlay(views, snap, app, width, height):
                     "id": "execution:" + choice, "label": choice, "left": left,
                     "right": left + len(label), "group": "execution_confirmation",
                     "action": ("click", y, left), "choice": choice}))
-    state["control_token"] = (id(state["review"]), id(state["pending_action"]), state["running"], state["detail"])
+    state["control_token"] = _control_context(app, state)
     return rendered
 
 
@@ -617,14 +674,23 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if getattr(app, "mode", None) != "execution" or button != "left":
         return False
     state = initialize(app)
-    if state.get("control_token") != (id(state["review"]), id(state["pending_action"]), state["running"], state["detail"]):
+    if state.get("control_token") != _control_context(app, state):
         return True
     for row, _, value in state.get("control_hits", []):
         if row == y and value["left"] <= x < value["right"]:
-            if value["choice"] == "shell-checks":
-                handle_key(app, "h")
+            choice = value["choice"]
+            if choice.startswith("key:"):
+                handle_key(app, choice[4:])
                 return True
-            state["focus"] = value["choice"]
+            if choice.startswith("field:") and not state["editing"] and not state["running"]:
+                state["field"] = int(choice[6:])
+                handle_key(app, "enter")
+                return True
+            if choice.startswith("node:") and not state["running"]:
+                state["index"], state["focus"] = int(choice[5:]), "nodes"
+                handle_key(app, "d")
+                return True
+            state["focus"] = choice
             # Reuse exact reviewed-plan, visibility, scope and mutation guards.
             handle_key(app, "enter")
             return True

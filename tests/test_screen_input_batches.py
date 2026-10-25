@@ -243,7 +243,7 @@ def test_curses_loop_repaints_before_queued_click_and_following_action(dashboard
         def noutrefresh(self):
             pass
 
-    click = (0, 5, row, 0, curses.BUTTON1_PRESSED)
+    click = (0, app.workspace_main_rect.x + 5, row, 0, curses.BUTTON1_PRESSED)
     window = PaintedWindow([curses.KEY_DOWN] * 15 + [click, " ", "q"], mouse)
     monkeypatch.setattr(curses, "wrapper", lambda callback: callback(window))
     frames = []

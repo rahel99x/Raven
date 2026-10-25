@@ -9,7 +9,7 @@
   },
   "profiles": {
     "demo": {
-      "theme": "default"
+      "theme": "gruvbox-dark"
     },
     "local": {
       "history_days": 7
@@ -66,7 +66,7 @@
   "animations": true,
   "mouse": true,
   "worker_mode": "multi",
-  "theme": "dark",
+  "theme": "gruvbox-dark",
   "workspace": {
     "density": "comfortable",
     "split": 45

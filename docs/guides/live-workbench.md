@@ -484,22 +484,28 @@ See [Tables](tables.md), [Log display](log-view.md), and [Navigation](navigation
 | Pinned tools | Open the existing operation favorites |
 | Display and navigation | Back/Forward, jump, panel density and focus, terminal tools, layouts, freeze, and log controls |
 
-The default tab row shows Jobs, History, Analytics, Research, and Log. A secondary
-page remains visible while active; pinned pages can remain in the row. Research
-shows common workspaces, the current workspace, and saved favorites; **All views**
-opens its searchable picker. Favorites store destination identities without
-retaining a selected job, path, or account.
+The persistent left sidebar lists every workspace. Disclosure arrows open
+Research, Analytics, Nodes, and Trace destinations directly. Right-click an
+entry to add it to Favorites above the complete list. Drag favorites to reorder
+them; **Own / A–Z** switches between saved custom and alphabetical order.
+Favorites store destination identities without retaining a selected job, path,
+or account. See [Navigation and themes](navigation-and-themes.md) for narrow
+terminals, keyboard controls, and preference migration.
 
 **Display and navigation → Advanced preferences** and **Setup → Refresh and
 performance → Advanced preferences** open the same preferences menu. It contains
 background worker controls, terminal and clipboard preferences, smooth scrolling,
-startup controls, and themes. `:preferences` opens it directly.
+and startup controls. `:preferences` opens these advanced settings directly.
+**Themes** has its own top-level menu, also available through `:menu Themes`.
 
-Themes include `default`, `darcula`, `modnokai`, `gruvbox-dark`, `dark`, `light`,
-`terminal`, `mono`, `high`, and `cb`. Plain ASCII reader mode uses static feedback,
-immediate scrolling, and no welcome animation. See
-[Navigation](navigation.md) for saved destinations and settings, and
-[Mouse and button navigation](pointer-navigation.md) for directional focus.
+The curated themes are Gruvbox (default), Modnokai, Darcula, Catppuccin Mocha,
+Nord, Tokyo Night, Rosé Pine Dawn, and System. System inherits the terminal's
+default canvas and ANSI palette; see [terminal palettes](pointer-navigation.md#change-the-terminal-palette)
+for compatibility aliases and direct-colour curses limits. Plain ASCII reader
+mode remains available through `:theme reader`, with static feedback, immediate
+scrolling, and no welcome animation. See [Navigation](navigation.md) for saved
+destinations and settings, and [Mouse and button navigation](pointer-navigation.md)
+for directional focus.
 
 ### Help menu
 

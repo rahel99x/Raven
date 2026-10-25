@@ -272,7 +272,7 @@ def test_execution_form_button_and_key_use_same_reviewed_plan(app, script):
     execution_ui.initialize(app)
     execution_ui._open_form(app, plan)
     execution_ui.overlay(SimpleNamespace(g=Glyphs(False)), {}, app, 130, 35)
-    hit = next(hit for hit in app.execution_state["control_hits"] if hit[2]["choice"] == "shell-checks")
+    hit = next(hit for hit in app.execution_state["control_hits"] if hit[2]["id"] == "execution:shell-checks")
     execution_ui.handle_mouse(app, hit[0], hit[2]["left"])
     assert app.mode == "shell_checks"
     assert UI.initialize(app)["expected"] == plan["script_sha256"]

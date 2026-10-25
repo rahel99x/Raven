@@ -17,7 +17,7 @@ from itertools import chain, islice
 from . import clock, layout as L, navigation_ui
 from .research_text import clean
 from .ui.catalog import RESEARCH_VIEWS
-from .palette import THEME_NAMES
+from .palette import ACCEPTED_THEME_NAMES, THEME_NAMES, canonical_theme
 
 MODES = {"jump_picker", "settings_editor", "bindings_editor", "field_explanation", "value_peek", "locations_picker"}
 MAX_LOCATIONS = 50
@@ -409,6 +409,8 @@ def _setting_keys(app):
 
 
 def _valid_setting(key, value):
+    if key == "theme":
+        return canonical_theme(value) in ACCEPTED_THEME_NAMES
     if key in SETTING_CHOICES:
         return value in SETTING_CHOICES[key]
     if key == "intervals.jobs":
@@ -516,7 +518,7 @@ def _settings_key(app, key):
         state["polling_preview_backup"] = None
         app.mode = state["return_mode"]
         app.say("Settings preview cancelled")
-    elif key == "enter":
+    elif key in ("enter", "apply"):
         state["settings"].update({key: value for key, value in state["draft"].items()
                                   if key != TELEMETRY_SETTING and key not in _locked_settings(app)})
         _apply_settings(app, state["draft"])
@@ -533,7 +535,8 @@ def _settings_key(app, key):
         old = state["draft"][field]
         if field in SETTING_CHOICES:
             choices = SETTING_CHOICES[field]
-            value = choices[(choices.index(old) + (-1 if key == "left" else 1)) % len(choices)]
+            value = (choices[(choices.index(old) + (-1 if key == "left" else 1)) % len(choices)]
+                     if old in choices else choices[0])
         elif type(old) is bool:
             value = not old
         elif field == "intervals.jobs":
@@ -1015,6 +1018,10 @@ def handle_mouse(app, y, x, button="left", shift=False):
         return False
     if button == "left":
         state = initialize(app)
+        for row, _, value in state.get("control_hits", ()):
+            if row == y and value["left"] <= x < value["right"]:
+                handle_key(app, value["action"][1])
+                return True
         index = next((index for row, index in state["hits"] if row == y), None)
         if index is not None:
             state["cursor"] = index
@@ -1023,8 +1030,25 @@ def handle_mouse(app, y, x, button="left", shift=False):
 
 def _list_overlay(views, app, width, height, title, rows, prefix, hints):
     from . import modal_scrollbars as B
+    from .control_rows import buttons, place_hits
     state = initialize(app)
-    page = max(1, height - 11)
+    if app.mode == "settings_editor":
+        choices = (("previous", "Previous value", "left"), ("next", "Next value", "right"),
+                   ("defaults", "Defaults", "D"), ("apply", "Apply", "apply"), ("cancel", "Cancel", "esc"))
+    elif app.mode == "bindings_editor":
+        if state["editing"]:
+            choices = (("edit", "Save key", "enter"), ("cancel", "Cancel edit", "esc"))
+        elif state["test"]:
+            choices = (("cancel", "Cancel test", "esc"),)
+        else:
+            choices = (("edit", "Edit key", "enter"), ("test", "Test key", "t"),
+                       ("defaults", "Defaults", "D"), ("apply", "Apply", "a"), ("close", "Close", "esc"))
+    else:
+        choices = (("open", "Open", "enter"), ("close", "Close", "esc"))
+    action_rows, action_hits = buttons(views.g, max(1, width - 8),
+        [(key, label, ("key", action)) for key, label, action in choices],
+        group="navigation-actions", prefix="navigation-action:")
+    page = max(1, height - 11 - len(action_rows))
     cursor = max(0, min(state["cursor"], max(0, len(rows) - 1)))
     top = max(0, min(state["top"], max(0, len(rows) - page)))
     if cursor < top:
@@ -1043,8 +1067,10 @@ def _list_overlay(views, app, width, height, title, rows, prefix, hints):
                         ("  " + clean(description, views.g.ascii, limit=4096), style or "dim")])
     if not rows:
         content.append([(" No results. Edit the query or save a location first.", "yellow")])
-    content += [[("", "")]] + [[(" " + clean(hint, views.g.ascii), "dim")] for hint in hints[:3]]
+    action_offset = len(content)
+    content += action_rows + [[("", "")]] + [[(" " + clean(hint, views.g.ascii), "dim")] for hint in hints[:3]]
     result = L.box(views.g, content, width, height, title)
+    state["control_hits"] = place_hits([(row + action_offset, kind, value) for row, kind, value in action_hits], result[1:-1])
     state["hits"] = [(result[3 + offset][0], top + offset) for offset in range(min(page, len(rows) - top)) if 3 + offset < len(result) - 1]
     return B.boxed(app, "modal:navigation-list", result, start=2, count=len(rows), page=page,
                    target=logical, painted=top, setter=lambda value: state.update(top=value), context=context)
@@ -1054,6 +1080,7 @@ def overlay(views, snap, app, width, height):
     if app.mode not in MODES:
         return None
     state = initialize(app)
+    state["control_hits"] = []
     if app.mode == "jump_picker":
         entries = jump_matches(app)
         rows = [(entry["value"], entry["description"]) for entry in entries]
@@ -1083,10 +1110,16 @@ def overlay(views, snap, app, width, height):
         return _list_overlay(views, app, width, height, "Keybindings", rows, prefix,
                              ["e/Enter edits · t tests · D restores draft defaults", "a applies and saves · Esc closes · conflicts must be resolved"])
     from .command_ui import _wrap_exact
+    from .control_rows import buttons, place_hits
     lines = []
     for paragraph in state["value"].splitlines() or [""]:
         lines.extend(_wrap_exact(clean(paragraph, views.g.ascii, limit=MAX_VALUE), max(1, width - 10)))
-    page = max(1, height - 8)
+    choices = [("close", "Close", ("key", "esc"))]
+    if app.mode == "value_peek":
+        choices.insert(0, ("copy", "Copy full value", ("key", "y")))
+    action_rows, action_hits = buttons(views.g, max(1, width - 8), choices,
+        group="navigation-actions", prefix="navigation-action:")
+    page = max(1, height - 8 - len(action_rows))
     state["line_total"], state["page"] = len(lines), page
     state["scroll"] = max(0, min(state["scroll"], max(0, len(lines) - page)))
     from . import modal_scrollbars as B
@@ -1095,7 +1128,10 @@ def overlay(views, snap, app, width, height):
     state["scroll"] = logical
     content = [[(" " + clean(state["field"], views.g.ascii), "cyan+bold")], [("", "")]]
     content += [[(" " + line, "")] for line in lines[painted:painted + page]]
+    action_offset = len(content)
+    content += action_rows
     content += [[("", "")], [(" Up/Down/PgUp/PgDn scroll · y copies the complete raw value · Esc closes" if app.mode == "value_peek" else " Up/Down/PgUp/PgDn scroll · Esc closes", "dim")]]
     result = L.box(views.g, content, width, height, "Full value" if app.mode == "value_peek" else "Field explanation")
+    state["control_hits"] = place_hits([(row + action_offset, kind, value) for row, kind, value in action_hits], result[1:-1])
     return B.boxed(app, "modal:full-value", result, start=2, count=len(lines), page=page,
                    target=logical, painted=painted, setter=lambda value: state.update(scroll=value), context=context)

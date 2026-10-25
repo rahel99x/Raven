@@ -1,5 +1,6 @@
 """First-run and saved-site wizard; rendering never discovers or saves settings."""
 from __future__ import annotations
+from .ui.form_state import edit_actions, edit_mouse, publish_edit_actions
 
 import shlex
 import sys
@@ -433,6 +434,8 @@ def handle_mouse(app, y, x, button="left", shift=False):
     if getattr(app, "mode", "") != "onboarding":
         return False
     state = initialize(app)
+    if edit_mouse(app, state, y, x, button, _frame(app), handle_key):
+        return True
     if button in ("wheel-up", "wheel-down"):
         state["top"] = max(0, state["top"] + (-3 if button == "wheel-up" else 3))
         state["follow_cursor"] = False
@@ -466,7 +469,9 @@ def overlay(views, snap, app, width, height):
             choice += 1
         else:
             document.extend([(line, "text")] for line in _wrap(text, inner))
-    capacity = max(0, height-5)
+    editing = state["editing"] is not None
+    edit_rows, edit_hits = edit_actions(views.g, inner) if editing else ([], [])
+    capacity = max(0, height - 4 - len(edit_rows)) if editing else max(0, height-5)
     state["visible"] = max(1, capacity)
     if state.pop("follow_cursor", False):
         if selected_row < state["top"]:
@@ -475,10 +480,16 @@ def overlay(views, snap, app, width, height):
             state["top"] = selected_row-capacity+1
     state["top"] = max(0, min(state["top"], max(0, len(document)-capacity)))
     rows = document[state["top"]:state["top"]+capacity]
-    if height >= 5:
+    footer_start = len(rows)
+    if editing:
+        rows.extend(edit_rows)
+    elif height >= 5:
         footer = "Enter: keep field | Esc: cancel | Ctrl-U: clear" if state["editing"] else "Tab: choose | Enter: open | PgUp/PgDn: scroll | Esc: close"
         rows.append([(L.cut(footer, inner, views.g.ascii), "muted")])
     result = L.box(views.g, rows, width, height, "Getting started with Raven", min_width=20)
     state["control_hits"] = place_hits(hits, result[1:-2] if height >= 5 else result[1:-1], offset=state["top"])
     state["painted"] = _frame(app)
+    if editing:
+        publish_edit_actions(app, state, edit_hits, result, footer_start,
+                             state["painted"], width, height)
     return result

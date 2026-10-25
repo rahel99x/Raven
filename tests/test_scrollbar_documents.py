@@ -158,7 +158,9 @@ def test_analysis_event_bars_preserve_cursor_then_keyboard_reveals_it(app, clock
     end = pane(application, "analysis:document")
     assert end.painted == end.limit and state["cursor"] == 0
     assert f"event {59}" in "\n".join(L.row_text(row) for _, _, row in rows)
-    assert all(0 <= value["event_index"] < len(events) for _, _, value in state["control_hits"])
+    event_links = [value for _, _, value in state["control_hits"] if value.get("group") in ("timeline_events", "chart_events")]
+    assert event_links and all(0 <= value["event_index"] < len(events) for value in event_links)
+    assert any(value["id"] == "analysis-navigation:back" for _, _, value in state["control_hits"])
     A.handle_key(application, "down")
     clock[0] += .3
     render_modal(A, application, views)

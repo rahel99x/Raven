@@ -419,6 +419,7 @@ def run_command(app, args):
         available = {column.key for column in definitions(tab)}
         if not values:
             state["tab"], state["cursor"], app.mode = tab, 0, "columns"
+            state.update(menu_actions=False, menu_action_cursor=0)
         elif values == ["reset"]:
             state["hidden"][tab] = []
             state["order"][tab] = []
@@ -594,6 +595,19 @@ def handle_key(app, key):
     if app.mode != "columns":
         return False
     state = app.table_state
+    state.update(control_hits=[], menu_painted=None)
+    if key == "columns-actions":
+        state["menu_actions"] = not state.get("menu_actions", False)
+        return True
+    if key in ("columns-action-prev", "columns-action-next"):
+        state["menu_action_cursor"] = (
+            state.get("menu_action_cursor", 0)
+            + (-1 if key == "columns-action-prev" else 1)
+        ) % 7
+        return True
+    if state.get("menu_actions") and key in ("esc", "q"):
+        state["menu_actions"] = False
+        return True
     cols = ordered_definitions(app, state["tab"])
     if key in ("esc", "q", "enter"):
         app.mode = "main"
@@ -642,14 +656,36 @@ def handle_key(app, key):
     return True
 
 
+def _menu_frame(app):
+    state = app.table_state
+    tab = state["tab"]
+    return (
+        app.mode,
+        tab,
+        getattr(app, "width", None),
+        getattr(app, "height", None),
+        state["cursor"],
+        tuple(column.key for column in ordered_definitions(app, tab)),
+        tuple(state["hidden"].get(tab, ())),
+        tuple(sorted(state["widths"].get(tab, {}).items())),
+        state.get("menu_actions", False),
+        state.get("menu_action_cursor", 0),
+    )
+
+
 def handle_mouse(app, y, x, button="left", shift=False):
     """Toggle the exact checkbox painted here using the keyboard's rules."""
-    if getattr(app, "mode", "main") != "columns" or button != "left":
+    if getattr(app, "mode", "main") != "columns":
         return False
     state = app.table_state
+    if button != "left" or state.get("menu_painted") != _menu_frame(app):
+        return False
     for row, kind, value in state.get("control_hits", []):
         if row != y or not value["left"] <= x < value["right"]:
             continue
+        if value["action"][0] == "key":
+            handle_key(app, value["action"][1])
+            return True
         table, column = value["column"]
         if table != state["tab"]:
             return False
@@ -676,9 +712,50 @@ def overlay(views, snap, app, width, height):
     cols = ordered_definitions(app, state["tab"])
     hidden = state["hidden"].get(state["tab"], [])
     cursor = state["cursor"]
+    from .control_rows import buttons, place_hits
+
+    compact = width < 50 or height < 14
+    if not compact:
+        state["menu_actions"] = False
+    choices = [
+        ("enter", "Done"),
+        ("space", "Show / hide"),
+        ("left", "Move earlier"),
+        ("right", "Move later"),
+        ("-", "Narrower"),
+        ("+", "Wider"),
+        ("a", "Auto width"),
+        ("r", "Reset"),
+    ]
+    if compact:
+        if state.get("menu_actions"):
+            selected = choices[1:][state.get("menu_action_cursor", 0) % 7]
+            choices = [("columns-actions", "Back" if width >= 12 else "B")]
+            if width >= 12:
+                choices.append(("columns-action-prev", "<"))
+            choices += [("columns-action-next", ">"), selected]
+        else:
+            choices = [("enter", "Done"), ("columns-actions", "More")]
+    actions, action_hits = buttons(
+        views.g,
+        max(1, width - 4),
+        [(key, label, ("key", key)) for key, label in choices],
+        group="columns",
+        prefix="columns-action:",
+    )
     # Two hints, two borders and the box's outer margins reserve six rows.
     # Fit selection to the actual visible checkbox capacity on tiny terminals.
-    available = max(0, height - 6)
+    hints = (
+        []
+        if compact
+        else [
+            [(" Space show/hide | Up/Down select | Left/Right reorder", "dim")],
+            [(" +/- width | a automatic width | r reset | Enter done", "dim")],
+        ]
+    )
+    available = max(0, height - 4 - len(actions) - len(hints))
+    if compact:
+        available = min(available, max(0, height - 6))
     start = max(0, min(max(0, len(cols) - available), cursor - available // 2))
     from . import modal_scrollbars as B
 
@@ -686,10 +763,7 @@ def overlay(views, snap, app, width, height):
     logical, start = B.window(
         app, "modal:columns", start, len(cols), available, context=context, focus=cursor
     )
-    rows = [
-        [(" Space show/hide | Up/Down select | Left/Right reorder", "dim")],
-        [(" +/- width | a automatic width | r reset | Enter done", "dim")],
-    ]
+    rows = actions + hints
     for index, column in enumerate(cols[start : start + available], start):
         required = " (required)" if column.key in REQUIRED else ""
         width_text = (
@@ -700,10 +774,11 @@ def overlay(views, snap, app, width, height):
         text = f" [{' ' if column.key in hidden else 'x'}] {column.title:16} {column.key} width {width_text}{required}"
         rows.append([(text, "sel" if index == cursor else "")])
     rendered = L.box(views.g, rows, width, height, state["tab"].title() + " columns")
+    state["control_hits"] = place_hits(action_hits, rendered[1:-1])
     # The box may clip rows or terminal cells. Derive controls only from its
     # actual interior placements, never guessed modal offsets or labels.
     for index, column in enumerate(cols[start : start + available]):
-        line_index = index + 2
+        line_index = index + len(hints) + len(actions)
         if line_index >= max(0, len(rendered) - 2):
             break
         y, x, segments = rendered[line_index + 1]
@@ -730,11 +805,12 @@ def overlay(views, snap, app, width, height):
                 },
             )
         )
+    state["menu_painted"] = _menu_frame(app)
     return B.boxed(
         app,
         "modal:columns",
         rendered,
-        start=2,
+        start=len(hints) + len(actions),
         count=len(cols),
         page=available,
         target=logical,

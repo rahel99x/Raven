@@ -26,14 +26,21 @@ def paint(owner, width=80, height=24):
 def test_default_navigation_fits_80_columns_and_secondary_pages_stay_discoverable():
     owner = app()
     _, rows, _ = paint(owner)
-    keys = [key for _, _, _, key in owner.tab_hits]
-    assert keys == list(toolbar.PRIMARY_TABS)
-    assert all(title in L.row_text(rows[3]) for title in ("Jobs", "History", "Analytics", "Research", "Log"))
+    from raven import sidebar
+    from raven.ui.catalog import TABS
+    assert all(right <= owner.content_origin_x for _, _, right, _ in owner.tab_hits)
+    # Every main destination remains in the full navigation list; favorites
+    # supplement this list rather than hiding less frequently used pages.
+    controls = sidebar.controls(owner)
+    labels = {control.label.removeprefix("Open ") for control in controls}
+    assert all(title in labels for _, title in TABS)
+    left = sidebar.width(owner, 80)
+    assert any("Jobs" in L.row_text(row)[:left] for row in rows)
     secondary = {item.command for item in toolbar.submenu_items(owner, "infrastructure")}
     assert {"tab cluster", "tab nodes", "tab group", "tab deps", "tab sources"} <= secondary
     owner.enter_tab("nodes")
     paint(owner)
-    assert any(key == "nodes" for _, _, _, key in owner.tab_hits)
+    assert any(control.label == "Open Nodes" for control in sidebar.controls(owner))
 
 
 def test_favorites_roundtrip_only_destination_ids_and_reopen_exact_workspace():

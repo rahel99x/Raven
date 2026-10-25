@@ -321,7 +321,7 @@ def test_confirmation_mouse_buttons_work_and_background_clicks_are_blocked(dashb
     assert called == [True]
 
 
-def test_palette_and_workspace_mouse_selection_stays_in_modal(dashboard):
+def test_palette_mouse_selects_and_workspace_mouse_opens_its_exact_destination(dashboard):
     app, views, store = dashboard
     palette(app, "")
     views.overlay(store.snapshot(), app, 100, 24)
@@ -333,7 +333,9 @@ def test_palette_and_workspace_mouse_selection_stays_in_modal(dashboard):
     views.overlay(store.snapshot(), app, 100, 24)
     y, index = app.navigation_state["picker_hits"][1]
     app.click(y, 20, app.last_hits)
-    assert app.navigation_state["picker_cursor"] == index and app.mode == "workspace_picker"
+    expected = navigation._workspaces(app)[index][0]
+    assert app.navigation_state["picker_cursor"] == index
+    assert app.mode == "main" and app.tab == "research" and app.research_view == expected
 
 
 def test_palette_completes_quoted_path_with_spaces(dashboard, tmp_path, monkeypatch):

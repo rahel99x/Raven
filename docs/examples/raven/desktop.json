@@ -137,7 +137,7 @@
     "allocation_receipts_dir": ""
   },
   "ui": {
-    "theme": "terminal",
+    "theme": "gruvbox-dark",
     "show_execution_target": true,
     "show_observation_age": true,
     "ascii": false,

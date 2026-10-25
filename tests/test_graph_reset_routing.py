@@ -180,14 +180,23 @@ def test_jobs_metric_rate_capture_ends_before_graph_reset_and_delayed_release(da
 
 
 @pytest.mark.parametrize("route", ["app", "pressed", "clicked"])
-def test_history_job_list_right_click_retains_export_menu_priority(dashboard, route):
+@pytest.mark.parametrize("pointed,expected", [("19", ("19",)), ("17", ("17", "18"))])
+def test_history_job_list_right_click_retains_export_menu_priority(dashboard, route, pointed, expected):
     d, app = dashboard, dashboard.app
     d.draw("history")
     app.marks = {"17", "18"}
-    y = next(y for y, kind, identifier in app.last_hits if kind == "fin" and identifier == "19")
+    y = next(y for y, kind, identifier in app.last_hits if kind == "fin" and identifier == pointed)
     d.right(y, app.history_jobs_rect.left + 2, route)
+    assert app.mode == "job_group_menu"
+    menu = app.job_group_menu_state
+    assert menu["context"]["targets"] == expected
+    assert any(item["action"] == "export" for item in menu["items"])
+    d.draw("history")
+    index = next(index for index, item in enumerate(menu["items"]) if item["action"] == "export")
+    y, left, _, _ = next(hit for hit in menu["hits"] if hit[-1] == index)
+    app.click(y, left, app.last_hits)
     assert app.mode == "history_log_menu"
-    assert app.history_log_export_state["jobs"] == ("17", "18")
+    assert app.history_log_export_state["jobs"] == expected
     assert app.marks == {"17", "18"} and not app.confirm
 
 
@@ -278,7 +287,7 @@ def test_marked_jobs_arrows_resume_after_explicit_return_from_details(dashboard,
     d.draw("jobs")
 
     def row(identifier):
-        return next((y, 6) for y, kind, value in app.last_hits if kind == "job" and value == identifier)
+        return next((y, app.workspace_main_rect.x + 6) for y, kind, value in app.last_hits if kind == "job" and value == identifier)
 
     app.click(*row("7"), app.last_hits, button="press")
     app.click(*row("8"), app.last_hits, button="drag")

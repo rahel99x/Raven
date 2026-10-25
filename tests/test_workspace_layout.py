@@ -256,8 +256,8 @@ def test_semantic_surfaces_selection_and_chart_series_work_in_all_themes(monkeyp
         assert "bold" in selected.flags
         assert selected.background is not None or "rev" in selected.flags
         assert len(P.chart_colors(theme)) == 6 and len(set(P.chart_colors(theme))) == 6
-    assert P.resolve("text+bg:surface", "light").foreground == P.rgb(P.LIGHT_PALETTE["white"])
-    assert P.resolve("text+bg:surface", "light").background == P.rgb(P.LIGHT_PALETTE["surface"])
+    assert P.resolve("text+bg:surface", "light").foreground == P.rgb(P.ROSE_PINE_DAWN_PALETTE["white"])
+    assert P.resolve("text+bg:surface", "light").background == P.rgb(P.ROSE_PINE_DAWN_PALETTE["surface"])
     assert P.resolve("text+bg:surface", "terminal").background is None
     assert P.resolve("text+bg:surface", "terminal").foreground is None
     assert P.resolve("muted", "terminal").flags == ("dim",)

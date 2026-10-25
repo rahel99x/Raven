@@ -66,6 +66,8 @@ def initialize(app):
     app.log_tools_state.setdefault("cursor_deselected", False)
     app.log_tools_state.setdefault("result_top", 0)
     app.log_tools_state.setdefault("mark_top", 0)
+    app.log_tools_state.setdefault("control_hits", [])
+    app.log_tools_state.setdefault("control_token", None)
     return app.log_tools_state
 
 
@@ -1143,6 +1145,14 @@ def handle_mouse(app, y, x, button="left", shift=False):
             "Log line selection cleared; click a line or use arrows to select again"
         )
         return True
+    if button in ("left", "double"):
+        for row, _, value in state["control_hits"]:
+            if row == y and value["left"] <= x < value["right"]:
+                if state.get("control_token") == _mouse_context(app):
+                    handle_key(app, value["action"][1])
+                return True
+    if state.get("source_token") != _mouse_context(app)[:6]:
+        return True
     hit = state["mouse_rows"].get(y)
     if hit is None or not hit[1] <= x < hit[2] or button not in ("left", "double"):
         return True
@@ -1188,6 +1198,17 @@ def overlay(views, snap, app, width, height):
         return None
     state, g = initialize(app), views.g
     rows, indices = [], {}
+    from ..control_rows import buttons, place_hits
+
+    action_rows, action_hits = buttons(
+        g,
+        max(1, width - 8),
+        _mouse_choices(app),
+        group="log-tool-actions",
+        prefix="log-tool-action:",
+    )
+    state["control_hits"] = []
+    action_height = len(action_rows)
     top_field = (
         "page_top"
         if app.mode == "log_tools_page"
@@ -1210,9 +1231,18 @@ def overlay(views, snap, app, width, height):
     if app.mode == "log_tools_page":
         page = state["page"]
         if page is None:
-            return L.box(
-                g, [[("No source page loaded", "dim")]], width, height, "Source page"
+            result = L.box(
+                g,
+                action_rows + [[("No source page loaded", "dim")]],
+                width,
+                height,
+                "Source page",
             )
+            state["control_hits"] = place_hits(action_hits, result[1:-1])
+            state["control_token"] = _mouse_context(app)
+            state["source_token"] = state["control_token"][:6]
+            state["mouse_rows"] = {}
+            return result
         if state.get("page_pan_page") is not page:
             state["page_pan_cache"].clear()
             state["page_pan_page"] = page
@@ -1232,7 +1262,7 @@ def overlay(views, snap, app, width, height):
         ]
         n = len(page["rows"])
         cursor = min(state["page_cursor"], max(0, n - 1))
-        available = max(1, height - 9)
+        available = max(1, height - 9 - action_height)
         start = (
             state[top_field]
             if S.manual(app, "log-tools:document", context=scroll_context) is not None
@@ -1338,7 +1368,7 @@ def overlay(views, snap, app, width, height):
                     )
                 ]
             )
-        available = max(1, height - 12)
+        available = max(1, height - 12 - action_height)
         n = len(collection)
         start = (
             state[top_field]
@@ -1426,9 +1456,13 @@ def overlay(views, snap, app, width, height):
             ]
         )
         title = "Log search" if is_results else "Log marks"
-    result = L.box(g, rows, width, height, "   " + title)
+    result = L.box(g, action_rows + rows, width, height, "   " + title)
+    state["control_hits"] = place_hits(action_hits, result[1:-1])
+    state["control_token"] = _mouse_context(app)
+    state["source_token"] = state["control_token"][:6]
     state["mouse_rows"] = {}
     for logical, index in indices.items():
+        logical += action_height
         if logical + 1 < len(result) - 1:
             y, x, rendered = result[logical + 1]
             state["mouse_rows"][y] = (
@@ -1505,3 +1539,57 @@ def restore_location(app, context):
         return_mode="main",
         onloaded=ready,
     )
+
+
+def _mouse_context(app):
+    state = initialize(app)
+    mode = getattr(app, "mode", "main")
+    source = state.get("page_source") or {}
+    selected = (
+        state["page_cursor"]
+        if mode == "log_tools_page"
+        else state["result_cursor"]
+        if mode == "log_tools_results"
+        else state["mark_cursor"]
+    )
+    collection = state["marks"]
+    mark = (
+        collection[min(selected, len(collection) - 1)]
+        if collection and mode == "log_tools_marks"
+        else None
+    )
+    return (
+        mode,
+        state["generation"],
+        state["busy"],
+        id(state.get("page")),
+        id(state.get("results")),
+        source.get("path"),
+        selected,
+        state["cursor_deselected"],
+        id(mark) if mark is not None else None,
+        len(collection),
+        state["selection"],
+    )
+
+
+def _mouse_choices(app):
+    state = initialize(app)
+    choices = [("close", "Back", "esc")]
+    if app.mode == "log_tools_page" and state.get("page") is not None:
+        choices += [
+            ("previous", "Previous page", "["),
+            ("next", "Next page", "]"),
+            ("pan-left", "Pan left", "left"),
+            ("pan-right", "Pan right", "right"),
+            ("select", "Select lines", "v"),
+            ("copy", "Copy selection", "y"),
+            ("copy-source", "Copy source", "Y"),
+        ]
+    elif app.mode != "log_tools_page":
+        choices.append(("open", "Open source", "enter"))
+        if app.mode == "log_tools_marks":
+            choices.append(("delete", "Delete mark", "d"))
+    if state["busy"]:
+        choices.append(("cancel", "Cancel operation", "c"))
+    return [(identifier, label, ("key", key)) for identifier, label, key in choices]

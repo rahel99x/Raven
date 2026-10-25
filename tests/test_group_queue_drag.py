@@ -12,7 +12,7 @@ from raven.config import Config
 from raven.controller import App
 from raven.model import Finished, Job, Store
 from raven.views import Views
-from test_job_group_mouse_integration import dispatch
+from test_job_group_mouse_integration import dispatch, point
 
 REAL_PREPARE_DROP = Q.prepare_drop
 
@@ -51,7 +51,7 @@ def grip(ui, group):
 
 
 def row(ui, jid):
-    return next((y, 12) for y, kind, value in ui.hits if kind == "job" and value == jid)
+    return point(ui.app, ui.hits, jid, "job")
 
 
 def send(ui, position, button, route="app", **kwargs):
@@ -71,7 +71,7 @@ def test_real_group_grips_prepare_exactly_one_frozen_before_or_after_review(dash
     source, target = (high, low) if direction == "up" else (low, high)
     source_evidence = D.initialize(app)["frame"]["headers"][source]["evidence"]
     target_evidence = D.initialize(app)["frame"]["headers"][target]["evidence"]
-    assert grip(ui, source)[1] == 2
+    assert grip(ui, source)[1] == app.workspace_main_rect.x + 2
     original_groups = deepcopy(app.table_state["manual_groups"])
     original_selection = app.selected_id
     send(ui, grip(ui, source), "press", route)
